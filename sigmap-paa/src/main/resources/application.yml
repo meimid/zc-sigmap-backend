@@ -1,0 +1,33 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: Sigmap PAA
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3308/sigmap-db}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: "UTC"
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    change-log: classpath:/db/db.changelog-master.yml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          principal-claim-name: preferred_username
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/sigmap-realm}
+
+keycloak:
+  client-id: ${KYCLOAK_CLIENT_ID:sigmap-paa}
