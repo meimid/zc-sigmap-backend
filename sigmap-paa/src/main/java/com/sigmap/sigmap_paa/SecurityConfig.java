@@ -39,7 +39,19 @@ public class SecurityConfig {
                       corsConfiguration.setAllowCredentials(true);
                       return corsConfiguration;
                     }))
-        .authorizeHttpRequests(request -> request.anyRequest().authenticated())
+        .authorizeHttpRequests(request -> request
+                .requestMatchers(
+                        "/token/**",
+                        "/test",
+                        "/swagger-ui/**",
+                        "/api/swagger-ui/**",
+                        "/api/docs",
+                        "/api/docs/*",
+                        "/api/docs-ui.html",
+                        "/v3/api-docs/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated())
         .sessionManagement(
             management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(

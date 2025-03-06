@@ -6,9 +6,13 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>sigmap-common</module>
-        <module>sigmap-paa</module>
+<!--    Libraries    -->
         <module>sigmap-migrations</module>
+        <module>sigmap-common</module>
+<!--    Application    -->
+        <module>sigmap-agpm</module>
+        <module>sigmap-paa</module>
+        <module>sigmap-ppm</module>
     </modules>
 
     <parent>
