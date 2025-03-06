@@ -6,7 +6,11 @@ WORKDIR /app
 
 COPY sigmap-common ./sigmap-common
 COPY sigmap-migrations ./sigmap-migrations
+COPY sigmap-params ./sigmap-params
+COPY sigmap-agpm ./sigmap-agpm
+COPY sigmap-ppm ./sigmap-ppm
 COPY sigmap-paa ./sigmap-paa
+
 
 COPY pom.xml .
 
@@ -16,6 +20,6 @@ FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/sigmap-paa/target/sigmap-paa*.jar /app.jar
+COPY --from=builder /app/sigmap-ppm/target/sigmap-ppm*.jar /app.jar
 
 ENTRYPOINT ["java","-jar","/app.jar"]

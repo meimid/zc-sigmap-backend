@@ -10,6 +10,7 @@
         <module>sigmap-migrations</module>
         <module>sigmap-common</module>
 <!--    Application    -->
+        <module>sigmap-params</module>
         <module>sigmap-agpm</module>
         <module>sigmap-paa</module>
         <module>sigmap-ppm</module>

@@ -6,7 +6,11 @@ WORKDIR /app
 
 COPY sigmap-common ./sigmap-common
 COPY sigmap-migrations ./sigmap-migrations
+COPY sigmap-params ./sigmap-params
+COPY sigmap-agpm ./sigmap-agpm
+COPY sigmap-ppm ./sigmap-ppm
 COPY sigmap-paa ./sigmap-paa
+
 
 COPY pom.xml .
 
