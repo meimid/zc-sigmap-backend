@@ -41,6 +41,8 @@ springdoc:
     layout: StandaloneLayout
     displayRequestDuration: true
 
+cors:
+  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000}
 
 keycloak:
   client-id: ${KYCLOAK_CLIENT_ID:sigmap-paa}

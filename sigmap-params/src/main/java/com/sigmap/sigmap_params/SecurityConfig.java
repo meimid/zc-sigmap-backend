@@ -1,6 +1,8 @@
 package com.sigmap.sigmap_params;
 
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -17,6 +19,9 @@ import org.springframework.web.cors.CorsConfiguration;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    @Value("${cors.origins}")
+    private List<String> allowedOrigins;
+
   /**
    * Configures the security filter chain.
    *
@@ -25,15 +30,16 @@ public class SecurityConfig {
    * @throws Exception the exception
    */
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, KeycloakJwtConverter jwtConverter)
+  public SecurityFilterChain filterChain(
+          HttpSecurity http,
+          KeycloakJwtConverter jwtConverter)
       throws Exception {
     http.cors(
             (cors) ->
                 cors.configurationSource(
                     request -> {
                       CorsConfiguration corsConfiguration = new CorsConfiguration();
-                      corsConfiguration.setAllowedOriginPatterns(
-                          List.of("http://localhost:4000", "http://localhost:4001"));
+                      corsConfiguration.setAllowedOriginPatterns(allowedOrigins);
                       corsConfiguration.setAllowedMethods(List.of("*"));
                       corsConfiguration.setAllowedHeaders(List.of("*"));
                       corsConfiguration.setAllowCredentials(true);
@@ -42,7 +48,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(request -> request
                 .requestMatchers(
                         "/token/**",
-                        "/test",
+                        "/api/ref-types",
+                        "/api/ref-params",
                         "/swagger-ui/**",
                         "/api/swagger-ui/**",
                         "/api/docs",
