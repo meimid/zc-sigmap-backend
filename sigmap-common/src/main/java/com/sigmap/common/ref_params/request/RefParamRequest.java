@@ -4,9 +4,9 @@ import lombok.Data;
 
 @Data
 public class RefParamRequest {
-    private String code;
+  private String code;
 
-    private String description;
+  private String description;
 
-    private Integer refTypeId;
+  private Integer refTypeId;
 }

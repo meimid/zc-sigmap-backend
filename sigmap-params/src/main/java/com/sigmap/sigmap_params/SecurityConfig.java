@@ -9,6 +9,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
@@ -34,8 +35,8 @@ public class SecurityConfig {
           HttpSecurity http,
           KeycloakJwtConverter jwtConverter)
       throws Exception {
-    http.cors(
-            (cors) ->
+        http.csrf(AbstractHttpConfigurer::disable)
+            .cors((cors) ->
                 cors.configurationSource(
                     request -> {
                       CorsConfiguration corsConfiguration = new CorsConfiguration();
@@ -48,8 +49,6 @@ public class SecurityConfig {
         .authorizeHttpRequests(request -> request
                 .requestMatchers(
                         "/token/**",
-                        "/api/ref-types",
-                        "/api/ref-params",
                         "/swagger-ui/**",
                         "/api/swagger-ui/**",
                         "/api/docs",
@@ -65,7 +64,6 @@ public class SecurityConfig {
             oauth2 ->
                 oauth2.jwt(
                     jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)));
-    //                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
     return http.build();
   }
 

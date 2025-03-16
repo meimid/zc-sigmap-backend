@@ -4,5 +4,6 @@ import lombok.Data;
 
 @Data
 public class RefTypeRequest {
-    private String description;
+  private Integer id;
+  private String description;
 }
