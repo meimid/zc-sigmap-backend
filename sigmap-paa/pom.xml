@@ -2,14 +2,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.sigmap</groupId>
-        <artifactId>sigmap-parent</artifactId>
-        <version>0.0.1</version>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.2</version>
+        <relativePath/> <!-- lookup parent from repository -->
     </parent>
+
 
     <packaging>jar</packaging>
 
+    <groupId>com.sigmap</groupId>
     <artifactId>sigmap-paa</artifactId>
+    <version>0.0.1</version>
 
     <dependencies>
         <dependency>
@@ -131,7 +135,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
+                <version>3.4.2</version>
                 <configuration>
                     <excludes>
                         <exclude>
