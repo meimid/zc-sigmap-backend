@@ -23,6 +23,14 @@ import lombok.EqualsAndHashCode;
 //   UNIQUE INDEX `ref_param_code_idx`(`code`)
 // );
 
+/**
+ * Entity class representing a ref param.
+ *
+ * This class extends {@link BaseEntity} and provides a number of
+ * getter and setter methods for the fields of this entity.
+ * It also includes a constructor, a toString method, and
+ * equals and hash code methods.
+ */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity

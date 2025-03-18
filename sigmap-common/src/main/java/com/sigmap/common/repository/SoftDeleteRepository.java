@@ -5,6 +5,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Interface for managing soft delete operations.
+ * 
+ * <p>Requires entity have id,isDeleted,deletedAt,deletedBy properties</p>
+ */
 @NoRepositoryBean
 public interface SoftDeleteRepository<T, ID>  {
 

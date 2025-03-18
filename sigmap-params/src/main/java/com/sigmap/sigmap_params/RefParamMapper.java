@@ -1,9 +1,7 @@
 package com.sigmap.sigmap_params;
 
-import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponse;
-import com.sigmap.common.response.BaseEntityResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;

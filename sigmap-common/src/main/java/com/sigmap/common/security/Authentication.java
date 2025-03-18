@@ -7,8 +7,14 @@ import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.util.Optional;
 
+/** Utility class related to authentication. */
 public class Authentication {
 
+    /**
+     * Get the current user ID.
+     *
+     * @return the current user ID, or empty if not authenticated
+     */
     public static Optional<String> getCurrentUserId() {
         return Optional.ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)

@@ -9,6 +9,9 @@ package com.sigmap.common.ref_types;
 import jakarta.persistence.*;
 import lombok.Data;
 
+/**
+ * Entity class representing a RefType.
+ */
 @Data
 @Entity
 @Table(name = "ref_type")

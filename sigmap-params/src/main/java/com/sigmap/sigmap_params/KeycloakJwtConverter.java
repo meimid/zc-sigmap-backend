@@ -98,6 +98,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
    * @param jwt the JWT
    * @return the roles
    */
+  @SuppressWarnings("unchecked")
   private List<String> extractRealmRoles(Jwt jwt) {
     Map<String, Object> realmAccess = jwt.getClaim("realm_access");
     if (realmAccess == null) {
@@ -115,6 +116,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
    * @param jwt the JWT
    * @return the roles
    */
+  @SuppressWarnings("unchecked")
   private List<String> extractResourceAccessRoles(Jwt jwt) {
     Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
 
