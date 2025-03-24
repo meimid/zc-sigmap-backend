@@ -44,7 +44,13 @@ public class RefParamSpecifications {
     /** deleted. */
     public static Specification<RefParam> deleted(boolean deleted) {
         return (root, query, criteriaBuilder) -> {
-            return criteriaBuilder.equal(root.get("isDeleted"), deleted);
+            if (!deleted) {
+                return criteriaBuilder.or(
+                    criteriaBuilder.isNull(root.get("isDeleted")),
+                    criteriaBuilder.isFalse(root.get("isDeleted"))
+                );
+            }
+            return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
 }

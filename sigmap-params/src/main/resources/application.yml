@@ -1,5 +1,7 @@
 server:
   port: ${PORT:8084}
+  servlet:
+    context-path: /params
 
 spring:
   application:
@@ -36,7 +38,7 @@ springdoc:
   api-docs:
     path: ${API_DOCS_PATH:/api/docs}
   swagger-ui:
-    path: ${SWAGGER_UI_PATH:/params/api/docs-ui.html}
+    path: ${SWAGGER_UI_PATH:/api/docs-ui.html}
     operationsSorter: method
     layout: StandaloneLayout
     displayRequestDuration: true
@@ -45,4 +47,5 @@ cors:
   origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000}
 
 keycloak:
-  client-id: ${KYCLOAK_CLIENT_ID:sigmap-paa}
+  client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
