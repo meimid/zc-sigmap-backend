@@ -37,3 +37,6 @@ build/
 
 ### Stored files ###
 uploads
+
+### Properties ###
+**/application-*.yml

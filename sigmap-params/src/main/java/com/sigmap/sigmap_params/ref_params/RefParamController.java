@@ -3,9 +3,11 @@ package com.sigmap.sigmap_params.ref_params;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.request.RefParamQuery;
+import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.response.RefParamResponse;
-import com.sigmap.sigmap_params.RefParamMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/ref-params")
 public class RefParamController {
+    private final Logger logger = LoggerFactory.getLogger(RefParamController.class);
 
     private final RefParamService refParamService;
 
@@ -53,7 +56,7 @@ public class RefParamController {
                 .getAuthentication()
                 .getPrincipal();
 
-        System.out.println("User details" + user.getSubject());
+        logger.info("User {}", user.getSubject());
 
         Page<RefParam> params = refParamService.findAll(query.toSpecification(), pageable);
         Page<RefParamResponse> paramResponses = params.map(RefParamMapper.INSTANCE::map);
@@ -68,10 +71,11 @@ public class RefParamController {
      * @return a page of deleted ref params
      */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<RefParam>> findAllDeleted(
+    public ResponseEntity<Page<RefParamResponse>> findAllDeleted(
             RefParamQuery query, Pageable pageable) {
         Page<RefParam> params = refParamService.findAllDeleted(query.toSpecification(), pageable);
-        return ResponseEntity.ok(params);
+        Page<RefParamResponse> paramResponses = params.map(RefParamMapper.INSTANCE::map);
+        return ResponseEntity.ok(paramResponses);
     }
 
     /**
@@ -81,10 +85,11 @@ public class RefParamController {
      * @return the ref param
      */
     @GetMapping("/{id}")
-    public ResponseEntity<RefParam> findById(@PathVariable Integer id) {
+    public ResponseEntity<RefParamResponse> findById(@PathVariable Integer id) {
         RefParam param = refParamService.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        return ResponseEntity.ok(param);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -94,9 +99,10 @@ public class RefParamController {
      * @return the created ref param
      */
     @PostMapping
-    public ResponseEntity<RefParam> create(@RequestBody RefParamRequest request) {
+    public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request) {
         RefParam refParam = refParamService.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(refParam);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
@@ -106,12 +112,12 @@ public class RefParamController {
      * @return the deleted ref param
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<RefParam> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id) {
         refParamService.delete(id);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
-
-        return ResponseEntity.ok(deleted);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
     }
 }

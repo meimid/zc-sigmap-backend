@@ -50,9 +50,9 @@ public class RefParamQuery {
      * @return a {@link Specification} that can be used to query the database.
      */
     public Specification<RefParam> toSpecification() {
-        Specification<RefParam> spec = RefParamSpecifications.deleted(deleted);
+        Specification<RefParam> spec = Specification.where(RefParamSpecifications.deleted(deleted));
 
-        if (search !=null && !search.isBlank()) {
+        if (search != null && !search.isBlank()) {
             spec = spec.and(RefParamSpecifications.search(search));
         }
 
