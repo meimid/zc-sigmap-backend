@@ -1,14 +1,19 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
 @Table(name = "paa")
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class Paa extends BaseEntity {
     @Id
     @Column(name = "paa_id")

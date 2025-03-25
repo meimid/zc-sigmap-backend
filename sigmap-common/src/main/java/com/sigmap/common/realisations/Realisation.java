@@ -2,6 +2,7 @@ package com.sigmap.common.realisations;
 
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.paas.Paa;
+import com.sigmap.common.ppms.Ppm;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
