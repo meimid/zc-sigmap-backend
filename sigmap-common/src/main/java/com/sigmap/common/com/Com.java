@@ -16,6 +16,7 @@ public class Com extends BaseEntity  {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "com_id")
     private Integer id;
+    @Column(name = "decret_creation")
     private String decretCreation;
     private String responsable;
     private Boolean special=false;

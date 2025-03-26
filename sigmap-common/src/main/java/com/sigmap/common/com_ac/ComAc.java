@@ -8,11 +8,11 @@ import lombok.EqualsAndHashCode;
 
 import java.util.Set;
 
-@Data
+/*@Data
 @Entity
-@Table(name = "com_ac")
+@Table(name = "com_ac")*/
 public class ComAc {
-    @Id
+/*    @Id
     @ManyToOne
     @JoinColumn(name = "com_id", nullable = false)
     private Com com;
@@ -20,10 +20,10 @@ public class ComAc {
     @Id
     @ManyToOne
     @JoinColumn(name = "ac_id", nullable = false)
-    private Ac ac;
+    private Ac ac;*/
 
-    @Column(name = "status")
-    private Set<String> status;
+  /*  @Column(name = "status")
+    private Set<String> status;*/
 
 
 }
