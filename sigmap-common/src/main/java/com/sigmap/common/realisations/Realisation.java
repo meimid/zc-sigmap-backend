@@ -1,16 +1,24 @@
 package com.sigmap.common.realisations;
 
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.lots.Lot;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "realisation")
+@Data
+@EqualsAndHashCode(callSuper = true)
+@IdClass(RealisationId.class)
 public class Realisation extends BaseEntity {
     @Id
     @Column(name = "realisation_id")
@@ -95,5 +103,31 @@ public class Realisation extends BaseEntity {
     )
     private List<Paa> paas;
 
-    // Getters and setters
+    @ManyToMany
+    @JoinTable(
+            name = "lots_realisation",
+            joinColumns = {
+                    @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
+                    @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
+            },
+            inverseJoinColumns = {
+                    @JoinColumn(name = "lots_id", referencedColumnName = "lots_id"),
+                    @JoinColumn(name = "lots_ver", referencedColumnName = "lots_ver")
+            }
+    )
+    private Set<Lot> lots;
+
+    @ManyToMany
+    @JoinTable(
+            name = "realisation_docs",
+            joinColumns = {
+                    @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
+                    @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
+            },
+            inverseJoinColumns = {
+                    @JoinColumn(name = "doc_id", referencedColumnName = "doc_id")
+            }
+    )
+    private List<Docs> docs;
+
 }

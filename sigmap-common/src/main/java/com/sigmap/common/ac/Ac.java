@@ -14,6 +14,6 @@ public class Ac extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "ac_id")
     private Integer id;
-    private String ancrage;
-    private String contact;
+//    private String ancrage;
+//    private String contact;
 }

@@ -81,7 +81,8 @@ public class PpmServiceImpl implements PpmService {
         ppm.setRef(request.getRef());
         ppm.setNom(request.getNom());
         ppm.setAnnee(request.getAnnee());
-        ppm.setAc(ac);
+        //TODO:to verify later
+//        ppm.setAc(ac);
         ppm.setBudgetEstime(request.getBudgetEstime());
         ppm.setStatusId(request.getStatusId());
 

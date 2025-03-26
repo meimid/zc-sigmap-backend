@@ -16,14 +16,14 @@ public class ComAc {
     @ManyToOne
     @JoinColumn(name = "com_id", nullable = false)
     private Com com;
-
-    @Id
-    @ManyToOne
-    @JoinColumn(name = "ac_id", nullable = false)
-    private Ac ac;
-
-    @Column(name = "status")
-    private Set<String> status;
+//
+//    @Id
+//    @ManyToOne
+//    @JoinColumn(name = "ac_id", nullable = false)
+//    private Ac ac;
+//
+//    @Column(name = "status")
+//    private Set<String> status;
 
 
 }
