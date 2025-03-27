@@ -99,7 +99,18 @@ public class AcController {
     @PostMapping
     public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) {
         Ac ac = acService.create(request);
+        System.out.println("///////////////"+ac);
         AcResponse response = AcMapper.INSTANCE.map(ac);
+        System.out.println("******************"+response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping
+    public ResponseEntity<AcResponse> save(@RequestBody Ac request) {
+        Ac ac = acService.save(request);
+        System.out.println("///////////////"+ac);
+        AcResponse response = AcMapper.INSTANCE.map(ac);
+        System.out.println("******************"+response);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

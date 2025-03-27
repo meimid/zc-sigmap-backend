@@ -65,6 +65,7 @@ public class ComServiceImpl implements ComService{
     public Com create(ComRequest request) {
         RefParam refParam=refParamService.findById(request.getRefParamId()).orElseThrow();
         Com com = new Com();
+        com.setNom(request.getNom());
         com.setDecretCreation(request.getDecretCreation());
         com.setResponsable(request.getResponsable());
         com.setSpecial(request.getSpecial());

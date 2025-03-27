@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.Specification;
 @Data
 public class ComQuery {
     private String search;
+    private String nom;
     private String decretCreation;
     private String responsable;
     private Boolean special;
@@ -55,6 +56,9 @@ public class ComQuery {
 
         if (search != null && !search.isBlank()) {
             spec = spec.and(ComSpecifications.search(search));
+        }
+        if (nom != null && !nom.isBlank()) {
+            spec = spec.and(ComSpecifications.nom(nom));
         }
 
         if (decretCreation != null && !decretCreation.isBlank()) {

@@ -16,6 +16,7 @@ public class ComSpecifications {
         return (root, query, criteriaBuilder) -> {
             Join<Com, RefParam> join = root.join("RefParam");
             return criteriaBuilder.or(
+                    criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("responsable"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("special"), "%" + search + "%"),
@@ -34,11 +35,17 @@ public class ComSpecifications {
             return criteriaBuilder.equal(root.get("id"), id);
         };
     }
-
     /** decretCreation. */
     public static Specification<Com> decretCreation(String decretCreation) {
         return (root, query, criteriaBuilder) -> {
             return criteriaBuilder.like(root.get("decretCreation"), "%" + decretCreation + "%");
+        };
+    }
+
+    /** decretCreation. */
+    public static Specification<Com> nom(String nom) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
         };
     }
 

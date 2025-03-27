@@ -69,7 +69,7 @@ public class AcServiceImpl implements AcService{
         ac.setAncrage(request.getAncrage());
         ac.setContact(request.getContact());
         System.out.println(ac.getNom());
-        System.out.println(request.getNom());
+        System.out.println("---------------------"+request.getNom());
         return save(ac);
     }
 

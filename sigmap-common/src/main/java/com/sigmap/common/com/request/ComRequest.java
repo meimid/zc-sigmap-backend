@@ -2,6 +2,7 @@ package com.sigmap.common.com.request;
 import lombok.Data;
 @Data
 public class ComRequest {
+    private String nom;
     private String decretCreation;
     private String responsable;
     private Boolean special;
