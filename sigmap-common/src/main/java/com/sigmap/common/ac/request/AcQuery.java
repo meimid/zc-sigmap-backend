@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 @Data
 public class AcQuery {
     private String search;
+    private String nom;
     private String ancrage;
     private String contact;
     private boolean deleted;
@@ -45,6 +46,9 @@ public class AcQuery {
 
         if (search != null && !search.isBlank()) {
             spec = spec.and(AcSpecifications.search(search));
+        }
+        if (nom != null && !nom.isBlank()) {
+            spec = spec.and(AcSpecifications.nom(nom));
         }
 
         if (ancrage != null && !ancrage.isBlank()) {

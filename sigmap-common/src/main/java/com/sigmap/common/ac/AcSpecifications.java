@@ -7,6 +7,7 @@ public class AcSpecifications {
         return (root, query, criteriaBuilder) -> {
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("contact"), "%" + search + "%"));
         };
     }
@@ -26,6 +27,13 @@ public class AcSpecifications {
     public static Specification<Ac> ancrage(String ancrage) {
         return (root, query, criteriaBuilder) -> {
             return criteriaBuilder.like(root.get("ancrage"), "%" + ancrage + "%");
+        };
+    }
+
+    /** nom. */
+    public static Specification<Ac> nom(String nom) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
         };
     }
 

@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class AcResponse {
     private Integer id;
+    private String nom;
     private String ancrage;
     private String contact;
     private BaseEntityResponse metadata;

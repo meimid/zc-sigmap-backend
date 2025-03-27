@@ -65,8 +65,11 @@ public class AcServiceImpl implements AcService{
     @Override
     public Ac create(AcRequest request) {
         Ac ac = new Ac();
+        ac.setNom(request.getNom());
         ac.setAncrage(request.getAncrage());
         ac.setContact(request.getContact());
+        System.out.println(ac.getNom());
+        System.out.println(request.getNom());
         return save(ac);
     }
 

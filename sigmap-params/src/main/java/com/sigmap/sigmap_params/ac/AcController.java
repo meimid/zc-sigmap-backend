@@ -7,6 +7,7 @@ import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.sigmap_params.ref_params.RefParamController;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -29,13 +30,15 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 @RequestMapping("/api/ac")
-@RequiredArgsConstructor
+
 public class AcController {
     private final Logger logger = LoggerFactory.getLogger(AcController.class);
 
     private final AcService acService;
 
-
+    public AcController(AcService acService) {
+        this.acService = acService;
+    }
 
     /**
      * Return a page of ac based on the given specifica tion and pageable.
