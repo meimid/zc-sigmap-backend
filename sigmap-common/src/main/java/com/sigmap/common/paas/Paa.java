@@ -2,6 +2,7 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -14,6 +15,7 @@ import java.util.List;
 @Table(name = "paa")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@IdClass(CompositeId.class)
 public class Paa extends BaseEntity {
     @Id
     @Column(name = "paa_id")
@@ -45,5 +47,7 @@ public class Paa extends BaseEntity {
 
     @ManyToMany(mappedBy = "paas")
     private List<Realisation> realisations;
+
+    //TODO:add relation with DOC entity
 
 }

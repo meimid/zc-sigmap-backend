@@ -1,18 +1,18 @@
 package com.sigmap.common.lots;
 
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.util.Set;
 
 @Entity
 @Table(name = "lots")
 @Data
-@IdClass(LotsId.class)
-public class Lot {
+@IdClass(CompositeId.class)
+public class Lot extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "lots_id")

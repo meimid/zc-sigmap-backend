@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations;
 
+import com.sigmap.common.entity.CompositeId;
 import org.springframework.data.jpa.domain.Specification;
 
 public class RealisationSpecifications {
@@ -10,7 +11,7 @@ public class RealisationSpecifications {
     public static Specification<Realisation> search(String search) {
         return (root, query, criteriaBuilder) -> {
             if (search == null || search.isEmpty()) {
-                return criteriaBuilder.conjunction(); // Return all if search is null/empty
+                return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.like(root.get("realisationEnvisagees"), "%" + search + "%");
         };
@@ -19,14 +20,14 @@ public class RealisationSpecifications {
     /**
      * Filter by composite ID (realisation_id and realisation_ver).
      */
-    public static Specification<Realisation> id(RealisationId id) {
+    public static Specification<Realisation> id(CompositeId id) {
         return (root, query, criteriaBuilder) -> {
             if (id == null) {
-                return criteriaBuilder.conjunction(); // Return all if id is null
+                return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("realisationId"), id.getRealisationId()),
-                    criteriaBuilder.equal(root.get("realisationVer"), id.getRealisationVer())
+                    criteriaBuilder.equal(root.get("realisationId"), id.getId()),
+                    criteriaBuilder.equal(root.get("realisationVer"), id.getVersion())
             );
         };
     }
@@ -37,7 +38,7 @@ public class RealisationSpecifications {
     public static Specification<Realisation> realisationEnvisagees(String realisationEnvisagees) {
         return (root, query, criteriaBuilder) -> {
             if (realisationEnvisagees == null || realisationEnvisagees.isEmpty()) {
-                return criteriaBuilder.conjunction(); // Return all if null/empty
+                return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.like(root.get("realisationEnvisagees"), "%" + realisationEnvisagees + "%");
         };
@@ -64,7 +65,7 @@ public class RealisationSpecifications {
     public static Specification<Realisation> serviceId(Integer serviceId) {
         return (root, query, criteriaBuilder) -> {
             if (serviceId == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
+                return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.equal(root.get("serviceId"), serviceId);
         };
@@ -76,7 +77,7 @@ public class RealisationSpecifications {
     public static Specification<Realisation> directionId(Integer directionId) {
         return (root, query, criteriaBuilder) -> {
             if (directionId == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
+                return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.equal(root.get("directionId"), directionId);
         };

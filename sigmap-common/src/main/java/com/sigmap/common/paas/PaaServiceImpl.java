@@ -1,6 +1,7 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamSpecifications;
@@ -21,13 +22,7 @@ import java.util.Optional;
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
 
-    /**
-     * Constructor.
-     *
-     * @param repository paa repository
-     * @param refTypeService refType service
-     */
-    public PaaServiceImpl(PaaRepository repository, RefTypeService refTypeService) {
+    public PaaServiceImpl(PaaRepository repository) {
         this.repository = repository;
     }
 
@@ -43,8 +38,12 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Optional<Paa> findOne(Specification<Paa> specification) {
-        return repository.findOne(specification);
+    public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
+        Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
+        if (spec != null) {
+            deletedSpec = deletedSpec.and(spec);
+        }
+        return repository.findAll(deletedSpec, pageable);
     }
 
     @Override
@@ -54,20 +53,20 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
-        spec = PaaSpecifications.deleted(true);
-        return repository.findAll(spec, pageable);
+    public Optional<Paa> findDeletedById(Integer paaId, Integer paaVer) {
+        Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer))
+                .and(PaaSpecifications.deleted(true));
+        return repository.findOne(spec);
     }
 
     @Override
-    public Optional<Paa> findDeletedById(Integer id) {
-        Specification<Paa> specification = PaaSpecifications.id(id).and(PaaSpecifications.deleted(true));
-        return findOne(specification);
+    public Optional<Paa> findOne(Specification<Paa> specification) {
+        return repository.findOne(specification);
     }
 
     @Override
-    public Optional<Paa> findById(Integer id) {
-        return repository.findById(id);
+    public Optional<Paa> findById(Integer paaId, Integer paaVer) {
+        return repository.findById(new CompositeId(paaId, paaVer));
     }
 
     @Override
@@ -77,26 +76,21 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa create(PaaRequest request) {
-        //TODO:complete and add the exception
-//        Ac ac = acService.findById(request.getAcId()).orElseThrow();
-
         Paa paa = new Paa();
-
         paa.setPaaId(request.getPaaId());
         paa.setPaaVer(request.getPaaVer());
         paa.setRef(request.getRef());
         paa.setNom(request.getNom());
         paa.setAnnee(request.getAnnee());
-        //TODO: to complete later just uncomment
-//        paa.setAc(ac);
+        //TODO: verify this later
+        //paa.setAc(request.getAc());
         paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatusId(request.getStatusId());
-
-        return save(paa);
+        return repository.save(paa);
     }
 
     @Override
-    public void delete(Integer id) {
-        repository.softDelete(id);
+    public void delete(Integer paaId, Integer paaVer) {
+        repository.softDelete(paaId, paaVer);
     }
 }

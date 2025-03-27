@@ -2,6 +2,7 @@ package com.sigmap.common.realisations;
 
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
@@ -18,7 +19,7 @@ import java.util.Set;
 @Table(name = "realisation")
 @Data
 @EqualsAndHashCode(callSuper = true)
-@IdClass(RealisationId.class)
+@IdClass(CompositeId.class)
 public class Realisation extends BaseEntity {
     @Id
     @Column(name = "realisation_id")

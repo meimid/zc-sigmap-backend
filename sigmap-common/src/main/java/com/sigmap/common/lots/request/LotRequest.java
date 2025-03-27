@@ -1,5 +1,6 @@
 package com.sigmap.common.lots.request;
 
+import com.sigmap.common.entity.CompositeId;
 import lombok.Data;
 
 import java.util.Set;
@@ -8,5 +9,5 @@ public class LotRequest {
     private Integer lotsId;
     private Integer lotsVer;
     private String description;
-    private Set<Integer> realisationIds;
+    private Set<CompositeId> realisationIds;
 }

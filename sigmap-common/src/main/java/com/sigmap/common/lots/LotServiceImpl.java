@@ -1,5 +1,6 @@
 package com.sigmap.common.lots;
 
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.request.LotRequest;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
@@ -36,8 +37,11 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public Page<Lot> findAllDeleted(Specification<Lot> spec, Pageable pageable) {
-        spec = LotSpecifications.deleted(true);
-        return repository.findAll(spec, pageable);
+        Specification<Lot> deletedSpec = LotSpecifications.deleted(true);
+        if (spec != null) {
+            deletedSpec = deletedSpec.and(spec);
+        }
+        return repository.findAll(deletedSpec, pageable);
     }
 
     @Override
@@ -47,8 +51,9 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public Optional<Lot> findDeletedById(LotsId id) {
-        Specification<Lot> spec = LotSpecifications.id(id).and(LotSpecifications.deleted(true));
+    public Optional<Lot> findDeletedById(Integer lotsId, Integer lotsVer) {
+        Specification<Lot> spec = LotSpecifications.id(new CompositeId(lotsId, lotsVer))
+                .and(LotSpecifications.deleted(true));
         return repository.findOne(spec);
     }
 
@@ -58,8 +63,8 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public Optional<Lot> findById(LotsId id) {
-        return repository.findById(id);
+    public Optional<Lot> findById(Integer lotsId, Integer lotsVer) {
+        return repository.findById(new CompositeId(lotsId, lotsVer));
     }
 
     @Override
@@ -70,15 +75,15 @@ public class LotServiceImpl implements LotService {
     @Override
     public Lot create(LotRequest request) {
         Lot lot = new Lot();
-        lot.setLotsId(request.getLotsId()); // Assuming lots_id can be null for auto-increment
+        lot.setLotsId(request.getLotsId()); // Can be null for auto-increment
         lot.setLotsVer(request.getLotsVer()); // Must be provided
         lot.setDescription(request.getDescription());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             Set<Realisation> realisations = new HashSet<>();
-            for (Integer id : request.getRealisationIds()) { // Assuming Realisation still uses Integer ID
-                Realisation realisation = realisationRepository.findById(id)
-                        .orElseThrow(() -> new RuntimeException("Realisation not found: " + id));
+            for (CompositeId realisationId : request.getRealisationIds()) {
+                Realisation realisation = realisationRepository.findById(realisationId)
+                        .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
                 realisations.add(realisation);
             }
             lot.setRealisations(realisations);
@@ -88,7 +93,7 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public void delete(LotsId id) {
-        repository.softDelete(id); // Assuming SoftDeleteRepository provides this method
+    public void delete(Integer lotsId, Integer lotsVer) {
+        repository.softDelete(lotsId, lotsVer);
     }
 }

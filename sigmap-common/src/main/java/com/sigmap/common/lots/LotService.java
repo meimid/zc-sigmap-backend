@@ -7,22 +7,6 @@ import java.util.Optional;
 import com.sigmap.common.lots.request.LotRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
-
-/**
- * Service interface for managing {@link Lot}.
- * The service provides methods to retrieve and manage Lot entities.
- *
- * <p>The service accepts {@link Specification} objects, which are used to
- * filter the results of the retrieval methods. The
- * {@link Specification} object is a criteria object that is used to
- * specify the conditions of the query. The
- * {@link Specification} object can be created using the
- * {@link LotSpecifications} class, or it can be created manually
- * using the {@link Specification} interface.
- *
- * @see LotSpecifications
- * @see Specification
- */
 public interface LotService {
     List<Lot> findAll();
 
@@ -53,12 +37,13 @@ public interface LotService {
     Page<Lot> findAllDeleted(Pageable pageable);
 
     /**
-     * Return the deleted Lot entity with the given composite ID.
+     * Return the deleted Lot entity with the given composite ID components.
      *
-     * @param id the composite ID (LotsId) of the Lot entity to return
-     * @return the Lot entity with the given ID
+     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsVer the second part of the composite ID (lots_ver)
+     * @return the Lot entity with the given ID components
      */
-    Optional<Lot> findDeletedById(LotsId id);
+    Optional<Lot> findDeletedById(Integer lotsId, Integer lotsVer);
 
     /**
      * Return the Lot entity with the given specification.
@@ -69,12 +54,13 @@ public interface LotService {
     Optional<Lot> findOne(Specification<Lot> specification);
 
     /**
-     * Return the Lot entity with the given composite ID.
+     * Return the Lot entity with the given composite ID components.
      *
-     * @param id the composite ID (LotsId) of the Lot entity to return
-     * @return the Lot entity with the given ID
+     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsVer the second part of the composite ID (lots_ver)
+     * @return the Lot entity with the given ID components
      */
-    Optional<Lot> findById(LotsId id);
+    Optional<Lot> findById(Integer lotsId, Integer lotsVer);
 
     /**
      * Save a Lot entity.
@@ -93,9 +79,10 @@ public interface LotService {
     Lot create(LotRequest request);
 
     /**
-     * Delete a Lot entity.
+     * Delete a Lot entity by its composite ID components.
      *
-     * @param id the composite ID (LotsId) of the Lot entity to delete
+     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsVer the second part of the composite ID (lots_ver)
      */
-    void delete(LotsId id);
+    void delete(Integer lotsId, Integer lotsVer);
 }

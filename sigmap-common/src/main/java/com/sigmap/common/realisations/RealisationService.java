@@ -35,7 +35,13 @@ public interface RealisationService {
      * @return a page of Realisation entities
      */
     Page<Realisation> findAll(Specification<Realisation> spec, Pageable pageable);
-
+    /**
+     * Return a page of deleted Realisation entities based on the given specification and pageable.
+     *
+     * @param spec the specification to use
+     * @param pageable the pageable to use
+     * @return a page of Realisation entities
+     */
     /**
      * Return a page of deleted Realisation entities based on the given specification and pageable.
      *
@@ -54,13 +60,19 @@ public interface RealisationService {
     Page<Realisation> findAllDeleted(Pageable pageable);
 
     /**
-     * Return the deleted Realisation entity with the given composite ID.
+     * Return the deleted Realisation entity with the given composite ID components.
      *
-     * @param id the composite ID (RealisationId) of the Realisation entity to return
-     * @return the Realisation entity with the given ID
+     * @param realisationId the first part of the composite ID (realisation_id)
+     * @param realisationVer the second part of the composite ID (realisation_ver)
+     * @return the Realisation entity with the given ID components
      */
-    Optional<Realisation> findDeletedById(RealisationId id);
-
+    Optional<Realisation> findDeletedById(Integer realisationId, Integer realisationVer);
+    /**
+     * Return the Realisation entity with the given specification.
+     *
+     * @param specification the specification to use
+     * @return the Realisation entity with the given specification
+     */
     /**
      * Return the Realisation entity with the given specification.
      *
@@ -70,12 +82,13 @@ public interface RealisationService {
     Optional<Realisation> findOne(Specification<Realisation> specification);
 
     /**
-     * Return the Realisation entity with the given composite ID.
+     * Return the Realisation entity with the given composite ID components.
      *
-     * @param id the composite ID (RealisationId) of the Realisation entity to return
-     * @return the Realisation entity with the given ID
+     * @param realisationId the first part of the composite ID (realisation_id)
+     * @param realisationVer the second part of the composite ID (realisation_ver)
+     * @return the Realisation entity with the given ID components
      */
-    Optional<Realisation> findById(RealisationId id);
+    Optional<Realisation> findById(Integer realisationId, Integer realisationVer);
 
     /**
      * Save a Realisation entity.
@@ -94,9 +107,10 @@ public interface RealisationService {
     Realisation create(RealisationRequest request);
 
     /**
-     * Delete a Realisation entity.
+     * Delete a Realisation entity by its composite ID components.
      *
-     * @param id the composite ID (RealisationId) of the Realisation entity to delete
+     * @param realisationId the first part of the composite ID (realisation_id)
+     * @param realisationVer the second part of the composite ID (realisation_ver)
      */
-    void delete(RealisationId id);
+    void delete(Integer realisationId, Integer realisationVer);
 }

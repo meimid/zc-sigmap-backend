@@ -54,12 +54,13 @@ public interface PaaService {
     Page<Paa> findAllDeleted(Pageable pageable);
 
     /**
-     * Return the deleted Paa entity with the given id.
+     * Return the deleted Paa entity with the given composite ID components.
      *
-     * @param id the id of the Paa entity to return
-     * @return the Paa entity with the given id
+     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaVer the second part of the composite ID (paa_ver)
+     * @return the Paa entity with the given ID components
      */
-    Optional<Paa> findDeletedById(Integer id);
+    Optional<Paa> findDeletedById(Integer paaId, Integer paaVer);
 
     /**
      * Return the Paa entity with the given specification.
@@ -70,12 +71,13 @@ public interface PaaService {
     Optional<Paa> findOne(Specification<Paa> specification);
 
     /**
-     * Return the Paa entity with the given id.
+     * Return the Paa entity with the given composite ID components.
      *
-     * @param id the id of the Paa entity to return
-     * @return the Paa entity with the given id
+     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaVer the second part of the composite ID (paa_ver)
+     * @return the Paa entity with the given ID components
      */
-    Optional<Paa> findById(Integer id);
+    Optional<Paa> findById(Integer paaId, Integer paaVer);
 
     /**
      * Save a Paa entity.
@@ -94,9 +96,10 @@ public interface PaaService {
     Paa create(PaaRequest request);
 
     /**
-     * Delete a Paa entity.
+     * Delete a Paa entity by its composite ID components.
      *
-     * @param id the id of the Paa entity to delete
+     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaVer the second part of the composite ID (paa_ver)
      */
-    void delete(Integer id);
+    void delete(Integer paaId, Integer paaVer);
 }
