@@ -24,19 +24,19 @@ public class ComQuery {
      * <ul>
      * <li>{@link ComSpecifications#search(String)} if the search property is
      * not null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the decretCreation property is not
+     * <li>{@link ComSpecifications#decretCreation(String)} if the decretCreation property is not
      * null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the responsable
+     * <li>{@link ComSpecifications#responsable(String)} if the responsable
      * property is not null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the special
+     * <li>{@link ComSpecifications#special(String)} if the special
      * property is not null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the ancrage
+     * <li>{@link ComSpecifications#ancrage(String)} if the ancrage
      * property is not null or blank.
      * <li>{@link ComSpecifications#contact(String)} if the contact
      * property is not null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the adresse
+     * <li>{@link ComSpecifications#adresse(String)} if the adresse
      * * property is not null or blank.
-     * <li>{@link ComSpecifications#contact(String)} if the membres
+     * <li>{@link ComSpecifications#membres(String)} if the membres
      * property is not null or blank.
      * <li>{@link ComSpecifications#deleted(boolean)} if the deleted property is
      * true.
@@ -46,7 +46,7 @@ public class ComQuery {
      * method.
      *
      * @see ComSpecifications
-     * @see ComService
+     * @see comService
      *
      * @return a {@link Specification} that can be used to query the database.
      */

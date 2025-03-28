@@ -1,5 +1,4 @@
 package com.sigmap.common.com;
-import com.sigmap.common.ac.Ac;
 import com.sigmap.common.com.request.ComRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -79,7 +78,7 @@ public interface ComService {
     /**
      * update Com.
      *
-     * @param com the request to update the com from
+     * @param request the request to update the com from
      * @return the updated com
      */
     Com update(ComRequest request);

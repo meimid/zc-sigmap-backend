@@ -2,10 +2,13 @@ package com.sigmap.common.societe.request;
 
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteSpecifications;
-import lombok.Data;
+import lombok.*;
 import org.springframework.data.jpa.domain.Specification;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class SocieteQuery {
     private String search;
     private String nom;

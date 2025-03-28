@@ -106,7 +106,7 @@ public class ComServiceImpl implements ComService{
     @Override
     public Com update(ComRequest request) {
         Com com = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
-        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow();
+        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(()-> new RuntimeException("comType not found: " + request.getComTypeId()));
         com.setNom(request.getNom());
         com.setDecretCreation(request.getDecretCreation());
         com.setResponsable(request.getResponsable());

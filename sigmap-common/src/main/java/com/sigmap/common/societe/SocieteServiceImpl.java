@@ -2,10 +2,12 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComSpecifications;
+import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.societe.request.SocieteRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -13,11 +15,16 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+@Slf4j
 @Service
-@RequiredArgsConstructor
 public class SocieteServiceImpl implements SocieteService {
     private final SocieteRepository repository;
     private final RefParamService refParamService;
+
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService) {
+        this.repository = repository;
+        this.refParamService = refParamService;
+    }
 
     @Override
     public List<Societe> findAll() {
@@ -66,6 +73,20 @@ public class SocieteServiceImpl implements SocieteService {
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
         RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
         Societe societe=new Societe();
+        societe.setNom(request.getNom());
+        societe.setId(request.getId());
+        societe.setPays(pays);
+        societe.setType(type);
+        societe.setNni(request.getNni());
+        societe.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
+        return save(societe);
+    }
+
+    @Override
+    public Societe update(SocieteRequest request) {
+        Societe societe=repository.findById(request.getId()).orElseThrow();
+        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
+        RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
         societe.setNom(request.getNom());
         societe.setPays(pays);
         societe.setType(type);

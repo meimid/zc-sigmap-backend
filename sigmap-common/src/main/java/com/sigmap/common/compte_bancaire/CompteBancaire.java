@@ -4,10 +4,12 @@ import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.societe.Societe;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "compte_bancaire")
@@ -21,7 +23,7 @@ public class CompteBancaire extends BaseEntity {
     private String rib;
     @ManyToOne
     @JoinColumn(name="pays_id")
-    private RefParam refParam;
+    private RefParam pays;
     private boolean local;
     @ManyToOne
     @JoinColumn(name="societe_id")
