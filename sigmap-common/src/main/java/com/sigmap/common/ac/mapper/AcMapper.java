@@ -8,7 +8,6 @@ import org.mapstruct.factory.Mappers;
 @Mapper
 public interface AcMapper {
     AcMapper INSTANCE = Mappers.getMapper(AcMapper.class);
-
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

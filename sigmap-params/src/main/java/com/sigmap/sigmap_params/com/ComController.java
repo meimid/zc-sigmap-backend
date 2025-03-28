@@ -1,4 +1,7 @@
 package com.sigmap.sigmap_params.com;
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -19,13 +22,14 @@ import org.springframework.data.domain.Page;
 
 @RestController
 @RequestMapping("/api/com")
-@RequiredArgsConstructor
 public class ComController {
     private final Logger logger = LoggerFactory.getLogger(ComController.class);
 
     private final ComService comService;
 
-
+    public ComController(ComService comService) {
+        this.comService = comService;
+    }
 
     /**
      * Return a page of Com based on the given specification and pageable.
@@ -85,11 +89,22 @@ public class ComController {
      */
     @PostMapping
     public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) {
-        Com Com = comService.create(request);
-        ComResponse response = ComMapper.INSTANCE.map(Com);
+        Com com = comService.create(request);
+        ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
+    /**
+     * Update  com.
+     *
+     * @param request the request to update the com from
+     * @return the updated com
+     */
+    @PutMapping
+    public ResponseEntity<ComResponse> update(@RequestBody ComRequest request) {
+        Com com = comService.update(request);
+        ComResponse response = ComMapper.INSTANCE.map(com);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
     /**
      * Delete a Com based on the given id.
      *

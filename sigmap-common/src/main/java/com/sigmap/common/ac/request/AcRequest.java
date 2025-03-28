@@ -1,10 +1,16 @@
 package com.sigmap.common.ac.request;
 
-import lombok.Data;
+import lombok.*;
 
-@Data
+import java.util.List;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class AcRequest {
     private String nom;
     private String ancrage;
     private String contact;
+   // private List<Integer> comIds;
 }

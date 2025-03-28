@@ -5,13 +5,17 @@ import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "com")
@@ -31,11 +35,11 @@ public class Com extends BaseEntity  {
     private String membres;
     @ManyToOne
     @JoinColumn(name = "com_type_id")
-    private RefParam refParam;
+    private RefParam comType;
     @ManyToMany
     @JoinTable(name="com_ac",
             joinColumns = @JoinColumn(name = "com_id"),
             inverseJoinColumns = @JoinColumn(name = "ac_id"))
-    private Set<Ac> acs= new HashSet<>();
+    private List<Ac> acs=new ArrayList<>();
 
 }

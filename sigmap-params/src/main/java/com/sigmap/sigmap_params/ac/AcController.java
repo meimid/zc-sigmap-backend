@@ -104,13 +104,16 @@ public class AcController {
         System.out.println("******************"+response);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
+    /**
+     * Update  ac.
+     *
+     * @param request the request to update the ac from
+     * @return the updated ac
+     */
     @PutMapping
-    public ResponseEntity<AcResponse> save(@RequestBody Ac request) {
-        Ac ac = acService.save(request);
-        System.out.println("///////////////"+ac);
+    public ResponseEntity<AcResponse> update(@RequestBody Ac request) {
+        Ac ac = acService.update(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
-        System.out.println("******************"+response);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

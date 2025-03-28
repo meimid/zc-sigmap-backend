@@ -78,6 +78,14 @@ public interface AcService {
     Ac create(AcRequest request);
 
     /**
+     * update Ac.
+     *
+     * @param ac the request to update the Ac from
+     * @return the updated Ac
+     */
+    Ac update(Ac ac);
+
+    /**
      * Delete a Ac.
      *
      * @param id the id of the Ac to delete

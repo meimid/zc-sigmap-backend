@@ -2,6 +2,7 @@ package com.sigmap.common.com;
 
 
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.criteria.Join;
@@ -14,7 +15,9 @@ public class ComSpecifications {
     /** search. */
     public static Specification<Com> search(String search) {
         return (root, query, criteriaBuilder) -> {
-            Join<Com, RefParam> join = root.join("RefParam");
+            Join<Com, RefParam> join = root.join("comType");
+            Join<Com, Ac> ac = root.join("acs");
+
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
@@ -80,7 +83,7 @@ public class ComSpecifications {
             return criteriaBuilder.like(root.get("adresse"), "%" + adresse + "%");
         };
     }
-    /** adresse. */
+    /** membres. */
     public static Specification<Com> membres(String membres) {
         return (root, query, criteriaBuilder) -> {
             return criteriaBuilder.like(root.get("membres"), "%" + membres + "%");

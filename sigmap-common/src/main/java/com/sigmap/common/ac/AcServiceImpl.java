@@ -1,6 +1,9 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.request.AcRequest;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComServiceImpl;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_types.RefType;
@@ -14,9 +17,15 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class AcServiceImpl implements AcService{
     private final AcRepository repository;
+   // private final ComService comService;
+
+    public AcServiceImpl(AcRepository repository) {
+        this.repository = repository;
+       // this.comService = comService;
+    }
+
     @Override
     public List<Ac> findAll() {
         Specification<Ac> ac = AcSpecifications.deleted(false);
@@ -64,12 +73,26 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public Ac create(AcRequest request) {
+
         Ac ac = new Ac();
         ac.setNom(request.getNom());
         ac.setAncrage(request.getAncrage());
         ac.setContact(request.getContact());
-        System.out.println(ac.getNom());
-        System.out.println("---------------------"+request.getNom());
+      /*  if (request.getComIds() != null && !request.getComIds().isEmpty()) {
+            for (Integer i : request.getComIds()) {
+
+                Com com = comService.findById(i).orElseThrow(() -> new RuntimeException("Com not found: " + i));
+                if (ac.getIsDeleted()!=null) { // Assuming Ac extends BaseEntity with isDeleted
+                    throw new RuntimeException("Com with ID " + i + " is deleted and cannot be associated");
+                }
+                ac.getComs().add(com);
+            }
+        }*/
+        return save(ac);
+    }
+
+    @Override
+    public Ac update(Ac ac) {
         return save(ac);
     }
 

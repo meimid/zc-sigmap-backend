@@ -3,13 +3,17 @@ package com.sigmap.common.ac;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "ac")
@@ -25,5 +29,5 @@ public class Ac extends BaseEntity {
     @JoinTable(name="com_ac",
             joinColumns = @JoinColumn(name = "ac_id"),
             inverseJoinColumns = @JoinColumn(name = "com_id"))
-    private Set<Com> coms = new HashSet<>();
+    private List<Com> coms= new ArrayList<>();
 }
