@@ -4,7 +4,6 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -22,7 +21,6 @@ public class ComSpecifications {
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("responsable"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("special"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("contact"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("adresse"), "%" + search + "%"),
@@ -58,12 +56,7 @@ public class ComSpecifications {
             return criteriaBuilder.like(root.get("responsable"), "%" + responsable + "%");
         };
     }
-    /** special. */
-    public static Specification<Com> special(Boolean special) {
-        return (root, query, criteriaBuilder) -> {
-            return criteriaBuilder.like(root.get("special"), "%" + special + "%");
-        };
-    }
+
     /** ancrage. */
     public static Specification<Com> ancrage(String ancrage) {
         return (root, query, criteriaBuilder) -> {

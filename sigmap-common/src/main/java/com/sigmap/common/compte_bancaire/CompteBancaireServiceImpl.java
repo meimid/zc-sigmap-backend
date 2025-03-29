@@ -1,7 +1,4 @@
 package com.sigmap.common.compte_bancaire;
-
-import com.sigmap.common.com.Com;
-import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;

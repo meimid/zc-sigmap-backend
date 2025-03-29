@@ -28,7 +28,6 @@ public class ComQuery {
      * null or blank.
      * <li>{@link ComSpecifications#responsable(String)} if the responsable
      * property is not null or blank.
-     * <li>{@link ComSpecifications#special(String)} if the special
      * property is not null or blank.
      * <li>{@link ComSpecifications#ancrage(String)} if the ancrage
      * property is not null or blank.
@@ -68,9 +67,7 @@ public class ComQuery {
         if (responsable != null && !responsable.isBlank()) {
             spec = spec.and(ComSpecifications.responsable(responsable));
         }
-        if (special != null) {
-            spec = spec.and(ComSpecifications.special(special));
-        }
+
         if (ancrage != null && !ancrage.isBlank()) {
             spec = spec.and(ComSpecifications.ancrage(ancrage));
         }
