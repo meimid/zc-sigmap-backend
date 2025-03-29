@@ -18,7 +18,7 @@ public class SocieteAddress extends BaseEntity {
     private Integer id;
     @ManyToOne
     @JoinColumn(name = "type_id")
-    private RefParam refParam;
+    private RefParam type;
     private String address;
     @ManyToOne
     @JoinColumn(name = "societe_id")

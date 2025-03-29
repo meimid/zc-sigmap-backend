@@ -17,7 +17,7 @@ public interface SocieteService {
     /**
      * Return a page of Societe based on the given specification and pageable.
      *
-     * @param Societe the specification to use
+     * @param societe the specification to use
      * @param pageable the pageable to use
      * @return a page of Societe
      */

@@ -20,11 +20,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/compte_bancaire")
-public class compteBancaireController {
-    private final Logger logger = LoggerFactory.getLogger(compteBancaireController.class);
+public class CompteBancaireController {
+    private final Logger logger = LoggerFactory.getLogger(CompteBancaireController.class);
     private final CompteBancaireService compteBancaireService;
 
-    public compteBancaireController(CompteBancaireService compteBancaireService) {
+    public CompteBancaireController(CompteBancaireService compteBancaireService) {
         this.compteBancaireService = compteBancaireService;
     }
     /**
