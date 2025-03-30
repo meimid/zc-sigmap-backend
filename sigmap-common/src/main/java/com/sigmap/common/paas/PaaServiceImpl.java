@@ -2,9 +2,11 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamSpecifications;
+import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
 import org.springframework.data.domain.Page;
@@ -21,9 +23,9 @@ import java.util.Optional;
 @Service
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
-
     public PaaServiceImpl(PaaRepository repository) {
         this.repository = repository;
+
     }
 
     @Override
@@ -77,8 +79,8 @@ public class PaaServiceImpl implements PaaService {
     @Override
     public Paa create(PaaRequest request) {
         Paa paa = new Paa();
-        paa.setPaaId(request.getPaaId());
-        paa.setPaaVer(request.getPaaVer());
+        paa.setId(request.getId());
+        paa.setVersion(request.getVersion());
         paa.setRef(request.getRef());
         paa.setNom(request.getNom());
         paa.setAnnee(request.getAnnee());

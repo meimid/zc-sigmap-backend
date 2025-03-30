@@ -19,11 +19,11 @@ import java.util.List;
 public class Paa extends BaseEntity {
     @Id
     @Column(name = "paa_id")
-    private Integer paaId;
+    private Integer id;
 
     @Id
     @Column(name = "paa_ver")
-    private Integer paaVer;
+    private Integer version;
 
     @Column(name = "ref", length = 100)
     private String ref;

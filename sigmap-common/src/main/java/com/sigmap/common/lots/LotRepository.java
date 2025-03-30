@@ -9,8 +9,13 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface LotRepository extends JpaRepository<Lot, CompositeId>,
-        JpaSpecificationExecutor<Lot>,
-        SoftDeleteRepository<Lot, Integer> {
-
-
+        JpaSpecificationExecutor<Lot>
+       {
 }
+
+//public interface LotRepository extends JpaRepository<Lot, LotsId>,
+//        JpaSpecificationExecutor<Lot>
+//        {
+////TODO: check the entity Lot doesnt extend Base entity and dont have soft delete ?
+//
+//}

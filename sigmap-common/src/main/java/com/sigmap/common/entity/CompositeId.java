@@ -7,14 +7,14 @@ import java.io.Serializable;
 
 @Data
 @EqualsAndHashCode(callSuper=false)
-public class CompositeId<T, V> implements Serializable {
+public class CompositeId implements Serializable {
 
-    private T id;
-    private V version;
+    private Integer id;
+    private Integer version;
 
     public CompositeId() {}
 
-    public CompositeId(T id, V version) {
+    public CompositeId(Integer id, Integer version) {
         this.id = id;
         this.version = version;
     }

@@ -87,8 +87,8 @@ public class RealisationController {
         if (existingRealisation.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        realisation.setRealisationId(realisationId);
-        realisation.setRealisationVer(realisationVer);
+        realisation.setId(realisationId);
+        realisation.setVersion(realisationVer);
         Realisation updatedRealisation = realisationService.save(realisation);
         return ResponseEntity.ok(updatedRealisation);
     }

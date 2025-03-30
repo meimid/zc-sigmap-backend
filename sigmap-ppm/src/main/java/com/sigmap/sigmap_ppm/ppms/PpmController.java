@@ -52,16 +52,20 @@ public class PpmController {
         return ResponseEntity.ok(deletedPpms);
     }
 
-    @GetMapping("/{id}/deleted")
-    public ResponseEntity<Ppm> getDeletedPpmById(@PathVariable Integer id) {
-        Optional<Ppm> ppm = ppmService.findDeletedById(id);
+    @GetMapping("/{ppmId}/{ppmVer}/deleted")
+    public ResponseEntity<Ppm> getDeletedPpmById(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer) {
+        Optional<Ppm> ppm = ppmService.findDeletedById(ppmId, ppmVer);
         return ppm.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Ppm> getPpmById(@PathVariable Integer id) {
-        Optional<Ppm> ppm = ppmService.findById(id);
+    @GetMapping("/{ppmId}/{ppmVer}")
+    public ResponseEntity<Ppm> getPpmById(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer) {
+        Optional<Ppm> ppm = ppmService.findById(ppmId, ppmVer);
         return ppm.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
@@ -72,26 +76,30 @@ public class PpmController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPpm);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{ppmId}/{ppmVer}")
     public ResponseEntity<Ppm> updatePpm(
-            @PathVariable Integer id,
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer,
             @RequestBody Ppm ppm) {
-        Optional<Ppm> existingPpm = ppmService.findById(id);
+        Optional<Ppm> existingPpm = ppmService.findById(ppmId, ppmVer);
         if (existingPpm.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        ppm.setPpmId(id); // Assumes ppmId is the ID; adjust if composite
+        ppm.setId(ppmId); // Set composite key part 1
+        ppm.setVersion(ppmVer); // Set composite key part 2
         Ppm updatedPpm = ppmService.save(ppm);
         return ResponseEntity.ok(updatedPpm);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePpm(@PathVariable Integer id) {
-        Optional<Ppm> ppm = ppmService.findById(id);
+    @DeleteMapping("/{ppmId}/{ppmVer}")
+    public ResponseEntity<Void> deletePpm(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer) {
+        Optional<Ppm> ppm = ppmService.findById(ppmId, ppmVer);
         if (ppm.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-        ppmService.delete(id);
+        ppmService.delete(ppmId, ppmVer);
         return ResponseEntity.noContent().build();
     }
 }

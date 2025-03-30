@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ppms.request.PpmRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,8 +41,11 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public Page<Ppm> findAllDeleted(Specification<Ppm> spec, Pageable pageable) {
-        spec = PpmSpecifications.deleted(true);
-        return repository.findAll(spec, pageable);
+        Specification<Ppm> deletedSpec = PpmSpecifications.deleted(true);
+        if (spec != null) {
+            deletedSpec = deletedSpec.and(spec);
+        }
+        return repository.findAll(deletedSpec, pageable);
     }
 
     @Override
@@ -51,8 +55,9 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Optional<Ppm> findDeletedById(Integer id) {
-        Specification<Ppm> specification = PpmSpecifications.id(id).and(PpmSpecifications.deleted(true));
+    public Optional<Ppm> findDeletedById(Integer ppmId, Integer ppmVer) {
+        Specification<Ppm> specification = PpmSpecifications.id(new CompositeId(ppmId, ppmVer))
+                .and(PpmSpecifications.deleted(true));
         return findOne(specification);
     }
 
@@ -62,8 +67,8 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Optional<Ppm> findById(Integer id) {
-        return repository.findById(id); // Custom method, see notes
+    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) {
+        return repository.findById(new CompositeId(ppmId, ppmVer));
     }
 
     @Override
@@ -74,17 +79,16 @@ public class PpmServiceImpl implements PpmService {
     @Override
     public Ppm create(PpmRequest request) {
         //TODO
-        //Ac ac = acService.findById(request.getAcId()).orElseThrow();
+        //Ac ac = acService.findById(request.getAcId()).orElseThrow(() -> new RuntimeException("Ac not found"));
 
         Ppm ppm = new Ppm();
-
-        ppm.setPpmId(request.getPpmId());
-        ppm.setPpmVer(request.getPpmVer());
+        ppm.setId(request.getPpmId());
+        ppm.setVersion(request.getPpmVer());
         ppm.setRef(request.getRef());
         ppm.setNom(request.getNom());
         ppm.setAnnee(request.getAnnee());
-        //TODO:to verify later
-//        ppm.setAc(ac);
+        //TODO: to verify later
+        //ppm.setAc(ac);
         ppm.setBudgetEstime(request.getBudgetEstime());
         ppm.setStatusId(request.getStatusId());
 
@@ -92,8 +96,7 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public void delete(Integer id) {
-        // Note: Assumes id is ppmId; adjust for composite key if needed
-        repository.softDelete(id); // Custom method, see notes
+    public void delete(Integer ppmId, Integer ppmVer) {
+        repository.softDelete(ppmId, ppmVer);
     }
 }

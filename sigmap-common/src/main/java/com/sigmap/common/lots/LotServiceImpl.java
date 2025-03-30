@@ -75,8 +75,8 @@ public class LotServiceImpl implements LotService {
     @Override
     public Lot create(LotRequest request) {
         Lot lot = new Lot();
-        lot.setLotsId(request.getLotsId()); // Can be null for auto-increment
-        lot.setLotsVer(request.getLotsVer()); // Must be provided
+        lot.setId(request.getId()); // Can be null for auto-increment
+        lot.setVersion(request.getVersion()); // Must be provided
         lot.setDescription(request.getDescription());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
@@ -94,6 +94,6 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public void delete(Integer lotsId, Integer lotsVer) {
-        repository.softDelete(lotsId, lotsVer);
+//        repository.softDelete(lotsId, lotsVer);
     }
 }

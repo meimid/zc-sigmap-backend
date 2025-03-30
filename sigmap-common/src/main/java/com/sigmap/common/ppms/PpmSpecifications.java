@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.entity.CompositeId;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -17,10 +18,16 @@ public class PpmSpecifications {
         };
     }
 
-    /** Filter by ppmId. */
-    public static Specification<Ppm> id(Integer id) {
+    /** Filter by composite ID (ppmId and ppmVer). */
+    public static Specification<Ppm> id(CompositeId id) {
         return (root, query, criteriaBuilder) -> {
-            return criteriaBuilder.equal(root.get("ppmId"), id);
+            if (id == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.and(
+                    criteriaBuilder.equal(root.get("ppmId"), id.getId()),
+                    criteriaBuilder.equal(root.get("ppmVer"), id.getVersion())
+            );
         };
     }
 

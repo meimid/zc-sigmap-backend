@@ -12,15 +12,15 @@ import java.util.Set;
 @Table(name = "lots")
 @Data
 @IdClass(CompositeId.class)
-public class Lot extends BaseEntity {
+public class Lot{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "lots_id")
-    private Integer lotsId;
+    private Integer id;
 
     @Id
     @Column(name = "lots_ver")
-    private Integer lotsVer;
+    private Integer version;
 
     @Column(name = "description", length = 100)
     private String description;

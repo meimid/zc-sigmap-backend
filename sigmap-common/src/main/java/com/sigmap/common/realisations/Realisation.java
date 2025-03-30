@@ -23,11 +23,11 @@ import java.util.Set;
 public class Realisation extends BaseEntity {
     @Id
     @Column(name = "realisation_id")
-    private Integer realisationId;
+    private Integer id;
 
     @Id
     @Column(name = "realisation_ver")
-    private Integer realisationVer;
+    private Integer version;
 
     @Column(name = "realisation_envisagees", length = 100)
     private String realisationEnvisagees;

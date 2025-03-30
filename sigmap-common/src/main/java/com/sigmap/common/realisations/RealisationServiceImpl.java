@@ -72,8 +72,8 @@ public class RealisationServiceImpl implements RealisationService {
     @Override
     public Realisation create(RealisationRequest request) {
         Realisation realisation = new Realisation();
-        realisation.setRealisationId(request.getRealisationId());
-        realisation.setRealisationVer(request.getRealisationVer());
+        realisation.setId(request.getRealisationId());
+        realisation.setVersion(request.getRealisationVer());
         realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
         // Add other field mappings as needed (e.g., serviceId, directionId, etc.)
         return repository.save(realisation);

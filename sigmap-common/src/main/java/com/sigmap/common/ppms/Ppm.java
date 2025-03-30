@@ -2,6 +2,8 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.lots.LotsId;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -12,14 +14,15 @@ import java.math.BigDecimal;
 @Table(name = "ppm")
 @Data
 @EqualsAndHashCode(callSuper = true)
+@IdClass(CompositeId.class)
 public class Ppm  extends BaseEntity {
     @Id
     @Column(name = "ppm_id")
-    private Integer ppmId;
+    private Integer id;
 
     @Id
     @Column(name = "ppm_ver")
-    private Integer ppmVer;
+    private Integer version;
 
     @Column(name = "ref", length = 100)
     private String ref;

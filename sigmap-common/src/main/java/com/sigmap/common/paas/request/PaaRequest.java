@@ -8,10 +8,9 @@ import java.math.BigDecimal;
 @Data
 public class PaaRequest {
 
-    private Integer paaId;
+    private Integer id;
 
-
-    private Integer paaVer;
+    private Integer version;
 
     private String ref;
 

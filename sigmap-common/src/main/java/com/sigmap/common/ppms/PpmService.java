@@ -53,12 +53,13 @@ public interface PpmService {
     Page<Ppm> findAllDeleted(Pageable pageable);
 
     /**
-     * Return the deleted Ppm with the given id.
+     * Return the deleted Ppm with the given composite ID components.
      *
-     * @param id the id of the Ppm to return
-     * @return the Ppm with the given id
+     * @param ppmId the first part of the composite ID (ppm_id)
+     * @param ppmVer the second part of the composite ID (ppm_ver)
+     * @return the Ppm with the given ID components
      */
-    Optional<Ppm> findDeletedById(Integer id);
+    Optional<Ppm> findDeletedById(Integer ppmId, Integer ppmVer);
 
     /**
      * Return the Ppm with the given specification.
@@ -69,12 +70,13 @@ public interface PpmService {
     Optional<Ppm> findOne(Specification<Ppm> specification);
 
     /**
-     * Return the Ppm with the given id.
+     * Return the Ppm with the given composite ID components.
      *
-     * @param id the id of the Ppm to return
-     * @return the Ppm with the given id
+     * @param ppmId the first part of the composite ID (ppm_id)
+     * @param ppmVer the second part of the composite ID (ppm_ver)
+     * @return the Ppm with the given ID components
      */
-    Optional<Ppm> findById(Integer id);
+    Optional<Ppm> findById(Integer ppmId, Integer ppmVer);
 
     /**
      * Save a Ppm.
@@ -93,9 +95,10 @@ public interface PpmService {
     Ppm create(PpmRequest request);
 
     /**
-     * Delete a Ppm.
+     * Delete a Ppm by its composite ID components.
      *
-     * @param id the id of the Ppm to delete
+     * @param ppmId the first part of the composite ID (ppm_id)
+     * @param ppmVer the second part of the composite ID (ppm_ver)
      */
-    void delete(Integer id);
+    void delete(Integer ppmId, Integer ppmVer);
 }

@@ -6,8 +6,8 @@ import lombok.Data;
 import java.util.Set;
 @Data
 public class LotRequest {
-    private Integer lotsId;
-    private Integer lotsVer;
+    private Integer id;
+    private Integer version;
     private String description;
     private Set<CompositeId> realisationIds;
 }

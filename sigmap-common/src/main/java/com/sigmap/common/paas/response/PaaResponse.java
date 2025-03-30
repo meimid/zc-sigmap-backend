@@ -10,8 +10,8 @@ import java.util.List;
 
 @Data
 public class PaaResponse {
-    private Integer paaId;
-    private Integer paaVer;
+    private Integer id;
+    private Integer version;
     private String ref;
     private String nom;
     private String annee;
