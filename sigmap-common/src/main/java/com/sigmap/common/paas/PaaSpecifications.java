@@ -35,8 +35,8 @@ public class PaaSpecifications {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("paaId"), id.getId()),
-                    criteriaBuilder.equal(root.get("paaVer"), id.getVersion())
+                    criteriaBuilder.equal(root.get("id"), id.getId()),
+                    criteriaBuilder.equal(root.get("version"), id.getVersion())
             );
         };
     }

@@ -17,8 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/lots")
@@ -30,17 +29,15 @@ public class LotController {
         this.lotService = lotService;
     }
 
+    /**
+     * Return a page of lots based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of lots
+     */
     @GetMapping
-    public ResponseEntity<List<LotResponse>> getAllLots() {
-        List<Lot> lots = lotService.findAll();
-        List<LotResponse> responses = lots.stream()
-                .map(LotMapper.INSTANCE::map) // Updated to use INSTANCE
-                .toList();
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping("/paginated")
-    public ResponseEntity<Page<LotResponse>> getPaginatedLots(
+    public ResponseEntity<Page<LotResponse>> findAll(
             LotQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -48,12 +45,19 @@ public class LotController {
         logger.info("User {}", user.getSubject());
 
         Page<Lot> lots = lotService.findAll(query.toSpecification(), pageable);
-        Page<LotResponse> responses = lots.map(LotMapper.INSTANCE::map); // Updated to use INSTANCE
+        Page<LotResponse> responses = lots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/deleted/paginated")
-    public ResponseEntity<Page<LotResponse>> getPaginatedDeletedLots(
+    /**
+     * Return a page of deleted lots based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of deleted lots
+     */
+    @GetMapping("/deleted")
+    public ResponseEntity<Page<LotResponse>> findAllDeleted(
             LotQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -61,73 +65,56 @@ public class LotController {
         logger.info("User {}", user.getSubject());
 
         Page<Lot> deletedLots = lotService.findAllDeleted(query.toSpecification(), pageable);
-        Page<LotResponse> responses = deletedLots.map(LotMapper.INSTANCE::map); // Updated to use INSTANCE
+        Page<LotResponse> responses = deletedLots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/deleted")
-    public ResponseEntity<Page<LotResponse>> getAllDeletedLots(Pageable pageable) {
-        Page<Lot> deletedLots = lotService.findAllDeleted(pageable);
-        Page<LotResponse> responses = deletedLots.map(LotMapper.INSTANCE::map); // Updated to use INSTANCE
-        return ResponseEntity.ok(responses);
-    }
-
-    @GetMapping("/{id}/{version}/deleted")
-    public ResponseEntity<LotResponse> getDeletedLotById(
-            @PathVariable Integer id,
-            @PathVariable Integer version) {
-        Optional<Lot> lot = lotService.findDeletedById(id, version);
-        return lot.map(LotMapper.INSTANCE::map) // Updated to use INSTANCE
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-    }
-
+    /**
+     * Return a lot based on the given composite ID (id and version).
+     *
+     * @param id the ID of the lot
+     * @param version the version of the lot
+     * @return the lot
+     */
     @GetMapping("/{id}/{version}")
-    public ResponseEntity<LotResponse> getLotById(
+    public ResponseEntity<LotResponse> findById(
             @PathVariable Integer id,
             @PathVariable Integer version) {
-        Optional<Lot> lot = lotService.findById(id, version);
-        return lot.map(LotMapper.INSTANCE::map) // Updated to use INSTANCE
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        Lot lot = lotService.findById(id, version)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lot not found"));
+        LotResponse response = LotMapper.INSTANCE.map(lot);
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Create a new lot.
+     *
+     * @param request the request to create the lot from
+     * @return the created lot
+     */
     @PostMapping
-    public ResponseEntity<LotResponse> createLot(@RequestBody LotRequest request) {
+    public ResponseEntity<LotResponse> create(@RequestBody LotRequest request) {
         Lot createdLot = lotService.create(request);
-        LotResponse response = LotMapper.INSTANCE.map(createdLot); // Updated to use INSTANCE
+        LotResponse response = LotMapper.INSTANCE.map(createdLot);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{id}/{version}")
-    public ResponseEntity<LotResponse> updateLot(
+    /**
+     * Delete a lot based on the given composite ID (id and version).
+     *
+     * @param id the ID of the lot to delete
+     * @param version the version of the lot to delete
+     * @return the deleted lot
+     */
+    @DeleteMapping("/{id}/{version}")
+    public ResponseEntity<LotResponse> deleteById(
             @PathVariable Integer id,
-            @PathVariable Integer version,
-            @RequestBody LotRequest request) {
-        Optional<Lot> existingLot = lotService.findById(id, version);
-        if (existingLot.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        Lot lot = LotMapper.INSTANCE.toEntity(request); // Updated to use INSTANCE
-        lot.setId(id);
-        lot.setVersion(version);
-        Lot updatedLot = lotService.save(lot);
-        LotResponse response = LotMapper.INSTANCE.map(updatedLot); // Updated to use INSTANCE
+            @PathVariable Integer version) {
+        lotService.delete(id, version);
+        Lot deleted = lotService.findDeletedById(id, version)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Lot not found"));
+        LotResponse response = LotMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{id}/{version}")
-    public ResponseEntity<LotResponse> deleteLot(
-            @PathVariable Integer id,
-            @PathVariable Integer version) {
-        Optional<Lot> lot = lotService.findById(id, version);
-        if (lot.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        lotService.delete(id, version);
-        Lot deletedLot = lotService.findDeletedById(id, version)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        LotResponse response = LotMapper.INSTANCE.map(deletedLot); // Updated to use INSTANCE
-        return ResponseEntity.ok(response);
-    }
 }

@@ -7,8 +7,10 @@ import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.List;
 
 @Entity
@@ -16,6 +18,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
+@EntityListeners(AuditingEntityListener.class)
 public class Paa extends BaseEntity {
     @Id
     @Column(name = "paa_id")
@@ -49,5 +52,19 @@ public class Paa extends BaseEntity {
     private List<Realisation> realisations;
 
     //TODO:add relation with DOC entity
+
+
+    @PrePersist
+    public void onCreate() {
+        // Manually populate createdAt, createdBy
+        this.setCreatedAt(Calendar.getInstance());
+
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        // Manually populate updatedAt, updatedBy
+        this.setUpdatedAt(Calendar.getInstance());
+    }
 
 }

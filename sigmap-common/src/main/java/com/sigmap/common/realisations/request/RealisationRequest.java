@@ -11,8 +11,8 @@ import java.util.Set;
 @Data
 public class RealisationRequest {
 
-    private Integer realisationId;
-    private Integer realisationVer;
+    private Integer id;
+    private Integer version;
     private String realisationEnvisagees;
     private Integer serviceId;
     private Integer directionId;

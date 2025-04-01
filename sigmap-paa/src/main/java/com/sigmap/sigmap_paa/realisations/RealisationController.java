@@ -3,13 +3,21 @@ package com.sigmap.sigmap_paa.realisations;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.RealisationSpecifications;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.request.RealisationQuery;
 import com.sigmap.common.realisations.request.RealisationRequest;
+import com.sigmap.common.realisations.response.RealisationResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +25,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/realisations")
 public class RealisationController {
+    private final Logger logger = LoggerFactory.getLogger(RealisationController.class);
 
     private final RealisationService realisationService;
 
@@ -24,84 +33,92 @@ public class RealisationController {
         this.realisationService = realisationService;
     }
 
+    /**
+     * Return a page of realisations based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of realisations
+     */
     @GetMapping
-    public ResponseEntity<List<Realisation>> getAllRealisations() {
-        List<Realisation> realisations = realisationService.findAll();
-        return ResponseEntity.ok(realisations);
+    public ResponseEntity<Page<RealisationResponse>> findAll(
+            RealisationQuery query, Pageable pageable) {
+        final Jwt user = (Jwt) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+        logger.info("User {}", user.getSubject());
+
+        Page<Realisation> realisations = realisationService.findAll(query.toSpecification(), pageable);
+        Page<RealisationResponse> responses = realisations.map(RealisationMapper.INSTANCE::map);
+        return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/paginated")
-    public ResponseEntity<Page<Realisation>> getPaginatedRealisations(
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        Specification<Realisation> spec = search != null ? RealisationSpecifications.search(search) : null;
-        Page<Realisation> realisations = realisationService.findAll(spec, pageable);
-        return ResponseEntity.ok(realisations);
-    }
-
-    @GetMapping("/deleted/paginated")
-    public ResponseEntity<Page<Realisation>> getPaginatedDeletedRealisations(
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        Specification<Realisation> spec = search != null ? RealisationSpecifications.search(search) : null;
-        Page<Realisation> deletedRealisations = realisationService.findAllDeleted(spec, pageable);
-        return ResponseEntity.ok(deletedRealisations);
-    }
-
+    /**
+     * Return a page of deleted realisations based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of deleted realisations
+     */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<Realisation>> getAllDeletedRealisations(Pageable pageable) {
-        Page<Realisation> deletedRealisations = realisationService.findAllDeleted(pageable);
-        return ResponseEntity.ok(deletedRealisations);
+    public ResponseEntity<Page<RealisationResponse>> findAllDeleted(
+            RealisationQuery query, Pageable pageable) {
+        Page<Realisation> realisations = realisationService.findAllDeleted(query.toSpecification(), pageable);
+        Page<RealisationResponse> responses = realisations.map(RealisationMapper.INSTANCE::map);
+        return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/{realisationId}/{realisationVer}/deleted")
-    public ResponseEntity<Realisation> getDeletedRealisationById(
-            @PathVariable Integer realisationId,
-            @PathVariable Integer realisationVer) {
-        Optional<Realisation> realisation = realisationService.findDeletedById(realisationId, realisationVer);
-        return realisation.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-    }
-
+    /**
+     * Return a realisation based on the given id and version.
+     *
+     * @param realisationId the id of the realisation to return
+     * @param realisationVer the version of the realisation to return
+     * @return the realisation
+     */
     @GetMapping("/{realisationId}/{realisationVer}")
-    public ResponseEntity<Realisation> getRealisationById(
+    public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer) {
-        Optional<Realisation> realisation = realisationService.findById(realisationId, realisationVer);
-        return realisation.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        Realisation realisation = realisationService.findById(realisationId, realisationVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Create a new realisation.
+     *
+     * @param request the request to create the realisation from
+     * @return the created realisation
+     */
     @PostMapping
-    public ResponseEntity<Realisation> createRealisation(@RequestBody RealisationRequest request) {
-        Realisation createdRealisation = realisationService.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdRealisation);
+    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) {
+        Realisation realisation = realisationService.create(request);
+        RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{realisationId}/{realisationVer}")
-    public ResponseEntity<Realisation> updateRealisation(
-            @PathVariable Integer realisationId,
-            @PathVariable Integer realisationVer,
-            @RequestBody Realisation realisation) {
-        Optional<Realisation> existingRealisation = realisationService.findById(realisationId, realisationVer);
-        if (existingRealisation.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        realisation.setId(realisationId);
-        realisation.setVersion(realisationVer);
-        Realisation updatedRealisation = realisationService.save(realisation);
-        return ResponseEntity.ok(updatedRealisation);
-    }
-
+    /**
+     * Delete a realisation based on the given id and version.
+     *
+     * @param realisationId the id of the realisation to delete
+     * @param realisationVer the version of the realisation to delete
+     * @return the deleted realisation
+     */
     @DeleteMapping("/{realisationId}/{realisationVer}")
-    public ResponseEntity<Void> deleteRealisation(
+    public ResponseEntity<RealisationResponse> deleteById(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer) {
-        Optional<Realisation> realisation = realisationService.findById(realisationId, realisationVer);
-        if (realisation.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+        final Jwt user = (Jwt) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+        logger.info("User {}", user.getSubject());
+
         realisationService.delete(realisationId, realisationVer);
-        return ResponseEntity.noContent().build();
+        Realisation deleted = realisationService.findDeletedById(realisationId, realisationVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Realisation not found"));
+        RealisationResponse response = RealisationMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
     }
+
 }

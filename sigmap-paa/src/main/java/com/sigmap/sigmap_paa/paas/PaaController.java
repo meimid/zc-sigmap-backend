@@ -15,10 +15,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,17 +37,16 @@ public class PaaController {
         this.paaService = paaService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<PaaResponse>> getAllPaas() {
-        List<Paa> paas = paaService.findAll();
-        List<PaaResponse> responses = paas.stream()
-                .map(PaaMapper.INSTANCE::map) // Updated
-                .toList();
-        return ResponseEntity.ok(responses);
-    }
 
-    @GetMapping("/paginated")
-    public ResponseEntity<Page<PaaResponse>> getPaginatedPaas(
+    /**
+     * Return a page of paas based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of paas
+     */
+    @GetMapping
+    public ResponseEntity<Page<PaaResponse>> findAll(
             PaaQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -50,86 +54,72 @@ public class PaaController {
         logger.info("User {}", user.getSubject());
 
         Page<Paa> paas = paaService.findAll(query.toSpecification(), pageable);
-        Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map); // Updated
+        Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/deleted/paginated")
-    public ResponseEntity<Page<PaaResponse>> getPaginatedDeletedPaas(
-            PaaQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-        logger.info("User {}", user.getSubject());
-
-        Page<Paa> deletedPaas = paaService.findAllDeleted(query.toSpecification(), pageable);
-        Page<PaaResponse> responses = deletedPaas.map(PaaMapper.INSTANCE::map); // Updated
-        return ResponseEntity.ok(responses);
-    }
-
+    /**
+     * Return a page of deleted paas based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of deleted paas
+     */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<PaaResponse>> getAllDeletedPaas(Pageable pageable) {
-        Page<Paa> deletedPaas = paaService.findAllDeleted(pageable);
-        Page<PaaResponse> responses = deletedPaas.map(PaaMapper.INSTANCE::map); // Updated
+    public ResponseEntity<Page<PaaResponse>> findAllDeleted(
+            PaaQuery query, Pageable pageable) {
+        Page<Paa> paas = paaService.findAllDeleted(query.toSpecification(), pageable);
+        Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/{paaId}/{paaVer}/deleted")
-    public ResponseEntity<PaaResponse> getDeletedPaaById(
-            @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) {
-        Optional<Paa> paa = paaService.findDeletedById(paaId, paaVer);
-        return paa.map(PaaMapper.INSTANCE::map) // Updated
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-    }
-
+    /**
+     * Return a paa based on the given id and version.
+     *
+     * @param paaId the id of the paa to return
+     * @param paaVer the version of the paa to return
+     * @return the paa
+     */
     @GetMapping("/{paaId}/{paaVer}")
-    public ResponseEntity<PaaResponse> getPaaById(
+    public ResponseEntity<PaaResponse> findById(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) {
-        Optional<Paa> paa = paaService.findById(paaId, paaVer);
-        return paa.map(PaaMapper.INSTANCE::map) // Updated
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        Paa paa = paaService.findById(paaId, paaVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        PaaResponse response = PaaMapper.INSTANCE.map(paa);
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Create a new paa.
+     *
+     * @param request the request to create the paa from
+     * @return the created paa
+     */
     @PostMapping
-    public ResponseEntity<PaaResponse> createPaa(@RequestBody PaaRequest request) {
-        Paa createdPaa = paaService.create(request);
-        PaaResponse response = PaaMapper.INSTANCE.map(createdPaa); // Updated
+    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) {
+        Paa paa = paaService.create(request);
+        PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{paaId}/{paaVer}")
-    public ResponseEntity<PaaResponse> updatePaa(
+    /**
+     * Delete a paa based on the given id and version.
+     *
+     * @param paaId the id of the paa to delete
+     * @param paaVer the version of the paa to delete
+     * @return the deleted paa
+     */
+    @DeleteMapping("/{paaId}/{paaVer}")
+    public ResponseEntity<PaaResponse> deleteById(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer,
-            @RequestBody PaaRequest request) {
-        Optional<Paa> existingPaa = paaService.findById(paaId, paaVer);
-        if (existingPaa.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        Paa paa = PaaMapper.INSTANCE.toEntity(request); // Updated (assuming toEntity exists)
-        paa.setId(paaId);
-        paa.setVersion(paaVer);
-        Paa updatedPaa = paaService.save(paa); // Fixed: Use transformed Paa, not request directly
-        PaaResponse response = PaaMapper.INSTANCE.map(updatedPaa); // Updated
+            @PathVariable Integer paaVer) {
+
+        paaService.delete(paaId, paaVer);
+        Paa deleted = paaService.findDeletedById(paaId, paaVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
+        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{paaId}/{paaVer}")
-    public ResponseEntity<PaaResponse> deletePaa(
-            @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) {
-        Optional<Paa> paa = paaService.findById(paaId, paaVer);
-        if (paa.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        paaService.delete(paaId, paaVer);
-        Paa deletedPaa = paaService.findDeletedById(paaId, paaVer)
-                .orElseThrow(() -> null); // Fixed TODO
-        PaaResponse response = PaaMapper.INSTANCE.map(deletedPaa); // Already updated as per example
-        return ResponseEntity.ok(response);
-    }
 }

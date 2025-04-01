@@ -2,13 +2,21 @@ package com.sigmap.sigmap_ppm.ppms;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
+import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.request.PpmRequest;
+import com.sigmap.common.ppms.response.PpmResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,89 +25,92 @@ import java.util.Optional;
 public class PpmController {
 
     private final PpmService ppmService;
+    private final Logger logger = LoggerFactory.getLogger(PpmController.class);
 
     public PpmController(PpmService ppmService) {
         this.ppmService = ppmService;
     }
 
+    /**
+     * Return a page of ppms based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of ppms
+     */
     @GetMapping
-    public ResponseEntity<List<Ppm>> getAllPpms() {
-        List<Ppm> ppms = ppmService.findAll();
-        return ResponseEntity.ok(ppms);
+    public ResponseEntity<Page<PpmResponse>> findAll(
+            PpmQuery query, Pageable pageable) {
+        final Jwt user = (Jwt) SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getPrincipal();
+        logger.info("User {}", user.getSubject());
+
+        Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
+        Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
+        return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/paginated")
-    public ResponseEntity<Page<Ppm>> getPaginatedPpms(
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        Specification<Ppm> spec = search != null ? PpmSpecifications.search(search) : null;
-        Page<Ppm> ppms = ppmService.findAll(spec, pageable);
-        return ResponseEntity.ok(ppms);
-    }
-
-    @GetMapping("/deleted/paginated")
-    public ResponseEntity<Page<Ppm>> getPaginatedDeletedPpms(
-            @RequestParam(required = false) String search,
-            Pageable pageable) {
-        Specification<Ppm> spec = search != null ? PpmSpecifications.search(search) : null;
-        Page<Ppm> deletedPpms = ppmService.findAllDeleted(spec, pageable);
-        return ResponseEntity.ok(deletedPpms);
-    }
-
+    /**
+     * Return a page of deleted ppms based on the given specification and pageable.
+     *
+     * @param query the query to use
+     * @param pageable the pageable to use
+     * @return a page of deleted ppms
+     */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<Ppm>> getAllDeletedPpms(Pageable pageable) {
-        Page<Ppm> deletedPpms = ppmService.findAllDeleted(pageable);
-        return ResponseEntity.ok(deletedPpms);
+    public ResponseEntity<Page<PpmResponse>> findAllDeleted(
+            PpmQuery query, Pageable pageable) {
+        Page<Ppm> ppms = ppmService.findAllDeleted(query.toSpecification(), pageable);
+        Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
+        return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/{ppmId}/{ppmVer}/deleted")
-    public ResponseEntity<Ppm> getDeletedPpmById(
-            @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer) {
-        Optional<Ppm> ppm = ppmService.findDeletedById(ppmId, ppmVer);
-        return ppm.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
-    }
-
+    /**
+     * Return a ppm based on the given id and version.
+     *
+     * @param ppmId the id of the ppm to return
+     * @param ppmVer the version of the ppm to return
+     * @return the ppm
+     */
     @GetMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<Ppm> getPpmById(
+    public ResponseEntity<PpmResponse> findById(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer) {
-        Optional<Ppm> ppm = ppmService.findById(ppmId, ppmVer);
-        return ppm.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        Ppm ppm = ppmService.findById(ppmId, ppmVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Create a new ppm.
+     *
+     * @param request the request to create the ppm from
+     * @return the created ppm
+     */
     @PostMapping
-    public ResponseEntity<Ppm> createPpm(@RequestBody PpmRequest request) {
-        Ppm createdPpm = ppmService.create(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdPpm);
+    public ResponseEntity<PpmResponse> create(@RequestBody PpmRequest request) {
+        Ppm ppm = ppmService.create(request);
+        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<Ppm> updatePpm(
-            @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer,
-            @RequestBody Ppm ppm) {
-        Optional<Ppm> existingPpm = ppmService.findById(ppmId, ppmVer);
-        if (existingPpm.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        ppm.setId(ppmId); // Set composite key part 1
-        ppm.setVersion(ppmVer); // Set composite key part 2
-        Ppm updatedPpm = ppmService.save(ppm);
-        return ResponseEntity.ok(updatedPpm);
-    }
-
+    /**
+     * Delete a ppm based on the given id and version.
+     *
+     * @param ppmId the id of the ppm to delete
+     * @param ppmVer the version of the ppm to delete
+     * @return the deleted ppm
+     */
     @DeleteMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<Void> deletePpm(
+    public ResponseEntity<PpmResponse> deleteById(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer) {
-        Optional<Ppm> ppm = ppmService.findById(ppmId, ppmVer);
-        if (ppm.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
         ppmService.delete(ppmId, ppmVer);
-        return ResponseEntity.noContent().build();
+        Ppm deleted = ppmService.findDeletedById(ppmId, ppmVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Ppm not found"));
+        PpmResponse response = PpmMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
     }
 }
