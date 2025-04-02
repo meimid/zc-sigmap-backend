@@ -4,6 +4,8 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,12 +72,57 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     @Override
-    public Realisation create(RealisationRequest request) {
+    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+        Integer id = request.getId();
+        Integer version = request.getVersion();
+        Optional<Realisation> existingRealisation = repository.findById(new CompositeId(id, version));
+
+        if (existingRealisation.isPresent()) {
+            throw new RealisationAlreadyExistsException(id, version,
+                    "Realisation with ID " + id + " and version " + version + " already exists in the database.");
+        }
+
         Realisation realisation = new Realisation();
-        realisation.setId(request.getId());
-        realisation.setVersion(request.getVersion());
+        realisation.setId(id);
+        realisation.setVersion(version);
         realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
-        // Add other field mappings as needed (e.g., serviceId, directionId, etc.)
+        // TODO: add other fields
+        return repository.save(realisation);
+    }
+
+    @Override
+    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException {
+        CompositeId compositeId = new CompositeId(realisationId, realisationVer);
+        Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
+
+        if (existingRealisationOpt.isEmpty()) {
+            throw new RealisationNotFoundException(realisationId, realisationVer,
+                    "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.");
+        }
+
+        Realisation realisation = existingRealisationOpt.get();
+
+        // Update fields from request based on Realisation entity
+        realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
+        realisation.setServiceId(request.getServiceId());
+        realisation.setDirectionId(request.getDirectionId());
+        realisation.setSourceFinancementId(request.getSourceFinancementId());
+        realisation.setMonaisId(request.getMonaisId());
+        realisation.setTypeMarcherId(request.getTypeMarcherId());
+        realisation.setModeSelectionId(request.getModeSelectionId());
+        realisation.setDatePrevLps(request.getDatePrevLps());
+        realisation.setDatePrevAc(request.getDatePrevAc());
+        realisation.setDatePrevDp(request.getDatePrevDp());
+        realisation.setDatePrevAp(request.getDatePrevAp());
+        realisation.setBudgetEstime(request.getBudgetEstime());
+        realisation.setIsPublished(request.getIsPublished());
+        realisation.setPublishedAt(request.getPublishedAt());
+        realisation.setSort(request.getSort());
+
+        // Note: Not updating ppms, paas, lots, or docs relationships here
+        // These might require separate handling if needed
+
+        // Save and return the updated entity
         return repository.save(realisation);
     }
 

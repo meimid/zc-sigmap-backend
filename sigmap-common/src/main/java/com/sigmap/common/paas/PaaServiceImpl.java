@@ -2,6 +2,8 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.ref_params.RefParam;
@@ -77,15 +79,23 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Paa create(PaaRequest request) {
+    public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
+        Integer id = request.getId();
+        Integer version = request.getVersion();
+        Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
+
+        if (existingPaa.isPresent()) {
+            throw new PaaAlreadyExistsException(id, version, "Paa with ID " + id + " and version " + version + " already exists.");
+        }
+
         Paa paa = new Paa();
-        paa.setId(request.getId());
-        paa.setVersion(request.getVersion());
+        paa.setId(id);
+        paa.setVersion(version);
         paa.setRef(request.getRef());
         paa.setNom(request.getNom());
         paa.setAnnee(request.getAnnee());
-        //TODO: verify this later
-        //paa.setAc(request.getAc());
+        // TODO: verify this later
+        // paa.setAc(request.getAc());
         paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatusId(request.getStatusId());
         return repository.save(paa);
@@ -94,5 +104,29 @@ public class PaaServiceImpl implements PaaService {
     @Override
     public void delete(Integer paaId, Integer paaVer) {
         repository.softDelete(paaId, paaVer);
+    }
+
+    @Override
+    public Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound {
+        CompositeId compositeId = new CompositeId(paaId, paaVer);
+        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+
+        if (existingPaaOpt.isEmpty()) {
+            throw new PaaNotFound(paaId, paaVer,
+                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.");
+        }
+
+        Paa paa = existingPaaOpt.get();
+
+
+        paa.setRef(request.getRef());
+        paa.setNom(request.getNom());
+        paa.setAnnee(request.getAnnee());
+        // paa.setAc(request.getAc()); // TODO: verify this later
+        paa.setBudgetEstime(request.getBudgetEstime());
+        paa.setStatusId(request.getStatusId());
+
+        // Save and return the updated entity
+        return repository.save(paa);
     }
 }
