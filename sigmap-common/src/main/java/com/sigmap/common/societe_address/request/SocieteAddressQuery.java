@@ -27,8 +27,6 @@ public class SocieteAddressQuery {
      * method.
      *
      * @see SocieteAddressSpecifications
-     * @see SocieteAddressService
-     *
      * @return a {@link Specification} that can be used to query the database.
      */
     public Specification<SocieteAddress> toSpecification() {

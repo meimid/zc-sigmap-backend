@@ -80,10 +80,10 @@ public interface AcService {
     /**
      * update Ac.
      *
-     * @param ac the request to update the Ac from
+     * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Ac ac);
+    Ac update(AcRequest request);
 
     /**
      * Delete a Ac.

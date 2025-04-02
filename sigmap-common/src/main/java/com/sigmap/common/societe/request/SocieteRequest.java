@@ -1,7 +1,5 @@
 package com.sigmap.common.societe.request;
 
-import com.sigmap.common.ref_params.RefParam;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

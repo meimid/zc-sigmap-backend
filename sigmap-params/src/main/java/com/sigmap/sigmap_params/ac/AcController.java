@@ -111,7 +111,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping
-    public ResponseEntity<AcResponse> update(@RequestBody Ac request) {
+    public ResponseEntity<AcResponse> update(@RequestBody AcRequest request) {
         Ac ac = acService.update(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

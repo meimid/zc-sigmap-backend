@@ -1,14 +1,27 @@
 
 package com.sigmap.common.ac;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.ref_params.RefParam;
+import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 public class AcSpecifications {
     public static Specification<Ac> search(String search) {
+
         return (root, query, criteriaBuilder) -> {
+            Join<Ac, Com> join = root.join("coms");
+
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("contact"), "%" + search + "%"));
+                    criteriaBuilder.like(root.get("contact"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("decretCreation"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("responsable"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("ancrage"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("contact"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("adresse"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("membres"), "%" + search + "%"));
         };
     }
 

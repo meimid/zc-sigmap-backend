@@ -13,7 +13,6 @@ public class CompteBancaireSpecifications {
         return (root, query, criteriaBuilder) -> {
             Join<CompteBancaire, RefParam> join = root.join("pays");
             Join<CompteBancaire, Societe> joinSociete = root.join("societe");
-
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("agence"), "%" + search + "%"),

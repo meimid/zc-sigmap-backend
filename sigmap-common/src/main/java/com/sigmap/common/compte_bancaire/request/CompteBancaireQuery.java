@@ -1,6 +1,4 @@
 package com.sigmap.common.compte_bancaire.request;
-
-import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireSpecifications;
@@ -24,12 +22,7 @@ public class CompteBancaireQuery {
      * not null or blank.
      * <li>{@link ComSpecifications#nom(String)} if the nom property is not
      * null or blank.
-     * <li>{@link ComSpecifications#agence(String)} if the agence
-     * property is not null or blank.
-     * <li>{@link ComSpecifications#rib(String)} if the rib
-     * property is not null or blank.
-
-     * </ul>
+        * </ul>
      * <p>
      * The specifications will be combined with the {@link Specification#and(Specification)}
      * method.
@@ -57,9 +50,6 @@ public class CompteBancaireQuery {
         if (rib != null && !rib.isBlank()) {
             spec = spec.and(CompteBancaireSpecifications.rib(rib));
         }
-
-
-
         return spec;
     }
 }

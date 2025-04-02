@@ -1,5 +1,4 @@
 package com.sigmap.common.contact.request;
-
 import lombok.Data;
 
 @Data

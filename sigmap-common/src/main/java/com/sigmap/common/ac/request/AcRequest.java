@@ -9,8 +9,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AcRequest {
+    private Integer id;
     private String nom;
     private String ancrage;
     private String contact;
-   // private List<Integer> comIds;
+   private List<Integer> comIds;
 }

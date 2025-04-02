@@ -69,8 +69,8 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public CompteBancaire create(CompteBancaireRequest request) {
-        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow();
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow();
+        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
+        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
         CompteBancaire compteBancaire=new CompteBancaire();
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);

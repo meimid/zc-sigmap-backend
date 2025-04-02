@@ -1,7 +1,4 @@
 package com.sigmap.common.com;
-
-
-
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
@@ -25,7 +22,10 @@ public class ComSpecifications {
                     criteriaBuilder.like(root.get("contact"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("adresse"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("membres"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("description"), "%" + search + "%")
+                    criteriaBuilder.like(join.get("description"), "%" + search + "%"),
+                    criteriaBuilder.like(ac.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(ac.get("ancrage"), "%" + search + "%"),
+                    criteriaBuilder.like(ac.get("contact"), "%" + search + "%")
             );
         };
     }

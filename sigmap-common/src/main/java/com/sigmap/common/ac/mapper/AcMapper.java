@@ -1,7 +1,6 @@
 package com.sigmap.common.ac.mapper;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.response.AcResponse;
-import com.sigmap.common.ref_params.response.RefParamResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;

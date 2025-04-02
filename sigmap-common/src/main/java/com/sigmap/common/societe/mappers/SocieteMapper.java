@@ -1,8 +1,5 @@
 package com.sigmap.common.societe.mappers;
 
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.mappers.RefParamMapper;
-import com.sigmap.common.ref_params.response.RefParamResponse;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.response.SocieteResponse;
 import org.mapstruct.Mapper;

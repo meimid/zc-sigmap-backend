@@ -1,31 +1,27 @@
 package com.sigmap.common.com;
 import com.sigmap.common.ac.Ac;
-import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 
 public class ComServiceImpl implements ComService{
     private final ComRepository repository;
     private final RefParamService refParamService;
-    private final AcService acService;
+    private final AcRepository acRepository;
 
-    public ComServiceImpl(ComRepository repository, RefParamService refParamService, AcService acService) {
+    public ComServiceImpl(ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
         this.repository = repository;
         this.refParamService = refParamService;
-        this.acService = acService;
+        this.acRepository = acRepository;
     }
 
     @Override
@@ -75,7 +71,7 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com create(ComRequest request) {
-        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow();
+        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(() -> new RuntimeException("Societe not found: " +request.getComTypeId()));
         Com com = new Com();
         com.setNom(request.getNom());
         com.setDecretCreation(request.getDecretCreation());
@@ -91,14 +87,14 @@ public class ComServiceImpl implements ComService{
             com.setComType(null);
         }
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            for (Integer i : request.getAcIds()) {
+            List<Ac> acs = acRepository.findAllById(request.getAcIds());
 
-                Ac ac = acService.findById(i).orElseThrow(() -> new RuntimeException("Ac not found: " + i));
-                if (ac.getIsDeleted()!=null) { // Assuming Ac extends BaseEntity with isDeleted
-                    throw new RuntimeException("Ac with ID " + i + " is deleted and cannot be associated");
-                }
-                com.getAcs().add(ac);
+            // Validate that we found all requested Com entities
+            if (acs.size() != request.getAcIds().size()) {
+                throw new IllegalArgumentException("One or more Com IDs were not found");
+
             }
+            com.setAcs(acs);
         }
         return repository.save(com);
     }
@@ -121,15 +117,13 @@ public class ComServiceImpl implements ComService{
             com.setComType(null);
         }
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            com.getAcs().clear();
-            for (Integer i : request.getAcIds()) {
+            List<Ac> acs = acRepository.findAllById(request.getAcIds());
 
-                Ac ac = acService.findById(i).orElseThrow(() -> new RuntimeException("Ac not found: " + i));
-                if (ac.getIsDeleted()!=null) { // Assuming Ac extends BaseEntity with isDeleted
-                    throw new RuntimeException("Ac with ID " + i + " is deleted and cannot be associated");
-                }
-                com.getAcs().add(ac);
+            if (acs.size() != request.getAcIds().size()) {
+                throw new IllegalArgumentException("One or more Com IDs were not found");
+
             }
+            com.setAcs(acs);
         }
         return repository.save(com);
     }

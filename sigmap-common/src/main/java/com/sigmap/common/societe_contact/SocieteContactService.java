@@ -1,0 +1,99 @@
+package com.sigmap.common.societe_contact;
+
+
+import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
+import com.sigmap.common.societe_contact.SocieteContact;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface SocieteContactService {
+
+    List<SocieteContact> findAll();
+
+    /**
+     * Return a page of SocieteContact based on the given specification and pageable.
+     *
+     * @param SocieteContact the specification to use
+     * @param pageable the pageable to use
+     * @return a page of SocieteContact
+     */
+    Page<SocieteContact> findAll(Specification<SocieteContact> SocieteContact, Pageable pageable);
+
+    /**
+     * Return a page of deleted SocieteContact based on the given specification and pageable.
+     *
+     * @param SocieteContact the specification to use
+     * @param pageable the pageable to use
+     * @return a page of SocieteContact
+     */
+    Page<SocieteContact> findAllDeleted(Specification<SocieteContact> SocieteContact, Pageable pageable);
+
+    /**
+     * Return a page of deleted SocieteContact based on the given pageable.
+     *
+     * @param pageable the pageable to use
+     * @return a page of SocieteContact
+     */
+    Page<SocieteContact> findAllDeleted(Pageable pageable);
+
+    /**
+     * Return the deleted SocieteContact with the given id.
+     *
+     * @param id1
+     * @param  id2
+     * @return the SocieteContact with the given id
+     */
+    Optional<SocieteContact> findDeletedByIds(Integer id1, Integer id2);
+
+    /**
+     * Return the SocieteContact with the given specification.
+     *
+     * @param specification the specification to use
+     * @return the SocieteContact with the given specification
+     */
+    Optional<SocieteContact> findOne(Specification<SocieteContact> specification);
+
+    /**
+     * Return the SocieteContact with the given id.
+     *
+     * @param id1
+     * @param id2
+     * @return the SocieteContact with the given id
+     */
+    Optional<SocieteContact> findByIds(Integer id1, Integer id2);
+
+    /**
+     * Save a SocieteContact.
+     *
+     * @param SocieteContact the SocieteContact to save
+     * @return the saved SocieteContact
+     */
+    SocieteContact save(SocieteContact SocieteContact);
+
+    /**
+     * Create a SocieteContact.
+     *
+     * @param request the request to create the SocieteContact from
+     * @return the created SocieteContact
+     */
+    SocieteContact create(SocieteContactRequest request);
+    /**
+     * update Com.
+     *
+     * @param request the request to update the com from
+     * @return the updated SocieteContact
+     */
+    SocieteContact update(SocieteContactRequest request);
+    /**
+     * Delete a SocieteAddress.
+     *
+     * @param id1
+      * @param id2 the id of the SocieteContact to delete
+     */
+    void delete(Integer id1,Integer id2);
+
+}

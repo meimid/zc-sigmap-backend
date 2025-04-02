@@ -3,9 +3,6 @@ package com.sigmap.common.ac.request;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcSpecifications;
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.RefParamService;
-import com.sigmap.common.ref_params.RefParamSpecifications;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -34,10 +31,7 @@ public class AcQuery {
      * <p>
      * The specifications will be combined with the {@link Specification#and(Specification)}
      * method.
-     *
      * @see AcSpecifications
-     * @see AcService
-     *
      * @return a {@link Specification} that can be used to query the database.
      */
 

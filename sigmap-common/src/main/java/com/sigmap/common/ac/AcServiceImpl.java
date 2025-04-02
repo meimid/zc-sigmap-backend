@@ -2,12 +2,7 @@ package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.Com;
-import com.sigmap.common.com.ComService;
-import com.sigmap.common.com.ComServiceImpl;
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.RefParamSpecifications;
-import com.sigmap.common.ref_types.RefType;
-import lombok.RequiredArgsConstructor;
+import com.sigmap.common.com.ComRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,11 +14,11 @@ import java.util.Optional;
 @Service
 public class AcServiceImpl implements AcService{
     private final AcRepository repository;
-   // private final ComService comService;
+    private final ComRepository comRepository;
 
-    public AcServiceImpl(AcRepository repository) {
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository) {
         this.repository = repository;
-       // this.comService = comService;
+        this.comRepository = comRepository;
     }
 
     @Override
@@ -78,22 +73,44 @@ public class AcServiceImpl implements AcService{
         ac.setNom(request.getNom());
         ac.setAncrage(request.getAncrage());
         ac.setContact(request.getContact());
-      /*  if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            for (Integer i : request.getComIds()) {
+        ac.setNom(request.getNom());
+        ac.setAncrage(request.getAncrage());
+        ac.setContact(request.getContact());
 
-                Com com = comService.findById(i).orElseThrow(() -> new RuntimeException("Com not found: " + i));
-                if (ac.getIsDeleted()!=null) { // Assuming Ac extends BaseEntity with isDeleted
-                    throw new RuntimeException("Com with ID " + i + " is deleted and cannot be associated");
-                }
-                ac.getComs().add(com);
+        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
+            List<Com> coms = comRepository.findAllById(request.getComIds());
+
+            if (coms.size() != request.getComIds().size()) {
+                throw new IllegalArgumentException("One or more Com IDs were not found");
             }
-        }*/
-        return save(ac);
+
+            ac.setComs(coms);
+        }
+
+        return repository.save(ac);
     }
 
     @Override
-    public Ac update(Ac ac) {
-        return save(ac);
+    public Ac update(AcRequest request) {
+        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
+        ac.setNom(request.getNom());
+        ac.setAncrage(request.getAncrage());
+        ac.setContact(request.getContact());
+        ac.setNom(request.getNom());
+        ac.setAncrage(request.getAncrage());
+        ac.setContact(request.getContact());
+
+        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
+            List<Com> coms = comRepository.findAllById(request.getComIds());
+
+            if (coms.size() != request.getComIds().size()) {
+                throw new IllegalArgumentException("One or more Com IDs were not found");
+            }
+
+            ac.setComs(coms);
+        }
+
+        return repository.save(ac);
     }
 
     @Override

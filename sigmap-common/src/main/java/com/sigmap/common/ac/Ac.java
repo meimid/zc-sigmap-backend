@@ -4,11 +4,8 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Getter
 @Setter
@@ -25,6 +22,7 @@ public class Ac extends BaseEntity {
     private String nom;
     private String ancrage;
     private String contact;
+
     @ManyToMany
     @JoinTable(name="com_ac",
             joinColumns = @JoinColumn(name = "ac_id"),

@@ -37,7 +37,6 @@ public class SocieteQuery {
      * method.
      *
      * @see SocieteSpecifications
-     * @see SocieteService
      *
      * @return a {@link Specification} that can be used to query the database.
      */

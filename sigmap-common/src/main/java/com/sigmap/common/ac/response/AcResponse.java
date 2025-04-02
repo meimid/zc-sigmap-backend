@@ -15,7 +15,7 @@ public class AcResponse {
     private String nom;
     private String ancrage;
     private String contact;
-    //private List<Com> coms;
+    private List<Com> coms;
     private BaseEntityResponse metadata;
 
 }

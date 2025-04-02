@@ -1,13 +1,9 @@
 package com.sigmap.common.societe;
 
-import com.sigmap.common.com.Com;
-import com.sigmap.common.com.ComSpecifications;
-import com.sigmap.common.com.request.ComRequest;
+
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.societe.request.SocieteRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -15,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-@Slf4j
 @Service
 public class SocieteServiceImpl implements SocieteService {
     private final SocieteRepository repository;

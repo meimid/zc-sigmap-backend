@@ -1,10 +1,8 @@
 package com.sigmap.common.contact.request;
-
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactSpecifications;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
-
 @Data
 public class ContactQuery {
     private String search;

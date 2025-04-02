@@ -1,8 +1,6 @@
 package com.sigmap.common.societe;
 
 
-import com.sigmap.common.com.Com;
-import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

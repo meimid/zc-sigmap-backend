@@ -1,8 +1,6 @@
 package com.sigmap.common.com.request;
 import lombok.*;
-
 import java.util.List;
-import java.util.Set;
 
 @Getter
 @Setter

@@ -44,9 +44,7 @@ public class ComQuery {
      * The specifications will be combined with the {@link Specification#and(Specification)}
      * method.
      *
-     * @see ComSpecifications
-     * @see comService
-     *
+     * @see ComSpecifications*
      * @return a {@link Specification} that can be used to query the database.
      */
 

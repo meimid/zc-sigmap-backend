@@ -78,7 +78,7 @@ public interface SocieteAddressService {
      * update Com.
      *
      * @param request the request to update the com from
-     * @return the updated com
+     * @return the updated SocieteAddress
      */
     SocieteAddress update(SocieteAddressRequest request);
     /**

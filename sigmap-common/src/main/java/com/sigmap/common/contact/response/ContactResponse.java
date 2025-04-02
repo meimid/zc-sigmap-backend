@@ -1,5 +1,4 @@
 package com.sigmap.common.contact.response;
-
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
