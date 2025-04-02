@@ -86,7 +86,21 @@ public class RealisationServiceImpl implements RealisationService {
         realisation.setId(id);
         realisation.setVersion(version);
         realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
-        // TODO: add other fields
+
+        realisation.setServiceId(request.getServiceId());
+        realisation.setDirectionId(request.getDirectionId());
+        realisation.setSourceFinancementId(request.getSourceFinancementId());
+        realisation.setMonaisId(request.getMonaisId());
+        realisation.setTypeMarcherId(request.getTypeMarcherId());
+        realisation.setModeSelectionId(request.getModeSelectionId());
+        realisation.setDatePrevLps(request.getDatePrevLps());
+        realisation.setDatePrevAc(request.getDatePrevAc());
+        realisation.setDatePrevDp(request.getDatePrevDp());
+        realisation.setDatePrevAp(request.getDatePrevAp());
+        realisation.setBudgetEstime(request.getBudgetEstime());
+        realisation.setIsPublished(request.getIsPublished());
+        realisation.setPublishedAt(request.getPublishedAt());
+        realisation.setSort(request.getSort());
         return repository.save(realisation);
     }
 
