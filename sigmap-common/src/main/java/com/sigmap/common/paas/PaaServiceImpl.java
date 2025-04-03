@@ -56,6 +56,8 @@ public class PaaServiceImpl implements PaaService {
         return repository.findAll(spec, pageable);
     }
 
+
+
     @Override
     public Optional<Paa> findDeletedById(Integer paaId, Integer paaVer) {
         Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer))

@@ -63,6 +63,7 @@ public class PaaController {
     public ResponseEntity<Page<PaaResponse>> findAllDeleted(
             PaaQuery query, Pageable pageable) {
         Page<Paa> paas = paaService.findAllDeleted(query.toSpecification(), pageable);
+        System.out.println("the paas are " + paas.getContent());
         Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
