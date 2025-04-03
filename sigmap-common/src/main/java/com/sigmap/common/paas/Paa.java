@@ -53,18 +53,18 @@ public class Paa extends BaseEntity {
 
     //TODO:add relation with DOC entity
 
-
-    @PrePersist
-    public void onCreate() {
-        // Manually populate createdAt, createdBy
-        this.setCreatedAt(Calendar.getInstance());
-
-    }
-
-    @PreUpdate
-    public void onUpdate() {
-        // Manually populate updatedAt, updatedBy
-        this.setUpdatedAt(Calendar.getInstance());
-    }
+//
+//    @PrePersist
+//    public void onCreate() {
+//        // Manually populate createdAt, createdBy
+//        this.setCreatedAt(Calendar.getInstance());
+//
+//    }
+//
+//    @PreUpdate
+//    public void onUpdate() {
+//        // Manually populate updatedAt, updatedBy
+//        this.setUpdatedAt(Calendar.getInstance());
+//    }
 
 }
