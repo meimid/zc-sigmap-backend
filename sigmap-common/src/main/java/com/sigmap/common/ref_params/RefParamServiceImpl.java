@@ -89,6 +89,16 @@ public class RefParamServiceImpl implements RefParamService {
   }
 
   @Override
+  public RefParam update(RefParamRequest request) {
+    RefParam refParam=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
+    RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow(() -> new RuntimeException("refType not found: " + request.getId()));
+    refParam.setCode(request.getCode());
+    refParam.setDescription(request.getDescription());
+    refParam.setRefType(refType);
+    return save(refParam);
+  }
+
+  @Override
   public void delete(Integer id) {
     repository.softDelete(id);
   }

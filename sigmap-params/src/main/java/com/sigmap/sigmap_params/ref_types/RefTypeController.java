@@ -1,9 +1,22 @@
 package com.sigmap.sigmap_params.ref_types;
 
+import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.Mapper.ContactMapper;
+import com.sigmap.common.contact.request.ContactQuery;
+import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
+import com.sigmap.common.ref_types.mapper.RefTypeMapper;
+import com.sigmap.common.ref_types.request.RefTypeQuery;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
+
+import java.sql.Ref;
 import java.util.List;
+
+import com.sigmap.common.ref_types.response.RefTypeResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +38,7 @@ public class RefTypeController {
     return ResponseEntity.ok(params);
   }
 
+
   @GetMapping("/{id}")
   public ResponseEntity<RefType> findById(@PathVariable Integer id) {
     RefType params =
@@ -39,5 +53,30 @@ public class RefTypeController {
     System.out.println("Ref Type Request " + request);
     RefType refType = refTypeService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(refType);
+  }
+//new code
+  @GetMapping("/deleted")
+  public ResponseEntity<Page<RefTypeResponse>> findAllDeleted(
+          RefTypeQuery query, Pageable pageable) {
+    Page<RefType> params = refTypeService.findAllDeleted(query.toSpecification(), pageable);
+    Page<RefTypeResponse> refTypeResponses = params.map(RefTypeMapper.INSTANCE::map);
+    return ResponseEntity.ok(refTypeResponses);
+  }
+
+  @PutMapping
+  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) {
+    RefType refType = refTypeService.update(request);
+    RefTypeResponse response = RefTypeMapper.INSTANCE.map(refType);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @DeleteMapping("/{id}")
+  public ResponseEntity<RefTypeResponse> deleteById(@PathVariable Integer id) {
+    refTypeService.delete(id);
+
+    RefType deleted = refTypeService.findDeletedById(id)
+            .orElseThrow();
+    RefTypeResponse response = RefTypeMapper.INSTANCE.map(deleted);
+    return ResponseEntity.ok(response);
   }
 }

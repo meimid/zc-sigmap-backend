@@ -61,8 +61,8 @@ public class ContactController {
     public ResponseEntity<Page<ContactResponse>> findAllDeleted(
             ContactQuery query, Pageable pageable) {
         Page<Contact> params = contactService.findAllDeleted(query.toSpecification(), pageable);
-        Page<ContactResponse> ContactResponses = params.map(ContactMapper.INSTANCE::map);
-        return ResponseEntity.ok(ContactResponses);
+        Page<ContactResponse> contactResponses = params.map(ContactMapper.INSTANCE::map);
+        return ResponseEntity.ok(contactResponses);
     }
 
     /**
@@ -99,8 +99,8 @@ public class ContactController {
      */
     @PutMapping
     public ResponseEntity<ContactResponse> update(@RequestBody ContactRequest request) {
-        Contact Contact = contactService.update(request);
-        ContactResponse response = ContactMapper.INSTANCE.map(Contact);
+        Contact contact = contactService.update(request);
+        ContactResponse response = ContactMapper.INSTANCE.map(contact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
     /**

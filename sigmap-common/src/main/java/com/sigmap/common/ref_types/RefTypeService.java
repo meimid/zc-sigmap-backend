@@ -1,6 +1,11 @@
 package com.sigmap.common.ref_types;
 
+
 import com.sigmap.common.ref_types.request.RefTypeRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -17,13 +22,56 @@ public interface RefTypeService {
    * @return a list of all RefTypes
    */
   List<RefType> findAll();
+  /**
+   * Return a page of RefParams based on the given specification and pageable.
+   *
+   * @param spec the specification to use
+   * @param pageable the pageable to use
+   * @return a page of RefType
+   */
+  Page<RefType> findAll(Specification<RefType> spec, Pageable pageable);
+  /**
+   * Return the RefParam with the given specification.
+   *
+   * @param specification the specification to use
+   * @return the RefParam with the given specification
+   */
+  Optional<RefType> findOne(Specification<RefType> specification);
 
+  /**
+   * Return a page of deleted RefParams based on the given specification and pageable.
+   *
+   * @param spec the specification to use
+   * @param pageable the pageable to use
+   * @return a page of RefParams
+   */
+  Page<RefType> findAllDeleted(Specification<RefType> spec, Pageable pageable);
+
+
+  /**
+   * Return a page of deleted RefType based on the given pageable.
+   *
+   * @param pageable the pageable to use
+   * @return a page of RefType
+   */
+
+  Page<RefType> findAllDeleted(Pageable pageable);
+
+  /**
+   * Return the deleted RefType with the given id.
+   *
+   * @param id the id of the RefType to return
+   * @return the RefParam with the given id
+   */
+  Optional<RefType> findDeletedById(Integer id);
   /**
    * Return a RefType by id.
    *
    * @param id the id of the RefType to return
    * @return the RefType with the given id
    */
+
+
   Optional<RefType> findById(Integer id);
 
   /**
@@ -41,4 +89,17 @@ public interface RefTypeService {
    * @return the created RefType
    */
   RefType create(RefTypeRequest request);
+  /**
+   * update RefType.
+   *
+   * @param request the request to update the RefType from
+   * @return the updated RefType
+   */
+  RefType update(RefTypeRequest request);
+  /**
+   * Delete a RefType.
+   *
+   * @param id the id of the RefType to delete
+   */
+  void delete(Integer id);
 }
