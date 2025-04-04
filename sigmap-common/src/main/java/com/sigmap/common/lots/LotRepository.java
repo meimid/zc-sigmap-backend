@@ -1,0 +1,21 @@
+package com.sigmap.common.lots;
+
+import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.repository.SoftDeleteRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+
+public interface LotRepository extends JpaRepository<Lot, CompositeId>,
+        JpaSpecificationExecutor<Lot>
+       {
+}
+
+//public interface LotRepository extends JpaRepository<Lot, LotsId>,
+//        JpaSpecificationExecutor<Lot>
+//        {
+////TODO: check the entity Lot doesnt extend Base entity and dont have soft delete ?
+//
+//}
