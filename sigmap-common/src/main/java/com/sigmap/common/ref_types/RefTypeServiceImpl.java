@@ -3,6 +3,10 @@ package com.sigmap.common.ref_types;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,8 +19,35 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public List<RefType> findAll() {
-    return repository.findAll();
+    Specification<RefType> spec = RefTypeSpecifications.deleted(false);
+    return repository.findAll(spec);
   }
+
+  @Override
+  public Page<RefType> findAll(Specification<RefType> spec, Pageable pageable) {
+    return repository.findAll(spec, pageable);
+  }
+
+  @Override
+  public Optional<RefType> findOne(Specification<RefType> specification) {
+    return repository.findOne(specification);
+  }
+
+  @Override
+  public Page<RefType> findAllDeleted(Specification<RefType> spec, Pageable pageable) {
+    spec = RefTypeSpecifications.deleted(true);
+    return repository.findAll(spec, pageable);  }
+
+  @Override
+  public Page<RefType> findAllDeleted(Pageable pageable) {
+    Specification<RefType> spec = RefTypeSpecifications.deleted(true);
+    return repository.findAll(spec, pageable);
+  }
+
+  @Override
+  public Optional<RefType> findDeletedById(Integer id) {
+    Specification<RefType> specification = RefTypeSpecifications.id(id).and(RefTypeSpecifications.deleted(true));
+    return findOne(specification);  }
 
   @Override
   public Optional<RefType> findById(Integer id) {
@@ -34,5 +65,17 @@ public class RefTypeServiceImpl implements RefTypeService {
     refType.setId(request.getId());
     refType.setDescription(request.getDescription());
     return save(refType);
+  }
+
+  @Override
+  public RefType update(RefTypeRequest request) {
+    RefType refType=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
+    refType.setDescription(request.getDescription());
+    return save(refType);
+  }
+
+  @Override
+  public void delete(Integer id) {
+    repository.softDelete(id);
   }
 }

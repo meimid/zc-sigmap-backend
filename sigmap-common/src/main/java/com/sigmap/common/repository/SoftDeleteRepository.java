@@ -26,5 +26,4 @@ public interface SoftDeleteRepository<T, ID>  {
     @Transactional
     @Query("update #{#entityName} t set t.isDeleted = true, t.deletedAt = now(), t.deletedBy = ?#{principal?.subject} where t.id = ?1")
     Integer softDelete(ID id);
-
 }
