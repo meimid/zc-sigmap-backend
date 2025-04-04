@@ -6,6 +6,7 @@ import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -82,25 +83,8 @@ public class RealisationServiceImpl implements RealisationService {
                     "Realisation with ID " + id + " and version " + version + " already exists in the database.");
         }
 
-        Realisation realisation = new Realisation();
-        realisation.setId(id);
-        realisation.setVersion(version);
-        realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
+        Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
 
-        realisation.setServiceId(request.getServiceId());
-        realisation.setDirectionId(request.getDirectionId());
-        realisation.setSourceFinancementId(request.getSourceFinancementId());
-        realisation.setMonaisId(request.getMonaisId());
-        realisation.setTypeMarcherId(request.getTypeMarcherId());
-        realisation.setModeSelectionId(request.getModeSelectionId());
-        realisation.setDatePrevLps(request.getDatePrevLps());
-        realisation.setDatePrevAc(request.getDatePrevAc());
-        realisation.setDatePrevDp(request.getDatePrevDp());
-        realisation.setDatePrevAp(request.getDatePrevAp());
-        realisation.setBudgetEstime(request.getBudgetEstime());
-        realisation.setIsPublished(request.getIsPublished());
-        realisation.setPublishedAt(request.getPublishedAt());
-        realisation.setSort(request.getSort());
         return repository.save(realisation);
     }
 
@@ -113,30 +97,8 @@ public class RealisationServiceImpl implements RealisationService {
             throw new RealisationNotFoundException(realisationId, realisationVer,
                     "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.");
         }
+        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request,existingRealisationOpt.get());
 
-        Realisation realisation = existingRealisationOpt.get();
-
-        // Update fields from request based on Realisation entity
-        realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
-        realisation.setServiceId(request.getServiceId());
-        realisation.setDirectionId(request.getDirectionId());
-        realisation.setSourceFinancementId(request.getSourceFinancementId());
-        realisation.setMonaisId(request.getMonaisId());
-        realisation.setTypeMarcherId(request.getTypeMarcherId());
-        realisation.setModeSelectionId(request.getModeSelectionId());
-        realisation.setDatePrevLps(request.getDatePrevLps());
-        realisation.setDatePrevAc(request.getDatePrevAc());
-        realisation.setDatePrevDp(request.getDatePrevDp());
-        realisation.setDatePrevAp(request.getDatePrevAp());
-        realisation.setBudgetEstime(request.getBudgetEstime());
-        realisation.setIsPublished(request.getIsPublished());
-        realisation.setPublishedAt(request.getPublishedAt());
-        realisation.setSort(request.getSort());
-
-        // Note: Not updating ppms, paas, lots, or docs relationships here
-        // These might require separate handling if needed
-
-        // Save and return the updated entity
         return repository.save(realisation);
     }
 

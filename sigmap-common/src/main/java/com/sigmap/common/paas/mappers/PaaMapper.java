@@ -5,6 +5,7 @@ import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.response.PaaResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper(componentModel = "spring")
@@ -37,4 +38,15 @@ public interface PaaMapper {
     @Mapping(target = "statusId", source = "statusId")
     @Mapping(target = "realisations", ignore = true) // Ignored as it’s typically set separately
     Paa toEntity(PaaRequest paaRequest);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "annee", source = "annee")
+//    @Mapping(target = "ac", source = "ac")
+    @Mapping(target = "budgetEstime", source = "budgetEstime")
+    @Mapping(target = "statusId", source = "statusId")
+    @Mapping(target = "realisations", ignore = true) // Ignored as it’s typically managed separately
+    Paa updatePaaFromRequest(PaaRequest request, @MappingTarget Paa paa);
 }

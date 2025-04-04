@@ -90,16 +90,7 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaAlreadyExistsException(id, version, "Paa with ID " + id + " and version " + version + " already exists.");
         }
 
-        Paa paa = new Paa();
-        paa.setId(id);
-        paa.setVersion(version);
-        paa.setRef(request.getRef());
-        paa.setNom(request.getNom());
-        paa.setAnnee(request.getAnnee());
-        // TODO: verify this later
-        // paa.setAc(request.getAc());
-        paa.setBudgetEstime(request.getBudgetEstime());
-        paa.setStatusId(request.getStatusId());
+        Paa paa = PaaMapper.INSTANCE.toEntity(request);
         return repository.save(paa);
     }
 
@@ -118,17 +109,9 @@ public class PaaServiceImpl implements PaaService {
                     "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.");
         }
 
-        Paa paa = existingPaaOpt.get();
-
-
-        paa.setRef(request.getRef());
-        paa.setNom(request.getNom());
-        paa.setAnnee(request.getAnnee());
-        // paa.setAc(request.getAc()); // TODO: verify this later
-        paa.setBudgetEstime(request.getBudgetEstime());
-        paa.setStatusId(request.getStatusId());
-
-        // Save and return the updated entity
+        Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request,existingPaaOpt.get());
         return repository.save(paa);
     }
+
+
 }
