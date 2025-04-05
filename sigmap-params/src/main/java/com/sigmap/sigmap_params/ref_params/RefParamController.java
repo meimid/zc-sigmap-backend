@@ -1,5 +1,9 @@
 package com.sigmap.sigmap_params.ref_params;
 
+import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.Mapper.ContactMapper;
+import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.request.RefParamQuery;
@@ -106,6 +110,19 @@ public class RefParamController {
     }
 
     /**
+     * Update  RefParam.
+     *
+     * @param request the request to update the RefParam from
+     * @return the updated RefParam
+     */
+    @PutMapping
+    public ResponseEntity<RefParamResponse> update(@RequestBody RefParamRequest request) {
+        RefParam refParam = refParamService.update(request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
      * Delete a ref param based on the given id.
      * 
      * @param id the id of the ref param to delete
@@ -120,4 +137,7 @@ public class RefParamController {
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
+
+
 }

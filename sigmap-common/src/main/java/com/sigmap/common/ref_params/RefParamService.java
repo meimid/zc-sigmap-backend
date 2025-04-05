@@ -91,6 +91,13 @@ public interface RefParamService {
    * @return the created RefParam
    */
   RefParam create(RefParamRequest request);
+  /**
+   * update RefParam.
+   *
+   * @param request the request to update the RefParam from
+   * @return the updated RefParam
+   */
+  RefParam update(RefParamRequest request);
 
   /**
    * Delete a RefParam.
