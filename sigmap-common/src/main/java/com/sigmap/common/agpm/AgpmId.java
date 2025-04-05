@@ -3,10 +3,9 @@ package com.sigmap.common.agpm;
 import jakarta.persistence.Embeddable;
 import lombok.Data;
 
-@Data
 @Embeddable
+@Data
 public class AgpmId {
-
-    private Integer id;
-    private Integer agpm_ver;
+    private Integer agpmId;
+    private Integer agpmVer;
 }

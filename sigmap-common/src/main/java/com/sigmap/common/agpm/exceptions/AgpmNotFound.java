@@ -1,21 +1,21 @@
 package com.sigmap.common.agpm.exceptions;
 
+import lombok.Data;
 
-import lombok.Getter;
-
-@Getter
-public class AgpmNotFound extends RuntimeException {
-
+@Data
+public class AgpmNotFound extends Exception {
     private final Integer id;
+    private final Integer version;
 
-    public AgpmNotFound(String message, Integer id) {
-
+    public AgpmNotFound(Integer id, Integer version, String message) {
         super(message);
         this.id = id;
+        this.version = version;
     }
 
-    public AgpmNotFound(Integer id, String message, Throwable cause) {
+    public AgpmNotFound(Integer id, Integer version, String message, Throwable cause) {
         super(message, cause);
         this.id = id;
+        this.version = version;
     }
 }

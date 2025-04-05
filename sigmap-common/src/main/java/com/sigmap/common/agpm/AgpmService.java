@@ -1,5 +1,7 @@
 package com.sigmap.common.agpm;
 
+import com.sigmap.common.agpm.exceptions.AgpmAlreadyExistsException;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
 import org.springframework.data.domain.Page;
@@ -56,10 +58,10 @@ public interface AgpmService {
     /**
      * Return the deleted AGPM with the given id.
      *
-     * @param id the id of the AGPM to return
+     * @param agpmId,agpmVer the ids of the AGPM to return
      * @return the AGPM response
      */
-    Optional<Agpm> findDeletedById(Integer id);
+    Optional<Agpm> findDeletedById(Integer agpmId, Integer agpmVer);
 
     /**
      * Return the AGPM with the given specification.
@@ -72,10 +74,10 @@ public interface AgpmService {
     /**
      * Return the AGPM with the given id.
      *
-     * @param id the id of the AGPM to return
+     * @param agpmId,agpmVer the ids of the AGPM to return
      * @return the AGPM response
      */
-    Optional<Agpm> findById(Integer id);
+    Optional<Agpm> findById(Integer agpmId, Integer agpmVer);
 
     /**
      * Save an AGPM entity.
@@ -91,20 +93,20 @@ public interface AgpmService {
      * @param request the request to create the AGPM from
      * @return the created AGPM response
      */
-    Agpm create(AgpmRequest request);
+    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException;
 
     /**
      * Update an existing AGPM entity.
      *
-     * @param id the id of the AGPM to update
+     * @param agpmId,agpmVer the ids of the AGPM to update
      * @param request the request containing the updated data
      * @return the updated AGPM response
      */
-    Agpm update(Integer id, AgpmRequest request);
+    Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
 
     /**
      * Delete an AGPM entity (soft deletion).
      *
-     * @param id the id of the AGPM to delete
+     * @param agpmId,agpmVer the ids of the AGPM to delete
      */
-    void delete(Integer id);}
+    void delete(Integer agpmId, Integer agpmVer);}
