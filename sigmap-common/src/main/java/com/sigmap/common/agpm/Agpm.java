@@ -1,25 +1,6 @@
 package com.sigmap.common.agpm;
 
-
-//CREATE TABLE `agpm`  (
-//        `agpm_id` int NOT NULL,
-//        `agpm_ver` int NOT NULL,
-//        `ref` varchar(100) NULL,
-//  `nom` varchar(255) NULL,
-//  `contenu` longtext NULL,
-//  `ac_id` int NULL,
-//  `status_id` int(0) NULL,
-//  `created_at` datetime(0) NULL,
-//  `created_by` varchar(100) NULL,
-//  `updated_at` datetime(0) NULL,
-//  `updated_by` varchar(100) NULL,
-//  `deleted_at` datetime(0) NULL,
-//  `deleted_by` varchar(100) NULL,
-//  `is_deleted` tinyint(1) NULL,
-//PRIMARY KEY (`agpm_id`, `agpm_ver`)
-//);
-
-
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
@@ -27,12 +8,15 @@ import com.sigmap.common.entity.CompositeId;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import javax.print.Doc;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+
+/**
+ * Entity representing the Agpm table with a composite key (agpm_id, agpm_ver).
+ * Extends BaseEntity for audit fields (createdAt, updatedAt, etc.).
+ */
 @Entity
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -43,31 +27,31 @@ public class Agpm extends BaseEntity {
 
     @Id
     @Column(name = "agpm_id")
-    private Integer id;
+    private Integer id; // Primary key part 1: agpm_id
 
     @Id
     @Column(name = "agpm_ver")
-    private Integer version;
+    private Integer version; // Primary key part 2: agpm_ver
 
     @Column(name = "ref", length = 100)
-    private String ref;
+    private String ref; // Reference field, max length 100
 
     @Column(name = "nom", length = 255)
-    private String nom;
+    private String nom; // Name field, max length 255
 
     @Column(name = "contenu", columnDefinition = "LONGTEXT")
-    private String contenu;
+    private String contenu; // Content field, stored as LONGTEXT
 
     @ManyToOne
     @JoinColumn(name = "ac_id")
-    private Ac ac;
+    private Ac ac; // Many-to-one relationship with Ac entity
 
     @Column(name = "status_id")
-    private Integer statusId;
+    private Integer statusId; // Status ID field
 
     @ManyToMany
     @JoinTable(
-            name = "agpm_docs",
+            name = "agpm_docs", // Join table for ManyToMany relationship
             joinColumns = {
                     @JoinColumn(name = "agpm_id", referencedColumnName = "agpm_id"),
                     @JoinColumn(name = "agpm_ver", referencedColumnName = "agpm_ver")
@@ -76,7 +60,7 @@ public class Agpm extends BaseEntity {
                     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id")
             }
     )
+    @ToString.Exclude
+    @JsonManagedReference // Agpm is the "owner" of the relationship
     private List<Docs> docs;
-
-
 }

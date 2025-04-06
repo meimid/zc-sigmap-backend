@@ -12,101 +12,104 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Service interface for managing {@link Agpm}.
- * The service provides methods to retrieve and manage AGPM entities.
- *
- * <p>The service accepts {@link Specification} objects, which are used to
- * filter the results of the retrieval methods. The
- * {@link Specification} object is a criteria object that is used to
- * specify the conditions of the query. The
- * {@link Specification} object can be created using the
- * {@link  AgpmSpecifications} class, or it can be created manually
- * using the {@link Specification} interface.
- *
-// * @see AgpmSpecications
- * @see Specification
+ * Service interface for managing Agpm entities.
+ * Defines methods for CRUD operations and querying Agpm entities.
  */
 public interface AgpmService {
-    List<Agpm> findAll();
 
     /**
-     * Return a page of AGPM entities based on the given specification and pageable.
+     * Retrieves all non-deleted Agpm entities.
      *
-     * @param spec the specification to use
-     * @param pageable the pageable to use
-     * @return a page of AGPM responses
+     * @return List of AgpmResponse DTOs
      */
-    Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable);
+    List<AgpmResponse> findAll();
 
     /**
-     * Return a page of deleted AGPM entities based on the given specification and pageable.
+     * Retrieves a paginated list of Agpm entities based on the given specification.
      *
-     * @param spec the specification to use
-     * @param pageable the pageable to use
-     * @return a page of AGPM responses
+     * @param spec     The specification for filtering
+     * @param pageable The pagination information
+     * @return Page of AgpmResponse DTOs
      */
-    Page<Agpm> findAllDeleted(Specification<Agpm> spec, Pageable pageable);
+    Page<AgpmResponse> findAll(Specification<Agpm> spec, Pageable pageable);
 
     /**
-     * Return a page of deleted AGPM entities based on the given pageable.
+     * Retrieves a paginated list of deleted Agpm entities based on the given specification.
      *
-     * @param pageable the pageable to use
-     * @return a page of AGPM responses
+     * @param spec     The specification for filtering
+     * @param pageable The pagination information
+     * @return Page of AgpmResponse DTOs
      */
-    Page<Agpm> findAllDeleted(Pageable pageable);
+    Page<AgpmResponse> findAllDeleted(Specification<Agpm> spec, Pageable pageable);
 
     /**
-     * Return the deleted AGPM with the given id.
+     * Retrieves a paginated list of deleted Agpm entities.
      *
-     * @param agpmId,agpmVer the ids of the AGPM to return
-     * @return the AGPM response
+     * @param pageable The pagination information
+     * @return Page of AgpmResponse DTOs
      */
-    Optional<Agpm> findDeletedById(Integer agpmId, Integer agpmVer);
+    Page<AgpmResponse> findAllDeleted(Pageable pageable);
 
     /**
-     * Return the AGPM with the given specification.
+     * Retrieves a deleted Agpm entity by its ID and version.
      *
-     * @param specification the specification to use
-     * @return the AGPM response
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @return Optional containing the AgpmResponse DTO if found
      */
-    Optional<Agpm> findOne(Specification<Agpm> specification);
+    Optional<AgpmResponse> findDeletedById(Integer agpmId, Integer agpmVer);
 
     /**
-     * Return the AGPM with the given id.
+     * Retrieves an Agpm entity based on the given specification.
      *
-     * @param agpmId,agpmVer the ids of the AGPM to return
-     * @return the AGPM response
+     * @param specification The specification for filtering
+     * @return Optional containing the AgpmResponse DTO if found
      */
-    Optional<Agpm> findById(Integer agpmId, Integer agpmVer);
+    Optional<AgpmResponse> findOne(Specification<Agpm> specification);
 
     /**
-     * Save an AGPM entity.
+     * Retrieves an Agpm entity by its ID and version.
      *
-     * @param agpm the AGPM to save
-     * @return the saved AGPM
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @return Optional containing the AgpmResponse DTO if found
+     */
+    Optional<AgpmResponse> findById(Integer agpmId, Integer agpmVer);
+
+    /**
+     * Saves an Agpm entity.
+     *
+     * @param agpm The Agpm entity to save
+     * @return The saved Agpm entity
      */
     Agpm save(Agpm agpm);
 
     /**
-     * Create a new AGPM entity.
+     * Creates a new Agpm entity.
      *
-     * @param request the request to create the AGPM from
-     * @return the created AGPM response
+     * @param request The AgpmRequest DTO containing the data to create the Agpm
+     * @return The created Agpm entity as an AgpmResponse DTO
+     * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version exists
      */
-    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException;
+    AgpmResponse create(AgpmRequest request) throws AgpmAlreadyExistsException;
 
     /**
-     * Update an existing AGPM entity.
+     * Soft deletes an Agpm entity by its ID and version.
      *
-     * @param agpmId,agpmVer the ids of the AGPM to update
-     * @param request the request containing the updated data
-     * @return the updated AGPM response
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @throws AgpmNotFound if the Agpm entity is not found
      */
-    Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
+    void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound;
 
     /**
-     * Delete an AGPM entity (soft deletion).
+     * Updates an existing Agpm entity.
      *
-     * @param agpmId,agpmVer the ids of the AGPM to delete
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @param request The AgpmRequest DTO containing the updated data
+     * @return The updated Agpm entity as an AgpmResponse DTO
+     * @throws AgpmNotFound if the Agpm entity is not found
      */
-    void delete(Integer agpmId, Integer agpmVer);}
+    AgpmResponse update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
+}

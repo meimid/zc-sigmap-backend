@@ -1,92 +1,155 @@
-package com.sigmap.sigmap_agpm.agpm;
+package com.sigmap.common.agpm;
 
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmAlreadyExistsException;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.agpm.mappers.AgpmMapper;
-import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
-import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.validation.Valid;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * REST Controller for managing Agpm entities.
+ * Provides endpoints for CRUD operations on Agpm.
+ */
 @RestController
 @RequestMapping("/api/agpms")
 public class AgpmController {
-    private final Logger logger = LoggerFactory.getLogger(AgpmController.class);
+
     private final AgpmService agpmService;
 
+    /**
+     * Constructor with dependency injection.
+     *
+     * @param agpmService The AgpmService for business logic
+     */
     public AgpmController(AgpmService agpmService) {
         this.agpmService = agpmService;
     }
 
+    /**
+     * GET /api/agpms
+     * Retrieves a paginated list of non-deleted Agpm entities.
+     *
+     * @param page The page number (default: 0)
+     * @param size The page size (default: 10)
+     * @return ResponseEntity containing a Page of AgpmResponse DTOs
+     */
     @GetMapping
-    public ResponseEntity<Page<AgpmResponse>> findAll(
-            AgpmQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-        logger.info("User {}", user.getSubject());
-
-        Page<Agpm> agpms = agpmService.findAll(query.toSpecification(), pageable);
-        Page<AgpmResponse> responses = agpms.map(AgpmMapper.INSTANCE::map);
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<Page<AgpmResponse>> getAllAgpms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AgpmResponse> agpmPage = agpmService.findAll(null, pageable);
+        return new ResponseEntity<>(agpmPage, HttpStatus.OK);
     }
 
+    /**
+     * GET /api/agpms/deleted
+     * Retrieves a paginated list of deleted Agpm entities.
+     *
+     * @param page The page number (default: 0)
+     * @param size The page size (default: 10)
+     * @return ResponseEntity containing a Page of AgpmResponse DTOs
+     */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<AgpmResponse>> findAllDeleted(
-            AgpmQuery query, Pageable pageable) {
-        Page<Agpm> agpms = agpmService.findAllDeleted(query.toSpecification(), pageable);
-        System.out.println("the agpms are " + agpms.getContent());
-        Page<AgpmResponse> responses = agpms.map(AgpmMapper.INSTANCE::map);
-        return ResponseEntity.ok(responses);
+    public ResponseEntity<Page<AgpmResponse>> getAllDeletedAgpms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<AgpmResponse> agpmPage = agpmService.findAllDeleted(pageable);
+        return new ResponseEntity<>(agpmPage, HttpStatus.OK);
     }
 
+    /**
+     * GET /api/agpms/{agpmId}/{agpmVer}
+     * Retrieves an Agpm entity by its ID and version.
+     *
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @return ResponseEntity containing the AgpmResponse DTO
+     */
     @GetMapping("/{agpmId}/{agpmVer}")
-    public ResponseEntity<AgpmResponse> findById(
+    public ResponseEntity<AgpmResponse> getAgpmById(
             @PathVariable Integer agpmId,
-            @PathVariable Integer agpmVer) throws AgpmNotFound {
-        Agpm agpm = agpmService.findById(agpmId, agpmVer)
-                .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer, "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database."));
-        AgpmResponse response = AgpmMapper.INSTANCE.map(agpm);
-        return ResponseEntity.ok(response);
+            @PathVariable Integer agpmVer) {
+        Optional<AgpmResponse> agpmResponse = agpmService.findById(agpmId, agpmVer);
+        return agpmResponse.map(response -> new ResponseEntity<>(response, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    /**
+     * GET /api/agpms/deleted/{agpmId}/{agpmVer}
+     * Retrieves a deleted Agpm entity by its ID and version.
+     *
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @return ResponseEntity containing the AgpmResponse DTO
+     */
+    @GetMapping("/deleted/{agpmId}/{agpmVer}")
+    public ResponseEntity<AgpmResponse> getDeletedAgpmById(
+            @PathVariable Integer agpmId,
+            @PathVariable Integer agpmVer) {
+        Optional<AgpmResponse> agpmResponse = agpmService.findDeletedById(agpmId, agpmVer);
+        return agpmResponse.map(response -> new ResponseEntity<>(response, HttpStatus.OK))
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
+    /**
+     * POST /api/agpms
+     * Creates a new Agpm entity.
+     *
+     * @param request The AgpmRequest DTO containing the data to create the Agpm
+     * @return ResponseEntity containing the created AgpmResponse DTO
+     * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version exists
+     */
     @PostMapping
-    public ResponseEntity<AgpmResponse> create(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException {
-        Agpm agpm = agpmService.create(request);
-        AgpmResponse response = AgpmMapper.INSTANCE.map(agpm);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<AgpmResponse> createAgpm(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException {
+        AgpmResponse createdAgpm = agpmService.create(request);
+        return new ResponseEntity<>(createdAgpm, HttpStatus.CREATED);
     }
 
+    /**
+     * PUT /api/agpms/{agpmId}/{agpmVer}
+     * Updates an existing Agpm entity.
+     *
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @param request The AgpmRequest DTO containing the updated data
+     * @return ResponseEntity containing the updated AgpmResponse DTO
+     * @throws AgpmNotFound if the Agpm is not found
+     */
     @PutMapping("/{agpmId}/{agpmVer}")
-    public ResponseEntity<AgpmResponse> update(
+    public ResponseEntity<AgpmResponse> updateAgpm(
             @PathVariable Integer agpmId,
             @PathVariable Integer agpmVer,
             @Valid @RequestBody AgpmRequest request) throws AgpmNotFound {
-        Agpm updatedAgpm = agpmService.update(agpmId, agpmVer, request);
-        AgpmResponse response = AgpmMapper.INSTANCE.map(updatedAgpm);
-        return ResponseEntity.ok(response);
+        AgpmResponse updatedAgpm = agpmService.update(agpmId, agpmVer, request);
+        return new ResponseEntity<>(updatedAgpm, HttpStatus.OK);
     }
 
+    /**
+     * DELETE /api/agpms/{agpmId}/{agpmVer}
+     * Soft deletes an Agpm entity by its ID and version.
+     *
+     * @param agpmId  The Agpm ID
+     * @param agpmVer The Agpm version
+     * @return ResponseEntity with no content
+     * @throws AgpmNotFound if the Agpm is not found
+     */
     @DeleteMapping("/{agpmId}/{agpmVer}")
-    public ResponseEntity<AgpmResponse> deleteById(
+    public ResponseEntity<Void> deleteAgpm(
             @PathVariable Integer agpmId,
-            @PathVariable Integer agpmVer) {
+            @PathVariable Integer agpmVer) throws AgpmNotFound {
         agpmService.delete(agpmId, agpmVer);
-        Agpm deleted = agpmService.findDeletedById(agpmId, agpmVer)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Agpm not found"));
-        AgpmResponse response = AgpmMapper.INSTANCE.map(deleted);
-        return ResponseEntity.ok(response);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
