@@ -10,13 +10,14 @@ import java.util.List;
  */
 @Data
 public class AgpmRequest {
-    private Integer id; // Agpm ID
-    private Integer version; // Agpm version
-    private String ref; // Reference field
-    private String nom; // Name field
-    private String contenu; // Content field
+    private Integer id;
+    private Integer version;
+    private String ref;
+    private String nom;
+    private String contenu;
     @NotNull(message = "acId must not be null")
-    private Integer acId; // ID of the associated Ac entity
-    private Integer statusId; // Status ID
-    private List<Integer> docIds; // List of Doc IDs for ManyToMany association
+    private Integer acId;
+    private Integer statusId;
+    private List<Integer> docIds;
+
 }

@@ -1,5 +1,6 @@
-package com.sigmap.common.agpm;
+package com.sigmap.sigmap_agpm.agpm;
 
+import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmAlreadyExistsException;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmRequest;
@@ -13,7 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import java.util.List;
+
 import java.util.Optional;
 
 /**

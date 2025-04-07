@@ -9,6 +9,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.Where;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.util.List;
@@ -21,37 +22,37 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "agpm")
+//@Where(clause = "is_deleted=0")
 public class Agpm extends BaseEntity {
 
     @Id
     @Column(name = "agpm_id")
-    private Integer id; // Primary key part 1: agpm_id
+    private Integer id;
 
     @Id
     @Column(name = "agpm_ver")
-    private Integer version; // Primary key part 2: agpm_ver
+    private Integer version;
 
     @Column(name = "ref", length = 100)
-    private String ref; // Reference field, max length 100
+    private String ref;
 
     @Column(name = "nom", length = 255)
-    private String nom; // Name field, max length 255
+    private String nom;
 
     @Column(name = "contenu", columnDefinition = "LONGTEXT")
-    private String contenu; // Content field, stored as LONGTEXT
+    private String contenu;
 
     @ManyToOne
     @JoinColumn(name = "ac_id")
-    private Ac ac; // Many-to-one relationship with Ac entity
+    private Ac ac;
 
     @Column(name = "status_id")
-    private Integer statusId; // Status ID field
+    private Integer statusId;
 
     @ManyToMany
     @JoinTable(
-            name = "agpm_docs", // Join table for ManyToMany relationship
+            name = "agpm_docs",
             joinColumns = {
                     @JoinColumn(name = "agpm_id", referencedColumnName = "agpm_id"),
                     @JoinColumn(name = "agpm_ver", referencedColumnName = "agpm_ver")
@@ -60,7 +61,6 @@ public class Agpm extends BaseEntity {
                     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id")
             }
     )
-    @ToString.Exclude
-    @JsonManagedReference // Agpm is the "owner" of the relationship
+
     private List<Docs> docs;
 }

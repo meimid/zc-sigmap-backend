@@ -19,17 +19,14 @@ public class Docs extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "doc_id")
-    private Integer id; // Primary key: doc_id
+    private Integer id;
     private String name;
     private String alfresco_id;
 
     @ManyToMany(mappedBy = "docs")
     private List<Realisation> realisations;
 
-    @ManyToMany(mappedBy = "docs")
-    @ToString.Exclude // Exclude agpms from toString to break the cycle
-    @JsonBackReference // Docs is the "child" in the relationship
-    private List<Agpm> agpms;
+
 
 
 }

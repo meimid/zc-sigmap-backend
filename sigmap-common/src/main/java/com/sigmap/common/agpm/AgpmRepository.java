@@ -5,12 +5,13 @@ import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
 
 /**
  * Repository interface for Agpm entity.
  * Provides methods for database operations, including soft delete via SoftDeleteRepository.
  */
+@Repository
 public interface AgpmRepository extends JpaRepository<Agpm, CompositeId>, JpaSpecificationExecutor<Agpm>,
         CompositeSoftDeleteRepository<Agpm, Integer> {
-
 }
