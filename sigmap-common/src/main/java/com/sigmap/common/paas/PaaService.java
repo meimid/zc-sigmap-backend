@@ -1,5 +1,7 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import org.springframework.data.domain.Page;
@@ -93,7 +95,7 @@ public interface PaaService {
      * @param request the request to create the Paa entity from
      * @return the created Paa entity
      */
-    Paa create(PaaRequest request);
+    Paa create(PaaRequest request) throws PaaAlreadyExistsException;
 
     /**
      * Delete a Paa entity by its composite ID components.
@@ -102,4 +104,6 @@ public interface PaaService {
      * @param paaVer the second part of the composite ID (paa_ver)
      */
     void delete(Integer paaId, Integer paaVer);
+
+    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound ;
 }

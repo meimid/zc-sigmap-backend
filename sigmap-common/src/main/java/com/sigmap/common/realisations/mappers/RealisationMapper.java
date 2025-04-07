@@ -5,6 +5,7 @@ import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper(componentModel = "spring")
@@ -56,4 +57,9 @@ public interface RealisationMapper {
     @Mapping(target = "ppms", ignore = true) // Ignored as it’s typically set separately
     @Mapping(target = "docs", ignore = true) // Ignored as it’s typically set separately
     Realisation toEntity(RealisationRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    Realisation updateRealisationFromRequest(RealisationRequest request, @MappingTarget Realisation realisation);
+
 }

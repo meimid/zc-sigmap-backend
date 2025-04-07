@@ -2,30 +2,24 @@ package com.sigmap.sigmap_paa.paas;
 
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
-import com.sigmap.common.paas.PaaSpecifications;
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.response.PaaResponse;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/paas")
@@ -69,6 +63,7 @@ public class PaaController {
     public ResponseEntity<Page<PaaResponse>> findAllDeleted(
             PaaQuery query, Pageable pageable) {
         Page<Paa> paas = paaService.findAllDeleted(query.toSpecification(), pageable);
+        System.out.println("the paas are " + paas.getContent());
         Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
@@ -83,9 +78,9 @@ public class PaaController {
     @GetMapping("/{paaId}/{paaVer}")
     public ResponseEntity<PaaResponse> findById(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) {
+            @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database."));
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.ok(response);
     }
@@ -97,10 +92,20 @@ public class PaaController {
      * @return the created paa
      */
     @PostMapping
-    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) {
+    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) throws PaaAlreadyExistsException {
         Paa paa = paaService.create(request);
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{paaId}/{paaVer}")
+    public ResponseEntity<PaaResponse> update(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer,
+            @RequestBody PaaRequest request) throws PaaNotFound {
+        Paa updatedPaa = paaService.update(paaId, paaVer, request);
+        PaaResponse response = PaaMapper.INSTANCE.map(updatedPaa);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -121,5 +126,7 @@ public class PaaController {
         PaaResponse response = PaaMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
+
 
 }

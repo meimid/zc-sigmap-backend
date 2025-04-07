@@ -3,6 +3,8 @@ package com.sigmap.sigmap_paa.realisations;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.RealisationSpecifications;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationQuery;
 import com.sigmap.common.realisations.request.RealisationRequest;
@@ -78,9 +80,11 @@ public class RealisationController {
     @GetMapping("/{realisationId}/{realisationVer}")
     public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
-            @PathVariable Integer realisationVer) {
+            @PathVariable Integer realisationVer) throws RealisationAlreadyExistsException {
         Realisation realisation = realisationService.findById(realisationId, realisationVer)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new RealisationAlreadyExistsException(realisationId, realisationVer,
+                        "Realisation not found with ID: " + realisationId + " and version: " + realisationVer));
+
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.ok(response);
     }
@@ -92,10 +96,29 @@ public class RealisationController {
      * @return the created realisation
      */
     @PostMapping
-    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) {
+    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) throws RealisationAlreadyExistsException {
         Realisation realisation = realisationService.create(request);
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update an existing realisation based on the given id and version.
+     *
+     * @param realisationId the id of the realisation to update
+     * @param realisationVer the version of the realisation to update
+     * @param request the request object containing updated details
+     * @return the updated realisation
+     */
+    @PutMapping("/{realisationId}/{realisationVer}")
+    public ResponseEntity<RealisationResponse> update(
+            @PathVariable Integer realisationId,
+            @PathVariable Integer realisationVer,
+            @RequestBody RealisationRequest request) throws RealisationNotFoundException {
+
+            Realisation updatedRealisation = realisationService.update(realisationId, realisationVer, request);
+            RealisationResponse response = RealisationMapper.INSTANCE.map(updatedRealisation);
+            return ResponseEntity.ok(response);
     }
 
     /**

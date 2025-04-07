@@ -4,6 +4,9 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,12 +73,32 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     @Override
-    public Realisation create(RealisationRequest request) {
-        Realisation realisation = new Realisation();
-        realisation.setId(request.getId());
-        realisation.setVersion(request.getVersion());
-        realisation.setRealisationEnvisagees(request.getRealisationEnvisagees());
-        // Add other field mappings as needed (e.g., serviceId, directionId, etc.)
+    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+        Integer id = request.getId();
+        Integer version = request.getVersion();
+        Optional<Realisation> existingRealisation = repository.findById(new CompositeId(id, version));
+
+        if (existingRealisation.isPresent()) {
+            throw new RealisationAlreadyExistsException(id, version,
+                    "Realisation with ID " + id + " and version " + version + " already exists in the database.");
+        }
+
+        Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
+
+        return repository.save(realisation);
+    }
+
+    @Override
+    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException {
+        CompositeId compositeId = new CompositeId(realisationId, realisationVer);
+        Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
+
+        if (existingRealisationOpt.isEmpty()) {
+            throw new RealisationNotFoundException(realisationId, realisationVer,
+                    "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.");
+        }
+        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request,existingRealisationOpt.get());
+
         return repository.save(realisation);
     }
 
