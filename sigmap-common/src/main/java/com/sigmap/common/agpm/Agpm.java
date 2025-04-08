@@ -1,6 +1,5 @@
 package com.sigmap.common.agpm;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
@@ -8,9 +7,7 @@ import com.sigmap.common.entity.CompositeId;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
-import org.hibernate.annotations.Where;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 
 import java.util.List;
 
@@ -23,7 +20,6 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
 @Table(name = "agpm")
-//@Where(clause = "is_deleted=0")
 public class Agpm extends BaseEntity {
 
     @Id

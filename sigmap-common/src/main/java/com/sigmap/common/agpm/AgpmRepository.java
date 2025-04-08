@@ -2,7 +2,6 @@ package com.sigmap.common.agpm;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
-import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;

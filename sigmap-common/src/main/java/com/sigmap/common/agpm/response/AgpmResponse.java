@@ -2,6 +2,8 @@ package com.sigmap.common.agpm.response;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 

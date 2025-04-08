@@ -15,14 +15,18 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Service implementation for managing Agpm entities.
+ * Handles CRUD operations and associations with Ac and Docs.
+ */
 @Service
-
 @Slf4j
 public class AgpmServiceImpl implements AgpmService {
     private final AgpmRepository repository;
@@ -41,38 +45,21 @@ public class AgpmServiceImpl implements AgpmService {
     public List<AgpmResponse> findAll() {
         Specification<Agpm> spec = AgpmSpecifications.deleted(false);
         List<Agpm> agpms = repository.findAll(spec);
-        return agpmMapper.mapToResponseList(agpms);
+        return agpms.stream().map(agpmMapper::map).collect(Collectors.toList());
     }
 
     @Override
-    public Page<AgpmResponse> findAll(Specification<Agpm> spec, Pageable pageable) {
-        Page<Agpm> agpmPage = repository.findAll(spec, pageable);
-        return agpmMapper.mapToResponse(agpmPage);
+    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) {
+        return repository.findAll(spec, pageable);
     }
 
-    @Override
-    public Page<AgpmResponse> findAllDeleted(Specification<Agpm> spec, Pageable pageable) {
-        Specification<Agpm> deletedSpec = AgpmSpecifications.deleted(true);
-        if (spec != null) {
-            deletedSpec = deletedSpec.and(spec);
-        }
-        Page<Agpm> agpmPage = repository.findAll(deletedSpec, pageable);
-        return agpmMapper.mapToResponse(agpmPage);
-    }
 
     @Override
-    public Page<AgpmResponse> findAllDeleted(Pageable pageable) {
+    public Page<Agpm> findAllDeleted(Pageable pageable) {
         Specification<Agpm> spec = AgpmSpecifications.deleted(true);
-        Page<Agpm> agpmPage = repository.findAll(spec, pageable);
-        return agpmMapper.mapToResponse(agpmPage);
+        return repository.findAll(spec, pageable);
     }
 
-    @Override
-    public Optional<AgpmResponse> findDeletedById(Integer agpmId, Integer agpmVer) {
-        Specification<Agpm> spec = AgpmSpecifications.id(new CompositeId(agpmId, agpmVer))
-                .and(AgpmSpecifications.deleted(true));
-        return repository.findOne(spec).map(agpmMapper::map);
-    }
 
     @Override
     public Optional<AgpmResponse> findOne(Specification<Agpm> specification) {
@@ -80,12 +67,11 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
-    public Optional<AgpmResponse> findById(Integer agpmId, Integer agpmVer) {
-        return repository.findById(new CompositeId(agpmId, agpmVer)).map(agpmMapper::map);
+    public Optional<Agpm> findById(Integer agpmId, Integer agpmVer) {
+        return repository.findById(new CompositeId(agpmId, agpmVer));
     }
 
     @Override
-
     public Agpm save(Agpm agpm) {
         return repository.save(agpm);
     }
@@ -93,7 +79,6 @@ public class AgpmServiceImpl implements AgpmService {
     @Override
     @Transactional(readOnly = false)
     public AgpmResponse create(AgpmRequest request) throws AgpmAlreadyExistsException {
-
         Integer id = request.getId();
         Integer version = request.getVersion();
         Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
@@ -133,7 +118,6 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
-
     public void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Optional<Agpm> existingAgpm = repository.findById(compositeId);
@@ -149,6 +133,7 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
+    @Transactional
     public AgpmResponse update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm agpm = repository.findById(compositeId)

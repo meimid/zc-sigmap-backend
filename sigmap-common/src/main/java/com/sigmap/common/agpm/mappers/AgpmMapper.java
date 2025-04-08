@@ -1,18 +1,14 @@
 package com.sigmap.common.agpm.mappers;
 
-import com.sigmap.common.ac.Ac;
+
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
-import com.sigmap.common.docs.Docs;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 
-import java.util.List;
 
 /**
  * Mapper interface for converting between Agpm entities, requests, and responses.
@@ -33,15 +29,10 @@ public interface AgpmMapper {
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AgpmResponse map(Agpm source);
-
-    List<AgpmResponse> mapToResponseList(List<Agpm> agpms);
-
-    default Page<AgpmResponse> mapToResponse(Page<Agpm> agpmPage) {
-        List<AgpmResponse> responses = mapToResponseList(agpmPage.getContent());
-        return new PageImpl<>(responses, agpmPage.getPageable(), agpmPage.getTotalElements());
-    }
 
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version")
