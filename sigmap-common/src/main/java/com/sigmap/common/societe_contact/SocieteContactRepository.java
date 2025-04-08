@@ -23,8 +23,8 @@ public interface SocieteContactRepository extends JpaRepository<SocieteContact, 
     @Query("UPDATE SocieteContact s SET s.isDeleted = true, s.deletedAt = CURRENT_TIMESTAMP, s.deletedBy = :#{principal.subject} WHERE s.societeContactId.societe.id = :societeId AND s.societeContactId.contact.id = :contactId")
     Integer softDelete(@Param("societeId") Integer societeId, @Param("contactId") Integer contactId);
 
-    @Query("SELECT s from SocieteContact s where s.societeContactId.societe.id=:id1 and s.societeContactId.contact.id=:id2" )
-    Optional<SocieteContact> findByIds(@Param("id1") Integer id1, @Param("id2") Integer id2);
+    @Query("SELECT s from SocieteContact s where s.societeContactId.societe.id=:societeId and s.societeContactId.contact.id=:contactid" )
+    Optional<SocieteContact> findByIds(@Param("societeId") Integer societeId, @Param("contactid") Integer contactid);
 
 
 }

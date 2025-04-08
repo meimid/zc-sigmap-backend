@@ -50,12 +50,6 @@ public class AcController {
     @GetMapping
     public ResponseEntity<Page<AcResponse>> findAll(
             AcQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<Ac> params = acService.findAll(query.toSpecification(), pageable);
         Page<AcResponse> acResponses = params.map(AcMapper.INSTANCE::map);
         return ResponseEntity.ok(acResponses);
@@ -98,11 +92,9 @@ public class AcController {
      */
     @PostMapping
     public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) {
-        Ac ac = acService.create(request);
-        System.out.println("///////////////"+ac);
-        AcResponse response = AcMapper.INSTANCE.map(ac);
-        System.out.println("******************"+response);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        AcResponse ac = acService.create(request);
+       // AcResponse response = AcMapper.INSTANCE.map(ac);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ac);
     }
     /**
      * Update  ac.

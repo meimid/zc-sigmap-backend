@@ -1,4 +1,5 @@
 package com.sigmap.common.compte_bancaire;
+import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
@@ -72,12 +73,9 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
         RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
         CompteBancaire compteBancaire=new CompteBancaire();
+        compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
-        compteBancaire.setNom(request.getNom());
-        compteBancaire.setAgence(request.getAgence());
-        compteBancaire.setRib(request.getRib());
-        compteBancaire.setLocal(request.isLocal());
         return repository.save(compteBancaire);
     }
 
@@ -88,10 +86,7 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
-        compteBancaire.setNom(request.getNom());
-        compteBancaire.setAgence(request.getAgence());
-        compteBancaire.setRib(request.getRib());
-        compteBancaire.setLocal(request.isLocal());
+        compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         return repository.save(compteBancaire);
     }
 

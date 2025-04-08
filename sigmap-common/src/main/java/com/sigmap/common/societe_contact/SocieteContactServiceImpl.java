@@ -6,6 +6,7 @@ import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
+import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -58,8 +59,8 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public Optional<SocieteContact> findDeletedByIds(Integer id1, Integer id2) {
-        Specification<SocieteContact> specification = SocieteContactSpecifications.Ids(id1,id2).and(SocieteContactSpecifications.deleted(true));
+    public Optional<SocieteContact> findDeletedByIds(Integer societeId, Integer contactId) {
+        Specification<SocieteContact> specification = SocieteContactSpecifications.Ids(societeId,contactId).and(SocieteContactSpecifications.deleted(true));
         return findOne(specification);
     }
 
@@ -70,8 +71,8 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public Optional<SocieteContact> findByIds(Integer id1, Integer id2) {
-        return repository.findByIds(id1,id2);
+    public Optional<SocieteContact> findByIds(Integer societeId, Integer contactId) {
+        return repository.findByIds(societeId,contactId);
     }
 
 
@@ -84,30 +85,31 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     public SocieteContact create(SocieteContactRequest request) {
         SocieteContact societeContact = new SocieteContact();
         SocieteContactId societeContactId = new SocieteContactId();
+        societeContact= SociteContactMapper.INSTANCE.map(request);
         societeContact.setSocieteContactId(societeContactId);
         societeContactId.setSociete(societeRepository.findById(request.getSocieteId())
                 .orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId())));
         societeContactId.setContact(contactRepository.findById(request.getContactId())
                 .orElseThrow(() -> new RuntimeException("Contact not found: " + request.getContactId())));
 
-        societeContact.setRepresentantLegal(request.isRepresentantLegal());
-        societeContact.setPrincipal(request.isPrincipal());
         return repository.save(societeContact);
     }
 
     @Override
     public SocieteContact update(SocieteContactRequest request) {
         SocieteContact societeContact = repository.findByIds(request.getSocieteId(), request.getContactId()).orElseThrow(() -> new RuntimeException("SocieteContact not found"));
+      //  societeContact= SociteContactMapper.INSTANCE.map(request);
         societeContact.getSocieteContactId().setSociete(societeRepository.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " +request.getSocieteId())));
         societeContact.getSocieteContactId().setContact(contactRepository.findById(request.getContactId()).orElseThrow(() -> new RuntimeException("Contact not found: " +request.getContactId())));
         societeContact.setRepresentantLegal(request.isRepresentantLegal());
         societeContact.setPrincipal(request.isPrincipal());
+
         return repository.save(societeContact);
     }
 
     @Override
-    public void delete(Integer id1, Integer id2) {
-        repository.softDelete(id1, id2);
+    public void delete(Integer societeId, Integer contactId) {
+        repository.softDelete(societeId, contactId);
     }
 
 

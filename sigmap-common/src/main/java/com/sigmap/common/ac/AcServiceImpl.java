@@ -1,6 +1,8 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
+import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import org.springframework.data.domain.Page;
@@ -67,15 +69,12 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public Ac create(AcRequest request) {
+    public AcResponse create(AcRequest request) {
 
         Ac ac = new Ac();
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
+
+        ac = AcMapper.INSTANCE.map(request);
+
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
             List<Com> coms = comRepository.findAllById(request.getComIds());
@@ -86,30 +85,23 @@ public class AcServiceImpl implements AcService{
 
             ac.setComs(coms);
         }
+        repository.save(ac);
 
-        return repository.save(ac);
+
+        return AcMapper.INSTANCE.map(ac);
     }
 
     @Override
     public Ac update(AcRequest request) {
         Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-
+        ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
             List<Com> coms = comRepository.findAllById(request.getComIds());
-
             if (coms.size() != request.getComIds().size()) {
                 throw new IllegalArgumentException("One or more Com IDs were not found");
             }
-
             ac.setComs(coms);
         }
-
         return repository.save(ac);
     }
 

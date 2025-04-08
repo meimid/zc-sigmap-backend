@@ -1,5 +1,7 @@
 package com.sigmap.common.com;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;

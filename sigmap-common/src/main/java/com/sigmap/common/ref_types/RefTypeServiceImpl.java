@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import java.util.Optional;
@@ -62,15 +63,14 @@ public class RefTypeServiceImpl implements RefTypeService {
   @Override
   public RefType create(RefTypeRequest request) {
     RefType refType = new RefType();
-    refType.setId(request.getId());
-    refType.setDescription(request.getDescription());
+    refType= RefTypeMapper.INSTANCE.map(request);
     return save(refType);
   }
 
   @Override
   public RefType update(RefTypeRequest request) {
     RefType refType=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
-    refType.setDescription(request.getDescription());
+    refType= RefTypeMapper.INSTANCE.map(request);
     return save(refType);
   }
 

@@ -1,6 +1,7 @@
 package com.sigmap.common.com;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
@@ -71,16 +72,10 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com create(ComRequest request) {
-        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(() -> new RuntimeException("Societe not found: " +request.getComTypeId()));
+        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(() -> new RuntimeException("ComType not found: " +request.getComTypeId()));
         Com com = new Com();
-        com.setNom(request.getNom());
-        com.setDecretCreation(request.getDecretCreation());
-        com.setResponsable(request.getResponsable());
-        com.setSpecial(request.getSpecial());
-        com.setAncrage(request.getAncrage());
-        com.setContact(request.getContact());
-        com.setAdresse(request.getAdresse());
-        com.setMembres(request.getMembres());
+
+        com= ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
         } else {
@@ -103,14 +98,7 @@ public class ComServiceImpl implements ComService{
     public Com update(ComRequest request) {
         Com com = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
         RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(()-> new RuntimeException("comType not found: " + request.getComTypeId()));
-        com.setNom(request.getNom());
-        com.setDecretCreation(request.getDecretCreation());
-        com.setResponsable(request.getResponsable());
-        com.setSpecial(request.getSpecial());
-        com.setAncrage(request.getAncrage());
-        com.setContact(request.getContact());
-        com.setAdresse(request.getAdresse());
-        com.setMembres(request.getMembres());
+        com= ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
         } else {
