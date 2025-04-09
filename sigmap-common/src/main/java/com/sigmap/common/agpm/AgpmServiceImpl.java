@@ -77,7 +77,7 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
-    @Transactional(readOnly = false)
+    @Transactional
     public AgpmResponse create(AgpmRequest request) throws AgpmAlreadyExistsException {
         Integer id = request.getId();
         Integer version = request.getVersion();

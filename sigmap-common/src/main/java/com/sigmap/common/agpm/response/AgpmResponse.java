@@ -1,8 +1,6 @@
 package com.sigmap.common.agpm.response;
 
-import com.sigmap.common.ac.Ac;
-import com.sigmap.common.docs.Docs;
-
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
@@ -21,7 +19,7 @@ public class AgpmResponse {
     private String nom;
     private String contenu;
     private Integer statusId;
-    private Ac ac;
-    private List<Docs> docs;
+    private AcResponseDto ac;
+    private List<DocsResponseDTO> docs;
     private BaseEntityResponse metadata;
 }
