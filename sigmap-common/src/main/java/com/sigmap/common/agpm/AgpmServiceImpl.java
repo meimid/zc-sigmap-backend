@@ -42,10 +42,9 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
-    public List<AgpmResponse> findAll() {
+    public List<Agpm> findAll() {
         Specification<Agpm> spec = AgpmSpecifications.deleted(false);
-        List<Agpm> agpms = repository.findAll(spec);
-        return agpms.stream().map(agpmMapper::map).collect(Collectors.toList());
+        return repository.findAll(spec);
     }
 
     @Override
@@ -62,8 +61,8 @@ public class AgpmServiceImpl implements AgpmService {
 
 
     @Override
-    public Optional<AgpmResponse> findOne(Specification<Agpm> specification) {
-        return repository.findOne(specification).map(agpmMapper::map);
+    public Optional<Agpm> findOne(Specification<Agpm> specification) {
+        return repository.findOne(specification);
     }
 
     @Override
@@ -77,44 +76,33 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     @Override
-    @Transactional
-    public AgpmResponse create(AgpmRequest request) throws AgpmAlreadyExistsException {
-        Integer id = request.getId();
-        Integer version = request.getVersion();
-        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
-
+    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException {
+        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(request.getId(), request.getVersion()));
         if (existingAgpm.isPresent()) {
-            throw new AgpmAlreadyExistsException(id, version, "Agpm with ID " + id + " and version " + version + " already exists.");
+            throw new AgpmAlreadyExistsException(request.getId(), request.getVersion(), "Agpm with ID " + request.getId() + " and version " + request.getVersion() + " already exists.");
         }
 
         Agpm agpm = agpmMapper.toEntity(request);
-
-        Integer acId = request.getAcId();
-        if (acId != null) {
-            Ac ac = acRepository.findById(acId)
-                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + acId + " not found"));
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + request.getAcId() + " not found"));
             agpm.setAc(ac);
         }
 
-        List<Integer> docIds = request.getDocIds();
-        if (docIds != null && !docIds.isEmpty()) {
-            List<Docs> docs = docsRepository.findByIdIn(docIds);
-            if (docs.size() != docIds.size()) {
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
+            if (docs.size() != request.getDocIds().size()) {
                 List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-                List<Integer> missingDocIds = docIds.stream()
-                        .filter(docId -> !foundDocIds.contains(docId))
-                        .toList();
+                List<Integer> missingDocIds = request.getDocIds().stream().filter(docId -> !foundDocIds.contains(docId)).toList();
                 throw new IllegalArgumentException("Docs with IDs " + missingDocIds + " not found");
             }
             agpm.setDocs(docs);
-        } else if (docIds != null) {
+        } else if (request.getDocIds() != null) {
             agpm.setDocs(List.of());
         }
 
         agpm.setIsDeleted(false);
-        Agpm savedAgpm = repository.save(agpm);
-
-        return agpmMapper.map(savedAgpm);
+        return repository.save(agpm);
     }
 
     @Override
@@ -134,39 +122,42 @@ public class AgpmServiceImpl implements AgpmService {
 
     @Override
     @Transactional
-    public AgpmResponse update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
+    public Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm agpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer,
                         "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database."));
 
+        log.info("created at before mapper....... {}", agpm.getCreatedAt().toString());
+        log.info("updated at before mapper ....... {}", agpm.getUpdatedAt().toString());
+
         agpmMapper.updateAgpmFromRequest(request, agpm);
 
-        Integer acId = request.getAcId();
-        if (acId != null) {
-            Ac ac = acRepository.findById(acId)
-                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + acId + " not found"));
+        log.info("created at after mapper....... {}", agpm.getCreatedAt().toString());
+        log.info("updated at after mapper....... {}", agpm.getUpdatedAt().toString());
+
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + request.getAcId() + " not found"));
             agpm.setAc(ac);
         } else {
             agpm.setAc(null);
         }
 
-        List<Integer> docIds = request.getDocIds();
-        if (docIds != null && !docIds.isEmpty()) {
-            List<Docs> docs = docsRepository.findByIdIn(docIds);
-            if (docs.size() != docIds.size()) {
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
+            if (docs.size() != request.getDocIds().size()) {
                 List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-                List<Integer> missingDocIds = docIds.stream()
+                List<Integer> missingDocIds = request.getDocIds().stream()
                         .filter(docId -> !foundDocIds.contains(docId))
                         .toList();
                 throw new IllegalArgumentException("Docs with IDs " + missingDocIds + " not found");
             }
             agpm.setDocs(docs);
-        } else if (docIds != null) {
+        } else if (request.getDocIds() != null) {
             agpm.setDocs(List.of());
         }
 
-        Agpm updatedAgpm = repository.save(agpm);
-        return agpmMapper.map(updatedAgpm);
+        return repository.save(agpm);
     }
 }

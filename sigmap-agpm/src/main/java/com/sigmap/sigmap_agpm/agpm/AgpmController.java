@@ -96,8 +96,9 @@ public class AgpmController {
      */
     @PostMapping
     public ResponseEntity<AgpmResponse> createAgpm(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException {
-        AgpmResponse createdAgpm = agpmService.create(request);
-        return new ResponseEntity<>(createdAgpm, HttpStatus.CREATED);
+        Agpm createdAgpm = agpmService.create(request);
+        AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(createdAgpm);
+        return new ResponseEntity<>(agpmResponse, HttpStatus.CREATED);
     }
 
     /**
@@ -115,8 +116,9 @@ public class AgpmController {
             @PathVariable Integer agpmId,
             @PathVariable Integer agpmVer,
             @Valid @RequestBody AgpmRequest request) throws AgpmNotFound {
-        AgpmResponse updatedAgpm = agpmService.update(agpmId, agpmVer, request);
-        return new ResponseEntity<>(updatedAgpm, HttpStatus.OK);
+        Agpm updatedAgpm = agpmService.update(agpmId, agpmVer, request);
+        AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
+        return new ResponseEntity<>(agpmResponse, HttpStatus.OK);
     }
 
     /**

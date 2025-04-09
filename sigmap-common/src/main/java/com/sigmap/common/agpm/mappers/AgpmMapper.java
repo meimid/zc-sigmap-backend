@@ -52,5 +52,7 @@ public interface AgpmMapper {
     @Mapping(target = "statusId", source = "statusId")
     @Mapping(target = "ac", ignore = true)
     @Mapping(target = "docs", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
 }

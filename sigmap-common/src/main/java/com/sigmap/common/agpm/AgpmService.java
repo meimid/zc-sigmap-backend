@@ -22,7 +22,7 @@ public interface AgpmService {
      *
      * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
      */
-    List<AgpmResponse> findAll();
+    List<Agpm> findAll();
 
     /**
      * Retrieves a paginated list of Agpm entities based on the given specification.
@@ -47,7 +47,7 @@ public interface AgpmService {
      * @param specification The specification to filter the Agpm entity
      * @return An Optional containing the AgpmResponse DTO if found, or empty if not found
      */
-    Optional<AgpmResponse> findOne(Specification<Agpm> specification);
+    Optional<Agpm> findOne(Specification<Agpm> specification);
 
     /**
      * Retrieves an Agpm entity by its ID and version.
@@ -73,7 +73,7 @@ public interface AgpmService {
      * @return The created AgpmResponse DTO
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
      */
-    AgpmResponse create(AgpmRequest request) throws AgpmAlreadyExistsException;
+    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException;
 
     /**
      * Soft deletes an Agpm entity by its ID and version.
@@ -93,5 +93,5 @@ public interface AgpmService {
      * @return The updated AgpmResponse DTO
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    AgpmResponse update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
+    Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
 }
