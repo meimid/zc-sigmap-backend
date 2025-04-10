@@ -17,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller to manage ref params.
- * 
+ *
  * @see RefParam
  * @see RefParamRequest
  * @see RefParamResponse
@@ -33,7 +33,7 @@ public class RefParamController {
 
     /**
      * Constructor.
-     * 
+     *
      * @param refParamService the service to use for managing ref params
      */
     public RefParamController(RefParamService refParamService) {
@@ -42,7 +42,7 @@ public class RefParamController {
 
     /**
      * Return a page of ref params based on the given specification and pageable.
-     * 
+     *
      * @param query the query to use
      * @param pageable the pageable to use
      * @return a page of ref params
@@ -50,6 +50,7 @@ public class RefParamController {
     @GetMapping
     public ResponseEntity<Page<RefParamResponse>> findAll(
             RefParamQuery query, Pageable pageable) {
+
         Page<RefParam> params = refParamService.findAll(query.toSpecification(), pageable);
         Page<RefParamResponse> paramResponses = params.map(RefParamMapper.INSTANCE::map);
         return ResponseEntity.ok(paramResponses);
@@ -57,7 +58,7 @@ public class RefParamController {
 
     /**
      * Return a page of deleted ref params based on the given specification and pageable.
-     * 
+     *
      * @param query the query to use
      * @param pageable the pageable to use
      * @return a page of deleted ref params
@@ -72,7 +73,7 @@ public class RefParamController {
 
     /**
      * Return a ref param based on the given id.
-     * 
+     *
      * @param id the id of the ref param to return
      * @return the ref param
      */
@@ -86,7 +87,7 @@ public class RefParamController {
 
     /**
      * Create a new ref param.
-     * 
+     *
      * @param request the request to create the ref param from
      * @return the created ref param
      */
@@ -112,7 +113,7 @@ public class RefParamController {
 
     /**
      * Delete a ref param based on the given id.
-     * 
+     *
      * @param id the id of the ref param to delete
      * @return the deleted ref param
      */
