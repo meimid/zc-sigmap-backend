@@ -4,6 +4,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -70,10 +71,12 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress create(SocieteAddressRequest request) {
+
+        SocieteAddress societeAddress=new SocieteAddress();
+
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
-        SocieteAddress societeAddress=new SocieteAddress();
-        societeAddress.setAddress(request.getAddress());
+        societeAddress= SocieteAddressMapper.INSTANCE.map(request);
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         return save(societeAddress);
@@ -82,9 +85,9 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     @Override
     public SocieteAddress update(SocieteAddressRequest request) {
         SocieteAddress societeAddress = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " + request.getId()));
+        SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
-        societeAddress.setAddress(request.getAddress());
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         return save(societeAddress);

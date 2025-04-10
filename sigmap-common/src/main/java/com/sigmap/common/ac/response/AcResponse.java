@@ -1,6 +1,5 @@
 package com.sigmap.common.ac.response;
-
-import com.sigmap.common.com.Com;
+import com.sigmap.common.com.response.ComResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.*;
 
@@ -15,7 +14,7 @@ public class AcResponse {
     private String nom;
     private String ancrage;
     private String contact;
-    private List<Com> coms;
+    private List<ComResponseDto> coms;
     private BaseEntityResponse metadata;
 
 }

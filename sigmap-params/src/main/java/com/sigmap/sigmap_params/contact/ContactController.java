@@ -1,6 +1,5 @@
 package com.sigmap.sigmap_params.contact;
 
-
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactService;
 import com.sigmap.common.contact.Mapper.ContactMapper;
@@ -39,12 +38,6 @@ public class ContactController {
     @GetMapping
     public ResponseEntity<Page<ContactResponse>> findAll(
             ContactQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<Contact> params = contactService.findAll(query.toSpecification(), pageable);
         Page<ContactResponse> ContactResponses = params.map(ContactMapper.INSTANCE::map);
         return ResponseEntity.ok(ContactResponses);

@@ -1,6 +1,5 @@
 package com.sigmap.common.contact;
 
-
 import com.sigmap.common.contact.request.ContactRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

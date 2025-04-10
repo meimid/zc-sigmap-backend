@@ -1,9 +1,11 @@
 package com.sigmap.common.ref_types.mapper;
 
 import com.sigmap.common.ref_types.RefType;
+import com.sigmap.common.ref_types.request.RefTypeRequest;
 import com.sigmap.common.ref_types.response.RefTypeResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper
@@ -15,4 +17,6 @@ public interface RefTypeMapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     RefTypeResponse map(RefType source);
+    RefType map(RefTypeRequest source);
+    void updateFromRequest(RefTypeRequest source, @MappingTarget RefType target);
 }

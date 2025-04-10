@@ -1,5 +1,6 @@
 package com.sigmap.common.societe_contact.mapper;
 
+import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
 import com.sigmap.common.societe_contact.Response.SocieteContactResponse;
 import com.sigmap.common.societe_contact.SocieteContact;
 import org.mapstruct.Mapper;
@@ -18,4 +19,5 @@ public interface SociteContactMapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     SocieteContactResponse map(SocieteContact source);
+    SocieteContact map(SocieteContactRequest source);
 }

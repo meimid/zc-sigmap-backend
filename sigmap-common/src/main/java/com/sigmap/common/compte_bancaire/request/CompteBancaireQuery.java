@@ -1,4 +1,5 @@
 package com.sigmap.common.compte_bancaire.request;
+
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireSpecifications;

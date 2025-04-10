@@ -3,6 +3,7 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,12 +69,9 @@ public class SocieteServiceImpl implements SocieteService {
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
         RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
         Societe societe=new Societe();
-        societe.setNom(request.getNom());
-        societe.setId(request.getId());
+        societe= SocieteMapper.INSTANCE.map(request);
         societe.setPays(pays);
         societe.setType(type);
-        societe.setNni(request.getNni());
-        societe.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
         return save(societe);
     }
 
@@ -82,11 +80,9 @@ public class SocieteServiceImpl implements SocieteService {
         Societe societe=repository.findById(request.getId()).orElseThrow();
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
         RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
-        societe.setNom(request.getNom());
+        SocieteMapper.INSTANCE.updateFromRequest(request, societe);
         societe.setPays(pays);
         societe.setType(type);
-        societe.setNni(request.getNni());
-        societe.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
         return save(societe);
     }
 

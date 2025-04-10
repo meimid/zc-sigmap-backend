@@ -1,8 +1,11 @@
 package com.sigmap.common.contact.Mapper;
+
 import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.contact.response.ContactResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper
@@ -14,4 +17,6 @@ public interface ContactMapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     ContactResponse map(Contact source);
+    Contact map(ContactRequest source);
+    void updateFromRequest(ContactRequest source, @MappingTarget Contact target);
 }

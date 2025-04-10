@@ -1,6 +1,7 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.request.AcRequest;
+import com.sigmap.common.ac.response.AcResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -75,7 +76,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    Ac create(AcRequest request);
+    AcResponse create(AcRequest request);
 
     /**
      * update Ac.
