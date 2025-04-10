@@ -84,9 +84,9 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
       CompteBancaire compteBancaire=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
         RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
+        CompteBancaireMapper.INSTANCE.updateFromRequest(request, compteBancaire);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
-        compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         return repository.save(compteBancaire);
     }
 

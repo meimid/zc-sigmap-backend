@@ -1,4 +1,5 @@
 package com.sigmap.common.com;
+
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -98,7 +99,7 @@ public class ComServiceImpl implements ComService{
     public Com update(ComRequest request) {
         Com com = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
         RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(()-> new RuntimeException("comType not found: " + request.getComTypeId()));
-        com= ComMapper.INSTANCE.map(request);
+      ComMapper.INSTANCE.updateFromRequest(request, com);
         if (comType.getId() != null) {
             com.setComType(comType);
         } else {

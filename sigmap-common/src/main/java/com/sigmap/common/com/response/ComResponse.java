@@ -1,8 +1,5 @@
 package com.sigmap.common.com.response;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponse;
 import com.sigmap.common.response.BaseEntityResponse;

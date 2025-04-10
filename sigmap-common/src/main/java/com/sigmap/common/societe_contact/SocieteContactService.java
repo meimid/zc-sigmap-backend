@@ -1,8 +1,6 @@
 package com.sigmap.common.societe_contact;
 
-
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
-import com.sigmap.common.societe_contact.SocieteContact;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;

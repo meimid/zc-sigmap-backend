@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.RefType;
@@ -8,6 +9,8 @@ import com.sigmap.common.ref_types.RefTypeService;
 import java.util.List;
 import java.util.Optional;
 
+import com.sigmap.common.ref_types.mapper.RefTypeMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 /**
  * Service implementation of {@link RefParamService}
  */
+@Slf4j
 @Service
 public class RefParamServiceImpl implements RefParamService {
     private final RefParamRepository repository;
@@ -78,10 +82,12 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam create(RefParamRequest request) {
-        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow();
         RefParam refParam = new RefParam();
-        refParam.setRefType(refType);
+        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow();
+        log.info("Creating RefParam with refTypeId: " + refType);
         refParam = RefParamMapper.INSTANCE.map(request);
+        refParam.setRefType(refType);
+
         return save(refParam);
     }
 
@@ -89,8 +95,8 @@ public class RefParamServiceImpl implements RefParamService {
     public RefParam update(RefParamRequest request) {
         RefParam refParam = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
         RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow(() -> new RuntimeException("refType not found: " + request.getId()));
+        RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
         refParam.setRefType(refType);
-        refParam = RefParamMapper.INSTANCE.map(request);
         return save(refParam);
     }
 

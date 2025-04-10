@@ -25,11 +25,11 @@ import java.util.Calendar;
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
     @CreatedDate
-    @Column(name = "created_at")
+    @Column(name = "created_at",updatable = false)
     private Calendar createdAt;
 
     @CreatedBy
-    @Column(name = "created_by")
+    @Column(name = "created_by",updatable = false)
     private String createdBy;
 
     @LastModifiedDate

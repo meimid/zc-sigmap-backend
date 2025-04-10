@@ -1,7 +1,5 @@
 package com.sigmap.common.ac;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.entity.BaseEntity;
 import jakarta.persistence.*;

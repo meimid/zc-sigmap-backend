@@ -1,8 +1,5 @@
 package com.sigmap.common.societe_contact;
 
-import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.paas.Paa;
-import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

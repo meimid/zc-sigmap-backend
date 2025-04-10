@@ -1,4 +1,5 @@
 package com.sigmap.common.com;
+
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;

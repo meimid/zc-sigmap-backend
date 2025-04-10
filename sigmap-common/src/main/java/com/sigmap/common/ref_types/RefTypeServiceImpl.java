@@ -70,7 +70,7 @@ public class RefTypeServiceImpl implements RefTypeService {
   @Override
   public RefType update(RefTypeRequest request) {
     RefType refType=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
-    refType= RefTypeMapper.INSTANCE.map(request);
+    RefTypeMapper.INSTANCE.updateFromRequest(request, refType);
     return save(refType);
   }
 

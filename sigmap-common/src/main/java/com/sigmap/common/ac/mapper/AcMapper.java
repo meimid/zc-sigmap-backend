@@ -2,13 +2,11 @@ package com.sigmap.common.ac.mapper;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
-import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.com.mapper.ComMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
-
-import java.util.List;
 
 @Mapper(uses = {ComMapper.class})
 public interface AcMapper {
@@ -20,6 +18,8 @@ public interface AcMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AcResponse map(Ac source);
     Ac map(AcRequest source);
+
+    void updateAcFromRequest(AcRequest source, @MappingTarget Ac target);
 
 
 }

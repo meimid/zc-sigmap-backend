@@ -1,4 +1,5 @@
 package com.sigmap.sigmap_params.societe_address;
+
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
@@ -36,12 +37,6 @@ public class SocieteAddressController {
     @GetMapping
     public ResponseEntity<Page<SocieteAddressResponse>> findAll(
             SocieteAddressQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<SocieteAddress> params = societeAddressService.findAll(query.toSpecification(), pageable);
         Page<SocieteAddressResponse> SocieteAddressResponses = params.map(SocieteAddressMapper.INSTANCE::map);
         return ResponseEntity.ok(SocieteAddressResponses);

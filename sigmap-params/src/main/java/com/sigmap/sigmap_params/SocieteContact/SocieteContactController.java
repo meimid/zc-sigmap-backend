@@ -1,22 +1,10 @@
 package com.sigmap.sigmap_params.SocieteContact;
-import com.sigmap.common.societe_address.SocieteAddress;
 
-import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
-import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
-import com.sigmap.common.societe_contact.Response.SocieteContactResponse;
-import com.sigmap.common.societe_contact.SocieteContact;
+
 import com.sigmap.common.societe_contact.SocieteContactService;
-import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/societe_contact")
@@ -84,4 +72,5 @@ public class SocieteContactController {
     }*/
 
 
+    
 }

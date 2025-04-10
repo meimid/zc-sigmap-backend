@@ -1,6 +1,5 @@
 package com.sigmap.sigmap_params.Societe;
 
-
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.mappers.SocieteMapper;
@@ -19,8 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -47,12 +45,6 @@ public class SocieteController {
     @GetMapping
     public ResponseEntity<Page<SocieteResponse>> findAll(
             SocieteQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<Societe> params = societeService.findAll(query.toSpecification(), pageable);
          Page<SocieteResponse> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::map);
         return ResponseEntity.ok(compteBancaireResponses);

@@ -71,11 +71,12 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress create(SocieteAddressRequest request) {
+
         SocieteAddress societeAddress=new SocieteAddress();
-        societeAddress= SocieteAddressMapper.INSTANCE.map(request);
+
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
-
+        societeAddress= SocieteAddressMapper.INSTANCE.map(request);
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         return save(societeAddress);
@@ -84,8 +85,8 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     @Override
     public SocieteAddress update(SocieteAddressRequest request) {
         SocieteAddress societeAddress = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " + request.getId()));
+        SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
-        societeAddress= SocieteAddressMapper.INSTANCE.map(request);
         Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
