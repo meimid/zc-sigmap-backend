@@ -1,8 +1,11 @@
 package com.sigmap.common.compte_bancaire.mapper;
+
 import com.sigmap.common.compte_bancaire.CompteBancaire;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 @Mapper
@@ -14,4 +17,6 @@ public interface CompteBancaireMapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     CompteBancaireResponse map(CompteBancaire source);
+    CompteBancaire map(CompteBancaireRequest source);
+    void updateFromRequest(CompteBancaireRequest source, @MappingTarget CompteBancaire target);
 }

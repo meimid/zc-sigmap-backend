@@ -1,9 +1,14 @@
 package com.sigmap.common.com.mapper;
+
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
+
+
 @Mapper
 public interface ComMapper {
     ComMapper INSTANCE = Mappers.getMapper(ComMapper.class);
@@ -13,4 +18,6 @@ public interface ComMapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     ComResponse map(Com source);
+    Com map(ComRequest source);
+    void updateFromRequest(ComRequest source, @MappingTarget Com target);
 }

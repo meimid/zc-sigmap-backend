@@ -130,6 +130,9 @@
             <scope>test</scope>
         </dependency>
 
+        <!--this for jsonIgnoreProperties-->
+
+
     </dependencies>
 
     <build>

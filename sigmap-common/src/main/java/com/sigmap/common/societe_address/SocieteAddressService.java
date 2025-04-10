@@ -1,4 +1,5 @@
 package com.sigmap.common.societe_address;
+
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

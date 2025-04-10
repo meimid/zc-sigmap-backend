@@ -1,8 +1,6 @@
 package com.sigmap.common.societe_contact;
 
-
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
-import com.sigmap.common.societe_contact.SocieteContact;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -43,11 +41,11 @@ public interface SocieteContactService {
     /**
      * Return the deleted SocieteContact with the given id.
      *
-     * @param id1
-     * @param  id2
+     * @param sociteId
+     * @param  ContactId
      * @return the SocieteContact with the given id
      */
-    Optional<SocieteContact> findDeletedByIds(Integer id1, Integer id2);
+    Optional<SocieteContact> findDeletedByIds(Integer sociteId, Integer ContactId);
 
     /**
      * Return the SocieteContact with the given specification.
@@ -60,11 +58,11 @@ public interface SocieteContactService {
     /**
      * Return the SocieteContact with the given id.
      *
-     * @param id1
-     * @param id2
+     * @param societeId
+     * @param contactId
      * @return the SocieteContact with the given id
      */
-    Optional<SocieteContact> findByIds(Integer id1, Integer id2);
+    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId);
 
     /**
      * Save a SocieteContact.
@@ -91,9 +89,9 @@ public interface SocieteContactService {
     /**
      * Delete a SocieteAddress.
      *
-     * @param id1
-      * @param id2 the id of the SocieteContact to delete
+     * @param societeId
+      * @param contactId the id of the SocieteContact to delete
      */
-    void delete(Integer id1,Integer id2);
+    void delete(Integer societeId,Integer contactId);
 
 }

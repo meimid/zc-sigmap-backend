@@ -1,4 +1,5 @@
 package com.sigmap.common.compte_bancaire.request;
+
 import lombok.Data;
 
 @Data

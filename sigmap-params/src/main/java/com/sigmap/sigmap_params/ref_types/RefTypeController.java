@@ -1,19 +1,11 @@
 package com.sigmap.sigmap_params.ref_types;
 
-import com.sigmap.common.contact.Contact;
-import com.sigmap.common.contact.Mapper.ContactMapper;
-import com.sigmap.common.contact.request.ContactQuery;
-import com.sigmap.common.contact.request.ContactRequest;
-import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeQuery;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
-
-import java.sql.Ref;
 import java.util.List;
-
 import com.sigmap.common.ref_types.response.RefTypeResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
