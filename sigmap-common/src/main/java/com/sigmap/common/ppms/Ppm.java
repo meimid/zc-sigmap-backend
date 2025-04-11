@@ -1,14 +1,17 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotsId;
+import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "ppm")
@@ -42,4 +45,18 @@ public class Ppm  extends BaseEntity {
 
     @Column(name = "status_id")
     private Integer statusId;
+
+    @ManyToMany(mappedBy = "ppms")
+    private List<Realisation> realisations;
+
+    @ManyToMany
+    @JoinTable(
+            name = "ppm_docs",
+            joinColumns = {
+                    @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
+                    @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
+            },
+            inverseJoinColumns = @JoinColumn(name = "doc_id")
+    )
+    private List<Docs> docs;
 }

@@ -1,6 +1,7 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
@@ -51,7 +52,18 @@ public class Paa extends BaseEntity {
     @ManyToMany(mappedBy = "paas")
     private List<Realisation> realisations;
 
-    //TODO:add relation with DOC entity
+    //TODO:add relation with DOC entity : Done
+
+    @ManyToMany
+    @JoinTable(
+            name = "paa_docs",
+            joinColumns = {
+                    @JoinColumn(name = "paa_id", referencedColumnName = "paa_id"),
+                    @JoinColumn(name = "paa_ver", referencedColumnName = "paa_ver")
+            },
+            inverseJoinColumns = @JoinColumn(name = "doc_id")
+    )
+    private List<Docs> docs;
 
 
 

@@ -1,5 +1,8 @@
 package com.sigmap.common.lots;
 
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.request.PaaRequest;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
@@ -13,7 +16,7 @@ public interface LotService {
     /**
      * Return a page of Lot entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Lot entities
      */
@@ -22,7 +25,7 @@ public interface LotService {
     /**
      * Return a page of deleted Lot entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Lot entities
      */
@@ -39,7 +42,7 @@ public interface LotService {
     /**
      * Return the deleted Lot entity with the given composite ID components.
      *
-     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsId  the first part of the composite ID (lots_id)
      * @param lotsVer the second part of the composite ID (lots_ver)
      * @return the Lot entity with the given ID components
      */
@@ -56,7 +59,7 @@ public interface LotService {
     /**
      * Return the Lot entity with the given composite ID components.
      *
-     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsId  the first part of the composite ID (lots_id)
      * @param lotsVer the second part of the composite ID (lots_ver)
      * @return the Lot entity with the given ID components
      */
@@ -81,8 +84,11 @@ public interface LotService {
     /**
      * Delete a Lot entity by its composite ID components.
      *
-     * @param lotsId the first part of the composite ID (lots_id)
+     * @param lotsId  the first part of the composite ID (lots_id)
      * @param lotsVer the second part of the composite ID (lots_ver)
      */
     void delete(Integer lotsId, Integer lotsVer);
+
+    Lot update(Integer lotId, Integer lotVer, LotRequest request) throws PaaNotFound;
+
 }

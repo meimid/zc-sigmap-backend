@@ -2,6 +2,7 @@ package com.sigmap.common.lots;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.request.LotRequest;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public Page<Lot> findAll(Specification<Lot> spec, Pageable pageable) {
+
         return repository.findAll(spec, pageable);
     }
 
@@ -94,6 +96,11 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public void delete(Integer lotsId, Integer lotsVer) {
-//        repository.softDelete(lotsId, lotsVer);
+       repository.softDelete(lotsId, lotsVer);
+    }
+
+    @Override
+    public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws PaaNotFound {
+        return null;
     }
 }

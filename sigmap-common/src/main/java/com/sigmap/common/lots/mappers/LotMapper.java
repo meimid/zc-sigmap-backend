@@ -11,8 +11,17 @@ import org.mapstruct.factory.Mappers;
 public interface LotMapper {
     LotMapper INSTANCE = Mappers.getMapper(LotMapper.class);
 
-    LotResponse map(Lot source);
 
+//    @Mapping(target = "id", source = "id")
+//    @Mapping(target = "version", source = "version")
+//    @Mapping(target = "description", source = "description")
+    @Mapping(target = "realisations", ignore = true)
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    LotResponse map(Lot source);
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version")
     @Mapping(target = "description", source = "description")

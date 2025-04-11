@@ -12,9 +12,8 @@ import java.util.Set;
 @Table(name = "lots")
 @Data
 @IdClass(CompositeId.class)
-public class Lot{
+public class Lot extends BaseEntity{
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "lots_id")
     private Integer id;
 

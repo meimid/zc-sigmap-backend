@@ -44,6 +44,7 @@ public class LotController {
                 .getPrincipal();
         logger.info("User {}", user.getSubject());
 
+
         Page<Lot> lots = lotService.findAll(query.toSpecification(), pageable);
         Page<LotResponse> responses = lots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);

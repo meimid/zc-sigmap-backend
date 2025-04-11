@@ -1,6 +1,8 @@
 package com.sigmap.common.docs;
 
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -21,4 +23,10 @@ public class Docs extends BaseEntity {
 
     @ManyToMany(mappedBy = "docs")
     private List<Realisation> realisations;
+
+    @ManyToMany(mappedBy = "docs")
+    private List<Ppm> ppms;
+
+    @ManyToMany(mappedBy = "docs")
+    private List<Paa> paas;
 }

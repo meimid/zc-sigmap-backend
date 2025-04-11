@@ -1,6 +1,7 @@
 package com.sigmap.common.paas.response;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
@@ -15,8 +16,8 @@ public class PaaResponse {
     private String ref;
     private String nom;
     private String annee;
-    //TODO:change it to AcResponse
-    //private Ac ac;
+    //TODO:change it to AcResponse : Done
+    private Ac ac;
     private BigDecimal budgetEstime;
     private Integer statusId;
     private List<Realisation> realisations;
