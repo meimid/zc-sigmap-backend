@@ -9,18 +9,17 @@ import com.sigmap.common.agpm.exceptions.AgpmAlreadyExistsException;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
-import com.sigmap.common.agpm.response.AgpmResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Calendar;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+
 
 /**
  * Service implementation for managing Agpm entities.
@@ -114,7 +113,7 @@ public class AgpmServiceImpl implements AgpmService {
                     "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database.");
         }
 
-        Integer rowsAffected = repository.softDelete(agpmId, agpmVer);
+        Integer rowsAffected = repository.softDelete(agpmId, agpmVer, Calendar.getInstance());
         if (rowsAffected != 1) {
             throw new IllegalStateException("Soft delete failed: Expected 1 row to be affected, but " + rowsAffected + " rows were affected for Agpm with ID " + agpmId + " and version " + agpmVer);
         }
@@ -128,13 +127,11 @@ public class AgpmServiceImpl implements AgpmService {
                 .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer,
                         "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database."));
 
-        log.info("created at before mapper....... {}", agpm.getCreatedAt().toString());
-        log.info("updated at before mapper ....... {}", agpm.getUpdatedAt().toString());
+        if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
+            throw new IllegalArgumentException("Cannot update Agpm with ID " + agpmId + " and version " + agpmVer + " because it is marked as deleted.");
+        }
 
         agpmMapper.updateAgpmFromRequest(request, agpm);
-
-        log.info("created at after mapper....... {}", agpm.getCreatedAt().toString());
-        log.info("updated at after mapper....... {}", agpm.getUpdatedAt().toString());
 
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())

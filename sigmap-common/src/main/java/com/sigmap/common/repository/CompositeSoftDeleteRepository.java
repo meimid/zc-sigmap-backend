@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Calendar;
+
 @NoRepositoryBean
 public interface CompositeSoftDeleteRepository<T, ID> {
 
@@ -24,5 +26,10 @@ public interface CompositeSoftDeleteRepository<T, ID> {
     @Transactional
     @Query("update #{#entityName} t set t.isDeleted = true, t.deletedAt = now(), t.deletedBy = :#{principal.subject} where t.id = ?1 and t.version = ?2")
     Integer softDelete(ID id, ID version);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("update #{#entityName} t set t.isDeleted = true, t.deletedAt = :deletedAt, t.deletedBy = ?#{principal?.subject} where t.id = :id and t.version = :version")
+    Integer softDelete(@Param("id") ID id,@Param("version") ID version, @Param("deletedAt") Calendar deletedAt);
 
 }
