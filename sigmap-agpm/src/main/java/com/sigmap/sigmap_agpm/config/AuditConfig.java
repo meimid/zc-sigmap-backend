@@ -14,7 +14,7 @@ public class AuditConfig {
         return () -> {
             Optional<String> auditor = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                     .map(authentication -> authentication.getName());
-            return auditor.isPresent() ? auditor : Optional.of("system");
+            return auditor.isPresent() ? auditor : Optional.of(null);
         };
     }
 }
