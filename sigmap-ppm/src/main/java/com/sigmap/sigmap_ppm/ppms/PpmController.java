@@ -61,7 +61,7 @@ public class PpmController {
     @GetMapping("/deleted")
     public ResponseEntity<Page<PpmResponse>> findAllDeleted(
             PpmQuery query, Pageable pageable) {
-        Page<Ppm> ppms = ppmService.findAllDeleted(query.toSpecification(), pageable);
+        Page<Ppm> ppms = ppmService.findAllDeleted(pageable);
         Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }

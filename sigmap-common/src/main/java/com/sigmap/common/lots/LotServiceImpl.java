@@ -74,24 +74,45 @@ public class LotServiceImpl implements LotService {
         return repository.save(lot);
     }
 
+
     @Override
     public Lot create(LotRequest request) {
         Lot lot = new Lot();
-        lot.setId(request.getId()); // Can be null for auto-increment
-        lot.setVersion(request.getVersion()); // Must be provided
+
+        Integer id = request.getId();
+        if (id == null) {
+            Integer maxId = repository.findMaxId();
+            id = (maxId != null) ? maxId + 1 : 1;
+            System.out.println("Generated Lot ID: " + id);
+        }
+
+        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+
+        lot.setId(id);
+        lot.setVersion(version);
         lot.setDescription(request.getDescription());
+
+        Lot savedLot = repository.save(lot);
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             Set<Realisation> realisations = new HashSet<>();
             for (CompositeId realisationId : request.getRealisationIds()) {
                 Realisation realisation = realisationRepository.findById(realisationId)
                         .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
+
+                if (realisation.getLots() == null) {
+                    realisation.setLots(new HashSet<>());
+                }
+
+                realisation.getLots().add(savedLot);
                 realisations.add(realisation);
             }
-            lot.setRealisations(realisations);
+            savedLot.setRealisations(realisations);
+
+            savedLot = repository.save(savedLot);
         }
 
-        return repository.save(lot);
+        return savedLot;
     }
 
     @Override

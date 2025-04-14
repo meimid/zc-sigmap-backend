@@ -26,6 +26,8 @@ public interface PaaMapper {
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     PaaResponse map(Paa source);
 
     @Mapping(target = "id", source = "id")

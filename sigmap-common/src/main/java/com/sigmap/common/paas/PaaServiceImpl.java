@@ -1,21 +1,18 @@
 package com.sigmap.common.paas;
 
-import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.RefParamSpecifications;
-import com.sigmap.common.ref_params.mappers.RefParamMapper;
-import com.sigmap.common.ref_types.RefType;
-import com.sigmap.common.ref_types.RefTypeService;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.RealisationRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,9 +22,11 @@ import java.util.Optional;
 @Service
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
-    public PaaServiceImpl(PaaRepository repository) {
-        this.repository = repository;
+    private final RealisationRepository realisationRepository;
 
+    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository) {
+        this.repository = repository;
+        this.realisationRepository = realisationRepository;
     }
 
     @Override
@@ -82,17 +81,64 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
-        Integer id = request.getId();
         Integer version = request.getVersion();
-        Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
 
+        if (version == null) {
+            throw new IllegalArgumentException("PAA version must not be null");
+        }
+
+        Integer id = request.getId();
+        if (id == null) {
+            id = repository.findMaxId();
+            if (id == null) {
+                id = 1;
+            } else {
+                id++;
+            }
+        }
+
+        Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
         if (existingPaa.isPresent()) {
-            throw new PaaAlreadyExistsException(id, version, "Paa with ID " + id + " and version " + version + " already exists.");
+            throw new PaaAlreadyExistsException(id, version,
+                    "Paa with ID " + id + " and version " + version + " already exists.");
         }
 
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
-        return repository.save(paa);
+        paa.setRealisations(new ArrayList<>());
+
+        paa.setId(id);
+        paa.setVersion(version);
+
+        Paa savedPaa = repository.save(paa);
+
+        if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
+            List<Realisation> realisations = realisationRepository.findAllById(request.getRealisationIds());
+            if (realisations.size() != request.getRealisationIds().size()) {
+                throw new RuntimeException("Some realisations were not found");
+            }
+
+            // Update both sides of the relationship in memory
+            for (Realisation realisation : realisations) {
+                if (realisation.getPaas() == null) {
+                    realisation.setPaas(new ArrayList<>());
+                }
+                // Ensure the PAA is fully initialized before adding to the relationship
+                if (!realisation.getPaas().contains(savedPaa)) {
+                    realisation.getPaas().add(savedPaa);
+                }
+            }
+
+            // Save all realisations in a single batch operation
+            realisationRepository.saveAll(realisations);
+
+            // Update and save PAA with the realisations
+            savedPaa.setRealisations(realisations);
+            savedPaa = repository.save(savedPaa);
+        }
+
+        return savedPaa;
     }
+
 
     @Override
     public void delete(Integer paaId, Integer paaVer) {
@@ -103,6 +149,7 @@ public class PaaServiceImpl implements PaaService {
     public Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+
 
         if (existingPaaOpt.isEmpty()) {
             throw new PaaNotFound(paaId, paaVer,

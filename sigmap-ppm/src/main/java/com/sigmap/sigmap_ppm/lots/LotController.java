@@ -65,7 +65,7 @@ public class LotController {
                 .getPrincipal();
         logger.info("User {}", user.getSubject());
 
-        Page<Lot> deletedLots = lotService.findAllDeleted(query.toSpecification(), pageable);
+        Page<Lot> deletedLots = lotService.findAllDeleted(pageable);
         Page<LotResponse> responses = deletedLots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }

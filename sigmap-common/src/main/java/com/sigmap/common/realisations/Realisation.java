@@ -118,6 +118,7 @@ public class Realisation extends BaseEntity {
                     @JoinColumn(name = "lots_ver", referencedColumnName = "lots_ver")
             }
     )
+    @JsonManagedReference
     private Set<Lot> lots;
 
     @ManyToMany

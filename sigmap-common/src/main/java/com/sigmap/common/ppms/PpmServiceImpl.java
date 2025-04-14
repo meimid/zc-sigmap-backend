@@ -16,7 +16,6 @@ import java.util.Optional;
 public class PpmServiceImpl implements PpmService {
     private final PpmRepository repository;
     private final AcRepository acRepository;
-    //private final AcService acService;
 
     /**
      * Constructor.
@@ -49,6 +48,8 @@ public class PpmServiceImpl implements PpmService {
         }
         return repository.findAll(deletedSpec, pageable);
     }
+
+
 
     @Override
     public Page<Ppm> findAllDeleted(Pageable pageable) {

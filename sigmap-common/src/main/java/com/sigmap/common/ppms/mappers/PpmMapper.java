@@ -15,5 +15,7 @@ public interface PpmMapper {
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     PpmResponse map(Ppm source);
 }

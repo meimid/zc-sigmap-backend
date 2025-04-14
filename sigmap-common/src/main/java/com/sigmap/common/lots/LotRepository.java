@@ -13,4 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface LotRepository extends JpaRepository<Lot, CompositeId>,JpaSpecificationExecutor<Lot>,
         CompositeSoftDeleteRepository<Lot, Integer> {
+
+    @Query("SELECT COALESCE(MAX(l.id), 0) FROM Lot l")
+    Integer findMaxId();
 }
