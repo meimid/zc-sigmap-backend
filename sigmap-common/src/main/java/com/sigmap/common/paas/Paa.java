@@ -1,5 +1,6 @@
 package com.sigmap.common.paas;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
@@ -50,6 +51,7 @@ public class Paa extends BaseEntity {
     private Integer statusId;
 
     @ManyToMany(mappedBy = "paas")
+    @JsonBackReference
     private List<Realisation> realisations;
 
     //TODO:add relation with DOC entity : Done

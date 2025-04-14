@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.request;
 
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotsId;
 import lombok.Data;
 
@@ -30,9 +31,9 @@ public class RealisationRequest {
     private Integer sort;
 
     // IDs for many-to-many relationships
-//    private List<PpmId> ppmIds;
-//    private List<PaaId> paaIds;
-    private Set<LotsId> lotIds;
+    private List<CompositeId> ppmIds;
+    private List<CompositeId> paaIds;
+    private Set<CompositeId> lotIds;
     private List<Integer> docIds;
 
 }

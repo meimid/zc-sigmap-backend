@@ -89,6 +89,6 @@ public interface LotService {
      */
     void delete(Integer lotsId, Integer lotsVer);
 
-    Lot update(Integer lotId, Integer lotVer, LotRequest request) throws PaaNotFound;
+    Lot update(Integer lotId, Integer lotVer, LotRequest request);
 
 }

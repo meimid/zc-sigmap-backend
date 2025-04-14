@@ -97,6 +97,25 @@ public class PpmController {
     }
 
     /**
+     * Update an existing ppm based on the given id and version.
+     *
+     * @param ppmId   the id of the ppm to update
+     * @param ppmVer  the version of the ppm to update
+     * @param request the request containing updated ppm data
+     * @return the updated ppm
+     */
+
+    @PutMapping("/{ppmId}/{ppmVer}")
+    public ResponseEntity<PpmResponse> update(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer,
+            @RequestBody PpmRequest request) {
+        Ppm updatedPpm = ppmService.update(ppmId, ppmVer, request);
+        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Delete a ppm based on the given id and version.
      *
      * @param ppmId the id of the ppm to delete

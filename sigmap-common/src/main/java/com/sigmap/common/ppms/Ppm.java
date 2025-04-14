@@ -9,6 +9,7 @@ import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
+@EntityListeners(AuditingEntityListener.class)
 public class Ppm  extends BaseEntity {
     @Id
     @Column(name = "ppm_id")

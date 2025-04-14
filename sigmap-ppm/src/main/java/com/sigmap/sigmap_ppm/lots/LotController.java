@@ -101,6 +101,24 @@ public class LotController {
     }
 
     /**
+     * Update an existing lot based on the given id and version.
+     *
+     * @param lotId    the id of the lot to update
+     * @param lotVer   the version of the lot to update
+     * @param request  the request containing updated lot data
+     * @return the updated lot
+     */
+    @PutMapping("/{lotId}/{lotVer}")
+    public ResponseEntity<LotResponse> update(
+            @PathVariable Integer lotId,
+            @PathVariable Integer lotVer,
+            @RequestBody LotRequest request) {
+        Lot updatedLot = lotService.update(lotId, lotVer, request);
+        LotResponse response = LotMapper.INSTANCE.map(updatedLot);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * Delete a lot based on the given composite ID (id and version).
      *
      * @param id the ID of the lot to delete

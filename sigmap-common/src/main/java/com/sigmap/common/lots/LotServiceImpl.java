@@ -95,12 +95,32 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
+    public Lot update(Integer lotId, Integer lotVer, LotRequest request) {
+        CompositeId compositeId = new CompositeId(lotId, lotVer);
+        Lot existingLot = repository.findById(compositeId)
+                .orElseThrow(() -> new RuntimeException("Lot with ID " + lotId + " and version " + lotVer + " not found"));
+
+        existingLot.setDescription(request.getDescription());
+
+        if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
+            Set<Realisation> realisations = new HashSet<>();
+            for (CompositeId realisationId : request.getRealisationIds()) {
+                Realisation realisation = realisationRepository.findById(realisationId)
+                        .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
+                realisations.add(realisation);
+            }
+            existingLot.setRealisations(realisations);
+        } else {
+            existingLot.setRealisations(new HashSet<>()); // Clear associations if none provided
+        }
+
+        return repository.save(existingLot);
+    }
+
+    @Override
     public void delete(Integer lotsId, Integer lotsVer) {
        repository.softDelete(lotsId, lotsVer);
     }
 
-    @Override
-    public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws PaaNotFound {
-        return null;
-    }
+
 }

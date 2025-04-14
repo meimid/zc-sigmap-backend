@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
@@ -102,6 +103,7 @@ public class Realisation extends BaseEntity {
                     @JoinColumn(name = "paa_ver", referencedColumnName = "paa_ver")
             }
     )
+    @JsonManagedReference
     private List<Paa> paas;
 
     @ManyToMany

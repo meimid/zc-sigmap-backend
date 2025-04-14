@@ -9,9 +9,9 @@ import java.math.BigDecimal;
 @Data
 public class PpmRequest {
 
-    private Integer ppmId;
+    private Integer id;
 
-    private Integer ppmVer;
+    private Integer version;
 
     private String ref;
 

@@ -6,8 +6,12 @@ import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
         JpaSpecificationExecutor<Ppm>,
-        CompositeSoftDeleteRepository<Ppm, Integer> {}
+        CompositeSoftDeleteRepository<Ppm, Integer> {
+    @Query("SELECT COALESCE(MAX(p.id), 0) FROM Ppm p")
+    Integer findMaxId();
+}
 
