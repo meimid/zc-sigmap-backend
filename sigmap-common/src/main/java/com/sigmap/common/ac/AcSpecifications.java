@@ -1,7 +1,6 @@
 
 package com.sigmap.common.ac;
 import com.sigmap.common.com.Com;
-import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 

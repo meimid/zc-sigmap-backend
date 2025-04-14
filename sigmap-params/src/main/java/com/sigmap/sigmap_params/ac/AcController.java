@@ -1,21 +1,17 @@
 package com.sigmap.sigmap_params.ac;
+
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
-import com.sigmap.sigmap_params.ref_params.RefParamController;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -50,12 +46,6 @@ public class AcController {
     @GetMapping
     public ResponseEntity<Page<AcResponse>> findAll(
             AcQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<Ac> params = acService.findAll(query.toSpecification(), pageable);
         Page<AcResponse> acResponses = params.map(AcMapper.INSTANCE::map);
         return ResponseEntity.ok(acResponses);
@@ -98,11 +88,9 @@ public class AcController {
      */
     @PostMapping
     public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) {
-        Ac ac = acService.create(request);
-        System.out.println("///////////////"+ac);
-        AcResponse response = AcMapper.INSTANCE.map(ac);
-        System.out.println("******************"+response);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        AcResponse ac = acService.create(request);
+       // AcResponse response = AcMapper.INSTANCE.map(ac);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ac);
     }
     /**
      * Update  ac.

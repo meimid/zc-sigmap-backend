@@ -1,4 +1,5 @@
 package com.sigmap.common.com.request;
+
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComSpecifications;
 import lombok.Data;

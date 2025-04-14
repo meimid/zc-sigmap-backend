@@ -1,5 +1,6 @@
 package com.sigmap.common.entity;
 
+import com.sigmap.common.security.Authentication;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,7 +30,7 @@ public abstract class BaseEntity {
     private Calendar createdAt;
 
     @CreatedBy
-    @Column(name = "created_by")
+    @Column(name = "created_by",updatable = false)
     private String createdBy;
 
     @LastModifiedDate
@@ -44,8 +45,10 @@ public abstract class BaseEntity {
     private Calendar deletedAt;
 
     @Column(name = "deleted_by")
-    private  String deletedBy;
+    private String deletedBy;
 
     @Column(name = "is_deleted")
     private Boolean isDeleted;
+
+
 }

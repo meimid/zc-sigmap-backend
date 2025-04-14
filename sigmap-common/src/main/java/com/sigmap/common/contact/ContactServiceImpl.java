@@ -1,4 +1,6 @@
 package com.sigmap.common.contact;
+
+import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.contact.request.ContactRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -64,22 +66,14 @@ public class ContactServiceImpl implements ContactService {
     @Override
     public Contact create(ContactRequest request) {
         Contact contact = new Contact();
-        contact.setNom(request.getNom());
-        contact.setAddress(request.getAddress());
-        contact.setTel1(request.getTel1());
-        contact.setTel2(request.getTel2());
-        contact.setEmail(request.getEmail());
+        contact= ContactMapper.INSTANCE.map(request);
         return repository.save(contact);
     }
 
     @Override
     public Contact update(ContactRequest request) {
         Contact contact=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("contact not found: " + request.getId()));
-        contact.setNom(request.getNom());
-        contact.setAddress(request.getAddress());
-        contact.setTel1(request.getTel1());
-        contact.setTel2(request.getTel2());
-        contact.setEmail(request.getEmail());
+        ContactMapper.INSTANCE.updateFromRequest(request, contact);
         return repository.save(contact);
     }
 

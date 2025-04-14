@@ -1,9 +1,5 @@
 package com.sigmap.sigmap_params.ref_params;
 
-import com.sigmap.common.contact.Contact;
-import com.sigmap.common.contact.Mapper.ContactMapper;
-import com.sigmap.common.contact.request.ContactRequest;
-import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.request.RefParamQuery;
@@ -16,14 +12,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller to manage ref params.
- * 
+ *
  * @see RefParam
  * @see RefParamRequest
  * @see RefParamResponse
@@ -39,7 +33,7 @@ public class RefParamController {
 
     /**
      * Constructor.
-     * 
+     *
      * @param refParamService the service to use for managing ref params
      */
     public RefParamController(RefParamService refParamService) {
@@ -48,7 +42,7 @@ public class RefParamController {
 
     /**
      * Return a page of ref params based on the given specification and pageable.
-     * 
+     *
      * @param query the query to use
      * @param pageable the pageable to use
      * @return a page of ref params
@@ -56,11 +50,6 @@ public class RefParamController {
     @GetMapping
     public ResponseEntity<Page<RefParamResponse>> findAll(
             RefParamQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
 
         Page<RefParam> params = refParamService.findAll(query.toSpecification(), pageable);
         Page<RefParamResponse> paramResponses = params.map(RefParamMapper.INSTANCE::map);
@@ -69,7 +58,7 @@ public class RefParamController {
 
     /**
      * Return a page of deleted ref params based on the given specification and pageable.
-     * 
+     *
      * @param query the query to use
      * @param pageable the pageable to use
      * @return a page of deleted ref params
@@ -84,7 +73,7 @@ public class RefParamController {
 
     /**
      * Return a ref param based on the given id.
-     * 
+     *
      * @param id the id of the ref param to return
      * @return the ref param
      */
@@ -98,7 +87,7 @@ public class RefParamController {
 
     /**
      * Create a new ref param.
-     * 
+     *
      * @param request the request to create the ref param from
      * @return the created ref param
      */
@@ -124,7 +113,7 @@ public class RefParamController {
 
     /**
      * Delete a ref param based on the given id.
-     * 
+     *
      * @param id the id of the ref param to delete
      * @return the deleted ref param
      */

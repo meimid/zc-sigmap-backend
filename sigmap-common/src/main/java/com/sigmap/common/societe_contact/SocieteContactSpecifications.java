@@ -1,6 +1,5 @@
 package com.sigmap.common.societe_contact;
 
-
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 

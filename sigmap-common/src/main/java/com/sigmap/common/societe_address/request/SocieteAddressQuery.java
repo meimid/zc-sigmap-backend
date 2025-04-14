@@ -1,4 +1,5 @@
 package com.sigmap.common.societe_address.request;
+
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressSpecifications;
 import lombok.Data;

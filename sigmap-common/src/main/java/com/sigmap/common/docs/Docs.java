@@ -1,14 +1,17 @@
 package com.sigmap.common.docs;
 
 import com.sigmap.common.entity.BaseEntity;
+
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
+
 
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -17,9 +20,11 @@ import java.util.List;
 public class Docs extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer doc_id;
+    @Column(name = "doc_id")
+    private Integer id;
     private String name;
     private String alfresco_id;
+
 
     @ManyToMany(mappedBy = "docs")
     private List<Realisation> realisations;
@@ -29,4 +34,5 @@ public class Docs extends BaseEntity {
 
     @ManyToMany(mappedBy = "docs")
     private List<Paa> paas;
+
 }

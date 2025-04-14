@@ -1,14 +1,11 @@
 package com.sigmap.sigmap_params.com;
-import com.sigmap.common.ac.Ac;
-import com.sigmap.common.ac.mapper.AcMapper;
-import com.sigmap.common.ac.response.AcResponse;
+
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
@@ -41,12 +38,6 @@ public class ComController {
     @GetMapping
     public ResponseEntity<Page<ComResponse>> findAll(
             ComQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<Com> params = comService.findAll(query.toSpecification(), pageable);
         Page<ComResponse> acResponses = params.map(ComMapper.INSTANCE::map);
         return ResponseEntity.ok(acResponses);

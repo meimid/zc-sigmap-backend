@@ -2,7 +2,6 @@ package com.sigmap.sigmap_params.compteBancaire;
 
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireService;
-
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireQuery;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
@@ -37,12 +36,6 @@ public class CompteBancaireController {
     @GetMapping
     public ResponseEntity<Page<CompteBancaireResponse>> findAll(
             CompteBancaireQuery query, Pageable pageable) {
-        final Jwt user = (Jwt) SecurityContextHolder.getContext()
-                .getAuthentication()
-                .getPrincipal();
-
-        logger.info("User {}", user.getSubject());
-
         Page<CompteBancaire> params = compteBancaireService.findAll(query.toSpecification(), pageable);
         Page<CompteBancaireResponse> compteBancaireResponses = params.map(CompteBancaireMapper.INSTANCE::map);
         return ResponseEntity.ok(compteBancaireResponses);
