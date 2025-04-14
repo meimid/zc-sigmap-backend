@@ -13,15 +13,7 @@ public class AuditConfig {
 
     @Bean
     public AuditorAware<String> auditorProvider() {
-<<<<<<< Updated upstream
-        return () -> {
-            Optional<String> auditor = Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                    .map(authentication -> authentication.getName());
-            return auditor.isPresent() ? auditor : Optional.of(null);
-        };
-=======
         return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication())
                 .map(Principal::getName);
->>>>>>> Stashed changes
     }
 }
