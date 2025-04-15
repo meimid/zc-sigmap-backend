@@ -8,8 +8,8 @@ import java.math.BigDecimal;
 
 @Data
 public class PpmResponse {
-    private Integer ppmId;
-    private Integer ppmVer;
+    private Integer id;
+    private Integer version;
     private String ref;
     private String nom;
     private String annee;

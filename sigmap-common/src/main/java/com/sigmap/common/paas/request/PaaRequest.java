@@ -1,9 +1,11 @@
 package com.sigmap.common.paas.request;
 
+import com.sigmap.common.entity.CompositeId;
 import com.sun.istack.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class PaaRequest {
@@ -23,4 +25,6 @@ public class PaaRequest {
     private BigDecimal budgetEstime;
 
     private Integer statusId;
+
+    private List<CompositeId> realisationIds;
 }

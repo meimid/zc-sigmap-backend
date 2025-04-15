@@ -44,6 +44,7 @@ public class LotController {
                 .getPrincipal();
         logger.info("User {}", user.getSubject());
 
+
         Page<Lot> lots = lotService.findAll(query.toSpecification(), pageable);
         Page<LotResponse> responses = lots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
@@ -64,7 +65,7 @@ public class LotController {
                 .getPrincipal();
         logger.info("User {}", user.getSubject());
 
-        Page<Lot> deletedLots = lotService.findAllDeleted(query.toSpecification(), pageable);
+        Page<Lot> deletedLots = lotService.findAllDeleted(pageable);
         Page<LotResponse> responses = deletedLots.map(LotMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
@@ -97,6 +98,24 @@ public class LotController {
         Lot createdLot = lotService.create(request);
         LotResponse response = LotMapper.INSTANCE.map(createdLot);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update an existing lot based on the given id and version.
+     *
+     * @param lotId    the id of the lot to update
+     * @param lotVer   the version of the lot to update
+     * @param request  the request containing updated lot data
+     * @return the updated lot
+     */
+    @PutMapping("/{lotId}/{lotVer}")
+    public ResponseEntity<LotResponse> update(
+            @PathVariable Integer lotId,
+            @PathVariable Integer lotVer,
+            @RequestBody LotRequest request) {
+        Lot updatedLot = lotService.update(lotId, lotVer, request);
+        LotResponse response = LotMapper.INSTANCE.map(updatedLot);
+        return ResponseEntity.ok(response);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.sigmap.common.lots;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.request.LotRequest;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import org.springframework.data.domain.Page;
@@ -32,6 +33,7 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public Page<Lot> findAll(Specification<Lot> spec, Pageable pageable) {
+
         return repository.findAll(spec, pageable);
     }
 
@@ -72,12 +74,54 @@ public class LotServiceImpl implements LotService {
         return repository.save(lot);
     }
 
+
     @Override
     public Lot create(LotRequest request) {
         Lot lot = new Lot();
-        lot.setId(request.getId()); // Can be null for auto-increment
-        lot.setVersion(request.getVersion()); // Must be provided
+
+        Integer id = request.getId();
+        if (id == null) {
+            Integer maxId = repository.findMaxId();
+            id = (maxId != null) ? maxId + 1 : 1;
+            System.out.println("Generated Lot ID: " + id);
+        }
+
+        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+
+        lot.setId(id);
+        lot.setVersion(version);
         lot.setDescription(request.getDescription());
+
+        Lot savedLot = repository.save(lot);
+
+        if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
+            Set<Realisation> realisations = new HashSet<>();
+            for (CompositeId realisationId : request.getRealisationIds()) {
+                Realisation realisation = realisationRepository.findById(realisationId)
+                        .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
+
+                if (realisation.getLots() == null) {
+                    realisation.setLots(new HashSet<>());
+                }
+
+                realisation.getLots().add(savedLot);
+                realisations.add(realisation);
+            }
+            savedLot.setRealisations(realisations);
+
+            savedLot = repository.save(savedLot);
+        }
+
+        return savedLot;
+    }
+
+    @Override
+    public Lot update(Integer lotId, Integer lotVer, LotRequest request) {
+        CompositeId compositeId = new CompositeId(lotId, lotVer);
+        Lot existingLot = repository.findById(compositeId)
+                .orElseThrow(() -> new RuntimeException("Lot with ID " + lotId + " and version " + lotVer + " not found"));
+
+        existingLot.setDescription(request.getDescription());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             Set<Realisation> realisations = new HashSet<>();
@@ -86,14 +130,18 @@ public class LotServiceImpl implements LotService {
                         .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
                 realisations.add(realisation);
             }
-            lot.setRealisations(realisations);
+            existingLot.setRealisations(realisations);
+        } else {
+            existingLot.setRealisations(new HashSet<>()); // Clear associations if none provided
         }
 
-        return repository.save(lot);
+        return repository.save(existingLot);
     }
 
     @Override
     public void delete(Integer lotsId, Integer lotsVer) {
-//        repository.softDelete(lotsId, lotsVer);
+       repository.softDelete(lotsId, lotsVer);
     }
+
+
 }

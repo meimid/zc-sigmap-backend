@@ -65,6 +65,7 @@ public class RealisationController {
     @GetMapping("/deleted")
     public ResponseEntity<Page<RealisationResponse>> findAllDeleted(
             RealisationQuery query, Pageable pageable) {
+        query.setDeleted(true);
         Page<Realisation> realisations = realisationService.findAllDeleted(query.toSpecification(), pageable);
         Page<RealisationResponse> responses = realisations.map(RealisationMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);

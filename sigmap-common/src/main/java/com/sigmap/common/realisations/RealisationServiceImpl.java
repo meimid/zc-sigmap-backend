@@ -1,27 +1,43 @@
 package com.sigmap.common.realisations;
 
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
+import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class RealisationServiceImpl implements RealisationService {
     private final RealisationRepository repository;
+    private final PaaRepository paaRepository;
+    private final PpmRepository ppmRepository;
+    private final LotRepository lotRepository;
 
-    public RealisationServiceImpl(RealisationRepository repository) {
+
+
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository) {
         this.repository = repository;
+        this.paaRepository = paaRepository;
+        this.ppmRepository = ppmRepository;
+        this.lotRepository = lotRepository;
     }
 
     @Override
@@ -72,20 +88,75 @@ public class RealisationServiceImpl implements RealisationService {
         return repository.save(realisation);
     }
 
+
+    @Transactional
     @Override
     public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
         Integer id = request.getId();
         Integer version = request.getVersion();
-        Optional<Realisation> existingRealisation = repository.findById(new CompositeId(id, version));
 
-        if (existingRealisation.isPresent()) {
+        // Generate ID if not provided
+        if (id == null) {
+            id = repository.findMaxId() + 1;
+            System.out.println("Generated Realisation ID: " + id);
+        }
+
+        CompositeId compositeId = new CompositeId(id, version);
+
+        // Check if realisation already exists
+        if (repository.existsById(compositeId)) {
             throw new RealisationAlreadyExistsException(id, version,
                     "Realisation with ID " + id + " and version " + version + " already exists in the database.");
         }
 
+        // Map request to entity
         Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
+        realisation.setId(compositeId.getId());
 
-        return repository.save(realisation);
+        // Set empty associations initially
+        realisation.setPaas(new ArrayList<>());
+        realisation.setPpms(new ArrayList<>());
+        realisation.setLots(new HashSet<>());
+        realisation.setDocs(new ArrayList<>());
+        // Save entity first (without associations)
+        Realisation savedRealisation = repository.save(realisation);
+
+        // Fetch associated PAAs if needed
+        if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
+            List<Paa> paas = request.getPaaIds().stream()
+                    .peek(paaId -> System.out.println("Associating PAA ID: " + paaId.getId() + ", Version: " + paaId.getVersion()))
+                    .map(paaId -> paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion())))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList());
+
+            savedRealisation.setPaas(paas);
+        }
+
+        // Fetch and set PPMs
+        if (request.getPpmIds() != null) {
+            List<Ppm> ppms = request.getPpmIds().stream()
+                    .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .toList();
+            savedRealisation.setPpms(ppms);
+        }
+
+        // Fetch and set Lots
+        if (request.getLotIds() != null) {
+            Set<Lot> lots = request.getLotIds().stream()
+                    .map(lotId -> lotRepository.findById(new CompositeId(lotId.getId(), lotId.getVersion())))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toSet());
+            savedRealisation.setLots(lots);
+        }
+
+        ///TODO:add DOCs
+
+        // Save again with associations
+        return repository.save(savedRealisation);
     }
 
     @Override

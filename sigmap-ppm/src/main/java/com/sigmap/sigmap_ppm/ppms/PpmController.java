@@ -61,7 +61,7 @@ public class PpmController {
     @GetMapping("/deleted")
     public ResponseEntity<Page<PpmResponse>> findAllDeleted(
             PpmQuery query, Pageable pageable) {
-        Page<Ppm> ppms = ppmService.findAllDeleted(query.toSpecification(), pageable);
+        Page<Ppm> ppms = ppmService.findAllDeleted(pageable);
         Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
         return ResponseEntity.ok(responses);
     }
@@ -94,6 +94,25 @@ public class PpmController {
         Ppm ppm = ppmService.create(request);
         PpmResponse response = PpmMapper.INSTANCE.map(ppm);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Update an existing ppm based on the given id and version.
+     *
+     * @param ppmId   the id of the ppm to update
+     * @param ppmVer  the version of the ppm to update
+     * @param request the request containing updated ppm data
+     * @return the updated ppm
+     */
+
+    @PutMapping("/{ppmId}/{ppmVer}")
+    public ResponseEntity<PpmResponse> update(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer,
+            @RequestBody PpmRequest request) {
+        Ppm updatedPpm = ppmService.update(ppmId, ppmVer, request);
+        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        return ResponseEntity.ok(response);
     }
 
     /**

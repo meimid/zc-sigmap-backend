@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ppms.request.PpmRequest;
 import org.springframework.data.domain.Page;
@@ -14,7 +15,7 @@ import java.util.Optional;
 @Service
 public class PpmServiceImpl implements PpmService {
     private final PpmRepository repository;
-    //private final AcService acService;
+    private final AcRepository acRepository;
 
     /**
      * Constructor.
@@ -23,9 +24,9 @@ public class PpmServiceImpl implements PpmService {
      *                    //TODO
 //     * @param acService ac service
      */
-    public PpmServiceImpl(PpmRepository repository) {
+    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository) {
         this.repository = repository;
-//        this.acService = acService;
+        this.acRepository = acRepository;
     }
 
     @Override
@@ -47,6 +48,8 @@ public class PpmServiceImpl implements PpmService {
         }
         return repository.findAll(deletedSpec, pageable);
     }
+
+
 
     @Override
     public Page<Ppm> findAllDeleted(Pageable pageable) {
@@ -78,21 +81,60 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public Ppm create(PpmRequest request) {
-        //TODO
-        //Ac ac = acService.findById(request.getAcId()).orElseThrow(() -> new RuntimeException("Ac not found"));
+        Integer id = request.getId();
+        if (id == null) {
+            Integer maxId = repository.findMaxId();
+            id = (maxId != null) ? maxId + 1 : 1;
+            request.setId(id);
+        }
+
+        Integer version = request.getVersion() != null ? request.getVersion() : 1;
 
         Ppm ppm = new Ppm();
-        ppm.setId(request.getPpmId());
-        ppm.setVersion(request.getPpmVer());
+        ppm.setId(id);
+        ppm.setVersion(version);
         ppm.setRef(request.getRef());
         ppm.setNom(request.getNom());
         ppm.setAnnee(request.getAnnee());
-        //TODO: to verify later
-        //ppm.setAc(ac);
         ppm.setBudgetEstime(request.getBudgetEstime());
         ppm.setStatusId(request.getStatusId());
 
-        return save(ppm);
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+            ppm.setAc(ac);
+        }
+
+        return repository.save(ppm);
+    }
+
+    @Override
+    public Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request) {
+        CompositeId compositeId = new CompositeId(ppmId, ppmVer);
+        Optional<Ppm> existingPpmOpt = repository.findById(compositeId);
+
+        if (existingPpmOpt.isEmpty()) {
+            throw new RuntimeException("Ppm with ID " + ppmId + " and version " + ppmVer + " was not found in the database.");
+        }
+
+        Ppm existingPpm = existingPpmOpt.get();
+
+        // Update fields
+        existingPpm.setRef(request.getRef());
+        existingPpm.setNom(request.getNom());
+        existingPpm.setAnnee(request.getAnnee());
+        existingPpm.setBudgetEstime(request.getBudgetEstime());
+        existingPpm.setStatusId(request.getStatusId());
+
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+            existingPpm.setAc(ac);
+        } else {
+            existingPpm.setAc(null);
+        }
+
+        return repository.save(existingPpm);
     }
 
     @Override

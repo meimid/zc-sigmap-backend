@@ -33,6 +33,8 @@ public interface RealisationMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     RealisationResponse map(Realisation source);
 
     @Mapping(target = "id", source = "id")

@@ -95,6 +95,16 @@ public interface PpmService {
     Ppm create(PpmRequest request);
 
     /**
+     * Update an existing Ppm.
+     *
+     * @param ppmId   the ID of the Ppm to update
+     * @param ppmVer  the version of the Ppm to update
+     * @param request the request containing updated Ppm data
+     * @return the updated Ppm
+     */
+    Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request);
+
+    /**
      * Delete a Ppm by its composite ID components.
      *
      * @param ppmId the first part of the composite ID (ppm_id)
