@@ -1,7 +1,5 @@
 package com.sigmap.common.ref_params.mappers;
 
-import com.sigmap.common.contact.Contact;
-import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.response.RefParamResponse;

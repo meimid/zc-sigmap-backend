@@ -1,7 +1,7 @@
 package com.sigmap.common.com.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
-import com.sigmap.common.ref_params.response.RefParamResponse;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.*;
 
@@ -22,7 +22,7 @@ public class ComResponse {
     private String contact;
     private String adresse;
     private String membres;
-    private RefParamResponse comType;
+    private RefParamResponseDto comType;
     private List<AcResponseDto> acs;
     private BaseEntityResponse metadata;
 }

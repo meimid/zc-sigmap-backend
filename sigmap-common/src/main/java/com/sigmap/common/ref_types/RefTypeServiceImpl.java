@@ -5,11 +5,13 @@ import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class RefTypeServiceImpl implements RefTypeService {
   private final RefTypeRepository repository;
