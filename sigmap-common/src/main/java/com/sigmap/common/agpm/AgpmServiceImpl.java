@@ -99,7 +99,7 @@ public class AgpmServiceImpl implements AgpmService {
         } else if (request.getDocIds() != null) {
             agpm.setDocs(List.of());
         }
-
+        //To be changed after decision
         agpm.setIsDeleted(false);
         return repository.save(agpm);
     }
@@ -126,7 +126,7 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm agpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer,
                         "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database."));
-
+        //To be changed after decision (Boolean.TRUE.equals(agpm.getIsDeleted())--> agpm.getIsDeleted() )
         if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
             throw new IllegalArgumentException("Cannot update Agpm with ID " + agpmId + " and version " + agpmVer + " because it is marked as deleted.");
         }
