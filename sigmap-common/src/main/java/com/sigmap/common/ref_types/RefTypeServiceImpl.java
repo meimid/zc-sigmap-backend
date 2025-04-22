@@ -5,13 +5,11 @@ import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import java.util.Optional;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
 public class RefTypeServiceImpl implements RefTypeService {
   private final RefTypeRepository repository;
@@ -64,8 +62,7 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public RefType create(RefTypeRequest request) {
-    RefType refType = new RefType();
-    refType= RefTypeMapper.INSTANCE.map(request);
+    RefType refType =RefTypeMapper.INSTANCE.map(request);
     return save(refType);
   }
 

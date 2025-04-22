@@ -2,13 +2,9 @@ package com.sigmap.common.societe_contact;
 
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactRepository;
-import com.sigmap.common.contact.ContactService;
-import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.societe.SocieteRepository;
-import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -17,25 +13,16 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class SocieteContactServiceImpl implements SocieteContactService {
 
-    RefParamService refParamService;
-    ContactService contactService;
-    SocieteRepository societeRepository;
-    SocieteService societeService;
-    SocieteContactRepository repository;
-    ContactRepository contactRepository;
+    private final SocieteRepository societeRepository;
+    private final SocieteContactRepository repository;
+    private final ContactRepository contactRepository;
 
-
-    public SocieteContactServiceImpl(ContactRepository contactRepository, SocieteContactRepository repository, RefParamService refParamService, ContactService contactService, SocieteRepository societeRepository, SocieteService societeService, SocieteContactRepository societeContactRepository) {
-        this.refParamService = refParamService;
-        this.contactService = contactService;
+    public SocieteContactServiceImpl(ContactRepository contactRepository, SocieteContactRepository repository, SocieteRepository societeRepository) {
         this.societeRepository = societeRepository;
-        this.societeService = societeService;
         this.repository = repository;
         this.contactRepository = contactRepository;
     }
@@ -109,9 +96,6 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     @Override
     public SocieteContact create(SocieteContactRequest request) throws RuntimeException {
 
-        // 1- lazem njibou lioste li fiha les ids 2
-
-        // na3mlou test idha
        Optional <SocieteContact> result = repository.findByIds(request.getSocieteId(),request.getContactId());
 
         if(result.isPresent()) {
@@ -125,7 +109,6 @@ public class SocieteContactServiceImpl implements SocieteContactService {
                     .orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId())));
             societeContactId.setContact(contactRepository.findById(request.getContactId())
                     .orElseThrow(() -> new RuntimeException("Contact not found: " + request.getContactId())));
-
             return repository.save(societeContact);
         }
     }
@@ -133,12 +116,10 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     @Override
     public SocieteContact update(SocieteContactRequest request) {
         SocieteContact societeContact = repository.findByIds(request.getSocieteId(), request.getContactId()).orElseThrow(() -> new RuntimeException("SocieteContact not found"));
-      //  societeContact= SociteContactMapper.INSTANCE.map(request);
         societeContact.getSocieteContactId().setSociete(societeRepository.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " +request.getSocieteId())));
         societeContact.getSocieteContactId().setContact(contactRepository.findById(request.getContactId()).orElseThrow(() -> new RuntimeException("Contact not found: " +request.getContactId())));
         societeContact.setRepresentantLegal(request.isRepresentantLegal());
         societeContact.setPrincipal(request.isPrincipal());
-
         return repository.save(societeContact);
     }
 
