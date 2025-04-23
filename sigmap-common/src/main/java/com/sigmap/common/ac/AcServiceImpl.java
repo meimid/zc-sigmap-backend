@@ -5,7 +5,6 @@ import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,7 +13,6 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @Service
 public class AcServiceImpl implements AcService{
     private final AcRepository repository;
@@ -72,24 +70,16 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public AcResponse create(AcRequest request) {
-
-        Ac ac = new Ac();
-
-        ac = AcMapper.INSTANCE.map(request);
-
-
+        Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
             List<Com> coms = comRepository.findAllById(request.getComIds());
 
             if (coms.size() != request.getComIds().size()) {
                 throw new IllegalArgumentException("One or more Com IDs were not found");
             }
-
             ac.setComs(coms);
         }
         repository.save(ac);
-
-
         return AcMapper.INSTANCE.map(ac);
     }
 
