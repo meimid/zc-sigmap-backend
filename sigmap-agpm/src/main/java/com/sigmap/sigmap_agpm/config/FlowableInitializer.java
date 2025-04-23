@@ -1,7 +1,11 @@
 package com.sigmap.sigmap_agpm.config;
 
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
+import org.flowable.engine.RepositoryService;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -27,17 +31,37 @@ public class FlowableInitializer {
     @Primary
     public ProcessEngine processEngine() {
         System.out.println("Initializing Flowable Process Engine with URL: " + jdbcUrl);
-        
+
         ProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration()
-            .setJdbcUrl(jdbcUrl)
-            .setJdbcUsername(jdbcUsername)
-            .setJdbcPassword(jdbcPassword)
-            .setJdbcDriver(jdbcDriver)
-            .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+                .setJdbcUrl(jdbcUrl)
+                .setJdbcUsername(jdbcUsername)
+                .setJdbcPassword(jdbcPassword)
+                .setJdbcDriver(jdbcDriver)
+                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
         System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
-        
+
         return processEngine;
+    }
+
+    @Bean(name = "repositoryService")
+    public RepositoryService repositoryService(ProcessEngine processEngine) {
+        return processEngine.getRepositoryService();
+    }
+
+    @Bean(name = "runtimeService")
+    public RuntimeService runtimeService(ProcessEngine processEngine) {
+        return processEngine.getRuntimeService();
+    }
+
+    @Bean(name = "taskService")
+    public TaskService taskService(ProcessEngine processEngine) {
+        return processEngine.getTaskService();
+    }
+
+    @Bean(name = "historyService")
+    public HistoryService historyService(ProcessEngine processEngine) {
+        return processEngine.getHistoryService();
     }
 }
