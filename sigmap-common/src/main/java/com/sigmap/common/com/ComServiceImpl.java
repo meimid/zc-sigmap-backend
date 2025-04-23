@@ -74,9 +74,7 @@ public class ComServiceImpl implements ComService{
     @Override
     public Com create(ComRequest request) {
         RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(() -> new RuntimeException("ComType not found: " +request.getComTypeId()));
-        Com com = new Com();
-
-        com= ComMapper.INSTANCE.map(request);
+        Com com = ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
         } else {

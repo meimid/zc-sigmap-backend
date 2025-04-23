@@ -62,8 +62,7 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public RefType create(RefTypeRequest request) {
-    RefType refType = new RefType();
-    refType= RefTypeMapper.INSTANCE.map(request);
+    RefType refType =RefTypeMapper.INSTANCE.map(request);
     return save(refType);
   }
 

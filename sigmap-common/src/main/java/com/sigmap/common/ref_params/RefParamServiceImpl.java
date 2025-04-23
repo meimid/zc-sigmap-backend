@@ -8,9 +8,6 @@ import com.sigmap.common.ref_types.RefTypeService;
 
 import java.util.List;
 import java.util.Optional;
-
-import com.sigmap.common.ref_types.mapper.RefTypeMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,7 +16,6 @@ import org.springframework.stereotype.Service;
 /**
  * Service implementation of {@link RefParamService}
  */
-@Slf4j
 @Service
 public class RefParamServiceImpl implements RefParamService {
     private final RefParamRepository repository;
@@ -82,12 +78,9 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam create(RefParamRequest request) {
-        RefParam refParam = new RefParam();
         RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow();
-        log.info("Creating RefParam with refTypeId: " + refType);
-        refParam = RefParamMapper.INSTANCE.map(request);
+        RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
-
         return save(refParam);
     }
 
