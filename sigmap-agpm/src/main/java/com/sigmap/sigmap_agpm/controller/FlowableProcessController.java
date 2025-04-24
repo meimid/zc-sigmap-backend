@@ -12,6 +12,7 @@ import org.flowable.task.api.TaskQuery;
 import org.flowable.task.api.history.HistoricTaskInstance;
 import org.flowable.task.api.history.HistoricTaskInstanceQuery;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,7 +31,10 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/process")
 public class FlowableProcessController {
 
-    private static final String TENANT_ID = "agpm";
+    /** Tenant ID injected from application.yml . */
+    @Value("${tenant.id}")
+    private String TENANT_ID;
+
 
     @Autowired
     private RepositoryService repositoryService;
@@ -283,7 +287,6 @@ public class FlowableProcessController {
             return ResponseEntity.notFound().build();
         }
         Map<String, Object> response = mapTaskToResponse(task);
-        // Include task variables
         Map<String, Object> variables = taskService.getVariables(taskId);
         response.put("variables", variables);
         return ResponseEntity.ok(response);

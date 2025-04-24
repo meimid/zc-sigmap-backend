@@ -50,7 +50,7 @@ keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
 
-# Flowable: utilise une datasource dédiée
+# Flowable: use a dedicated database
 flowable:
   use-default-data-source: false
   database-schema-update: true
@@ -61,3 +61,8 @@ flowable:
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+tenant:
+  id: ${TENANT_ID :agpm}
+process:
+  definition:
+    location: ${PROCESS_DEFINITION_LOCATION:processes/}
