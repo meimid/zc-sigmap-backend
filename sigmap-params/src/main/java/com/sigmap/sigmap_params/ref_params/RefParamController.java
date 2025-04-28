@@ -109,7 +109,7 @@ public class RefParamController {
     public ResponseEntity<RefParamResponse> update(@PathVariable Integer id,@RequestBody RefParamRequest request) {
         RefParam refParam = refParamService.update(id,request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
     /**

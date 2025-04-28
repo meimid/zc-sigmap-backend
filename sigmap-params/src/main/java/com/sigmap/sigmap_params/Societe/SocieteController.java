@@ -104,7 +104,7 @@ public class SocieteController {
     public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a Societe based on the given id.
@@ -176,7 +176,7 @@ public class SocieteController {
     public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
         SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
 
     }
 

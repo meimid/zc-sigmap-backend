@@ -94,7 +94,7 @@ public class ComController {
     public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) {
         Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a Com based on the given id.

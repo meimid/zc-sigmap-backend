@@ -1,7 +1,10 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.GlobalException.BadRequest;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -84,7 +87,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Integer id,AcRequest request);
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, BadRequest;
 
     /**
      * Delete a Ac.

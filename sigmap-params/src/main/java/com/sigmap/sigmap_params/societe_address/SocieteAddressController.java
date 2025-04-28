@@ -93,7 +93,7 @@ public class SocieteAddressController {
     public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) {
         SocieteAddress SocieteAddress = societeAddressService.update(id,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a SocieteAddress based on the given id.

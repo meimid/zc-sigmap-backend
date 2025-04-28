@@ -1,11 +1,14 @@
 package com.sigmap.sigmap_params.ac;
 
+import com.sigmap.common.GlobalException.BadRequest;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -99,10 +102,10 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id,@RequestBody AcRequest request) {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id,@RequestBody AcRequest request) throws AcNotFound, ComNotFound, BadRequest {
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
 
     /**

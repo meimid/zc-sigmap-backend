@@ -92,7 +92,7 @@ public class CompteBancaireController {
     public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequest request) {
         CompteBancaire CompteBancaire = compteBancaireService.update(id,request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a CompteBancaire based on the given id.

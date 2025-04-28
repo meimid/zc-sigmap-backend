@@ -94,7 +94,7 @@ public class ContactController {
     public ResponseEntity<ContactResponse> update(@PathVariable Integer id,@RequestBody ContactRequest request) {
         Contact contact = contactService.update(id,request);
         ContactResponse response = ContactMapper.INSTANCE.map(contact);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a Contact based on the given id.
