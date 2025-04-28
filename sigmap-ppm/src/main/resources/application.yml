@@ -57,10 +57,10 @@ flowable:
   check-process-definitions: true
   process-definition-location-prefix: classpath:/processes/
   datasource:
-    url: jdbc:mysql://localhost:3307/flowable?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
+    url: jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
     username: root
     password: root
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: org.mariadb.jdbc.Driver
 tenant:
   id: ${TENANT_ID :ppm}
 process:
