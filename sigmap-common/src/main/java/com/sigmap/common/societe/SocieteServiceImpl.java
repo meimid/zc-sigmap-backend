@@ -8,7 +8,9 @@ import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -66,8 +68,8 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe create(SocieteRequest request) {
-        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
-        RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
+        RefParam type=refParamService.findById(request.getTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Type not found with id "+ request.getTypeId()));
+        RefParam pays=refParamService.findById(request.getPaysId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pays not found with id "+ request.getTypeId()));
         Societe societe =  SocieteMapper.INSTANCE.map(request);
         societe.setPays(pays);
         societe.setType(type);
@@ -75,10 +77,10 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Societe update(SocieteRequest request) {
-        Societe societe=repository.findById(request.getId()).orElseThrow();
-        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
-        RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
+    public Societe update(Integer id,SocieteRequest request) {
+        Societe societe=repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Societe not found with id "+ id));
+        RefParam type=refParamService.findById(request.getTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Type not found with id "+ request.getTypeId()));
+        RefParam pays=refParamService.findById(request.getPaysId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pays not found with id "+ request.getTypeId()));
         SocieteMapper.INSTANCE.updateFromRequest(request, societe);
         societe.setPays(pays);
         societe.setType(type);

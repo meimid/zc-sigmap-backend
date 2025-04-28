@@ -79,14 +79,14 @@ public interface SocieteContactService {
      * @param request the request to create the SocieteContact from
      * @return the created SocieteContact
      */
-    SocieteContact create(SocieteContactRequest request) throws RuntimeException;
+    SocieteContact create(Integer societeId, Integer contactId,SocieteContactRequest request) throws RuntimeException;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated SocieteContact
      */
-    SocieteContact update(SocieteContactRequest request);
+    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request);
     /**
      * Delete a SocieteAddress.
      *

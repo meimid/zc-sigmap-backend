@@ -90,9 +90,9 @@ public class ComController {
      * @param request the request to update the com from
      * @return the updated com
      */
-    @PutMapping
-    public ResponseEntity<ComResponse> update(@RequestBody ComRequest request) {
-        Com com = comService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) {
+        Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

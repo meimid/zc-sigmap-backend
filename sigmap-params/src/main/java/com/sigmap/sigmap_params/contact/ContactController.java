@@ -90,9 +90,9 @@ public class ContactController {
      * @param request the request to update the Contact from
      * @return the updated Contact
      */
-    @PutMapping
-    public ResponseEntity<ContactResponse> update(@RequestBody ContactRequest request) {
-        Contact contact = contactService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<ContactResponse> update(@PathVariable Integer id,@RequestBody ContactRequest request) {
+        Contact contact = contactService.update(id,request);
         ContactResponse response = ContactMapper.INSTANCE.map(contact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

@@ -9,7 +9,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -94,30 +96,30 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public SocieteContact create(SocieteContactRequest request) throws RuntimeException {
+    public SocieteContact create(Integer societeId, Integer contactId,SocieteContactRequest request) throws RuntimeException {
 
-       Optional <SocieteContact> result = repository.findByIds(request.getSocieteId(),request.getContactId());
+       Optional <SocieteContact> result = repository.findByIds(societeId,contactId);
 
         if(result.isPresent()) {
-           throw  new RuntimeException("There is one SocieteContact already exist with Societe ID :  "+request.getSocieteId()+" and Contact ID : " + request.getContactId());
+           throw  new ResponseStatusException(HttpStatus.BAD_REQUEST,"There is one SocieteContact already exist with Societe ID :  "+societeId+" and Contact ID : " + contactId);
         }
         else {
             SocieteContactId societeContactId = new SocieteContactId();
             SocieteContact societeContact =  SociteContactMapper.INSTANCE.map(request);
             societeContact.setSocieteContactId(societeContactId);
-            societeContactId.setSociete(societeRepository.findById(request.getSocieteId())
-                    .orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId())));
-            societeContactId.setContact(contactRepository.findById(request.getContactId())
-                    .orElseThrow(() -> new RuntimeException("Contact not found: " + request.getContactId())));
+            societeContactId.setSociete(societeRepository.findById(societeId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Societe not found: " + societeId)));
+            societeContactId.setContact(contactRepository.findById(contactId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Contact not found: " + contactId)));
             return repository.save(societeContact);
         }
     }
 
     @Override
-    public SocieteContact update(SocieteContactRequest request) {
-        SocieteContact societeContact = repository.findByIds(request.getSocieteId(), request.getContactId()).orElseThrow(() -> new RuntimeException("SocieteContact not found"));
-        societeContact.getSocieteContactId().setSociete(societeRepository.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " +request.getSocieteId())));
-        societeContact.getSocieteContactId().setContact(contactRepository.findById(request.getContactId()).orElseThrow(() -> new RuntimeException("Contact not found: " +request.getContactId())));
+    public SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) {
+        SocieteContact societeContact = repository.findByIds(societeId, contactId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteContact not found"));
+        societeContact.getSocieteContactId().setSociete(societeRepository.findById(societeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteAddress not found: " +societeId)));
+        societeContact.getSocieteContactId().setContact(contactRepository.findById(contactId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Contact not found: " +contactId)));
         societeContact.setRepresentantLegal(request.isRepresentantLegal());
         societeContact.setPrincipal(request.isPrincipal());
         return repository.save(societeContact);

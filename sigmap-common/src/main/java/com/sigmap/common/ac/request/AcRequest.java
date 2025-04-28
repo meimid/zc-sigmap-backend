@@ -9,7 +9,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AcRequest {
-    private Integer id;
     private String nom;
     private String ancrage;
     private String contact;

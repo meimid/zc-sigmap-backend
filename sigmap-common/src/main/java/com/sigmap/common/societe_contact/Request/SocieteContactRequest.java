@@ -10,8 +10,6 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SocieteContactRequest {
-    private Integer societeId;
-    private Integer contactId;
     private boolean representantLegal;
     private boolean principal;
 

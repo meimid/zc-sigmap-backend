@@ -81,7 +81,7 @@ public interface ComService {
      * @param request the request to update the com from
      * @return the updated com
      */
-    Com update(ComRequest request);
+    Com update(Integer id,ComRequest request);
     /**
      * Delete a Com.
      *

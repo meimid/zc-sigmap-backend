@@ -11,7 +11,9 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Service implementation of {@link RefParamService}
@@ -77,17 +79,17 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public RefParam create(RefParamRequest request) {
-        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow();
+    public RefParam create(RefParamRequest request){
+        RefType refType = refTypeService.findById(request.getRefTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefType not found: " + request.getRefTypeId()));
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
         return save(refParam);
     }
 
     @Override
-    public RefParam update(RefParamRequest request) {
-        RefParam refParam = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
-        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow(() -> new RuntimeException("refType not found: " + request.getId()));
+    public RefParam update(Integer id,RefParamRequest request) {
+        RefParam refParam = repository.findById(id) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefParam not found: " + id));
+        RefType refType = refTypeService.findById(request.getRefTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefType not found: " + request.getRefTypeId()));
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
         refParam.setRefType(refType);
         return save(refParam);

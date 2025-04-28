@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class SocieteAddressRequest {
-    private Integer id;
     private Integer typeId;
     private String address;
     private Integer societeId;

@@ -42,6 +42,7 @@ public class RefTypeController {
 
   @PostMapping
   public ResponseEntity<RefType> create(@RequestBody RefTypeRequest request) {
+
     System.out.println("Ref Type Request " + request);
     RefType refType = refTypeService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(refType);

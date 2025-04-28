@@ -100,9 +100,9 @@ public class SocieteController {
      * @param request the request to update the Societe from
      * @return the updated Societe
      */
-    @PutMapping
-    public ResponseEntity<SocieteResponse> update(@RequestBody SocieteRequest request) {
-        Societe Societe = societeService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) {
+        Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -165,16 +165,16 @@ public class SocieteController {
     }
 
 
-    @PostMapping("/contact")
-    public ResponseEntity<SocieteContactResponse> create(@RequestBody SocieteContactRequest request) {
-        SocieteContact societeContact = societeContactService.create(request);
+    @PostMapping("/{societeId}/contact/{contactId}")
+    public ResponseEntity<SocieteContactResponse> create(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+        SocieteContact societeContact = societeContactService.create(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/contact")
-    public ResponseEntity<SocieteContactResponse> update(@RequestBody SocieteContactRequest request) {
-        SocieteContact societeContact = societeContactService.update(request);
+    @PutMapping("/{societeId}/contact/{contactId}")
+    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+        SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
 

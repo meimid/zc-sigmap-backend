@@ -84,7 +84,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(AcRequest request);
+    Ac update(Integer id,AcRequest request);
 
     /**
      * Delete a Ac.

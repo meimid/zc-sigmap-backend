@@ -8,7 +8,9 @@ import com.sigmap.common.com.ComRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -70,12 +72,13 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public AcResponse create(AcRequest request) {
+
         Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
             List<Com> coms = comRepository.findAllById(request.getComIds());
 
             if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
             }
             ac.setComs(coms);
         }
@@ -84,24 +87,25 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public Ac update(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
+    public Ac update(Integer id,AcRequest request) {
+        Ac ac= repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Ac not found: " + id));
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
             List<Com> coms = comRepository.findAllById(request.getComIds());
             if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
             }
             ac.setComs(coms);
         }
+
 
         return repository.save(ac);
     }
 
   //  @Override
-    public Ac update1(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
+    public Ac update1(Integer id,AcRequest request) {
+        Ac ac= repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Ac not found: " + id));
         ac.setNom(request.getNom());
         ac.setAncrage(request.getAncrage());
         ac.setContact(request.getContact());
@@ -113,7 +117,7 @@ public class AcServiceImpl implements AcService{
             List<Com> coms = comRepository.findAllById(request.getComIds());
 
             if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
             }
 
             ac.setComs(coms);

@@ -93,6 +93,7 @@ public class RefParamController {
      */
     @PostMapping
     public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request) {
+
         RefParam refParam = refParamService.create(request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -104,9 +105,9 @@ public class RefParamController {
      * @param request the request to update the RefParam from
      * @return the updated RefParam
      */
-    @PutMapping
-    public ResponseEntity<RefParamResponse> update(@RequestBody RefParamRequest request) {
-        RefParam refParam = refParamService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<RefParamResponse> update(@PathVariable Integer id,@RequestBody RefParamRequest request) {
+        RefParam refParam = refParamService.update(id,request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

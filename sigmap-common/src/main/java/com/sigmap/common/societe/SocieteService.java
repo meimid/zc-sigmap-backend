@@ -83,7 +83,7 @@ public interface SocieteService {
      * @param request the request to update the com from
      * @return the updated com
      */
-    Societe update(SocieteRequest request);
+    Societe update(Integer id,SocieteRequest request);
     /**
      * Delete a Societe.
      *

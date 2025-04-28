@@ -98,9 +98,9 @@ public class AcController {
      * @param request the request to update the ac from
      * @return the updated ac
      */
-    @PutMapping
-    public ResponseEntity<AcResponse> update(@RequestBody AcRequest request) {
-        Ac ac = acService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id,@RequestBody AcRequest request) {
+        Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

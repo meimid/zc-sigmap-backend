@@ -9,7 +9,10 @@ import com.sigmap.common.ref_params.RefParamService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -73,7 +76,7 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com create(ComRequest request) {
-        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(() -> new RuntimeException("ComType not found: " +request.getComTypeId()));
+        RefParam comType=refParamService.findById(request.getComTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"ComType not found: " +request.getComTypeId()));
         Com com = ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -85,7 +88,7 @@ public class ComServiceImpl implements ComService{
 
             // Validate that we found all requested Com entities
             if (acs.size() != request.getAcIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
 
             }
             com.setAcs(acs);
@@ -94,9 +97,9 @@ public class ComServiceImpl implements ComService{
     }
 
     @Override
-    public Com update(ComRequest request) {
-        Com com = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
-        RefParam comType=refParamService.findById(request.getComTypeId()).orElseThrow(()-> new RuntimeException("comType not found: " + request.getComTypeId()));
+    public Com update(Integer id,ComRequest request) {
+        Com com = repository.findById(id) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Com not found: " + id));
+        RefParam comType=refParamService.findById(request.getComTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"comType not found: " + request.getComTypeId()));
       ComMapper.INSTANCE.updateFromRequest(request, com);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -107,7 +110,7 @@ public class ComServiceImpl implements ComService{
             List<Ac> acs = acRepository.findAllById(request.getAcIds());
 
             if (acs.size() != request.getAcIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
 
             }
             com.setAcs(acs);
