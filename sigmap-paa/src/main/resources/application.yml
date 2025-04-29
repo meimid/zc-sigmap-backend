@@ -50,3 +50,8 @@ cors:
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}
