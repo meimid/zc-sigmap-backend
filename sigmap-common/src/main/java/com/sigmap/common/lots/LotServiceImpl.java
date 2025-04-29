@@ -87,6 +87,7 @@ public class LotServiceImpl implements LotService {
         }
 
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
+        request.setVersion(version);
 
         lot.setId(id);
         lot.setVersion(version);
@@ -120,7 +121,9 @@ public class LotServiceImpl implements LotService {
         CompositeId compositeId = new CompositeId(lotId, lotVer);
         Lot existingLot = repository.findById(compositeId)
                 .orElseThrow(() -> new RuntimeException("Lot with ID " + lotId + " and version " + lotVer + " not found"));
-
+        if (Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+            throw new RuntimeException("Cannot update a deleted Lot with ID " + lotId + " and version " + lotVer);
+        }
         existingLot.setDescription(request.getDescription());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {

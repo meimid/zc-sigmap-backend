@@ -13,7 +13,7 @@ public interface RealisationMapper {
     RealisationMapper INSTANCE = Mappers.getMapper(RealisationMapper.class);
 
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "version", source = "version")
+    @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
     @Mapping(target = "serviceId", source = "serviceId")
     @Mapping(target = "directionId", source = "directionId")
@@ -38,7 +38,7 @@ public interface RealisationMapper {
     RealisationResponse map(Realisation source);
 
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "version", source = "version")
+    @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
     @Mapping(target = "serviceId", source = "serviceId")
     @Mapping(target = "directionId", source = "directionId")

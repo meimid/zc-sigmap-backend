@@ -93,7 +93,8 @@ public class RealisationServiceImpl implements RealisationService {
     @Override
     public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
         Integer id = request.getId();
-        Integer version = request.getVersion();
+        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+        request.setVersion(version);
 
         // Generate ID if not provided
         if (id == null) {
@@ -112,6 +113,7 @@ public class RealisationServiceImpl implements RealisationService {
         // Map request to entity
         Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
         realisation.setId(compositeId.getId());
+        realisation.setVersion(version);
 
         // Set empty associations initially
         realisation.setPaas(new ArrayList<>());
@@ -167,6 +169,11 @@ public class RealisationServiceImpl implements RealisationService {
         if (existingRealisationOpt.isEmpty()) {
             throw new RealisationNotFoundException(realisationId, realisationVer,
                     "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.");
+        }
+        Realisation existingRealisation = existingRealisationOpt.get();
+        if (Boolean.TRUE.equals(existingRealisation.getIsDeleted())) {
+            throw new RealisationNotFoundException(realisationId, realisationVer,
+                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer);
         }
         Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request,existingRealisationOpt.get());
 

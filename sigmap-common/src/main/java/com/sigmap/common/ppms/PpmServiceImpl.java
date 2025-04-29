@@ -89,6 +89,7 @@ public class PpmServiceImpl implements PpmService {
         }
 
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
+        request.setVersion(version);
 
         Ppm ppm = new Ppm();
         ppm.setId(id);
@@ -118,6 +119,9 @@ public class PpmServiceImpl implements PpmService {
         }
 
         Ppm existingPpm = existingPpmOpt.get();
+        if (Boolean.TRUE.equals(existingPpm.getIsDeleted())) {
+            throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
+        }
 
         // Update fields
         existingPpm.setRef(request.getRef());

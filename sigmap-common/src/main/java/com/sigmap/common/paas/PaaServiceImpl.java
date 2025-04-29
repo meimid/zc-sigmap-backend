@@ -81,11 +81,8 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
-        Integer version = request.getVersion();
-
-        if (version == null) {
-            throw new IllegalArgumentException("PAA version must not be null");
-        }
+        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+        request.setVersion(version);
 
         Integer id = request.getId();
         if (id == null) {
@@ -154,6 +151,12 @@ public class PaaServiceImpl implements PaaService {
         if (existingPaaOpt.isEmpty()) {
             throw new PaaNotFound(paaId, paaVer,
                     "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.");
+        }
+
+        Paa existingPaa = existingPaaOpt.get();
+        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+            throw new PaaNotFound(paaId, paaVer,
+                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer);
         }
 
         Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request,existingPaaOpt.get());

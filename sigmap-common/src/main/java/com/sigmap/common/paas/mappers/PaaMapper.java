@@ -13,7 +13,7 @@ public interface PaaMapper {
     PaaMapper INSTANCE = Mappers.getMapper(PaaMapper.class);
 
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "version", source = "version")
+    @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "annee", source = "annee")
@@ -31,7 +31,7 @@ public interface PaaMapper {
     PaaResponse map(Paa source);
 
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "version", source = "version")
+    @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "annee", source = "annee")
