@@ -1,8 +1,8 @@
 package com.sigmap.common.societe_address.response;
 
-import com.sigmap.common.ref_params.response.RefParamResponse;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
-import com.sigmap.common.societe.response.SocieteResponse;
+import com.sigmap.common.societe.response.SocieteResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,9 +14,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SocieteAddressResponse {
     private Integer id;
-    private RefParamResponse type;
+    private RefParamResponseDto type;
     private String address;
-    private SocieteResponse societe;
+    private SocieteResponseDto societe;
     private BaseEntityResponse metadata;
 
 }

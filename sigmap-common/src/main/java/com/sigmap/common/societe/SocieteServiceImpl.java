@@ -68,8 +68,7 @@ public class SocieteServiceImpl implements SocieteService {
     public Societe create(SocieteRequest request) {
         RefParam type=refParamService.findById(request.getTypeId()).orElseThrow();
         RefParam pays=refParamService.findById(request.getTypeId()).orElseThrow();
-        Societe societe=new Societe();
-        societe= SocieteMapper.INSTANCE.map(request);
+        Societe societe =  SocieteMapper.INSTANCE.map(request);
         societe.setPays(pays);
         societe.setType(type);
         return save(societe);

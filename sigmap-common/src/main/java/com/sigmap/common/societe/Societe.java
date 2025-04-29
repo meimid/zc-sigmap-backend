@@ -13,7 +13,7 @@ import lombok.*;
 @Table(name = "societe")
 public class Societe extends BaseEntity {
     @Id
-    //@GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "societe_id")
     private Integer id;
     private String nom;

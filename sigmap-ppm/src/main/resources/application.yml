@@ -66,3 +66,8 @@ tenant:
 process:
   definition:
     location: ${PROCESS_DEFINITION_LOCATION:processes/}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}

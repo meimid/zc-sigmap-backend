@@ -65,8 +65,7 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     public Contact create(ContactRequest request) {
-        Contact contact = new Contact();
-        contact= ContactMapper.INSTANCE.map(request);
+        Contact contact =ContactMapper.INSTANCE.map(request);
         return repository.save(contact);
     }
 
