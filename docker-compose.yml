@@ -1,5 +1,5 @@
 services:
-  mariadb:
+  mariadb-sigmap:
     image: mariadb:10.5.22
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -9,6 +9,30 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - data:/var/lib/mysql:rw
+      - sigmap-data:/var/lib/mysql:rw
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mariadb-flowable:
+    image: mariadb:10.5.22
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_DATABASE: flowable_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - flowable-data:/var/lib/mysql:rw
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
-  data:
+  sigmap-data:
+  flowable-data:
