@@ -2,10 +2,13 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -64,8 +67,8 @@ public class ComServiceImpl implements ComService{
     }
 
     @Override
-    public Optional<Com> findById(Integer id) {
-        return repository.findById(id);
+    public Com findById(Integer id) throws ComNotFound {
+        return repository.findById(id).orElseThrow(() -> new ComNotFound("Com not found: " + id));
     }
 
     @Override
@@ -75,8 +78,9 @@ public class ComServiceImpl implements ComService{
     }
 
     @Override
-    public Com create(ComRequest request) {
-        RefParam comType=refParamService.findById(request.getComTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"ComType not found: " +request.getComTypeId()));
+    public Com create(ComRequest request) throws ComNotFound, AcNotFound{
+        RefParam comType=refParamService.findById(request.getComTypeId())
+                .orElseThrow(() -> new ComNotFound("ComType not found with id : " +request.getComTypeId()));
         Com com = ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -84,11 +88,11 @@ public class ComServiceImpl implements ComService{
             com.setComType(null);
         }
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            List<Ac> acs = acRepository.findAllById(request.getAcIds());
+            var acs = acRepository.findAllById(request.getAcIds());
 
             // Validate that we found all requested Com entities
             if (acs.size() != request.getAcIds().size()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
+                throw new AcNotFound("One or more AC were not found");
 
             }
             com.setAcs(acs);
@@ -97,9 +101,11 @@ public class ComServiceImpl implements ComService{
     }
 
     @Override
-    public Com update(Integer id,ComRequest request) {
-        Com com = repository.findById(id) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Com not found: " + id));
-        RefParam comType=refParamService.findById(request.getComTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"comType not found: " + request.getComTypeId()));
+    public Com update(Integer id,ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
+        Com com = repository.findById(id)
+                .orElseThrow(() -> new ComNotFound("Com not found with id : " + id));
+        RefParam comType=refParamService.findById(request.getComTypeId())
+                .orElseThrow(() -> new RefParamNotFound("comType not found with id : " + request.getComTypeId()));
       ComMapper.INSTANCE.updateFromRequest(request, com);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -107,10 +113,9 @@ public class ComServiceImpl implements ComService{
             com.setComType(null);
         }
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            List<Ac> acs = acRepository.findAllById(request.getAcIds());
-
+            var acs = acRepository.findAllById(request.getAcIds());
             if (acs.size() != request.getAcIds().size()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
+                throw new AcNotFound("One or more ACs were not found");
 
             }
             com.setAcs(acs);

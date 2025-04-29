@@ -1,10 +1,9 @@
 package com.sigmap.common.ac;
 
-import com.sigmap.common.GlobalException.BadRequest;
+import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -66,8 +65,9 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public Optional<Ac> findById(Integer id) {
-        return repository.findById(id);
+    public Ac findById(Integer id) throws AcNotFound {
+        return repository.findById(id).orElseThrow(() -> new AcNotFound("Ac not found: " + id));
+
     }
 
     @Override
@@ -76,23 +76,21 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public AcResponse create(AcRequest request) {
+    public Ac create(AcRequest request) throws ComNotFound {
 
         Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-
+            var coms = comRepository.findAllById(request.getComIds());
             if (coms.size() != request.getComIds().size()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
+                throw new ComNotFound("One or more Com IDs were not found");
             }
             ac.setComs(coms);
         }
-        repository.save(ac);
-        return AcMapper.INSTANCE.map(ac);
+        return repository.save(ac);
     }
 
     @Override
-    public Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, BadRequest {
+    public Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
         Ac ac= repository.findById(id).orElseThrow(() -> new AcNotFound("Ac not found: " + id));
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
@@ -100,35 +98,12 @@ public class AcServiceImpl implements AcService{
             // Check for duplicate Com IDs
             var uniqueComIds = new HashSet<>(request.getComIds());
             if (uniqueComIds.size() != request.getComIds().size()) {
-                throw new BadRequest("Duplicate Com IDs are not allowed");
+                throw new DuplicateComIdsException("Duplicate Com IDs are not allowed");
             }
             var coms = comRepository.findAllById(request.getComIds());
             if (coms.size() != request.getComIds().size()) {
                 throw new ComNotFound("One or more Com IDs were not found");
             }
-            ac.setComs(coms);
-        }
-
-        return repository.save(ac);
-    }
-
-  //  @Override
-    public Ac update1(Integer id,AcRequest request) {
-        Ac ac= repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Ac not found: " + id));
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-
-        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-
-            if (coms.size() != request.getComIds().size()) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,"One or more Com IDs were not found");
-            }
-
             ac.setComs(coms);
         }
 

@@ -1,4 +1,4 @@
-package com.sigmap.common.GlobalException;
+package com.sigmap.common.globalExceptions;
 
 public class BadRequest extends Exception {
     public BadRequest(String message) {

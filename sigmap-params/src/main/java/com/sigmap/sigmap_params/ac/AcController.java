@@ -1,6 +1,6 @@
 package com.sigmap.sigmap_params.ac;
 
-import com.sigmap.common.GlobalException.BadRequest;
+import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -76,9 +76,8 @@ public class AcController {
      * @return the ac
      */
     @GetMapping("/{id}")
-    public ResponseEntity<AcResponse> findById(@PathVariable Integer id) {
-        Ac param = acService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<AcResponse> findById(@PathVariable Integer id) throws AcNotFound {
+        Ac param = acService.findById(id);
         AcResponse response = AcMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -90,10 +89,10 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) {
-        AcResponse ac = acService.create(request);
-       // AcResponse response = AcMapper.INSTANCE.map(ac);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ac);
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound {
+        Ac ac = acService.create(request);
+        AcResponse response = AcMapper.INSTANCE.map(ac);
+        return ResponseEntity.ok(response);
     }
     /**
      * Update  ac.
@@ -102,7 +101,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id,@RequestBody AcRequest request) throws AcNotFound, ComNotFound, BadRequest {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id,@RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);

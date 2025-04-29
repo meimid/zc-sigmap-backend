@@ -1,4 +1,4 @@
-package com.sigmap.common.GlobalException;
+package com.sigmap.sigmap_params.exeptions;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
