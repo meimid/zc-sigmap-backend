@@ -137,4 +137,17 @@ public class AgpmController {
         agpmService.delete(agpmId, agpmVer);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+
+    @PutMapping("/status/{agpmId}/{agpmVer}/{statusId}")
+    public ResponseEntity<AgpmResponse> updateAgpmStatus(
+            @PathVariable Integer agpmId,
+            @PathVariable Integer agpmVer,
+            @PathVariable Integer statusId) throws AgpmNotFound {
+
+        Agpm updated = agpmService.updateStatus(agpmId, agpmVer, statusId);
+        AgpmResponse response =  AgpmMapper.INSTANCE.map(updated);
+        return ResponseEntity.ok(response);
+    }
+
+
 }

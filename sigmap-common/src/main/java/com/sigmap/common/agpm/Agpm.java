@@ -4,10 +4,10 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
 
 import java.util.List;
 
@@ -43,8 +43,9 @@ public class Agpm extends BaseEntity {
     @JoinColumn(name = "ac_id")
     private Ac ac;
 
-    @Column(name = "status_id")
-    private Integer statusId;
+    @ManyToOne
+    @JoinColumn(name = "status_id")
+    private RefParam status;
 
     @ManyToMany
     @JoinTable(
@@ -57,6 +58,8 @@ public class Agpm extends BaseEntity {
                     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id")
             }
     )
-
     private List<Docs> docs;
+
+    @Column(name = "remarque", columnDefinition = "LONGTEXT")
+    private String remarque;
 }

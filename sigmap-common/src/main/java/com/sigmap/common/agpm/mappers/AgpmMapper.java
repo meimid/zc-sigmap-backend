@@ -1,14 +1,14 @@
 package com.sigmap.common.agpm.mappers;
 
-
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
+import com.sigmap.common.ref_params.RefParam;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
-
 
 /**
  * Mapper interface for converting between Agpm entities, requests, and responses.
@@ -22,7 +22,7 @@ public interface AgpmMapper {
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "contenu", source = "contenu")
-    @Mapping(target = "statusId", source = "statusId")
+    @Mapping(source = "status", target = "status")
     @Mapping(target = "ac", source = "ac")
     @Mapping(target = "docs", source = "docs")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
@@ -39,7 +39,7 @@ public interface AgpmMapper {
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "contenu", source = "contenu")
-    @Mapping(target = "statusId", source = "statusId")
+    @Mapping(target = "status", ignore = true)
     @Mapping(target = "ac", ignore = true)
     @Mapping(target = "docs", ignore = true)
     Agpm toEntity(AgpmRequest request);
@@ -49,10 +49,20 @@ public interface AgpmMapper {
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "contenu", source = "contenu")
-    @Mapping(target = "statusId", source = "statusId")
+    @Mapping(source = "statusId", target = "status", qualifiedByName = "mapStatusIdToStatus")
     @Mapping(target = "ac", ignore = true)
     @Mapping(target = "docs", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
+
+    @Named("mapStatusIdToStatus")
+    default RefParam mapStatusIdToStatus(Integer statusId) {
+        if (statusId == null) {
+            return null;
+        }
+        RefParam status = new RefParam();
+        status.setId(statusId);
+        return status;
+    }
 }

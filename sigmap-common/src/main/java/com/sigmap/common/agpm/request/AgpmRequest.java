@@ -11,7 +11,7 @@ import java.util.List;
 @Data
 public class AgpmRequest {
     private Integer id;
-    private Integer version;
+    private Integer version =1;
     private String ref;
     private String nom;
     private String contenu;
@@ -19,5 +19,5 @@ public class AgpmRequest {
     private Integer acId;
     private Integer statusId;
     private List<Integer> docIds;
-
+    private String remarque;
 }

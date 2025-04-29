@@ -50,6 +50,23 @@ keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
 
+# Flowable: use a dedicated database
+flowable:
+  use-default-data-source: false
+  database-schema-update: true
+  check-process-definitions: true
+  process-definition-location-prefix: classpath:/processes/
+  datasource:
+    url: jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+    driver-class-name: org.mariadb.jdbc.Driver
+tenant:
+  id: ${TENANT_ID :agpm}
+process:
+  definition:
+    location: ${PROCESS_DEFINITION_LOCATION:processes/}
+
 alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
   username: ${ALFRESCO_USERNAME:admin}

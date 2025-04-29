@@ -94,4 +94,6 @@ public interface AgpmService {
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
     Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound;
+
+    Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
 }
