@@ -7,6 +7,8 @@ import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.ref_params.RefParamRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,10 +25,12 @@ import java.util.Optional;
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
     private final RealisationRepository realisationRepository;
+    private final RefParamRepository refParamRepository;
 
-    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository) {
+    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository, RefParamRepository refParamRepository) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
+        this.refParamRepository = refParamRepository;
     }
 
     @Override
@@ -54,8 +58,6 @@ public class PaaServiceImpl implements PaaService {
         Specification<Paa> spec = PaaSpecifications.deleted(true);
         return repository.findAll(spec, pageable);
     }
-
-
 
     @Override
     public Optional<Paa> findDeletedById(Integer paaId, Integer paaVer) {
@@ -103,6 +105,12 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
+        // Set status from RefParam
+        if (request.getStatus() != null) {
+            paa.setStatus(refParamRepository.findById(request.getStatus().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Status not found")));
+        }
+
         paa.setId(id);
         paa.setVersion(version);
 
@@ -119,7 +127,6 @@ public class PaaServiceImpl implements PaaService {
                 if (realisation.getPaas() == null) {
                     realisation.setPaas(new ArrayList<>());
                 }
-                // Ensure the PAA is fully initialized before adding to the relationship
                 if (!realisation.getPaas().contains(savedPaa)) {
                     realisation.getPaas().add(savedPaa);
                 }
@@ -136,7 +143,6 @@ public class PaaServiceImpl implements PaaService {
         return savedPaa;
     }
 
-
     @Override
     public void delete(Integer paaId, Integer paaVer) {
         repository.softDelete(paaId, paaVer);
@@ -146,7 +152,6 @@ public class PaaServiceImpl implements PaaService {
     public Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
-
 
         if (existingPaaOpt.isEmpty()) {
             throw new PaaNotFound(paaId, paaVer,
@@ -159,9 +164,7 @@ public class PaaServiceImpl implements PaaService {
                     "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer);
         }
 
-        Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request,existingPaaOpt.get());
+        Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request, existingPaaOpt.get());
         return repository.save(paa);
     }
-
-
 }

@@ -4,6 +4,7 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ref_params.RefParam;
 
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,7 +19,7 @@ public class PaaQuery {
     private String nom;
     private String annee;
     private BigDecimal budgetEstime;
-    private Integer statusId;
+    private RefParam status;
     private boolean deleted;
 
     /**
@@ -33,7 +34,7 @@ public class PaaQuery {
      * <li>{@link PaaSpecifications#nom(String)} if the nom property is not null or blank.</li>
      * <li>{@link PaaSpecifications#annee(String)} if the annee property is not null or blank.</li>
      * <li>{@link PaaSpecifications#budgetEstime(BigDecimal)} if the budgetEstime property is not null.</li>
-     * <li>{@link PaaSpecifications#statusId(Integer)} if the statusId property is not null.</li>
+     * <li>{@link PaaSpecifications#status(RefParam)} if the status property is not null.</li>
      * <li>{@link PaaSpecifications#deleted(boolean)} if the deleted property is true.</li>
      * </ul>
      * <p>
@@ -70,8 +71,8 @@ public class PaaQuery {
             spec = spec.and(PaaSpecifications.budgetEstime(budgetEstime));
         }
 
-        if (statusId != null) {
-            spec = spec.and(PaaSpecifications.statusId(statusId));
+        if (status != null) {
+            spec = spec.and(PaaSpecifications.status(status));
         }
 
         return spec;

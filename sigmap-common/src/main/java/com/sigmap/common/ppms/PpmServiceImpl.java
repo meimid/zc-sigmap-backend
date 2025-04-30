@@ -4,6 +4,8 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ppms.request.PpmRequest;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,6 +18,7 @@ import java.util.Optional;
 public class PpmServiceImpl implements PpmService {
     private final PpmRepository repository;
     private final AcRepository acRepository;
+    private final RefParamRepository refParamRepository;
 
     /**
      * Constructor.
@@ -24,9 +27,10 @@ public class PpmServiceImpl implements PpmService {
      *                    //TODO
 //     * @param acService ac service
      */
-    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository, RefParamRepository refParamRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
+        this.refParamRepository = refParamRepository;
     }
 
     @Override
@@ -98,7 +102,12 @@ public class PpmServiceImpl implements PpmService {
         ppm.setNom(request.getNom());
         ppm.setAnnee(request.getAnnee());
         ppm.setBudgetEstime(request.getBudgetEstime());
-        ppm.setStatusId(request.getStatusId());
+
+        // Set status if provided
+        if (request.getStatus() != null) {
+            ppm.setStatus(refParamRepository.findById(request.getStatus().getId())
+                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+        }
 
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
@@ -128,7 +137,14 @@ public class PpmServiceImpl implements PpmService {
         existingPpm.setNom(request.getNom());
         existingPpm.setAnnee(request.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime());
-        existingPpm.setStatusId(request.getStatusId());
+
+        // Update status if provided
+        if (request.getStatus() != null) {
+            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
+                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+        } else {
+            existingPpm.setStatus(null);
+        }
 
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
