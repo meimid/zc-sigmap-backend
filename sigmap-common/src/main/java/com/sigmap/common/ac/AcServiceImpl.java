@@ -1,15 +1,21 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -59,8 +65,9 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public Optional<Ac> findById(Integer id) {
-        return repository.findById(id);
+    public Ac findById(Integer id) throws AcNotFound {
+        return repository.findById(id).orElseThrow(() -> new AcNotFound("Ac not found: " + id));
+
     }
 
     @Override
@@ -69,53 +76,34 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public AcResponse create(AcRequest request) {
+    public Ac create(AcRequest request) throws ComNotFound {
+
         Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-
+            var coms = comRepository.findAllById(request.getComIds());
             if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+                throw new ComNotFound("One or more Com IDs were not found");
             }
             ac.setComs(coms);
         }
-        repository.save(ac);
-        return AcMapper.INSTANCE.map(ac);
-    }
-
-    @Override
-    public Ac update(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
-        AcMapper.INSTANCE.updateAcFromRequest(request, ac);
-
-        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-            if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
-            }
-            ac.setComs(coms);
-        }
-
         return repository.save(ac);
     }
 
-  //  @Override
-    public Ac update1(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
+    @Override
+    public Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
+        Ac ac= repository.findById(id).orElseThrow(() -> new AcNotFound("Ac not found: " + id));
+        AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-
-            if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+            // Check for duplicate Com IDs
+            var uniqueComIds = new HashSet<>(request.getComIds());
+            if (uniqueComIds.size() != request.getComIds().size()) {
+                throw new DuplicateComIdsException("Duplicate Com IDs are not allowed");
             }
-
+            var coms = comRepository.findAllById(request.getComIds());
+            if (coms.size() != request.getComIds().size()) {
+                throw new ComNotFound("One or more Com IDs were not found");
+            }
             ac.setComs(coms);
         }
 

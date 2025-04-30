@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class CompteBancaireRequest {
-    private Integer id;
     private String nom;
     private String agence;
     private String rib;

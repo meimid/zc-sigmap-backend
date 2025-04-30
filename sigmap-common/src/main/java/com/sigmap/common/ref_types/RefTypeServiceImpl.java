@@ -8,7 +8,9 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RefTypeServiceImpl implements RefTypeService {
@@ -59,16 +61,28 @@ public class RefTypeServiceImpl implements RefTypeService {
   public RefType save(RefType refType) {
     return repository.save(refType);
   }
-
+  private boolean check_id(Integer refTypeId){
+    return refTypeId != null && refTypeId > 0;
+  }
   @Override
   public RefType create(RefTypeRequest request) {
-    RefType refType =RefTypeMapper.INSTANCE.map(request);
-    return save(refType);
+    Optional<RefType> checkId = repository.findById(request.getId());
+    if (checkId.isPresent()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "id is already used, try another one : " + request.getId());
+    } else if (!this.check_id(request.getId())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ("RefType id must be positive and not empty"));
+    } else {
+      RefType refType = RefTypeMapper.INSTANCE.map(request);
+      return save(refType);
+    }
   }
+
+
 
   @Override
   public RefType update(RefTypeRequest request) {
-    RefType refType=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
+    RefType refType = repository.findById(request.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "RefParam not found: " + request.getId()));
     RefTypeMapper.INSTANCE.updateFromRequest(request, refType);
     return save(refType);
   }

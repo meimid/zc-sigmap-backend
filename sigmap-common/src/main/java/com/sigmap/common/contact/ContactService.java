@@ -82,7 +82,7 @@ public interface ContactService {
      * @param request the request to update the Contact from
      * @return the updated Contact
      */
-    Contact update(ContactRequest request);
+    Contact update(Integer id,ContactRequest request);
     /**
      * Delete a Contact.
      *

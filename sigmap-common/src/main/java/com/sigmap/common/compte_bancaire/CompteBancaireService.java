@@ -80,7 +80,7 @@ public interface CompteBancaireService {
      * @param request the request to update the CompteBancaire from
      * @return the updated CompteBancaire
      */
-    CompteBancaire update(CompteBancaireRequest request);
+    CompteBancaire update(Integer id,CompteBancaireRequest request);
     /**
      * Delete a CompteBancaire.
      *

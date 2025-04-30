@@ -89,11 +89,11 @@ public class SocieteAddressController {
      * @param request the request to update the SocieteAddress from
      * @return the updated SocieteAddress
      */
-    @PutMapping
-    public ResponseEntity<SocieteAddressResponse> update(@RequestBody SocieteAddressRequest request) {
-        SocieteAddress SocieteAddress = societeAddressService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) {
+        SocieteAddress SocieteAddress = societeAddressService.update(id,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a SocieteAddress based on the given id.

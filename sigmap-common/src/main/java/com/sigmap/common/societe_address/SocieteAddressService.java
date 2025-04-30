@@ -81,7 +81,7 @@ public interface SocieteAddressService {
      * @param request the request to update the com from
      * @return the updated SocieteAddress
      */
-    SocieteAddress update(SocieteAddressRequest request);
+    SocieteAddress update(Integer id,SocieteAddressRequest request);
     /**
      * Delete a SocieteAddress.
      *

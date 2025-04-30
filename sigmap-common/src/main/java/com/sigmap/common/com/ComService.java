@@ -1,5 +1,8 @@
 package com.sigmap.common.com;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -58,7 +61,7 @@ public interface ComService {
      * @param id the id of the Com to return
      * @return the Com with the given id
      */
-    Optional<Com> findById(Integer id);
+    Com findById(Integer id) throws ComNotFound;
 
     /**
      * Save a Com.
@@ -74,14 +77,14 @@ public interface ComService {
      * @param request the request to create the Com from
      * @return the created Com
      */
-    Com create(ComRequest request);
+    Com create(ComRequest request) throws ComNotFound, AcNotFound;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated com
      */
-    Com update(ComRequest request);
+    Com update(Integer id,ComRequest request)throws ComNotFound, RefParamNotFound, AcNotFound;
     /**
      * Delete a Com.
      *

@@ -8,7 +8,9 @@ import com.sigmap.common.societe.SocieteService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -70,8 +72,8 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public CompteBancaire create(CompteBancaireRequest request) {
-        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
+        RefParam pays=refParamService.findById(request.getPaysId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"pays not found: " + request.getPaysId()));
+        Societe societe=societeService.findById(request.getSocieteId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"societe not found: " + request.getSocieteId()));
         CompteBancaire compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
@@ -79,10 +81,10 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     }
 
     @Override
-    public CompteBancaire update(CompteBancaireRequest request) {
-      CompteBancaire compteBancaire=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
-        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
+    public CompteBancaire update(Integer id,CompteBancaireRequest request) {
+      CompteBancaire compteBancaire=repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Com not found: " + id));
+        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"pays not found: " + request.getPaysId()));
+        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"societe not found: " + request.getSocieteId()));
         CompteBancaireMapper.INSTANCE.updateFromRequest(request, compteBancaire);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
