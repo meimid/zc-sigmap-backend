@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
  * REST controller for managing Flowable process definitions, instances, and tasks for the "agpm" tenant.
  * Provides endpoints to deploy processes, start instances, manage tasks, and query historical data.
  */
-@RestController
-@RequestMapping("/api/process")
+//@RestController
+//@RequestMapping("/api/process")
 public class FlowableProcessController {
 
     /** Tenant ID injected from application.yml . */
@@ -255,6 +255,8 @@ public class FlowableProcessController {
         List<Task> tasks = taskQuery.list();
         return tasks.stream().map(this::mapTaskToResponse).collect(Collectors.toList());
     }
+
+
 
     /**
      * Retrieves details of a specific task by its ID in the "agpm" tenant.

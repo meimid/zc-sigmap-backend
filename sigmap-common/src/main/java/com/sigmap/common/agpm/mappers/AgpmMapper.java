@@ -3,6 +3,7 @@ package com.sigmap.common.agpm.mappers;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.ref_params.RefParam;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -43,6 +44,18 @@ public interface AgpmMapper {
     @Mapping(target = "ac", ignore = true)
     @Mapping(target = "docs", ignore = true)
     Agpm toEntity(AgpmRequest request);
+
+    // New method to map Agpm to AgpmResponseDto
+
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "version", source = "version")
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "contenu", source = "contenu")
+    @Mapping(source = "status", target = "status")
+    @Mapping(target = "ac", source = "ac")
+    @Mapping(target = "docs", source = "docs")
+    AgpmResponseDto mapToDto(Agpm source);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "version", ignore = true)
