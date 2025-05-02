@@ -2,6 +2,7 @@ package com.sigmap.common.realisations.request;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotsId;
+import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -15,12 +16,12 @@ public class RealisationRequest {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private Integer serviceId;
-    private Integer directionId;
-    private Integer sourceFinancementId;
-    private Integer monaisId;
-    private Integer typeMarcherId;
-    private Integer modeSelectionId;
+    private RefParam service;
+    private RefParam direction;
+    private RefParam sourceFinancement;
+    private RefParam monais;
+    private RefParam typeMarcher;
+    private RefParam modeSelection;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;
     private LocalDate datePrevDp;

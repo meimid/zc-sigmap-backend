@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
@@ -7,6 +8,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -33,23 +35,29 @@ public class Realisation extends BaseEntity {
     @Column(name = "realisation_envisagees", length = 100)
     private String realisationEnvisagees;
 
-    @Column(name = "service_id")
-    private Integer serviceId;
+    @ManyToOne
+    @JoinColumn(name = "service_id")
+    private RefParam service;
 
-    @Column(name = "direction_id")
-    private Integer directionId;
+    @ManyToOne
+    @JoinColumn(name = "direction_id")
+    private RefParam direction;
 
-    @Column(name = "source_financement_id")
-    private Integer sourceFinancementId;
+    @ManyToOne
+    @JoinColumn(name = "source_financement_id")
+    private RefParam sourceFinancement;
 
-    @Column(name = "monais_id")
-    private Integer monaisId;
+    @ManyToOne
+    @JoinColumn(name = "monais_id")
+    private RefParam monais;
 
-    @Column(name = "type_marcher_id")
-    private Integer typeMarcherId;
+    @ManyToOne
+    @JoinColumn(name = "type_marcher_id")
+    private RefParam typeMarcher;
 
-    @Column(name = "mode_selection_id")
-    private Integer modeSelectionId;
+    @ManyToOne
+    @JoinColumn(name = "mode_selection_id")
+    private RefParam modeSelection;
 
     @Column(name = "date_prev_lps")
     private LocalDate datePrevLps;
@@ -75,8 +83,6 @@ public class Realisation extends BaseEntity {
     @Column(name = "sort")
     private Integer sort;
 
-
-
     @ManyToMany
     @JoinTable(
             name = "ppm_realisation",
@@ -89,6 +95,7 @@ public class Realisation extends BaseEntity {
                     @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
             }
     )
+    @JsonManagedReference
     private List<Ppm> ppms;
 
     @ManyToMany
@@ -128,10 +135,8 @@ public class Realisation extends BaseEntity {
                     @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
                     @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
             },
-            inverseJoinColumns = {
-                    @JoinColumn(name = "doc_id", referencedColumnName = "doc_id")
-            }
+            inverseJoinColumns = @JoinColumn(name = "doc_id")
     )
+    @JsonManagedReference
     private List<Docs> docs;
-
 }

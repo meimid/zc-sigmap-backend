@@ -1,6 +1,7 @@
 package com.sigmap.common.paas.request;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ref_params.RefParam;
 import com.sun.istack.NotNull;
 import lombok.Data;
 
@@ -24,7 +25,7 @@ public class PaaRequest {
 
     private BigDecimal budgetEstime;
 
-    private Integer statusId;
+    private RefParam status;
 
     private List<CompositeId> realisationIds;
 }

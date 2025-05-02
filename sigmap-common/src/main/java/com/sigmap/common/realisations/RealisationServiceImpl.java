@@ -8,6 +8,8 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
@@ -30,14 +32,14 @@ public class RealisationServiceImpl implements RealisationService {
     private final PaaRepository paaRepository;
     private final PpmRepository ppmRepository;
     private final LotRepository lotRepository;
+    private final RefParamRepository refParamRepository;
 
-
-
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository) {
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
         this.lotRepository = lotRepository;
+        this.refParamRepository = refParamRepository;
     }
 
     @Override
@@ -88,7 +90,6 @@ public class RealisationServiceImpl implements RealisationService {
         return repository.save(realisation);
     }
 
-
     @Transactional
     @Override
     public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
@@ -120,6 +121,33 @@ public class RealisationServiceImpl implements RealisationService {
         realisation.setPpms(new ArrayList<>());
         realisation.setLots(new HashSet<>());
         realisation.setDocs(new ArrayList<>());
+
+        // Fetch and set RefParam associations
+        if (request.getService() != null) {
+            realisation.setService(refParamRepository.findById(request.getService().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
+        }
+        if (request.getDirection() != null) {
+            realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
+        }
+        if (request.getSourceFinancement() != null) {
+            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+        }
+        if (request.getMonais() != null) {
+            realisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+        }
+        if (request.getTypeMarcher() != null) {
+            realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
+        }
+        if (request.getModeSelection() != null) {
+            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+        }
+
         // Save entity first (without associations)
         Realisation savedRealisation = repository.save(realisation);
 
@@ -175,8 +203,34 @@ public class RealisationServiceImpl implements RealisationService {
             throw new RealisationNotFoundException(realisationId, realisationVer,
                     "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer);
         }
-        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request,existingRealisationOpt.get());
 
+        // Update RefParam associations if provided
+        if (request.getService() != null) {
+            existingRealisation.setService(refParamRepository.findById(request.getService().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
+        }
+        if (request.getDirection() != null) {
+            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
+        }
+        if (request.getSourceFinancement() != null) {
+            existingRealisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+        }
+        if (request.getMonais() != null) {
+            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+        }
+        if (request.getTypeMarcher() != null) {
+            existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
+        }
+        if (request.getModeSelection() != null) {
+            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+        }
+
+        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request, existingRealisation);
         return repository.save(realisation);
     }
 

@@ -6,6 +6,7 @@ import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.LotsId;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -45,8 +46,9 @@ public class Ppm  extends BaseEntity {
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
 
-    @Column(name = "status_id")
-    private Integer statusId;
+    @ManyToOne
+    @JoinColumn(name = "status_id")
+    private RefParam status;
 
     @ManyToMany(mappedBy = "ppms")
     private List<Realisation> realisations;

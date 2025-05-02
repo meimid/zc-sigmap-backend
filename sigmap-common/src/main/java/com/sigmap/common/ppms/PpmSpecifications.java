@@ -2,6 +2,7 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -37,6 +38,18 @@ public class PpmSpecifications {
                     criteriaBuilder.equal(root.get("id"), id.getId()),
                     criteriaBuilder.equal(root.get("version"), id.getVersion())
             );
+        };
+    }
+
+    /**
+     * Filter by status.
+     */
+    public static Specification<Ppm> status(RefParam status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return criteriaBuilder.conjunction(); // Return all if null
+            }
+            return criteriaBuilder.equal(root.get("status"), status);
         };
     }
 

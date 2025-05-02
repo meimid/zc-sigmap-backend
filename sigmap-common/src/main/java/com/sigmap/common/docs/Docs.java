@@ -1,5 +1,6 @@
 package com.sigmap.common.docs;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.entity.BaseEntity;
 
 import com.sigmap.common.paas.Paa;
@@ -27,12 +28,15 @@ public class Docs extends BaseEntity {
 
 
     @ManyToMany(mappedBy = "docs")
+    @JsonBackReference
     private List<Realisation> realisations;
 
     @ManyToMany(mappedBy = "docs")
+    @JsonBackReference
     private List<Ppm> ppms;
 
     @ManyToMany(mappedBy = "docs")
+    @JsonBackReference
     private List<Paa> paas;
 
 }

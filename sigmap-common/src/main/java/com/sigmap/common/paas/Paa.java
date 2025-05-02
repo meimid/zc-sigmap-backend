@@ -1,11 +1,13 @@
 package com.sigmap.common.paas;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -46,9 +48,9 @@ public class Paa extends BaseEntity {
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
 
-
-    @Column(name = "status_id")
-    private Integer statusId;
+    @ManyToOne
+    @JoinColumn(name = "status_id")
+    private RefParam status;
 
     @ManyToMany(mappedBy = "paas")
     @JsonBackReference
@@ -65,8 +67,6 @@ public class Paa extends BaseEntity {
             },
             inverseJoinColumns = @JoinColumn(name = "doc_id")
     )
+    @JsonManagedReference
     private List<Docs> docs;
-
-
-
 }
