@@ -1,6 +1,5 @@
 package com.sigmap.common.com;
 
-import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -9,18 +8,19 @@ import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
-
+@Slf4j
 public class ComServiceImpl implements ComService{
     private final ComRepository repository;
     private final RefParamService refParamService;
@@ -32,6 +32,10 @@ public class ComServiceImpl implements ComService{
         this.acRepository = acRepository;
     }
 
+    private Locale getLocal (){
+        Locale locale = LocaleContextHolder.getLocale();
+        return locale;
+    }
     @Override
     public List<Com> findAll() {
         Specification<Com> spec = ComSpecifications.deleted(false);
@@ -68,19 +72,19 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com findById(Integer id) throws ComNotFound {
-        return repository.findById(id).orElseThrow(() -> new ComNotFound("Com not found: " + id));
+        return repository.findById(id)
+                .orElseThrow(() -> new ComNotFound("", List.of(id)));
     }
 
     @Override
     public Com save(Com com) {
-
- return repository.save(com);
+        return repository.save(com);
     }
 
     @Override
-    public Com create(ComRequest request) throws ComNotFound, AcNotFound{
+    public Com create(ComRequest request) throws RefParamNotFound , AcNotFound{
         RefParam comType=refParamService.findById(request.getComTypeId())
-                .orElseThrow(() -> new ComNotFound("ComType not found with id : " +request.getComTypeId()));
+                .orElseThrow(() -> new RefParamNotFound("",List.of(request.getComTypeId())));
         Com com = ComMapper.INSTANCE.map(request);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -89,11 +93,9 @@ public class ComServiceImpl implements ComService{
         }
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
             var acs = acRepository.findAllById(request.getAcIds());
-
             // Validate that we found all requested Com entities
             if (acs.size() != request.getAcIds().size()) {
-                throw new AcNotFound("One or more AC were not found");
-
+                throw new AcNotFound("", request.getAcIds());
             }
             com.setAcs(acs);
         }
@@ -103,9 +105,9 @@ public class ComServiceImpl implements ComService{
     @Override
     public Com update(Integer id,ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
         Com com = repository.findById(id)
-                .orElseThrow(() -> new ComNotFound("Com not found with id : " + id));
+                .orElseThrow(() -> new ComNotFound("" , List.of(request.getComTypeId())));
         RefParam comType=refParamService.findById(request.getComTypeId())
-                .orElseThrow(() -> new RefParamNotFound("comType not found with id : " + request.getComTypeId()));
+                .orElseThrow(() -> new RefParamNotFound("" , List.of(request.getComTypeId())));
       ComMapper.INSTANCE.updateFromRequest(request, com);
         if (comType.getId() != null) {
             com.setComType(comType);
@@ -115,8 +117,7 @@ public class ComServiceImpl implements ComService{
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
             var acs = acRepository.findAllById(request.getAcIds());
             if (acs.size() != request.getAcIds().size()) {
-                throw new AcNotFound("One or more ACs were not found");
-
+                throw new AcNotFound("",request.getAcIds());
             }
             com.setAcs(acs);
         }
