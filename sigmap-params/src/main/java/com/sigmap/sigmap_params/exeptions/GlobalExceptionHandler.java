@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_params.exeptions;
 
+import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -55,6 +56,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicateComIdsException.class)
     public ResponseEntity<ErrorResponse> handleDuplicateComIdsException(DuplicateComIdsException ex) {
         String message = messageSource.getMessage("duplicate.com",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateAcIdsException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateAcIdsException(DuplicateAcIdsException ex) {
+        String message = messageSource.getMessage("duplicate.ac",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }

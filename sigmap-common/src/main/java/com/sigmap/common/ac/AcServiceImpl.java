@@ -77,14 +77,27 @@ public class AcServiceImpl implements AcService{
     public Ac create(AcRequest request) throws ComNotFound {
         Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            var coms = comRepository.findAllById(request.getComIds());
-            if (coms.size() != request.getComIds().size()) {
-                throw new ComNotFound("",request.getComIds());
+            List<Integer> comIds = request.getComIds();
+
+            int size = getSizeList(comIds);
+
+            // Check if all Com IDs exist
+            var coms = comRepository.findAllById(comIds);
+            if (coms.size() !=size) {
+                List<Integer> existingComIds = coms.stream()
+                        .map(Com::getId)
+                        .toList();
+                List<Integer> nonExistentComIds = comIds.stream()
+                        .filter(comId -> !existingComIds.contains(comId))
+                        .toList();
+                throw new ComNotFound("", nonExistentComIds);
             }
             ac.setComs(coms);
+
         }
         return repository.save(ac);
     }
+
 
     @Override
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
@@ -114,18 +127,18 @@ public class AcServiceImpl implements AcService{
         return repository.save(ac);
     }
 
-    private static int getSizeList(List<Integer> comIds) throws ComNotFound, DuplicateComIdsException {
-        int size = comIds.size();
+    private static int getSizeList(List<Integer> listIds) throws ComNotFound, DuplicateComIdsException {
+        int size = listIds.size();
         List<Integer> duplicateIds = new ArrayList<>();
 
         // null check for comIds elements
         for (int i = 0; i < size; i++) {
-            if (comIds.get(i) == null ) {
-                throw new ComNotFound("" , List.of(comIds.get(i)));
+            if (listIds.get(i) == null ) {
+                throw new ComNotFound("" , List.of(listIds.get(i)));
             }
             for (int j = i + 1; j < size; j++) {
-                if (comIds.get(i).equals(comIds.get(j))) {
-                    duplicateIds.add(comIds.get(j));
+                if (listIds.get(i).equals(listIds.get(j))) {
+                    duplicateIds.add(listIds.get(j));
                 }
             }
             if (!duplicateIds.isEmpty()) {
