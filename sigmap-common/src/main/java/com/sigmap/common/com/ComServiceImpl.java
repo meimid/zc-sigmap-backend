@@ -36,10 +36,6 @@ public class ComServiceImpl implements ComService{
         this.acRepository = acRepository;
     }
 
-    private Locale getLocal (){
-        Locale locale = LocaleContextHolder.getLocale();
-        return locale;
-    }
     @Override
     public List<Com> findAll() {
         Specification<Com> spec = ComSpecifications.deleted(false);

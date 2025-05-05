@@ -2,10 +2,13 @@ package com.sigmap.sigmap_params.exeptions;
 
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
+import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -81,5 +84,29 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "An unexpected error occurred");
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(CompteBancaireNotFound.class)
+    public ResponseEntity<ErrorResponse> compteBancaireNotFoundException(CompteBancaireNotFound ex) {
+        String message = messageSource.getMessage("compte.bancaire.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SocieteNotFound.class)
+    public ResponseEntity<ErrorResponse> societeNotFoundException(SocieteNotFound ex) {
+        String message = messageSource.getMessage("societe.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ContactNotFound.class)
+    public ResponseEntity<ErrorResponse> societeNotFoundException(ContactNotFound ex) {
+        String message = messageSource.getMessage("contact.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }
