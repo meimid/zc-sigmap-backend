@@ -2,10 +2,13 @@ package com.sigmap.sigmap_params.compteBancaire;
 
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireService;
+import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireQuery;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -63,9 +66,8 @@ public class CompteBancaireController {
      * @return the CompteBancaire
      */
     @GetMapping("/{id}")
-    public ResponseEntity<CompteBancaireResponse> findById(@PathVariable Integer id) {
-        CompteBancaire param = compteBancaireService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<CompteBancaireResponse> findById(@PathVariable Integer id) throws CompteBancaireNotFound {
+        CompteBancaire param = compteBancaireService.findById(id);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -77,7 +79,7 @@ public class CompteBancaireController {
      * @return the created CompteBancaire
      */
     @PostMapping
-    public ResponseEntity<CompteBancaireResponse> create(@RequestBody CompteBancaireRequest request) {
+    public ResponseEntity<CompteBancaireResponse> create(@RequestBody CompteBancaireRequest request)throws RefParamNotFound, SocieteNotFound {
         CompteBancaire CompteBancaire = compteBancaireService.create(request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -89,7 +91,7 @@ public class CompteBancaireController {
      * @return the updated CompteBancaire
      */
     @PutMapping("/{id}")
-    public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequest request) {
+    public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
         CompteBancaire CompteBancaire = compteBancaireService.update(id,request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
         return ResponseEntity.status(HttpStatus.OK).body(response);

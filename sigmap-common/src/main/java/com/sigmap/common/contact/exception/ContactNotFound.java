@@ -2,17 +2,14 @@ package com.sigmap.common.contact.exception;
 
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public class ContactNotFound extends RuntimeException {
-    private final Integer id;
+    private final List<Integer> id;
 
-    public ContactNotFound(Integer id, String message) {
+    public ContactNotFound(String message, List<Integer> id) {
         super(message);
-        this.id = id;
-    }
-
-    public ContactNotFound(Integer id, String message, Throwable cause) {
-        super(message, cause);
         this.id = id;
     }
 }

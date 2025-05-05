@@ -77,7 +77,7 @@ public interface ComService {
      * @param request the request to create the Com from
      * @return the created Com
      */
-    Com create(ComRequest request) throws ComNotFound, AcNotFound;
+    Com create(ComRequest request) throws AcNotFound, RefParamNotFound;
     /**
      * update Com.
      *

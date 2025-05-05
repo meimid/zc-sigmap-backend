@@ -81,7 +81,7 @@ public class ComController {
      * @return the created Com
      */
     @PostMapping
-    public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws ComNotFound, AcNotFound {
+    public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws  AcNotFound, RefParamNotFound {
         Com com = comService.create(request);
         ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.ok(response);

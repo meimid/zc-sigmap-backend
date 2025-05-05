@@ -2,16 +2,14 @@ package com.sigmap.common.societe.exception;
 
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public class SocieteNotFound extends Exception {
-    private final Integer id;
-    public SocieteNotFound(Integer id, String message) {
+    private final List<Integer> id;
+    public SocieteNotFound( String message ,List<Integer> id) {
         super(message);
         this.id = id;
     }
 
-    public SocieteNotFound(Integer id, String message, Throwable cause) {
-        super(message, cause);
-        this.id = id;
-    }
 }
