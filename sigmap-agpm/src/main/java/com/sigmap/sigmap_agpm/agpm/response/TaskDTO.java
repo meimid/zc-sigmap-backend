@@ -28,4 +28,6 @@ public class TaskDTO {
     private Integer newStatus;
     private Boolean validate;
     private String status;
+    private Boolean isUpdatable;
+    private Boolean isPublishable;
 }

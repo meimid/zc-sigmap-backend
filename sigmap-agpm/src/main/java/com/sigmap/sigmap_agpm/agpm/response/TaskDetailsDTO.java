@@ -29,4 +29,6 @@ public class TaskDetailsDTO {
 
     // Status information
     private String status;
+    private Boolean isUpdatable;
+    private Boolean isPublishable;
 }

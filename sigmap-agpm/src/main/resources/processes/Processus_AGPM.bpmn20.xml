@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:flowable="http://flowable.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Flowable Open Source Modeler" exporterVersion="6.8.0">
+  <process id="agpmProcess" name="Processus AGPM" isExecutable="true">
+    <endEvent id="EndEvent_0tr7b0f"></endEvent>
+    <userTask id="Publication_AC" name="(AC) Publication" flowable:candidateGroups="PUB_AC" flowable:formFieldValidation="true">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
+        <flowable:formProperty id="isPublishable" name="isPublishable" type="boolean" default="true"></flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    <startEvent id="Event_06b8v8q" name="Début" flowable:formFieldValidation="true"></startEvent>
+    <userTask id="saisieTask" name="Saisie AGPM (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    <userTask id="Validation_AC" name="Validation (AC)" flowable:candidateGroups="VALIDATEUR_AC" flowable:formFieldValidation="true">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    <userTask id="Rectification_AC" name="Rectification (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="true"></flowable:formProperty>
+      </extensionElements>
+    </userTask>
+    <exclusiveGateway id="Gateway_13q8j1a"></exclusiveGateway>
+    <sequenceFlow id="Flow_1c4qwmp" sourceRef="Event_06b8v8q" targetRef="saisieTask"></sequenceFlow>
+    <sequenceFlow id="Flow_00iv1ya" sourceRef="saisieTask" targetRef="Validation_AC"></sequenceFlow>
+    <sequenceFlow id="Flow_1faanus" sourceRef="Rectification_AC" targetRef="Validation_AC"></sequenceFlow>
+    <sequenceFlow id="Flow_0chj49b" sourceRef="Validation_AC" targetRef="Gateway_13q8j1a"></sequenceFlow>
+    <sequenceFlow id="sid-56BB8A39-FFCF-4A2B-86DD-7BF1421051A7" sourceRef="Publication_AC" targetRef="EndEvent_0tr7b0f"></sequenceFlow>
+    <sequenceFlow id="Flow_036s2iv" name="Non Valide" sourceRef="Gateway_13q8j1a" targetRef="Rectification_AC">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{valide==false}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="sid-514B7D0B-B433-4660-A3BE-2AE7D9980BE2" name="Valide" sourceRef="Gateway_13q8j1a" targetRef="Publication_AC">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[#{valide==true}]]></conditionExpression>
+    </sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_agpmProcess1">
+    <bpmndi:BPMNPlane bpmnElement="agpmProcess1" id="BPMNPlane_agpmProcess1">
+      <bpmndi:BPMNShape bpmnElement="EndEvent_0tr7b0f" id="BPMNShape_EndEvent_0tr7b0f">
+        <omgdc:Bounds height="28.0" width="28.0" x="945.0" y="99.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Publication_AC" id="BPMNShape_Publication_AC">
+        <omgdc:Bounds height="80.0" width="100.0" x="750.0" y="73.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Event_06b8v8q" id="BPMNShape_Event_06b8v8q">
+        <omgdc:Bounds height="30.0" width="30.0" x="152.0" y="98.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="saisieTask" id="BPMNShape_saisieTask">
+        <omgdc:Bounds height="70.0" width="100.0" x="270.0" y="78.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Validation_AC" id="BPMNShape_Validation_AC">
+        <omgdc:Bounds height="70.0" width="100.0" x="460.0" y="78.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Rectification_AC" id="BPMNShape_Rectification_AC">
+        <omgdc:Bounds height="70.0" width="100.0" x="460.0" y="253.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="Gateway_13q8j1a" id="BPMNShape_Gateway_13q8j1a">
+        <omgdc:Bounds height="40.0" width="40.0" x="635.0" y="88.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="Flow_1c4qwmp" id="BPMNEdge_Flow_1c4qwmp" flowable:sourceDockerX="15.0" flowable:sourceDockerY="15.0" flowable:targetDockerX="50.0" flowable:targetDockerY="35.0">
+        <omgdi:waypoint x="181.9499992192629" y="113.0"></omgdi:waypoint>
+        <omgdi:waypoint x="270.0" y="113.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-56BB8A39-FFCF-4A2B-86DD-7BF1421051A7" id="BPMNEdge_sid-56BB8A39-FFCF-4A2B-86DD-7BF1421051A7" flowable:sourceDockerX="50.0" flowable:sourceDockerY="40.0" flowable:targetDockerX="14.0" flowable:targetDockerY="14.0">
+        <omgdi:waypoint x="849.9499999999747" y="113.0"></omgdi:waypoint>
+        <omgdi:waypoint x="945.0" y="113.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_036s2iv" id="BPMNEdge_Flow_036s2iv" flowable:sourceDockerX="20.0" flowable:sourceDockerY="20.0" flowable:targetDockerX="50.0" flowable:targetDockerY="35.0">
+        <omgdi:waypoint x="655.5391891891892" y="127.40571312803888"></omgdi:waypoint>
+        <omgdi:waypoint x="660.0" y="288.0"></omgdi:waypoint>
+        <omgdi:waypoint x="559.95" y="288.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_00iv1ya" id="BPMNEdge_Flow_00iv1ya" flowable:sourceDockerX="50.0" flowable:sourceDockerY="35.0" flowable:targetDockerX="50.0" flowable:targetDockerY="35.0">
+        <omgdi:waypoint x="369.9499999999889" y="113.0"></omgdi:waypoint>
+        <omgdi:waypoint x="460.0" y="113.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_1faanus" id="BPMNEdge_Flow_1faanus" flowable:sourceDockerX="50.0" flowable:sourceDockerY="35.0" flowable:targetDockerX="50.0" flowable:targetDockerY="35.0">
+        <omgdi:waypoint x="510.0" y="253.0"></omgdi:waypoint>
+        <omgdi:waypoint x="510.0" y="147.95"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="Flow_0chj49b" id="BPMNEdge_Flow_0chj49b" flowable:sourceDockerX="50.0" flowable:sourceDockerY="35.0" flowable:targetDockerX="20.0" flowable:targetDockerY="20.0">
+        <omgdi:waypoint x="559.9499999999999" y="111.27586206896552"></omgdi:waypoint>
+        <omgdi:waypoint x="635.6666666666665" y="108.665"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="sid-514B7D0B-B433-4660-A3BE-2AE7D9980BE2" id="BPMNEdge_sid-514B7D0B-B433-4660-A3BE-2AE7D9980BE2" flowable:sourceDockerX="20.5" flowable:sourceDockerY="20.5" flowable:targetDockerX="50.0" flowable:targetDockerY="40.0">
+        <omgdi:waypoint x="673.8717136150229" y="109.07231543624161"></omgdi:waypoint>
+        <omgdi:waypoint x="750.0" y="111.44290657439447"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
