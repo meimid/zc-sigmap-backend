@@ -89,7 +89,7 @@ public class AgpmController {
         agpmService.delete(agpmId, agpmVer);
         Map<String, Object> result = new HashMap<>();
         result.put("status", "AGPM deleted successfully");
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(result);
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/status/{agpmId}/{agpmVer}/{statusId}")

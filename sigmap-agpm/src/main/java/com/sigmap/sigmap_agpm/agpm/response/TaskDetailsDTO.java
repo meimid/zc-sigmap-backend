@@ -31,4 +31,5 @@ public class TaskDetailsDTO {
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;
+    private List<NextStepDTO> nextSteps;
 }
