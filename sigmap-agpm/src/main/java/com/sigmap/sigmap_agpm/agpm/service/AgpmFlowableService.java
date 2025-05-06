@@ -455,7 +455,8 @@ public class AgpmFlowableService {
 
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                // Step 1: Validate authentication
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -464,6 +465,7 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Step 2: Retrieve the task
         Task task = taskService.createTaskQuery()
                 .taskId(taskId)
                 .taskTenantId(TENANT_ID)
@@ -476,6 +478,7 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
+        // Step 3: Check for candidate group
         String candidateGroup = getCandidateGroup(task);
         if (candidateGroup == null) {
             TaskDTO errorResponse = new TaskDTO();
@@ -483,26 +486,27 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
+        // Step 4: Check if user has the required role or assignment
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("User does not have the required role or assignment to validate this task");
             return errorResponse;
         }
 
-        // Retrieve process variables and log them for debugging
+        // Step 5: Retrieve process variables
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
         log.info("Process variables for task [{}]: {}", taskId, processVariables);
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        // Strengthen validation for id and version
+        // Step 6: Validate id and version
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
-        // Fetch the Agpm entity
+        // Step 7: Fetch the Agpm entity
         Optional<Agpm> agpmOptional = agpmService.findById(id, version);
         if (agpmOptional.isEmpty()) {
             TaskDTO errorResponse = new TaskDTO();
@@ -512,12 +516,12 @@ public class AgpmFlowableService {
 
         Agpm latestAgpm = agpmOptional.get();
 
-        // Get task properties (isUpdatable and isPublishable)
+        // Step 8: Get task properties (isUpdatable and isPublishable)
         Map<String, Boolean> taskProperties = getTaskProperties(task);
         Boolean isUpdatable = taskProperties.get("isUpdatable");
         Boolean isPublishable = taskProperties.get("isPublishable");
 
-        // Handle isUpdatable: Update the Agpm object if true
+        // Step 9: Handle isUpdatable: Update the Agpm object if true
         if (isUpdatable) {
             if (request.getAgpm() == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -532,9 +536,13 @@ public class AgpmFlowableService {
             }
             // Update the latestAgpm to reflect the updated state
             latestAgpm = updatedAgpm;
+            // Update process variables with the new version
+            version = latestAgpm.getVersion();
+            processVariables.put("version", version);
+            runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
         }
 
-        // Handle isPublishable: Update status to Publiée (status 3) if true
+        // Step 10: Handle isPublishable: Update status to Publiée (status 3) if true
         Integer newStatus = null;
         if (isPublishable) {
             newStatus = 3; // Publiée
@@ -545,8 +553,10 @@ public class AgpmFlowableService {
                 return errorResponse;
             }
             latestAgpm = updatedAgpm;
+            // Note: We are NOT updating the version in processVariables here, as per your requirement
         }
 
+        // Step 11: Set process variables for validation
         boolean validate = request.getValidate() != null ? request.getValidate() : false;
         Map<String, Object> variables = new HashMap<>();
         variables.put("valide", validate);
@@ -560,8 +570,10 @@ public class AgpmFlowableService {
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
 
+        // Step 12: Complete the task
         taskService.complete(taskId);
 
+        // Step 13: Build the success response
         TaskDTO response = new TaskDTO();
         response.setTaskId(task.getId());
         response.setTaskName(task.getName());
