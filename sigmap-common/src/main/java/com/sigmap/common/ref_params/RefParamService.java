@@ -1,6 +1,8 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.request.RefParamRequest;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -74,7 +76,7 @@ public interface RefParamService {
    * @param id the id of the RefParam to return
    * @return the RefParam with the given id
    */
-  Optional<RefParam> findById(Integer id);
+  RefParam findById(Integer id)throws RefParamNotFound;
 
   /** 
    * Save a RefParam.
@@ -90,14 +92,14 @@ public interface RefParamService {
    * @param request the request to create the RefParam from
    * @return the created RefParam
    */
-  RefParam create(RefParamRequest request) ;
+  RefParam create(RefParamRequest request) throws RefParamNotFound;
   /**
    * update RefParam.
    *
    * @param request the request to update the RefParam from
    * @return the updated RefParam
    */
-  RefParam update(Integer id,RefParamRequest request);
+  RefParam update(Integer id,RefParamRequest request)throws RefParamNotFound, RefTypeNotFound;
 
   /**
    * Delete a RefParam.

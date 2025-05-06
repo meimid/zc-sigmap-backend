@@ -83,8 +83,7 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com create(ComRequest request) throws RefParamNotFound, AcNotFound, DuplicateAcIdsException {
-        RefParam comType = refParamService.findById(request.getComTypeId())
-                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getComTypeId())));
+        RefParam comType = refParamService.findById(request.getComTypeId());
         Com com = ComMapper.INSTANCE.map(request);
 
         if (comType.getId() != null) {
@@ -119,8 +118,7 @@ public class ComServiceImpl implements ComService{
     public Com update(Integer id, ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException {
         Com com = repository.findById(id)
                 .orElseThrow(() -> new ComNotFound("", List.of(id)));
-        RefParam comType = refParamService.findById(request.getComTypeId())
-                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getComTypeId())));
+        RefParam comType = refParamService.findById(request.getComTypeId());
         ComMapper.INSTANCE.updateFromRequest(request, com);
 
         if (comType.getId() != null) {

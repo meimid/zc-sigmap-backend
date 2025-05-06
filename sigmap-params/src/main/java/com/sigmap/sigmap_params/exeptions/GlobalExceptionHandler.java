@@ -1,13 +1,29 @@
 package com.sigmap.sigmap_params.exeptions;
 
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.lots.exception.UpdateDeletedLot;
+import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
+import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
+import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
+import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -42,6 +58,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RefParamNotFound.class)
     public ResponseEntity<ErrorResponse> handleRefParamNotFoundException(RefParamNotFound ex) {
         String message = messageSource.getMessage("ref.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RefTypeNotFound.class)
+    public ResponseEntity<ErrorResponse> refTypeNotFoundException(RefTypeNotFound ex) {
+        String message = messageSource.getMessage("reftype.notfound",new Object[] {ex.getId()} , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RefTypeAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> refTypeAlreadyExistException(RefTypeAlreadyExist ex) {
+        String message = messageSource.getMessage("reftype.alreadyexists",new Object[] {ex.getId()} , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RefTypePositiveIdAndNotEmpty.class)
+    public ResponseEntity<ErrorResponse> refTypePositiveIdAndNotEmptyException(RefTypePositiveIdAndNotEmpty ex) {
+        String message = messageSource.getMessage("reftype.positive.and.not.empty",new Object[] {} , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
@@ -104,8 +144,124 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(ContactNotFound.class)
-    public ResponseEntity<ErrorResponse> societeNotFoundException(ContactNotFound ex) {
+    public ResponseEntity<ErrorResponse> ContactNotFoundException(ContactNotFound ex) {
         String message = messageSource.getMessage("contact.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MenuItemNotFound.class)
+    public ResponseEntity<ErrorResponse> menuItemNotFoundException(MenuItemNotFound ex) {
+        String message = messageSource.getMessage("menuitem.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MenuItemSoftDeleteExeption.class)
+    public ResponseEntity<ErrorResponse> menuItemSoftDeleteExeption(MenuItemSoftDeleteExeption ex) {
+        String message = messageSource.getMessage("menuitem.softdelete",new Object[] {ex.getNumber(),ex.getId()} , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MenuItemAlreadyExistsExeption.class)
+    public ResponseEntity<ErrorResponse> authorityNotFoundException(MenuItemAlreadyExistsExeption ex) {
+        String message = messageSource.getMessage("menuitem.alreadyexists",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MenuItemUpdateExeption.class)
+    public ResponseEntity<ErrorResponse> authorityNotFoundException(MenuItemUpdateExeption ex) {
+        String message = messageSource.getMessage("menuitem.update.error",new Object[] {ex.getId() } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AuthorityNotFound.class)
+    public ResponseEntity<ErrorResponse> authorityNotFoundException(AuthorityNotFound ex) {
+        String message = messageSource.getMessage("authority.notfound",new Object[] {String.join((CharSequence) ",", ex.getAuthority().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(LotNotFound.class)
+    public ResponseEntity<ErrorResponse> LotNotFoundException(LotNotFound ex) {
+        String message = messageSource.getMessage("lot.notfound",new Object[] {
+                String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
+                String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RealisationNotFoundException.class)
+    public ResponseEntity<ErrorResponse> realisationNotFoundException(RealisationNotFoundException ex) {
+        String message = messageSource.getMessage("realisation.notfound",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RealisationAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> realisationAlreadyExistsException(RealisationAlreadyExistsException ex) {
+        String message = messageSource.getMessage("realisation.alreadyexists",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RealisationsMinimumRequirement.class)
+    public ResponseEntity<ErrorResponse> realisationsMinimumRequirementException(RealisationsMinimumRequirement ex) {
+        String message = messageSource.getMessage("realisation.minimum.requirement",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UpdateDeletedRealisation.class)
+    public ResponseEntity<ErrorResponse> updateDeletedRealisationException(UpdateDeletedRealisation ex) {
+        String message = messageSource.getMessage("realisation.minimum.requirement",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UpdateDeletedLot.class)
+    public ResponseEntity<ErrorResponse> updateDeletedLotException(UpdateDeletedLot ex) {
+        String message = messageSource.getMessage("lot.update.is.deleted",new Object[] {
+                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
+                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                        getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(PaaNotFound.class)
+    public ResponseEntity<ErrorResponse> paaNotFoundException(PaaNotFound ex) {
+        String message = messageSource.getMessage("paa.notfound",new Object[] {
+                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
+                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                        getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(PpmNotFound.class)
+    public ResponseEntity<ErrorResponse> ppmNotFoundException(PpmNotFound ex) {
+        String message = messageSource.getMessage("ppm.notfound",new Object[] {
+                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
+                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }

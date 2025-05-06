@@ -1,9 +1,14 @@
 package com.sigmap.sigmap_ppm.realisations;
 
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
+import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationQuery;
 import com.sigmap.common.realisations.request.RealisationRequest;
@@ -77,9 +82,7 @@ public class RealisationController {
     public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer) throws RealisationAlreadyExistsException {
-        Realisation realisation = realisationService.findById(realisationId, realisationVer)
-                .orElseThrow(() -> new RealisationAlreadyExistsException(realisationId, realisationVer,
-                        "Realisation not found with ID: " + realisationId + " and version: " + realisationVer));
+        Realisation realisation = realisationService.findById(realisationId, realisationVer);
 
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.ok(response);
@@ -92,7 +95,7 @@ public class RealisationController {
      * @return the created realisation
      */
     @PostMapping
-    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) throws RealisationAlreadyExistsException {
+    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound {
         Realisation realisation = realisationService.create(request);
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -110,7 +113,7 @@ public class RealisationController {
     public ResponseEntity<RealisationResponse> update(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer,
-            @RequestBody RealisationRequest request) throws RealisationNotFoundException {
+            @RequestBody RealisationRequest request) throws RealisationNotFoundException, UpdateDeletedRealisation, RealisationsMinimumRequirement,PaaNotFound, PpmNotFound, LotNotFound {
 
             Realisation updatedRealisation = realisationService.update(realisationId, realisationVer, request);
             RealisationResponse response = RealisationMapper.INSTANCE.map(updatedRealisation);

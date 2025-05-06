@@ -3,6 +3,8 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
@@ -58,8 +60,8 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Optional<Societe> findById(Integer id) {
-        return repository.findById(id);    }
+    public Societe findById(Integer id) throws SocieteNotFound {
+        return repository.findById(id).orElseThrow(() -> new SocieteNotFound("",List.of(id)));    }
 
     @Override
     public Societe save(Societe societe) {
@@ -67,9 +69,9 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Societe create(SocieteRequest request) {
-        RefParam type=refParamService.findById(request.getTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Type not found with id "+ request.getTypeId()));
-        RefParam pays=refParamService.findById(request.getPaysId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pays not found with id "+ request.getTypeId()));
+    public Societe create(SocieteRequest request) throws RefParamNotFound {
+        RefParam type=refParamService.findById(request.getTypeId());
+        RefParam pays=refParamService.findById(request.getPaysId());
         Societe societe =  SocieteMapper.INSTANCE.map(request);
         societe.setPays(pays);
         societe.setType(type);
@@ -77,10 +79,10 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Societe update(Integer id,SocieteRequest request) {
+    public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound {
         Societe societe=repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Societe not found with id "+ id));
-        RefParam type=refParamService.findById(request.getTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Type not found with id "+ request.getTypeId()));
-        RefParam pays=refParamService.findById(request.getPaysId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pays not found with id "+ request.getTypeId()));
+        RefParam type=refParamService.findById(request.getTypeId());
+        RefParam pays=refParamService.findById(request.getPaysId());
         SocieteMapper.INSTANCE.updateFromRequest(request, societe);
         societe.setPays(pays);
         societe.setType(type);

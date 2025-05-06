@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/paas")
@@ -80,7 +82,7 @@ public class PaaController {
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database."));
+                .orElseThrow(() -> new PaaNotFound("", List.of(paaId), List.of(paaVer)));
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.ok(response);
     }

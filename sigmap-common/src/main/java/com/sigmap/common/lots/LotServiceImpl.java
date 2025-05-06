@@ -1,10 +1,13 @@
 package com.sigmap.common.lots;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.lots.request.LotRequest;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -65,8 +68,8 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public Optional<Lot> findById(Integer lotsId, Integer lotsVer) {
-        return repository.findById(new CompositeId(lotsId, lotsVer));
+    public Lot findById(Integer lotsId, Integer lotsVer) throws LotNotFound {
+        return repository.findById(new CompositeId(lotsId, lotsVer)).orElseThrow(() -> new LotNotFound("", List.of(lotsId), List.of(lotsVer)));
     }
 
     @Override
@@ -76,7 +79,7 @@ public class LotServiceImpl implements LotService {
 
 
     @Override
-    public Lot create(LotRequest request) {
+    public Lot create(LotRequest request) throws RealisationNotFoundException {
         Lot lot = new Lot();
 
         Integer id = request.getId();
@@ -99,7 +102,7 @@ public class LotServiceImpl implements LotService {
             Set<Realisation> realisations = new HashSet<>();
             for (CompositeId realisationId : request.getRealisationIds()) {
                 Realisation realisation = realisationRepository.findById(realisationId)
-                        .orElseThrow(() -> new RuntimeException("Realisation not found: " + realisationId));
+                        .orElseThrow(() -> new RealisationNotFoundException("",realisationId.getId(),realisationId.getVersion()));
 
                 if (realisation.getLots() == null) {
                     realisation.setLots(new HashSet<>());
@@ -117,12 +120,12 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public Lot update(Integer lotId, Integer lotVer, LotRequest request) {
+    public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws LotNotFound, UpdateDeletedLot{
         CompositeId compositeId = new CompositeId(lotId, lotVer);
         Lot existingLot = repository.findById(compositeId)
-                .orElseThrow(() -> new RuntimeException("Lot with ID " + lotId + " and version " + lotVer + " not found"));
+                .orElseThrow(() -> new LotNotFound("" , List.of(lotId) , List.of(lotVer) ));
         if (Boolean.TRUE.equals(existingLot.getIsDeleted())) {
-            throw new RuntimeException("Cannot update a deleted Lot with ID " + lotId + " and version " + lotVer);
+            throw new UpdateDeletedLot("" , List.of(lotId) , List.of(lotVer));
         }
         existingLot.setDescription(request.getDescription());
 

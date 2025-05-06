@@ -1,8 +1,11 @@
 package com.sigmap.common.menu_item;
 
 
+import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
+import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
 import com.sigmap.common.menu_item.request.MenuItemRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -88,7 +91,7 @@ public interface MenuItemService {
      * @param id the ID of MenuItem entity
      * @return the MenuItem entity with the given ID
      */
-    Optional<MenuItem> findById(Integer id);
+    MenuItem findById(Integer id) throws MenuItemNotFound;
 
     /**
      * Save a MenuItem entity.
@@ -104,14 +107,14 @@ public interface MenuItemService {
      * @param request the request to create the MenuItem entity from
      * @return the created MenuItem entity
      */
-    MenuItem create(MenuItemRequest request) throws MenuItemAlreadyExistsExeption;
+    MenuItem create(MenuItemRequest request) throws MenuItemAlreadyExistsExeption, MenuItemNotFound, AuthorityNotFound;
 
     /**
      * Delete a MenuItem entity by its ID components.
      *
      * @param id the ID of the MenuItem entity
      */
-    void delete(Integer id);
+    void delete(Integer id)throws MenuItemNotFound, MenuItemSoftDeleteExeption;
 
     /**
      * Update a MenuItem entity by its ID components, with a MenuItemRequest given.
@@ -119,6 +122,6 @@ public interface MenuItemService {
      * @param id the ID of the MenuItem entity
      * @param request the MenuItemRequest to update the MenuItem entity with
      */
-    MenuItem update(Integer id,  MenuItemRequest request) throws MenuItemNotFound;
+    MenuItem update(Integer id,  MenuItemRequest request) throws MenuItemNotFound, AuthorityNotFound, MenuItemUpdateExeption;
 
 }

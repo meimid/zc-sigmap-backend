@@ -2,10 +2,13 @@ package com.sigmap.sigmap_ppm.lots;
 
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotService;
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.request.LotQuery;
 import com.sigmap.common.lots.request.LotRequest;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -80,9 +83,8 @@ public class LotController {
     @GetMapping("/{id}/{version}")
     public ResponseEntity<LotResponse> findById(
             @PathVariable Integer id,
-            @PathVariable Integer version) {
-        Lot lot = lotService.findById(id, version)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lot not found"));
+            @PathVariable Integer version) throws LotNotFound {
+        Lot lot = lotService.findById(id, version);
         LotResponse response = LotMapper.INSTANCE.map(lot);
         return ResponseEntity.ok(response);
     }
@@ -94,7 +96,7 @@ public class LotController {
      * @return the created lot
      */
     @PostMapping
-    public ResponseEntity<LotResponse> create(@RequestBody LotRequest request) {
+    public ResponseEntity<LotResponse> create(@RequestBody LotRequest request) throws RealisationNotFoundException {
         Lot createdLot = lotService.create(request);
         LotResponse response = LotMapper.INSTANCE.map(createdLot);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -112,7 +114,7 @@ public class LotController {
     public ResponseEntity<LotResponse> update(
             @PathVariable Integer lotId,
             @PathVariable Integer lotVer,
-            @RequestBody LotRequest request) {
+            @RequestBody LotRequest request) throws LotNotFound, UpdateDeletedLot {
         Lot updatedLot = lotService.update(lotId, lotVer, request);
         LotResponse response = LotMapper.INSTANCE.map(updatedLot);
         return ResponseEntity.ok(response);

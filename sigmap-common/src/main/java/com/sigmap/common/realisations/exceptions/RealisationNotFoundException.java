@@ -1,22 +1,18 @@
 package com.sigmap.common.realisations.exceptions;
 
-import lombok.Data;
 
-@Data
+import lombok.Getter;
+
+@Getter
 public class RealisationNotFoundException extends Exception {
 
     private final Integer id;
     private final Integer version;
 
-    public RealisationNotFoundException(Integer id, Integer version, String message) {
+    public RealisationNotFoundException(String message, Integer id, Integer version ) {
         super(message);
         this.id = id;
         this.version = version;
     }
 
-    public RealisationNotFoundException(Integer id, Integer version, String message, Throwable cause) {
-        super(message, cause);
-        this.id = id;
-        this.version = version;
-    }
 }

@@ -2,15 +2,13 @@ package com.sigmap.common.menu_item.exception;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class MenuItemAlreadyExistsExeption extends Exception {
-    private final Integer id;
-    public MenuItemAlreadyExistsExeption(Integer id, String message) {
+    private final List<Integer> id;
+    public MenuItemAlreadyExistsExeption(String message, List<Integer> id) {
         super(message);
-        this.id = id;
-    }
-    public MenuItemAlreadyExistsExeption(Integer id, String message, Throwable cause) {
-        super(message, cause);
         this.id = id;
     }
 }

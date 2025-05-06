@@ -154,14 +154,12 @@ public class PaaServiceImpl implements PaaService {
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
 
         if (existingPaaOpt.isEmpty()) {
-            throw new PaaNotFound(paaId, paaVer,
-                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.");
+            throw new PaaNotFound("", List.of(paaId), List.of(paaVer));
         }
 
         Paa existingPaa = existingPaaOpt.get();
         if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
-            throw new PaaNotFound(paaId, paaVer,
-                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer);
+            throw new PaaNotFound("", List.of(paaId), List.of(paaVer));
         }
 
         Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request, existingPaaOpt.get());
