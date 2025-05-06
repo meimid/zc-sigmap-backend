@@ -21,6 +21,7 @@ import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
@@ -57,7 +58,15 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RefParamNotFound.class)
     public ResponseEntity<ErrorResponse> handleRefParamNotFoundException(RefParamNotFound ex) {
-        String message = messageSource.getMessage("ref.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        String message = messageSource.getMessage("refparam.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ReferenceNotFound.class)
+    public ResponseEntity<ErrorResponse> referenceNotFoundException(ReferenceNotFound ex) {
+        String message = messageSource.getMessage("reference.notfound",new Object[] {String.join((CharSequence) ",", ex.getReference().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }

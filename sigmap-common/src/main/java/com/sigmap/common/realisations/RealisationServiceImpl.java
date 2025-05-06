@@ -21,10 +21,14 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -40,15 +44,20 @@ public class RealisationServiceImpl implements RealisationService {
     private final PpmRepository ppmRepository;
     private final LotRepository lotRepository;
     private final RefParamRepository refParamRepository;
+    private final MessageSource messageSource;
 
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository) {
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, MessageSource messageSource) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
         this.lotRepository = lotRepository;
         this.refParamRepository = refParamRepository;
+        this.messageSource = messageSource;
     }
 
+    private Locale getLocal (){
+        return LocaleContextHolder.getLocale();
+    }
     @Override
     public List<Realisation> findAll() {
         Specification<Realisation> spec = RealisationSpecifications.deleted(false);
@@ -99,7 +108,7 @@ public class RealisationServiceImpl implements RealisationService {
 
     @Transactional
     @Override
-    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound {
+    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, ReferenceNotFound {
         Integer id = request.getId();
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
@@ -123,6 +132,49 @@ public class RealisationServiceImpl implements RealisationService {
         Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
         realisation.setId(compositeId.getId());
         realisation.setVersion(version);
+
+        List<String> notFoundRefs = new ArrayList<>();
+
+        if (request.getService() != null) {
+            refParamRepository.findById(request.getService().getId()).ifPresentOrElse(
+                    realisation::setService,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()))
+            );
+        }
+        if (request.getDirection() != null) {
+            refParamRepository.findById(request.getDirection().getId()).ifPresentOrElse(
+                    realisation::setDirection,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()))
+            );
+        }
+        if (request.getSourceFinancement() != null) {
+            refParamRepository.findById(request.getSourceFinancement().getId()).ifPresentOrElse(
+                    realisation::setSourceFinancement,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()))
+            );
+        }
+        if (request.getMonais() != null) {
+            refParamRepository.findById(request.getMonais().getId()).ifPresentOrElse(
+                    realisation::setMonais,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()))
+            );
+        }
+        if (request.getTypeMarcher() != null) {
+            refParamRepository.findById(request.getTypeMarcher().getId()).ifPresentOrElse(
+                    realisation::setTypeMarcher,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()))
+            );
+        }
+        if (request.getModeSelection() != null) {
+            refParamRepository.findById(request.getModeSelection().getId()).ifPresentOrElse(
+                    realisation::setModeSelection,
+                    () -> notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()))
+            );
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
+        }
 
         // Set empty associations initially
         realisation.setPaas(new ArrayList<>());
@@ -182,7 +234,7 @@ public class RealisationServiceImpl implements RealisationService {
         return repository.save(savedRealisation);
     }
     @Override
-    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws PaaNotFound, PpmNotFound,LotNotFound, RealisationsMinimumRequirement, RealisationNotFoundException,UpdateDeletedRealisation {
+    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws ReferenceNotFound, PaaNotFound, PpmNotFound,LotNotFound, RealisationsMinimumRequirement, RealisationNotFoundException,UpdateDeletedRealisation {
         CompositeId compositeId = new CompositeId(realisationId, realisationVer);
         Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
 
@@ -196,6 +248,55 @@ public class RealisationServiceImpl implements RealisationService {
         if (Boolean.TRUE.equals(existingRealisation.getIsDeleted())) {
             throw new UpdateDeletedRealisation("",realisationId, realisationVer);
         }
+
+        List<String> notFoundRefs = new ArrayList<>();
+
+        if (request.getService() != null) {
+            refParamRepository.findById(request.getService().getId()).ifPresentOrElse(
+                    existingRealisation::setService,
+                    () -> notFoundRefs.add("Service")
+            );
+        }
+
+        if (request.getDirection() != null) {
+            refParamRepository.findById(request.getDirection().getId()).ifPresentOrElse(
+                    existingRealisation::setDirection,
+                    () -> notFoundRefs.add("Direction")
+            );
+        }
+
+        if (request.getSourceFinancement() != null) {
+            refParamRepository.findById(request.getSourceFinancement().getId()).ifPresentOrElse(
+                    existingRealisation::setSourceFinancement,
+                    () -> notFoundRefs.add("Source Financement")
+            );
+        }
+
+        if (request.getMonais() != null) {
+            refParamRepository.findById(request.getMonais().getId()).ifPresentOrElse(
+                    existingRealisation::setMonais,
+                    () -> notFoundRefs.add("Monais")
+            );
+        }
+
+        if (request.getTypeMarcher() != null) {
+            refParamRepository.findById(request.getTypeMarcher().getId()).ifPresentOrElse(
+                    existingRealisation::setTypeMarcher,
+                    () -> notFoundRefs.add("Type Marcher")
+            );
+        }
+
+        if (request.getModeSelection() != null) {
+            refParamRepository.findById(request.getModeSelection().getId()).ifPresentOrElse(
+                    existingRealisation::setModeSelection,
+                    () -> notFoundRefs.add("Mode Selection")
+            );
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
+        }
+
 
 
         // Validate that at least one of Paa or Ppm is provided

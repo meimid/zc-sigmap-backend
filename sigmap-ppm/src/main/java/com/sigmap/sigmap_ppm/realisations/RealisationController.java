@@ -13,6 +13,8 @@ import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationQuery;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -81,7 +83,7 @@ public class RealisationController {
     @GetMapping("/{realisationId}/{realisationVer}")
     public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
-            @PathVariable Integer realisationVer) throws RealisationAlreadyExistsException {
+            @PathVariable Integer realisationVer) throws RealisationAlreadyExistsException, RealisationNotFoundException {
         Realisation realisation = realisationService.findById(realisationId, realisationVer);
 
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
@@ -95,7 +97,7 @@ public class RealisationController {
      * @return the created realisation
      */
     @PostMapping
-    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound {
+    public ResponseEntity<RealisationResponse> create(@RequestBody RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, ReferenceNotFound {
         Realisation realisation = realisationService.create(request);
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -113,7 +115,7 @@ public class RealisationController {
     public ResponseEntity<RealisationResponse> update(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer,
-            @RequestBody RealisationRequest request) throws RealisationNotFoundException, UpdateDeletedRealisation, RealisationsMinimumRequirement,PaaNotFound, PpmNotFound, LotNotFound {
+            @RequestBody RealisationRequest request) throws RealisationNotFoundException, UpdateDeletedRealisation, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, ReferenceNotFound, RefParamNotFound {
 
             Realisation updatedRealisation = realisationService.update(realisationId, realisationVer, request);
             RealisationResponse response = RealisationMapper.INSTANCE.map(updatedRealisation);
