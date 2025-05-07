@@ -7,15 +7,10 @@ public class AgpmAlreadyExistsException extends Exception {
     private final Integer id;
     private final Integer version;
 
-    public AgpmAlreadyExistsException(Integer id, Integer version, String message) {
+    public AgpmAlreadyExistsException(String message, Integer id, Integer version) {
         super(message);
         this.id = id;
         this.version = version;
     }
 
-    public AgpmAlreadyExistsException(Integer id, Integer version, String message, Throwable cause) {
-        super(message, cause);
-        this.id = id;
-        this.version = version;
-    }
 }

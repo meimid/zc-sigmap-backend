@@ -4,6 +4,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
+import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressQuery;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
@@ -64,9 +65,8 @@ public class SocieteAddressController {
      * @return the SocieteAddress
      */
     @GetMapping("/{id}")
-    public ResponseEntity<SocieteAddressResponse> findById(@PathVariable Integer id) {
-        SocieteAddress param = societeAddressService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<SocieteAddressResponse> findById(@PathVariable Integer id) throws SocieteAdresseNotFound {
+        SocieteAddress param = societeAddressService.findById(id);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -90,7 +90,7 @@ public class SocieteAddressController {
      * @return the updated SocieteAddress
      */
     @PutMapping("/{id}")
-    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound {
         SocieteAddress SocieteAddress = societeAddressService.update(id,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
         return ResponseEntity.status(HttpStatus.OK).body(response);

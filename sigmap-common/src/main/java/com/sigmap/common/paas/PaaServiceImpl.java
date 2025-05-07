@@ -7,8 +7,12 @@ import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -26,12 +31,19 @@ public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
     private final RealisationRepository realisationRepository;
     private final RefParamRepository refParamRepository;
+    private final MessageSource messageSource;
 
-    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository, RefParamRepository refParamRepository) {
+    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, MessageSource messageSource) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.refParamRepository = refParamRepository;
+        this.messageSource = messageSource;
     }
+
+    private Locale getLocal (){
+        return LocaleContextHolder.getLocale();
+    }
+
 
     @Override
     public List<Paa> findAll() {
@@ -72,8 +84,14 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Optional<Paa> findById(Integer paaId, Integer paaVer) {
-        return repository.findById(new CompositeId(paaId, paaVer));
+    public Paa findById(Integer paaId, Integer paaVer) throws PaaNotFound {
+        if (paaId == null || paaVer == null) {
+            throw new PaaNotFound("Invalid ID or version provided",
+                    List.of(paaId),
+                    List.of(paaVer));
+        }
+        return repository.findById(new CompositeId(paaId, paaVer))
+                .orElseThrow(() -> new PaaNotFound("", List.of(paaId), List.of(paaVer)));
     }
 
     @Override
@@ -82,7 +100,7 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
+    public Paa create(PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement {
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
 
@@ -98,17 +116,23 @@ public class PaaServiceImpl implements PaaService {
 
         Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
         if (existingPaa.isPresent()) {
-            throw new PaaAlreadyExistsException(id, version,
-                    "Paa with ID " + id + " and version " + version + " already exists.");
+            throw new PaaAlreadyExistsException("", id, version);
         }
 
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
+        List<String> notFoundRefs = new ArrayList<>();
+
         // Set status from RefParam
         if (request.getStatus() != null) {
-            paa.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Status not found")));
+            paa.setStatus(refParamRepository.findById(request.getStatus().getId()).get());
+        } else {
+            notFoundRefs.add(messageSource.getMessage("ppm.status", new Integer[]{request.getStatus().getId()}, getLocal()));
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
         }
 
         paa.setId(id);
@@ -119,7 +143,7 @@ public class PaaServiceImpl implements PaaService {
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             List<Realisation> realisations = realisationRepository.findAllById(request.getRealisationIds());
             if (realisations.size() != request.getRealisationIds().size()) {
-                throw new RuntimeException("Some realisations were not found");
+                throw new RealisationsMinimumRequirement("Some realisations were not found");
             }
 
             // Update both sides of the relationship in memory

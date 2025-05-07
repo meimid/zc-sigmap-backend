@@ -6,6 +6,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import org.springframework.data.domain.Page;
@@ -64,8 +65,8 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     }
 
     @Override
-    public Optional<SocieteAddress> findById(Integer id) {
-        return repository.findById(id);
+    public SocieteAddress findById(Integer id) throws SocieteAdresseNotFound {
+        return repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound(" " , List.of(id)));
     }
 
     @Override
@@ -84,8 +85,8 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     }
 
     @Override
-    public SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
-        SocieteAddress societeAddress = repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteAddress not found: " + id));
+    public SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound , SocieteAdresseNotFound{
+        SocieteAddress societeAddress = repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound(" " , List.of(id)));
         SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId());
         Societe societe=societeService.findById(request.getSocieteId());

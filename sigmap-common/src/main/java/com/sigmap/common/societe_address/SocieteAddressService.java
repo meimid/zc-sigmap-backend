@@ -2,6 +2,7 @@ package com.sigmap.common.societe_address;
 
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,7 +61,7 @@ public interface SocieteAddressService {
      * @param id the id of the SocieteAddress to return
      * @return the SocieteAddress with the given id
      */
-    Optional<SocieteAddress> findById(Integer id);
+    SocieteAddress findById(Integer id)throws SocieteAdresseNotFound;
 
     /**
      * Save a SocieteAddress.
@@ -83,7 +84,7 @@ public interface SocieteAddressService {
      * @param request the request to update the com from
      * @return the updated SocieteAddress
      */
-    SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound;
+    SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound;
     /**
      * Delete a SocieteAddress.
      *
