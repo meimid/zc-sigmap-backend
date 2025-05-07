@@ -83,7 +83,7 @@ public class RealisationController {
     @GetMapping("/{realisationId}/{realisationVer}")
     public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
-            @PathVariable Integer realisationVer) throws RealisationAlreadyExistsException, RealisationNotFoundException {
+            @PathVariable Integer realisationVer) throws RealisationNotFoundException {
         Realisation realisation = realisationService.findById(realisationId, realisationVer);
 
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);

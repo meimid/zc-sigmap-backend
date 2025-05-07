@@ -123,8 +123,8 @@ public class RealisationServiceImpl implements RealisationService {
                 throw new RealisationAlreadyExistsException("",List.of(id), List.of(version));
         }
 
-        // Validate that at least one of Paa or Ppm is provided
-        if ((request.getPaaIds() == null || request.getPaaIds().isEmpty()) &&  (request.getPpmIds() == null || request.getPpmIds().isEmpty())) {
+        // Validate that at least one of Paa and one of Ppm is provided
+        if ((request.getPaaIds() == null || request.getPaaIds().isEmpty()) ||  (request.getPpmIds() == null || request.getPpmIds().isEmpty())) {
             throw new RealisationsMinimumRequirement("");
         }
 
@@ -136,40 +136,39 @@ public class RealisationServiceImpl implements RealisationService {
         List<String> notFoundRefs = new ArrayList<>();
 
         if (request.getService() != null) {
-            refParamRepository.findById(request.getService().getId()).ifPresentOrElse(
-                    realisation::setService,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()))
-            );
+            realisation.setService(refParamRepository.findById(request.getService().getId()).get());
+        } else {
+            notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()));
         }
+
         if (request.getDirection() != null) {
-            refParamRepository.findById(request.getDirection().getId()).ifPresentOrElse(
-                    realisation::setDirection,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()))
-            );
+            realisation.setDirection(refParamRepository.findById(request.getDirection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()));
         }
+
         if (request.getSourceFinancement() != null) {
-            refParamRepository.findById(request.getSourceFinancement().getId()).ifPresentOrElse(
-                    realisation::setSourceFinancement,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()))
-            );
+            realisation.setSourceFinancement( refParamRepository.findById(request.getSourceFinancement().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()));
         }
+
         if (request.getMonais() != null) {
-            refParamRepository.findById(request.getMonais().getId()).ifPresentOrElse(
-                    realisation::setMonais,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()))
-            );
+            realisation.setMonais(refParamRepository.findById(request.getMonais().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()));
         }
+
         if (request.getTypeMarcher() != null) {
-            refParamRepository.findById(request.getTypeMarcher().getId()).ifPresentOrElse(
-                    realisation::setTypeMarcher,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()))
-            );
+           realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()));
         }
+
         if (request.getModeSelection() != null) {
-            refParamRepository.findById(request.getModeSelection().getId()).ifPresentOrElse(
-                    realisation::setModeSelection,
-                    () -> notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()))
-            );
+            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()));
         }
 
         if (!notFoundRefs.isEmpty()) {
@@ -252,52 +251,44 @@ public class RealisationServiceImpl implements RealisationService {
         List<String> notFoundRefs = new ArrayList<>();
 
         if (request.getService() != null) {
-            refParamRepository.findById(request.getService().getId()).ifPresentOrElse(
-                    existingRealisation::setService,
-                    () -> notFoundRefs.add("Service")
-            );
+            existingRealisation.setService(refParamRepository.findById(request.getService().getId()).get());
+        } else {
+            notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()));
         }
 
         if (request.getDirection() != null) {
-            refParamRepository.findById(request.getDirection().getId()).ifPresentOrElse(
-                    existingRealisation::setDirection,
-                    () -> notFoundRefs.add("Direction")
-            );
+            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()));
         }
 
         if (request.getSourceFinancement() != null) {
-            refParamRepository.findById(request.getSourceFinancement().getId()).ifPresentOrElse(
-                    existingRealisation::setSourceFinancement,
-                    () -> notFoundRefs.add("Source Financement")
-            );
+            existingRealisation.setSourceFinancement( refParamRepository.findById(request.getSourceFinancement().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()));
         }
 
         if (request.getMonais() != null) {
-            refParamRepository.findById(request.getMonais().getId()).ifPresentOrElse(
-                    existingRealisation::setMonais,
-                    () -> notFoundRefs.add("Monais")
-            );
+            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()));
         }
 
         if (request.getTypeMarcher() != null) {
-            refParamRepository.findById(request.getTypeMarcher().getId()).ifPresentOrElse(
-                    existingRealisation::setTypeMarcher,
-                    () -> notFoundRefs.add("Type Marcher")
-            );
+            existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()));
         }
 
         if (request.getModeSelection() != null) {
-            refParamRepository.findById(request.getModeSelection().getId()).ifPresentOrElse(
-                    existingRealisation::setModeSelection,
-                    () -> notFoundRefs.add("Mode Selection")
-            );
+            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()));
         }
 
         if (!notFoundRefs.isEmpty()) {
             throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
         }
-
-
 
         // Validate that at least one of Paa or Ppm is provided
         if ((request.getPaaIds() == null || request.getPaaIds().isEmpty()) &&
