@@ -1,6 +1,5 @@
 package com.sigmap.common.agpm.request;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.util.List;
@@ -11,13 +10,10 @@ import java.util.List;
 @Data
 public class AgpmRequest {
     private Integer id;
-    private Integer version =1;
+    private Integer version = 1;
     private String ref;
     private String nom;
     private String contenu;
-    @NotNull(message = "acId must not be null")
-    private Integer acId;
-    private Integer statusId;
     private List<Integer> docIds;
     private String remarque;
 }

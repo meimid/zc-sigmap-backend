@@ -13,6 +13,7 @@ import com.sigmap.sigmap_agpm.agpm.response.TaskDetailsDTO;
 import com.sigmap.sigmap_agpm.agpm.response.TaskListResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -37,13 +38,13 @@ import org.springframework.security.core.Authentication;
 @Slf4j
 @Service
 public class AgpmFlowableService {
-    @Value("${tenant.id:agpm}")
+    @Value("${tenant.id}")
     private String TENANT_ID;
 
-    @Value("${flowable.process.key:agpmProcess}")
+    @Value("${flowable.process-definition-key}")
     private String processKey;
 
-    @Value("${flowable.initial.task.key:saisieTask}")
+    @Value("${flowable.task-definition-key}")
     private String initialTaskKey;
 
     @Autowired
@@ -57,6 +58,9 @@ public class AgpmFlowableService {
 
     @Autowired
     private RepositoryService repositoryService;
+
+    @Autowired
+    private HistoryService historyService;
 
     // Utility method to check if the user has a specific role
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
@@ -203,11 +207,21 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        Agpm updated = agpmService.updateStatus(id, version, 2); // BROUILLON
+        Agpm updated = agpmService.updateStatus(id, version, 2);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
+        String processInstanceId = processInstance.getProcessInstanceId();
+
+        // Update Agpm with the processInstanceId
+        Optional<Agpm> agpmOptional = agpmService.findById(id, version);
+        if (agpmOptional.isPresent()) {
+            Agpm agpm = agpmOptional.get();
+            agpm.setProcessInstanceId(processInstanceId);
+            agpmService.save(agpm);
+        }
+
         List<Task> tasks = taskService.createTaskQuery()
                 .processInstanceId(processInstance.getId())
                 .taskTenantId(TENANT_ID)
@@ -356,7 +370,6 @@ public class AgpmFlowableService {
                     .collect(Collectors.toList());
         }
         response.setAgpms(agpmResponses);
-        log.info("---------------: {}", agpmResponses.stream().map(AgpmResponseDto::toString).collect(Collectors.joining("\n")));
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -378,7 +391,6 @@ public class AgpmFlowableService {
         return response;
     }
 
-    // Updated method to determine possible next steps based on the BPMN model (from PpmFlowableService)
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
         List<NextStepDTO> nextSteps = new ArrayList<>();
         try {
@@ -420,7 +432,6 @@ public class AgpmFlowableService {
                                 }
                             }
                         } else {
-                            // Handle tasks with a single outgoing flow (no gateway)
                             String nextStepName = targetElement != null ? targetElement.getName() : "Complete";
                             if (nextStepName == null || nextStepName.isEmpty()) {
                                 nextStepName = targetElement != null ? targetElement.getId() : "Complete";
@@ -453,10 +464,149 @@ public class AgpmFlowableService {
         return nextSteps;
     }
 
+//    @Transactional
+//    public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound {
+//                // Step 1: Validate authentication
+//                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (!(authentication instanceof JwtAuthenticationToken)) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Invalid or missing JWT authentication");
+//            return errorResponse;
+//        }
+//
+//        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+//
+//        // Step 2: Retrieve the task
+//        Task task = taskService.createTaskQuery()
+//                .taskId(taskId)
+//                .taskTenantId(TENANT_ID)
+//                .active()
+//                .singleResult();
+//
+//        if (task == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Task not found or not active");
+//            return errorResponse;
+//        }
+//
+//        // Step 3: Check for candidate group
+//        String candidateGroup = getCandidateGroup(task);
+//        if (candidateGroup == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Task does not have a candidate group");
+//            return errorResponse;
+//        }
+//
+//        // Step 4: Check if user has the required role or assignment
+//        if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("User does not have the required role or assignment to validate this task");
+//            return errorResponse;
+//        }
+//
+//        // Step 5: Retrieve process variables
+//        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+//        log.info("Process variables for task [{}]: {}", taskId, processVariables);
+//        Integer id = (Integer) processVariables.getOrDefault("id", null);
+//        Integer version = (Integer) processVariables.getOrDefault("version", null);
+//
+//        // Step 6: Validate id and version
+//        if (id == null || version == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
+//            return errorResponse;
+//        }
+//
+//        // Step 7: Fetch the Agpm entity
+//        Optional<Agpm> agpmOptional = agpmService.findById(id, version);
+//        if (agpmOptional.isEmpty()) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("No AGPM entities found for id " + id + " and version " + version);
+//            return errorResponse;
+//        }
+//
+//        Agpm latestAgpm = agpmOptional.get();
+//
+//        // Step 8: Get task properties (isUpdatable and isPublishable)
+//        Map<String, Boolean> taskProperties = getTaskProperties(task);
+//        Boolean isUpdatable = taskProperties.get("isUpdatable");
+//        Boolean isPublishable = taskProperties.get("isPublishable");
+//
+//        // Step 9: Handle isUpdatable: Update the Agpm object if true
+//        if (isUpdatable) {
+//            if (request.getAgpm() == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("AGPM object is required in the request when isUpdatable is true");
+//                return errorResponse;
+//            }
+//            Agpm updatedAgpm = agpmService.updateWithVersioning(id, version, request.getAgpm());
+//            if (updatedAgpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update AGPM object");
+//                return errorResponse;
+//            }
+//            // Update the latestAgpm to reflect the updated state
+//            latestAgpm = updatedAgpm;
+//            // Update process variables with the new version
+//            version = latestAgpm.getVersion();
+//            processVariables.put("version", version);
+//            runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
+//        }
+//
+//        // Step 10: Handle isPublishable: Update status to Publiée (status 3) if true
+//        Integer newStatus = null;
+//        if (isPublishable) {
+//            newStatus = 3; // Publiée
+//            Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
+//            if (updatedAgpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update AGPM status to Publiée");
+//                return errorResponse;
+//            }
+//            latestAgpm = updatedAgpm;
+//            // Note: We are NOT updating the version in processVariables here, as per your requirement
+//        }
+//
+//        // Step 11: Set process variables for validation
+//        boolean validate = request.getValidate() != null ? request.getValidate() : false;
+//        Map<String, Object> variables = new HashMap<>();
+//        variables.put("valide", validate);
+//        variables.put("comment", request.getComment() != null ? request.getComment() : "");
+//        variables.put("dateComment", LocalDateTime.now());
+//        variables.put("treater", jwtAuth.getName());
+//
+//        // Log the variables for debugging
+//        log.info("Setting process variables for task [{}]: valide={}, comment={}, dateComment={}, treater={}",
+//                taskId, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
+//
+//        runtimeService.setVariables(task.getProcessInstanceId(), variables);
+//
+//        // Step 12: Complete the task
+//        taskService.complete(taskId);
+//
+//        // Step 13: Build the success response
+//        TaskDTO response = new TaskDTO();
+//        response.setTaskId(task.getId());
+//        response.setTaskName(task.getName());
+//        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+//        response.setProcessInstanceId(task.getProcessInstanceId());
+//        response.setId(id);
+//        response.setVersion(version);
+//        response.setNewStatus(newStatus != null ? newStatus : (latestAgpm.getStatus() != null ? latestAgpm.getStatus().getId() : null));
+//        response.setValidate(validate);
+//        response.setTraceability(variables);
+//        response.setIsUpdatable(isUpdatable);
+//        response.setIsPublishable(isPublishable);
+//        response.setStatus("Task validated successfully");
+//
+//        return response;
+//    }
+
+
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound {
-                // Step 1: Validate authentication
-                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        // Step 1: Validate authentication
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -528,7 +678,7 @@ public class AgpmFlowableService {
                 errorResponse.setStatus("AGPM object is required in the request when isUpdatable is true");
                 return errorResponse;
             }
-            Agpm updatedAgpm = agpmService.update(id, version, request.getAgpm());
+            Agpm updatedAgpm = agpmService.updateWithVersioning(id, version, request.getAgpm());
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
                 errorResponse.setStatus("Failed to update AGPM object");
@@ -542,22 +692,30 @@ public class AgpmFlowableService {
             runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
         }
 
-        // Step 10: Handle isPublishable: Update status to Publiée (status 3) if true
+        // Step 10: Handle validation and status update
         Integer newStatus = null;
-        if (isPublishable) {
-            newStatus = 3; // Publiée
+        boolean validate = request.getValidate() != null ? request.getValidate() : false;
+        if (isPublishable && validate) {
+            newStatus = 3; // VALIDE
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
-                errorResponse.setStatus("Failed to update AGPM status to Publiée");
+                errorResponse.setStatus("Failed to update AGPM status to VALIDE");
                 return errorResponse;
             }
             latestAgpm = updatedAgpm;
-            // Note: We are NOT updating the version in processVariables here, as per your requirement
+        } else if (!validate) {
+            newStatus = 2; // EN_COURS_DE_TRAITEMENT (stay if not validated)
+            Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
+            if (updatedAgpm == null) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Failed to update AGPM status to EN_COURS_DE_TRAITEMENT");
+                return errorResponse;
+            }
+            latestAgpm = updatedAgpm;
         }
 
         // Step 11: Set process variables for validation
-        boolean validate = request.getValidate() != null ? request.getValidate() : false;
         Map<String, Object> variables = new HashMap<>();
         variables.put("valide", validate);
         variables.put("comment", request.getComment() != null ? request.getComment() : "");
@@ -573,7 +731,19 @@ public class AgpmFlowableService {
         // Step 12: Complete the task
         taskService.complete(taskId);
 
-        // Step 13: Build the success response
+        // Step 13: Check if process is completed and set status to PUBLIEE (4) if true
+        if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
+            newStatus = 4; // PUBLIEE
+            Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
+            if (updatedAgpm == null) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Failed to update AGPM status to PUBLIEE");
+                return errorResponse;
+            }
+            latestAgpm = updatedAgpm;
+        }
+
+        // Step 14: Build the success response
         TaskDTO response = new TaskDTO();
         response.setTaskId(task.getId());
         response.setTaskName(task.getName());

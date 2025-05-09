@@ -26,6 +26,7 @@ public interface AgpmMapper {
     @Mapping(source = "status", target = "status")
     @Mapping(target = "ac", source = "ac")
     @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
@@ -62,20 +63,19 @@ public interface AgpmMapper {
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "contenu", source = "contenu")
-    @Mapping(source = "statusId", target = "status", qualifiedByName = "mapStatusIdToStatus")
     @Mapping(target = "ac", ignore = true)
     @Mapping(target = "docs", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
 
-    @Named("mapStatusIdToStatus")
-    default RefParam mapStatusIdToStatus(Integer statusId) {
-        if (statusId == null) {
-            return null;
-        }
-        RefParam status = new RefParam();
-        status.setId(statusId);
-        return status;
-    }
+//    @Named("mapStatusIdToStatus")
+//    default RefParam mapStatusIdToStatus(Integer statusId) {
+//        if (statusId == null) {
+//            return null;
+//        }
+//        RefParam status = new RefParam();
+//        status.setId(statusId);
+//        return status;
+//    }
 }

@@ -32,14 +32,12 @@ import java.util.Optional;
 @Slf4j
 public class AgpmServiceImpl implements AgpmService {
     private final AgpmRepository repository;
-    private final AcRepository acRepository;
     private final DocsRepository docsRepository;
     private final AgpmMapper agpmMapper;
     private final RefParamRepository refParamRepository;
 
     public AgpmServiceImpl(AgpmRepository repository, AcRepository acRepository, DocsRepository docsRepository, AgpmMapper agpmMapper, RefParamRepository refParamRepository) {
         this.repository = repository;
-        this.acRepository = acRepository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
         this.refParamRepository = refParamRepository;
@@ -83,36 +81,22 @@ public class AgpmServiceImpl implements AgpmService {
 
     @Override
     public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException {
-        Integer version = request.getVersion();
-        if (version == null) {
-            throw new IllegalArgumentException("AGPM version must not be null");
-        }
 
-        Integer id = request.getId();
-        if (id == null) {
-            id = repository.findMaxId();
-            if (id == null) {
-                id = 1;
-            } else {
-                id++;
-            }
-        }
-
-        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
+        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(request.getId(), request.getVersion()));
         if (existingAgpm.isPresent()) {
-            throw new AgpmAlreadyExistsException(id, version,
-                    "Agpm with ID " + id + " and version " + version + " already exists.");
+            throw new AgpmAlreadyExistsException(request.getId(), request.getVersion(),
+                    "Agpm with ID " + request.getId() + " and version " + request.getVersion() + " already exists.");
         }
 
         Agpm agpm = agpmMapper.toEntity(request);
-        agpm.setId(id);
-        agpm.setVersion(version);
+        agpm.setId(request.getId());
+        agpm.setVersion(request.getVersion());
 
-        if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + request.getAcId() + " not found"));
-            agpm.setAc(ac);
-        }
+        // Manually set Ac with ID 1 (will be retrived from keycloack)
+        Ac ac = new Ac();
+        ac.setId(1);
+        agpm.setAc(ac);
+
 
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
@@ -155,8 +139,7 @@ public class AgpmServiceImpl implements AgpmService {
 
     @Override
     @Transactional
-    public Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
-        // Fetch the existing Agpm to copy its data
+    public Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm existingAgpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer,
@@ -166,34 +149,19 @@ public class AgpmServiceImpl implements AgpmService {
             throw new IllegalArgumentException("Cannot update Agpm with ID " + agpmId + " and version " + agpmVer + " because it is marked as deleted.");
         }
 
-        // Determine the next version
         Integer nextVersion = repository.findMaxVersionById(agpmId);
 
         nextVersion += 1;
 
-        // Create a new Agpm entity with the same id and incremented version
         Agpm newAgpm = new Agpm();
-
         newAgpm.setId(agpmId);
         newAgpm.setVersion(nextVersion);
-
-        // Copy existing data to the new Agpm
         newAgpm.setAc(existingAgpm.getAc());
         newAgpm.setDocs(existingAgpm.getDocs() != null ? new ArrayList<>(existingAgpm.getDocs()) : null);
         newAgpm.setStatus(existingAgpm.getStatus());
         newAgpm.setIsDeleted(existingAgpm.getIsDeleted());
-        // Copy other fields as needed (e.g., createdAt, updatedAt, etc., if applicable)
 
-        // Apply updates from the request
         agpmMapper.updateAgpmFromRequest(request, newAgpm);
-
-        if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new IllegalArgumentException("Ac with ID " + request.getAcId() + " not found"));
-            newAgpm.setAc(ac);
-        } else {
-            newAgpm.setAc(null);
-        }
 
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
@@ -209,19 +177,44 @@ public class AgpmServiceImpl implements AgpmService {
             newAgpm.setDocs(List.of());
         }
 
-        if (request.getStatusId() != null) {
-            RefParam status = refParamRepository.findById(request.getStatusId())
-                    .orElseThrow(() -> new IllegalArgumentException("Status with ID " + request.getStatusId() + " not found"));
-            newAgpm.setStatus(status);
-        }
-
-        // Save the new Agpm entity
         return repository.save(newAgpm);
     }
 
+    @Transactional
+    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound {
+        CompositeId compositeId = new CompositeId(agpmId, agpmVer);
+        Agpm agpm = repository.findById(compositeId)
+                .orElseThrow(() -> new AgpmNotFound(agpmId, agpmVer,
+                        "Agpm with ID " + agpmId + " and version " + agpmVer + " was not found in the database."));
 
+        if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
+            throw new IllegalArgumentException("Cannot update Agpm with ID " + agpmId + " and version " + agpmVer + " because it is marked as deleted.");
+        }
 
+        agpmMapper.updateAgpmFromRequest(request, agpm);
 
+        // Update Docs association if provided
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
+            if (docs.size() != request.getDocIds().size()) {
+                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
+                List<Integer> missingDocIds = request.getDocIds().stream()
+                        .filter(docId -> !foundDocIds.contains(docId))
+                        .toList();
+                throw new IllegalArgumentException("Docs with IDs " + missingDocIds + " not found");
+            }
+            agpm.setDocs(docs);
+        } else if (request.getDocIds() != null) {
+            agpm.setDocs(List.of());
+        }
+
+        // Set audit fields
+        agpm.setUpdatedAt(Calendar.getInstance());
+        agpm.setUpdatedBy("system");
+
+        // Save the updated Agpm entity
+        return repository.save(agpm);
+    }
 
     @Override
     @Transactional

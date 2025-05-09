@@ -6,9 +6,13 @@
 INSERT INTO ref_type (ref_type_id, description, created_at,  is_deleted)
 VALUES (1, 'Status', NOW(),  0);
 
--- Insert ref_param entries for status (publiee, brouillon, a_valide)
-INSERT INTO ref_param (code, description, ref_type_id, created_at, created_by, is_deleted)
+INSERT INTO ref_param (ref_param_id,code, description, ref_type_id, created_at, created_by, is_deleted)
 VALUES
-    ('PUBLIEE', 'Publiée', 1, NOW(), 'admin', 0),
-    ('BROUILLON', 'Brouillon', 1, NOW(), 'admin', 0),
-    ('A_VALIDE', 'À valider', 1, NOW(), 'admin', 0);
+    (1,'BROUILLON', 'Brouillon', 1, NOW(), 'admin', 0),
+    (2,'EN_TRAITEMENT', 'En cours de traitemen', 1, NOW(), 'admin', 0),
+    (3,'VALIDE', 'Validé', 1, NOW(), 'admin', 0),
+    (4,'PUBLIEE', 'Publiée', 1, NOW(), 'admin', 0);
+
+ALTER TABLE agpm ADD COLUMN process_instance_id VARCHAR(255) DEFAULT NULL;
+
+

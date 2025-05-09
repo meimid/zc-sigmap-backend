@@ -24,6 +24,7 @@ public class AgpmResponse {
     private RefParamResponseDto status;
     private AcResponseDto ac;
     private List<DocsResponseDTO> docs;
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 
 }
