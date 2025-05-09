@@ -1,5 +1,8 @@
 package com.sigmap.common.compte_bancaire;
+import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -57,7 +60,7 @@ public interface CompteBancaireService {
      * @param id the id of the CompteBancaire to return
      * @return the CompteBancaire with the given id
      */
-    Optional<CompteBancaire> findById(Integer id);
+    CompteBancaire findById(Integer id) throws CompteBancaireNotFound;
 
     /**
      * Save a CompteBancaire.
@@ -73,14 +76,14 @@ public interface CompteBancaireService {
      * @param request the request to create the CompteBancaire from
      * @return the created CompteBancaire
      */
-    CompteBancaire create(CompteBancaireRequest request);
+    CompteBancaire create(CompteBancaireRequest request)throws RefParamNotFound, SocieteNotFound;
     /**
      * update CompteBancaire.
      *
      * @param request the request to update the CompteBancaire from
      * @return the updated CompteBancaire
      */
-    CompteBancaire update(CompteBancaireRequest request);
+    CompteBancaire update(Integer id,CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound;
     /**
      * Delete a CompteBancaire.
      *

@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 public class SocieteRequest {
-    private Integer id;
     private String nom;
     private Integer typeId;
     private Integer paysId;

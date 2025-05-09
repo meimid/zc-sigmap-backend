@@ -2,7 +2,7 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.ref_types.RefType;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -102,14 +102,14 @@ public class PaaSpecifications {
     }
 
     /**
-     * Filter by statusId.
+     * Filter by status.
      */
-    public static Specification<Paa> statusId(Integer statusId) {
+    public static Specification<Paa> status(RefParam status) {
         return (root, query, criteriaBuilder) -> {
-            if (statusId == null) {
+            if (status == null) {
                 return criteriaBuilder.conjunction(); // Return all if null
             }
-            return criteriaBuilder.equal(root.get("statusId"), statusId);
+            return criteriaBuilder.equal(root.get("status"), status);
         };
     }
 
@@ -129,7 +129,7 @@ public class PaaSpecifications {
     }
 
     /**
-     * Filter by ac.nom (Ac entity’s name).
+     * Filter by ac.nom (Ac entity's name).
      */
     public static Specification<Paa> acNom(String acNom) {
         return (root, query, criteriaBuilder) -> {

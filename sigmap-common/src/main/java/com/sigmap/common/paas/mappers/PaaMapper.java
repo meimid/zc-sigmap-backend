@@ -19,7 +19,7 @@ public interface PaaMapper {
     @Mapping(target = "annee", source = "annee")
 //    @Mapping(target = "ac", source = "ac") // Assumes Ac is mapped directly
     @Mapping(target = "budgetEstime", source = "budgetEstime")
-    @Mapping(target = "statusId", source = "statusId")
+    @Mapping(target = "status", source = "status")
     @Mapping(target = "realisations", source = "realisations") // Maps the full list
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -37,8 +37,8 @@ public interface PaaMapper {
     @Mapping(target = "annee", source = "annee")
 //    @Mapping(target = "ac", source = "ac") // Assumes Ac is provided in PaaRequest
     @Mapping(target = "budgetEstime", source = "budgetEstime")
-    @Mapping(target = "statusId", source = "statusId")
-    @Mapping(target = "realisations", ignore = true) // Ignored as it’s typically set separately
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "realisations", ignore = true) // Ignored as it's typically set separately
     Paa toEntity(PaaRequest paaRequest);
 
     @Mapping(target = "id", ignore = true)
@@ -48,7 +48,7 @@ public interface PaaMapper {
     @Mapping(target = "annee", source = "annee")
 //    @Mapping(target = "ac", source = "ac")
     @Mapping(target = "budgetEstime", source = "budgetEstime")
-    @Mapping(target = "statusId", source = "statusId")
-    @Mapping(target = "realisations", ignore = true) // Ignored as it’s typically managed separately
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "realisations", ignore = true) // Ignored as it's typically managed separately
     Paa updatePaaFromRequest(PaaRequest request, @MappingTarget Paa paa);
 }

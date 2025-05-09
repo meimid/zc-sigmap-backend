@@ -1,19 +1,20 @@
 package com.sigmap.sigmap_params.ac;
 
+import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller to manage ac.
@@ -73,9 +74,8 @@ public class AcController {
      * @return the ac
      */
     @GetMapping("/{id}")
-    public ResponseEntity<AcResponse> findById(@PathVariable Integer id) {
-        Ac param = acService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<AcResponse> findById(@PathVariable Integer id) throws AcNotFound {
+        Ac param = acService.findById(id);
         AcResponse response = AcMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -87,10 +87,10 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) {
-        AcResponse ac = acService.create(request);
-       // AcResponse response = AcMapper.INSTANCE.map(ac);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ac);
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound {
+        Ac ac = acService.create(request);
+        AcResponse response = AcMapper.INSTANCE.map(ac);
+        return ResponseEntity.ok(response);
     }
     /**
      * Update  ac.
@@ -98,11 +98,11 @@ public class AcController {
      * @param request the request to update the ac from
      * @return the updated ac
      */
-    @PutMapping
-    public ResponseEntity<AcResponse> update(@RequestBody AcRequest request) {
-        Ac ac = acService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
+        Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
 
     /**

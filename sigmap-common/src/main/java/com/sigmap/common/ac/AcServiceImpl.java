@@ -1,20 +1,22 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
-import lombok.extern.slf4j.Slf4j;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 @Service
 public class AcServiceImpl implements AcService{
     private final AcRepository repository;
@@ -61,8 +63,9 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public Optional<Ac> findById(Integer id) {
-        return repository.findById(id);
+    public Ac findById(Integer id) throws AcNotFound {
+        return repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
+
     }
 
     @Override
@@ -71,37 +74,52 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public AcResponse create(AcRequest request) {
-
-        Ac ac = new Ac();
-
-        ac = AcMapper.INSTANCE.map(request);
-
-
+    public Ac create(AcRequest request) throws ComNotFound {
+        Ac ac = AcMapper.INSTANCE.map(request);
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
+            List<Integer> comIds = request.getComIds();
 
-            if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+            int size = getSizeList(comIds);
+
+            // Check if all Com IDs exist
+            var coms = comRepository.findAllById(comIds);
+            if (coms.size() !=size) {
+                List<Integer> existingComIds = coms.stream()
+                        .map(Com::getId)
+                        .toList();
+                List<Integer> nonExistentComIds = comIds.stream()
+                        .filter(comId -> !existingComIds.contains(comId))
+                        .toList();
+                throw new ComNotFound("", nonExistentComIds);
             }
-
             ac.setComs(coms);
+
         }
-        repository.save(ac);
-
-
-        return AcMapper.INSTANCE.map(ac);
+        return repository.save(ac);
     }
 
+
     @Override
-    public Ac update(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
+        Ac ac = repository.findById(id).orElseThrow(() -> new AcNotFound("", List.of(id)));
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-            if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+            // Manually check for duplicate Com IDs
+            List<Integer> comIds = request.getComIds();
+            int size = getSizeList(comIds);
+
+            // Check if all Com IDs exist
+            var coms = comRepository.findAllById(comIds);
+            if (coms.size() != size) {
+                // Identify existent and non-existent comIds
+                List<Integer> existingComIds = coms.stream()
+                        .map(Com::getId)
+                        .toList();
+                List<Integer> nonExistentComIds = comIds.stream()
+                        .filter(comId -> !existingComIds.contains(comId))
+                        .toList();
+                throw new ComNotFound("", nonExistentComIds);
             }
             ac.setComs(coms);
         }
@@ -109,27 +127,25 @@ public class AcServiceImpl implements AcService{
         return repository.save(ac);
     }
 
-  //  @Override
-    public Ac update1(AcRequest request) {
-        Ac ac= repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Ac not found: " + request.getId()));
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
-        ac.setNom(request.getNom());
-        ac.setAncrage(request.getAncrage());
-        ac.setContact(request.getContact());
+    private static int getSizeList(List<Integer> listIds) throws ComNotFound, DuplicateComIdsException {
+        int size = listIds.size();
+        List<Integer> duplicateIds = new ArrayList<>();
 
-        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Com> coms = comRepository.findAllById(request.getComIds());
-
-            if (coms.size() != request.getComIds().size()) {
-                throw new IllegalArgumentException("One or more Com IDs were not found");
+        // null check for comIds elements
+        for (int i = 0; i < size; i++) {
+            if (listIds.get(i) == null ) {
+                throw new ComNotFound("" , List.of(listIds.get(i)));
             }
-
-            ac.setComs(coms);
+            for (int j = i + 1; j < size; j++) {
+                if (listIds.get(i).equals(listIds.get(j))) {
+                    duplicateIds.add(listIds.get(j));
+                }
+            }
+            if (!duplicateIds.isEmpty()) {
+                throw new DuplicateComIdsException("", duplicateIds);
+            }
         }
-
-        return repository.save(ac);
+        return size;
     }
 
     @Override

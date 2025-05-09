@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -15,6 +16,6 @@ public class PpmResponse {
     private String annee;
     private Ac ac;
     private BigDecimal budgetEstime;
-    private Integer statusId;
+    private RefParam status;
     private BaseEntityResponse metadata;
 }

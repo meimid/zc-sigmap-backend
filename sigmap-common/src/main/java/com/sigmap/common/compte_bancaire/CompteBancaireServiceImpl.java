@@ -1,14 +1,20 @@
 package com.sigmap.common.compte_bancaire;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -59,8 +65,8 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     }
 
     @Override
-    public Optional<CompteBancaire> findById(Integer id) {
-        return repository.findById(id);
+    public CompteBancaire findById(Integer id) throws CompteBancaireNotFound {
+        return repository.findById(id).orElseThrow(() -> new CompteBancaireNotFound("",List.of(id)));
     }
 
     @Override
@@ -69,21 +75,25 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     }
 
     @Override
-    public CompteBancaire create(CompteBancaireRequest request) {
-        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
-        CompteBancaire compteBancaire=new CompteBancaire();
-        compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
+    public CompteBancaire create(CompteBancaireRequest request) throws RefParamNotFound, SocieteNotFound {
+        RefParam pays=refParamService.findById(request.getPaysId())
+                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getPaysId())));
+        Societe societe=societeService.findById(request.getSocieteId())
+                .orElseThrow(() -> new SocieteNotFound("",List.of( request.getSocieteId())));
+        CompteBancaire compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
         return repository.save(compteBancaire);
     }
 
     @Override
-    public CompteBancaire update(CompteBancaireRequest request) {
-      CompteBancaire compteBancaire=repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("Com not found: " + request.getId()));
-        RefParam pays=refParamService.findById(request.getPaysId()).orElseThrow(() -> new RuntimeException("pays not found: " + request.getPaysId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("societe not found: " + request.getSocieteId()));
+    public CompteBancaire update(Integer id,CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
+        CompteBancaire compteBancaire=repository.findById(id)
+                .orElseThrow(() -> new CompteBancaireNotFound("",List.of(id)));
+        RefParam pays=refParamService.findById(request.getPaysId())
+                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getPaysId())));
+        Societe societe=societeService.findById(request.getSocieteId())
+                .orElseThrow(() -> new SocieteNotFound("",List.of( request.getSocieteId())));
         CompteBancaireMapper.INSTANCE.updateFromRequest(request, compteBancaire);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);

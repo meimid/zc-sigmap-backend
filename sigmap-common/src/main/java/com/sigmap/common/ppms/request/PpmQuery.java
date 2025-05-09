@@ -3,6 +3,7 @@ package com.sigmap.common.ppms.request;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmSpecifications;
+import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -16,7 +17,7 @@ public class PpmQuery {
     private String nom;
     private String annee;
     private BigDecimal budgetEstime;
-    private Integer statusId;
+    private RefParam status;
     private boolean deleted;
 
     /**
@@ -31,7 +32,7 @@ public class PpmQuery {
      * <li>{@link PpmSpecifications#nom(String)} if the nom property is not null or blank.</li>
      * <li>{@link PpmSpecifications#annee(String)} if the annee property is not null or blank.</li>
      * <li>{@link PpmSpecifications#budgetEstime(BigDecimal)} if the budgetEstime property is not null.</li>
-     * <li>{@link PpmSpecifications#statusId(Integer)} if the statusId property is not null.</li>
+     * <li>{@link PpmSpecifications#status(RefParam)} if the status property is not null.</li>
      * <li>{@link PpmSpecifications#deleted(boolean)} if the deleted property is true.</li>
      * </ul>
      * <p>
@@ -67,8 +68,8 @@ public class PpmQuery {
             spec = spec.and(PpmSpecifications.budgetEstime(budgetEstime));
         }
 
-        if (statusId != null) {
-            spec = spec.and(PpmSpecifications.statusId(statusId));
+        if (status != null) {
+            spec = spec.and(PpmSpecifications.status(status));
         }
 
         return spec;

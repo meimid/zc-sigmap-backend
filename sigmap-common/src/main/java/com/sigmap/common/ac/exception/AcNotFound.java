@@ -2,17 +2,14 @@
 package com.sigmap.common.ac.exception;
 
 import lombok.Getter;
+import java.util.List;
 
 @Getter
 public class AcNotFound extends Exception{
-    private final Integer id;
-    public AcNotFound(Integer id, String message) {
-        super(message);
-        this.id = id;
-    }
+    private final List<Integer> id;
 
-    public AcNotFound(Integer id, String message, Throwable cause) {
-        super(message, cause);
+    public AcNotFound(String message, List<Integer> id) {
+        super(message);
         this.id = id;
     }
 }

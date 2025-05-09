@@ -57,12 +57,17 @@ flowable:
   check-process-definitions: true
   process-definition-location-prefix: classpath:/processes/
   datasource:
-    url: jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true
-    username: root
-    password: root
+    url: ${FLOWABLE_DB_URL:jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
+    username: ${FLOWABLE_DB_USERNAME:root}
+    password: ${FLOWABLE_DB_PASSWORD:root}
     driver-class-name: org.mariadb.jdbc.Driver
 tenant:
-  id: ${TENANT_ID :ppm}
+  id: ${TENANT_ID:ppm}
 process:
   definition:
     location: ${PROCESS_DEFINITION_LOCATION:processes/}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}

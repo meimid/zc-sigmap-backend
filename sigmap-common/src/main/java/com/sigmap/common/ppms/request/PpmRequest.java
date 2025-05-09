@@ -1,6 +1,6 @@
 package com.sigmap.common.ppms.request;
 
-
+import com.sigmap.common.ref_params.RefParam;
 import com.sun.istack.NotNull;
 import lombok.Data;
 
@@ -23,5 +23,5 @@ public class PpmRequest {
 
     private BigDecimal budgetEstime;
 
-    private Integer statusId;
+    private RefParam status;
 }

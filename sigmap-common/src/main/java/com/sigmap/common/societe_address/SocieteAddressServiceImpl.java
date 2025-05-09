@@ -9,7 +9,9 @@ import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -71,23 +73,20 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress create(SocieteAddressRequest request) {
-
-        SocieteAddress societeAddress=new SocieteAddress();
-
-        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
-        societeAddress= SocieteAddressMapper.INSTANCE.map(request);
+        SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.map(request);
+        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"type not found: " + request.getTypeId()));
+        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Societe not found: " + request.getSocieteId()));
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         return save(societeAddress);
     }
 
     @Override
-    public SocieteAddress update(SocieteAddressRequest request) {
-        SocieteAddress societeAddress = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("SocieteAddress not found: " + request.getId()));
+    public SocieteAddress update(Integer id,SocieteAddressRequest request) {
+        SocieteAddress societeAddress = repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteAddress not found: " + id));
         SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
-        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new RuntimeException("type not found: " + request.getTypeId()));
-        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new RuntimeException("Societe not found: " + request.getSocieteId()));
+        RefParam type=refParamService.findById(request.getTypeId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"type not found: " + request.getTypeId()));
+        Societe societe=societeService.findById(request.getSocieteId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Societe not found: " + request.getSocieteId()));
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         return save(societeAddress);

@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.contact;
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactService;
 import com.sigmap.common.contact.Mapper.ContactMapper;
+import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactQuery;
 import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.contact.response.ContactResponse;
@@ -65,9 +66,8 @@ public class ContactController {
      * @return the Contact
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ContactResponse> findById(@PathVariable Integer id) {
-        Contact param = contactService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<ContactResponse> findById(@PathVariable Integer id) throws ContactNotFound {
+        Contact param = contactService.findById(id);
         ContactResponse response = ContactMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -90,11 +90,11 @@ public class ContactController {
      * @param request the request to update the Contact from
      * @return the updated Contact
      */
-    @PutMapping
-    public ResponseEntity<ContactResponse> update(@RequestBody ContactRequest request) {
-        Contact contact = contactService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<ContactResponse> update(@PathVariable Integer id,@RequestBody ContactRequest request)throws ContactNotFound {
+        Contact contact = contactService.update(id,request);
         ContactResponse response = ContactMapper.INSTANCE.map(contact);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a Contact based on the given id.

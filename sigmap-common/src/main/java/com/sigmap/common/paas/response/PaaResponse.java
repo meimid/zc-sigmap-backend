@@ -3,6 +3,7 @@ package com.sigmap.common.paas.response;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -19,7 +20,7 @@ public class PaaResponse {
     //TODO:change it to AcResponse : Done
     private Ac ac;
     private BigDecimal budgetEstime;
-    private Integer statusId;
+    private RefParam status;
     private List<Realisation> realisations;
     private BaseEntityResponse metadata;
 }

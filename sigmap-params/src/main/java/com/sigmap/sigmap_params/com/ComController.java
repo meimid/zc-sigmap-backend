@@ -1,11 +1,14 @@
 package com.sigmap.sigmap_params.com;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
@@ -65,9 +68,8 @@ public class ComController {
      * @return the Com
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ComResponse> findById(@PathVariable Integer id) {
-        Com param = comService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<ComResponse> findById(@PathVariable Integer id) throws ComNotFound {
+        Com param = comService.findById(id);
         ComResponse response = ComMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -79,10 +81,10 @@ public class ComController {
      * @return the created Com
      */
     @PostMapping
-    public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) {
+    public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws  AcNotFound, RefParamNotFound {
         Com com = comService.create(request);
         ComResponse response = ComMapper.INSTANCE.map(com);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
     /**
      * Update  com.
@@ -90,11 +92,11 @@ public class ComController {
      * @param request the request to update the com from
      * @return the updated com
      */
-    @PutMapping
-    public ResponseEntity<ComResponse> update(@RequestBody ComRequest request) {
-        Com com = comService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
+        Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.ok(response);
     }
     /**
      * Delete a Com based on the given id.

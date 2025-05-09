@@ -1,5 +1,6 @@
 package com.sigmap.common.societe_contact;
 
+import com.sigmap.common.contact.Contact;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -10,7 +11,7 @@ import java.util.Optional;
 
 public interface SocieteContactService {
 
-    List<SocieteContact> findAll();
+    List<Contact> findAll(Integer societeId);
 
     /**
      * Return a page of SocieteContact based on the given specification and pageable.
@@ -19,7 +20,7 @@ public interface SocieteContactService {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    Page<SocieteContact> findAll(Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<Contact> findAll(Integer societeId, Specification<SocieteContact> SocieteContact, Pageable pageable);
 
     /**
      * Return a page of deleted SocieteContact based on the given specification and pageable.
@@ -28,7 +29,7 @@ public interface SocieteContactService {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    Page<SocieteContact> findAllDeleted(Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<Contact> findAllDeleted(Integer societeId,Specification<SocieteContact> SocieteContact, Pageable pageable);
 
     /**
      * Return a page of deleted SocieteContact based on the given pageable.
@@ -36,7 +37,7 @@ public interface SocieteContactService {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    Page<SocieteContact> findAllDeleted(Pageable pageable);
+    Page<Contact> findAllDeleted(Integer societeId,Pageable pageable);
 
     /**
      * Return the deleted SocieteContact with the given id.
@@ -78,14 +79,14 @@ public interface SocieteContactService {
      * @param request the request to create the SocieteContact from
      * @return the created SocieteContact
      */
-    SocieteContact create(SocieteContactRequest request);
+    SocieteContact create(Integer societeId, Integer contactId,SocieteContactRequest request) throws RuntimeException;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated SocieteContact
      */
-    SocieteContact update(SocieteContactRequest request);
+    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request);
     /**
      * Delete a SocieteAddress.
      *

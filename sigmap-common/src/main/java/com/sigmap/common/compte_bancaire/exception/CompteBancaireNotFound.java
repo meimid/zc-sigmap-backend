@@ -2,16 +2,13 @@ package com.sigmap.common.compte_bancaire.exception;
 
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public class CompteBancaireNotFound extends Exception{
-    private final Integer id;
-    public CompteBancaireNotFound(Integer id, String message) {
+    private final List<Integer> id;
+    public CompteBancaireNotFound(String message, List<Integer> id) {
         super(message);
-        this.id = id;
-    }
-
-    public CompteBancaireNotFound(Integer id, String message, Throwable cause) {
-        super(message, cause);
         this.id = id;
     }
 }

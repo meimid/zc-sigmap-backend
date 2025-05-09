@@ -8,18 +8,16 @@ import com.sigmap.common.ref_types.RefTypeService;
 
 import java.util.List;
 import java.util.Optional;
-
-import com.sigmap.common.ref_types.mapper.RefTypeMapper;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Service implementation of {@link RefParamService}
  */
-@Slf4j
 @Service
 public class RefParamServiceImpl implements RefParamService {
     private final RefParamRepository repository;
@@ -81,20 +79,17 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public RefParam create(RefParamRequest request) {
-        RefParam refParam = new RefParam();
-        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow();
-        log.info("Creating RefParam with refTypeId: " + refType);
-        refParam = RefParamMapper.INSTANCE.map(request);
+    public RefParam create(RefParamRequest request){
+        RefType refType = refTypeService.findById(request.getRefTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefType not found: " + request.getRefTypeId()));
+        RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
-
         return save(refParam);
     }
 
     @Override
-    public RefParam update(RefParamRequest request) {
-        RefParam refParam = repository.findById(request.getId()).orElseThrow(() -> new RuntimeException("RefParam not found: " + request.getId()));
-        RefType refType = refTypeService.findById(request.getRefTypeId()).orElseThrow(() -> new RuntimeException("refType not found: " + request.getId()));
+    public RefParam update(Integer id,RefParamRequest request) {
+        RefParam refParam = repository.findById(id) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefParam not found: " + id));
+        RefType refType = refTypeService.findById(request.getRefTypeId()) .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"RefType not found: " + request.getRefTypeId()));
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
         refParam.setRefType(refType);
         return save(refParam);

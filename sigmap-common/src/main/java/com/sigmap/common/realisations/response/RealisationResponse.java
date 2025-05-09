@@ -1,6 +1,7 @@
 package com.sigmap.common.realisations.response;
 
 import com.sigmap.common.paas.Paa;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -13,12 +14,12 @@ public class RealisationResponse {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private Integer serviceId;
-    private Integer directionId;
-    private Integer sourceFinancementId;
-    private Integer monaisId;
-    private Integer typeMarcherId;
-    private Integer modeSelectionId;
+    private RefParam service;
+    private RefParam direction;
+    private RefParam sourceFinancement;
+    private RefParam monais;
+    private RefParam typeMarcher;
+    private RefParam modeSelection;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;
     private LocalDate datePrevDp;

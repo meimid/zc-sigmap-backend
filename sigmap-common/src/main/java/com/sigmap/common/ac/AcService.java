@@ -1,7 +1,9 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
+import com.sigmap.common.com.exception.ComNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -60,7 +62,7 @@ public interface AcService {
      * @param id the id of the Ac to return
      * @return the Ac with the given id
      */
-    Optional<Ac> findById(Integer id);
+    Ac findById(Integer id) throws AcNotFound;
 
     /**
      * Save a Ac.
@@ -76,7 +78,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    AcResponse create(AcRequest request);
+    Ac create(AcRequest request) throws ComNotFound;
 
     /**
      * update Ac.
@@ -84,7 +86,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(AcRequest request);
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException;
 
     /**
      * Delete a Ac.

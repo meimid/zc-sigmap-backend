@@ -1,5 +1,6 @@
 package com.sigmap.common.contact;
 
+import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,7 +60,7 @@ public interface ContactService {
      * @param id the id of the Contact to return
      * @return the Contact with the given id
      */
-    Optional<Contact> findById(Integer id);
+    Contact findById(Integer id)throws ContactNotFound;
 
     /**
      * Save a Contact.
@@ -82,7 +83,7 @@ public interface ContactService {
      * @param request the request to update the Contact from
      * @return the updated Contact
      */
-    Contact update(ContactRequest request);
+    Contact update(Integer id,ContactRequest request)throws ContactNotFound;
     /**
      * Delete a Contact.
      *

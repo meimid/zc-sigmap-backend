@@ -7,7 +7,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ComRequest {
-    private Integer id;
     private String nom;
     private String decretCreation;
     private String responsable;

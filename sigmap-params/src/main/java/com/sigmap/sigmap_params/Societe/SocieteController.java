@@ -1,5 +1,8 @@
 package com.sigmap.sigmap_params.Societe;
 
+import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.Mapper.ContactMapper;
+import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.mappers.SocieteMapper;
@@ -97,11 +100,11 @@ public class SocieteController {
      * @param request the request to update the Societe from
      * @return the updated Societe
      */
-    @PutMapping
-    public ResponseEntity<SocieteResponse> update(@RequestBody SocieteRequest request) {
-        Societe Societe = societeService.update(request);
+    @PutMapping("/{id}")
+    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) {
+        Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
      * Delete a Societe based on the given id.
@@ -136,22 +139,24 @@ public class SocieteController {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    @GetMapping("/contact")
-    public ResponseEntity<Page<SocieteContactResponse>> findAll(
-            SocieteContactQuery query, Pageable pageable) {
-        Page<SocieteContact> params = societeContactService.findAll(query.toSpecification(), pageable);
-        Page<SocieteContactResponse> SocieteContactResponses = params.map(SociteContactMapper.INSTANCE::map);
-        return ResponseEntity.ok(SocieteContactResponses);
+    @GetMapping("/{societeId}/contact")
+    public ResponseEntity<Page<ContactResponse>> findAll(@PathVariable Integer societeId,
+                                                         SocieteContactQuery query, Pageable pageable) {
+        Page<Contact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
+        Page<ContactResponse> contactResponses = params.map(ContactMapper.INSTANCE::map);
+        return ResponseEntity.ok(contactResponses);
     }
 
-    @GetMapping("/contact/deleted")
-    public ResponseEntity<Page<SocieteContactResponse>> findAllDeleted(SocieteContactQuery query, Pageable pageable) {
-        Page<SocieteContact> params = societeContactService.findAllDeleted(query.toSpecification(), pageable);
-        Page<SocieteContactResponse> societeContactResponse = params.map(SociteContactMapper.INSTANCE::map);
-        return ResponseEntity.ok(societeContactResponse);
+
+    @GetMapping("/{societeId}/contact/deleted")
+    public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) {
+        Page<Contact> params = societeContactService.findAllDeleted(societeId,query.toSpecification(), pageable);
+        Page<ContactResponse> ContactResponse = params.map(ContactMapper.INSTANCE::map);
+        return ResponseEntity.ok(ContactResponse);
     }
 
-    @GetMapping("/contact/{societeId}{contactId}")
+    // a verifier fi url wella kifech taccedi li contact avec id x
+    @GetMapping("/{societeId}/contact/{contactId}")
     public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) {
         SocieteContact param = societeContactService.findByIds(societeId,contactId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -160,22 +165,22 @@ public class SocieteController {
     }
 
 
-    @PostMapping("/contact")
-    public ResponseEntity<SocieteContactResponse> create(@RequestBody SocieteContactRequest request) {
-        SocieteContact societeContact = societeContactService.create(request);
+    @PostMapping("/{societeId}/contact/{contactId}")
+    public ResponseEntity<SocieteContactResponse> create(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+        SocieteContact societeContact = societeContactService.create(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/contact")
-    public ResponseEntity<SocieteContactResponse> update(@RequestBody SocieteContactRequest request) {
-        SocieteContact societeContact = societeContactService.update(request);
+    @PutMapping("/{societeId}/contact/{contactId}")
+    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+        SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
 
     }
 
-    @DeleteMapping("/contact/{idSociete}/{idContact}")
+    @DeleteMapping("/{idSociete}/contact/{idContact}")
     public ResponseEntity<SocieteContactResponse> deleteById(@PathVariable Integer idSociete,@PathVariable Integer idContact) {
         societeContactService.delete(idSociete,idContact);
         SocieteContact deleted = societeContactService.findDeletedByIds(idSociete,idContact)
