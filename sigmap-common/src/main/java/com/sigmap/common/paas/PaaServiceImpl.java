@@ -11,6 +11,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,7 @@ import java.util.Optional;
  * Service implementation of {@link PaaService}
  */
 @Service
+@Slf4j
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
     private final RealisationRepository realisationRepository;
@@ -85,11 +87,9 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa findById(Integer paaId, Integer paaVer) throws PaaNotFound {
-        if (paaId == null || paaVer == null) {
-            throw new PaaNotFound("Invalid ID or version provided",
-                    List.of(paaId),
-                    List.of(paaVer));
-        }
+
+        log.info("paaId: {}, paaVer: {}", paaId, paaVer);
+
         return repository.findById(new CompositeId(paaId, paaVer))
                 .orElseThrow(() -> new PaaNotFound("", List.of(paaId), List.of(paaVer)));
     }
@@ -143,7 +143,7 @@ public class PaaServiceImpl implements PaaService {
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             List<Realisation> realisations = realisationRepository.findAllById(request.getRealisationIds());
             if (realisations.size() != request.getRealisationIds().size()) {
-                throw new RealisationsMinimumRequirement("Some realisations were not found");
+                throw new RealisationsMinimumRequirement("");
             }
 
             // Update both sides of the relationship in memory

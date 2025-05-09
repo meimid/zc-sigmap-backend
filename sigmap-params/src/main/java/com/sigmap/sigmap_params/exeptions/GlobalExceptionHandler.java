@@ -153,6 +153,14 @@ public class GlobalExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SocieteAdresseNotFound.class)
+    public ResponseEntity<ErrorResponse> societeAdresseNotFoundException(SocieteAdresseNotFound ex) {
+        String message = messageSource.getMessage("societeAdresse.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(ContactNotFound.class)
     public ResponseEntity<ErrorResponse> ContactNotFoundException(ContactNotFound ex) {
         String message = messageSource.getMessage("contact.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
@@ -276,13 +284,4 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(SocieteAdresseNotFound.class)
-    public ResponseEntity<ErrorResponse> ppmNotFoundException(SocieteAdresseNotFound ex) {
-        String message = messageSource.getMessage("socite.adressenotfound",new Object[] {
-                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) },
-                getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
-    }
 }

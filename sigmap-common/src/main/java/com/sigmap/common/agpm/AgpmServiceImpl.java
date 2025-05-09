@@ -80,7 +80,7 @@ public class AgpmServiceImpl implements AgpmService {
     @Override
     public Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
         return repository.findById(new CompositeId(agpmId, agpmVer))
-                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmId)));
+                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
     }
 
     @Override
