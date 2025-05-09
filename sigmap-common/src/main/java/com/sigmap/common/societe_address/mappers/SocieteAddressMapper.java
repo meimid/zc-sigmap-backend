@@ -4,7 +4,9 @@ import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
+import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
 import com.sigmap.common.societe_address.response.SocieteAddressResponse;
+import com.sigmap.common.societe_address.response.SocieteAdressResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -25,5 +27,7 @@ public interface SocieteAddressMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     SocieteAddressResponse map(SocieteAddress source);
     SocieteAddress map(SocieteAddressRequest source);
+    SocieteAddress mapFromSocieteAddressUnderSocieteRequest(SocieteAdressUnderSocieteRequest source);
     void updateFromRequest(SocieteAddressRequest source, @MappingTarget SocieteAddress target);
+    SocieteAdressResponseDto mapToDto(SocieteAddress source);
 }

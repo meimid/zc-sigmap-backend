@@ -26,6 +26,7 @@ import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -270,6 +271,16 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ppm.notfound",new Object[] {
                         String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
                         String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SocieteAdresseNotFound.class)
+    public ResponseEntity<ErrorResponse> ppmNotFoundException(SocieteAdresseNotFound ex) {
+        String message = messageSource.getMessage("socite.adressenotfound",new Object[] {
+                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) },
                 getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);

@@ -3,6 +3,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -100,5 +101,20 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     public void delete(Integer id) {
         repository.softDelete(id);
 
+    }
+
+    @Override
+    public CompteBancaire createUnderSociete(Integer societeId, CompteBancaireUnderSocieteRequest request) throws RefParamNotFound, SocieteNotFound {
+        RefParam pays=refParamService.findById(request.getPaysId());
+        Societe societe=societeService.findById(societeId);
+        CompteBancaire compteBancaire= CompteBancaireMapper.INSTANCE.mapFromUnderUnderSocieteRequest(request);
+        compteBancaire.setPays(pays);
+        compteBancaire.setSociete(societe);
+        return repository.save(compteBancaire);    }
+
+    @Override
+    public Page<CompteBancaire> findCompteBancaireListBySocieteId(Integer societeId,Pageable pageable) throws SocieteNotFound {
+        societeService.findById(societeId);
+        return repository.findCompteBancaireBySocieteId(societeId,pageable);
     }
 }

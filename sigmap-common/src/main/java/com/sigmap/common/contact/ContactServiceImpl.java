@@ -4,6 +4,11 @@ import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_contact.SocieteContact;
+import com.sigmap.common.societe_contact.SocieteContactService;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -17,9 +22,11 @@ import java.util.Optional;
 @Service
 public class ContactServiceImpl implements ContactService {
     private final ContactRepository repository;
+    private final SocieteService societeService;
 
-    public ContactServiceImpl(ContactRepository repository) {
+    public ContactServiceImpl(ContactRepository repository, SocieteService societeService) {
         this.repository = repository;
+        this.societeService = societeService;
     }
 
     @Override
@@ -81,8 +88,15 @@ public class ContactServiceImpl implements ContactService {
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete(Integer id) throws ContactNotFound , SocieteContactNotFound {
         repository.softDelete(id);
 
+
+    }
+
+    @Override
+    public Page<Contact> findContactsBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound {
+        societeService.findById(societeId);
+        return repository.findContactsBySocieteId(societeId, pageable);
     }
 }
