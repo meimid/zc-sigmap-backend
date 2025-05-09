@@ -1,7 +1,6 @@
 package com.sigmap.common.ref_params;
 
-import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
-import com.sigmap.common.contact.Mapper.ContactMapper;
+
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
@@ -15,9 +14,7 @@ import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Service implementation of {@link RefParamService}

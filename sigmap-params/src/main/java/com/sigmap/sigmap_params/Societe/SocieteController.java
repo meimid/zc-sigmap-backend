@@ -102,7 +102,7 @@ public class SocieteController {
      * @return the updated Societe
      */
     @PutMapping("/{id}")
-    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound {
+    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);

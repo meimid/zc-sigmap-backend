@@ -1,7 +1,6 @@
 package com.sigmap.common.realisations;
 
-import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.docs.Docs;
+
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -21,11 +20,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -35,7 +30,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class RealisationServiceImpl implements RealisationService {
@@ -156,7 +150,7 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getMonais() != null) {
             realisation.setMonais(refParamRepository.findById(request.getMonais().getId()).get());
         }else{
-            notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()));
+            notFoundRefs.add(messageSource.getMessage("realisation.type.monais", null, getLocal()));
         }
 
         if (request.getTypeMarcher() != null) {

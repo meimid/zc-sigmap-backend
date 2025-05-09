@@ -79,8 +79,8 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound {
-        Societe societe=repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Societe not found with id "+ id));
+    public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound, SocieteNotFound {
+        Societe societe = findById(id);
         RefParam type=refParamService.findById(request.getTypeId());
         RefParam pays=refParamService.findById(request.getPaysId());
         SocieteMapper.INSTANCE.updateFromRequest(request, societe);
