@@ -78,19 +78,32 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
 
-
     @Override
     public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException {
+        Integer version = request.getVersion();
+        if (version == null) {
+            throw new IllegalArgumentException("AGPM version must not be null");
+        }
+        Integer id = request.getId();
+        if (id == null) {
+            id = repository.findMaxId();
+            if (id == null) {
+                id = 1;
+            }
+            else {
+                id++;
+            }
+        }
 
-        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(request.getId(), request.getVersion()));
+        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
         if (existingAgpm.isPresent()) {
-            throw new AgpmAlreadyExistsException(request.getId(), request.getVersion(),
-                    "Agpm with ID " + request.getId() + " and version " + request.getVersion() + " already exists.");
+            throw new AgpmAlreadyExistsException(id, version,
+                    "Agpm with ID " + id + " and version " + version + " already exists.");
         }
 
         Agpm agpm = agpmMapper.toEntity(request);
-        agpm.setId(request.getId());
-        agpm.setVersion(request.getVersion());
+        agpm.setId(id);
+        agpm.setVersion(version);
 
         // Manually set Ac with ID 1 (will be retrived from keycloack)
         Ac ac = new Ac();
@@ -119,7 +132,6 @@ public class AgpmServiceImpl implements AgpmService {
 
         return repository.save(agpm);
     }
-
 
 
     @Override

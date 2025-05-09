@@ -69,13 +69,5 @@ public interface AgpmMapper {
     @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
 
-//    @Named("mapStatusIdToStatus")
-//    default RefParam mapStatusIdToStatus(Integer statusId) {
-//        if (statusId == null) {
-//            return null;
-//        }
-//        RefParam status = new RefParam();
-//        status.setId(statusId);
-//        return status;
-//    }
+
 }
