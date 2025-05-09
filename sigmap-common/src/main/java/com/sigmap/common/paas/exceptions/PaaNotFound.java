@@ -1,23 +1,26 @@
 package com.sigmap.common.paas.exceptions;
 
-import lombok.Data;
-import org.springframework.http.HttpStatus;
 
-@Data
+import lombok.Getter;
+
+import java.util.List;
+
+
 public class PaaNotFound extends Exception {
-    private final Integer id;
-    private final Integer version;
+    private final List<Integer> id;
+    private final List<Integer> version;
 
-    public PaaNotFound(Integer id, Integer version, String message) {
+    public PaaNotFound(String message, List<Integer> id, List<Integer> version) {
         super(message);
         this.id = id;
         this.version = version;
     }
+    public List<Integer> getId() {
+        return id;
+    }
 
-    public PaaNotFound(Integer id, Integer version, String message, Throwable cause) {
-        super(message, cause);
-        this.id = id;
-        this.version = version;
+    public List<Integer> getVersion() {
+        return version;
     }
 
 

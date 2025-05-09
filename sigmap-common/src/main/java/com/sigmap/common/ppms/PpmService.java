@@ -1,6 +1,10 @@
 package com.sigmap.common.ppms;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
 import com.sigmap.common.ppms.request.PpmRequest;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -76,7 +80,7 @@ public interface PpmService {
      * @param ppmVer the second part of the composite ID (ppm_ver)
      * @return the Ppm with the given ID components
      */
-    Optional<Ppm> findById(Integer ppmId, Integer ppmVer);
+    Ppm findById(Integer ppmId, Integer ppmVer) throws PpmNotFound;
 
     /**
      * Save a Ppm.
@@ -92,7 +96,7 @@ public interface PpmService {
      * @param request the request to create the Ppm from
      * @return the created Ppm
      */
-    Ppm create(PpmRequest request);
+    Ppm create(PpmRequest request) throws AcNotFound , ReferenceNotFound;
 
     /**
      * Update an existing Ppm.
@@ -102,7 +106,7 @@ public interface PpmService {
      * @param request the request containing updated Ppm data
      * @return the updated Ppm
      */
-    Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request);
+    Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request) throws PpmNotFound, AcNotFound, ReferenceNotFound, UpdateDeletedPpm;
 
     /**
      * Delete a Ppm by its composite ID components.

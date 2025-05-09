@@ -1,6 +1,8 @@
 package com.sigmap.common.societe;
 
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -60,7 +62,7 @@ public interface SocieteService {
      * @param id the id of the Societe to return
      * @return the Societe with the given id
      */
-    Optional<Societe> findById(Integer id);
+    Societe findById(Integer id)throws SocieteNotFound;
 
     /**
      * Save a Societe.
@@ -76,14 +78,14 @@ public interface SocieteService {
      * @param request the request to create the Societe from
      * @return the created Societe
      */
-    Societe create(SocieteRequest request);
+    Societe create(SocieteRequest request) throws RefParamNotFound;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated com
      */
-    Societe update(Integer id,SocieteRequest request);
+    Societe update(Integer id,SocieteRequest request) throws RefParamNotFound, SocieteNotFound;
     /**
      * Delete a Societe.
      *

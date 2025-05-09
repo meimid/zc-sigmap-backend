@@ -2,8 +2,11 @@ package com.sigmap.common.menu_item;
 
 import com.sigmap.common.authority.Authority;
 import com.sigmap.common.authority.AuthorityRepository;
+import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
+import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemRequest;
 
@@ -73,8 +76,8 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
-    public Optional<MenuItem> findById(Integer id) {
-        return repository.findById(id);
+    public MenuItem findById(Integer id) throws MenuItemNotFound {
+        return repository.findById(id).orElseThrow(() -> new MenuItemNotFound("", List.of(id)));
     }
 
     @Override
@@ -84,15 +87,17 @@ public class MenuItemServiceImpl implements MenuItemService {
 
     @Override
     @Transactional
-    public MenuItem create(MenuItemRequest request) throws MenuItemAlreadyExistsExeption {
+    public MenuItem create(MenuItemRequest request) throws MenuItemAlreadyExistsExeption, MenuItemNotFound, AuthorityNotFound{
 
        MenuItem menuItem =  menuItemMapper.toEntity(request);
        if (request.getParentId() != null) {
-           MenuItem parentMenuItem = repository.findById(request.getParentId()).orElseThrow(() -> new IllegalArgumentException("MenuItem with ID " + request.getParentId() + " not found"));
+           MenuItem parentMenuItem = repository.findById(request.getParentId())
+                   .orElseThrow(() -> new MenuItemNotFound("", List.of(request.getParentId())));
            menuItem.setParentId(parentMenuItem);
        }
         if (request.getAuthority() != null) {
-            Authority authority = authorityRepository.findById(request.getAuthority()).orElseThrow(() -> new IllegalArgumentException("Authority with code " + request.getAuthority() + " not found"));
+            Authority authority = authorityRepository.findById(request.getAuthority())
+                    .orElseThrow(() -> new AuthorityNotFound("", List.of(request.getAuthority())));
             menuItem.setAuthority(authority);
         }
        menuItem.setIcon(request.getIcon());
@@ -106,34 +111,34 @@ public class MenuItemServiceImpl implements MenuItemService {
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete(Integer id) throws MenuItemNotFound ,MenuItemSoftDeleteExeption{
         Optional<MenuItem> menuItem = repository.findById(id);
         if (menuItem.isEmpty()) {
-            throw new IllegalArgumentException("MenuItem with ID " + id + " was not found");
+            throw new MenuItemNotFound("", List.of(id));
         }
         Integer operation = repository.softDelete(id);
         if (operation != 1) {
-            throw new IllegalStateException("Soft delete failed: Expected 1 row to be deleted, but " + operation + " rows were affected for MenuItem with ID " + id);
+            throw new MenuItemSoftDeleteExeption(" " , operation, id);
         }
     }
 
     @Override
     @Transactional
-    public MenuItem update(Integer id, MenuItemRequest request) throws MenuItemNotFound {
+    public MenuItem update(Integer id, MenuItemRequest request) throws MenuItemNotFound, AuthorityNotFound, MenuItemUpdateExeption {
         MenuItem menuItem = repository.findById(id)
-                .orElseThrow(() -> new MenuItemNotFound(id,"MenuItem with ID " + id + " was not found in the database."));
+                .orElseThrow(() -> new MenuItemNotFound("", List.of(id)));
         if (menuItem.getIsDeleted()) {
-            throw new IllegalArgumentException("Cannot update MenuItem with ID " + id + " because it is marked as deleted in the data base.");
+            throw new MenuItemUpdateExeption("", id);
         }
         menuItemMapper.updateMenuItemFromRequest(request, menuItem);
         if (request.getParentId()!=null){
             MenuItem menuItemParent = repository.findById(request.getParentId())
-                    .orElseThrow(() -> new IllegalArgumentException("MenuItem with ID " + request.getParentId() + " not found"));
+                    .orElseThrow(() -> new MenuItemNotFound("", List.of(id)));
             menuItem.setParentId(menuItemParent);
         }
         if (request.getAuthority()!=null){
             Authority authority = authorityRepository.findById(request.getAuthority())
-                    .orElseThrow(() -> new IllegalArgumentException("Authority with Code " + request.getAuthority() + " not found"));
+                    .orElseThrow(() -> new AuthorityNotFound("", List.of(request.getAuthority())));
             menuItem.setAuthority(authority);
         }
         return repository.save(menuItem);

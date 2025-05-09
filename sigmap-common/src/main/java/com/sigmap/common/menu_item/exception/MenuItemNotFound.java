@@ -2,17 +2,14 @@ package com.sigmap.common.menu_item.exception;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class MenuItemNotFound extends Exception {
-    private final Integer id;
+    private final List<Integer> id;
 
-    public MenuItemNotFound(Integer id, String message) {
+    public MenuItemNotFound(String message, List<Integer> id) {
         super(message);
-        this.id = id;
-    }
-
-    public MenuItemNotFound(Integer id, String message, Throwable cause) {
-        super(message, cause);
         this.id = id;
     }
 }

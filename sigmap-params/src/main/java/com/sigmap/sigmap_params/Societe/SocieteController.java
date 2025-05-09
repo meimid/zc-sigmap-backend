@@ -3,8 +3,10 @@ package com.sigmap.sigmap_params.Societe;
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.contact.response.ContactResponse;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteQuery;
 import com.sigmap.common.societe.request.SocieteRequest;
@@ -75,9 +77,8 @@ public class SocieteController {
      * @return the Societe
      */
     @GetMapping("/{id}")
-    public ResponseEntity<SocieteResponse> findById(@PathVariable Integer id) {
-        Societe param = societeService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<SocieteResponse> findById(@PathVariable Integer id) throws SocieteNotFound {
+        Societe param = societeService.findById(id);
         SocieteResponse response = SocieteMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -89,7 +90,7 @@ public class SocieteController {
      * @return the created Societe
      */
     @PostMapping
-    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequest request) {
+    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequest request) throws RefParamNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -101,7 +102,7 @@ public class SocieteController {
      * @return the updated Societe
      */
     @PutMapping("/{id}")
-    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) {
+    public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);

@@ -2,10 +2,12 @@ package com.sigmap.sigmap_params.ref_params;
 
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.request.RefParamQuery;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.response.RefParamResponse;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -78,9 +80,8 @@ public class RefParamController {
      * @return the ref param
      */
     @GetMapping("/{id}")
-    public ResponseEntity<RefParamResponse> findById(@PathVariable Integer id) {
-        RefParam param = refParamService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<RefParamResponse> findById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findById(id);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -92,7 +93,7 @@ public class RefParamController {
      * @return the created ref param
      */
     @PostMapping
-    public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request) {
+    public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request)throws RefParamNotFound {
 
         RefParam refParam = refParamService.create(request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
@@ -106,7 +107,7 @@ public class RefParamController {
      * @return the updated RefParam
      */
     @PutMapping("/{id}")
-    public ResponseEntity<RefParamResponse> update(@PathVariable Integer id,@RequestBody RefParamRequest request) {
+    public ResponseEntity<RefParamResponse> update(@PathVariable Integer id,@RequestBody RefParamRequest request) throws RefParamNotFound, RefTypeNotFound{
         RefParam refParam = refParamService.update(id,request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.OK).body(response);

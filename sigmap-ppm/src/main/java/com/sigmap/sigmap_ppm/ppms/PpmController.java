@@ -1,11 +1,15 @@
 package com.sigmap.sigmap_ppm.ppms;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.response.PpmResponse;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -76,9 +80,8 @@ public class PpmController {
     @GetMapping("/{ppmId}/{ppmVer}")
     public ResponseEntity<PpmResponse> findById(
             @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer) {
-        Ppm ppm = ppmService.findById(ppmId, ppmVer)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+            @PathVariable Integer ppmVer) throws PpmNotFound {
+        Ppm ppm = ppmService.findById(ppmId, ppmVer);
         PpmResponse response = PpmMapper.INSTANCE.map(ppm);
         return ResponseEntity.ok(response);
     }
@@ -90,7 +93,7 @@ public class PpmController {
      * @return the created ppm
      */
     @PostMapping
-    public ResponseEntity<PpmResponse> create(@RequestBody PpmRequest request) {
+    public ResponseEntity<PpmResponse> create(@RequestBody PpmRequest request) throws AcNotFound, ReferenceNotFound {
         Ppm ppm = ppmService.create(request);
         PpmResponse response = PpmMapper.INSTANCE.map(ppm);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -109,7 +112,7 @@ public class PpmController {
     public ResponseEntity<PpmResponse> update(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
-            @RequestBody PpmRequest request) {
+            @RequestBody PpmRequest request) throws PpmNotFound, AcNotFound, ReferenceNotFound, UpdateDeletedPpm {
         Ppm updatedPpm = ppmService.update(ppmId, ppmVer, request);
         PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
         return ResponseEntity.ok(response);
