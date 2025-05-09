@@ -1,15 +1,12 @@
 package com.sigmap.common.contact;
 
-import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;

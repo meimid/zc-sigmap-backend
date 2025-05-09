@@ -1,13 +1,15 @@
 package com.sigmap.sigmap_agpm.agpm;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
-import com.sigmap.common.agpm.exceptions.AgpmAlreadyExistsException;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
+import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -76,12 +78,10 @@ public class AgpmController {
      * @return ResponseEntity containing the AgpmResponse DTO, or 404 if not found
      */
     @GetMapping("/{agpmId}/{agpmVer}")
-    public ResponseEntity<AgpmResponse> getAgpmById(
-            @PathVariable Integer agpmId,
-            @PathVariable Integer agpmVer) {
-        Optional<Agpm> agpm = agpmService.findById(agpmId, agpmVer);
-        return agpm.map(a -> new ResponseEntity<>(AgpmMapper.INSTANCE.map(a), HttpStatus.OK))
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId,@PathVariable Integer agpmVer) throws AgpmNotFound{
+        Agpm agpm = agpmService.findById(agpmId, agpmVer);
+        AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(agpm);
+        return ResponseEntity.ok(agpmResponse);
     }
 
 
@@ -95,7 +95,7 @@ public class AgpmController {
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
      */
     @PostMapping
-    public ResponseEntity<AgpmResponse> createAgpm(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException {
+    public ResponseEntity<AgpmResponse> createAgpm(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus {
         Agpm createdAgpm = agpmService.create(request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(createdAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.CREATED);
@@ -115,7 +115,7 @@ public class AgpmController {
     public ResponseEntity<AgpmResponse> updateAgpm(
             @PathVariable Integer agpmId,
             @PathVariable Integer agpmVer,
-            @Valid @RequestBody AgpmRequest request) throws AgpmNotFound {
+            @Valid @RequestBody AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound {
         Agpm updatedAgpm = agpmService.update(agpmId, agpmVer, request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.OK);
@@ -133,7 +133,7 @@ public class AgpmController {
     @DeleteMapping("/{agpmId}/{agpmVer}")
     public ResponseEntity<Void> deleteAgpm(
             @PathVariable Integer agpmId,
-            @PathVariable Integer agpmVer) throws AgpmNotFound {
+            @PathVariable Integer agpmVer) throws AgpmNotFound, AgpmSoftDelete {
         agpmService.delete(agpmId, agpmVer);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }

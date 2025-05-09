@@ -1,7 +1,10 @@
 package com.sigmap.sigmap_params.societe_address;
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
+import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressQuery;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
@@ -12,8 +15,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -64,9 +65,8 @@ public class SocieteAddressController {
      * @return the SocieteAddress
      */
     @GetMapping("/{id}")
-    public ResponseEntity<SocieteAddressResponse> findById(@PathVariable Integer id) {
-        SocieteAddress param = societeAddressService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<SocieteAddressResponse> findById(@PathVariable Integer id) throws SocieteAdresseNotFound {
+        SocieteAddress param = societeAddressService.findById(id);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -78,7 +78,7 @@ public class SocieteAddressController {
      * @return the created SocieteAddress
      */
     @PostMapping
-    public ResponseEntity<SocieteAddressResponse> create(@RequestBody SocieteAddressRequest request) {
+    public ResponseEntity<SocieteAddressResponse> create(@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
         SocieteAddress SocieteAddress = societeAddressService.create(request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -90,7 +90,7 @@ public class SocieteAddressController {
      * @return the updated SocieteAddress
      */
     @PutMapping("/{id}")
-    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) {
+    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound {
         SocieteAddress SocieteAddress = societeAddressService.update(id,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
         return ResponseEntity.status(HttpStatus.OK).body(response);

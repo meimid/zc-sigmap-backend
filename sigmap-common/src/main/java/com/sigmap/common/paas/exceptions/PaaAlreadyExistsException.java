@@ -9,18 +9,12 @@ public class PaaAlreadyExistsException extends Exception {
     private final Integer version;
 
     // Constructor with id, version, and message
-    public PaaAlreadyExistsException(Integer id, Integer version, String message) {
+    public PaaAlreadyExistsException(String message, Integer id, Integer version) {
         super(message);
         this.id = id;
         this.version = version;
     }
 
-    // Constructor with id, version, message, and cause
-    public PaaAlreadyExistsException(Integer id, Integer version, String message, Throwable cause) {
-        super(message, cause);
-        this.id = id;
-        this.version = version;
-    }
 
 
 

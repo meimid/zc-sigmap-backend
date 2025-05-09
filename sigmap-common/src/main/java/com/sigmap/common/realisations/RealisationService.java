@@ -1,9 +1,16 @@
 package com.sigmap.common.realisations;
 
 
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
+import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.realisations.request.RealisationRequest; // Assuming a DTO exists
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -90,7 +97,7 @@ public interface RealisationService {
      * @param realisationVer the second part of the composite ID (realisation_ver)
      * @return the Realisation entity with the given ID components
      */
-    Optional<Realisation> findById(Integer realisationId, Integer realisationVer);
+    Realisation findById(Integer realisationId, Integer realisationVer) throws RealisationNotFoundException;
 
     /**
      * Save a Realisation entity.
@@ -106,7 +113,7 @@ public interface RealisationService {
      * @param request the request to create the Realisation entity from
      * @return the created Realisation entity
      */
-    Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException;
+    Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, ReferenceNotFound;
 
     /**
      * Update an existing Realisation entity identified by its composite ID components.
@@ -117,7 +124,7 @@ public interface RealisationService {
      * @return the updated Realisation entity
      * @throws RealisationNotFoundException if the Realisation entity with the given ID components is not found
      */
-    Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException;
+    Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException, UpdateDeletedRealisation, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, RefParamNotFound;
 
     /**
      * Delete a Realisation entity by its composite ID components.

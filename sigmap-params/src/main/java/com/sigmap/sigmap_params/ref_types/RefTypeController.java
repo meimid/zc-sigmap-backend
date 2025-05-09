@@ -1,7 +1,10 @@
 package com.sigmap.sigmap_params.ref_types;
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeQuery;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
@@ -32,16 +35,13 @@ public class RefTypeController {
 
 
   @GetMapping("/{id}")
-  public ResponseEntity<RefType> findById(@PathVariable Integer id) {
-    RefType params =
-        refTypeService
-            .findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+  public ResponseEntity<RefType> findById(@PathVariable Integer id) throws RefTypeNotFound {
+    RefType params = refTypeService.findById(id);
     return ResponseEntity.ok(params);
   }
 
   @PostMapping
-  public ResponseEntity<RefType> create(@RequestBody RefTypeRequest request) {
+  public ResponseEntity<RefType> create(@RequestBody RefTypeRequest request) throws RefTypePositiveIdAndNotEmpty {
 
     System.out.println("Ref Type Request " + request);
     RefType refType = refTypeService.create(request);
@@ -57,7 +57,7 @@ public class RefTypeController {
   }
 
   @PutMapping
-  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) {
+  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefParamNotFound {
     RefType refType = refTypeService.update(request);
     RefTypeResponse response = RefTypeMapper.INSTANCE.map(refType);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

@@ -1,7 +1,6 @@
 package com.sigmap.common.realisations.request;
 
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.lots.LotsId;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 

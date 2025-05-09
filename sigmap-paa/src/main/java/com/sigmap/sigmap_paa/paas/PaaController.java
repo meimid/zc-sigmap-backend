@@ -9,6 +9,8 @@ import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.response.PaaResponse;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -79,8 +81,7 @@ public class PaaController {
     public ResponseEntity<PaaResponse> findById(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
-        Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database."));
+        Paa paa = paaService.findById(paaId, paaVer);
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.ok(response);
     }
@@ -92,7 +93,7 @@ public class PaaController {
      * @return the created paa
      */
     @PostMapping
-    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) throws PaaAlreadyExistsException {
+    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement {
         Paa paa = paaService.create(request);
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

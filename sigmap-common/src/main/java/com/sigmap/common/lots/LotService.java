@@ -1,8 +1,11 @@
 package com.sigmap.common.lots;
 
+import com.sigmap.common.lots.exception.LotNotFound;
+import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequest;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +66,7 @@ public interface LotService {
      * @param lotsVer the second part of the composite ID (lots_ver)
      * @return the Lot entity with the given ID components
      */
-    Optional<Lot> findById(Integer lotsId, Integer lotsVer);
+    Lot findById(Integer lotsId, Integer lotsVer) throws LotNotFound;
 
     /**
      * Save a Lot entity.
@@ -79,7 +82,7 @@ public interface LotService {
      * @param request the request to create the Lot entity from
      * @return the created Lot entity
      */
-    Lot create(LotRequest request);
+    Lot create(LotRequest request) throws RealisationNotFoundException;
 
     /**
      * Delete a Lot entity by its composite ID components.
@@ -89,6 +92,6 @@ public interface LotService {
      */
     void delete(Integer lotsId, Integer lotsVer);
 
-    Lot update(Integer lotId, Integer lotVer, LotRequest request);
+    Lot update(Integer lotId, Integer lotVer, LotRequest request) throws LotNotFound, UpdateDeletedLot;
 
 }

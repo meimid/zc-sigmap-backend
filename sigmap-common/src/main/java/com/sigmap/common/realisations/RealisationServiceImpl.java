@@ -1,30 +1,35 @@
 package com.sigmap.common.realisations;
 
-import com.sigmap.common.docs.Docs;
+
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
+import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
-import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+
+import com.sigmap.common.ppms.exception.PpmNotFound;
+
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
+import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import jakarta.transaction.Transactional;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class RealisationServiceImpl implements RealisationService {
@@ -33,15 +38,20 @@ public class RealisationServiceImpl implements RealisationService {
     private final PpmRepository ppmRepository;
     private final LotRepository lotRepository;
     private final RefParamRepository refParamRepository;
+    private final MessageSource messageSource;
 
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository) {
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, MessageSource messageSource) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
         this.lotRepository = lotRepository;
         this.refParamRepository = refParamRepository;
+        this.messageSource = messageSource;
     }
 
+    private Locale getLocal (){
+        return LocaleContextHolder.getLocale();
+    }
     @Override
     public List<Realisation> findAll() {
         Specification<Realisation> spec = RealisationSpecifications.deleted(false);
@@ -81,8 +91,8 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     @Override
-    public Optional<Realisation> findById(Integer realisationId, Integer realisationVer) {
-        return repository.findById(new CompositeId(realisationId, realisationVer));
+    public Realisation findById(Integer realisationId, Integer realisationVer) throws RealisationNotFoundException {
+        return repository.findById(new CompositeId(realisationId, realisationVer)).orElseThrow(() -> new RealisationNotFoundException("", realisationId, realisationVer));
     }
 
     @Override
@@ -92,7 +102,7 @@ public class RealisationServiceImpl implements RealisationService {
 
     @Transactional
     @Override
-    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException, RealisationsMinimumRequirement, PaaNotFound, PpmNotFound, LotNotFound, ReferenceNotFound {
         Integer id = request.getId();
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
@@ -100,15 +110,16 @@ public class RealisationServiceImpl implements RealisationService {
         // Generate ID if not provided
         if (id == null) {
             id = repository.findMaxId() + 1;
-            System.out.println("Generated Realisation ID: " + id);
         }
-
         CompositeId compositeId = new CompositeId(id, version);
-
         // Check if realisation already exists
         if (repository.existsById(compositeId)) {
-            throw new RealisationAlreadyExistsException(id, version,
-                    "Realisation with ID " + id + " and version " + version + " already exists in the database.");
+                throw new RealisationAlreadyExistsException("",List.of(id), List.of(version));
+        }
+
+        // Validate that at least one of Paa and one of Ppm is provided
+        if ((request.getPaaIds() == null || request.getPaaIds().isEmpty()) ||  (request.getPpmIds() == null || request.getPpmIds().isEmpty())) {
+            throw new RealisationsMinimumRequirement("");
         }
 
         // Map request to entity
@@ -116,121 +127,221 @@ public class RealisationServiceImpl implements RealisationService {
         realisation.setId(compositeId.getId());
         realisation.setVersion(version);
 
+        List<String> notFoundRefs = new ArrayList<>();
+
+        if (request.getService() != null) {
+            realisation.setService(refParamRepository.findById(request.getService().getId()).get());
+        } else {
+            notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()));
+        }
+
+        if (request.getDirection() != null) {
+            realisation.setDirection(refParamRepository.findById(request.getDirection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()));
+        }
+
+        if (request.getSourceFinancement() != null) {
+            realisation.setSourceFinancement( refParamRepository.findById(request.getSourceFinancement().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()));
+        }
+
+        if (request.getMonais() != null) {
+            realisation.setMonais(refParamRepository.findById(request.getMonais().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.type.monais", null, getLocal()));
+        }
+
+        if (request.getTypeMarcher() != null) {
+           realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()));
+        }
+
+        if (request.getModeSelection() != null) {
+            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()));
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
+        }
+
         // Set empty associations initially
         realisation.setPaas(new ArrayList<>());
         realisation.setPpms(new ArrayList<>());
         realisation.setLots(new HashSet<>());
         realisation.setDocs(new ArrayList<>());
 
-        // Fetch and set RefParam associations
-        if (request.getService() != null) {
-            realisation.setService(refParamRepository.findById(request.getService().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
-        }
-        if (request.getDirection() != null) {
-            realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
-        }
-        if (request.getSourceFinancement() != null) {
-            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
-        }
-        if (request.getMonais() != null) {
-            realisation.setMonais(refParamRepository.findById(request.getMonais().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-        }
-        if (request.getTypeMarcher() != null) {
-            realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
-        }
-        if (request.getModeSelection() != null) {
-            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
-        }
 
         // Save entity first (without associations)
         Realisation savedRealisation = repository.save(realisation);
 
         // Fetch associated PAAs if needed
         if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
-            List<Paa> paas = request.getPaaIds().stream()
-                    .peek(paaId -> System.out.println("Associating PAA ID: " + paaId.getId() + ", Version: " + paaId.getVersion()))
-                    .map(paaId -> paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion())))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toList());
-
+            List<Paa> paas = new ArrayList<>();
+            for (CompositeId paaId : request.getPaaIds()) {
+                Optional<Paa> paaOptional = paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion()));
+                if (paaOptional.isPresent()) {
+                    paas.add(paaOptional.get());
+                } else {
+                    throw new PaaNotFound(" ",List.of(paaId.getId()),List.of(paaId.getVersion()) );
+                }
+            }
             savedRealisation.setPaas(paas);
         }
 
         // Fetch and set PPMs
-        if (request.getPpmIds() != null) {
-            List<Ppm> ppms = request.getPpmIds().stream()
-                    .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .toList();
+        if (request.getPpmIds() != null && !request.getPpmIds().isEmpty()) {
+            List<Ppm> ppms = new ArrayList<>();
+            for (CompositeId ppmId : request.getPpmIds()) {
+                Optional<Ppm> ppmOptional = ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion()));
+                if (ppmOptional.isPresent()) {
+                    ppms.add(ppmOptional.get());
+                } else {
+                    throw new PpmNotFound(" ",List.of(ppmId.getId()),List.of(ppmId.getVersion()));
+                }
+            }
             savedRealisation.setPpms(ppms);
         }
 
         // Fetch and set Lots
-        if (request.getLotIds() != null) {
-            Set<Lot> lots = request.getLotIds().stream()
-                    .map(lotId -> lotRepository.findById(new CompositeId(lotId.getId(), lotId.getVersion())))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get)
-                    .collect(Collectors.toSet());
+        if (request.getLotIds() != null && !request.getLotIds().isEmpty()) {
+            Set<Lot> lots = new HashSet<>();
+            for (CompositeId lotId : request.getLotIds()) {
+                Optional<Lot> lotOptional = lotRepository.findById(new CompositeId(lotId.getId(), lotId.getVersion()));
+                if (lotOptional.isPresent()) {
+                    lots.add(lotOptional.get());
+                } else {
+                    throw new LotNotFound(" ",List.of(lotId.getId()),List.of(lotId.getVersion()));
+                }
+            }
             savedRealisation.setLots(lots);
         }
 
-        ///TODO:add DOCs
+        ///TODO: add DOCs
 
         // Save again with associations
         return repository.save(savedRealisation);
     }
-
     @Override
-    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException {
+    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws ReferenceNotFound, PaaNotFound, PpmNotFound,LotNotFound, RealisationsMinimumRequirement, RealisationNotFoundException,UpdateDeletedRealisation {
         CompositeId compositeId = new CompositeId(realisationId, realisationVer);
         Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
 
+        // Check if realisation exists
         if (existingRealisationOpt.isEmpty()) {
-            throw new RealisationNotFoundException(realisationId, realisationVer,
-                    "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.");
+            throw new RealisationNotFoundException("",realisationId, realisationVer);
         }
         Realisation existingRealisation = existingRealisationOpt.get();
+
+        // Check if realisation is deleted
         if (Boolean.TRUE.equals(existingRealisation.getIsDeleted())) {
-            throw new RealisationNotFoundException(realisationId, realisationVer,
-                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer);
+            throw new UpdateDeletedRealisation("",realisationId, realisationVer);
         }
 
-        // Update RefParam associations if provided
+        List<String> notFoundRefs = new ArrayList<>();
+
         if (request.getService() != null) {
-            existingRealisation.setService(refParamRepository.findById(request.getService().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
-        }
-        if (request.getDirection() != null) {
-            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
-        }
-        if (request.getSourceFinancement() != null) {
-            existingRealisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
-        }
-        if (request.getMonais() != null) {
-            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-        }
-        if (request.getTypeMarcher() != null) {
-            existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
-        }
-        if (request.getModeSelection() != null) {
-            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+            existingRealisation.setService(refParamRepository.findById(request.getService().getId()).get());
+        } else {
+            notFoundRefs.add(messageSource.getMessage("realisation.service", null, getLocal()));
         }
 
-        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request, existingRealisation);
+        if (request.getDirection() != null) {
+            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.direction", null, getLocal()));
+        }
+
+        if (request.getSourceFinancement() != null) {
+            existingRealisation.setSourceFinancement( refParamRepository.findById(request.getSourceFinancement().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.source.financement", null, getLocal()));
+        }
+
+        if (request.getMonais() != null) {
+            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.monais", null, getLocal()));
+        }
+
+        if (request.getTypeMarcher() != null) {
+            existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.type.marche", null, getLocal()));
+        }
+
+        if (request.getModeSelection() != null) {
+            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId()).get());
+        }else{
+            notFoundRefs.add(messageSource.getMessage("realisation.mode.selection", null, getLocal()));
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
+        }
+
+        // Validate that at least one of Paa or Ppm is provided
+        if ((request.getPaaIds() == null || request.getPaaIds().isEmpty()) &&
+                (request.getPpmIds() == null || request.getPpmIds().isEmpty())) {
+            throw new RealisationsMinimumRequirement("");
+        }
+
+        // Update realisation entity from request
+        Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request,existingRealisationOpt.get());
+
+        // Clear existing associations and reset
+        realisation.setPaas(new ArrayList<>());
+        realisation.setPpms(new ArrayList<>());
+        realisation.setLots(new HashSet<>());
+        realisation.setDocs(new ArrayList<>());
+
+        // Fetch and set associated PAAs
+        if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
+            List<Paa> paas = new ArrayList<>();
+            for (CompositeId paaId : request.getPaaIds()) {
+                Optional<Paa> paaOptional = paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion()));
+                if (paaOptional.isPresent()) {
+                    paas.add(paaOptional.get());
+                } else {
+                    throw new PaaNotFound(" ", List.of(paaId.getId()), List.of(paaId.getVersion()));
+                }
+            }
+            realisation.setPaas(paas);
+        }
+        // Fetch and set PPMs
+        if (request.getPpmIds() != null && !request.getPpmIds().isEmpty()) {
+            List<Ppm> ppms = new ArrayList<>();
+            for (CompositeId ppmId : request.getPpmIds()) {
+                Optional<Ppm> ppmOptional = ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion()));
+                if (ppmOptional.isPresent()) {
+                    ppms.add(ppmOptional.get());
+                } else {
+                    throw new PpmNotFound(" ", List.of(ppmId.getId()), List.of(ppmId.getVersion()));
+                }
+            }
+            realisation.setPpms(ppms);
+        }
+
+        // Fetch and set Lots
+        if (request.getLotIds() != null && !request.getLotIds().isEmpty()) {
+            Set<Lot> lots = new HashSet<>();
+            for (CompositeId lotId : request.getLotIds()) {
+                Optional<Lot> lotOptional = lotRepository.findById(new CompositeId(lotId.getId(), lotId.getVersion()));
+                if (lotOptional.isPresent()) {
+                    lots.add(lotOptional.get());
+                } else {
+                    throw new LotNotFound(" ", List.of(lotId.getId()), List.of(lotId.getVersion()));
+                }
+            }
+            realisation.setLots(lots);
+        }
+
+        ///TODO: add DOCs
+
         return repository.save(realisation);
     }
 

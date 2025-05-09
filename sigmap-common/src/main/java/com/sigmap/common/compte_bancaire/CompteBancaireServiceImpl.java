@@ -76,10 +76,8 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public CompteBancaire create(CompteBancaireRequest request) throws RefParamNotFound, SocieteNotFound {
-        RefParam pays=refParamService.findById(request.getPaysId())
-                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getPaysId())));
-        Societe societe=societeService.findById(request.getSocieteId())
-                .orElseThrow(() -> new SocieteNotFound("",List.of( request.getSocieteId())));
+        RefParam pays=refParamService.findById(request.getPaysId());
+        Societe societe=societeService.findById(request.getSocieteId());
         CompteBancaire compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);
@@ -90,10 +88,8 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     public CompteBancaire update(Integer id,CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
         CompteBancaire compteBancaire=repository.findById(id)
                 .orElseThrow(() -> new CompteBancaireNotFound("",List.of(id)));
-        RefParam pays=refParamService.findById(request.getPaysId())
-                .orElseThrow(() -> new RefParamNotFound("", List.of(request.getPaysId())));
-        Societe societe=societeService.findById(request.getSocieteId())
-                .orElseThrow(() -> new SocieteNotFound("",List.of( request.getSocieteId())));
+        RefParam pays=refParamService.findById(request.getPaysId());
+        Societe societe=societeService.findById(request.getSocieteId());
         CompteBancaireMapper.INSTANCE.updateFromRequest(request, compteBancaire);
         compteBancaire.setPays(pays);
         compteBancaire.setSociete(societe);

@@ -1,6 +1,9 @@
 package com.sigmap.common.ref_types;
 
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -72,7 +75,7 @@ public interface RefTypeService {
    */
 
 
-  Optional<RefType> findById(Integer id);
+  RefType findById(Integer id) throws RefTypeNotFound;
 
   /**
    * Save a RefType.
@@ -88,14 +91,14 @@ public interface RefTypeService {
    * @param request the request to create the RefType from
    * @return the created RefType
    */
-  RefType create(RefTypeRequest request);
+  RefType create(RefTypeRequest request) throws RefTypePositiveIdAndNotEmpty;
   /**
    * update RefType.
    *
    * @param request the request to update the RefType from
    * @return the updated RefType
    */
-  RefType update(RefTypeRequest request);
+  RefType update(RefTypeRequest request)throws RefParamNotFound;
   /**
    * Delete a RefType.
    *

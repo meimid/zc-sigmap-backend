@@ -1,9 +1,12 @@
 package com.sigmap.sigmap_params.menu_item;
 
+import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.menu_item.MenuItemService;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
+import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemQuery;
 import com.sigmap.common.menu_item.request.MenuItemRequest;
@@ -76,7 +79,7 @@ public class MenuItemController {
      * @throws MenuItemAlreadyExistsExeption
      */
     @PostMapping
-    public ResponseEntity<MenuItemResponse> create(@RequestBody MenuItemRequest request)throws MenuItemAlreadyExistsExeption {
+    public ResponseEntity<MenuItemResponse> create(@RequestBody MenuItemRequest request)throws MenuItemAlreadyExistsExeption, MenuItemNotFound, AuthorityNotFound {
         MenuItem menuItem = menuItemService.create(request);
         MenuItemResponse response = MenuItemMapper.INSTANCE.map(menuItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -91,7 +94,7 @@ public class MenuItemController {
      * @throws MenuItemNotFound
      */
     @PutMapping("/{id}")
-    public ResponseEntity<MenuItemResponse> update(@PathVariable Integer id ,@RequestBody MenuItemRequest request) throws MenuItemNotFound {
+    public ResponseEntity<MenuItemResponse> update(@PathVariable Integer id ,@RequestBody MenuItemRequest request) throws MenuItemNotFound, AuthorityNotFound, MenuItemUpdateExeption {
         MenuItem menuItem = menuItemService.update(id,request);
         MenuItemResponse response = MenuItemMapper.INSTANCE.map(menuItem);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -104,7 +107,7 @@ public class MenuItemController {
      * @return MenuItemResponse
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<MenuItemResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<MenuItemResponse> deleteById(@PathVariable Integer id) throws MenuItemNotFound, MenuItemSoftDeleteExeption {
         menuItemService.delete(id);
         MenuItem menuItemDeleted = menuItemService.findDeletedById(id)
                 .orElseThrow();
@@ -136,9 +139,8 @@ public class MenuItemController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MenuItemResponse> findById(@PathVariable Integer id) {
-        MenuItem menuItem = menuItemService.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public ResponseEntity<MenuItemResponse> findById(@PathVariable Integer id) throws MenuItemNotFound {
+        MenuItem menuItem = menuItemService.findById(id);
         MenuItemResponse response = MenuItemMapper.INSTANCE.map(menuItem);
         return ResponseEntity.ok(response);
     }

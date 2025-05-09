@@ -1,5 +1,9 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
@@ -53,8 +57,8 @@ public class RefTypeServiceImpl implements RefTypeService {
     return findOne(specification);  }
 
   @Override
-  public Optional<RefType> findById(Integer id) {
-    return repository.findById(id);
+  public RefType findById(Integer id) throws RefTypeNotFound {
+    return repository.findById(id).orElseThrow(() -> new RefTypeNotFound("",id));
   }
 
   @Override
@@ -65,12 +69,12 @@ public class RefTypeServiceImpl implements RefTypeService {
     return refTypeId != null && refTypeId > 0;
   }
   @Override
-  public RefType create(RefTypeRequest request) {
+  public RefType create(RefTypeRequest request) throws RefTypePositiveIdAndNotEmpty {
     Optional<RefType> checkId = repository.findById(request.getId());
     if (checkId.isPresent()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "id is already used, try another one : " + request.getId());
+      throw new RefTypeAlreadyExist("" , request.getId());
     } else if (!this.check_id(request.getId())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ("RefType id must be positive and not empty"));
+      throw new RefTypePositiveIdAndNotEmpty("");
     } else {
       RefType refType = RefTypeMapper.INSTANCE.map(request);
       return save(refType);
@@ -80,9 +84,9 @@ public class RefTypeServiceImpl implements RefTypeService {
 
 
   @Override
-  public RefType update(RefTypeRequest request) {
+  public RefType update(RefTypeRequest request) throws RefParamNotFound {
     RefType refType = repository.findById(request.getId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "RefParam not found: " + request.getId()));
+            .orElseThrow(() -> new RefParamNotFound("",List.of( request.getId())));
     RefTypeMapper.INSTANCE.updateFromRequest(request, refType);
     return save(refType);
   }

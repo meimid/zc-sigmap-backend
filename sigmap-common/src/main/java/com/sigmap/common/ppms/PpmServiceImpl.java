@@ -2,16 +2,25 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
 import com.sigmap.common.ppms.request.PpmRequest;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -19,6 +28,7 @@ public class PpmServiceImpl implements PpmService {
     private final PpmRepository repository;
     private final AcRepository acRepository;
     private final RefParamRepository refParamRepository;
+    private final MessageSource messageSource;
 
     /**
      * Constructor.
@@ -27,10 +37,15 @@ public class PpmServiceImpl implements PpmService {
      *                    //TODO
 //     * @param acService ac service
      */
-    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository, RefParamRepository refParamRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository, RefParamRepository refParamRepository, MessageSource messageSource) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.refParamRepository = refParamRepository;
+        this.messageSource = messageSource;
+    }
+
+    private Locale getLocal (){
+        return LocaleContextHolder.getLocale();
     }
 
     @Override
@@ -53,8 +68,6 @@ public class PpmServiceImpl implements PpmService {
         return repository.findAll(deletedSpec, pageable);
     }
 
-
-
     @Override
     public Page<Ppm> findAllDeleted(Pageable pageable) {
         Specification<Ppm> spec = PpmSpecifications.deleted(true);
@@ -74,8 +87,8 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) {
-        return repository.findById(new CompositeId(ppmId, ppmVer));
+    public Ppm findById(Integer ppmId, Integer ppmVer) throws PpmNotFound {
+        return repository.findById(new CompositeId(ppmId, ppmVer)).orElseThrow(() -> new PpmNotFound("", List.of(ppmId), List.of(ppmVer)));
     }
 
     @Override
@@ -84,7 +97,7 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Ppm create(PpmRequest request) {
+    public Ppm create(PpmRequest request) throws AcNotFound , ReferenceNotFound{
         Integer id = request.getId();
         if (id == null) {
             Integer maxId = repository.findMaxId();
@@ -103,33 +116,39 @@ public class PpmServiceImpl implements PpmService {
         ppm.setAnnee(request.getAnnee());
         ppm.setBudgetEstime(request.getBudgetEstime());
 
+        List<String> notFoundRefs = new ArrayList<>();
+
         // Set status if provided
         if (request.getStatus() != null) {
-            ppm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+            ppm.setStatus(refParamRepository.findById(request.getStatus().getId()).get());
+        }else {
+            notFoundRefs.add(messageSource.getMessage("ppm.status", new Integer[]{request.getStatus().getId()}, getLocal()));
+        }
+
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
         }
 
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+                    .orElseThrow(() -> new AcNotFound(" " , List.of(request.getAcId())));
             ppm.setAc(ac);
         }
-
         return repository.save(ppm);
     }
 
     @Override
-    public Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request) {
+    public Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request) throws PpmNotFound, AcNotFound, ReferenceNotFound, UpdateDeletedPpm {
         CompositeId compositeId = new CompositeId(ppmId, ppmVer);
         Optional<Ppm> existingPpmOpt = repository.findById(compositeId);
 
         if (existingPpmOpt.isEmpty()) {
-            throw new RuntimeException("Ppm with ID " + ppmId + " and version " + ppmVer + " was not found in the database.");
+            throw new PpmNotFound("", List.of(ppmId), List.of(ppmVer));
         }
 
         Ppm existingPpm = existingPpmOpt.get();
         if (Boolean.TRUE.equals(existingPpm.getIsDeleted())) {
-            throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
+            throw new UpdateDeletedPpm("", List.of(ppmId), List.of(ppmVer));
         }
 
         // Update fields
@@ -138,17 +157,22 @@ public class PpmServiceImpl implements PpmService {
         existingPpm.setAnnee(request.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime());
 
+        List<String> notFoundRefs = new ArrayList<>();
+
         // Update status if provided
         if (request.getStatus() != null) {
-            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId()).get());
         } else {
             existingPpm.setStatus(null);
+            notFoundRefs.add(messageSource.getMessage("ppm.status", new Integer[]{request.getStatus().getId()}, getLocal()));
+        }
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
         }
 
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+                    .orElseThrow(() -> new AcNotFound("", List.of(request.getAcId())));
             existingPpm.setAc(ac);
         } else {
             existingPpm.setAc(null);
