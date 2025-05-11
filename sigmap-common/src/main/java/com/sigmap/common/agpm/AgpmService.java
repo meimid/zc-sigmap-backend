@@ -95,7 +95,9 @@ public interface AgpmService {
      * @return The updated AgpmResponse DTO
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound;
+    Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound;
 
-    Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
+     Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound;
+
+        Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
 }

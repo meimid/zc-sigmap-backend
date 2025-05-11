@@ -49,7 +49,7 @@ public class AgpmServiceImpl implements AgpmService {
         this.messageSource = messageSource;
     }
 
-    private Locale getLocal (){
+    private Locale getLocal() {
         return LocaleContextHolder.getLocale();
     }
 
@@ -108,18 +108,17 @@ public class AgpmServiceImpl implements AgpmService {
 
         Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
         if (existingAgpm.isPresent()) {
-            throw new AgpmAlreadyExistsException("",id, version);
+            throw new AgpmAlreadyExistsException("", id, version);
         }
 
         Agpm agpm = agpmMapper.toEntity(request);
         agpm.setId(id);
         agpm.setVersion(version);
 
-        if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new AcNotFound(" " , List.of(request.getAcId())));
-            agpm.setAc(ac);
-        }
+        // Manually set Ac with ID 1 (will be retrived from keycloack)
+        Ac ac = new Ac();
+        ac.setId(1);
+        agpm.setAc(ac);
 
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
@@ -149,37 +148,41 @@ public class AgpmServiceImpl implements AgpmService {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Optional<Agpm> existingAgpm = repository.findById(compositeId);
         if (existingAgpm.isEmpty()) {
-            throw new AgpmNotFound("",List.of(agpmId),List.of(agpmVer));
+            throw new AgpmNotFound("", List.of(agpmId), List.of(agpmVer));
         }
 
         Integer rowsAffected = repository.softDelete(agpmId, agpmVer, Calendar.getInstance());
         if (rowsAffected != 1) {
-            throw new AgpmSoftDelete("" , rowsAffected ,  agpmId , agpmVer);
+            throw new AgpmSoftDelete("", rowsAffected, agpmId, agpmVer);
         }
     }
 
+
     @Override
     @Transactional
-    public Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound {
+    public Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, ReferenceNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
-        Agpm agpm = repository.findById(compositeId)
-                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmId)));
+        Agpm existingAgpm = repository.findById(compositeId)
+                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
 
-        if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
-            throw new IllegalArgumentException("Cannot update Agpm with ID " + agpmId + " and version " + agpmVer + " because it is marked as deleted.");
+        if (Boolean.TRUE.equals(existingAgpm.getIsDeleted())) {
+            throw new IllegalArgumentException(messageSource.getMessage("agpm.deleted.update", new Object[]{agpmId, agpmVer}, getLocal()));
         }
 
-        agpmMapper.updateAgpmFromRequest(request, agpm);
+        Integer nextVersion = repository.findMaxVersionById(agpmId);
+        nextVersion = (nextVersion != null) ? nextVersion + 1 : 1;
 
-        if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new AcNotFound("" , List.of(request.getAcId() )));
-            agpm.setAc(ac);
-        } else {
-            agpm.setAc(null);
-        }
+        Agpm newAgpm = new Agpm();
+        newAgpm.setId(agpmId);
+        newAgpm.setVersion(nextVersion);
+        newAgpm.setAc(existingAgpm.getAc());
+        newAgpm.setDocs(existingAgpm.getDocs() != null ? new ArrayList<>(existingAgpm.getDocs()) : null);
+        newAgpm.setStatus(existingAgpm.getStatus());
+        newAgpm.setIsDeleted(existingAgpm.getIsDeleted());
 
-        // Update DOCS
+        agpmMapper.updateAgpmFromRequest(request, newAgpm);
+
+        // Update Docs association if provided
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
             if (docs.size() != request.getDocIds().size()) {
@@ -187,39 +190,63 @@ public class AgpmServiceImpl implements AgpmService {
                 List<Integer> missingDocIds = request.getDocIds().stream()
                         .filter(docId -> !foundDocIds.contains(docId))
                         .toList();
-                throw new DocNotFound(" " , missingDocIds);
+                throw new DocNotFound("", missingDocIds);
+            }
+            newAgpm.setDocs(docs);
+        } else if (request.getDocIds() != null) {
+            newAgpm.setDocs(List.of());
+        }
+
+        List<String> notFoundRefs = new ArrayList<>();
+        if (!notFoundRefs.isEmpty()) {
+            throw new ReferenceNotFound("", List.of(String.join(", ", notFoundRefs)));
+        }
+
+        return repository.save(newAgpm);
+    }
+
+    @Override
+    @Transactional
+    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound {
+        CompositeId compositeId = new CompositeId(agpmId, agpmVer);
+        Agpm agpm = repository.findById(compositeId)
+                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
+
+        if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
+            throw new IllegalArgumentException(messageSource.getMessage("agpm.deleted.update", new Object[]{agpmId, agpmVer}, getLocal()));
+        }
+
+        agpmMapper.updateAgpmFromRequest(request, agpm);
+
+        // Update Docs association if provided
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
+            if (docs.size() != request.getDocIds().size()) {
+                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
+                List<Integer> missingDocIds = request.getDocIds().stream()
+                        .filter(docId -> !foundDocIds.contains(docId))
+                        .toList();
+                throw new DocNotFound("", missingDocIds);
             }
             agpm.setDocs(docs);
         } else if (request.getDocIds() != null) {
             agpm.setDocs(List.of());
         }
 
-        List<String> notFoundRefs = new ArrayList<>();
+        // Set audit fields
+        agpm.setUpdatedAt(Calendar.getInstance());
+        agpm.setUpdatedBy("system");
 
-        if (request.getStatusId() != null) {
-            RefParam status = refParamRepository.findById(request.getStatusId()).get();
-            agpm.setStatus(status);
-        } else {
-            agpm.setStatus(agpm.getStatus());
-            notFoundRefs.add(messageSource.getMessage("ppm.status", new Integer[]{request.getStatusId()}, getLocal()));
-        }
-
-
-        if (!notFoundRefs.isEmpty()) {
-        throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
-    }
-
+        // Save the updated Agpm entity
         return repository.save(agpm);
     }
-
-
 
     @Override
     @Transactional
     public Agpm updateStatus(Integer agpmId, Integer agpmVer, Integer statusId) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm agpm = repository.findById(compositeId)
-                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of( agpmVer)));
+                .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
 
         List<String> notFoundRefs = new ArrayList<>();
 
@@ -233,7 +260,7 @@ public class AgpmServiceImpl implements AgpmService {
 
 
         if (!notFoundRefs.isEmpty()) {
-            throw new ReferenceNotFound(" " , List.of(String.join(", ", notFoundRefs)));
+            throw new ReferenceNotFound(" ", List.of(String.join(", ", notFoundRefs)));
         }
 
         agpm.setUpdatedAt(Calendar.getInstance());

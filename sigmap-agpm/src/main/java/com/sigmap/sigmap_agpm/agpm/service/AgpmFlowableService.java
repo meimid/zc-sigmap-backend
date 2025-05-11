@@ -1,10 +1,12 @@
 package com.sigmap.sigmap_agpm.agpm.service;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.sigmap_agpm.agpm.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.agpm.response.NextStepDTO;
 import com.sigmap.sigmap_agpm.agpm.response.ProcessStartResponseDTO;
@@ -215,7 +217,7 @@ public class AgpmFlowableService {
         String processInstanceId = processInstance.getProcessInstanceId();
 
         // Update Agpm with the processInstanceId
-        Optional<Agpm> agpmOptional = agpmService.findById(id, version);
+        Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isPresent()) {
             Agpm agpm = agpmOptional.get();
             agpm.setProcessInstanceId(processInstanceId);
@@ -314,7 +316,7 @@ public class AgpmFlowableService {
         return response;
     }
 
-    public TaskDetailsDTO getTaskDetails(String taskId) {
+    public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
@@ -364,7 +366,7 @@ public class AgpmFlowableService {
 
         List<AgpmResponseDto> agpmResponses = List.of();
         if (id != null && version != null) {
-            Optional<Agpm> relatedagpms = agpmService.findById(id, version);
+            Optional<Agpm> relatedagpms = Optional.ofNullable(agpmService.findById(id, version));
             agpmResponses = relatedagpms.stream()
                     .map(AgpmMapper.INSTANCE::mapToDto)
                     .collect(Collectors.toList());
@@ -465,7 +467,7 @@ public class AgpmFlowableService {
     }
 
     @Transactional
-    public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound {
+    public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound {
         // Step 1: Validate authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
@@ -518,7 +520,7 @@ public class AgpmFlowableService {
         }
 
         // Step 7: Fetch the Agpm entity
-        Optional<Agpm> agpmOptional = agpmService.findById(id, version);
+        Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isEmpty()) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("No AGPM entities found for id " + id + " and version " + version);

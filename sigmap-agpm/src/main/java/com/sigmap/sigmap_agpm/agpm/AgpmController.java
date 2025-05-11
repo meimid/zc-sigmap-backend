@@ -116,7 +116,7 @@ public class AgpmController {
             @PathVariable Integer agpmId,
             @PathVariable Integer agpmVer,
             @Valid @RequestBody AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound {
-        Agpm updatedAgpm = agpmService.update(agpmId, agpmVer, request);
+        Agpm updatedAgpm = agpmService.updateWithoutVersioning(agpmId, agpmVer, request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.OK);
     }

@@ -1,6 +1,8 @@
 package com.sigmap.sigmap_agpm.agpm;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.sigmap_agpm.agpm.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.agpm.response.ProcessStartResponseDTO;
 import com.sigmap.sigmap_agpm.agpm.response.TaskDTO;
@@ -39,7 +41,7 @@ public class AgpmFlowableController {
     }
 
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) {
+    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws AgpmNotFound {
         TaskDetailsDTO response = agpmFlowableService.getTaskDetails(taskId);
         return ResponseEntity.ok(response);
     }
@@ -47,7 +49,7 @@ public class AgpmFlowableController {
     @PostMapping("/tasks/{taskId}/validate")
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
-            @RequestBody ValidationRequest request)throws AgpmNotFound {
+            @RequestBody ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound {
         TaskDTO response = agpmFlowableService.validateTask(taskId, request) ;
         return ResponseEntity.ok(response);
     }
