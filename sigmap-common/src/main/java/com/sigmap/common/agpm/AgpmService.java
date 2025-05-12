@@ -98,7 +98,7 @@ public interface AgpmService {
      */
     Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound, IOException;
 
-     Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound;
+     Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException;
 
         Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
 }

@@ -1,15 +1,18 @@
 package com.sigmap.common.agpm;
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.Constants;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
@@ -17,6 +20,7 @@ import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.security.Authentication;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.context.MessageSource;
@@ -31,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -48,6 +53,9 @@ public class AgpmServiceImpl implements AgpmService {
     private final MessageSource messageSource;
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
+    private final DocsService docsService;
+    private final AcService acService;
+
 
     public AgpmServiceImpl(AgpmRepository repository,
                            AcRepository acRepository,
@@ -56,8 +64,9 @@ public class AgpmServiceImpl implements AgpmService {
                            RefParamRepository refParamRepository,
                            MessageSource messageSource,
                            AlfrescoService alfrescoService,
-                           DocumentCommuneService documentCommuneService
-                           ) {
+                           DocumentCommuneService documentCommuneService,
+                           DocsService docsService,
+                           AcService acService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.docsRepository = docsRepository;
@@ -65,7 +74,10 @@ public class AgpmServiceImpl implements AgpmService {
         this.refParamRepository = refParamRepository;
         this.messageSource = messageSource;
         this.alfrescoService = alfrescoService;
+        this.docsService = docsService;
         this.documentCommuneService = documentCommuneService;
+        this.acService = acService;
+
     }
 
     private Locale getLocal() {
@@ -134,25 +146,24 @@ public class AgpmServiceImpl implements AgpmService {
         agpm.setId(id);
         agpm.setVersion(version);
 
-        // Manually set Ac with ID 1 (will be retrived from keycloack)
-        Ac ac = new Ac();
-        ac.setId(1);
-        agpm.setAc(ac);
+        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
 
-//        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-//            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
-//            if (docs.size() != request.getDocIds().size()) {
-//                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-//                List<Integer> missingDocIds = request.getDocIds().stream()
-//                        .filter(docId -> !foundDocIds.contains(docId)).toList();
-//                throw new DocNotFound("", missingDocIds);
-//            }
-//            agpm.setDocs(docs);
-//        } else if (request.getDocIds() != null) {
-//            agpm.setDocs(List.of());
-//        }
+        if (acIdOptional.isPresent()) {
+            Long acIdLong = acIdOptional.get();
+            Integer acIdInt = Math.toIntExact(acIdLong); // safe conversion from Long to Integer
 
-        if(request.getFiles() != null) {
+            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
+            if (acOptional.isPresent()) {
+                Ac ac = acOptional.get();
+                agpm.setAc(ac);
+            } else {
+                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+            }
+        } else {
+            throw new NotFoundException("No AC ID found for current user.");
+        }
+
+        if (request.getFiles() != null) {
             processAndSaveDocuments(request.getFiles(), agpm);
         }
 
@@ -180,7 +191,6 @@ public class AgpmServiceImpl implements AgpmService {
         }
     }
 
-
     @Override
     @Transactional
     public Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, ReferenceNotFound, IOException {
@@ -192,49 +202,108 @@ public class AgpmServiceImpl implements AgpmService {
             throw new IllegalArgumentException(messageSource.getMessage("agpm.deleted.update", new Object[]{agpmId, agpmVer}, getLocal()));
         }
 
+        // Determine the next version
         Integer nextVersion = repository.findMaxVersionById(agpmId);
         nextVersion = (nextVersion != null) ? nextVersion + 1 : 1;
 
+        // Create new Agpm version
         Agpm newAgpm = new Agpm();
         newAgpm.setId(agpmId);
         newAgpm.setVersion(nextVersion);
         newAgpm.setAc(existingAgpm.getAc());
-        newAgpm.setDocs(existingAgpm.getDocs() != null ? new ArrayList<>(existingAgpm.getDocs()) : null);
         newAgpm.setStatus(existingAgpm.getStatus());
         newAgpm.setIsDeleted(existingAgpm.getIsDeleted());
 
+        // Copy existing Docs (including soft-deleted ones)
+        List<Docs> existingDocs = existingAgpm.getDocs() != null ? new ArrayList<>(existingAgpm.getDocs()) : new ArrayList<>();
+        List<Integer> existingDocIds = existingDocs.stream()
+                .map(Docs::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        log.debug("Existing document IDs for Agpm {}:{}: {}", agpmId, agpmVer, existingDocIds);
+
+        // Update Agpm fields from request
         agpmMapper.updateAgpmFromRequest(request, newAgpm);
 
-        // Update Docs association if provided
-    /*    if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
-            if (docs.size() != request.getDocIds().size()) {
-                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-                List<Integer> missingDocIds = request.getDocIds().stream()
-                        .filter(docId -> !foundDocIds.contains(docId))
-                        .toList();
-                throw new DocNotFound("", missingDocIds);
+        // Check Docs by docIds from the request
+        List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
+        List<Docs> requestedDocs = docsRepository.findByIdIn(requestedDocIds);
+        if (requestedDocIds.size() != requestedDocs.size()) {
+            List<Integer> foundDocIds = requestedDocs.stream().map(Docs::getId).toList();
+            List<Integer> missingDocIds = requestedDocIds.stream()
+                    .filter(docId -> !foundDocIds.contains(docId))
+                    .collect(Collectors.toList());
+            throw new DocNotFound("", missingDocIds);
+        }
+        log.debug("Requested document IDs: {}", requestedDocIds);
+
+        // Update Docs association: Keep existing docs (including soft-deleted) and update/add requested ones
+        List<Docs> newDocs = new ArrayList<>(existingDocs);
+        if (!requestedDocs.isEmpty()) {
+            // Remove requested docs from newDocs to avoid duplicates
+            newDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
+            // Add requested docs
+            newDocs.addAll(requestedDocs);
+            newAgpm.setDocs(newDocs);
+        } else if (request.getDocIds() != null && request.getDocIds().isEmpty()) {
+            newAgpm.setDocs(new ArrayList<>());
+        } else {
+            newAgpm.setDocs(newDocs);
+        }
+
+        // Process new file uploads to add new documents
+        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
+            try {
+                processAndSaveDocuments(request.getFiles(), newAgpm);
+                log.debug("New documents added from files to Agpm {}:{}", agpmId, nextVersion);
+            } catch (IOException e) {
+                log.error("Failed to process files: {}", e.getMessage());
+                throw e;
             }
-            newAgpm.setDocs(docs);
-        } else if (request.getDocIds() != null) {
-            newAgpm.setDocs(List.of());
-        }*/
-
-        if(request.getFiles() != null) {
-            processAndSaveDocuments(request.getFiles(), newAgpm);
         }
 
-        List<String> notFoundRefs = new ArrayList<>();
-        if (!notFoundRefs.isEmpty()) {
-            throw new ReferenceNotFound("", List.of(String.join(", ", notFoundRefs)));
+        // Determine documents to soft delete (present in existingDocs but not in requestedDocIds)
+        List<Integer> docIdsToDelete = existingDocIds.stream()
+                .filter(docId -> !requestedDocIds.contains(docId))
+                .collect(Collectors.toList());
+        log.debug("Documents to soft delete: {}", docIdsToDelete);
+
+        // Soft delete documents that are no longer in the request
+        for (Integer docId : docIdsToDelete) {
+            Optional<Docs> docToDelete = docsRepository.findById(docId);
+            if (docToDelete.isPresent()) {
+                docsRepository.softDelete(docToDelete.get().getId());
+                log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
+            } else {
+                log.warn("Document with ID {} not found for soft deletion", docId);
+                throw new DocNotFound("", List.of(docId));
+            }
         }
 
-        return repository.save(newAgpm);
+        // Set audit fields
+        newAgpm.setUpdatedAt(Calendar.getInstance());
+        newAgpm.setUpdatedBy("system");
+
+        // Save the new Agpm version
+        Agpm savedAgpm = repository.save(newAgpm);
+
+        // Filter out soft-deleted Docs in the response
+        if (savedAgpm.getDocs() != null) {
+            savedAgpm.setDocs(savedAgpm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList()));
+        }
+        log.info("Returning Agpm {}:{} with filtered document IDs: {}",
+                agpmId, nextVersion,
+                savedAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList()));
+
+        return savedAgpm;
     }
 
+
     @Override
-    @Transactional
-    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound {
+    @Transactional(readOnly = true)
+    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm agpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
@@ -245,19 +314,79 @@ public class AgpmServiceImpl implements AgpmService {
 
         agpmMapper.updateAgpmFromRequest(request, agpm);
 
-        // Update Docs association if provided
-        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
-            if (docs.size() != request.getDocIds().size()) {
-                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-                List<Integer> missingDocIds = request.getDocIds().stream()
-                        .filter(docId -> !foundDocIds.contains(docId))
-                        .toList();
-                throw new DocNotFound("", missingDocIds);
+        // Fetch existing documents id associated with the Agpm
+        List<Integer> docsIds = new ArrayList<>();
+        if (agpm.getDocs() != null) {
+            docsIds = agpm.getDocs().stream()
+                    .map(Docs::getId)
+                    .toList();
+        }
+        log.info("existing Docs for updating agpm .... {}", docsIds);
+
+        List<Docs> existingDocs = agpm.getDocs() != null ? new ArrayList<>(agpm.getDocs()) : new ArrayList<>();
+
+        // Check Docs by docIds from the request
+        List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
+        List<Docs> requestedDocs = docsRepository.findByIdIn(requestedDocIds);
+        if (requestedDocIds.size() != requestedDocs.size()) {
+            List<Integer> foundDocIds = requestedDocs.stream().map(Docs::getId).toList();
+            List<Integer> missingDocIds = requestedDocIds.stream()
+                    .filter(docId -> !foundDocIds.contains(docId))
+                    .collect(Collectors.toList());
+            throw new DocNotFound("", missingDocIds);
+        }
+        log.debug("Requested document IDs: {}", requestedDocIds);
+
+        // Update the Agpm's documents: Keep existing docs (including soft-deleted) and update/add requested ones
+        if (!requestedDocs.isEmpty()) {
+            existingDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
+            existingDocs.addAll(requestedDocs);
+            agpm.setDocs(existingDocs);
+        }
+        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
+            try {
+                processAndSaveDocuments(request.getFiles(), agpm);
+                log.debug("New documents added from files to Agpm");
+            } catch (IOException e) {
+                log.error("Failed to process files: {}", e.getMessage());
+                throw e;
             }
-            agpm.setDocs(docs);
-        } else if (request.getDocIds() != null) {
-            agpm.setDocs(List.of());
+        }
+
+        List<Integer> docIdsToDelete = docsIds.stream()
+                .filter(docId -> !requestedDocIds.contains(docId))
+                .collect(Collectors.toList());
+        log.debug("Documents to soft delete: {}", docIdsToDelete);
+
+        for (Integer docId : docIdsToDelete) {
+            Optional<Docs> docToDelete = docsRepository.findById(docId);
+            if (docToDelete.isPresent()) {
+                docsRepository.softDelete(docToDelete.get().getId());
+                log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
+            } else {
+                log.warn("Document with ID {} not found for soft deletion", docId);
+                throw new DocNotFound("", List.of(docId));
+            }
+        }
+
+        agpm.setUpdatedAt(Calendar.getInstance());
+
+        // Update the Agpm's documents: Keep existing docs and update/add only the requested ones
+        if (!requestedDocs.isEmpty()) {
+            existingDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
+            existingDocs.addAll(requestedDocs);
+            agpm.setDocs(existingDocs);
+        }
+
+        // Process new file uploads to add new documents
+        if (request.getFiles() != null && !request.getFiles().isEmpty()) {
+            try {
+                processAndSaveDocuments(request.getFiles(), agpm);
+                log.debug("New documents added from files to Agpm");
+            } catch (IOException e) {
+                log.error("Failed to process files: {}", e.getMessage());
+                throw e;
+            }
         }
 
         // Set audit fields
@@ -265,7 +394,16 @@ public class AgpmServiceImpl implements AgpmService {
         agpm.setUpdatedBy("system");
 
         // Save the updated Agpm entity
-        return repository.save(agpm);
+        Agpm updatedAgpm = repository.save(agpm);
+
+        if (updatedAgpm.getDocs() != null) {
+            updatedAgpm.setDocs(updatedAgpm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList()));
+        }
+        log.info("Returning Agpm with filtered document IDs : {}", updatedAgpm);
+
+        return updatedAgpm;
     }
 
     @Override
@@ -314,7 +452,7 @@ public class AgpmServiceImpl implements AgpmService {
                         long fileSize = file.getSize();
                         String formattedSize = documentCommuneService.formatSize(fileSize);
 
-                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_AGPM + LocalDate.now().getYear() + "/%d/%d",
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_AGPM + "/%d/%d",
                                 savedAgpm.getId(), savedAgpm.getVersion());
 
                         String[] parts = originalFilename.split("\\.");
@@ -334,13 +472,9 @@ public class AgpmServiceImpl implements AgpmService {
                         document.setContentType(detectedMimeType);
                         document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
                         document.setAlfrescoName(uniqueFileName);
-                       /* if (document.getPaas() == null) {
-                            document.setPaas(new ArrayList<>());
+                        if (savedAgpm.getDocs() == null) {
+                            savedAgpm.setDocs(new ArrayList<>());
                         }
-                        if (document.getPpms() == null) {
-                            document.setPpms(new ArrayList<>());
-                        }
-                        document.getPaas().add(savedPaa);*/
                         savedAgpm.getDocs().add(document);
 
                         docsRepository.save(document);
