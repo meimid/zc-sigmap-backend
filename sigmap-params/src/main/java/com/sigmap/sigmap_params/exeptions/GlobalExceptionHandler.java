@@ -22,6 +22,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
 import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
@@ -283,5 +284,11 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
-
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedRefParams.class)
+    public ResponseEntity<ErrorResponse> HasAssociatedRefParamsException(HasAssociatedRefParams ex) {
+        String message = messageSource.getMessage("refType.hasAssociatedRefParams",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 }
