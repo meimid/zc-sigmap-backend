@@ -4,6 +4,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
+import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -91,4 +92,10 @@ public interface SocieteAddressService {
      * @param id the id of the SocieteAddress to delete
      */
     void delete(Integer id);
+
+    SocieteAddress createUnderSociete(Integer societeId,SocieteAdressUnderSocieteRequest request)throws RefParamNotFound, SocieteNotFound;
+
+    Page<SocieteAddress> findSocieteAddressBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound;
+
+
 }

@@ -3,6 +3,7 @@ package com.sigmap.common.contact.Mapper;
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.contact.response.ContactResponse;
+import com.sigmap.common.contact.response.ContactResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -19,4 +20,5 @@ public interface ContactMapper {
     ContactResponse map(Contact source);
     Contact map(ContactRequest source);
     void updateFromRequest(ContactRequest source, @MappingTarget Contact target);
+    ContactResponseDto mapToDto(Contact source);
 }

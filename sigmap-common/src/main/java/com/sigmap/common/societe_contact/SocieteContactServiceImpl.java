@@ -2,8 +2,16 @@ package com.sigmap.common.societe_contact;
 
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactRepository;
+import com.sigmap.common.contact.ContactService;
+import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
+import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -22,11 +30,15 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     private final SocieteRepository societeRepository;
     private final SocieteContactRepository repository;
     private final ContactRepository contactRepository;
+    private final ContactService contactService;
+    private final SocieteService societeService;
 
-    public SocieteContactServiceImpl(ContactRepository contactRepository, SocieteContactRepository repository, SocieteRepository societeRepository) {
+    public SocieteContactServiceImpl(SocieteRepository societeRepository, SocieteContactRepository repository, ContactRepository contactRepository, ContactService contactService, SocieteService societeService) {
         this.societeRepository = societeRepository;
         this.repository = repository;
         this.contactRepository = contactRepository;
+        this.contactService = contactService;
+        this.societeService = societeService;
     }
 
     @Override
@@ -128,6 +140,28 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     @Override
     public void delete(Integer societeId, Integer contactId) {
         repository.softDelete(societeId, contactId);
+    }
+
+    @Override
+    public SocieteContact createContactAndSocieteContact(Integer societeId, ContactAndSocieteContactRequest request) throws RuntimeException, SocieteNotFound {
+         Societe societe=societeService.findById(societeId);
+        Contact contact=contactService.create(request.getContact());
+            SocieteContactId societeContactId = new SocieteContactId();
+            SocieteContact societeContact=new SocieteContact();
+             societeContact =  SociteContactMapper.INSTANCE.map(request.getSocieteContactRequest());
+            societeContactId.setSociete(societe);
+            societeContactId.setContact(contact);
+            societeContact.setSocieteContactId(societeContactId);
+
+            return repository.save(societeContact);
+
+
+    }
+
+    @Override
+    public SocieteContact findSocieteContactByContactId(Integer contactId) throws ContactNotFound, SocieteContactNotFound {
+        contactService.findById(contactId);
+        return repository.findSocieteContactByContactId(contactId);
     }
 
 

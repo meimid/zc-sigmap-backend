@@ -7,6 +7,7 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactQuery;
 import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.contact.response.ContactResponse;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -103,7 +104,7 @@ public class ContactController {
      * @return the deleted Contact
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ContactResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<ContactResponse> deleteById(@PathVariable Integer id)throws ContactNotFound , SocieteContactNotFound {
         contactService.delete(id);
 
         Contact deleted = contactService.findDeletedById(id)
