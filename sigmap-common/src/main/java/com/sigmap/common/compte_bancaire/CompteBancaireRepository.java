@@ -2,10 +2,17 @@ package com.sigmap.common.compte_bancaire;
 import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface CompteBancaireRepository extends JpaRepository<CompteBancaire, Integer>,
         JpaSpecificationExecutor<CompteBancaire>,
-        SoftDeleteRepository<CompteBancaire, Integer> {}
+        SoftDeleteRepository<CompteBancaire, Integer> {
+    Page<CompteBancaire> findCompteBancaireBySocieteId(@Param("societeId") Integer societeId, Pageable pageable);
+
+
+}
 

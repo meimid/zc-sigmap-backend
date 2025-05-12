@@ -20,4 +20,5 @@ public interface SociteContactMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     SocieteContactResponse map(SocieteContact source);
     SocieteContact map(SocieteContactRequest source);
+
 }

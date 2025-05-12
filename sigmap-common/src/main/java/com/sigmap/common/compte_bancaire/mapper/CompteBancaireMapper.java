@@ -2,7 +2,9 @@ package com.sigmap.common.compte_bancaire.mapper;
 
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
+import com.sigmap.common.compte_bancaire.response.CompteBancaireResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -19,4 +21,6 @@ public interface CompteBancaireMapper {
     CompteBancaireResponse map(CompteBancaire source);
     CompteBancaire map(CompteBancaireRequest source);
     void updateFromRequest(CompteBancaireRequest source, @MappingTarget CompteBancaire target);
+    CompteBancaire mapFromUnderUnderSocieteRequest(CompteBancaireUnderSocieteRequest source);
+    CompteBancaireResponseDto mapToDtoResponse(CompteBancaire source);
 }

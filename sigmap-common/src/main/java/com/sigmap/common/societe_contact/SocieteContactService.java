@@ -1,10 +1,16 @@
 package com.sigmap.common.societe_contact;
 
 import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -94,5 +100,15 @@ public interface SocieteContactService {
       * @param contactId the id of the SocieteContact to delete
      */
     void delete(Integer societeId,Integer contactId);
+
+    /**
+     * Create a SocieteContact.
+     *
+     * @param request the request to create the SocieteContact from
+     * @return the created SocieteContact
+     */
+    SocieteContact createContactAndSocieteContact(Integer societeId, ContactAndSocieteContactRequest request) throws RuntimeException, SocieteNotFound;
+    SocieteContact findSocieteContactByContactId(Integer contactId) throws ContactNotFound, SocieteContactNotFound;
+
 
 }
