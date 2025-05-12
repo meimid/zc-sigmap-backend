@@ -8,6 +8,11 @@ public class DocsResponse {
     private Integer id;
     private String name;
     private String alfresco_id;
+    private String pathFolder;
+    private String fileSize;
+    private String alfrescoName;
+    private String contentType;
+    private String fileExtension;
     private BaseEntityResponse metadata;
 
 }

@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 
 
 @RestController
@@ -49,7 +50,7 @@ public class AgpmFlowableController {
     @PostMapping("/tasks/{taskId}/validate")
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
-            @RequestBody ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound {
+            @RequestBody ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
         TaskDTO response = agpmFlowableService.validateTask(taskId, request) ;
         return ResponseEntity.ok(response);
     }

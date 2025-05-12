@@ -1,6 +1,7 @@
 package com.sigmap.common.agpm.request;
 
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -16,4 +17,5 @@ public class AgpmRequest {
     private String contenu;
     private List<Integer> docIds;
     private String remarque;
+    private List<MultipartFile> files;
 }

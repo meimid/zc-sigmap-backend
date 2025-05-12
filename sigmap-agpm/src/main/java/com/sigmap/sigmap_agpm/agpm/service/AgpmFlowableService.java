@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.flowable.engine.TaskService;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -467,7 +468,7 @@ public class AgpmFlowableService {
     }
 
     @Transactional
-    public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound {
+    public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
         // Step 1: Validate authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {

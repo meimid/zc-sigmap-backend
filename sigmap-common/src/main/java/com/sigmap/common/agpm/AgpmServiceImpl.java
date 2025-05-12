@@ -1,5 +1,9 @@
 package com.sigmap.common.agpm;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
+import com.sigmap.common.Constants;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -10,11 +14,11 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
@@ -22,7 +26,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.*;
 
 
@@ -39,14 +46,26 @@ public class AgpmServiceImpl implements AgpmService {
     private final AgpmMapper agpmMapper;
     private final RefParamRepository refParamRepository;
     private final MessageSource messageSource;
+    private final AlfrescoService alfrescoService;
+    private final DocumentCommuneService documentCommuneService;
 
-    public AgpmServiceImpl(AgpmRepository repository, AcRepository acRepository, DocsRepository docsRepository, AgpmMapper agpmMapper, RefParamRepository refParamRepository, MessageSource messageSource) {
+    public AgpmServiceImpl(AgpmRepository repository,
+                           AcRepository acRepository,
+                           DocsRepository docsRepository,
+                           AgpmMapper agpmMapper,
+                           RefParamRepository refParamRepository,
+                           MessageSource messageSource,
+                           AlfrescoService alfrescoService,
+                           DocumentCommuneService documentCommuneService
+                           ) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
         this.refParamRepository = refParamRepository;
         this.messageSource = messageSource;
+        this.alfrescoService = alfrescoService;
+        this.documentCommuneService = documentCommuneService;
     }
 
     private Locale getLocal() {
@@ -90,7 +109,7 @@ public class AgpmServiceImpl implements AgpmService {
 
 
     @Override
-    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus {
+    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
         Integer version = request.getVersion();
         if (version == null) {
             throw new AgpmNotNull("");
@@ -120,17 +139,21 @@ public class AgpmServiceImpl implements AgpmService {
         ac.setId(1);
         agpm.setAc(ac);
 
-        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
-            if (docs.size() != request.getDocIds().size()) {
-                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
-                List<Integer> missingDocIds = request.getDocIds().stream()
-                        .filter(docId -> !foundDocIds.contains(docId)).toList();
-                throw new DocNotFound("", missingDocIds);
-            }
-            agpm.setDocs(docs);
-        } else if (request.getDocIds() != null) {
-            agpm.setDocs(List.of());
+//        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+//            List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
+//            if (docs.size() != request.getDocIds().size()) {
+//                List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
+//                List<Integer> missingDocIds = request.getDocIds().stream()
+//                        .filter(docId -> !foundDocIds.contains(docId)).toList();
+//                throw new DocNotFound("", missingDocIds);
+//            }
+//            agpm.setDocs(docs);
+//        } else if (request.getDocIds() != null) {
+//            agpm.setDocs(List.of());
+//        }
+
+        if(request.getFiles() != null) {
+            processAndSaveDocuments(request.getFiles(), agpm);
         }
 
         agpm.setIsDeleted(false);
@@ -160,7 +183,7 @@ public class AgpmServiceImpl implements AgpmService {
 
     @Override
     @Transactional
-    public Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, ReferenceNotFound {
+    public Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, ReferenceNotFound, IOException {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm existingAgpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
@@ -183,7 +206,7 @@ public class AgpmServiceImpl implements AgpmService {
         agpmMapper.updateAgpmFromRequest(request, newAgpm);
 
         // Update Docs association if provided
-        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+    /*    if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = docsRepository.findByIdIn(request.getDocIds());
             if (docs.size() != request.getDocIds().size()) {
                 List<Integer> foundDocIds = docs.stream().map(Docs::getId).toList();
@@ -195,6 +218,10 @@ public class AgpmServiceImpl implements AgpmService {
             newAgpm.setDocs(docs);
         } else if (request.getDocIds() != null) {
             newAgpm.setDocs(List.of());
+        }*/
+
+        if(request.getFiles() != null) {
+            processAndSaveDocuments(request.getFiles(), newAgpm);
         }
 
         List<String> notFoundRefs = new ArrayList<>();
@@ -269,4 +296,59 @@ public class AgpmServiceImpl implements AgpmService {
         return repository.save(agpm);
     }
 
+    private void processAndSaveDocuments(List<MultipartFile> files, Agpm savedAgpm) throws IOException {
+        UUID uuid = UUID.randomUUID();
+        if (files != null && !files.isEmpty()) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        Tika tika = new Tika();
+                        String detectedMimeType = tika.detect(file.getInputStream());
+                        String originalFilename = file.getOriginalFilename();
+
+                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                        if (fileExtension.isEmpty()) {
+                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                        }
+
+                        long fileSize = file.getSize();
+                        String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_AGPM + LocalDate.now().getYear() + "/%d/%d",
+                                savedAgpm.getId(), savedAgpm.getVersion());
+
+                        String[] parts = originalFilename.split("\\.");
+                        String baseName = parts[0];
+                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                        String uniqueFileName = "agpm_" + uuid + "_" + extension;
+                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+                        log.info(alfrescoId);
+
+                        Docs document = new Docs();
+                        document.setName(baseName);
+                        document.setAlfresco_id(alfrescoId);
+                        document.setPathFolder(folderPath);
+                        document.setFileSize(formattedSize);
+                        document.setContentType(detectedMimeType);
+                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                        document.setAlfrescoName(uniqueFileName);
+                       /* if (document.getPaas() == null) {
+                            document.setPaas(new ArrayList<>());
+                        }
+                        if (document.getPpms() == null) {
+                            document.setPpms(new ArrayList<>());
+                        }
+                        document.getPaas().add(savedPaa);*/
+                        savedAgpm.getDocs().add(document);
+
+                        docsRepository.save(document);
+                    } catch (Exception e) {
+                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+    }
 }

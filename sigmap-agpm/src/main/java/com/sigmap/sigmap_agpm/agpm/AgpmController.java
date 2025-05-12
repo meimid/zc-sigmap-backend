@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 
+import java.io.IOException;
 import java.util.Optional;
 
 /**
@@ -94,8 +95,12 @@ public class AgpmController {
      * @return ResponseEntity containing the created AgpmResponse DTO with status 201
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
      */
-    @PostMapping
-    public ResponseEntity<AgpmResponse> createAgpm(@Valid @RequestBody AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus {
+    @PostMapping (consumes = {"multipart/form-data"})
+   // @PostMapping
+    public ResponseEntity<AgpmResponse> createAgpm(
+            @ModelAttribute("request")
+            //@Valid @RequestBody
+            AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
         Agpm createdAgpm = agpmService.create(request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(createdAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.CREATED);

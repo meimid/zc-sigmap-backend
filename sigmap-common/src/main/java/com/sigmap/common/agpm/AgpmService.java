@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -75,7 +76,7 @@ public interface AgpmService {
      * @return The created AgpmResponse DTO
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
      */
-    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus;
+    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException;
 
     /**
      * Soft deletes an Agpm entity by its ID and version.
@@ -95,7 +96,7 @@ public interface AgpmService {
      * @return The updated AgpmResponse DTO
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound;
+    Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound, IOException;
 
      Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound;
 
