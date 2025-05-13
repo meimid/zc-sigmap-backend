@@ -5,8 +5,6 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -112,6 +110,16 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("reference.notfound",new Object[] {String.join((CharSequence) ",", ex.getReference().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidIdAndVersionAgpm.class)
+    public ResponseEntity<ErrorResponse> invalidIdAndVersionAgpmException(InvalidIdAndVersionAgpm ex) {
+        String message = messageSource.getMessage("agpm.positif",new Object[] {
+                String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
+                String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList()))},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 }
