@@ -1,5 +1,6 @@
 package com.sigmap.common.com;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -90,5 +91,5 @@ public interface ComService {
      *
      * @param id the id of the Com to delete
      */
-    void delete(Integer id);
+    void delete(Integer id) throws ComHasAssociatedAc;
 }

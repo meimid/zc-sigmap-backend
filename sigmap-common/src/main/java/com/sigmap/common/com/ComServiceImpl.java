@@ -4,12 +4,14 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedCom;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -171,7 +173,11 @@ public class ComServiceImpl implements ComService{
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete (Integer id) throws ComHasAssociatedAc {
+        boolean hasAssociatedAc = repository.hasAssociatedAc(id);
+        if (hasAssociatedAc) {
+            throw new ComHasAssociatedAc("",id);
+        }
         repository.softDelete(id);
     }
 }

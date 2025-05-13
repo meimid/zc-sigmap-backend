@@ -3,7 +3,10 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedCom;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteRequest;
@@ -88,7 +91,16 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete(Integer id) throws SocieteHasAssociatedCompteBancaire,SocieteHasAssociatedSocieteAddress{
+        boolean hasAssociatedCompteBancaire = repository.hasAssociatedCompteBancaire(id);
+        if (hasAssociatedCompteBancaire) {
+            throw new SocieteHasAssociatedCompteBancaire("",id);
+        }
+
+        boolean hasAssociatedSocieteAddress = repository.hasAssociatedSocieteAddress(id);
+        if (hasAssociatedSocieteAddress) {
+            throw new SocieteHasAssociatedSocieteAddress("",id);
+        }
         repository.softDelete(id);
     }
 }

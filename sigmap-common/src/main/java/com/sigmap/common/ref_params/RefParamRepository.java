@@ -25,4 +25,16 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
             @Param("description") String description,
             @Param("refTypeDescription") String refTypeDescription
     );
+
+    @Query("SELECT EXISTS (SELECT c FROM Com c WHERE c.comType.id = :refParamId)")
+    boolean hasAssociatedCom(@Param("refParamId") Integer refParamId);
+
+    @Query("SELECT EXISTS (SELECT cb FROM CompteBancaire cb WHERE cb.pays.id = :refParamId)")
+    boolean hasAssociatedCompteBancaire(@Param("refParamId") Integer refParamId);
+
+    @Query("SELECT EXISTS (SELECT s FROM Societe s WHERE s.pays.id = :refParamId or s.type.id = :refParamId)")
+    boolean hasAssociatedSociete(@Param("refParamId") Integer refParamId);
+
+    @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.type.id = :refParamId)")
+    boolean hasAssociatedSocieteAddress(@Param("refParamId") Integer refParamId);
 }

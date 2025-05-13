@@ -2,6 +2,8 @@ package com.sigmap.common.societe;
 
 
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
@@ -91,5 +93,5 @@ public interface SocieteService {
      *
      * @param id the id of the Societe to delete
      */
-    void delete(Integer id);
+    void delete(Integer id) throws SocieteHasAssociatedCompteBancaire, SocieteHasAssociatedSocieteAddress;
 }
