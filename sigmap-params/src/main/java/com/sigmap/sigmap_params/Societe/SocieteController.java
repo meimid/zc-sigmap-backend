@@ -140,7 +140,7 @@ public class SocieteController {
      * @return the deleted Societe
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id) throws SocieteHasAssociatedCompteBancaire, SocieteHasAssociatedSocieteAddress {
+    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id)  {
         societeService.delete(id);
 
         Societe deleted = societeService.findDeletedById(id)

@@ -91,16 +91,8 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public void delete(Integer id) throws SocieteHasAssociatedCompteBancaire,SocieteHasAssociatedSocieteAddress{
-        boolean hasAssociatedCompteBancaire = repository.hasAssociatedCompteBancaire(id);
-        if (hasAssociatedCompteBancaire) {
-            throw new SocieteHasAssociatedCompteBancaire("",id);
-        }
+    public void delete(Integer id) {
 
-        boolean hasAssociatedSocieteAddress = repository.hasAssociatedSocieteAddress(id);
-        if (hasAssociatedSocieteAddress) {
-            throw new SocieteHasAssociatedSocieteAddress("",id);
-        }
         repository.softDelete(id);
     }
 }

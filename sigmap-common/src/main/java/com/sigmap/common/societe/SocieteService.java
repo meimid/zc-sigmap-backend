@@ -93,5 +93,5 @@ public interface SocieteService {
      *
      * @param id the id of the Societe to delete
      */
-    void delete(Integer id) throws SocieteHasAssociatedCompteBancaire, SocieteHasAssociatedSocieteAddress;
+    void delete(Integer id) ;
 }
