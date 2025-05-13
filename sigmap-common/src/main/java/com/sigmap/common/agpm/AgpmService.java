@@ -19,12 +19,12 @@ import java.util.Optional;
  */
 public interface AgpmService {
 
-    /**
-     * Retrieves a list of all non-deleted Agpm entities.
-     *
-     * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
-     */
-    List<Agpm> findAll();
+//    /**
+//     * Retrieves a list of all non-deleted Agpm entities.
+//     *
+//     * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
+//     */
+//    List<Agpm> findAll();
 
     /**
      * Retrieves a paginated list of Agpm entities based on the given specification.
