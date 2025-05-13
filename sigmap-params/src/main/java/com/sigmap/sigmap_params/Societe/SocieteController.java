@@ -15,6 +15,8 @@ import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteQuery;
@@ -138,7 +140,7 @@ public class SocieteController {
      * @return the deleted Societe
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id)  {
         societeService.delete(id);
 
         Societe deleted = societeService.findDeletedById(id)

@@ -2,7 +2,7 @@ package com.sigmap.sigmap_params.ref_params;
 
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_params.request.RefParamQuery;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
@@ -15,7 +15,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Controller to manage ref params.
@@ -120,7 +119,10 @@ public class RefParamController {
      * @return the deleted ref param
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id)throws RefParamHasAssociatedCom,
+            RefParamHasAssociatedCompteBancaire,
+            RefParamHasAssociatedSociete,
+            RefParamHasAssociatedSocieteAddress {
         refParamService.delete(id);
 
         RefParam deleted = refParamService.findDeletedById(id)
