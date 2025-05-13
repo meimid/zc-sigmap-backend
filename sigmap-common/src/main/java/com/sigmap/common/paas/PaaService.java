@@ -3,6 +3,7 @@ package com.sigmap.common.paas;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequest;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_params.request.RefParamRequest;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -97,7 +99,7 @@ public interface PaaService {
      * @param request the request to create the Paa entity from
      * @return the created Paa entity
      */
-    Paa create(PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement;
+    Paa create(PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement, IOException;
 
     /**
      * Delete a Paa entity by its composite ID components.
@@ -107,5 +109,22 @@ public interface PaaService {
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound ;
+    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound, IOException;
+    /**
+     * Updates a PAA by creating a new version with the updated data.
+     * The old version is preserved in the database.
+     * <p>
+     * This method handles versioning:
+     * - If any PAA field changes, a new PAA version is created
+     * - If any Realisation is added, modified, or removed, a new PAA version is created
+     * <p>
+     * @param paaId the ID of the PAA to update
+     * @param paaVer the current version of the PAA
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA
+     * @throws PaaNotFound if the PAA is not found or is deleted
+     */
+    Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
+
+
 }

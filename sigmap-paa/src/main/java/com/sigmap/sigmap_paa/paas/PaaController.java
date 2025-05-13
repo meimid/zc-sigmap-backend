@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+
 
 @RestController
 @RequestMapping("/api/paas")
@@ -92,8 +94,18 @@ public class PaaController {
      * @param request the request to create the paa from
      * @return the created paa
      */
-    @PostMapping
-    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement {
+
+
+    //TODO: nejah
+    // Handle document upload
+
+
+    @PostMapping (consumes = {"multipart/form-data"})
+    //@PostMapping
+    public ResponseEntity<PaaResponse> create(
+            @ModelAttribute("request")
+          //  @RequestBody
+            PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement, IOException {
         Paa paa = paaService.create(request);
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -103,7 +115,7 @@ public class PaaController {
     public ResponseEntity<PaaResponse> update(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer,
-            @RequestBody PaaRequest request) throws PaaNotFound {
+            @RequestBody PaaRequest request) throws PaaNotFound, IOException {
         Paa updatedPaa = paaService.update(paaId, paaVer, request);
         PaaResponse response = PaaMapper.INSTANCE.map(updatedPaa);
         return ResponseEntity.ok(response);

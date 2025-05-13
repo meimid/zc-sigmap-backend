@@ -4,6 +4,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import com.sun.istack.NotNull;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,4 +29,7 @@ public class PaaRequest {
     private RefParam status;
 
     private List<CompositeId> realisationIds;
+    // toDO: nejah
+    private List<MultipartFile> files;
+
 }
