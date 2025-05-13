@@ -21,8 +21,6 @@ public class TaskDTO {
     private LocalDateTime created;
     private String candidateGroup;
     private Map<String, Object> traceability;
-
-    // entity related fields
     private Integer id;
     private Integer version;
     private Integer newStatus;

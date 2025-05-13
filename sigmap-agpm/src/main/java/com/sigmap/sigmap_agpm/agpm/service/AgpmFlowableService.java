@@ -36,6 +36,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.springframework.security.core.Authentication;
 
 @Slf4j
@@ -65,19 +66,16 @@ public class AgpmFlowableService {
     @Autowired
     private HistoryService historyService;
 
-    // Utility method to check if the user has a specific role
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
         return jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
                 .anyMatch(auth -> auth.equals("ROLE_" + role));
     }
 
-    // Utility method to check if the task is assigned to the current user
     private boolean hasAssign(Task task, JwtAuthenticationToken jwtAuth) {
         return task.getAssignee() != null && task.getAssignee().equals(jwtAuth.getName());
     }
 
-    // Utility method to check if the task's candidate group matches any of the user's roles
     private boolean hasCandidateGroup(Task task, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = taskService.getIdentityLinksForTask(task.getId()).stream()
                 .filter(link -> "candidate".equals(link.getType()))
@@ -93,7 +91,6 @@ public class AgpmFlowableService {
         return candidateGroups.stream().anyMatch(group -> hasRole(jwtAuth, group));
     }
 
-    // Utility method to get the candidate group for a task
     private String getCandidateGroup(Task task) {
         return taskService.getIdentityLinksForTask(task.getId()).stream()
                 .filter(link -> "candidate".equals(link.getType()) && link.getGroupId() != null)
@@ -102,7 +99,6 @@ public class AgpmFlowableService {
                 .orElse(null);
     }
 
-    // Utility method to check if user's roles match the candidate groups defined in the BPMN model for a task
     private boolean hasCandidateGroupFromModel(UserTask userTask, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = userTask.getCandidateGroups();
         if (candidateGroups == null || candidateGroups.isEmpty()) {
@@ -113,7 +109,6 @@ public class AgpmFlowableService {
         return candidateGroups.stream().anyMatch(group -> hasRole(jwtAuth, group));
     }
 
-    // Updated method to retrieve both isUpdatable and isPublishable properties
     private Map<String, Boolean> getTaskProperties(Task task) {
         Map<String, Boolean> properties = new HashMap<>();
         properties.put("isUpdatable", false);
@@ -160,18 +155,15 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Validate input parameters
         if (id == null || version == null) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("ID and version must not be null");
             return errorResponse;
         }
 
-        // Use provided processKey or fallback to default
         String effectiveProcessKey = (processKey != null && !processKey.isEmpty()) ? processKey : this.processKey;
         String effectiveTaskKey = (initialTaskKey != null && !initialTaskKey.isEmpty()) ? initialTaskKey : this.initialTaskKey;
 
-        // Pre-check the role by inspecting the BPMN model for the initial task's candidate groups
         BpmnModel bpmnModel = repositoryService.getBpmnModel(
                 repositoryService.createProcessDefinitionQuery()
                         .processDefinitionKey(effectiveProcessKey)
@@ -194,7 +186,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Get user's groups (roles without ROLE_ prefix)
         List<String> userGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -217,7 +208,6 @@ public class AgpmFlowableService {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
-        // Update Agpm with the processInstanceId
         Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isPresent()) {
             Agpm agpm = agpmOptional.get();
@@ -267,7 +257,6 @@ public class AgpmFlowableService {
         return response;
     }
 
-    // Overloaded method to use default processKey and initialTaskKey
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws AgpmNotFound {
         return startProcessInstance(id, version, null, null);
@@ -303,7 +292,6 @@ public class AgpmFlowableService {
             Map<String, Boolean> taskProperties = getTaskProperties(task);
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
-
 
 
             return taskInfo;
@@ -385,7 +373,6 @@ public class AgpmFlowableService {
         response.setIsUpdatable(taskProperties.get("isUpdatable"));
         response.setIsPublishable(taskProperties.get("isPublishable"));
 
-        // Add possible next steps using the updated method
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         response.setNextSteps(nextSteps);
 
@@ -456,7 +443,6 @@ public class AgpmFlowableService {
             }
         } catch (Exception e) {
             log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
-            // Fallback to a generic complete action
             NextStepDTO nextStep = new NextStepDTO();
             nextStep.setValidationVariable(null);
             nextStep.setValidationValue(null);
@@ -469,7 +455,6 @@ public class AgpmFlowableService {
 
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
-        // Step 1: Validate authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDTO errorResponse = new TaskDTO();
@@ -479,7 +464,6 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Step 2: Retrieve the task
         Task task = taskService.createTaskQuery()
                 .taskId(taskId)
                 .taskTenantId(TENANT_ID)
@@ -492,7 +476,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Step 3: Check for candidate group
         String candidateGroup = getCandidateGroup(task);
         if (candidateGroup == null) {
             TaskDTO errorResponse = new TaskDTO();
@@ -500,27 +483,23 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Step 4: Check if user has the required role or assignment
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("User does not have the required role or assignment to validate this task");
             return errorResponse;
         }
 
-        // Step 5: Retrieve process variables
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
         log.info("Process variables for task [{}]: {}", taskId, processVariables);
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        // Step 6: Validate id and version
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
-        // Step 7: Fetch the Agpm entity
         Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isEmpty()) {
             TaskDTO errorResponse = new TaskDTO();
@@ -530,12 +509,10 @@ public class AgpmFlowableService {
 
         Agpm latestAgpm = agpmOptional.get();
 
-        // Step 8: Get task properties (isUpdatable and isPublishable)
         Map<String, Boolean> taskProperties = getTaskProperties(task);
         Boolean isUpdatable = taskProperties.get("isUpdatable");
         Boolean isPublishable = taskProperties.get("isPublishable");
 
-        // Step 9: Handle isUpdatable: Update the Agpm object if true
         if (isUpdatable) {
             if (request.getAgpm() == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -548,19 +525,16 @@ public class AgpmFlowableService {
                 errorResponse.setStatus("Failed to update AGPM object");
                 return errorResponse;
             }
-            // Update the latestAgpm to reflect the updated state
             latestAgpm = updatedAgpm;
-            // Update process variables with the new version
             version = latestAgpm.getVersion();
             processVariables.put("version", version);
             runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
         }
 
-        // Step 10: Handle validation and status update
         Integer newStatus = null;
         boolean validate = request.getValidate() != null ? request.getValidate() : false;
-        if (isPublishable && validate) {
-            newStatus = 3; // VALIDE
+        if (validate) {
+            newStatus = 3;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -569,7 +543,7 @@ public class AgpmFlowableService {
             }
             latestAgpm = updatedAgpm;
         } else if (!validate) {
-            newStatus = 2; // EN_COURS_DE_TRAITEMENT (stay if not validated)
+            newStatus = 2;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -579,25 +553,20 @@ public class AgpmFlowableService {
             latestAgpm = updatedAgpm;
         }
 
-        // Step 11: Set process variables for validation
         Map<String, Object> variables = new HashMap<>();
         variables.put("valide", validate);
         variables.put("comment", request.getComment() != null ? request.getComment() : "");
         variables.put("dateComment", LocalDateTime.now());
         variables.put("treater", jwtAuth.getName());
 
-        // Log the variables for debugging
         log.info("Setting process variables for task [{}]: valide={}, comment={}, dateComment={}, treater={}",
                 taskId, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
-
-        // Step 12: Complete the task
         taskService.complete(taskId);
 
-        // Step 13: Check if process is completed and set status to PUBLIEE (4) if true
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
-            newStatus = 4; // PUBLIEE
+            newStatus = 4;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -607,7 +576,6 @@ public class AgpmFlowableService {
             latestAgpm = updatedAgpm;
         }
 
-        // Step 14: Build the success response
         TaskDTO response = new TaskDTO();
         response.setTaskId(task.getId());
         response.setTaskName(task.getName());
@@ -635,7 +603,6 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Get all candidate groups that match the user's roles
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -646,7 +613,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Query tasks for all matching candidate groups
         List<Task> tasks = taskService.createTaskQuery()
                 .taskTenantId(TENANT_ID)
                 .taskCandidateGroupIn(userCandidateGroups)
@@ -692,7 +658,6 @@ public class AgpmFlowableService {
         return response;
     }
 
-    // Helper method to extract condition value from condition expression (from PpmFlowableService)
     private String extractConditionValue(String conditionExpression) {
         if (conditionExpression == null) return null;
         String cleanedExpression = conditionExpression.trim().replace("#{", "${");
@@ -707,12 +672,9 @@ public class AgpmFlowableService {
         return null;
     }
 
-    // Helper method to extract variable name from condition expression (from PpmFlowableService)
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
-        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
         String cleanedExpression = conditionExpression.trim().replace("#{", "${");
-        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
         Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
         Matcher matcher = pattern.matcher(cleanedExpression);
         if (matcher.find()) {
@@ -720,7 +682,6 @@ public class AgpmFlowableService {
             log.info("Matched variable name: {}", variableName);
             return variableName;
         }
-        // Fallback for simpler expressions like ${variable}
         if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
             String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
             if (!variableName.isEmpty()) {

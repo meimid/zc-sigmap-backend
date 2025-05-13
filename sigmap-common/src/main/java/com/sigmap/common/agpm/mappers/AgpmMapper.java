@@ -46,8 +46,6 @@ public interface AgpmMapper {
     @Mapping(target = "docs", ignore = true)
     Agpm toEntity(AgpmRequest request);
 
-    // New method to map Agpm to AgpmResponseDto
-
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version")
     @Mapping(target = "ref", source = "ref")
@@ -68,6 +66,4 @@ public interface AgpmMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
-
-
 }
