@@ -1,5 +1,7 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
@@ -149,7 +151,11 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete(Integer id) throws  AcHasAssociatedCom{
+        boolean hasAssociatedCom = repository.hasAssociatedCom(id);
+        if (hasAssociatedCom) {
+            throw new AcHasAssociatedCom("",id);
+        }
         repository.softDelete(id);
     }
 }

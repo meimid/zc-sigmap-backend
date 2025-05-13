@@ -1,5 +1,6 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.exception.AcHasAssociatedCom;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.request.AcRequest;
@@ -93,5 +94,5 @@ public interface AcService {
      *
      * @param id the id of the Ac to delete
      */
-    void delete(Integer id);
+    void delete(Integer id) throws AcHasAssociatedCom;
 }

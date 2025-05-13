@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.com;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
@@ -105,7 +106,7 @@ public class ComController {
      * @return the deleted Com
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ComResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<ComResponse> deleteById(@PathVariable Integer id) throws ComHasAssociatedAc {
         comService.delete(id);
 
         Com deleted = comService.findDeletedById(id)

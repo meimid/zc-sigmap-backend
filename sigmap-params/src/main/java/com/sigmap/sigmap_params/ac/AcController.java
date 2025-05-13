@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_params.ac;
 
+import com.sigmap.common.ac.exception.AcHasAssociatedCom;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
@@ -112,7 +113,7 @@ public class AcController {
      * @return the deleted ac
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<AcResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<AcResponse> deleteById(@PathVariable Integer id)  throws AcHasAssociatedCom {
         acService.delete(id);
 
         Ac deleted = acService.findDeletedById(id)
