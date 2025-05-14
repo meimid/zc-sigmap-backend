@@ -3,6 +3,7 @@ package com.sigmap.common.realisations.request;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,4 +33,7 @@ public class RealisationBaseRequestDto {
     
     // Remove JsonIgnore to allow lots to be deserialized directly
     private Set<LotResponse> lots;
+
+    // toDO: nejah
+    private List<MultipartFile> realisationFiles;
 } 

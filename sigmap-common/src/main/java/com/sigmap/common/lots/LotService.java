@@ -2,15 +2,13 @@ package com.sigmap.common.lots;
 
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
-import com.sigmap.common.paas.Paa;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
-import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
 import com.sigmap.common.lots.request.LotRequest;
+import com.sigmap.common.lots.request.LotBaseRequestDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 public interface LotService {
@@ -94,4 +92,29 @@ public interface LotService {
 
     Lot update(Integer lotId, Integer lotVer, LotRequest request) throws LotNotFound, UpdateDeletedLot;
 
+    /**
+     * Updates a lot by creating a new version with the updated data if the description changes.
+     * The old version is preserved in the database. If only relationships change,
+     * no new version is created.
+     *
+     * @param lotId the ID of the lot to update
+     * @param lotVer the current version of the lot
+     * @param request the request containing the updated data
+     * @return the newly created version of the lot if description changes, otherwise the existing lot
+     * @throws RuntimeException if the lot is not found or is deleted
+     */
+    Lot updateWithVersioning(Integer lotId, Integer lotVer, LotBaseRequestDto request);
+    
+    /**
+     * Updates a lot by creating a new version with the updated data if the description changes.
+     * Automatically finds and uses the latest version of the lot.
+     * The old version is preserved in the database. If only relationships change,
+     * no new version is created.
+     *
+     * @param lotId the ID of the lot to update
+     * @param request the request containing the updated data
+     * @return the newly created version of the lot if description changes, otherwise the existing lot
+     * @throws RuntimeException if the lot is not found or if all versions are deleted
+     */
+    Lot updateWithVersioning(Integer lotId, LotBaseRequestDto request);
 }

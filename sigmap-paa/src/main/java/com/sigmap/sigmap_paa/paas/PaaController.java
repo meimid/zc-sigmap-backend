@@ -119,8 +119,11 @@ public class PaaController {
      * @return the created PAA with all established relationships and specialized DTOs
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-    @PostMapping("/with-relationships")
-    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
+//    @PostMapping("/with-relationships")
+    @PostMapping(value="/with-relationships",consumes = {"multipart/form-data"})
+
+//    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
+    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@ModelAttribute("request") PaaRequestGlobal request) throws PaaAlreadyExistsException {
         logger.info("Creating PAA with relationships using RealisationRequestForPaa");
         Paa paa = paaService.createWithRelationships(request);
 

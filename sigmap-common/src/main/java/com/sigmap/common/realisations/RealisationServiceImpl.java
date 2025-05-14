@@ -1,6 +1,13 @@
 package com.sigmap.common.realisations;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
+import com.sigmap.common.Constants;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -16,19 +23,22 @@ import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class RealisationServiceImpl implements RealisationService {
     private final RealisationRepository repository;
     private final PaaRepository paaRepository;
@@ -36,12 +46,26 @@ public class RealisationServiceImpl implements RealisationService {
     private final LotRepository lotRepository;
     private final RefParamRepository refParamRepository;
 
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository) {
+    private final AlfrescoService alfrescoService;
+    private final DocumentCommuneService documentCommuneService;
+    private final DocsService docsService;
+    private final AcService acService;
+
+    private final DocsRepository docsRepository;
+
+
+
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
         this.lotRepository = lotRepository;
         this.refParamRepository = refParamRepository;
+        this.alfrescoService = alfrescoService;
+        this.documentCommuneService = documentCommuneService;
+        this.docsService = docsService;
+        this.acService = acService;
+        this.docsRepository = docsRepository;
     }
 
     @Override
@@ -893,4 +917,63 @@ public class RealisationServiceImpl implements RealisationService {
         // Call the version-specific method with the latest version
         return updateWithVersioning(realisationId, latestVersion, request);
     }
+
+
+    //TODO: nejah
+    private void processAndSaveDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+        UUID uuid = UUID.randomUUID();
+        if (files != null && !files.isEmpty()) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        Tika tika = new Tika();
+                        String detectedMimeType = tika.detect(file.getInputStream());
+                        String originalFilename = file.getOriginalFilename();
+
+                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                        if (fileExtension.isEmpty()) {
+                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                        }
+
+                        long fileSize = file.getSize();
+                        String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PAA+ "/%d/%d",
+                                savedRealisation.getId(), savedRealisation.getVersion());
+
+                        String[] parts = originalFilename.split("\\.");
+                        String baseName = parts[0];
+                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                        String uniqueFileName = "paa_" + uuid + "_" + extension;
+                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+                        log.info(alfrescoId);
+
+                        Docs document = new Docs();
+                        document.setName(baseName);
+                        document.setAlfresco_id(alfrescoId);
+                        document.setPathFolder(folderPath);
+                        document.setFileSize(formattedSize);
+                        document.setContentType(detectedMimeType);
+                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                        document.setAlfrescoName(uniqueFileName);
+                        if (document.getPaas() == null) {
+                            document.setPaas(new ArrayList<>());
+                        }
+                        if (savedRealisation.getDocs() == null) {
+                            savedRealisation.setDocs(new ArrayList<>());
+                        }
+                        document.getRealisations().add(savedRealisation);
+                        savedRealisation.getDocs().add(document);
+
+                        docsRepository.save(document);
+                    } catch (Exception e) {
+                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+    }
+
 }

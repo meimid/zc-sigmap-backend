@@ -5,7 +5,6 @@ import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.lots.request.LotBaseRequestDto;
 import com.sigmap.common.lots.request.LotRequest;
-import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
@@ -122,7 +121,7 @@ public class LotServiceImpl implements LotService {
     }
 
     @Override
-    public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws LotNotFound, UpdateDeletedLot{
+    public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws UpdateDeletedLot, LotNotFound {
         CompositeId compositeId = new CompositeId(lotId, lotVer);
         Lot existingLot = repository.findById(compositeId)
                 .orElseThrow(() -> new LotNotFound("" , List.of(lotId) , List.of(lotVer) ));

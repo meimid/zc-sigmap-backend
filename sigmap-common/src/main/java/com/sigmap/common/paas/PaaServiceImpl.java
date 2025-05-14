@@ -884,7 +884,7 @@ public class PaaServiceImpl implements PaaService {
         Optional<Paa> existingPaa = repository.findById(new CompositeId(paaId, paaVersion));
         if (existingPaa.isPresent()) {
             throw new PaaAlreadyExistsException(
-                    "Paa with ID " + paaId + " and version " + paaVersion + " already exists.",paaId,paaVersion);
+                    "Paa with ID " + paaId + " and version " + paaVersion + " already exists.",paaId, paaVersion);
         }
 
         // Create new PAA
@@ -937,6 +937,14 @@ public class PaaServiceImpl implements PaaService {
             savedPaa.setDocs(docs);
         }
 
+        if(request.getPaaFiles() != null) {
+            try {
+                processAndSaveDocuments(request.getPaaFiles(), savedPaa);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         // Process realisations if provided
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             List<Realisation> realisations = new ArrayList<>();
@@ -969,7 +977,15 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
-
+                System.out.println("the relisations have files");
+                System.out.println(realisationRequest.getRealisationFiles());
+//                if(realisationRequest.getRealisationFiles() != null) {
+//                    try {
+//                        processAndSaveDocuments(request.getPaaFiles(), savedPaa);
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
                 // Set up the relationship with PAA
                 List<Paa> paaList = new ArrayList<>();
                 paaList.add(savedPaa);
