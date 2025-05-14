@@ -35,7 +35,7 @@ public interface SocieteContactService {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    Page<Contact> findAllDeleted(Integer societeId,Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<Contact> findAllDeleted(Integer societeId,Specification<SocieteContact> SocieteContact, Pageable pageable) throws SocieteNotFound;
 
     /**
      * Return a page of deleted SocieteContact based on the given pageable.
@@ -69,7 +69,7 @@ public interface SocieteContactService {
      * @param contactId
      * @return the SocieteContact with the given id
      */
-    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId);
+    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId) throws SocieteContactNotFound;
 
     /**
      * Save a SocieteContact.
@@ -92,7 +92,7 @@ public interface SocieteContactService {
      * @param request the request to update the com from
      * @return the updated SocieteContact
      */
-    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request);
+    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) throws SocieteContactNotFound;
     /**
      * Delete a SocieteAddress.
      *

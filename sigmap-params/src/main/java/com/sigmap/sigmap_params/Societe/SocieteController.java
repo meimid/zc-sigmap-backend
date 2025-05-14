@@ -176,7 +176,8 @@ public class SocieteController {
 
 
     @GetMapping("/{societeId}/contact/deleted")
-    public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) {
+    public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) throws SocieteNotFound {
+
         Page<Contact> params = societeContactService.findAllDeleted(societeId,query.toSpecification(), pageable);
         Page<ContactResponse> ContactResponse = params.map(ContactMapper.INSTANCE::map);
         return ResponseEntity.ok(ContactResponse);
@@ -184,9 +185,9 @@ public class SocieteController {
 
     // a verifier fi url wella kifech taccedi li contact avec id x
     @GetMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) {
+    public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) throws SocieteContactNotFound {
         SocieteContact param = societeContactService.findByIds(societeId,contactId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new SocieteContactNotFound("",societeId,contactId));
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -200,7 +201,7 @@ public class SocieteController {
     }
 
     @PutMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteContactNotFound{
         SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.OK).body(response);
