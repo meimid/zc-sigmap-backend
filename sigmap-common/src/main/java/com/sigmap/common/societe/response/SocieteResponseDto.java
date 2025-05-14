@@ -9,6 +9,6 @@ public class SocieteResponseDto {
     private String nom;
     private RefParamResponseDto type;
     private RefParamResponseDto pays;
+    private RefParamResponseDto categorieSoumissionnaire;
     private String nni;
-    private String categorieSoumissionnaireId;
 }

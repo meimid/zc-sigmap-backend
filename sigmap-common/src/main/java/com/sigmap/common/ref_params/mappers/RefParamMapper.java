@@ -3,6 +3,7 @@ package com.sigmap.common.ref_params.mappers;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.response.RefParamResponse;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -26,4 +27,5 @@ public interface RefParamMapper {
     RefParamResponse map(RefParam source);
     RefParam map(RefParamRequest source);
     void updateFromRequest(RefParamRequest source, @MappingTarget RefParam target);
+    RefParamResponseDto mapToDto(RefParam source);
 }

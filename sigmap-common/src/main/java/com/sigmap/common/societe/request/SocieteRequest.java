@@ -1,5 +1,6 @@
 package com.sigmap.common.societe.request;
 
+import com.sigmap.common.ref_params.RefParam;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,5 +13,5 @@ public class SocieteRequest {
     private Integer typeId;
     private Integer paysId;
     private String nni;
-    private String categorieSoumissionnaireId;
+    private Integer categorieSoumissionnaireId;
 }
