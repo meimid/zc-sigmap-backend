@@ -52,6 +52,7 @@ public interface AgpmMapper {
     @Mapping(target = "nom", source = "nom")
     @Mapping(target = "contenu", source = "contenu")
     @Mapping(source = "status", target = "status")
+    @Mapping(target = "processInstanceId",source = "processInstanceId")
     @Mapping(target = "ac", source = "ac")
     @Mapping(target = "docs", source = "docs")
     AgpmResponseDto mapToDto(Agpm source);

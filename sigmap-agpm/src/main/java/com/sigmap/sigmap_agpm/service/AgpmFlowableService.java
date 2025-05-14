@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_agpm.agpm.service;
+package com.sigmap.sigmap_agpm.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
@@ -8,12 +8,12 @@ import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
-import com.sigmap.sigmap_agpm.agpm.request.ValidationRequest;
-import com.sigmap.sigmap_agpm.agpm.response.NextStepDTO;
-import com.sigmap.sigmap_agpm.agpm.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDetailsDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskListResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
+import com.sigmap.sigmap_agpm.service.dto.response.NextStepDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.ProcessStartResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskListResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;

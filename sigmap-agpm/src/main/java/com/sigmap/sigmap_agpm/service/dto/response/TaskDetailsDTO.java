@@ -1,18 +1,20 @@
-package com.sigmap.sigmap_agpm.agpm.response;
+package com.sigmap.sigmap_agpm.service.dto.response;
 
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TaskDTO {
+public class TaskDetailsDTO {
     private String taskId;
     private String taskName;
     private String taskDefinitionKey;
@@ -21,11 +23,9 @@ public class TaskDTO {
     private LocalDateTime created;
     private String candidateGroup;
     private Map<String, Object> traceability;
-    private Integer id;
-    private Integer version;
-    private Integer newStatus;
-    private Boolean validate;
+    private List<AgpmResponseDto> agpms;
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;
+    private List<NextStepDTO> nextSteps;
 }

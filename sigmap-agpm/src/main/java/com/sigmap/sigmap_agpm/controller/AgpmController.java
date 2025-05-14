@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_agpm.agpm;
+package com.sigmap.sigmap_agpm.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
@@ -18,8 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * REST Controller for managing Agpm entities.
@@ -40,21 +38,6 @@ public class AgpmController {
     public AgpmController(AgpmService agpmService) {
         this.agpmService = agpmService;
     }
-
-//    /**
-//     * GET /api/agpms
-//     * Retrieves a paginated list of non-deleted Agpm entities based on the given query.
-//     *
-//     * @param query    The query to filter Agpm entities (e.g., ref, nom, statusId)
-//     * @param pageable The pagination and sorting information
-//     * @return ResponseEntity with a Page of AgpmResponse DTOs and status 200
-//     */
-//    @GetMapping
-//    public ResponseEntity<Page<AgpmResponse>> getAllAgpms(AgpmQuery query, Pageable pageable) {
-//        Page<Agpm> agpmPage = agpmService.findAll(query.toSpecification(), pageable);
-//        Page<AgpmResponse> agpmResponsePage = agpmPage.map(AgpmMapper.INSTANCE::map);
-//        return new ResponseEntity<>(agpmResponsePage, HttpStatus.OK);
-//    }
 
     /**
      * GET /api/agpms/latest
@@ -96,7 +79,7 @@ public class AgpmController {
      */
     @GetMapping("/{agpmId}")
     public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId) throws AgpmNotFound {
-        Agpm agpm = agpmService.findById(agpmId, null); // agpmVer is ignored by the service
+        Agpm agpm = agpmService.findById(agpmId, null);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(agpm);
         return ResponseEntity.ok(agpmResponse);
     }
@@ -136,14 +119,12 @@ public class AgpmController {
      * @throws InvalidIdAndVersionAgpm if the ID is invalid
      * @note Consider adding @Valid for request validation if needed
      */
- //   @PutMapping(consumes = {"multipart/form-data"}, value = "/{agpmId}")
-    @PutMapping("/{agpmId}")
+   @PutMapping(consumes = {"multipart/form-data"}, value = "/{agpmId}")
     public ResponseEntity<AgpmResponse> updateAgpm(@PathVariable Integer agpmId,
-                                                  // @ModelAttribute("request")
-                                                   @RequestBody
+                                                  @ModelAttribute("request")
                                                    AgpmRequest request)
             throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm {
-        Agpm updatedAgpm = agpmService.updateWithoutVersioning(agpmId, null, request); // agpmVer is ignored by the service
+        Agpm updatedAgpm = agpmService.updateWithoutVersioning(agpmId, null, request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.OK);
     }

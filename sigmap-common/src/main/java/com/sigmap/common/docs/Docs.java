@@ -10,6 +10,7 @@ import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.Where;
 
 import java.util.List;
 
@@ -18,6 +19,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "docs")
+@Where(clause = "is_deleted = false")
 public class Docs extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

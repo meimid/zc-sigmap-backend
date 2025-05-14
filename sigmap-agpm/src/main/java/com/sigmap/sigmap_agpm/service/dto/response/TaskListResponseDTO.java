@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_agpm.agpm.response;
+package com.sigmap.sigmap_agpm.service.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

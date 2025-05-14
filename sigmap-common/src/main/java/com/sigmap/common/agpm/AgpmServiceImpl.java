@@ -339,6 +339,7 @@ public class AgpmServiceImpl implements AgpmService {
         newAgpm.setId(agpmId);
         newAgpm.setVersion(nextVersion);
         newAgpm.setAc(existingAgpm.getAc());
+        newAgpm.setProcessInstanceId(existingAgpm.getProcessInstanceId());
         newAgpm.setStatus(existingAgpm.getStatus());
         newAgpm.setIsDeleted(existingAgpm.getIsDeleted());
         agpmMapper.updateAgpmFromRequest(request, newAgpm);
@@ -383,8 +384,14 @@ public class AgpmServiceImpl implements AgpmService {
         newAgpm.setUpdatedAt(Calendar.getInstance());
         Agpm savedAgpm = repository.save(newAgpm);
         Agpm responseAgpm = new Agpm();
+
         responseAgpm.setId(savedAgpm.getId());
         responseAgpm.setVersion(savedAgpm.getVersion());
+        responseAgpm.setRef(savedAgpm.getRef());
+        responseAgpm.setNom(savedAgpm.getNom());
+        responseAgpm.setContenu(savedAgpm.getContenu());
+        responseAgpm.setRemarque(savedAgpm.getRemarque());
+        responseAgpm.setProcessInstanceId(savedAgpm.getProcessInstanceId());
         responseAgpm.setAc(savedAgpm.getAc());
         responseAgpm.setStatus(savedAgpm.getStatus());
         responseAgpm.setIsDeleted(savedAgpm.getIsDeleted());
@@ -394,7 +401,7 @@ public class AgpmServiceImpl implements AgpmService {
                     .collect(Collectors.toList()));
         }
         log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
-                agpmId, nextVersion, responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList()));
+                agpmId, latestVersion, responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList()));
 
         return responseAgpm;
     }
@@ -493,6 +500,11 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm responseAgpm = new Agpm();
         responseAgpm.setId(updatedAgpm.getId());
         responseAgpm.setVersion(updatedAgpm.getVersion());
+        responseAgpm.setRef(updatedAgpm.getRef());
+        responseAgpm.setNom(updatedAgpm.getNom());
+        responseAgpm.setContenu(updatedAgpm.getContenu());
+        responseAgpm.setRemarque(updatedAgpm.getRemarque());
+        responseAgpm.setProcessInstanceId(updatedAgpm.getProcessInstanceId());
         responseAgpm.setAc(updatedAgpm.getAc());
         responseAgpm.setStatus(updatedAgpm.getStatus());
         responseAgpm.setIsDeleted(updatedAgpm.getIsDeleted());

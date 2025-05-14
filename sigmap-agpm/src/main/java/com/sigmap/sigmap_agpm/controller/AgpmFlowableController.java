@@ -1,14 +1,14 @@
-package com.sigmap.sigmap_agpm.agpm;
+package com.sigmap.sigmap_agpm.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
-import com.sigmap.sigmap_agpm.agpm.request.ValidationRequest;
-import com.sigmap.sigmap_agpm.agpm.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDetailsDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskListResponseDTO;
-import com.sigmap.sigmap_agpm.agpm.service.AgpmFlowableService;
+import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
+import com.sigmap.sigmap_agpm.service.dto.response.ProcessStartResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskListResponseDTO;
+import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -81,10 +81,10 @@ public class AgpmFlowableController {
      * @throws AcNotFound if the associated Ac entity is not found
      * @throws IOException if an error occurs during file processing
      */
-    @PostMapping("/tasks/{taskId}/validate")
+    @PostMapping(consumes = {"multipart/form-data"}, value ="/tasks/{taskId}/validate")
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
-            @RequestBody ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
+            @ModelAttribute("request")  ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
         log.info("Validating task ID: {} with request: {}", taskId, request);
         TaskDTO response = agpmFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
