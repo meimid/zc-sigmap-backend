@@ -960,7 +960,7 @@ public class PaaServiceImpl implements PaaService {
                 // Always use version 1 for newly created realisations
                 realisation.setId(realisationId);
                 realisation.setVersion(1);
-
+//                realisation.setDocs(new ArrayList<>());
                 // Set all fields from the request
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                 realisation.setService(realisationRequest.getService());
@@ -979,13 +979,13 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setSort(realisationRequest.getSort());
                 System.out.println("the relisations have files");
                 System.out.println(realisationRequest.getRealisationFiles());
-//                if(realisationRequest.getRealisationFiles() != null) {
-//                    try {
-//                        processAndSaveDocuments(request.getPaaFiles(), savedPaa);
-//                    } catch (IOException e) {
-//                        throw new RuntimeException(e);
-//                    }
-//                }
+                if(realisationRequest.getRealisationFiles() != null) {
+                    try {
+                        processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
                 // Set up the relationship with PAA
                 List<Paa> paaList = new ArrayList<>();
                 paaList.add(savedPaa);
@@ -1203,4 +1203,140 @@ public class PaaServiceImpl implements PaaService {
         }
     }
 
+//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+//        List<Docs> docs = new ArrayList<>(); // Initialize collection for documents
+//        UUID uuid = UUID.randomUUID();
+//
+//        if (files != null && !files.isEmpty()) {
+//            for (MultipartFile file : files) {
+//                if (file != null && !file.isEmpty()) {
+//                    try {
+//                        Tika tika = new Tika();
+//                        String detectedMimeType = tika.detect(file.getInputStream());
+//                        String originalFilename = file.getOriginalFilename();
+//
+//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+//                        }
+//
+//                        long fileSize = file.getSize();
+//                        String formattedSize = documentCommuneService.formatSize(fileSize);
+//
+//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
+//                                savedRealisation.getId(), savedRealisation.getVersion());
+//
+//                        String[] parts = originalFilename.split("\\.");
+//                        String baseName = parts[0];
+//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+//                        String uniqueFileName = "realisation_" + uuid + "_" + extension;
+//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+//
+//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+//                        log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
+//
+//                        Docs document = new Docs();
+//                        document.setName(baseName);
+//                        document.setAlfresco_id(alfrescoId);
+//                        document.setPathFolder(folderPath);
+//                        document.setFileSize(formattedSize);
+//                        document.setContentType(detectedMimeType);
+//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+//                        document.setAlfrescoName(uniqueFileName);
+//
+//                        // Ensure collections are initialized
+//                        if (document.getRealisations() == null) {
+//                            document.setRealisations(new ArrayList<>());
+//                        }
+//                        if (savedRealisation.getDocs() == null) {
+//                            savedRealisation.setDocs(new ArrayList<>());
+//                        }
+//
+//                        // Set up bidirectional relationship
+//                        document.getRealisations().add(savedRealisation);
+//                        savedRealisation.getDocs().add(document);
+//
+//                        // Save the document
+//                        docsRepository.save(document);
+//                        docs.add(document);
+//                    } catch (Exception e) {
+//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//
+//        // Update the realisation's docs
+//        savedRealisation.setDocs(docs);
+//    }
+void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+    List<Docs> docs = new ArrayList<>();
+    UUID uuid = UUID.randomUUID();
+
+    if (files != null && !files.isEmpty()) {
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                try {
+                    Tika tika = new Tika();
+                    String detectedMimeType = tika.detect(file.getInputStream());
+                    String originalFilename = file.getOriginalFilename();
+
+                    String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                    if (fileExtension.isEmpty()) {
+                        fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                    }
+
+                    long fileSize = file.getSize();
+                    String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                    String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
+                            savedRealisation.getId(), savedRealisation.getVersion());
+
+                    String[] parts = originalFilename.split("\\.");
+                    String baseName = parts[0];
+                    String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                    String uniqueFileName = "realisation_" + uuid + "_" + System.currentTimeMillis() + extension; // Add timestamp for extra uniqueness
+                    MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+                    log.info("Uploading file: {} to folder: {}", uniqueFileName, folderPath);
+
+                    // Check for existing file in Alfresco (optional, requires alfrescoService method)
+                    // if (alfrescoService.fileExists(folderPath, uniqueFileName)) {
+                    //     throw new IOException("File already exists: " + uniqueFileName);
+                    // }
+
+                    String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+                    log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
+
+                    Docs document = new Docs();
+                    document.setName(baseName);
+                    document.setAlfresco_id(alfrescoId);
+                    document.setPathFolder(folderPath);
+                    document.setFileSize(formattedSize);
+                    document.setContentType(detectedMimeType);
+                    document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                    document.setAlfrescoName(uniqueFileName);
+
+                    if (document.getRealisations() == null) {
+                        document.setRealisations(new ArrayList<>());
+                    }
+                    if (savedRealisation.getDocs() == null) {
+                        savedRealisation.setDocs(new ArrayList<>());
+                    }
+
+                    document.getRealisations().add(savedRealisation);
+                    savedRealisation.getDocs().add(document);
+
+                    docsRepository.save(document);
+                    docs.add(document);
+                } catch (Exception e) {
+                    log.error("Failed to process or upload document: {}", e.getMessage(), e);
+                    throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                }
+            }
+        }
+    }
+
+    savedRealisation.setDocs(docs);
+}
 }

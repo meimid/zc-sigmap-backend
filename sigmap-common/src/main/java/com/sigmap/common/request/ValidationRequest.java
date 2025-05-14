@@ -8,4 +8,5 @@ public class ValidationRequest {
     private Boolean isValid;
     private String comment;
     private PpmRequest ppm;
+
 }
