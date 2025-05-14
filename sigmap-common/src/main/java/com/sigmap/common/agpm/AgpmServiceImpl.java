@@ -4,7 +4,7 @@ import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
-import com.sigmap.common.Constants;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -80,11 +80,11 @@ public class AgpmServiceImpl implements AgpmService {
 
     /**
      * Retrieves a paginated list of non-deleted Agpm entities, returning only the latest version for each ID
-     * based on the given specification.
+     * based on the given specification. Only non-deleted Docs are included in the response.
      *
      * @param spec     Specification to filter Agpm entities
      * @param pageable Pagination and sorting configuration
-     * @return Page of Agpm entities with the latest version per ID
+     * @return Page of Agpm entities with the latest version per ID and only non-deleted Docs
      */
     public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) {
         Page<Agpm> allAgpms = repository.findAll(spec, pageable);
@@ -92,7 +92,7 @@ public class AgpmServiceImpl implements AgpmService {
         Map<Integer, Agpm> latestAgpms = allAgpms.getContent().stream()
                 .collect(Collectors.toMap(
                         Agpm::getId,
-                        agpm -> agpm,
+                        this::createFilteredResponseAgpm,
                         (agpm1, agpm2) -> agpm1.getVersion() > agpm2.getVersion() ? agpm1 : agpm2
                 ));
 
@@ -125,19 +125,27 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     /**
-     * Retrieves the latest version of an Agpm entity by its ID.
+     * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response.
      *
      * @param agpmId ID of the Agpm entity
      * @param agpmVer Ignored parameter (kept for compatibility); latest version is fetched
-     * @return Agpm entity with the latest version
+     * @return Agpm entity with the latest version and only non-deleted Docs
      * @throws AgpmNotFound if no Agpm entity is found for the ID
      */
     @Override
     public Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
         Integer latestVersion = findLatestVersionById(agpmId)
                 .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID", List.of(agpmId), List.of(agpmVer)));
-        return repository.findById(new CompositeId(agpmId, latestVersion))
+        Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
                 .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID and version", List.of(agpmId), List.of(latestVersion)));
+
+        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
+        log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
+                agpmId, latestVersion, responseAgpm.getDocs() != null
+                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
+                        : Collections.emptyList());
+
+        return responseAgpm;
     }
 
     /**
@@ -219,7 +227,7 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         agpm.setIsDeleted(false);
-        RefParam defaultStatus = refParamRepository.findById(1)
+        RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
         agpm.setStatus(defaultStatus);
 
@@ -383,23 +391,8 @@ public class AgpmServiceImpl implements AgpmService {
 
         newAgpm.setUpdatedAt(Calendar.getInstance());
         Agpm savedAgpm = repository.save(newAgpm);
-        Agpm responseAgpm = new Agpm();
 
-        responseAgpm.setId(savedAgpm.getId());
-        responseAgpm.setVersion(savedAgpm.getVersion());
-        responseAgpm.setRef(savedAgpm.getRef());
-        responseAgpm.setNom(savedAgpm.getNom());
-        responseAgpm.setContenu(savedAgpm.getContenu());
-        responseAgpm.setRemarque(savedAgpm.getRemarque());
-        responseAgpm.setProcessInstanceId(savedAgpm.getProcessInstanceId());
-        responseAgpm.setAc(savedAgpm.getAc());
-        responseAgpm.setStatus(savedAgpm.getStatus());
-        responseAgpm.setIsDeleted(savedAgpm.getIsDeleted());
-        if (savedAgpm.getDocs() != null) {
-            responseAgpm.setDocs(savedAgpm.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .collect(Collectors.toList()));
-        }
+        Agpm responseAgpm = createFilteredResponseAgpm(savedAgpm);
         log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
                 agpmId, latestVersion, responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList()));
 
@@ -496,23 +489,7 @@ public class AgpmServiceImpl implements AgpmService {
         agpm.setUpdatedAt(Calendar.getInstance());
         Agpm updatedAgpm = repository.save(agpm);
 
-        // Create a new instance for the response with filtered documents
-        Agpm responseAgpm = new Agpm();
-        responseAgpm.setId(updatedAgpm.getId());
-        responseAgpm.setVersion(updatedAgpm.getVersion());
-        responseAgpm.setRef(updatedAgpm.getRef());
-        responseAgpm.setNom(updatedAgpm.getNom());
-        responseAgpm.setContenu(updatedAgpm.getContenu());
-        responseAgpm.setRemarque(updatedAgpm.getRemarque());
-        responseAgpm.setProcessInstanceId(updatedAgpm.getProcessInstanceId());
-        responseAgpm.setAc(updatedAgpm.getAc());
-        responseAgpm.setStatus(updatedAgpm.getStatus());
-        responseAgpm.setIsDeleted(updatedAgpm.getIsDeleted());
-        if (updatedAgpm.getDocs() != null) {
-            responseAgpm.setDocs(updatedAgpm.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .collect(Collectors.toList()));
-        }
+        Agpm responseAgpm = createFilteredResponseAgpm(updatedAgpm);
         log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
                 agpmId, latestVersion, responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList()));
 
@@ -567,7 +544,7 @@ public class AgpmServiceImpl implements AgpmService {
                         long fileSize = file.getSize();
                         String formattedSize = documentCommuneService.formatSize(fileSize);
 
-                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_AGPM + "/%d/%d",
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED + "/%d/%d",
                                 savedAgpm.getId(), savedAgpm.getVersion());
 
                         String[] parts = originalFilename.split("\\.");
@@ -599,5 +576,29 @@ public class AgpmServiceImpl implements AgpmService {
                 }
             }
         }
+    }
+
+    private Agpm createFilteredResponseAgpm(Agpm source) {
+        Agpm responseAgpm = new Agpm();
+        responseAgpm.setId(source.getId());
+        responseAgpm.setVersion(source.getVersion());
+        responseAgpm.setRef(source.getRef());
+        responseAgpm.setNom(source.getNom());
+        responseAgpm.setContenu(source.getContenu());
+        responseAgpm.setRemarque(source.getRemarque());
+        responseAgpm.setProcessInstanceId(source.getProcessInstanceId());
+        responseAgpm.setAc(source.getAc());
+        responseAgpm.setStatus(source.getStatus());
+        responseAgpm.setIsDeleted(source.getIsDeleted());
+        responseAgpm.setCreatedAt(source.getCreatedAt());
+        responseAgpm.setCreatedBy(source.getCreatedBy());
+        responseAgpm.setUpdatedBy(source.getUpdatedBy());
+        responseAgpm.setUpdatedAt(source.getUpdatedAt());
+        if (source.getDocs() != null) {
+            responseAgpm.setDocs(source.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList()));
+        }
+        return responseAgpm;
     }
 }

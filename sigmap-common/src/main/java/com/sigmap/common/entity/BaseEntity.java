@@ -25,7 +25,7 @@ import java.util.Calendar;
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
-@Where(clause = "is_deleted = false")
+//@Where(clause = "is_deleted = false")
 public abstract class BaseEntity {
     @CreatedDate
     @Column(name = "created_at",updatable = false)

@@ -6,6 +6,7 @@ import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
@@ -258,7 +259,7 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        Agpm updated = agpmService.updateStatus(id, version, 2);
+        Agpm updated = agpmService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
@@ -635,7 +636,7 @@ public class AgpmFlowableService {
         Integer newStatus = null;
         boolean validate = request.getValidate() != null ? request.getValidate() : false;
         if (validate) {
-            newStatus = 3;
+            newStatus = Constants.VALIDE_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -644,7 +645,7 @@ public class AgpmFlowableService {
             }
             latestAgpm = updatedAgpm;
         } else if (!validate) {
-            newStatus = 2;
+            newStatus = Constants.TRAITMENT_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -667,7 +668,7 @@ public class AgpmFlowableService {
         taskService.complete(taskId);
 
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
-            newStatus = 4;
+            newStatus = Constants.PUBLIE_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
