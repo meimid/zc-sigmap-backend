@@ -123,4 +123,10 @@ public class RefParamServiceImpl implements RefParamService {
 
         repository.softDelete(id);
     }
+
+    @Override
+    public List<RefParam> findByRefType(Integer refTpeId) throws RefTypeNotFound {
+        refTypeService.findById(refTpeId);
+       return repository.findByRefType(refTpeId);
+    }
 }

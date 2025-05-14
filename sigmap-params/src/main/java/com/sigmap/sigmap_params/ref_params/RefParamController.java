@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_params.ref_params;
 
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.*;
@@ -7,6 +8,7 @@ import com.sigmap.common.ref_params.request.RefParamQuery;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.response.RefParamResponse;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +17,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Controller to manage ref params.
@@ -129,6 +134,60 @@ public class RefParamController {
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/type-societe")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeSociete() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.TYPE_SOCIETE);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/categorie-soummisionaire")
+    public ResponseEntity<List<RefParamResponseDto>> findAllCategorieSoumissionaire() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.CATEGORIE_SOMISSIONAIRE);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/pays")
+    public ResponseEntity<List<RefParamResponseDto>> findAllPays() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.PAYS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type-comite")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeComite() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.TYPE_COMITE);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type-address")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeAddres() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.TYPE_ADDRESS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<List<RefParamResponseDto>> findAllStatus() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.STATUS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 
 

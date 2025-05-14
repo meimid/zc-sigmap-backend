@@ -58,7 +58,7 @@ public class RefTypeController {
   }
 
   @PutMapping
-  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefParamNotFound {
+  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefTypeNotFound {
     RefType refType = refTypeService.update(request);
     RefTypeResponse response = RefTypeMapper.INSTANCE.map(refType);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

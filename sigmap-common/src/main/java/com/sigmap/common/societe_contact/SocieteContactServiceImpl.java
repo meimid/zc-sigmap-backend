@@ -63,7 +63,8 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public Page<Contact> findAllDeleted(Integer societeId ,Specification<SocieteContact> societeContact, Pageable pageable) {
+    public Page<Contact> findAllDeleted(Integer societeId ,Specification<SocieteContact> societeContact, Pageable pageable) throws SocieteNotFound {
+        societeService.findById(societeId);
         Page <SocieteContact> societeContacts= repository.findSocieteContactsDeletedBySocieteId(societeId,societeContact, pageable);
         List<Contact> contactList = societeContacts
                 .stream()
@@ -128,8 +129,8 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) {
-        SocieteContact societeContact = repository.findByIds(societeId, contactId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteContact not found"));
+    public SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) throws SocieteContactNotFound{
+        SocieteContact societeContact = repository.findByIds(societeId, contactId) .orElseThrow(() -> new SocieteContactNotFound("",societeId,contactId));
         societeContact.getSocieteContactId().setSociete(societeRepository.findById(societeId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"SocieteAddress not found: " +societeId)));
         societeContact.getSocieteContactId().setContact(contactRepository.findById(contactId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Contact not found: " +contactId)));
         societeContact.setRepresentantLegal(request.isRepresentantLegal());
