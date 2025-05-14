@@ -1,5 +1,6 @@
 package com.sigmap.common.societe.response;
 
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.AllArgsConstructor;
@@ -17,6 +18,6 @@ public class SocieteResponse {
     private RefParamResponseDto type;
     private RefParamResponseDto pays;
     private String nni;
-    private String categorieSoumissionnaireId;
+    private RefParamResponseDto categorieSoumissionnaire;
     private BaseEntityResponse metadata;
 }
