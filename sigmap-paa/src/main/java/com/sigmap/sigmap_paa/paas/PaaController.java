@@ -3,14 +3,19 @@ package com.sigmap.sigmap_paa.paas;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.mappers.PaaMapper;
+import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.PaaResponse;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.common.lots.mappers.LotMapper;
+import com.sigmap.common.lots.response.LotResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -22,8 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.IOException;
-
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/paas")
@@ -83,7 +87,8 @@ public class PaaController {
     public ResponseEntity<PaaResponse> findById(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
-        Paa paa = paaService.findById(paaId, paaVer);
+        Paa paa = paaService.findById(paaId, paaVer)
+                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database."));
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.ok(response);
     }
@@ -94,20 +99,34 @@ public class PaaController {
      * @param request the request to create the paa from
      * @return the created paa
      */
-
-
-    //TODO: nejah
-    // Handle document upload
-
-
-    @PostMapping (consumes = {"multipart/form-data"})
-    //@PostMapping
-    public ResponseEntity<PaaResponse> create(
-            @ModelAttribute("request")
-          //  @RequestBody
-            PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement, IOException {
+    @PostMapping
+    public ResponseEntity<PaaResponse> create(@RequestBody PaaRequest request) throws PaaAlreadyExistsException {
         Paa paa = paaService.create(request);
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * Create a new PAA with related Realisations and Lots in a single operation.
+     * This endpoint allows for creating a complete PAA hierarchy with all its relationships
+     * in a single API call.
+     *
+     * The request uses specialized DTOs:
+     * - RealisationRequestForPaa: A simpler version of RealisationRequest without ID and version fields
+     * - All IDs and versions will be auto-generated for new entities
+     *
+     * @param request the global request containing PAA, Realisations, and Lots data
+     * @return the created PAA with all established relationships and specialized DTOs
+     * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
+     */
+    @PostMapping("/with-relationships")
+    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
+        logger.info("Creating PAA with relationships using RealisationRequestForPaa");
+        Paa paa = paaService.createWithRelationships(request);
+
+        // Use the detailed mapper that includes specialized DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -115,9 +134,55 @@ public class PaaController {
     public ResponseEntity<PaaResponse> update(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer,
-            @RequestBody PaaRequest request) throws PaaNotFound, IOException {
+            @RequestBody PaaRequest request) throws PaaNotFound {
         Paa updatedPaa = paaService.update(paaId, paaVer, request);
         PaaResponse response = PaaMapper.INSTANCE.map(updatedPaa);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Updates a PAA by creating a new version with the updated data.
+     * The old version is preserved in the database.
+     *
+     * @param paaId the ID of the PAA to update
+     * @param paaVer the current version of the PAA to update
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA with detailed realisation and lot information
+     * @throws PaaNotFound if the PAA is not found or is deleted
+     */
+    @PutMapping("/{paaId}/{paaVer}/versioning")
+    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioning(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer,
+            @RequestBody PaaRequestGlobal request) throws PaaNotFound {
+        logger.info("Updating PAA ID: {} version: {} with versioning", paaId, paaVer);
+        Paa updatedPaa = paaService.updateWithVersioning(paaId, paaVer, request);
+
+        // Use the detailed mapper to create a response with specialised DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Updates a PAA by creating a new version with the updated data using the latest version.
+     * The old version is preserved in the database.
+     *
+     * @param paaId the ID of the PAA to update
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA with detailed realisation and lot information
+     * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
+     */
+    @PutMapping("/{paaId}/versioning")
+    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningLatest(
+            @PathVariable Integer paaId,
+            @RequestBody PaaRequestGlobal request) throws PaaNotFound {
+        logger.info("Updating latest version of PAA ID: {} with versioning", paaId);
+        Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
+
+        // Use the detailed mapper to create a response with specialised DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+
         return ResponseEntity.ok(response);
     }
 
@@ -140,6 +205,157 @@ public class PaaController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Get all realisations associated with a specific PAA.
+     *
+     * @param paaId the id of the PAA
+     * @param paaVer the version of the PAA
+     * @return list of realisations associated with the PAA
+     */
+    @GetMapping("/{paaId}/{paaVer}/realisations")
+    public ResponseEntity<List<RealisationResponse>> getPaaRealisations(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer) throws PaaNotFound {
+        Paa paa = paaService.findById(paaId, paaVer)
+                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
 
+        List<RealisationResponse> realisations = paa.getRealisations().stream()
+                .map(RealisationMapper.INSTANCE::map)
+                .toList();
 
+        return ResponseEntity.ok(realisations);
+    }
+
+    /**
+     * Get all realisations associated with the latest version of a specific PAA.
+     *
+     * @param paaId the id of the PAA
+     * @return list of realisations associated with the latest version of the PAA
+     */
+    @GetMapping("/{paaId}/realisations")
+    public ResponseEntity<List<RealisationResponse>> getPaaRealisationsLatest(
+            @PathVariable Integer paaId) throws PaaNotFound {
+        Paa paa = paaService.findLatestById(paaId)
+                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+
+        List<RealisationResponse> realisations = paa.getRealisations().stream()
+                .map(RealisationMapper.INSTANCE::map)
+                .toList();
+
+        return ResponseEntity.ok(realisations);
+    }
+
+    /**
+     * Get all lots associated with a specific PAA.
+     * This collects all lots from all realisations in the PAA.
+     *
+     * @param paaId the id of the PAA
+     * @param paaVer the version of the PAA
+     * @return list of lots associated with the PAA
+     */
+    @GetMapping("/{paaId}/{paaVer}/lots")
+    public ResponseEntity<List<LotResponse>> getPaaLots(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer) throws PaaNotFound {
+        Paa paa = paaService.findById(paaId, paaVer)
+                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
+
+        // Collect all lots from all realisations
+        List<LotResponse> lots = paa.getRealisations().stream()
+                .filter(realisation -> realisation.getLots() != null)
+                .flatMap(realisation -> realisation.getLots().stream())
+                .map(LotMapper.INSTANCE::map)
+                .distinct() // Remove duplicates if any
+                .toList();
+
+        return ResponseEntity.ok(lots);
+    }
+
+    /**
+     * Get all lots associated with the latest version of a specific PAA.
+     * This collects all lots from all realisations in the latest PAA version.
+     *
+     * @param paaId the id of the PAA
+     * @return list of lots associated with the latest version of the PAA
+     */
+    @GetMapping("/{paaId}/lots")
+    public ResponseEntity<List<LotResponse>> getPaaLotsLatest(
+            @PathVariable Integer paaId) throws PaaNotFound {
+        Paa paa = paaService.findLatestById(paaId)
+                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+
+        // Collect all lots from all realisations
+        List<LotResponse> lots = paa.getRealisations().stream()
+                .filter(realisation -> realisation.getLots() != null)
+                .flatMap(realisation -> realisation.getLots().stream())
+                .map(LotMapper.INSTANCE::map)
+                .distinct() // Remove duplicates if any
+                .toList();
+
+        return ResponseEntity.ok(lots);
+    }
+
+    /**
+     * Get all lots associated with a specific realisation in a PAA.
+     *
+     * @param paaId the id of the PAA
+     * @param paaVer the version of the PAA
+     * @param realisationId the id of the realisation
+     * @return list of lots associated with the realisation
+     */
+    @GetMapping("/{paaId}/{paaVer}/realisations/{realisationId}/lots")
+    public ResponseEntity<List<LotResponse>> getPaaRealisationLots(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer,
+            @PathVariable Integer realisationId) throws PaaNotFound {
+        Paa paa = paaService.findById(paaId, paaVer)
+                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
+
+        // Find the specified realisation
+        var realisation = paa.getRealisations().stream()
+                .filter(r -> r.getId().equals(realisationId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Realisation not found with ID: " + realisationId));
+
+        // Get lots from the realisation
+        List<LotResponse> lots = realisation.getLots() != null ?
+                realisation.getLots().stream()
+                        .map(LotMapper.INSTANCE::map)
+                        .toList() :
+                List.of();
+
+        return ResponseEntity.ok(lots);
+    }
+
+    /**
+     * Get all lots associated with a specific realisation in the latest version of a PAA.
+     *
+     * @param paaId the id of the PAA
+     * @param realisationId the id of the realisation
+     * @return list of lots associated with the realisation in the latest PAA version
+     */
+    @GetMapping("/{paaId}/realisations/{realisationId}/lots")
+    public ResponseEntity<List<LotResponse>> getPaaRealisationLotsLatest(
+            @PathVariable Integer paaId,
+            @PathVariable Integer realisationId) throws PaaNotFound {
+        Paa paa = paaService.findLatestById(paaId)
+                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+
+        // Find the specified realisation
+        var realisation = paa.getRealisations().stream()
+                .filter(r -> r.getId().equals(realisationId))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Realisation not found with ID: " + realisationId));
+
+        // Get lots from the realisation
+        List<LotResponse> lots = realisation.getLots() != null ?
+                realisation.getLots().stream()
+                        .map(LotMapper.INSTANCE::map)
+                        .toList() :
+                List.of();
+
+        return ResponseEntity.ok(lots);
+    }
 }
