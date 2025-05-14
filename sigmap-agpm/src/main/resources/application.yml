@@ -29,7 +29,7 @@ spring:
       resourceserver:
         jwt:
           principal-claim-name: preferred_username
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://sigmap-auth-insecure.zedneycreative.com/realms/sigmap-realm}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
 springdoc:
   default-support-form-data: true
@@ -52,6 +52,8 @@ keycloak:
 
 # Flowable: use a dedicated database
 flowable:
+  process-definition-key: agpmProcess
+  task-definition-key: saisieTask
   use-default-data-source: false
   database-schema-update: true
   check-process-definitions: true

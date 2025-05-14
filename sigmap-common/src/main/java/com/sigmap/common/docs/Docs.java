@@ -11,6 +11,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+
 import java.util.List;
 
 
@@ -38,5 +39,18 @@ public class Docs extends BaseEntity {
     @ManyToMany(mappedBy = "docs")
     @JsonBackReference
     private List<Paa> paas;
+
+    @Lob
+    @Column(name = "path_folder")
+    private String pathFolder;
+    @Column(name = "file_size")
+    private String fileSize;
+    @Column(name = "file_name_alfresco")
+    private String AlfrescoName;
+
+    @Column(name = "content_type")
+    private String contentType;
+    @Column(name = "file_extension")
+    private String fileExtension;
 
 }

@@ -11,6 +11,4 @@ public class RefParamResponseDto {
   private String code;
 
   private String description;
-
-  private RefTypeResponseDto refType;
 }

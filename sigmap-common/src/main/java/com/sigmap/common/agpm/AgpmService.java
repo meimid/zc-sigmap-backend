@@ -3,13 +3,13 @@ package com.sigmap.common.agpm;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.request.AgpmRequest;
-import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,12 +19,12 @@ import java.util.Optional;
  */
 public interface AgpmService {
 
-    /**
-     * Retrieves a list of all non-deleted Agpm entities.
-     *
-     * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
-     */
-    List<Agpm> findAll();
+//    /**
+//     * Retrieves a list of all non-deleted Agpm entities.
+//     *
+//     * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
+//     */
+//    List<Agpm> findAll();
 
     /**
      * Retrieves a paginated list of Agpm entities based on the given specification.
@@ -75,7 +75,7 @@ public interface AgpmService {
      * @return The created AgpmResponse DTO
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
      */
-    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus;
+    Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException;
 
     /**
      * Soft deletes an Agpm entity by its ID and version.
@@ -95,7 +95,9 @@ public interface AgpmService {
      * @return The updated AgpmResponse DTO
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm update(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound;
+    Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound, IOException;
 
-    Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
+     Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm;
+
+        Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
 }

@@ -62,4 +62,6 @@ public class Agpm extends BaseEntity {
 
     @Column(name = "remarque", columnDefinition = "LONGTEXT")
     private String remarque;
+
+    private String processInstanceId;
 }
