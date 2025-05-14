@@ -92,8 +92,9 @@ CREATE TABLE `contact`  (
 
 CREATE TABLE `dac`  (
   `dac_id` int NOT NULL AUTO_INCREMENT,
+  `dac_ver` int NOT NULL,
   `ppm_id` int NULL,
-  PRIMARY KEY (`dac_id`)
+  PRIMARY KEY (`dac_id`, `dac_ver`)
 );
 
 CREATE TABLE `docs`  (

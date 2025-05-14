@@ -14,6 +14,7 @@
         <module>sigmap-agpm</module>
         <module>sigmap-paa</module>
         <module>sigmap-ppm</module>
+        <module>sigmap-dac</module>
     </modules>
 
     <properties>
