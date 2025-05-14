@@ -1,17 +1,16 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,7 +82,15 @@ public interface PaaService {
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
-    Paa findById(Integer paaId, Integer paaVer) throws PaaNotFound;
+    Optional<Paa> findById(Integer paaId, Integer paaVer);
+
+    /**
+     * Find the latest version of a Paa entity by its ID.
+     *
+     * @param paaId The ID of the Paa to find.
+     * @return An Optional containing the latest version of the Paa, or empty if not found.
+     */
+    Optional<Paa> findLatestById(Integer paaId);
 
     /**
      * Save a Paa entity.
@@ -99,7 +106,20 @@ public interface PaaService {
      * @param request the request to create the Paa entity from
      * @return the created Paa entity
      */
-    Paa create(PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement, IOException;
+    Paa create(PaaRequest request) throws PaaAlreadyExistsException;
+
+    /**
+     * Create a PAA with its Realisations and Lots in a single operation.
+     * This method allows for creating a complete PAA hierarchy including:
+     * - PAA entity with basic properties
+     * - Associated Realisations
+     * - Lots within each Realisation
+     *
+     * @param request the global request containing PAA, Realisations, and Lots data
+     * @return the created PAA entity with all relationships established
+     * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
+     */
+    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException;
 
     /**
      * Delete a Paa entity by its composite ID components.
@@ -109,7 +129,8 @@ public interface PaaService {
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound, IOException;
+    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound;
+
     /**
      * Updates a PAA by creating a new version with the updated data.
      * The old version is preserved in the database.
@@ -126,5 +147,16 @@ public interface PaaService {
      */
     Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
 
-
+    /**
+     * Updates a PAA with versioning by automatically finding and using the latest version.
+     * <p>
+     * This method finds the latest version of the PAA with the given ID and then
+     * calls the version-specific updateWithVersioning method.
+     *
+     * @param paaId the ID of the PAA to update
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA if changes detected, otherwise the existing PAA
+     * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
+     */
+    Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
 }

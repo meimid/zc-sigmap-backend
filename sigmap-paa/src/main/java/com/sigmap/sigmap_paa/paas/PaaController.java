@@ -88,7 +88,7 @@ public class PaaController {
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database."));
+                .orElseThrow(() -> new PaaNotFound("Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer)));
         PaaResponse response = PaaMapper.INSTANCE.map(paa);
         return ResponseEntity.ok(response);
     }
@@ -217,7 +217,7 @@ public class PaaController {
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(paaVer)));
 
         List<RealisationResponse> realisations = paa.getRealisations().stream()
                 .map(RealisationMapper.INSTANCE::map)
@@ -236,7 +236,7 @@ public class PaaController {
     public ResponseEntity<List<RealisationResponse>> getPaaRealisationsLatest(
             @PathVariable Integer paaId) throws PaaNotFound {
         Paa paa = paaService.findLatestById(paaId)
-                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
         List<RealisationResponse> realisations = paa.getRealisations().stream()
                 .map(RealisationMapper.INSTANCE::map)
@@ -258,7 +258,7 @@ public class PaaController {
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
         // Collect all lots from all realisations
         List<LotResponse> lots = paa.getRealisations().stream()
@@ -282,7 +282,7 @@ public class PaaController {
     public ResponseEntity<List<LotResponse>> getPaaLotsLatest(
             @PathVariable Integer paaId) throws PaaNotFound {
         Paa paa = paaService.findLatestById(paaId)
-                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
         // Collect all lots from all realisations
         List<LotResponse> lots = paa.getRealisations().stream()
@@ -309,7 +309,7 @@ public class PaaController {
             @PathVariable Integer paaVer,
             @PathVariable Integer realisationId) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound(paaId, paaVer, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
         // Find the specified realisation
         var realisation = paa.getRealisations().stream()
@@ -340,7 +340,7 @@ public class PaaController {
             @PathVariable Integer paaId,
             @PathVariable Integer realisationId) throws PaaNotFound {
         Paa paa = paaService.findLatestById(paaId)
-                .orElseThrow(() -> new PaaNotFound(paaId, null, "PAA not found"));
+                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
         // Find the specified realisation
         var realisation = paa.getRealisations().stream()
