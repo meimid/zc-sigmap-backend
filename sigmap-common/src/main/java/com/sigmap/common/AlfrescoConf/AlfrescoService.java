@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.ByteArrayResource;
@@ -12,6 +13,7 @@ import org.springframework.util.MultiValueMap;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
 import java.security.Principal;
 import java.util.*;
 
@@ -27,6 +29,56 @@ public class AlfrescoService {
         this.restTemplate = restTemplate;
     }
 
+
+    public String uploadToExistingFolder(MultipartFile file, String folderId) throws IOException {
+        try {
+            // Create a modified version of alfrescoService.uploadDocument that takes folderId directly
+            // instead of folderPath, thus skipping the getOrCreateFolderByPath step
+
+            // Construct the URL for file upload to Alfresco
+            String url = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/nodes/"
+                    + folderId + "/children"
+                    + "?majorVersion=true&alf_ticket=" + tokenHolder.getTicket();
+
+            // Create HTTP headers for the request
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            // Convert the file to ByteArrayResource
+            ByteArrayResource fileAsResource = new ByteArrayResource(file.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return file.getOriginalFilename();
+                }
+            };
+
+            // Create multipart request body
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("filedata", fileAsResource);
+            body.add("name", file.getOriginalFilename());
+            body.add("nodeType", "cm:content");
+
+            // Create request entity with headers and body
+            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
+
+            // Send POST request to upload the file
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+            // Parse response to get document ID
+            String responseBody = response.getBody();
+            JsonNode jsonNode = new ObjectMapper().readTree(responseBody);
+            String nodeId = jsonNode.path("entry").path("id").asText();
+            String versionLabel = jsonNode.path("entry").path("versionLabel").asText();
+
+            // Update document properties if needed
+           updateProperties(nodeId);
+
+            // Return document ID and version
+            return nodeId + ";" + versionLabel;
+        } catch (Exception e) {
+            throw new IOException("Error uploading document to existing folder: " + e.getMessage(), e);
+        }
+    }
 
 
 
@@ -173,34 +225,57 @@ public class AlfrescoService {
 
             // 2. Si le dossier n'a pas été trouvé, on doit le créer
             if (!found) {
-                // URL pour créer un nouveau dossier sous le dossier parent
-                String createUrl = alfrescoUrl +
-                        "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
-                        "/children?alf_ticket=" + tokenHolder.getTicket(); // Paramètre pour l'authentification
+                try {
+                    // URL pour créer un nouveau dossier sous le dossier parent
+                    String createUrl = alfrescoUrl +
+                            "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
+                            "/children?alf_ticket=" + tokenHolder.getTicket(); // Paramètre pour l'authentification
 
-                // Headers pour la requête de création de dossier (avec Content-Type JSON)
-                HttpHeaders createHeaders = new HttpHeaders();
-                createHeaders.setContentType(MediaType.APPLICATION_JSON);
+                    // Headers pour la requête de création de dossier (avec Content-Type JSON)
+                    HttpHeaders createHeaders = new HttpHeaders();
+                    createHeaders.setContentType(MediaType.APPLICATION_JSON);
 
-                // Corps de la requête de création avec le nom du dossier et son type
-                Map<String, Object> folderBody = new HashMap<>();
-                folderBody.put("name", folderName); // Nom du dossier
-                folderBody.put("nodeType", "cm:folder"); // Type de noeud : cm:folder (dossier)
+                    // Corps de la requête de création avec le nom du dossier et son type
+                    Map<String, Object> folderBody = new HashMap<>();
+                    folderBody.put("name", folderName); // Nom du dossier
+                    folderBody.put("nodeType", "cm:folder"); // Type de noeud : cm:folder (dossier)
 
-                // Envoi de la requête POST pour créer le dossier
-                HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
-                ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
+                    // Envoi de la requête POST pour créer le dossier
+                    HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
+                    ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
 
-                // Extraction de l'ID du dossier créé et mise à jour de l'ID parent
-                Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
-                parentId = (String) createdEntry.get("id");
+                    // Extraction de l'ID du dossier créé et mise à jour de l'ID parent
+                    Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
+                    parentId = (String) createdEntry.get("id");
+                } catch (HttpClientErrorException.Conflict conflictEx) {
+                    // Handle the case where the folder already exists (409 conflict)
+                    // Try to fetch the folder ID again since it might have been created by another thread
+                    response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+                    entries = (List<Map<String, Object>>)
+                            ((Map<String, Object>) response.getBody().get("list")).get("entries");
+
+                    if (entries != null) {
+                        for (Map<String, Object> entryMap : entries) {
+                            Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
+                            if (entry.get("name").equals(folderName)) {
+                                parentId = (String) entry.get("id");
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found) {
+                        // If we still can't find it, throw the original exception
+                        throw conflictEx;
+                    }
+                }
             }
         }
 
         // Retourne l'ID du dernier dossier dans le chemin
         return parentId; // L'ID du dossier final (existant ou créé)
     }
-
 
     // Consultation de document
     /**
