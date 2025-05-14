@@ -6,6 +6,9 @@
 ALTER TABLE societe
 DROP CONSTRAINT IF EXISTS fk_categorie_soumissionnaire_id;
 
+UPDATE societe
+    SET categorie_soumissionnaire_id = NULL;
+
 -- Since all data will be deleted, we can directly change the column type
 ALTER TABLE societe
     MODIFY COLUMN categorie_soumissionnaire_id INTEGER NULL COMMENT 'Catégorie du soumissionnaire (par exemple PME)';
