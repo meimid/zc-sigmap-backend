@@ -133,13 +133,18 @@ public class PaaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{paaId}/{paaVer}")
-    public ResponseEntity<PaaResponse> update(
+//    @PutMapping("/{paaId}/{paaVer}")
+    @PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
+    public ResponseEntity<PaaResponseWithRealisations> update(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer,
-            @RequestBody PaaRequest request) throws PaaNotFound {
+            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+        logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
         Paa updatedPaa = paaService.update(paaId, paaVer, request);
-        PaaResponse response = PaaMapper.INSTANCE.map(updatedPaa);
+
+        // Use the detailed mapper to create a response with specialised DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+
         return ResponseEntity.ok(response);
     }
 

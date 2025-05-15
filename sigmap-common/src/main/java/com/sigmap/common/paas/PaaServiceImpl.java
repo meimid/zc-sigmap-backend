@@ -5,6 +5,7 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.Constants;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
@@ -47,6 +48,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -225,24 +227,492 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
-    public Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound {
+    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
+        System.out.println("calling the mehtod");
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
 
         if (existingPaaOpt.isEmpty()) {
             throw new PaaNotFound(
-                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer));
+                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",
+                    List.of(paaId), List.of(paaVer));
         }
 
         Paa existingPaa = existingPaaOpt.get();
         if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
             throw new PaaNotFound(
-                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,List.of(paaId),List.of(paaVer));
+                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
+                    List.of(paaId), List.of(paaVer));
         }
 
-        Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request, existingPaaOpt.get());
-        return repository.save(paa);
+        // Update fields of the existing PAA
+        existingPaa.setRef(request.getRef());
+        existingPaa.setNom(request.getNom());
+        existingPaa.setAnnee(request.getAnnee());
+        existingPaa.setBudgetEstime(request.getBudgetEstime());
+
+        // Set Ac if provided
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
+            existingPaa.setAc(ac);
+        }
+
+        // Clear existing documents to avoid duplicates and handle new ones
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            existingPaa.getDocs().clear(); // Clear existing documents
+            List<Docs> docs = new ArrayList<>();
+            for (Integer docId : request.getDocIds()) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+
+                // Set up bidirectional relationship
+                if (doc.getPaas() == null) {
+                    doc.setPaas(new ArrayList<>());
+                }
+                doc.getPaas().add(existingPaa);
+                docs.add(doc);
+
+                // Save the document with updated relationship
+                docsRepository.save(doc);
+            }
+            existingPaa.setDocs(docs);
+        } else {
+            existingPaa.getDocs().clear(); // Clear if no new documents provided
+        }
+
+        // Handle PAA files if provided
+        if (request.getPaaFiles() != null) {
+            try {
+                processAndSaveDocuments(request.getPaaFiles(), existingPaa);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        // Process realisations if provided
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            List<Realisation> realisations = new ArrayList<>();
+
+            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+                Realisation realisation;
+
+                if (realisationRequest.getId() != null) {
+                    // Update existing realisation
+                    Integer versionToUse = realisationRequest.getVersion();
+                    if (versionToUse == null) {
+                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationRequest.getId());
+                        if (maxVersion != null) {
+                            versionToUse = maxVersion;
+                        } else {
+                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationRequest.getId());
+                        }
+                    }
+
+                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
+                    realisation = realisationRepository.findById(realisationId)
+                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
+
+                    // Update realisation fields
+                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                    realisation.setService(realisationRequest.getService());
+                    realisation.setDirection(realisationRequest.getDirection());
+                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setIsPublished(realisationRequest.getIsPublished());
+                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                    realisation.setSort(realisationRequest.getSort());
+
+                    // Handle realisation files if provided
+                    if (realisationRequest.getRealisationFiles() != null) {
+                        try {
+                            processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    // Ensure the relationship with PAA
+                    if (realisation.getPaas() == null) {
+                        realisation.setPaas(new ArrayList<>());
+                    }
+                    if (!realisation.getPaas().contains(existingPaa)) {
+                        realisation.getPaas().add(existingPaa);
+                    }
+
+                    // Handle Lots if provided
+                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                        Set<Lot> lots = new HashSet<>();
+                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+                            Lot lot = new Lot();
+                            Integer lotId = lotRequest.getId();
+                            if (lotId == null) {
+                                Integer maxLotId = lotRepository.findMaxId();
+                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+                            }
+                            lot.setId(lotId);
+                            lot.setVersion(1); // Always version 1 for new lots
+                            lot.setDescription(lotRequest.getDescription());
+                            lot = lotRepository.save(lot);
+                            lots.add(lot);
+                        }
+                        realisation.setLots(lots);
+                    }
+
+                    // Save the realisation
+                    realisation = realisationRepository.save(realisation);
+                } else {
+                    // Create new realisation
+                    realisation = new Realisation();
+                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+                    realisation.setId(realisationId);
+                    realisation.setVersion(1); // Always version 1 for new realisations
+
+                    // Set all fields from the request
+                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                    realisation.setService(realisationRequest.getService());
+                    realisation.setDirection(realisationRequest.getDirection());
+                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setIsPublished(realisationRequest.getIsPublished());
+                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                    realisation.setSort(realisationRequest.getSort());
+
+                    // Handle realisation files if provided
+                    if (realisationRequest.getRealisationFiles() != null) {
+                        try {
+                            processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    // Set up the relationship with PAA
+                    List<Paa> paaList = new ArrayList<>();
+                    paaList.add(existingPaa);
+                    realisation.setPaas(paaList);
+
+                    // Handle Lots if provided
+                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                        Set<Lot> lots = new HashSet<>();
+                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+                            Lot lot = new Lot();
+                            Integer lotId = lotRequest.getId();
+                            if (lotId == null) {
+                                Integer maxLotId = lotRepository.findMaxId();
+                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+                            }
+                            lot.setId(lotId);
+                            lot.setVersion(1);
+                            lot.setDescription(lotRequest.getDescription());
+                            lot = lotRepository.save(lot);
+                            lots.add(lot);
+                        }
+                        realisation.setLots(lots);
+                    }
+
+                    // Save the realisation
+                    realisation = realisationRepository.save(realisation);
+                }
+
+                realisations.add(realisation);
+            }
+
+            // Update the PAA with the list of realisations
+            existingPaa.setRealisations(realisations);
+        } else {
+            existingPaa.getRealisations().clear(); // Clear if no new realisations provided
+        }
+
+        // Save the updated PAA
+        return repository.save(existingPaa);
     }
+
+//    @Override
+//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
+//        CompositeId compositeId = new CompositeId(paaId, paaVer);
+//        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+//
+//        if (existingPaaOpt.isEmpty()) {
+//            throw new PaaNotFound(
+//                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer));
+//        }
+//
+//        Paa existingPaa = existingPaaOpt.get();
+//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//            throw new PaaNotFound(
+//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,List.of(paaId),List.of(paaVer));
+//        }
+//
+//        // Create a new PAA version
+//        Paa newPaa = new Paa();
+//        newPaa.setId(paaId);
+//        newPaa.setVersion(paaVer);
+//        newPaa.setRef(request.getRef());
+//        newPaa.setNom(request.getNom());
+//        newPaa.setAnnee(request.getAnnee());
+//        newPaa.setBudgetEstime(request.getBudgetEstime());
+//
+//
+//
+//        // Set status if provided
+////        if (request.getStatus() != null) {
+////            newPaa.setStatus(request.getStatus());
+////        } else {
+////            newPaa.setStatus(existingPaa.getStatus());
+////        }
+//
+//        // Set Ac if provided
+//        if (request.getAcId() != null) {
+//            Ac ac = acRepository.findById(request.getAcId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
+//            newPaa.setAc(ac);
+//        } else {
+//            newPaa.setAc(existingPaa.getAc());
+//        }
+//
+//        // Set empty collections to avoid NPEs
+//        newPaa.setRealisations(new ArrayList<>());
+//        newPaa.setDocs(new ArrayList<>());
+//
+//        // Save PAA initially without associations
+//        Paa savedPaa = repository.save(newPaa);
+//
+//        // Handle documents if provided
+//        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+//            List<Docs> docs = new ArrayList<>();
+//            for (Integer docId : request.getDocIds()) {
+//                Docs doc = docsRepository.findById(docId)
+//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//
+//                // Set up bidirectional relationship
+//                if (doc.getPaas() == null) {
+//                    doc.setPaas(new ArrayList<>());
+//                }
+//                doc.getPaas().add(savedPaa);
+//                docs.add(doc);
+//
+//                // Save the document with updated relationship
+//                docsRepository.save(doc);
+//            }
+//
+//            // Update PAA with documents
+//            savedPaa.setDocs(docs);
+//        }
+//
+//        // Handle PAA files if provided
+//        if(request.getPaaFiles() != null) {
+//            try {
+//                processAndSaveDocuments(request.getPaaFiles(), savedPaa);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//
+//        // Process realisations if provided
+//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//            List<Realisation> realisations = new ArrayList<>();
+//
+//            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+//                Realisation realisation;
+//
+//                if (realisationRequest.getId() != null) {
+//                    // Update existing realisation
+//                    Integer versionToUse = realisationRequest.getVersion();
+//                    if (versionToUse == null) {
+//                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationRequest.getId());
+//                        if (maxVersion != null) {
+//                            versionToUse = maxVersion;
+//                        } else {
+//                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationRequest.getId());
+//                        }
+//                    }
+//
+//                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
+//                    realisation = realisationRepository.findById(realisationId)
+//                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
+//
+//                    // Create new version of realisation
+//                    Realisation newRealisation = new Realisation();
+//                    newRealisation.setId(realisation.getId());
+//                    newRealisation.setVersion(realisation.getVersion());
+//                    newRealisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    newRealisation.setService(realisationRequest.getService());
+//                    newRealisation.setDirection(realisationRequest.getDirection());
+//                    newRealisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    newRealisation.setMonais(realisationRequest.getMonais());
+//                    newRealisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    newRealisation.setModeSelection(realisationRequest.getModeSelection());
+//                    newRealisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    newRealisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    newRealisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    newRealisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    newRealisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    newRealisation.setIsPublished(realisationRequest.getIsPublished());
+//                    newRealisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    newRealisation.setSort(realisationRequest.getSort());
+//
+//                    // Handle realisation files if provided
+//                    if(realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), newRealisation);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    // Set up the relationship with PAA
+//                    List<Paa> paaList = new ArrayList<>();
+//                    paaList.add(savedPaa);
+//                    newRealisation.setPaas(paaList);
+//
+//                    // Handle Lots if provided
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        Set<Lot> lots = new HashSet<>();
+//
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot = new Lot();
+//
+//                            // Generate ID if not provided
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId == null) {
+//                                Integer maxLotId = lotRepository.findMaxId();
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                            }
+//
+//                            // Always use version 1 for newly created lots
+//                            lot.setId(lotId);
+//                            lot.setVersion(1);
+//                            lot.setDescription(lotRequest.getDescription());
+//
+//                            // Save the lot
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//
+//                        newRealisation.setLots(lots);
+//                    }
+//
+//                    // Save the realisation
+//                    realisation = realisationRepository.save(newRealisation);
+//                } else {
+//                    // Create new realisation
+//                    realisation = new Realisation();
+//
+//                    // Generate a new ID for the realisation
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+//
+//                    // Always use version 1 for newly created realisations
+//                    realisation.setId(realisationId);
+//                    realisation.setVersion(1);
+//
+//                    // Set all fields from the request
+//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    realisation.setMonais(realisationRequest.getMonais());
+//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    realisation.setIsPublished(realisationRequest.getIsPublished());
+//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    realisation.setSort(realisationRequest.getSort());
+//
+//                    // Handle realisation files if provided
+//                    if(realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    // Set up the relationship with PAA
+//                    List<Paa> paaList = new ArrayList<>();
+//                    paaList.add(savedPaa);
+//                    realisation.setPaas(paaList);
+//
+//                    // Handle Lots if provided
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        Set<Lot> lots = new HashSet<>();
+//
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot = new Lot();
+//
+//                            // Generate ID if not provided
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId == null) {
+//                                Integer maxLotId = lotRepository.findMaxId();
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                            }
+//
+//                            // Always use version 1 for newly created lots
+//                            lot.setId(lotId);
+//                            lot.setVersion(1);
+//                            lot.setDescription(lotRequest.getDescription());
+//
+//                            // Save the lot
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//
+//                        realisation.setLots(lots);
+//                    }
+//
+//                    // Save the realisation
+//                    realisation = realisationRepository.save(realisation);
+//                }
+//
+//                realisations.add(realisation);
+//            }
+//
+//            // Update the PAA with the list of realisations
+//            savedPaa.setRealisations(realisations);
+//        }
+//
+//        // Save again to persist all associations
+//        return repository.save(savedPaa);
+//    }
+//    @Override
+//    public Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound {
+//        CompositeId compositeId = new CompositeId(paaId, paaVer);
+//        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+//
+//        if (existingPaaOpt.isEmpty()) {
+//            throw new PaaNotFound(
+//                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer));
+//        }
+//
+//        Paa existingPaa = existingPaaOpt.get();
+//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//            throw new PaaNotFound(
+//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,List.of(paaId),List.of(paaVer));
+//        }
+//
+//        Paa paa = PaaMapper.INSTANCE.updatePaaFromRequest(request, existingPaaOpt.get());
+//        return repository.save(paa);
+//    }
 
     /**
      * Updates a PAA by creating a new version with the updated data.
@@ -904,6 +1374,14 @@ public class PaaServiceImpl implements PaaService {
         paa.setNom(request.getNom());
         paa.setAnnee(request.getAnnee());
         paa.setBudgetEstime(request.getBudgetEstime());
+        RefParam defaultStatus = null;
+        try {
+            defaultStatus = refParamRepository.findById(1).get();
+
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        paa.setStatus(defaultStatus);
 
         // Set status if provided
         if (request.getStatus() != null) {
@@ -1236,6 +1714,7 @@ public class PaaServiceImpl implements PaaService {
         }
     }
 
+    //TODO: working until update
     void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         List<Docs> docs = new ArrayList<>();
         UUID uuid = UUID.randomUUID();
@@ -1321,6 +1800,98 @@ public class PaaServiceImpl implements PaaService {
         // Update the realisation's docs
         savedRealisation.setDocs(docs);
     }
+
+
+    void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+        List<Docs> docs = new ArrayList<>();
+        UUID uuid = UUID.randomUUID();
+        AtomicInteger fileCounter = new AtomicInteger(0);
+
+        if (files != null && !files.isEmpty()) {
+            // Create a unique folder path with timestamp to avoid conflicts
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
+            String folderPath = String.format("%s/REL_%d_%d_%s",
+                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion(), timestamp);
+
+            // Create a new folder for this upload operation
+            String folderId;
+            synchronized (folderCreationLock) {
+                try {
+                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
+                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
+                } catch (Exception e) {
+                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
+                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
+                }
+            }
+
+            // Process each file
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        Tika tika = new Tika();
+                        String detectedMimeType = tika.detect(file.getInputStream());
+                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+
+                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromFileName(originalFilename);
+//                        }
+
+                        long fileSize = file.getSize();
+                        String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                        String[] parts = originalFilename.split("\\.");
+                        String baseName = parts[0];
+                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
+                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
+                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
+                                originalFilename, uniqueFileName, folderPath, folderId);
+
+                        // Upload with retry logic
+                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
+                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
+
+                        Docs document = new Docs();
+                        document.setName(baseName);
+                        document.setAlfresco_id(alfrescoId);
+                        document.setPathFolder(folderPath);
+                        document.setFileSize(formattedSize);
+                        document.setContentType(detectedMimeType);
+                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                        document.setAlfrescoName(uniqueFileName);
+
+                        // Ensure collections are initialized
+                        if (document.getRealisations() == null) {
+                            document.setRealisations(new ArrayList<>());
+                        }
+                        if (savedRealisation.getDocs() == null) {
+                            savedRealisation.setDocs(new ArrayList<>());
+                        }
+
+                        // Set up bidirectional relationship
+                        document.getRealisations().add(savedRealisation);
+                        savedRealisation.getDocs().add(document);
+
+                        // Save the document
+                        docsRepository.save(document);
+                        docs.add(document);
+                    } catch (Exception e) {
+                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+
+        // Update the realisation's docs
+        savedRealisation.setDocs(docs);
+    }
+
 
 
     // Helper method to upload a file to an existing folder by ID, not by path
@@ -1803,4 +2374,6 @@ public class PaaServiceImpl implements PaaService {
 //
 //    savedRealisation.setDocs(docs);
 //}
+
+
 }

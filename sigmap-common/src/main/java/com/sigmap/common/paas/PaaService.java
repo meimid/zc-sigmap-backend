@@ -129,7 +129,7 @@ public interface PaaService {
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound;
+    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
 
     /**
      * Updates a PAA by creating a new version with the updated data.
