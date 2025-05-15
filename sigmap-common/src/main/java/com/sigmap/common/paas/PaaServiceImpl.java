@@ -660,7 +660,30 @@ public class PaaServiceImpl implements PaaService {
         System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
         System.out.println("Request data: " + request);
 
-        // Generate hash for all requests (we'll need it later for the new version too)
+        // Track whether any documents have changed
+        boolean documentsChanged = false;
+        
+        // Process any document changes
+        if (request.getDocIds() != null) {
+            // Get only the active (non-deleted) existing document IDs
+            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+                    existingPaa.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .map(Docs::getId)
+                            .collect(Collectors.toSet()) : new HashSet<>();
+                            
+            // Compare with requested document IDs
+            Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
+            documentsChanged = !requestDocIds.equals(activeExistingDocIds);
+            
+            if (documentsChanged) {
+                System.out.println("Document changes detected:");
+                System.out.println("  - Active existing docs: " + activeExistingDocIds);
+                System.out.println("  - Requested docs: " + requestDocIds);
+            }
+        }
+        
+        // Get hash for the current request
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
         
@@ -674,8 +697,8 @@ public class PaaServiceImpl implements PaaService {
             System.out.println("Previous request hash: " + previousRequestHash);
 
             // If this is the exact same request as the previous one, return the existing PAA without changes
-            if (requestHash != null && requestHash.equals(previousRequestHash)) {
-                System.out.println("Duplicate request detected, returning existing PAA without changes");
+            if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged) {
+                System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
                 
                 // Create a filtered copy for response
                 Paa copyForResponse = new Paa();
@@ -746,9 +769,6 @@ public class PaaServiceImpl implements PaaService {
         // Track whether any realisations have changed
         boolean realisationsChanged = false;
 
-        // Track whether any documents have changed
-        boolean documentsChanged = false;
-
         // Prepare lists for relationships
         List<Realisation> updatedRealisations = new ArrayList<>();
         List<Docs> updatedDocs = new ArrayList<>();
@@ -788,12 +808,19 @@ public class PaaServiceImpl implements PaaService {
                         boolean updateNeeded = realisationNeedsUpdate(existingRealisation, realisationDto);
                         System.out.println("Realisation update needed: " + updateNeeded);
 
+                        // Always check for files even if no other changes
+                        boolean hasRealisationFiles = realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty();
+                        if (hasRealisationFiles) {
+                            System.out.println("Files detected in realisation, forcing update");
+                            updateNeeded = true;
+                        }
+
                         if (updateNeeded) {
                             System.out.println("Updating Realisation with versioning...");
                             Realisation updatedRealisation = realisationService.updateWithVersioning(
                                     realisationDto.getId(), versionToUse, realisationDto);
                             
-                            // Handle realisation files if provided - this was missing
+                            // Handle realisation files if provided
                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                                 try {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
@@ -815,7 +842,7 @@ public class PaaServiceImpl implements PaaService {
                         } else {
                             System.out.println("Using existing Realisation without changes");
                             
-                            // Even if no field changes detected, still process realisation files if any - this was missing
+                            // Even if no field changes detected, still process realisation files if any
                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                                 try {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
@@ -855,7 +882,10 @@ public class PaaServiceImpl implements PaaService {
 
                                 for (LotResponse lotDto : realisationDto.getLots()) {
                                     if (lotDto.getId() == null) {
+                                        // Handle new lot without ID
                                         String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                        System.out.println("Processing new lot with description: " + lotHash);
+                                        
                                         if (newLotsMap.containsKey(lotHash)) {
                                             System.out.println("Using previously created lot for description: " + lotHash);
                                             updatedLots.add(newLotsMap.get(lotHash));
@@ -895,6 +925,8 @@ public class PaaServiceImpl implements PaaService {
                                         newLotsMap.put(lotHash, savedLot);
                                         System.out.println("Created new Lot with ID: " + savedLot.getId());
                                         lotChanges = true;
+
+
                                     } else {
                                         if (processedLotIds.contains(lotDto.getId())) {
                                             System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
@@ -987,7 +1019,7 @@ public class PaaServiceImpl implements PaaService {
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
                         
-                        // Handle new realisation files if provided - this was missing
+                        // Handle new realisation files if provided
                         if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                             try {
                                 System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
@@ -1057,114 +1089,76 @@ public class PaaServiceImpl implements PaaService {
                             .map(Docs::getId)
                             .collect(Collectors.toSet()) : new HashSet<>();
             
-            // First check if there are document changes between active docs and request
-            // Use equals to detect exact changes in documents
-            documentsChanged = !requestDocIds.equals(activeExistingDocIds);
+            // Compare requested doc IDs with active doc IDs
+            System.out.println("Comparing document IDs:");
+            System.out.println("  - Existing active docs: " + activeExistingDocIds);
+            System.out.println("  - Requested docs: " + requestDocIds);
             
-            // Log document changes for clarity
-            if (documentsChanged) {
-                System.out.println("Document changes detected:");
-                
-                // Find new documents (in request but not existing)
-                Set<Integer> newDocIds = new HashSet<>(requestDocIds);
-                newDocIds.removeAll(activeExistingDocIds);
-                if (!newDocIds.isEmpty()) {
-                    System.out.println("  - New documents added: " + newDocIds);
-                }
-                
-                // Find removed documents (existing but not in request)
-                Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
-                removedDocIds.removeAll(requestDocIds);
-                if (!removedDocIds.isEmpty()) {
-                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
-                }
+            // If the sets don't match exactly, we need to mark it as changed
+            if (!requestDocIds.equals(activeExistingDocIds)) {
+                System.out.println("Document ID sets are different - marking as changed");
+                documentsChanged = true;
             } else {
-                System.out.println("No document changes detected");
+                System.out.println("Document ID sets match - no document changes detected");
             }
             
-            // Always prepare documents for possible version change
+            // Prepare documents for the new version
+            updatedDocs = new ArrayList<>();
+            
+            // Process existing documents first
             if (existingPaa.getDocs() != null) {
-                // Start with all existing documents (both active and deleted)
-                updatedDocs = new ArrayList<>(existingPaa.getDocs());
-                
-                // Process each existing document
-                for (Docs doc : updatedDocs) {
-                    if (requestDocIds.contains(doc.getId())) {
-                        // Document is in the request, ensure it's not marked as deleted
-                        if (Boolean.TRUE.equals(doc.getIsDeleted())) {
-                            doc.setIsDeleted(false);
-                            docsRepository.save(doc);
-                            System.out.println("Activated document with ID " + doc.getId() + " for new version");
-                            documentsChanged = true;
-                        }
-                        // Remove from request since we've handled it
-                        requestDocIds.remove(doc.getId());
-                    } else {
-                        // Document is not in the request, mark it as deleted
-                        if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-                            doc.setIsDeleted(true);
-                            docsRepository.save(doc);
-                            System.out.println("Marked document with ID " + doc.getId() + " as deleted (not in request)");
-                            documentsChanged = true;
-                        }
+                for (Docs existingDoc : existingPaa.getDocs()) {
+                    // Get a fresh copy of the document to avoid stale data
+                    Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+                    if (docToProcess == null) {
+                        System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
+                        continue;
                     }
-                }
-                
-                // Add any new documents from the request
-                for (Integer docId : requestDocIds) {
-                    Docs doc = docsRepository.findById(docId)
-                            .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
                     
-                    // Set up bidirectional relationship if this is a new document for this PAA
-                    if (!updatedDocs.contains(doc)) {
-                        if (doc.getPaas() == null) {
-                            doc.setPaas(new ArrayList<>());
-                        }
+                    if (requestDocIds.contains(docToProcess.getId())) {
+                        // This document is in the request, make sure it's not deleted
+                        docToProcess.setIsDeleted(false);
+                        docToProcess = docsRepository.save(docToProcess);
+                        updatedDocs.add(docToProcess);
                         
-                        // Make sure it's active
-                        doc.setIsDeleted(false);
-                        docsRepository.save(doc);
-                        updatedDocs.add(doc);
-                        System.out.println("Added new document with ID " + doc.getId() + " for new version");
-                        documentsChanged = true;
+                        // Remove from requestDocIds to track what we've processed
+                        requestDocIds.remove(docToProcess.getId());
+                    } else {
+                        // This document is not in the request, mark as deleted
+                        docToProcess.setIsDeleted(true);
+                        docToProcess = docsRepository.save(docToProcess);
+                        updatedDocs.add(docToProcess);
+                        System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted for new version");
                     }
                 }
-            } else {
-                // No existing docs, just add the requested ones
-                for (Integer docId : requestDocIds) {
-                    Docs doc = docsRepository.findById(docId)
-                            .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-                    
-                    if (doc.getPaas() == null) {
-                        doc.setPaas(new ArrayList<>());
-                    }
-                    
-                    doc.setIsDeleted(false);
-                    docsRepository.save(doc);
-                    updatedDocs.add(doc);
-                    System.out.println("Added new document with ID " + doc.getId() + " for new PAA version");
-                }
-                if (!requestDocIds.isEmpty()) {
-                    documentsChanged = true;
-                }
+            }
+            
+            // Now process any new documents in the request
+            for (Integer docId : requestDocIds) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
+                
+                // Ensure it's active
+                doc.setIsDeleted(false);
+                doc = docsRepository.save(doc);
+                updatedDocs.add(doc);
+                System.out.println("Added new document with ID " + doc.getId() + " for new version");
             }
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
             // No document IDs provided, but existing docs exist - mark all as deleted
-            updatedDocs = new ArrayList<>(existingPaa.getDocs());
-            boolean anyActive = false;
-            for (Docs doc : updatedDocs) {
-                if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-                    doc.setIsDeleted(true);
-                    docsRepository.save(doc);
-                    anyActive = true;
-                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
-                }
+            updatedDocs = new ArrayList<>();
+            for (Docs existingDoc : existingPaa.getDocs()) {
+                // Get a fresh copy of the document
+                Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+                if (docToProcess == null) continue;
+                
+                // Mark as deleted
+                docToProcess.setIsDeleted(true);
+                docToProcess = docsRepository.save(docToProcess);
+                updatedDocs.add(docToProcess);
+                System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
             }
-            // Only consider this a change if we had to mark any active docs as deleted
-            if (anyActive) {
-                documentsChanged = true;
-                System.out.println("All documents marked as deleted (empty docIds in request)");
-            }
+            documentsChanged = true;
         } else {
             // No docs in request or existing PAA
             updatedDocs = new ArrayList<>();

@@ -13,21 +13,30 @@ import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.PaaResponse;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.propertyeditors.CustomCollectionEditor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/paas")
@@ -39,6 +48,18 @@ public class PaaController {
         this.paaService = paaService;
     }
 
+    /**
+     * Initialize collections in binding process to avoid "Cannot get element with index 0 from Collection of size 0" errors
+     */
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        binder.registerCustomEditor(Set.class, new CustomCollectionEditor(Set.class) {
+            @Override
+            protected Object convertElement(Object element) {
+                return super.convertElement(element);
+            }
+        });
+    }
 
     /**
      * Return a page of paas based on the given specification and pageable.
@@ -134,19 +155,71 @@ public class PaaController {
     }
 
 //    @PutMapping("/{paaId}/{paaVer}")
-    @PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
-    public ResponseEntity<PaaResponseWithRealisations> update(
-            @PathVariable Integer paaId,
-            @PathVariable Integer paaVer,
-            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
-        logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
-        Paa updatedPaa = paaService.update(paaId, paaVer, request);
+@PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
+public ResponseEntity<PaaResponseWithRealisations> update(
+        @PathVariable Integer paaId,
+        @PathVariable Integer paaVer,
+        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+    logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
+    Paa updatedPaa = paaService.update(paaId, paaVer, request);
 
-        // Use the detailed mapper to create a response with specialised DTOs
-        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+    // Use the detailed mapper to create a response with specialised DTOs
+    PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
 
-        return ResponseEntity.ok(response);
+    return ResponseEntity.ok(response);
+}
+
+    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
+            // Where the keys are realisation indices
+            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+
+            // Process each realisation's lots
+            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+                int realisationIndex = Integer.parseInt(entry.getKey());
+
+                // Skip if index is out of bounds
+                if (realisationIndex >= request.getRealisations().size()) {
+                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+                    continue;
+                }
+
+                // Get the target realisation
+                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+                Set<LotResponse> lots = new HashSet<>();
+
+                // Process lots for this realisation
+                for (Map<String, Object> lotData : entry.getValue()) {
+                    LotResponse lot = new LotResponse();
+
+                    if (lotData.containsKey("id")) {
+                        lot.setId(((Number) lotData.get("id")).intValue());
+                    }
+
+                    if (lotData.containsKey("version")) {
+                        lot.setVersion(((Number) lotData.get("version")).intValue());
+                    }
+
+                    if (lotData.containsKey("description")) {
+                        lot.setDescription((String) lotData.get("description"));
+                    }
+
+                    lots.add(lot);
+                }
+
+                // Set the processed lots on the realisation
+                realisation.setLots(lots);
+                logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+            }
+        } catch (Exception e) {
+            logger.error("Failed to parse lots JSON: {}", e.getMessage());
+            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
+        }
     }
+
 
     /**
      * Updates a PAA by creating a new version with the updated data.
@@ -172,11 +245,24 @@ public class PaaController {
         return ResponseEntity.ok(response);
     }
 
+
     @PutMapping(value="/{paaId}/versioning/multi", consumes = {"multipart/form-data"})
     public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
             @PathVariable Integer paaId,
-            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
-        logger.info("Updating PAA ID: {} version: {} with versioning", paaId);
+            @ModelAttribute("request") PaaRequestGlobal request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound {
+        logger.info("Updating PAA ID: {} with versioning (multipart)", paaId);
+
+        // Process lots from JSON string if provided
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
         Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
 
         // Use the detailed mapper to create a response with specialised DTOs
@@ -184,6 +270,18 @@ public class PaaController {
 
         return ResponseEntity.ok(response);
     }
+//    @PutMapping(value="/{paaId}/versioning/multi", consumes = {"multipart/form-data"})
+//    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
+//            @PathVariable Integer paaId,
+//            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+//        logger.info("Updating PAA ID: {} version: {} with versioning", paaId);
+//        Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
+//
+//        // Use the detailed mapper to create a response with specialised DTOs
+//        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+//
+//        return ResponseEntity.ok(response);
+//    }
 
     /**
      * Updates a PAA by creating a new version with the updated data using the latest version.
