@@ -84,12 +84,12 @@ public class PaaController {
      * @return the paa
      */
     @GetMapping("/{paaId}/{paaVer}")
-    public ResponseEntity<PaaResponse> findById(
+    public ResponseEntity<PaaResponseWithRealisations> findById(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
                 .orElseThrow(() -> new PaaNotFound("Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer)));
-        PaaResponse response = PaaMapper.INSTANCE.map(paa);
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
         return ResponseEntity.ok(response);
     }
 
@@ -165,6 +165,19 @@ public class PaaController {
             @RequestBody PaaRequestGlobal request) throws PaaNotFound {
         logger.info("Updating PAA ID: {} version: {} with versioning", paaId, paaVer);
         Paa updatedPaa = paaService.updateWithVersioning(paaId, paaVer, request);
+
+        // Use the detailed mapper to create a response with specialised DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping(value="/{paaId}/versioning/multi", consumes = {"multipart/form-data"})
+    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
+            @PathVariable Integer paaId,
+            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+        logger.info("Updating PAA ID: {} version: {} with versioning", paaId);
+        Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
 
         // Use the detailed mapper to create a response with specialised DTOs
         PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);

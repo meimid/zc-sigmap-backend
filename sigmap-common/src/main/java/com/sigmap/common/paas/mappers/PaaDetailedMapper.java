@@ -32,6 +32,7 @@ public interface PaaDetailedMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "realisations", expression = "java(mapRealisations(paa.getRealisations()))")
+    @Mapping(target = "docs", expression = "java(mapDocs(paa.getDocs()))")
     PaaResponseWithRealisations mapDetailed(Paa paa);
 
     /**
@@ -45,6 +46,7 @@ public interface PaaDetailedMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "lots", expression = "java(mapLots(realisation.getLots()))")
+    @Mapping(target = "docs", expression = "java(mapDocs(realisation.getDocs()))")
     RealisationResponseDtoForPaa mapRealisation(Realisation realisation);
 
     /**
@@ -73,6 +75,30 @@ public interface PaaDetailedMapper {
         }
         return lots.stream()
                 .map(this::mapLot)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper method to map a list of Docs entities to DocsResponseDTO DTOs
+     */
+    default List<com.sigmap.common.docs.Response.DocsResponseDTO> mapDocs(List<com.sigmap.common.docs.Docs> docs) {
+        if (docs == null) {
+            return null;
+        }
+        return docs.stream()
+                .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                .map(doc -> {
+                    com.sigmap.common.docs.Response.DocsResponseDTO dto = new com.sigmap.common.docs.Response.DocsResponseDTO();
+                    dto.setId(doc.getId());
+                    dto.setName(doc.getName());
+                    dto.setAlfresco_id(doc.getAlfresco_id());
+                    dto.setPathFolder(doc.getPathFolder());
+                    dto.setFileSize(doc.getFileSize());
+                    dto.setContentType(doc.getContentType());
+                    dto.setFileExtension(doc.getFileExtension());
+                    dto.setAlfrescoName(doc.getAlfrescoName());
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 } 

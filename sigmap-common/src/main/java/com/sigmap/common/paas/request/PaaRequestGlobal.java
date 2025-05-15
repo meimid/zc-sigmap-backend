@@ -7,6 +7,7 @@ import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -22,7 +23,7 @@ public class PaaRequestGlobal {
     private RefParam status;
     private Integer acId;
     private List<Integer> docIds;
-    private List<RealisationRequestForPaa> realisations;
+    private List<RealisationRequestForPaa> realisations = new ArrayList<>();
 
     // toDO: nejah
     private List<MultipartFile> paaFiles;

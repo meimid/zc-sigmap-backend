@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotPaaResponse;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -33,6 +34,7 @@ public class RealisationResponseDtoForPaa {
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;
+    private List<DocsResponseDTO> docs;
     // Using simplified lot responses and removing paas reference to avoid circular references
     private List<LotPaaResponse> lots;
     private BaseEntityResponse metadata;
