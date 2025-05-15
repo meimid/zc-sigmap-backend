@@ -2,6 +2,11 @@ server:
   port: ${PORT:8083}
   servlet:
     context-path: /ppm
+    multipart:
+      max-file-size:
+        ${UPLOAD_MAX_FILE_SIZE:30MB}
+      max-request-size:
+        ${UPLOAD_MAX_REQUEST_SIZE:30MB}
 
 spring:
   application:

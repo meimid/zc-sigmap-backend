@@ -32,6 +32,7 @@ import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest
 import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
 import com.sigmap.common.societe_contact.Response.SocieteContactResponse;
+import com.sigmap.common.societe_contact.Response.SocieteContactResponseDto;
 import com.sigmap.common.societe_contact.SocieteContact;
 import com.sigmap.common.societe_contact.SocieteContactService;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
@@ -167,10 +168,10 @@ public class SocieteController {
      * @return a page of SocieteContact
      */
     @GetMapping("/{societeId}/contact")
-    public ResponseEntity<Page<ContactResponse>> findAll(@PathVariable Integer societeId,
+    public ResponseEntity<Page<SocieteContactResponseDto>> findAll(@PathVariable Integer societeId,
                                                          SocieteContactQuery query, Pageable pageable) {
-        Page<Contact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
-        Page<ContactResponse> contactResponses = params.map(ContactMapper.INSTANCE::map);
+        Page<SocieteContact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
+        Page<SocieteContactResponseDto> contactResponses = params.map(SociteContactMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(contactResponses);
     }
 

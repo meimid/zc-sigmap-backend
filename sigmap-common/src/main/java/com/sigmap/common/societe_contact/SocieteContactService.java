@@ -2,7 +2,6 @@ package com.sigmap.common.societe_contact;
 
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.exception.ContactNotFound;
-import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
@@ -10,7 +9,6 @@ import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +21,10 @@ public interface SocieteContactService {
      * Return a page of SocieteContact based on the given specification and pageable.
      *
      * @param SocieteContact the specification to use
-     * @param pageable the pageable to use
+     * @param pageable       the pageable to use
      * @return a page of SocieteContact
      */
-    Page<Contact> findAll(Integer societeId, Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<SocieteContact> findAll(Integer societeId, Specification<SocieteContact> SocieteContact, Pageable pageable);
 
     /**
      * Return a page of deleted SocieteContact based on the given specification and pageable.

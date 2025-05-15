@@ -4,7 +4,6 @@ import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.ContactRepository;
 import com.sigmap.common.contact.ContactService;
 import com.sigmap.common.contact.exception.ContactNotFound;
-import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
@@ -50,14 +49,10 @@ public class SocieteContactServiceImpl implements SocieteContactService {
     }
 
     @Override
-    public Page<Contact> findAll(Integer societeId,Specification<SocieteContact> societeContact, Pageable pageable) {
-        Page <SocieteContact> societeContacts= repository.findBySocieteId(societeId,societeContact, pageable);
-        List<Contact> contactList = societeContacts
-                .stream()
-                .map(sc -> sc.getSocieteContactId().getContact())
-                .toList();
+    public Page<SocieteContact> findAll(Integer societeId, Specification<SocieteContact> societeContact, Pageable pageable) {
+        return repository.findBySocieteId(societeId,societeContact, pageable);
 
-        return new PageImpl<>(contactList, pageable, societeContacts.getTotalElements());
+
 
 
     }
