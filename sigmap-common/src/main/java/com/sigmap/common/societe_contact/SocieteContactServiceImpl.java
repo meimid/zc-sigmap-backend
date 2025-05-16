@@ -160,5 +160,14 @@ public class SocieteContactServiceImpl implements SocieteContactService {
         return repository.findSocieteContactByContactId(contactId);
     }
 
+    @Override
+    public SocieteContact updateContactAndSocieteContact(Integer societeId,Integer contactId, ContactAndSocieteContactRequest request) throws SocieteNotFound, SocieteContactNotFound,ContactNotFound {
+        societeService.findById(societeId);
+        findByIds(societeId,contactId);
+        contactService.update(contactId,request.getContact());
+        return update(societeId,contactId,request.getSocieteContactRequest());
+
+    }
+
 
 }

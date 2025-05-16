@@ -107,6 +107,6 @@ public interface SocieteContactService {
      */
     SocieteContact createContactAndSocieteContact(Integer societeId, ContactAndSocieteContactRequest request) throws RuntimeException, SocieteNotFound;
     SocieteContact findSocieteContactByContactId(Integer contactId) throws ContactNotFound, SocieteContactNotFound;
-
+    SocieteContact updateContactAndSocieteContact (Integer societeId,Integer ContactId,ContactAndSocieteContactRequest request) throws SocieteNotFound, SocieteContactNotFound,ContactNotFound;
 
 }

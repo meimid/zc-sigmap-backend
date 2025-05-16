@@ -1,13 +1,8 @@
 server:
   port: ${PORT:8081}
-  
   servlet:
     context-path: /paa
-    multipart:
-      max-file-size:
-        ${UPLOAD_MAX_FILE_SIZE:30MB}
-      max-request-size:
-        ${UPLOAD_MAX_REQUEST_SIZE:30MB}
+
 
 spring:
   application:
@@ -16,6 +11,10 @@ spring:
     url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
 
   jpa:
     show-sql: true
@@ -77,3 +76,6 @@ alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
   username: ${ALFRESCO_USERNAME:admin}
   password: ${ALFRESCO_PASSWORD:admin}
+
+max-file-size: ${UPLOAD_MAX_FILE_SIZE:31457280}
+max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:31457280}
