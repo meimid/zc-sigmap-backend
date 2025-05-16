@@ -12,7 +12,7 @@ import org.springframework.data.domain.Pageable;
 public interface ContactRepository  extends JpaRepository<Contact, Integer>,
         JpaSpecificationExecutor<Contact>,
         SoftDeleteRepository<Contact, Integer> {
-    @Query("SELECT sc.societeContactId.contact FROM SocieteContact sc WHERE sc.societeContactId.societe.id = :societeId")
+    @Query("SELECT sc.societeContactId.contact FROM SocieteContact sc WHERE sc.societeContactId.societe.id = :societeId and sc.societeContactId.contact.isDeleted=false")
     Page<Contact> findContactsBySocieteId(@Param("societeId") Integer societeId, Pageable pageable);
 
 
