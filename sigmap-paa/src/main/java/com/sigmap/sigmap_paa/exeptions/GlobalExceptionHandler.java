@@ -1,11 +1,11 @@
 package com.sigmap.sigmap_paa.exeptions;
 
 
+import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -74,6 +75,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-
-
+   /* // Handler for MaxUploadSizeExceededException (from Spring's MultipartResolver)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        String message = messageSource.getMessage("doc.maxSize", new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+*/
+   @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+   @ExceptionHandler(MaxUploadSizeFile.class)
+   public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(MaxUploadSizeFile ex) {
+       String message = messageSource.getMessage("doc.maxSize",new Object[] {ex.getMaxFileUploadSize()},getLocal());
+       ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+       return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+   }
 }
