@@ -24,7 +24,8 @@ public class Societe extends BaseEntity {
     @JoinColumn (name = "pays_id")
     private RefParam pays;
     private String nni;
-    @Column(name = "categorie_soumissionnaire_id")
-    private String categorieSoumissionnaireId;
+    @ManyToOne
+    @JoinColumn(name = "categorie_soumissionnaire_id")
+    private RefParam categorieSoumissionnaire;
 
 }

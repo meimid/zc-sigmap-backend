@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_agpm.agpm.service;
+package com.sigmap.sigmap_agpm.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
@@ -6,27 +6,29 @@ import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.config.Constants;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
-import com.sigmap.sigmap_agpm.agpm.request.ValidationRequest;
-import com.sigmap.sigmap_agpm.agpm.response.NextStepDTO;
-import com.sigmap.sigmap_agpm.agpm.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskDetailsDTO;
-import com.sigmap.sigmap_agpm.agpm.response.TaskListResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
+import com.sigmap.sigmap_agpm.service.dto.response.NextStepDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.ProcessStartResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskListResponseDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
-import org.flowable.engine.TaskService;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -36,8 +38,11 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.springframework.security.core.Authentication;
 
+/**
+ * Service for managing Flowable processes related to Agpm entities.
+ * Handles process initiation, task management, and validation.
+ */
 @Slf4j
 @Service
 public class AgpmFlowableService {
@@ -65,24 +70,42 @@ public class AgpmFlowableService {
     @Autowired
     private HistoryService historyService;
 
-    // Utility method to check if the user has a specific role
+    /**
+     * Checks if the user has the specified role.
+     *
+     * @param jwtAuth The JWT authentication token
+     * @param role    The role to check
+     * @return True if the user has the role, false otherwise
+     */
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
         return jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
                 .anyMatch(auth -> auth.equals("ROLE_" + role));
     }
 
-    // Utility method to check if the task is assigned to the current user
+    /**
+     * Checks if the task is assigned to the user.
+     *
+     * @param task    The Flowable task
+     * @param jwtAuth The JWT authentication token
+     * @return True if the task is assigned to the user, false otherwise
+     */
     private boolean hasAssign(Task task, JwtAuthenticationToken jwtAuth) {
         return task.getAssignee() != null && task.getAssignee().equals(jwtAuth.getName());
     }
 
-    // Utility method to check if the task's candidate group matches any of the user's roles
+    /**
+     * Checks if the user belongs to any candidate group of the task.
+     *
+     * @param task    The Flowable task
+     * @param jwtAuth The JWT authentication token
+     * @return True if the user is in a candidate group, false otherwise
+     */
     private boolean hasCandidateGroup(Task task, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = taskService.getIdentityLinksForTask(task.getId()).stream()
                 .filter(link -> "candidate".equals(link.getType()))
                 .map(IdentityLink::getGroupId)
-                .filter(group -> group != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         if (candidateGroups.isEmpty()) {
@@ -93,7 +116,12 @@ public class AgpmFlowableService {
         return candidateGroups.stream().anyMatch(group -> hasRole(jwtAuth, group));
     }
 
-    // Utility method to get the candidate group for a task
+    /**
+     * Retrieves the candidate group for a task.
+     *
+     * @param task The Flowable task
+     * @return The candidate group, or null if none exists
+     */
     private String getCandidateGroup(Task task) {
         return taskService.getIdentityLinksForTask(task.getId()).stream()
                 .filter(link -> "candidate".equals(link.getType()) && link.getGroupId() != null)
@@ -102,7 +130,13 @@ public class AgpmFlowableService {
                 .orElse(null);
     }
 
-    // Utility method to check if user's roles match the candidate groups defined in the BPMN model for a task
+    /**
+     * Checks if the user belongs to any candidate group defined in the task model.
+     *
+     * @param userTask The user task from the BPMN model
+     * @param jwtAuth  The JWT authentication token
+     * @return True if the user is in a candidate group, false otherwise
+     */
     private boolean hasCandidateGroupFromModel(UserTask userTask, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = userTask.getCandidateGroups();
         if (candidateGroups == null || candidateGroups.isEmpty()) {
@@ -113,7 +147,12 @@ public class AgpmFlowableService {
         return candidateGroups.stream().anyMatch(group -> hasRole(jwtAuth, group));
     }
 
-    // Updated method to retrieve both isUpdatable and isPublishable properties
+    /**
+     * Retrieves task properties (e.g., isUpdatable, isPublishable) from the BPMN model.
+     *
+     * @param task The Flowable task
+     * @return A map containing task properties
+     */
     private Map<String, Boolean> getTaskProperties(Task task) {
         Map<String, Boolean> properties = new HashMap<>();
         properties.put("isUpdatable", false);
@@ -149,9 +188,19 @@ public class AgpmFlowableService {
         return properties;
     }
 
+    /**
+     * Starts a Flowable process instance for an Agpm entity using its ID.
+     * Automatically retrieves the latest version of the Agpm entity.
+     *
+     * @param id             The Agpm ID
+     * @param processKey     The process definition key (optional)
+     * @param initialTaskKey The initial task key (optional)
+     * @return ProcessStartResponseDTO with the process details
+     * @throws AgpmNotFound if the Agpm entity is not found
+     */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version, String processKey, String initialTaskKey) throws AgpmNotFound {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws AgpmNotFound {
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -160,18 +209,19 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Validate input parameters
-        if (id == null || version == null) {
+        if (id == null) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
-            errorResponse.setStatus("ID and version must not be null");
+            errorResponse.setStatus("ID must not be null");
             return errorResponse;
         }
 
-        // Use provided processKey or fallback to default
+        // Retrieve the Agpm entity with the latest version
+        Agpm agpm = agpmService.findById(id, null); // null for version as findById fetches the latest
+        Integer version = agpm.getVersion();
+
         String effectiveProcessKey = (processKey != null && !processKey.isEmpty()) ? processKey : this.processKey;
         String effectiveTaskKey = (initialTaskKey != null && !initialTaskKey.isEmpty()) ? initialTaskKey : this.initialTaskKey;
 
-        // Pre-check the role by inspecting the BPMN model for the initial task's candidate groups
         BpmnModel bpmnModel = repositoryService.getBpmnModel(
                 repositoryService.createProcessDefinitionQuery()
                         .processDefinitionKey(effectiveProcessKey)
@@ -194,7 +244,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Get user's groups (roles without ROLE_ prefix)
         List<String> userGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -210,19 +259,18 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        Agpm updated = agpmService.updateStatus(id, version, 2);
+        Agpm updated = agpmService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
-        // Update Agpm with the processInstanceId
         Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isPresent()) {
-            Agpm agpm = agpmOptional.get();
-            agpm.setProcessInstanceId(processInstanceId);
-            agpmService.save(agpm);
+            Agpm updatedAgpm = agpmOptional.get();
+            updatedAgpm.setProcessInstanceId(processInstanceId);
+            agpmService.save(updatedAgpm);
         }
 
         List<Task> tasks = taskService.createTaskQuery()
@@ -267,12 +315,24 @@ public class AgpmFlowableService {
         return response;
     }
 
-    // Overloaded method to use default processKey and initialTaskKey
+    /**
+     * Starts a Flowable process instance for an Agpm entity using its ID.
+     * Automatically retrieves the latest version of the Agpm entity.
+     *
+     * @param id The Agpm ID
+     * @return ProcessStartResponseDTO with the process details
+     * @throws AgpmNotFound if the Agpm entity is not found
+     */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws AgpmNotFound {
-        return startProcessInstance(id, version, null, null);
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws AgpmNotFound {
+        return startProcessInstance(id, null, null);
     }
 
+    /**
+     * Retrieves all active tasks for the tenant.
+     *
+     * @return TaskListResponseDTO containing the list of tasks
+     */
     public TaskListResponseDTO getCurrentTasks() {
         List<Task> tasks = taskService.createTaskQuery()
                 .taskTenantId(TENANT_ID)
@@ -304,8 +364,6 @@ public class AgpmFlowableService {
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
 
-
-
             return taskInfo;
         }).collect(Collectors.toList());
 
@@ -317,8 +375,15 @@ public class AgpmFlowableService {
         return response;
     }
 
+    /**
+     * Retrieves details of a specific task, including associated Agpm entities with non-deleted documents.
+     *
+     * @param taskId The ID of the task
+     * @return TaskDetailsDTO with the task details
+     * @throws AgpmNotFound if the associated Agpm entity is not found
+     */
     public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -367,10 +432,18 @@ public class AgpmFlowableService {
 
         List<AgpmResponseDto> agpmResponses = List.of();
         if (id != null && version != null) {
-            Optional<Agpm> relatedagpms = Optional.ofNullable(agpmService.findById(id, version));
-            agpmResponses = relatedagpms.stream()
-                    .map(AgpmMapper.INSTANCE::mapToDto)
-                    .collect(Collectors.toList());
+            Optional<Agpm> relatedAgpmOptional = Optional.ofNullable(agpmService.findById(id, version));
+            if (relatedAgpmOptional.isPresent()) {
+                Agpm agpm = relatedAgpmOptional.get();
+                // Filter out deleted documents
+                if (agpm.getDocs() != null) {
+                    List<Docs> nonDeletedDocs = agpm.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList());
+                    agpm.setDocs(nonDeletedDocs);
+                }
+                agpmResponses = List.of(AgpmMapper.INSTANCE.mapToDto(agpm));
+            }
         }
         response.setAgpms(agpmResponses);
 
@@ -385,7 +458,6 @@ public class AgpmFlowableService {
         response.setIsUpdatable(taskProperties.get("isUpdatable"));
         response.setIsPublishable(taskProperties.get("isPublishable"));
 
-        // Add possible next steps using the updated method
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         response.setNextSteps(nextSteps);
 
@@ -394,6 +466,12 @@ public class AgpmFlowableService {
         return response;
     }
 
+    /**
+     * Determines the possible next steps for a task based on the BPMN model.
+     *
+     * @param task The Flowable task
+     * @return List of possible next steps
+     */
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
         List<NextStepDTO> nextSteps = new ArrayList<>();
         try {
@@ -456,7 +534,6 @@ public class AgpmFlowableService {
             }
         } catch (Exception e) {
             log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
-            // Fallback to a generic complete action
             NextStepDTO nextStep = new NextStepDTO();
             nextStep.setValidationVariable(null);
             nextStep.setValidationValue(null);
@@ -467,10 +544,20 @@ public class AgpmFlowableService {
         return nextSteps;
     }
 
+    /**
+     * Validates a task and updates the associated Agpm entity.
+     *
+     * @param taskId  The ID of the task to validate
+     * @param request The validation request
+     * @return TaskDTO with the validation result
+     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws DocNotFound if a document is not found
+     * @throws AcNotFound if the associated Ac entity is not found
+     * @throws IOException if an error occurs during file processing
+     */
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
-        // Step 1: Validate authentication
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -479,7 +566,6 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Step 2: Retrieve the task
         Task task = taskService.createTaskQuery()
                 .taskId(taskId)
                 .taskTenantId(TENANT_ID)
@@ -492,7 +578,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Step 3: Check for candidate group
         String candidateGroup = getCandidateGroup(task);
         if (candidateGroup == null) {
             TaskDTO errorResponse = new TaskDTO();
@@ -500,27 +585,23 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Step 4: Check if user has the required role or assignment
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("User does not have the required role or assignment to validate this task");
             return errorResponse;
         }
 
-        // Step 5: Retrieve process variables
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
         log.info("Process variables for task [{}]: {}", taskId, processVariables);
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        // Step 6: Validate id and version
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
-        // Step 7: Fetch the Agpm entity
         Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
         if (agpmOptional.isEmpty()) {
             TaskDTO errorResponse = new TaskDTO();
@@ -530,12 +611,10 @@ public class AgpmFlowableService {
 
         Agpm latestAgpm = agpmOptional.get();
 
-        // Step 8: Get task properties (isUpdatable and isPublishable)
         Map<String, Boolean> taskProperties = getTaskProperties(task);
         Boolean isUpdatable = taskProperties.get("isUpdatable");
         Boolean isPublishable = taskProperties.get("isPublishable");
 
-        // Step 9: Handle isUpdatable: Update the Agpm object if true
         if (isUpdatable) {
             if (request.getAgpm() == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -548,19 +627,16 @@ public class AgpmFlowableService {
                 errorResponse.setStatus("Failed to update AGPM object");
                 return errorResponse;
             }
-            // Update the latestAgpm to reflect the updated state
             latestAgpm = updatedAgpm;
-            // Update process variables with the new version
             version = latestAgpm.getVersion();
             processVariables.put("version", version);
             runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
         }
 
-        // Step 10: Handle validation and status update
         Integer newStatus = null;
         boolean validate = request.getValidate() != null ? request.getValidate() : false;
-        if (isPublishable && validate) {
-            newStatus = 3; // VALIDE
+        if (validate) {
+            newStatus = Constants.VALIDE_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -569,7 +645,7 @@ public class AgpmFlowableService {
             }
             latestAgpm = updatedAgpm;
         } else if (!validate) {
-            newStatus = 2; // EN_COURS_DE_TRAITEMENT (stay if not validated)
+            newStatus = Constants.TRAITMENT_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -579,25 +655,20 @@ public class AgpmFlowableService {
             latestAgpm = updatedAgpm;
         }
 
-        // Step 11: Set process variables for validation
         Map<String, Object> variables = new HashMap<>();
         variables.put("valide", validate);
         variables.put("comment", request.getComment() != null ? request.getComment() : "");
         variables.put("dateComment", LocalDateTime.now());
         variables.put("treater", jwtAuth.getName());
 
-        // Log the variables for debugging
         log.info("Setting process variables for task [{}]: valide={}, comment={}, dateComment={}, treater={}",
                 taskId, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
-
-        // Step 12: Complete the task
         taskService.complete(taskId);
 
-        // Step 13: Check if process is completed and set status to PUBLIEE (4) if true
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
-            newStatus = 4; // PUBLIEE
+            newStatus = Constants.PUBLIE_STATUS;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
             if (updatedAgpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -607,7 +678,6 @@ public class AgpmFlowableService {
             latestAgpm = updatedAgpm;
         }
 
-        // Step 14: Build the success response
         TaskDTO response = new TaskDTO();
         response.setTaskId(task.getId());
         response.setTaskName(task.getName());
@@ -625,8 +695,13 @@ public class AgpmFlowableService {
         return response;
     }
 
+    /**
+     * Retrieves tasks assigned to the current user based on their candidate groups.
+     *
+     * @return TaskListResponseDTO with the user's tasks
+     */
     public TaskListResponseDTO getUserTasks() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskListResponseDTO errorResponse = new TaskListResponseDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
@@ -635,7 +710,6 @@ public class AgpmFlowableService {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Get all candidate groups that match the user's roles
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -646,7 +720,6 @@ public class AgpmFlowableService {
             return errorResponse;
         }
 
-        // Query tasks for all matching candidate groups
         List<Task> tasks = taskService.createTaskQuery()
                 .taskTenantId(TENANT_ID)
                 .taskCandidateGroupIn(userCandidateGroups)
@@ -679,7 +752,6 @@ public class AgpmFlowableService {
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
 
-
             return taskInfo;
         }).collect(Collectors.toList());
 
@@ -692,7 +764,12 @@ public class AgpmFlowableService {
         return response;
     }
 
-    // Helper method to extract condition value from condition expression (from PpmFlowableService)
+    /**
+     * Extracts the condition value from a Flowable condition expression.
+     *
+     * @param conditionExpression The condition expression
+     * @return The extracted condition value, or null if not found
+     */
     private String extractConditionValue(String conditionExpression) {
         if (conditionExpression == null) return null;
         String cleanedExpression = conditionExpression.trim().replace("#{", "${");
@@ -707,12 +784,15 @@ public class AgpmFlowableService {
         return null;
     }
 
-    // Helper method to extract variable name from condition expression (from PpmFlowableService)
+    /**
+     * Extracts the variable name from a Flowable condition expression.
+     *
+     * @param conditionExpression The condition expression
+     * @return The extracted variable name, or null if not found
+     */
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
-        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
         String cleanedExpression = conditionExpression.trim().replace("#{", "${");
-        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
         Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
         Matcher matcher = pattern.matcher(cleanedExpression);
         if (matcher.find()) {
@@ -720,7 +800,6 @@ public class AgpmFlowableService {
             log.info("Matched variable name: {}", variableName);
             return variableName;
         }
-        // Fallback for simpler expressions like ${variable}
         if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
             String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
             if (!variableName.isEmpty()) {

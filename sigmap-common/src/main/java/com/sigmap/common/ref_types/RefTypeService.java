@@ -99,7 +99,7 @@ public interface RefTypeService {
    * @param request the request to update the RefType from
    * @return the updated RefType
    */
-  RefType update(RefTypeRequest request)throws RefParamNotFound;
+  RefType update(RefTypeRequest request)throws RefTypeNotFound;
   /**
    * Delete a RefType.
    *

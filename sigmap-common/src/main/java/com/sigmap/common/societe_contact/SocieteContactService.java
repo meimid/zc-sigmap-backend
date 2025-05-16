@@ -2,7 +2,6 @@ package com.sigmap.common.societe_contact;
 
 import com.sigmap.common.contact.Contact;
 import com.sigmap.common.contact.exception.ContactNotFound;
-import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
@@ -10,7 +9,6 @@ import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +21,10 @@ public interface SocieteContactService {
      * Return a page of SocieteContact based on the given specification and pageable.
      *
      * @param SocieteContact the specification to use
-     * @param pageable the pageable to use
+     * @param pageable       the pageable to use
      * @return a page of SocieteContact
      */
-    Page<Contact> findAll(Integer societeId, Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<SocieteContact> findAll(Integer societeId, Specification<SocieteContact> SocieteContact, Pageable pageable);
 
     /**
      * Return a page of deleted SocieteContact based on the given specification and pageable.
@@ -35,7 +33,7 @@ public interface SocieteContactService {
      * @param pageable the pageable to use
      * @return a page of SocieteContact
      */
-    Page<Contact> findAllDeleted(Integer societeId,Specification<SocieteContact> SocieteContact, Pageable pageable);
+    Page<Contact> findAllDeleted(Integer societeId,Specification<SocieteContact> SocieteContact, Pageable pageable) throws SocieteNotFound;
 
     /**
      * Return a page of deleted SocieteContact based on the given pageable.
@@ -69,7 +67,7 @@ public interface SocieteContactService {
      * @param contactId
      * @return the SocieteContact with the given id
      */
-    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId);
+    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId) throws SocieteContactNotFound;
 
     /**
      * Save a SocieteContact.
@@ -92,7 +90,7 @@ public interface SocieteContactService {
      * @param request the request to update the com from
      * @return the updated SocieteContact
      */
-    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request);
+    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) throws SocieteContactNotFound;
     /**
      * Delete a SocieteAddress.
      *

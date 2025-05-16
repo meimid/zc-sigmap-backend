@@ -1,0 +1,18 @@
+package com.sigmap.common.config;
+
+import java.time.LocalDate;
+
+public class Constants {
+    public static final Integer TYPE_SOCIETE = 10;
+    public static final Integer PAYS = 11;
+    public static final Integer CATEGORIE_SOMISSIONAIRE =12;
+    public static final Integer TYPE_COMITE =13;
+    public static final Integer TYPE_ADDRESS =14;
+    public static final Integer STATUS =15;
+    public static final Integer DRAFT_STATUS = 32;
+    public static final Integer TRAITMENT_STATUS = 33;
+    public static final Integer VALIDE_STATUS = 34;
+    public static final Integer PUBLIE_STATUS = 35;
+    public static final String PATH_ENTREPOT_GED = "/SIGMAP-DEV/ARCHIVE/AGPM/" + LocalDate.now().getYear();
+
+    private Constants() {}}

@@ -73,9 +73,11 @@ public class SocieteServiceImpl implements SocieteService {
     public Societe create(SocieteRequest request) throws RefParamNotFound {
         RefParam type=refParamService.findById(request.getTypeId());
         RefParam pays=refParamService.findById(request.getPaysId());
+        RefParam categorieSoumissionnaireId=refParamService.findById(request.getCategorieSoumissionnaireId());
         Societe societe =  SocieteMapper.INSTANCE.map(request);
         societe.setPays(pays);
         societe.setType(type);
+        societe.setCategorieSoumissionnaire(categorieSoumissionnaireId);
         return save(societe);
     }
 
@@ -84,9 +86,11 @@ public class SocieteServiceImpl implements SocieteService {
         Societe societe=repository.findById(id).orElseThrow(() -> new SocieteNotFound(" ",List.of(id)));
         RefParam type=refParamService.findById(request.getTypeId());
         RefParam pays=refParamService.findById(request.getPaysId());
+        RefParam categorieSoumissionnaireId=refParamService.findById(request.getCategorieSoumissionnaireId());
         SocieteMapper.INSTANCE.updateFromRequest(request, societe);
         societe.setPays(pays);
         societe.setType(type);
+        societe.setCategorieSoumissionnaire(categorieSoumissionnaireId);
         return save(societe);
     }
 

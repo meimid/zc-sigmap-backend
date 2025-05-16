@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_agpm;
+package com.sigmap.sigmap_agpm.config;
 
 import java.util.List;
 

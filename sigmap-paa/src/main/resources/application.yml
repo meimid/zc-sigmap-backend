@@ -3,6 +3,11 @@ server:
   
   servlet:
     context-path: /paa
+    multipart:
+      max-file-size:
+        ${UPLOAD_MAX_FILE_SIZE:30MB}
+      max-request-size:
+        ${UPLOAD_MAX_REQUEST_SIZE:30MB}
 
 spring:
   application:

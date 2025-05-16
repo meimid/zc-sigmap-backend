@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -37,4 +38,8 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
 
     @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.type.id = :refParamId)")
     boolean hasAssociatedSocieteAddress(@Param("refParamId") Integer refParamId);
+
+    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId")
+    List<RefParam> findByRefType(@Param("refTypeId") Integer refTypeId);
+
 }
