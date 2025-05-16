@@ -1,14 +1,19 @@
 package com.sigmap.common.paas;
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.Constants;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaBaseRequestDto;
@@ -29,6 +34,8 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.security.Authentication;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -184,11 +191,9 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
-        // Set status from RefParam
-        if (request.getStatus() != null) {
-            paa.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Status not found")));
-        }
+        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
+                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
+        paa.setStatus(defaultStatus);
 
         paa.setId(id);
         paa.setVersion(version);
@@ -747,14 +752,7 @@ public class PaaServiceImpl implements PaaService {
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
         tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
-
-        // Handle status
-        RefParam requestStatus = null;
-        if (request.getStatus() != null && request.getStatus().getId() != null) {
-            requestStatus = refParamRepository.findById(request.getStatus().getId()).orElse(null);
-        }
-        tempPaa.setStatus(requestStatus != null ? requestStatus : existingPaa.getStatus());
-
+        tempPaa.setStatus(existingPaa.getStatus());
         // Handle AC
         Ac requestAc = null;
         if (request.getAcId() != null) {
@@ -1806,7 +1804,7 @@ public class PaaServiceImpl implements PaaService {
      */
     @Transactional
     @Override
-    public Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException {
+    public Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound {
         // Generate PAA ID if not provided
         Integer paaId = repository.findMaxId();
         paaId = (paaId != null) ? paaId + 1 : 1;
@@ -1829,25 +1827,25 @@ public class PaaServiceImpl implements PaaService {
         paa.setNom(request.getNom());
         paa.setAnnee(request.getAnnee());
         paa.setBudgetEstime(request.getBudgetEstime());
-        RefParam defaultStatus = null;
-        try {
-            defaultStatus = refParamRepository.findById(1).get();
 
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+
+        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
+                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
 
-        // Set status if provided
-        if (request.getStatus() != null) {
-            paa.setStatus(request.getStatus());
-        }
-
         // Set Ac if provided
-        if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId())
-                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
-            paa.setAc(ac);
+        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
+        if (acIdOptional.isPresent()) {
+            Long acIdLong = acIdOptional.get();
+            Integer acIdInt = Math.toIntExact(acIdLong);
+            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
+            if (acOptional.isPresent()) {
+                paa.setAc(acOptional.get());
+            } else {
+                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+            }
+        } else {
+            throw new NotFoundException("No AC ID found for current user");
         }
 
         // Set empty collections to avoid NPEs
@@ -2181,6 +2179,19 @@ public class PaaServiceImpl implements PaaService {
             }
         }
     }
+    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws  PaaNotFound {
+        Integer latestVersion = findLatestVersionById(paaId)
+                .orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of(paaVer)));
+        Paa paa = repository.findById(new CompositeId(paaId, latestVersion))
+                .orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
+
+
+
+        return paa;
+    }
+    private Optional<Integer> findLatestVersionById(Integer paaId) {
+        return Optional.ofNullable(repository.findMaxVersionById(paaId));
+    }
 
 
     void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
@@ -2276,6 +2287,35 @@ public class PaaServiceImpl implements PaaService {
 
         // Update the realisation's docs
         savedRealisation.setDocs(docs);
+    }
+
+//    @Override
+//    public Paa findByIdPaa(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
+//        Integer latestVersion = findLatestVersionById(agpmId)
+//                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID", List.of(agpmId), List.of(agpmVer)));
+//        Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
+//                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID and version", List.of(agpmId), List.of(latestVersion)));
+//
+//        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
+//        log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
+//                agpmId, latestVersion, responseAgpm.getDocs() != null
+//                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
+//                        : Collections.emptyList());
+//
+//        return responseAgpm;
+//    }
+    @Transactional
+    public Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws  PaaNotFound {
+        CompositeId compositeId = new CompositeId(paaId, paaVer);
+        Paa paa = repository.findById(compositeId)
+                .orElseThrow(() -> new PaaNotFound("Paa not found", List.of(paaId), List.of(paaVer)));
+
+        RefParam newStatus = refParamRepository.findById(statusId).orElseThrow(() ->
+                new ReferenceNotFound("Status not found with ID: ", List.of(String.valueOf(statusId))));
+        paa.setStatus(newStatus);
+
+        paa.setUpdatedAt(Calendar.getInstance());
+        return repository.save(paa);
     }
 
 

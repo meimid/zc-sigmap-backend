@@ -37,5 +37,5 @@ public class RealisationResponseDtoForPaa {
     private List<DocsResponseDTO> docs;
     // Using simplified lot responses and removing paas reference to avoid circular references
     private List<LotPaaResponse> lots;
-    private BaseEntityResponse metadata;
+    //private BaseEntityResponse metadata;
 } 

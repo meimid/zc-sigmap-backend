@@ -1,5 +1,11 @@
 package com.sigmap.sigmap_paa.paas;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.agpm.mappers.AgpmMapper;
+import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
@@ -114,6 +120,14 @@ public class PaaController {
         return ResponseEntity.ok(response);
     }
 
+
+    @GetMapping("/{paaId}")
+    public ResponseEntity<PaaResponseWithRealisations> getPaaById(@PathVariable Integer paaId) throws  PaaNotFound {
+        Paa paa = paaService.findByIdPaa(paaId, null);
+        PaaResponseWithRealisations paaResponse = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
+        return ResponseEntity.ok(paaResponse);
+    }
+
     /**
      * Create a new paa.
      *
@@ -144,8 +158,20 @@ public class PaaController {
     @PostMapping(value="/with-relationships",consumes = {"multipart/form-data"})
 
 //    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
-    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@ModelAttribute("request") PaaRequestGlobal request) throws PaaAlreadyExistsException {
+    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(
+            @ModelAttribute("request") PaaRequestGlobal request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound {
         logger.info("Creating PAA with relationships using RealisationRequestForPaa");
+
+        // Process lots from JSON string if provided
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
         Paa paa = paaService.createWithRelationships(request);
 
         // Use the detailed mapper that includes specialized DTOs

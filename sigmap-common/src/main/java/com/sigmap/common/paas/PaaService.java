@@ -1,5 +1,9 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -119,7 +123,7 @@ public interface PaaService {
      * @return the created PAA entity with all relationships established
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException;
+    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound;
 
     /**
      * Delete a Paa entity by its composite ID components.
@@ -159,4 +163,8 @@ public interface PaaService {
      * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
      */
     Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
+
+    Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound;
+  Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
+
 }

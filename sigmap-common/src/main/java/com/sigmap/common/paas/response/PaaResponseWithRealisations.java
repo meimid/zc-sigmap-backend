@@ -1,9 +1,11 @@
 package com.sigmap.common.paas.response;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.realisations.response.RealisationResponseDtoForPaa;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -21,9 +23,9 @@ public class PaaResponseWithRealisations {
     private String ref;
     private String nom;
     private String annee;
-    private Ac ac;
+    private AcResponseDto ac;
     private BigDecimal budgetEstime;
-    private RefParam status;
+    private RefParamResponseDto status;
     private List<DocsResponseDTO> docs;
     // Using the specialized Realisation DTO to avoid circular references
     private List<RealisationResponseDtoForPaa> realisations;

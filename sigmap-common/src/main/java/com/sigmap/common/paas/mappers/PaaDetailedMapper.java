@@ -38,13 +38,13 @@ public interface PaaDetailedMapper {
     /**
      * Maps a Realisation entity to a RealisationResponseDtoForPaa
      */
-    @Mapping(target = "metadata.createdAt", source = "createdAt")
-    @Mapping(target = "metadata.createdBy", source = "createdBy")
-    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
-    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
-    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
-    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
-    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+//    @Mapping(target = "metadata.createdAt", source = "createdAt")
+//    @Mapping(target = "metadata.createdBy", source = "createdBy")
+//    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+//    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+//    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+//    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+//    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "lots", expression = "java(mapLots(realisation.getLots()))")
     @Mapping(target = "docs", expression = "java(mapDocs(realisation.getDocs()))")
     RealisationResponseDtoForPaa mapRealisation(Realisation realisation);
