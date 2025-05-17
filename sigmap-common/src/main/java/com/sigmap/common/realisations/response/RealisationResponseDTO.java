@@ -1,11 +1,13 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 @Data
@@ -28,4 +30,6 @@ public class RealisationResponseDTO {
     private Boolean publishedAt;
     private Integer sort;
     private Set<LotResponse> lots;
+    private List<DocsResponseDTO> docs;
+
 } 

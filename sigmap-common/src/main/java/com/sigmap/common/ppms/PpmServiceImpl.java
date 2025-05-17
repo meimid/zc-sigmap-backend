@@ -1,9 +1,16 @@
 package com.sigmap.common.ppms;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
+import com.sigmap.common.Constants;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcService;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -19,14 +26,19 @@ import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import org.apache.tika.Tika;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,15 +51,24 @@ public class PpmServiceImpl implements PpmService {
     private final RealisationService realisationService;
     private final LotRepository lotRepository;
 
+    private final AlfrescoService alfrescoService;
+    private final DocumentCommuneService documentCommuneService;
+    private final DocsService docsService;
+    private final AcService acService;
+
     /**
      * Constructor.
      *
-     * @param repository            ppm repository
-     *                              //TODO
-     *                              //     * @param acService ac service
+     * @param repository             ppm repository
+     *                               //TODO
+     *                               //     * @param acService ac service
      * @param realisationRepository
+     * @param alfrescoService
+     * @param documentCommuneService
+     * @param docsService
+     * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -55,6 +76,10 @@ public class PpmServiceImpl implements PpmService {
         this.docsRepository = docsRepository;
         this.realisationService = realisationService;
         this.lotRepository = lotRepository;
+        this.alfrescoService = alfrescoService;
+        this.documentCommuneService = documentCommuneService;
+        this.docsService = docsService;
+        this.acService = acService;
     }
 
     @Override
@@ -1403,5 +1428,1166 @@ public class PpmServiceImpl implements PpmService {
     private void storePreviousRequestHash(Integer ppmId, Integer ppmVer, String hash) {
         String key = ppmId + "-" + ppmVer;
         requestHashCache.put(key, hash);
+    }
+
+    /**
+     * Creates a new PPM with full support for relationships including documents.
+     * This method creates a PPM with its realisations, lots, and documents.
+     *
+     * @param request the request containing PPM data, realisations, lots, and document files
+     * @return the created PPM with all relationships established
+     */
+
+    @Transactional
+    @Override
+    public Ppm createWithRelationships(PpmWithLotsRequestDto request) {
+        // Debug output to see what's in the request
+        System.out.println("Starting createWithRelationships with request: " + request);
+        System.out.println("RealisationsWithLots from request: " + request.getRealisationsWithLots());
+
+        // Generate PPM ID if not provided
+        Integer ppmId = repository.findMaxId();
+        ppmId = (ppmId != null) ? ppmId + 1 : 1;
+
+        // Always use version 1 for new PPMs
+        Integer ppmVersion = 1;
+
+        // Check if PPM already exists
+        Optional<Ppm> existingPpm = repository.findById(new CompositeId(ppmId, ppmVersion));
+        if (existingPpm.isPresent()) {
+            throw new RuntimeException("Ppm with ID " + ppmId + " and version " + ppmVersion + " already exists.");
+        }
+
+        // Create new PPM
+        Ppm ppm = new Ppm();
+        ppm.setId(ppmId);
+        ppm.setVersion(ppmVersion);
+        ppm.setRef(request.getRef());
+        ppm.setNom(request.getNom());
+        ppm.setAnnee(request.getAnnee());
+        ppm.setBudgetEstime(request.getBudgetEstime());
+
+        // Set status if provided
+        if (request.getStatus() != null) {
+            ppm.setStatus(refParamRepository.findById(request.getStatus().getId())
+                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+        }
+
+        // Set Ac if provided
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+            ppm.setAc(ac);
+        }
+
+        // Set empty collections to avoid NPEs
+        ppm.setRealisations(new ArrayList<>());
+        ppm.setDocs(new ArrayList<>());
+
+        // Save PPM initially without associations
+        Ppm savedPpm = repository.save(ppm);
+        System.out.println("Initial save of PPM - ID: " + savedPpm.getId() + ", Version: " + savedPpm.getVersion());
+
+        // Handle documents if provided
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = new ArrayList<>();
+            for (Integer docId : request.getDocIds()) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+
+                // Set up bidirectional relationship
+                if (doc.getPpms() == null) {
+                    doc.setPpms(new ArrayList<>());
+                }
+                doc.getPpms().add(savedPpm);
+                docs.add(doc);
+
+                // Save the document with updated relationship
+                docsRepository.save(doc);
+            }
+
+            // Update PPM with documents
+            savedPpm.setDocs(docs);
+            System.out.println("Added " + docs.size() + " documents to PPM");
+        }
+
+        // Process document files if provided
+        if(request.getPpmFiles() != null) {
+            try {
+                System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
+                processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+                System.out.println("Processed PPM files successfully");
+            } catch (IOException e) {
+                System.err.println("Error processing PPM files: " + e.getMessage());
+                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+        }
+
+        // Process realisations if provided
+        List<Realisation> realisations = new ArrayList<>();
+
+        // Choose which collection of realisations to process, preferring realisationsWithLots
+        List<? extends RealisationBaseRequestDto> realisationsToProcess = null;
+        if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
+            realisationsToProcess = request.getRealisationsWithLots();
+            System.out.println("Processing realisationsWithLots: " + realisationsToProcess.size() + " items");
+
+            // Log the lots in each realisation
+            for (int i = 0; i < realisationsToProcess.size(); i++) {
+                RealisationBaseRequestDto r = realisationsToProcess.get(i);
+                System.out.println("Realisation " + i + ": " + r);
+                if (r.getLots() != null) {
+                    System.out.println("  - Has " + r.getLots().size() + " lots");
+                    for (LotResponse lot : r.getLots()) {
+                        System.out.println("    - Lot: id=" + lot.getId() + ", desc=" + lot.getDescription());
+                    }
+                } else {
+                    System.out.println("  - No lots found");
+                }
+
+//                // AUTOMATIC TEST FIX - Add a test lot directly if there are no lots
+//                if (r instanceof RealisationWithLotsRequestDto) {
+//                    RealisationWithLotsRequestDto rwl = (RealisationWithLotsRequestDto) r;
+//                    if (rwl.getLots() == null || rwl.getLots().isEmpty()) {
+//                        System.out.println("  - Adding a test lot automatically");
+//                        Set<LotResponse> testLots = new HashSet<>();
+//                        LotResponse testLot = new LotResponse();
+//                        testLot.setDescription("Auto-generated test lot");
+//                        testLots.add(testLot);
+//                        rwl.setLots(testLots);
+//                        System.out.println("  - Test lot added, realisation now has " + rwl.getLots().size() + " lots");
+//                    }
+//                }
+            }
+        } else if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            realisationsToProcess = request.getRealisations();
+            System.out.println("Processing standard realisations: " + realisationsToProcess.size() + " items");
+        }
+
+        // Keep track of newly created lots to detect duplicates
+        Map<String, Lot> newLotsMap = new HashMap<>();
+
+        if (realisationsToProcess != null && !realisationsToProcess.isEmpty()) {
+            for (RealisationBaseRequestDto realisationRequest : realisationsToProcess) {
+                // Create a new Realisation
+                Realisation realisation = new Realisation();
+
+                // Generate a new ID for the realisation
+                Integer maxRealisationId = realisationRepository.findMaxId();
+                Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+
+                // Always use version 1 for newly created realisations
+                realisation.setId(realisationId);
+                realisation.setVersion(1);
+
+                // Set all fields from the request
+                realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                realisation.setService(realisationRequest.getService());
+                realisation.setDirection(realisationRequest.getDirection());
+                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setMonais(realisationRequest.getMonais());
+                realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                realisation.setIsPublished(realisationRequest.getIsPublished());
+                realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                realisation.setSort(realisationRequest.getSort());
+
+                // Set up the relationship with PPM (similar to how it's done in PAA)
+                List<Ppm> ppmList = new ArrayList<>();
+                ppmList.add(savedPpm);
+                realisation.setPpms(ppmList);
+
+                // CRITICAL: Save the realisation FIRST to ensure it has an ID
+                realisation = realisationRepository.save(realisation);
+                System.out.println("Initially saved realisation ID: " + realisation.getId() + " version: " + realisation.getVersion());
+
+                // Process realisation files AFTER saving the realisation
+                if(realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
+                    try {
+                        System.out.println("Processing " + realisationRequest.getRealisationFiles().size() +
+                                          " files for realisation ID: " + realisation.getId());
+
+                        // Create list to track docs to add to realisation
+                        List<Docs> uploadedDocs = new ArrayList<>();
+
+                        // Process each file one by one
+                        for (MultipartFile file : realisationRequest.getRealisationFiles()) {
+                            if (file == null || file.isEmpty()) {
+                                System.out.println("Skipping empty file");
+                                continue;
+                            }
+
+                            System.out.println("Processing file: " + file.getOriginalFilename() +
+                                             ", size: " + file.getSize() +
+                                             ", content type: " + file.getContentType());
+
+                            // Try saving the single file
+                            List<MultipartFile> singleFileList = new ArrayList<>();
+                            singleFileList.add(file);
+                            processAndSaveRelisationsDocuments(singleFileList, realisation);
+                        }
+
+                        // After processing files, fetch the updated realisation with its documents
+                        realisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion()))
+                                .orElseThrow(() -> new RuntimeException("Could not find realisation after file upload"));
+
+                        System.out.println("After file processing, realisation has " +
+                            (realisation.getDocs() != null ? realisation.getDocs().size() : 0) + " documents");
+
+                        // Save the realisation again
+                        realisation = realisationRepository.save(realisation);
+                    } catch (IOException e) {
+                        System.err.println("Error processing realisation files: " + e.getMessage());
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                // Process realisation documents if provided
+                if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
+                    List<Docs> docs = new ArrayList<>();
+                    for (Integer docId : realisationRequest.getDocIds()) {
+                        Docs doc = docsRepository.findById(docId)
+                                .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+
+                        // Set up bidirectional relationship
+                        if (doc.getRealisations() == null) {
+                            doc.setRealisations(new ArrayList<>());
+                        }
+                        if (!doc.getRealisations().contains(realisation)) {
+                            doc.getRealisations().add(realisation);
+                        }
+
+                        // Ensure doc is active
+                        doc.setIsDeleted(false);
+                        docsRepository.save(doc);
+                        docs.add(doc);
+                    }
+
+                    // Set docs list for new realisation and save
+                    if (realisation.getDocs() == null) {
+                        realisation.setDocs(docs);
+                    } else {
+                        realisation.getDocs().addAll(docs);
+                    }
+                    realisation = realisationRepository.save(realisation);
+                    System.out.println("Added " + docs.size() + " documents to realisation");
+                }
+
+                // Handle Lots if provided - IMPROVED IMPLEMENTATION
+                if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                    System.out.println("Processing " + realisationRequest.getLots().size() + " lots for realisation ID: " + realisation.getId());
+                    Set<Lot> lots = new HashSet<>();
+                    Set<Integer> processedLotIds = new HashSet<>();
+
+                    // Process each lot in the request
+                    for (LotResponse lotDto : realisationRequest.getLots()) {
+                        System.out.println("Processing lot: " + lotDto);
+
+                        if (lotDto.getId() == null) {
+                            // Handle new lot without ID
+                            String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                            System.out.println("Processing new lot with description: " + lotHash);
+
+                            // Check for duplicate lots in this transaction
+                            if (newLotsMap.containsKey(lotHash)) {
+                                System.out.println("Using previously created lot for description: " + lotHash);
+                                lots.add(newLotsMap.get(lotHash));
+                                processedLotIds.add(newLotsMap.get(lotHash).getId());
+                                continue;
+                            }
+
+                            // Create a new lot
+                            System.out.println("Creating new lot with description: " + lotHash);
+                            Lot newLot = new Lot();
+                            newLot.setDescription(lotDto.getDescription());
+                            newLot.setVersion(1); // First version
+                            newLot.setIsDeleted(false); // Ensure it's not deleted
+
+                            // Generate new ID if not provided
+                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                            newLot.setId(lotId);
+
+                            Lot savedLot = lotRepository.save(newLot);
+                            lots.add(savedLot);
+                            processedLotIds.add(savedLot.getId());
+                            newLotsMap.put(lotHash, savedLot);
+                            System.out.println("Created new Lot with ID: " + savedLot.getId());
+                        } else {
+                            // Handle existing lot
+                            if (processedLotIds.contains(lotDto.getId())) {
+                                System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
+                                continue;
+                            }
+
+                            Integer lotId = lotDto.getId();
+                            Integer lotVersion = lotDto.getVersion();
+
+                            // Try to find the latest version if not specified
+                            if (lotVersion == null) {
+                                lotVersion = lotRepository.findMaxVersionById(lotId);
+                                if (lotVersion == null) {
+                                    System.out.println("Lot ID " + lotId + " not found, creating new lot");
+                                    // Create a new lot with the specified ID
+                                    Lot newLot = new Lot();
+                                    newLot.setId(lotId);
+                                    newLot.setVersion(1);
+                                    newLot.setDescription(lotDto.getDescription());
+                                    newLot.setIsDeleted(false);
+                                    Lot savedLot = lotRepository.save(newLot);
+                                    lots.add(savedLot);
+                                    processedLotIds.add(savedLot.getId());
+                                    continue;
+                                }
+                            }
+
+                            // Get the existing lot
+                            Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
+                            if (existingLotOpt.isPresent()) {
+                                Lot existingLot = existingLotOpt.get();
+                                String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+
+                                // If descriptions are different, create a new version
+                                if (!requestDesc.equals(existingDesc)) {
+                                    Lot newLot = new Lot();
+                                    newLot.setId(existingLot.getId());
+                                    newLot.setVersion(existingLot.getVersion() + 1);
+                                    newLot.setDescription(lotDto.getDescription());
+                                    newLot.setIsDeleted(false);
+
+                                    Lot savedLot = lotRepository.save(newLot);
+                                    lots.add(savedLot);
+                                    processedLotIds.add(savedLot.getId());
+                                    System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion());
+                                } else {
+                                    // Use existing lot
+                                    lots.add(existingLot);
+                                    processedLotIds.add(existingLot.getId());
+                                    System.out.println("Using existing Lot: " + existingLot.getId() + ", Version: " + existingLot.getVersion());
+                                }
+                            } else {
+                                // Lot version not found, create new version 1
+                                Lot newLot = new Lot();
+                                newLot.setId(lotId);
+                                newLot.setVersion(1);
+                                newLot.setDescription(lotDto.getDescription());
+                                newLot.setIsDeleted(false);
+                                Lot savedLot = lotRepository.save(newLot);
+                                lots.add(savedLot);
+                                processedLotIds.add(savedLot.getId());
+                                System.out.println("Created new Lot with provided ID: " + savedLot.getId());
+                            }
+                        }
+                    }
+
+                    // Set the lots on the realisation
+                    realisation.setLots(lots);
+                    System.out.println("Set " + lots.size() + " lots on realisation ID: " + realisation.getId());
+
+                    // Save the realisation with lots
+                    realisation = realisationRepository.save(realisation);
+
+                    // Verify the lots were properly saved
+                    Realisation verifyRealisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion()))
+                            .orElseThrow(() -> new RuntimeException("Could not find realisation after saving lots"));
+
+                    System.out.println("After saving, realisation ID: " + verifyRealisation.getId() +
+                            " has " + (verifyRealisation.getLots() != null ? verifyRealisation.getLots().size() : 0) +
+                            " lots");
+                }
+
+                // Add the finished realisation to our list
+                realisations.add(realisation);
+            }
+
+            // Update the PPM with the list of realisations
+            savedPpm.setRealisations(realisations);
+            System.out.println("Added " + realisations.size() + " realisations to PPM");
+        }
+
+        // Save PPM again to persist all associations
+        savedPpm = repository.save(savedPpm);
+        System.out.println("Final save of PPM - ID: " + savedPpm.getId() + ", Version: " + savedPpm.getVersion());
+
+        // Verify the final PPM has all associated entities
+        System.out.println("Final PPM has: " +
+                (savedPpm.getDocs() != null ? savedPpm.getDocs().size() : 0) + " documents, " +
+                (savedPpm.getRealisations() != null ? savedPpm.getRealisations().size() : 0) + " realisations");
+
+        // Print realisation details to verify
+        if (savedPpm.getRealisations() != null) {
+            for (Realisation r : savedPpm.getRealisations()) {
+                System.out.println("Realisation ID: " + r.getId() +
+                        ", Docs: " + (r.getDocs() != null ? r.getDocs().size() : 0) +
+                        ", Lots: " + (r.getLots() != null ? r.getLots().size() : 0));
+            }
+        }
+
+        return savedPpm;
+    }
+
+    private void processAndSaveDocuments(List<MultipartFile> files, Ppm savedPpm) throws IOException {
+
+        if (files != null && !files.isEmpty()) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    UUID uuid = UUID.randomUUID();
+                    try {
+                        Tika tika = new Tika();
+                        String detectedMimeType = tika.detect(file.getInputStream());
+                        String originalFilename = file.getOriginalFilename();
+
+                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                        if (fileExtension.isEmpty()) {
+                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                        }
+
+                        long fileSize = file.getSize();
+                        String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PPM + "/%d/%d",
+                                savedPpm.getId(), savedPpm.getVersion());
+
+                        String[] parts = originalFilename.split("\\.");
+                        String baseName = parts[0];
+                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                        String uniqueFileName = "ppm_" + uuid + "_" + extension;
+                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+
+                        Docs document = new Docs();
+                        document.setName(baseName);
+                        document.setAlfresco_id(alfrescoId);
+                        document.setPathFolder(folderPath);
+                        document.setFileSize(formattedSize);
+                        document.setContentType(detectedMimeType);
+                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                        document.setAlfrescoName(uniqueFileName);
+                        if (savedPpm.getDocs() == null) {
+                            savedPpm.setDocs(new ArrayList<>());
+                        }
+                        savedPpm.getDocs().add(document);
+
+                        docsRepository.save(document);
+                    } catch (Exception e) {
+                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+    }
+
+    private final Object folderCreationLock = new Object();
+
+    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+        List<Docs> docs = new ArrayList<>();
+        UUID uuid = UUID.randomUUID();
+        // Add a file counter to ensure unique filenames even with the same UUID
+        AtomicInteger fileCounter = new AtomicInteger(0);
+
+        if (files != null && !files.isEmpty()) {
+            // Create a completely unique folder name with timestamp to avoid conflicts
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            // Use parent folder path from Constants but avoid using "REALISATION" directly
+             String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
+//            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
+            String folderPath = String.format("%s/REL_%d/%d",
+                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion());
+
+            // Create the folder structure first, synchronizing to prevent conflicts
+            String folderId;
+            synchronized(folderCreationLock) {
+                try {
+                    // Get or create the folder first, outside the file processing loop
+                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
+//                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
+                } catch (Exception e) {
+//                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
+                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
+                }
+            }
+
+            // Now process each file using the already-created folder
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        Tika tika = new Tika();
+                        String detectedMimeType = tika.detect(file.getInputStream());
+                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+
+                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                        if (fileExtension.isEmpty()) {
+                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                        }
+
+                        long fileSize = file.getSize();
+                        String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                        String[] parts = originalFilename.split("\\.");
+                        String baseName = parts[0];
+                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                        // Include timestamp and counter to ensure uniqueness
+                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
+                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
+                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+
+//                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
+//                                originalFilename, uniqueFileName, folderPath, folderId);
+
+                        // Upload directly to the already-created folder
+                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
+//                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
+
+                        Docs document = new Docs();
+                        document.setName(baseName);
+                        document.setAlfresco_id(alfrescoId);
+                        document.setPathFolder(folderPath);
+                        document.setFileSize(formattedSize);
+                        document.setContentType(detectedMimeType);
+                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                        document.setAlfrescoName(uniqueFileName);
+
+                        // Ensure collections are initialized
+                        if (document.getRealisations() == null) {
+                            document.setRealisations(new ArrayList<>());
+                        }
+                        if (savedRealisation.getDocs() == null) {
+                            savedRealisation.setDocs(new ArrayList<>());
+                        }
+
+                        // Set up bidirectional relationship
+                        document.getRealisations().add(savedRealisation);
+                        savedRealisation.getDocs().add(document);
+
+                        // Save the document
+                        docsRepository.save(document);
+                        docs.add(document);
+                    } catch (Exception e) {
+//                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+
+        // Update the realisation's docs
+        savedRealisation.setDocs(docs);
+    }
+
+    //TODO: the upload not working if i use this method
+
+//    private void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+//
+//        if (files != null && !files.isEmpty()) {
+//            for (MultipartFile file : files) {
+//                if (file != null && !file.isEmpty()) {
+//                    UUID uuid = UUID.randomUUID();
+//                    try {
+//                        Tika tika = new Tika();
+//                        String detectedMimeType = tika.detect(file.getInputStream());
+//                        String originalFilename = file.getOriginalFilename();
+//
+//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+//                        }
+//
+//                        long fileSize = file.getSize();
+//                        String formattedSize = documentCommuneService.formatSize(fileSize);
+//
+//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
+//                                savedRealisation.getId(), savedRealisation.getVersion());
+//
+//                        String[] parts = originalFilename.split("\\.");
+//                        String baseName = parts[0];
+//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+//                        String uniqueFileName = "real_" + uuid + "_" + extension;
+//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+//
+//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
+//
+//                        Docs document = new Docs();
+//                        document.setName(baseName);
+//                        document.setAlfresco_id(alfrescoId);
+//                        document.setPathFolder(folderPath);
+//                        document.setFileSize(formattedSize);
+//                        document.setContentType(detectedMimeType);
+//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+//                        document.setAlfrescoName(uniqueFileName);
+//                        if (savedRealisation.getDocs() == null) {
+//                            savedRealisation.setDocs(new ArrayList<>());
+//                        }
+//                        savedRealisation.getDocs().add(document);
+//
+//                        docsRepository.save(document);
+//                    } catch (Exception e) {
+//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+
+//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+//        List<Docs> docs = new ArrayList<>();
+//        UUID uuid = UUID.randomUUID();
+//        // Add a file counter to ensure unique filenames even with the same UUID
+//        AtomicInteger fileCounter = new AtomicInteger(0);
+//
+//        if (files != null && !files.isEmpty()) {
+//            // Create a completely unique folder name with timestamp to avoid conflicts
+//            String timestamp = String.valueOf(System.currentTimeMillis());
+//            // Use parent folder path from Constants but avoid using "REALISATION" directly
+//            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
+////            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
+//            String folderPath = String.format("%s/REL_%d/%d_%s",
+//                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion(), timestamp);
+//
+//            // Create the folder structure first, synchronizing to prevent conflicts
+//            String folderId;
+//            synchronized(folderCreationLock) {
+//                try {
+//                    // Get or create the folder first, outside the file processing loop
+//                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
+//                } catch (Exception e) {
+//                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
+//                }
+//            }
+//
+//            // Now process each file using the already-created folder
+//            for (MultipartFile file : files) {
+//                if (file != null && !file.isEmpty()) {
+//                    try {
+//                        Tika tika = new Tika();
+//                        String detectedMimeType = tika.detect(file.getInputStream());
+//                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+//
+//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+//                        }
+//
+//                        long fileSize = file.getSize();
+//                        String formattedSize = documentCommuneService.formatSize(fileSize);
+//
+//                        String[] parts = originalFilename.split("\\.");
+//                        String baseName = parts[0];
+//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+//                        // Include timestamp and counter to ensure uniqueness
+//                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
+//                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
+//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+//
+//                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
+//                                originalFilename, uniqueFileName, folderPath, folderId);
+//
+//                        // Upload directly to the already-created folder
+//                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
+//                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
+//
+//                        Docs document = new Docs();
+//                        document.setName(baseName);
+//                        document.setAlfresco_id(alfrescoId);
+//                        document.setPathFolder(folderPath);
+//                        document.setFileSize(formattedSize);
+//                        document.setContentType(detectedMimeType);
+//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+//                        document.setAlfrescoName(uniqueFileName);
+//
+//                        // Ensure collections are initialized
+//                        if (document.getRealisations() == null) {
+//                            document.setRealisations(new ArrayList<>());
+//                        }
+//                        if (savedRealisation.getDocs() == null) {
+//                            savedRealisation.setDocs(new ArrayList<>());
+//                        }
+//
+//                        // Set up bidirectional relationship
+//                        document.getRealisations().add(savedRealisation);
+//                        savedRealisation.getDocs().add(document);
+//
+//                        // Save the document
+//                        docsRepository.save(document);
+//                        docs.add(document);
+//                    } catch (Exception e) {
+//                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//
+//        // Update the realisation's docs
+//        savedRealisation.setDocs(docs);
+//    }
+
+
+    /**
+     * Process and save document files for a PPM.
+     *
+     * @param files The document files to process
+     * @param savedPpm The PPM to associate the documents with
+     * @return List of created Doc entities
+     * @throws IOException If file processing fails
+     */
+//    private List<Docs> processAndSaveDocuments(List<MultipartFile> files, Ppm savedPpm) throws IOException {
+//        List<Docs> docs = new ArrayList<>();
+//
+//        if (files != null && !files.isEmpty()) {
+//            for (MultipartFile file : files) {
+//                if (file != null && !file.isEmpty()) {
+//                    try {
+//                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+//                        String contentType = file.getContentType();
+//
+//                        // Create a new document
+//                        Docs document = new Docs();
+//                        document.setName(originalFilename);
+//                        document.setContentType(contentType);
+//
+//                        // You would add file upload logic here, similar to PaaServiceImpl
+//                        // For example, upload to Alfresco or other document storage
+//
+//                        // Set up bidirectional relationship
+//                        if (document.getPpms() == null) {
+//                            document.setPpms(new ArrayList<>());
+//                        }
+//                        document.getPpms().add(savedPpm);
+//
+//                        // Save the document
+//                        document = docsRepository.save(document);
+//                        docs.add(document);
+//                    } catch (Exception e) {
+//                        throw new IOException("Failed to process document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//
+//        return docs;
+//    }
+
+    /**
+     * Process and save document files for a Realisation.
+     *
+     * @param files The document files to process
+     * @param savedRealisation The Realisation to associate the documents with
+     * @return List of created Doc entities
+     * @throws IOException If file processing fails
+     */
+    private List<Docs> processAndSaveRealisationDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+        List<Docs> docs = new ArrayList<>();
+
+        if (files != null && !files.isEmpty()) {
+            for (MultipartFile file : files) {
+                if (file != null && !file.isEmpty()) {
+                    try {
+                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+                        String contentType = file.getContentType();
+
+                        // Create a new document
+                        Docs document = new Docs();
+                        document.setName(originalFilename);
+                        document.setContentType(contentType);
+
+                        // You would add file upload logic here, similar to PaaServiceImpl
+                        // For example, upload to Alfresco or other document storage
+
+                        // Set up bidirectional relationship
+                        if (document.getRealisations() == null) {
+                            document.setRealisations(new ArrayList<>());
+                        }
+                        document.getRealisations().add(savedRealisation);
+
+                        // Save the document
+                        document = docsRepository.save(document);
+                        docs.add(document);
+                    } catch (Exception e) {
+                        throw new IOException("Failed to process document: " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+
+        return docs;
+    }
+
+    /**
+     * Update an existing PPM (always version 1) and all its relationships without versioning.
+     * This method updates a PPM along with its realisations, lots, and documents.
+     *
+     * @param ppmId the ID of the PPM to update
+     * @param request the request containing updated PPM data, realisations, lots, and document files
+     * @return the updated PPM with all relationships established
+     * @throws RuntimeException if the PPM is not found or is deleted
+     */
+    @Transactional
+    @Override
+    public Ppm updateGlobalWithoutVersionning(Integer ppmId, PpmWithLotsRequestDto request) {
+        // Always use version 1
+        Integer ppmVer = 1;
+
+        CompositeId compositeId = new CompositeId(ppmId, ppmVer);
+        Optional<Ppm> existingPpmOpt = repository.findById(compositeId);
+
+        if (existingPpmOpt.isEmpty()) {
+            throw new RuntimeException(
+                    "Ppm with ID " + ppmId + " and version " + ppmVer + " was not found in the database.");
+        }
+
+        Ppm existingPpm = existingPpmOpt.get();
+        if (Boolean.TRUE.equals(existingPpm.getIsDeleted())) {
+            throw new RuntimeException(
+                    "Cannot update a deleted PPM with ID " + ppmId + " and version " + ppmVer);
+        }
+
+        // Update fields of the existing PPM
+        existingPpm.setRef(request.getRef());
+        existingPpm.setNom(request.getNom());
+        existingPpm.setAnnee(request.getAnnee());
+        existingPpm.setBudgetEstime(request.getBudgetEstime());
+
+        // Set status if provided
+        if (request.getStatus() != null) {
+            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
+                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
+        }
+
+        // Set Ac if provided
+        if (request.getAcId() != null) {
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
+            existingPpm.setAc(ac);
+        }
+
+        // Handle document management by comparing existing docs with requested docIds
+        if (request.getDocIds() != null) {
+            Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
+
+            // Get active document IDs
+            Set<Integer> activeExistingDocIds = existingPpm.getDocs() != null ?
+                    existingPpm.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .map(Docs::getId)
+                            .collect(Collectors.toSet()) : new HashSet<>();
+
+            // Log document changes
+            if (!requestedDocIds.equals(activeExistingDocIds)) {
+                System.out.println("Document changes detected for PPM update ID: " + ppmId);
+
+                // Find new documents
+                Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
+                newDocIds.removeAll(activeExistingDocIds);
+                if (!newDocIds.isEmpty()) {
+                    System.out.println("  - New documents added: " + newDocIds);
+                }
+
+                // Find removed documents
+                Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
+                removedDocIds.removeAll(requestedDocIds);
+                if (!removedDocIds.isEmpty()) {
+                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
+                }
+            }
+
+            // Create a list to hold updated documents
+            List<Docs> updatedDocs = new ArrayList<>();
+
+            if (existingPpm.getDocs() != null) {
+                // For each existing document in the PPM
+                for (Docs existingDoc : existingPpm.getDocs()) {
+                    if (requestedDocIds.contains(existingDoc.getId())) {
+                        // This doc is in the request, ensure it's not marked as deleted
+                        existingDoc.setIsDeleted(false);
+                        docsRepository.save(existingDoc);
+                        updatedDocs.add(existingDoc);
+
+                        // Remove from requested IDs since we've handled it
+                        requestedDocIds.remove(existingDoc.getId());
+                    } else {
+                        // This doc is not in the request, mark it as deleted
+                        existingDoc.setIsDeleted(true);
+                        docsRepository.save(existingDoc);
+                        updatedDocs.add(existingDoc); // Keep it in the collection but as deleted
+                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
+                    }
+                }
+            }
+
+            // Add any new docs from the request
+            for (Integer docId : requestedDocIds) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+
+                // Set up bidirectional relationship
+                if (doc.getPpms() == null) {
+                    doc.setPpms(new ArrayList<>());
+                }
+                if (!doc.getPpms().contains(existingPpm)) {
+                    doc.getPpms().add(existingPpm);
+                }
+
+                // Ensure doc is active
+                doc.setIsDeleted(false);
+                docsRepository.save(doc);
+
+                updatedDocs.add(doc);
+                System.out.println("Added new document with ID " + doc.getId() + " to PPM");
+            }
+
+            // Update the PPM with the final docs list
+            existingPpm.setDocs(updatedDocs);
+        } else if (existingPpm.getDocs() != null && !existingPpm.getDocs().isEmpty()) {
+            // No docIds provided - mark all existing documents as deleted
+            List<Docs> existingDocs = existingPpm.getDocs();
+            for (Docs doc : existingDocs) {
+                if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
+                    doc.setIsDeleted(true);
+                    docsRepository.save(doc);
+                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
+                }
+            }
+            // Keep the existing docs list to preserve relationships (just all marked as deleted)
+        }
+
+        // Handle PPM files if provided
+//        if (request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
+//            try {
+//                List<Docs> uploadedDocs = processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+//                if (existingPpm.getDocs() == null) {
+//                    existingPpm.setDocs(new ArrayList<>());
+//                }
+//                existingPpm.getDocs().addAll(uploadedDocs);
+//            } catch (Exception e) {
+//                throw new RuntimeException("Failed to process PPM document files: " + e.getMessage(), e);
+//            }
+//        }
+
+        // Process realisations if provided
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            List<Realisation> realisations = new ArrayList<>();
+
+            for (RealisationBaseRequestDto realisationRequest : request.getRealisations()) {
+                Realisation realisation;
+
+                if (realisationRequest.getId() != null) {
+                    // Update existing realisation - always use version 1
+                    Integer versionToUse = 1;
+
+                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
+                    Optional<Realisation> existingRealisationOpt = realisationRepository.findById(realisationId);
+
+                    if (existingRealisationOpt.isEmpty()) {
+                        throw new RuntimeException("Realisation not found with ID: " + realisationId.getId());
+                    }
+
+                    realisation = existingRealisationOpt.get();
+
+                    // Update realisation fields
+                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                    realisation.setService(realisationRequest.getService());
+                    realisation.setDirection(realisationRequest.getDirection());
+                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setIsPublished(realisationRequest.getIsPublished());
+                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                    realisation.setSort(realisationRequest.getSort());
+
+                    // Handle realisation document management - same approach as for PPM docs
+                    if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
+                        List<Docs> docs = new ArrayList<>();
+                        for (Integer docId : realisationRequest.getDocIds()) {
+                            Docs doc = docsRepository.findById(docId)
+                                    .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+
+                            // Set up bidirectional relationship
+                            if (doc.getRealisations() == null) {
+                                doc.setRealisations(new ArrayList<>());
+                            }
+                            doc.getRealisations().add(realisation);
+
+                            // Ensure doc is active
+                            doc.setIsDeleted(false);
+                            docsRepository.save(doc);
+
+                            docs.add(doc);
+                        }
+
+                        // Set docs list for new realisation
+                        realisation.setDocs(docs);
+                    }
+
+                    // Handle Lots if provided
+                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                        Set<Lot> lots = new HashSet<>();
+                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+                            Lot lot = new Lot();
+                            Integer lotId = lotRequest.getId();
+                            if (lotId == null) {
+                                Integer maxLotId = lotRepository.findMaxId();
+                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+                            }
+                            lot.setId(lotId);
+                            lot.setVersion(1);
+                            lot.setDescription(lotRequest.getDescription());
+                            lot = lotRepository.save(lot);
+                            lots.add(lot);
+                        }
+                        realisation.setLots(lots);
+                    }
+
+                    // Save the realisation
+                    realisation = realisationRepository.save(realisation);
+                } else {
+                    // Create new realisation
+                    realisation = new Realisation();
+                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+                    realisation.setId(realisationId);
+                    realisation.setVersion(1); // Always version 1 for new realisations
+
+                    // Set all fields from the request
+                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                    realisation.setService(realisationRequest.getService());
+                    realisation.setDirection(realisationRequest.getDirection());
+                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setIsPublished(realisationRequest.getIsPublished());
+                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                    realisation.setSort(realisationRequest.getSort());
+
+                    // Handle realisation files if provided
+                    if (realisationRequest instanceof RealisationWithLotsRequestDto) {
+                        RealisationWithLotsRequestDto realisationWithLots = (RealisationWithLotsRequestDto) realisationRequest;
+                        if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
+                            try {
+                                List<Docs> uploadedDocs = processAndSaveRealisationDocuments(realisationWithLots.getRealisationFiles(), realisation);
+                                if (realisation.getDocs() == null) {
+                                    realisation.setDocs(new ArrayList<>());
+                                }
+                                realisation.getDocs().addAll(uploadedDocs);
+                            } catch (Exception e) {
+                                throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
+                            }
+                        }
+                    }
+
+                    // Set up the relationship with PPM
+                    List<Ppm> ppmList = new ArrayList<>();
+                    ppmList.add(existingPpm);
+                    realisation.setPpms(ppmList);
+
+                    // Handle Realisation documents if docIds are provided
+                    if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
+                        List<Docs> docs = new ArrayList<>();
+                        for (Integer docId : realisationRequest.getDocIds()) {
+                            Docs doc = docsRepository.findById(docId)
+                                    .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+
+                            // Set up bidirectional relationship
+                            if (doc.getRealisations() == null) {
+                                doc.setRealisations(new ArrayList<>());
+                            }
+                            if (!doc.getRealisations().contains(realisation)) {
+                                doc.getRealisations().add(realisation);
+                            }
+
+                            // Ensure doc is active
+                            doc.setIsDeleted(false);
+                            docsRepository.save(doc);
+
+                            docs.add(doc);
+                        }
+
+                        // Set docs list for new realisation
+                        realisation.setDocs(docs);
+                    }
+
+                    // Handle Lots if provided
+                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                        Set<Lot> lots = new HashSet<>();
+                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+                            Lot lot = new Lot();
+                            Integer lotId = lotRequest.getId();
+                            if (lotId == null) {
+                                Integer maxLotId = lotRepository.findMaxId();
+                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+                            }
+                            lot.setId(lotId);
+                            lot.setVersion(1);
+                            lot.setDescription(lotRequest.getDescription());
+                            lot = lotRepository.save(lot);
+                            lots.add(lot);
+                        }
+                        realisation.setLots(lots);
+                    }
+
+                    // Save the realisation
+                    realisation = realisationRepository.save(realisation);
+                }
+
+                realisations.add(realisation);
+            }
+
+            // Update the PPM with the list of realisations
+            existingPpm.setRealisations(realisations);
+        } else if (existingPpm.getRealisations() != null) {
+            existingPpm.getRealisations().clear(); // Clear if no new realisations provided
+        }
+
+        // Save the updated PPM
+        Ppm savedPpm = repository.save(existingPpm);
+
+        // Create a copy for the response with only non-deleted documents
+        Ppm copyForResponse = new Ppm();
+        BeanUtils.copyProperties(savedPpm, copyForResponse);
+
+        // Filter out deleted documents for the response
+        if (savedPpm.getDocs() != null) {
+            copyForResponse.setDocs(
+                    savedPpm.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList())
+            );
+        }
+
+        // Also filter realisation documents
+        if (copyForResponse.getRealisations() != null) {
+            copyForResponse.getRealisations().forEach(realisation -> {
+                if (realisation.getDocs() != null) {
+                    realisation.setDocs(
+                            realisation.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
+                    );
+                }
+            });
+        }
+
+        return copyForResponse;
     }
 }

@@ -20,4 +20,6 @@ public class RealisationWithLotsRequestDto extends RealisationBaseRequestDto {
      * This field overrides the one in the parent class to ensure it's not ignored during JSON processing.
      */
     private Set<LotResponse> lots;
+
+
 } 
