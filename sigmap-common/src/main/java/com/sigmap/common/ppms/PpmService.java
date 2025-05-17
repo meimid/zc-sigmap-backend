@@ -244,4 +244,24 @@ public interface PpmService {
      * @throws RuntimeException if the PPM is not found or if all versions are deleted
      */
     Ppm updateWithVersioningWithLots(Integer ppmId, PpmWithLotsRequestDto request);
+
+    /**
+     * Update an existing PPM with all its relationships.
+     * This method updates a PPM along with its realisations, lots, and documents.
+     * <p>
+     * The method handles:
+     * - Updating the PPM with the provided fields
+     * - Processing document files for the PPM
+     * - Updating/adding/removing realisations with their fields
+     * - Processing document files for each realisation
+     * - Updating/adding/removing lots for each realisation
+     * - Establishing all bidirectional relationships
+     *
+     * @param ppmId the ID of the PPM to update
+     * @param ppmVer the version of the PPM to update
+     * @param request the request containing updated PPM data, realisations, lots, and document files
+     * @return the updated PPM with all relationships established
+     * @throws RuntimeException if the PPM is not found or is deleted
+     */
+    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request);
 }
