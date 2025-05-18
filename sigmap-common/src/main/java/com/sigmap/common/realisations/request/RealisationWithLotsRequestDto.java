@@ -3,7 +3,9 @@ package com.sigmap.common.realisations.request;
 import com.sigmap.common.lots.response.LotResponse;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -21,5 +23,10 @@ public class RealisationWithLotsRequestDto extends RealisationBaseRequestDto {
      */
     private Set<LotResponse> lots;
 
+    /**
+     * List of files to be uploaded for this Realisation.
+     * Explicitly declare this field to ensure it's properly carried through inheritance.
+     */
+    private List<MultipartFile> realisationFiles;
 
 } 
