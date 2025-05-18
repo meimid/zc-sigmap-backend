@@ -2,6 +2,7 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
@@ -9,29 +10,36 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedCom;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class ComServiceImpl implements ComService{
+
+    private final Logger logger = LoggerFactory.getLogger(ComService.class);
+
     private final ComRepository repository;
     private final RefParamService refParamService;
     private final AcRepository acRepository;
-
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
     public ComServiceImpl(ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
         this.repository = repository;
         this.refParamService = refParamService;
@@ -112,8 +120,19 @@ public class ComServiceImpl implements ComService{
             }
             com.setAcs(acs);
         }
+        Com savedCom = repository.save(com);
+        if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+            for (String userId : request.getUserIds()) {
+                try {
+                    keycloakAdminService.updateUserAttribute(userId, "com", savedCom.getId().toString());
+                } catch (Exception e) {
+                    // Logger et continuer
+                    logger.warn("Impossible de mettre à jour l'utilisateur {} : {}", userId, e.getMessage());
+                }
+            }
+        }
+        return savedCom;
 
-        return repository.save(com);
     }
 
     @Override
@@ -146,6 +165,36 @@ public class ComServiceImpl implements ComService{
                 throw new AcNotFound("", nonExistentAcIds);
             }
             com.setAcs(acs);
+        }
+
+        // **Gestion des utilisateurs liés à cet Com via Keycloak**
+        if (request.getUserIds() != null) {
+            // 1. Récupérer les users actuellement liés à cet Com dans Keycloak
+            List<UserDTO> currentUsers = keycloakAdminService.getUsersByCom(id);
+
+            Set<String> currentUserIds = currentUsers.stream()
+                    .map(UserDTO::getId)
+                    .collect(Collectors.toSet());
+
+            Set<String> newUserIds = new HashSet<>(request.getUserIds());
+
+            // 2. Users à ajouter (nouveaux)
+            Set<String> toAdd = new HashSet<>(newUserIds);
+            toAdd.removeAll(currentUserIds);
+
+            // 3. Users à retirer (plus dans la liste)
+            Set<String> toRemove = new HashSet<>(currentUserIds);
+            toRemove.removeAll(newUserIds);
+
+            // 4. Mettre à jour Keycloak : ajouter attribut com=id
+            for (String userIdToAdd : toAdd) {
+                keycloakAdminService.updateUserAttribute(userIdToAdd, "com", id.toString());
+            }
+
+            // 5. Mettre à jour Keycloak : supprimer attribut com (mettre à null)
+            for (String userIdToRemove : toRemove) {
+                keycloakAdminService.updateUserAttribute(userIdToRemove, "com", null);
+            }
         }
 
         return repository.save(com);

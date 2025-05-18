@@ -17,4 +17,6 @@ public class ComRequest {
     private String membres;
     private Integer comTypeId;
     private List<Integer> acIds;
+    private List<String> userIds;
+
 }

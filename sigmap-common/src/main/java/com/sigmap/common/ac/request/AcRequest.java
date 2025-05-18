@@ -13,4 +13,5 @@ public class AcRequest {
     private String ancrage;
     private String contact;
    private List<Integer> comIds;
+   private List<String> userIds;
 }
