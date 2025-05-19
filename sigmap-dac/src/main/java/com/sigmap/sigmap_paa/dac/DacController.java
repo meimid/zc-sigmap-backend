@@ -28,7 +28,7 @@ public class DacController {
 
 
     @PostMapping("/pdf")
-    public ResponseEntity<InputStreamResource> generatePdfPost(@RequestBody PdfDacRequest request, HttpServletResponse response) {
+    public void generatePdfPost(@RequestBody PdfDacRequest request, HttpServletResponse response) {
         try {
             // Step 1: Generate PDF and get the output file
             File pdfFile = dacService.replaceBookmarksAndGeneratePDF(request.getDocPath(), request.getDacId(), request.getDacVer());
@@ -39,11 +39,6 @@ public class DacController {
             }
 
             InputStreamResource resource = new InputStreamResource(new FileInputStream(pdfFile));
-
-            /*return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + pdfFile.getName())
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(resource);*/
 
             // Step 3: Write to HTTP response
             response.setContentType("application/pdf");
@@ -58,7 +53,6 @@ public class DacController {
             throw new RuntimeException("Error generating PDF", e);
         }
 
-        return null;
     }
 
 }
