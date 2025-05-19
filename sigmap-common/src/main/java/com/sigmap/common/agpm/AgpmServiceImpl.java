@@ -527,11 +527,11 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws IOException if an error occurs during file processing
      */
     private void processAndSaveDocuments(List<MultipartFile> files, Agpm savedAgpm) throws IOException {
-        UUID uuid = UUID.randomUUID();
         if (files != null && !files.isEmpty()) {
             for (MultipartFile file : files) {
                 if (file != null && !file.isEmpty()) {
                     try {
+                        UUID uuid = UUID.randomUUID();
                         Tika tika = new Tika();
                         String detectedMimeType = tika.detect(file.getInputStream());
                         String originalFilename = file.getOriginalFilename();

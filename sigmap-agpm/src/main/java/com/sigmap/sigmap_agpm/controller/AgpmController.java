@@ -9,7 +9,9 @@ import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.file_check.FileCheckServices;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,14 +31,20 @@ import java.io.IOException;
 public class AgpmController {
 
     private final AgpmService agpmService;
+    private final FileCheckServices fileCheckServices;
+
+
+    @Value("${max-file-size}")
+    private long maxFileUploadSize;
 
     /**
      * Constructor with dependency injection.
      *
      * @param agpmService The AgpmService for business logic
      */
-    public AgpmController(AgpmService agpmService) {
+    public AgpmController(AgpmService agpmService, FileCheckServices fileCheckServices) {
         this.agpmService = agpmService;
+        this.fileCheckServices = fileCheckServices;
     }
 
     /**
@@ -100,7 +108,8 @@ public class AgpmController {
      */
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<AgpmResponse> createAgpm(@ModelAttribute("request") AgpmRequest request)
-            throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
+            throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException, MaxUploadSizeFile {
+        fileCheckServices.chechFileUpload(request.getFiles(), maxFileUploadSize);
         Agpm createdAgpm = agpmService.create(request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(createdAgpm);
         return ResponseEntity.ok(agpmResponse);
@@ -123,7 +132,8 @@ public class AgpmController {
     public ResponseEntity<AgpmResponse> updateAgpm(@PathVariable Integer agpmId,
                                                   @ModelAttribute("request")
                                                    AgpmRequest request)
-            throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm {
+            throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm, MaxUploadSizeFile {
+       fileCheckServices.chechFileUpload(request.getFiles(), maxFileUploadSize);
         Agpm updatedAgpm = agpmService.updateWithoutVersioning(agpmId, null, request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.OK);

@@ -268,6 +268,12 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
         return ResponseEntity.ok(SocieteAdressResponset);
     }
 
+    @PutMapping("/{societeId}/contact/{contactId}/societe-contact")
+    public ResponseEntity<SocieteContactResponseDto> updateContactAndSocieteContact(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody ContactAndSocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
+        SocieteContact param = societeContactService.updateContactAndSocieteContact(societeId,contactId,request);
+        SocieteContactResponseDto response = SociteContactMapper.INSTANCE.mapToDto(param);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
 
+    }
 
 }
