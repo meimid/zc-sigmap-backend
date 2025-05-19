@@ -264,7 +264,7 @@ public class PaaFlowableService {
         Optional<Paa> paaOptional = paaService.findById(id, version);
         if (paaOptional.isPresent()) {
             Paa updatedPaa = paaOptional.get();
-//            updatedPaa.setProcessInstanceId(processInstanceId);
+           updatedPaa.setProcessInstanceId(processInstanceId);
             paaService.save(updatedPaa);
         }
 

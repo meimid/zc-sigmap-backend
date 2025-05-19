@@ -6,6 +6,8 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -123,7 +125,7 @@ public interface PaaService {
      * @return the created PAA entity with all relationships established
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound;
+    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException;
 
     /**
      * Delete a Paa entity by its composite ID components.
@@ -133,7 +135,7 @@ public interface PaaService {
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
+    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException;
 
     /**
      * Updates a PAA by creating a new version with the updated data.

@@ -4,6 +4,8 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.mappers.PaaMapper;
@@ -154,7 +156,7 @@ public class PaaController {
 //    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
     public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(
             @ModelAttribute("request") PaaRequestGlobal request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
         logger.info("Creating PAA with relationships using RealisationRequestForPaa");
 
         // Process lots from JSON string if provided
@@ -179,7 +181,7 @@ public class PaaController {
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
         @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
     logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
     Paa updatedPaa = paaService.update(paaId, paaVer, request);
 

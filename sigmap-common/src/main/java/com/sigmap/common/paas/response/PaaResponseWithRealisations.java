@@ -29,7 +29,7 @@ public class PaaResponseWithRealisations {
     private List<DocsResponseDTO> docs;
     // Using the specialized Realisation DTO to avoid circular references
     private List<RealisationResponseDtoForPaa> realisations;
-
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 
 } 

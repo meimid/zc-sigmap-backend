@@ -69,4 +69,6 @@ public class Paa extends BaseEntity {
     )
     @JsonManagedReference
     private List<Docs> docs;
+
+    private String processInstanceId;
 }

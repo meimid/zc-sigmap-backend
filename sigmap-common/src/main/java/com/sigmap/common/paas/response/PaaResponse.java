@@ -23,4 +23,5 @@ public class PaaResponse {
     private RefParam status;
     private List<Realisation> realisations;
     private BaseEntityResponse metadata;
+    private String processInstanceId;
 }

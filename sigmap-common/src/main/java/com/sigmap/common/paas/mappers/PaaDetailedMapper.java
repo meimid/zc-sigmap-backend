@@ -31,6 +31,7 @@ public interface PaaDetailedMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "realisations", expression = "java(mapRealisations(paa.getRealisations()))")
     @Mapping(target = "docs", expression = "java(mapDocs(paa.getDocs()))")
     PaaResponseWithRealisations mapDetailed(Paa paa);
