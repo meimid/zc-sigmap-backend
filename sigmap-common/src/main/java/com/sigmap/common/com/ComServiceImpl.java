@@ -121,7 +121,7 @@ public class ComServiceImpl implements ComService{
             com.setAcs(acs);
         }
         Com savedCom = repository.save(com);
-        if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+        /*if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
             for (String userId : request.getUserIds()) {
                 try {
                     keycloakAdminService.updateUserAttribute(userId, "com", savedCom.getId().toString());
@@ -130,7 +130,7 @@ public class ComServiceImpl implements ComService{
                     logger.warn("Impossible de mettre à jour l'utilisateur {} : {}", userId, e.getMessage());
                 }
             }
-        }
+        }*/
         return savedCom;
 
     }
@@ -167,7 +167,7 @@ public class ComServiceImpl implements ComService{
             com.setAcs(acs);
         }
 
-        // **Gestion des utilisateurs liés à cet Com via Keycloak**
+        /*// **Gestion des utilisateurs liés à cet Com via Keycloak**
         if (request.getUserIds() != null) {
             // 1. Récupérer les users actuellement liés à cet Com dans Keycloak
             List<UserDTO> currentUsers = keycloakAdminService.getUsersByCom(id);
@@ -195,7 +195,7 @@ public class ComServiceImpl implements ComService{
             for (String userIdToRemove : toRemove) {
                 keycloakAdminService.updateUserAttribute(userIdToRemove, "com", null);
             }
-        }
+        }*/
 
         return repository.save(com);
     }

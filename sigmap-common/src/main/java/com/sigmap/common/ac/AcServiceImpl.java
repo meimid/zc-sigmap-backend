@@ -108,7 +108,7 @@ public class AcServiceImpl implements AcService{
 
         }
         Ac savedAc = repository.save(ac);
-        if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+        /*if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
             for (String userId : request.getUserIds()) {
                 try {
                     keycloakAdminService.updateUserAttribute(userId, "ac", savedAc.getId().toString());
@@ -117,7 +117,7 @@ public class AcServiceImpl implements AcService{
                     logger.warn("Impossible de mettre à jour l'utilisateur {} : {}", userId, e.getMessage());
                 }
             }
-        }
+        }*/
         return  savedAc;
     }
 
@@ -146,7 +146,7 @@ public class AcServiceImpl implements AcService{
             }
             ac.setComs(coms);
         }
-        // **Gestion des utilisateurs liés à cet Ac via Keycloak**
+   /*     // **Gestion des utilisateurs liés à cet Ac via Keycloak**
         if (request.getUserIds() != null) {
             // 1. Récupérer les users actuellement liés à cet Ac dans Keycloak
             List<UserDTO> currentUsers = keycloakAdminService.getUsersByAc(id);
@@ -174,7 +174,7 @@ public class AcServiceImpl implements AcService{
             for (String userIdToRemove : toRemove) {
                 keycloakAdminService.updateUserAttribute(userIdToRemove, "ac", null);
             }
-        }
+        }*/
 
 
         return repository.save(ac);
