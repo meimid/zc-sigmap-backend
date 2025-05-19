@@ -264,4 +264,14 @@ public interface PpmService {
      * @throws RuntimeException if the PPM is not found or is deleted
      */
     Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request);
+
+    /**
+     * Find a PPM by its ID and optionally its version.
+     * If version is null, returns the latest version.
+     *
+     * @param ppmId the ID of the PPM
+     * @param ppmVer the version of the PPM (can be null to get latest version)
+     * @return Optional containing the PPM if found
+     */
+    Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer);
 }

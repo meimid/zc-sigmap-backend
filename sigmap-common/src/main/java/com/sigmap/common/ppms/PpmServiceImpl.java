@@ -4133,4 +4133,12 @@ public class PpmServiceImpl implements PpmService {
         if (date1 == null || date2 == null) return true;
         return !date1.equals(date2);
     }
+
+    @Override
+    public Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer) {
+        if (ppmVer == null) {
+            return findLatestById(ppmId);
+        }
+        return findById(ppmId, ppmVer);
+    }
 }

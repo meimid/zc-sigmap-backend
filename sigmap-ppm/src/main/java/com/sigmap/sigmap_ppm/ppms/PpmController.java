@@ -1143,4 +1143,23 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Get a detailed PPM by its ID, including all its realisations.
+     * This endpoint returns the latest version of the PPM.
+     *
+     * @param ppmId the ID of the PPM to retrieve
+     * @return the detailed PPM response with realisations
+     * @throws ResponseStatusException if the PPM is not found
+     */
+    @GetMapping("/{ppmId}")
+    public ResponseEntity<PpmResponse> getPpmById(@PathVariable Integer ppmId) {
+        logger.info("Getting detailed PPM with ID: {}", ppmId);
+        
+        Ppm ppm = ppmService.findByIdPpm(ppmId, null)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
+                
+        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        return ResponseEntity.ok(response);
+    }
+
 }
