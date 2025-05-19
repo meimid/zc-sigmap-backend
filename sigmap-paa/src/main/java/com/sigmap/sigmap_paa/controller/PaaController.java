@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.paas;
+package com.sigmap.sigmap_paa.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.paas.Paa;
@@ -290,18 +290,6 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
         return ResponseEntity.ok(response);
     }
-//    @PutMapping(value="/{paaId}/versioning/multi", consumes = {"multipart/form-data"})
-//    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
-//            @PathVariable Integer paaId,
-//            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
-//        logger.info("Updating PAA ID: {} version: {} with versioning", paaId);
-//        Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
-//
-//        // Use the detailed mapper to create a response with specialised DTOs
-//        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
-//
-//        return ResponseEntity.ok(response);
-//    }
 
     /**
      * Updates a PAA by creating a new version with the updated data using the latest version.

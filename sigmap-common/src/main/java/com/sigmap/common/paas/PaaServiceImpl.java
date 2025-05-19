@@ -7,22 +7,16 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.Constants;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaMapper;
-import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
-import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.ref_params.RefParam;
@@ -42,17 +36,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.multipart.MultipartFile;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
-import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
+
 
 import java.io.IOException;
 import java.util.*;
@@ -71,12 +60,9 @@ public class PaaServiceImpl implements PaaService {
     private final DocsRepository docsRepository;
     private final AcRepository acRepository;
     private final LotRepository lotRepository;
-
     private final RealisationService realisationService;
-
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
-    private final DocsService docsService;
     private final AcService acService;
 
     @Value("${alfresco.url}")
@@ -86,7 +72,6 @@ public class PaaServiceImpl implements PaaService {
                           RefParamRepository refParamRepository, DocsRepository docsRepository,
                           AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService,
                           DocumentCommuneService documentCommuneService,
-                          DocsService docsService,
                           AcService acService,
                           AlfrescoService alfrescoService
 
@@ -100,9 +85,8 @@ public class PaaServiceImpl implements PaaService {
         this.lotRepository = lotRepository;
         this.realisationService = realisationService;
         this.alfrescoService = alfrescoService;
-        this.docsService = docsService;
         this.documentCommuneService = documentCommuneService;
-        this.acService=acService;
+        this.acService = acService;
     }
 
     @Override
@@ -185,7 +169,7 @@ public class PaaServiceImpl implements PaaService {
         Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
         if (existingPaa.isPresent()) {
             throw new PaaAlreadyExistsException(
-                    "Paa with ID " + id + " and version " + version + " already exists.",id, version);
+                    "Paa with ID " + id + " and version " + version + " already exists.", id, version);
         }
 
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
@@ -267,25 +251,25 @@ public class PaaServiceImpl implements PaaService {
         // Handle document management by comparing existing docs with requested docIds
         if (request.getDocIds() != null) {
             Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
-            
+
             // Get active document IDs
             Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
                     existingPaa.getDocs().stream()
                             .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                             .map(Docs::getId)
                             .collect(Collectors.toSet()) : new HashSet<>();
-            
+
             // Log document changes
             if (!requestedDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document changes detected for PAA update ID: " + paaId);
-                
+
                 // Find new documents
                 Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
                 newDocIds.removeAll(activeExistingDocIds);
                 if (!newDocIds.isEmpty()) {
                     System.out.println("  - New documents added: " + newDocIds);
                 }
-                
+
                 // Find removed documents
                 Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
                 removedDocIds.removeAll(requestedDocIds);
@@ -293,10 +277,10 @@ public class PaaServiceImpl implements PaaService {
                     System.out.println("  - Documents marked as deleted: " + removedDocIds);
                 }
             }
-            
+
             // Create a list to hold updated documents
             List<Docs> updatedDocs = new ArrayList<>();
-            
+
             if (existingPaa.getDocs() != null) {
                 // For each existing document in the PAA
                 for (Docs existingDoc : existingPaa.getDocs()) {
@@ -305,7 +289,7 @@ public class PaaServiceImpl implements PaaService {
                         existingDoc.setIsDeleted(false);
                         docsRepository.save(existingDoc);
                         updatedDocs.add(existingDoc);
-                        
+
                         // Remove from requested IDs since we've handled it
                         requestedDocIds.remove(existingDoc.getId());
                     } else {
@@ -317,12 +301,12 @@ public class PaaServiceImpl implements PaaService {
                     }
                 }
             }
-            
+
             // Add any new docs from the request that weren't already in existingPaa
             for (Integer docId : requestedDocIds) {
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                
+
                 // Set up bidirectional relationship
                 if (doc.getPaas() == null) {
                     doc.setPaas(new ArrayList<>());
@@ -330,15 +314,15 @@ public class PaaServiceImpl implements PaaService {
                 if (!doc.getPaas().contains(existingPaa)) {
                     doc.getPaas().add(existingPaa);
                 }
-                
+
                 // Ensure doc is active
                 doc.setIsDeleted(false);
                 docsRepository.save(doc);
-                
+
                 updatedDocs.add(doc);
                 System.out.println("Added new document with ID " + doc.getId() + " to PAA");
             }
-            
+
             // Update the PAA with the final docs list
             existingPaa.setDocs(updatedDocs);
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
@@ -351,8 +335,8 @@ public class PaaServiceImpl implements PaaService {
                     System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
                 }
             }
-            // Keep the existing docs list to preserve relationships (just all marked as deleted)
         }
+
 
         // Handle PAA files if provided
         if (request.getPaaFiles() != null) {
@@ -406,22 +390,22 @@ public class PaaServiceImpl implements PaaService {
                     // Handle realisation document management - same approach as for PAA docs
                     if (realisationRequest.getDocIds() != null) {
                         Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
-                        
+
                         // Get active document IDs
                         Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ?
                                 realisation.getDocs().stream()
                                         .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                                         .map(Docs::getId)
                                         .collect(Collectors.toSet()) : new HashSet<>();
-                        
+
                         // Log document changes
                         if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
                             System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
                         }
-                        
+
                         // Create a list for updated realisation docs
                         List<Docs> updatedRealisationDocs = new ArrayList<>();
-                        
+
                         if (realisation.getDocs() != null) {
                             // For each existing document in the realisation
                             for (Docs existingDoc : realisation.getDocs()) {
@@ -430,7 +414,7 @@ public class PaaServiceImpl implements PaaService {
                                     existingDoc.setIsDeleted(false);
                                     docsRepository.save(existingDoc);
                                     updatedRealisationDocs.add(existingDoc);
-                                    
+
                                     // Remove from requested IDs since we've handled it
                                     requestedRealisationDocIds.remove(existingDoc.getId());
                                 } else {
@@ -442,12 +426,12 @@ public class PaaServiceImpl implements PaaService {
                                 }
                             }
                         }
-                        
+
                         // Add any new docs from the request
                         for (Integer docId : requestedRealisationDocIds) {
                             Docs doc = docsRepository.findById(docId)
                                     .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                            
+
                             // Set up bidirectional relationship
                             if (doc.getRealisations() == null) {
                                 doc.setRealisations(new ArrayList<>());
@@ -455,15 +439,15 @@ public class PaaServiceImpl implements PaaService {
                             if (!doc.getRealisations().contains(realisation)) {
                                 doc.getRealisations().add(realisation);
                             }
-                            
+
                             // Ensure doc is active
                             doc.setIsDeleted(false);
                             docsRepository.save(doc);
-                            
+
                             updatedRealisationDocs.add(doc);
                             System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
                         }
-                        
+
                         // Update the realisation's docs
                         realisation.setDocs(updatedRealisationDocs);
                     } else if (realisation.getDocs() != null && !realisation.getDocs().isEmpty()) {
@@ -562,7 +546,7 @@ public class PaaServiceImpl implements PaaService {
                         for (Integer docId : realisationRequest.getDocIds()) {
                             Docs doc = docsRepository.findById(docId)
                                     .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                            
+
                             // Set up bidirectional relationship
                             if (doc.getRealisations() == null) {
                                 doc.setRealisations(new ArrayList<>());
@@ -570,14 +554,14 @@ public class PaaServiceImpl implements PaaService {
                             if (!doc.getRealisations().contains(realisation)) {
                                 doc.getRealisations().add(realisation);
                             }
-                            
+
                             // Ensure doc is active
                             doc.setIsDeleted(false);
                             docsRepository.save(doc);
-                            
+
                             docs.add(doc);
                         }
-                        
+
                         // Set docs list for new realisation
                         realisation.setDocs(docs);
                     }
@@ -616,35 +600,2030 @@ public class PaaServiceImpl implements PaaService {
 
         // Save the updated PAA
         Paa savedPaa = repository.save(existingPaa);
-        
+
         // Create a copy for the response with only non-deleted documents
         Paa copyForResponse = new Paa();
         BeanUtils.copyProperties(savedPaa, copyForResponse);
-        
+
         // Filter out deleted documents for the response
         if (savedPaa.getDocs() != null) {
             copyForResponse.setDocs(
-                savedPaa.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .collect(Collectors.toList())
+                    savedPaa.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList())
             );
         }
-        
+
         // Also filter realisation documents
         if (copyForResponse.getRealisations() != null) {
             copyForResponse.getRealisations().forEach(realisation -> {
                 if (realisation.getDocs() != null) {
                     realisation.setDocs(
-                        realisation.getDocs().stream()
-                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            .collect(Collectors.toList())
+                            realisation.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
                     );
                 }
             });
         }
-        
+
         return copyForResponse;
     }
+
+
+//    @Transactional
+//    @Override
+//    public Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
+//        // Find the existing PAA
+//        CompositeId compositeId = new CompositeId(paaId, paaVer);
+//        Paa existingPaa = repository.findById(compositeId)
+//                .orElseThrow(() -> new PaaNotFound(
+//                        "PAA with ID " + paaId + " and version " + paaVer + " not found", List.of(paaId), List.of(paaVer)));
+//
+//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//            throw new PaaNotFound(
+//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer, List.of(paaId), List.of(paaVer));
+//        }
+//
+//        // Log the current state and request
+//        System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
+//        System.out.println("Request data: " + request);
+//
+//        // Track whether any documents have changed
+//        boolean documentsChanged = false;
+//
+//        // Process any document changes
+//        if (request.getDocIds() != null) {
+//            // Get only the active (non-deleted) existing document IDs
+//            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                    existingPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .map(Docs::getId)
+//                            .collect(Collectors.toSet()) : new HashSet<>();
+//
+//            // Compare with requested document IDs
+//            Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
+//            documentsChanged = !requestDocIds.equals(activeExistingDocIds);
+//
+//            if (documentsChanged) {
+//                System.out.println("Document changes detected:");
+//                System.out.println("  - Active existing docs: " + activeExistingDocIds);
+//                System.out.println("  - Requested docs: " + requestDocIds);
+//            }
+//        }
+//
+//        // Get hash for the current request
+//        String requestHash = generateRequestHash(request);
+//        String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
+//
+//        // Check if files are present - if so, we'll always create a new version
+//        boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
+//        if (hasFiles) {
+//            System.out.println("Files detected in request - will create new version regardless of other changes");
+//        } else {
+//            // Only check hash if no files are present
+//            System.out.println("Current request hash: " + requestHash);
+//            System.out.println("Previous request hash: " + previousRequestHash);
+//
+//            // If this is the exact same request as the previous one, return the existing PAA without changes
+//            if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged) {
+//                System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
+//
+//                // Create a filtered copy for response
+//                Paa copyForResponse = new Paa();
+//                BeanUtils.copyProperties(existingPaa, copyForResponse);
+//
+//                // Filter out deleted documents for the response
+//                if (existingPaa.getDocs() != null) {
+//                    copyForResponse.setDocs(
+//                            existingPaa.getDocs().stream()
+//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//
+//                // Also filter realisation documents
+//                if (copyForResponse.getRealisations() != null) {
+//                    copyForResponse.getRealisations().forEach(realisation -> {
+//                        if (realisation.getDocs() != null) {
+//                            realisation.setDocs(
+//                                    realisation.getDocs().stream()
+//                                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                            .collect(Collectors.toList())
+//                            );
+//                        }
+//
+//                        // Also filter lots in realisations
+//                        if (realisation.getLots() != null) {
+//                            realisation.setLots(
+//                                    realisation.getLots().stream()
+//                                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                            .collect(Collectors.toSet())
+//                            );
+//                        }
+//                    });
+//                }
+//
+//                return copyForResponse;
+//            }
+//        }
+//
+//        // Create a temporary PAA to check for changes in direct fields
+//        Paa tempPaa = new Paa();
+//
+//        // Only use request values when they're not null, otherwise keep existing values
+//        tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
+//        tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
+//        tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
+//        tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
+//        tempPaa.setStatus(existingPaa.getStatus());
+//        // Handle AC
+//        Ac requestAc = null;
+//        if (request.getAcId() != null) {
+//            requestAc = acRepository.findById(request.getAcId()).orElse(null);
+//        }
+//        tempPaa.setAc(requestAc != null ? requestAc : existingPaa.getAc());
+//
+//        // Check for changes in direct PAA fields
+//        boolean hasDirectChanges = !arePaaFieldsIdentical(existingPaa, tempPaa);
+//        System.out.println("Direct field changes detected: " + hasDirectChanges);
+//
+//        // Track whether any realisations have changed
+//        boolean realisationsChanged = false;
+//
+//        // Prepare lists for relationships
+//        List<Realisation> updatedRealisations = new ArrayList<>();
+//        List<Docs> updatedDocs = new ArrayList<>();
+//
+//        // Keep track of newly created lots to detect duplicates
+//        Map<String, Lot> newLotsMap = new HashMap<>();
+//
+//        // Process Realisation DTOs
+//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//            System.out.println("Processing " + request.getRealisations().size() + " realisations");
+//            for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
+//                try {
+//                    System.out.println("Processing realisation DTO: " + realisationDto);
+//                    System.out.println("Realisation ID: " + realisationDto.getId() + ", Lots: " +
+//                            (realisationDto.getLots() != null ? realisationDto.getLots().size() : "null"));
+//
+//                    if (realisationDto.getId() != null) {
+//                        Integer versionToUse = realisationDto.getVersion();
+//                        if (versionToUse == null) {
+//                            Integer maxVersion = realisationRepository.findMaxVersionById(realisationDto.getId());
+//                            if (maxVersion != null) {
+//                                versionToUse = maxVersion;
+//                                System.out.println("Found latest version for Realisation " + realisationDto.getId() + ": " + maxVersion);
+//                            } else {
+//                                throw new RuntimeException("No versions found for Realisation with ID: " + realisationDto.getId());
+//                            }
+//                        }
+//
+//                        CompositeId realisationId = new CompositeId(realisationDto.getId(), versionToUse);
+//                        Realisation existingRealisation = realisationRepository.findById(realisationId)
+//                                .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " +
+//                                        realisationId.getId() + " and version: " + realisationId.getVersion()));
+//
+//                        System.out.println("Found existing Realisation: " + existingRealisation.getId() + " version " + existingRealisation.getVersion());
+//                        System.out.println("Current lots: " + (existingRealisation.getLots() != null ? existingRealisation.getLots().size() : "null"));
+//
+//                        boolean updateNeeded = realisationNeedsUpdate(existingRealisation, realisationDto);
+//                        System.out.println("Realisation update needed: " + updateNeeded);
+//
+//                        // Always check for files even if no other changes
+//                        boolean hasRealisationFiles = realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty();
+//                        if (hasRealisationFiles) {
+//                            System.out.println("Files detected in realisation, forcing update");
+//                            updateNeeded = true;
+//                        }
+//
+//                        if (updateNeeded) {
+//                            System.out.println("Updating Realisation with versioning...");
+//                            Realisation updatedRealisation = realisationService.updateWithVersioning(
+//                                    realisationDto.getId(), versionToUse, realisationDto);
+//
+//                            // Handle realisation files if provided
+//                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                                try {
+//                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                            " files for Realisation ID: " + updatedRealisation.getId() +
+//                                            " version: " + updatedRealisation.getVersion());
+//                                    processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
+//                                    // Save the realisation again after adding documents
+//                                    updatedRealisation = realisationRepository.save(updatedRealisation);
+//                                    System.out.println("Saved Realisation after processing files");
+//                                } catch (IOException e) {
+//                                    System.err.println("Error processing Realisation files: " + e.getMessage());
+//                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
+//                                }
+//                            }
+//
+//                            System.out.println("Updated Realisation: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+//                            updatedRealisations.add(updatedRealisation);
+//                            realisationsChanged = true;
+//                        } else {
+//                            System.out.println("Using existing Realisation without changes");
+//
+//                            // Even if no field changes detected, still process realisation files if any
+//                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                                try {
+//                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                            " files for existing Realisation ID: " + existingRealisation.getId() +
+//                                            " version: " + existingRealisation.getVersion());
+//                                    processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
+//                                    existingRealisation = realisationRepository.save(existingRealisation);
+//                                    System.out.println("Saved existing Realisation after processing files");
+//                                    updateNeeded = true; // Force update needed
+//                                    realisationsChanged = true;
+//
+//                                    // Create a new version of the Realisation through the service
+//                                    System.out.println("Creating new Realisation version due to file uploads");
+//                                    Realisation updatedRealisation = realisationService.updateWithVersioning(
+//                                            realisationDto.getId(), versionToUse, realisationDto);
+//                                    updatedRealisations.add(updatedRealisation);
+//                                    continue; // Skip to next iteration since we've handled this Realisation
+//                                } catch (IOException e) {
+//                                    System.err.println("Error processing existing Realisation files: " + e.getMessage());
+//                                    throw new RuntimeException("Error processing existing Realisation files: " + e.getMessage(), e);
+//                                }
+//                            }
+//
+//                            if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+//                                System.out.println("Processing " + realisationDto.getLots().size() + " lots in DTO");
+//
+//                                Set<Lot> updatedLots = new HashSet<>();
+//                                Set<Integer> processedLotIds = new HashSet<>();
+//                                boolean lotChanges = false;
+//
+//                                Set<Integer> existingLotIds = existingRealisation.getLots() != null ?
+//                                        existingRealisation.getLots().stream().map(Lot::getId).collect(Collectors.toSet()) : new HashSet<>();
+//                                Map<Integer, String> existingLotDescriptions = existingRealisation.getLots() != null ?
+//                                        existingRealisation.getLots().stream().collect(
+//                                                Collectors.toMap(Lot::getId, lot -> lot.getDescription() != null ? lot.getDescription() : "", (a, b) -> a)) :
+//                                        new HashMap<>();
+//
+//                                for (LotResponse lotDto : realisationDto.getLots()) {
+//                                    if (lotDto.getId() == null) {
+//                                        // Handle new lot without ID
+//                                        String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+//                                        System.out.println("Processing new lot with description: " + lotHash);
+//
+//                                        if (newLotsMap.containsKey(lotHash)) {
+//                                            System.out.println("Using previously created lot for description: " + lotHash);
+//                                            updatedLots.add(newLotsMap.get(lotHash));
+//                                            processedLotIds.add(newLotsMap.get(lotHash).getId());
+//                                            continue;
+//                                        }
+//
+//                                        boolean lotExists = false;
+//                                        if (existingRealisation.getLots() != null) {
+//                                            for (Lot existingLot : existingRealisation.getLots()) {
+//                                                String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+//                                                if (existingDesc.equals(lotHash)) {
+//                                                    System.out.println("Found matching existing lot with description: " + lotHash);
+//                                                    updatedLots.add(existingLot);
+//                                                    processedLotIds.add(existingLot.getId());
+//                                                    lotExists = true;
+//                                                    break;
+//                                                }
+//                                            }
+//                                        }
+//
+//                                        if (lotExists) continue;
+//
+//                                        System.out.println("Creating new lot with description: " + lotHash);
+//                                        Lot newLot = new Lot();
+//                                        newLot.setDescription(lotDto.getDescription());
+//                                        newLot.setVersion(1); // First version
+//
+//                                        // Generate new ID if not provided
+//                                        Integer maxLotId = lotRepository.findMaxId();
+//                                        Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+//                                        newLot.setId(lotId);
+//
+//                                        Lot savedLot = lotRepository.save(newLot);
+//                                        updatedLots.add(savedLot);
+//                                        processedLotIds.add(savedLot.getId());
+//                                        newLotsMap.put(lotHash, savedLot);
+//                                        System.out.println("Created new Lot with ID: " + savedLot.getId());
+//                                        lotChanges = true;
+//
+//
+//                                    } else {
+//                                        if (processedLotIds.contains(lotDto.getId())) {
+//                                            System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
+//                                            continue;
+//                                        }
+//
+//                                        Integer lotId = lotDto.getId();
+//                                        Integer lotVersion = lotDto.getVersion();
+//                                        if (lotVersion == null) {
+//                                            lotVersion = lotRepository.findMaxVersionById(lotId);
+//                                            if (lotVersion == null) {
+//                                                System.out.println("Lot ID " + lotId + " not found, skipping");
+//                                                continue;
+//                                            }
+//                                        }
+//
+//                                        Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
+//                                        if (existingLotOpt.isPresent()) {
+//                                            Lot existingLot = existingLotOpt.get();
+//                                            String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+//                                            String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+//                                            if (!requestDesc.equals(existingDesc)) {
+//                                                Lot newLot = new Lot();
+//                                                newLot.setId(existingLot.getId());
+//                                                newLot.setVersion(existingLot.getVersion() + 1);
+//                                                newLot.setDescription(lotDto.getDescription());
+//
+//                                                Lot savedLot = lotRepository.save(newLot);
+//                                                updatedLots.add(savedLot);
+//                                                processedLotIds.add(savedLot.getId());
+//                                                System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion());
+//                                                lotChanges = true;
+//                                            } else {
+//                                                updatedLots.add(existingLot);
+//                                                processedLotIds.add(existingLot.getId());
+//                                            }
+//                                        }
+//                                    }
+//                                }
+//
+//                                Set<Integer> requestLotIds = realisationDto.getLots().stream()
+//                                        .filter(lotDto -> lotDto.getId() != null)
+//                                        .map(LotResponse::getId)
+//                                        .collect(Collectors.toSet());
+//                                requestLotIds.addAll(processedLotIds.stream()
+//                                        .filter(id -> !existingLotIds.contains(id))
+//                                        .collect(Collectors.toSet()));
+//
+//                                if (!requestLotIds.equals(existingLotIds)) {
+//                                    lotChanges = true;
+//                                }
+//
+//                                if (lotChanges) {
+//                                    System.out.println("Lot associations changed, updating Realisation");
+//                                    existingRealisation.setLots(updatedLots);
+//                                    Realisation savedRealisation = realisationRepository.save(existingRealisation);
+//                                    updatedRealisations.add(savedRealisation);
+//                                    realisationsChanged = true;
+//                                } else {
+//                                    System.out.println("No changes to lot associations, using existing Realisation");
+//                                    updatedRealisations.add(existingRealisation);
+//                                }
+//                            } else {
+//                                updatedRealisations.add(existingRealisation);
+//                            }
+//                        }
+//                    } else {
+//                        System.out.println("Creating new Realisation");
+//                        RealisationRequest newRealisationRequest = new RealisationRequest();
+//                        newRealisationRequest.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
+//                        newRealisationRequest.setService(realisationDto.getService());
+//                        newRealisationRequest.setDirection(realisationDto.getDirection());
+//                        newRealisationRequest.setSourceFinancement(realisationDto.getSourceFinancement());
+//                        newRealisationRequest.setMonais(realisationDto.getMonais());
+//                        newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
+//                        newRealisationRequest.setModeSelection(realisationDto.getModeSelection());
+//                        newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
+//                        newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
+//                        newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
+//                        newRealisationRequest.setDatePrevAp(realisationDto.getDatePrevAp());
+//                        newRealisationRequest.setBudgetEstime(realisationDto.getBudgetEstime());
+//                        newRealisationRequest.setIsPublished(realisationDto.getIsPublished());
+//                        newRealisationRequest.setPublishedAt(realisationDto.getPublishedAt());
+//                        newRealisationRequest.setSort(realisationDto.getSort());
+//                        newRealisationRequest.setDocIds(realisationDto.getDocIds());
+//
+//                        if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+//                            newRealisationRequest.setLots((Set<LotResponse>) realisationDto.getLots());
+//                        }
+//
+//                        Realisation newRealisation = realisationService.create(newRealisationRequest);
+//
+//                        // Handle new realisation files if provided
+//                        if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                            try {
+//                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                        " files for new Realisation ID: " + newRealisation.getId() +
+//                                        " version: " + newRealisation.getVersion());
+//                                processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
+//                                // Save the new realisation again after adding documents
+//                                newRealisation = realisationRepository.save(newRealisation);
+//                                System.out.println("Saved new Realisation after processing files");
+//                            } catch (IOException e) {
+//                                System.err.println("Error processing new Realisation files: " + e.getMessage());
+//                                throw new RuntimeException("Error processing new Realisation files: " + e.getMessage(), e);
+//                            }
+//                        }
+//
+//                        updatedRealisations.add(newRealisation);
+//                        realisationsChanged = true;
+//                    }
+//                } catch (Exception e) {
+//                    System.err.println("Failed to process Realisation: " + e.getMessage());
+//                    e.printStackTrace();
+//                    throw new RuntimeException("Failed to process Realisation: " + e.getMessage(), e);
+//                }
+//            }
+//
+//            // Check if realisations have changed compared to existing ones
+//            if (!realisationsChanged && existingPaa.getRealisations() != null) {
+//                if (existingPaa.getRealisations().size() != updatedRealisations.size()) {
+//                    System.out.println("Realisation count changed: " + existingPaa.getRealisations().size() + " -> " + updatedRealisations.size());
+//                    realisationsChanged = true;
+//                } else {
+//                    // Create a map of existing realisation IDs to their versions
+//                    Map<Integer, Integer> existingRealisationVersions = existingPaa.getRealisations().stream()
+//                            .collect(Collectors.toMap(Realisation::getId, Realisation::getVersion, (a, b) -> a));
+//
+//                    // Check if any realisation versions have changed
+//                    for (Realisation updatedRealisation : updatedRealisations) {
+//                        Integer existingVersion = existingRealisationVersions.get(updatedRealisation.getId());
+//                        if (existingVersion == null || !existingVersion.equals(updatedRealisation.getVersion())) {
+//                            System.out.println("Realisation changed: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+//                            realisationsChanged = true;
+//                            break;
+//                        }
+//                    }
+//                }
+//            } else if (existingPaa.getRealisations() == null || existingPaa.getRealisations().isEmpty()) {
+//                // If existing PAA had no realisations but now we have some
+//                if (!updatedRealisations.isEmpty()) {
+//                    System.out.println("Adding realisations to previously empty PAA");
+//                    realisationsChanged = true;
+//                }
+//            }
+//        } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
+//            // No realisations in request but there were some before - this is a change
+//            System.out.println("Realisations removed from PAA");
+//            realisationsChanged = true;
+//        }
+//
+//        // Process document IDs - improved document handling
+//        if (request.getDocIds() != null) {
+//            Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
+//
+//            // Get only the active (non-deleted) existing document IDs
+//            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                    existingPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .map(Docs::getId)
+//                            .collect(Collectors.toSet()) : new HashSet<>();
+//
+//            // Compare requested doc IDs with active doc IDs
+//            System.out.println("Comparing document IDs:");
+//            System.out.println("  - Existing active docs: " + activeExistingDocIds);
+//            System.out.println("  - Requested docs: " + requestDocIds);
+//
+//            // If the sets don't match exactly, we need to mark it as changed
+//            if (!requestDocIds.equals(activeExistingDocIds)) {
+//                System.out.println("Document ID sets are different - marking as changed");
+//                documentsChanged = true;
+//            } else {
+//                System.out.println("Document ID sets match - no document changes detected");
+//            }
+//
+//            // Prepare documents for the new version
+//            updatedDocs = new ArrayList<>();
+//
+//            // Process existing documents first
+//            if (existingPaa.getDocs() != null) {
+//                for (Docs existingDoc : existingPaa.getDocs()) {
+//                    // Get a fresh copy of the document to avoid stale data
+//                    Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+//                    if (docToProcess == null) {
+//                        System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
+//                        continue;
+//                    }
+//
+//                    if (requestDocIds.contains(docToProcess.getId())) {
+//                        // This document is in the request, make sure it's not deleted
+//                        docToProcess.setIsDeleted(false);
+//                        docToProcess = docsRepository.save(docToProcess);
+//                        updatedDocs.add(docToProcess);
+//
+//                        // Remove from requestDocIds to track what we've processed
+//                        requestDocIds.remove(docToProcess.getId());
+//                    } else {
+//                        // This document is not in the request, mark as deleted
+//                        docToProcess.setIsDeleted(true);
+//                        docToProcess = docsRepository.save(docToProcess);
+//                        updatedDocs.add(docToProcess);
+//                        System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted for new version");
+//                    }
+//                }
+//            }
+//
+//            // Now process any new documents in the request
+//            for (Integer docId : requestDocIds) {
+//                Docs doc = docsRepository.findById(docId)
+//                        .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
+//
+//                // Ensure it's active
+//                doc.setIsDeleted(false);
+//                doc = docsRepository.save(doc);
+//                updatedDocs.add(doc);
+//                System.out.println("Added new document with ID " + doc.getId() + " for new version");
+//            }
+//        } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//            // No document IDs provided, but existing docs exist - mark all as deleted
+//            updatedDocs = new ArrayList<>();
+//            for (Docs existingDoc : existingPaa.getDocs()) {
+//                // Get a fresh copy of the document
+//                Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+//                if (docToProcess == null) continue;
+//
+//                // Mark as deleted
+//                docToProcess.setIsDeleted(true);
+//                docToProcess = docsRepository.save(docToProcess);
+//                updatedDocs.add(docToProcess);
+//                System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
+//            }
+//            documentsChanged = true;
+//        } else {
+//            // No docs in request or existing PAA
+//            updatedDocs = new ArrayList<>();
+//        }
+//
+//        // Determine if we need to create a new PAA version
+//        boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
+//
+//        // Log detailed versioning decision information
+//        System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
+//        System.out.println("  - Direct field changes: " + hasDirectChanges);
+//        System.out.println("  - Realisations changed: " + realisationsChanged);
+//        System.out.println("  - Documents changed: " + documentsChanged);
+//        System.out.println("  - Files uploaded: " + (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
+//
+//        // Force version increment if files are uploaded - this ensures files alone trigger a new version
+//        if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
+//            System.out.println("Files are present - forcing creation of new version");
+//            shouldCreateNewVersion = true;
+//        }
+//
+//        // Forcing version increment if any of the update criteria are met
+//        if (shouldCreateNewVersion) {
+//            System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
+//            storePreviousRequestHash(paaId, paaVer, requestHash);
+//        } else {
+//            System.out.println("No changes detected, returning existing PAA version: " + paaVer);
+//
+//            // Even if no changes detected, still process uploaded files if any - this is the fix
+//            if (request.getPaaFiles() != null) {
+//                try {
+//                    System.out.println("Processing " + request.getPaaFiles().size() + " files for existing PAA version");
+//                    processAndSaveDocuments(request.getPaaFiles(), existingPaa);
+//                    existingPaa = repository.save(existingPaa);
+//                    System.out.println("Saved PAA after processing files: " + existingPaa.getId() + " version " + existingPaa.getVersion());
+//                    // Force creation of new version if files are uploaded
+//                    if (!request.getPaaFiles().isEmpty()) {
+//                        System.out.println("Files were uploaded - forcing creation of new version");
+//                        shouldCreateNewVersion = true;
+//                        storePreviousRequestHash(paaId, paaVer, requestHash);
+//                        // No need to continue with this block since we'll be creating a new version
+//                    }
+//                } catch (IOException e) {
+//                    System.err.println("Error processing PAA files for existing version: " + e.getMessage());
+//                    throw new RuntimeException("Error processing PAA files for existing version: " + e.getMessage(), e);
+//                }
+//            }
+//
+//            // Only return existing PAA if we're still not creating a new version
+//            if (!shouldCreateNewVersion) {
+//                // Create a filtered copy for response when no changes
+//                Paa copyForResponse = new Paa();
+//                BeanUtils.copyProperties(existingPaa, copyForResponse);
+//
+//                // Filter out deleted documents for the response
+//                if (existingPaa.getDocs() != null) {
+//                    copyForResponse.setDocs(
+//                            existingPaa.getDocs().stream()
+//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//
+//                // Also filter realisation documents
+//                if (copyForResponse.getRealisations() != null) {
+//                    copyForResponse.getRealisations().forEach(realisation -> {
+//                        if (realisation.getDocs() != null) {
+//                            realisation.setDocs(
+//                                    realisation.getDocs().stream()
+//                                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                            .collect(Collectors.toList())
+//                            );
+//                        }
+//
+//                        // Also filter lots in realisations
+//                        if (realisation.getLots() != null) {
+//                            realisation.setLots(
+//                                    realisation.getLots().stream()
+//                                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                            .collect(Collectors.toSet())
+//                            );
+//                        }
+//                    });
+//                }
+//
+//                return copyForResponse;
+//            }
+//        }
+//
+//        // Create a new PAA version
+//        System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
+//        Paa newPaa = new Paa();
+//        newPaa.setId(paaId);
+//        newPaa.setVersion(paaVer + 1);
+//
+//        // Copy properties from temp PAA
+//        newPaa.setRef(tempPaa.getRef());
+//        newPaa.setNom(tempPaa.getNom());
+//        newPaa.setAnnee(tempPaa.getAnnee());
+//        newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
+//        newPaa.setStatus(tempPaa.getStatus());
+//        newPaa.setAc(tempPaa.getAc());
+//
+//        // Initialize empty collections
+//        newPaa.setRealisations(new ArrayList<>());
+//        newPaa.setDocs(new ArrayList<>());
+//
+//        // Save the new PAA entity
+//        newPaa = repository.save(newPaa);
+//        System.out.println("Saved new PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+//
+//        // Set up relationships
+//        if (!updatedRealisations.isEmpty()) {
+//            System.out.println("Setting up relationships with " + updatedRealisations.size() + " realisations");
+//            List<Realisation> confirmedRealisations = new ArrayList<>();
+//
+//            // Create a final reference to newPaa for use in lambdas
+//            final Paa finalNewPaa = newPaa;
+//
+//            for (Realisation realisation : updatedRealisations) {
+//                try {
+//                    // Verify the realisation still exists in the database
+//                    Realisation confirmedRealisation = realisationRepository
+//                            .findById(new CompositeId(realisation.getId(), realisation.getVersion()))
+//                            .orElse(null);
+//
+//                    if (confirmedRealisation == null) {
+//                        System.err.println("Warning: Realisation " + realisation.getId() +
+//                                " version " + realisation.getVersion() +
+//                                " not found in database. Skipping relationship setup.");
+//                        continue;
+//                    }
+//
+//                    // Check if this realisation is already associated with this PAA version
+//                    boolean alreadyAssociated = false;
+//                    if (confirmedRealisation.getPaas() != null) {
+//                        alreadyAssociated = confirmedRealisation.getPaas().stream()
+//                                .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+//                    }
+//
+//                    if (alreadyAssociated) {
+//                        System.out.println("Realisation " + confirmedRealisation.getId() +
+//                                " version " + confirmedRealisation.getVersion() +
+//                                " is already associated with PAA " + finalNewPaa.getId() +
+//                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
+//                        confirmedRealisations.add(confirmedRealisation);
+//                        continue;
+//                    }
+//
+//                    // Similar to PpmServiceImpl approach: Update the inverse side of the relationship first
+//                    List<Paa> paaList = confirmedRealisation.getPaas();
+//                    if (paaList == null) {
+//                        paaList = new ArrayList<>();
+//                        confirmedRealisation.setPaas(paaList);
+//                    }
+//
+//                    // Add the PAA to the realisation if not already present
+//                    if (!paaList.contains(finalNewPaa)) {
+//                        paaList.add(finalNewPaa);
+//                    }
+//
+//                    // Save the realisation with updated relationship
+//                    try {
+//                        confirmedRealisation = realisationRepository.save(confirmedRealisation);
+//                        System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
+//                                " version " + confirmedRealisation.getVersion() + " with new PAA");
+//                        confirmedRealisations.add(confirmedRealisation);
+//                    } catch (Exception e) {
+//                        System.err.println("Error saving realisation relationship: " + e.getMessage());
+//                        // If we encounter an error, try to continue with other realisations
+//                    }
+//                } catch (Exception e) {
+//                    System.err.println("Error associating Realisation with PAA: " + e.getMessage());
+//                    e.printStackTrace();
+//                }
+//            }
+//
+//            // Now set all realisations on the PAA at once
+//            newPaa.setRealisations(confirmedRealisations);
+//            System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
+//        } else if (existingPaa.getRealisations() != null) {
+//            List<Realisation> confirmedRealisations = new ArrayList<>();
+//            System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
+//
+//            // Create a final reference to newPaa for use in lambdas
+//            final Paa finalNewPaa = newPaa;
+//
+//            for (Realisation existingRealization : existingPaa.getRealisations()) {
+//                try {
+//                    // Find the latest version of this realisation
+//                    Integer latestVersion = realisationRepository.findMaxVersionById(existingRealization.getId());
+//                    if (latestVersion == null) {
+//                        System.err.println("Warning: No versions found for Realisation ID " + existingRealization.getId());
+//                        continue;
+//                    }
+//
+//                    Realisation latestRealisation = realisationRepository
+//                            .findById(new CompositeId(existingRealization.getId(), latestVersion))
+//                            .orElse(null);
+//
+//                    if (latestRealisation == null) {
+//                        System.err.println("Warning: Latest Realisation " + existingRealization.getId() +
+//                                " version " + latestVersion +
+//                                " not found in database. Skipping.");
+//                        continue;
+//                    }
+//
+//                    // Check if this realisation is already associated with this PAA version
+//                    boolean alreadyAssociated = false;
+//                    if (latestRealisation.getPaas() != null) {
+//                        alreadyAssociated = latestRealisation.getPaas().stream()
+//                                .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+//                    }
+//
+//                    if (alreadyAssociated) {
+//                        System.out.println("Realisation " + latestRealisation.getId() +
+//                                " version " + latestRealisation.getVersion() +
+//                                " is already associated with PAA " + finalNewPaa.getId() +
+//                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
+//                        confirmedRealisations.add(latestRealisation);
+//                        continue;
+//                    }
+//
+//                    // Update the inverse side of the relationship first
+//                    List<Paa> paaList = latestRealisation.getPaas();
+//                    if (paaList == null) {
+//                        paaList = new ArrayList<>();
+//                        latestRealisation.setPaas(paaList);
+//                    }
+//
+//                    // Add the PAA to the realisation if not already present
+//                    if (!paaList.contains(finalNewPaa)) {
+//                        paaList.add(finalNewPaa);
+//                    }
+//
+//                    // Save the realisation with updated relationship
+//                    try {
+//                        latestRealisation = realisationRepository.save(latestRealisation);
+//                        System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() +
+//                                " version " + latestRealisation.getVersion() + " with new PAA");
+//                        confirmedRealisations.add(latestRealisation);
+//                    } catch (Exception e) {
+//                        System.err.println("Error saving relationship with latest realisation: " + e.getMessage());
+//                        // If we encounter an error, try to continue with other realisations
+//                    }
+//                } catch (Exception e) {
+//                    System.err.println("Error handling Realisation relationship: " + e.getMessage());
+//                    e.printStackTrace();
+//                }
+//            }
+//
+//            // Now set all realisations on the PAA at once
+//            newPaa.setRealisations(confirmedRealisations);
+//            System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
+//        }
+//
+//        // Handle documents - copy all documents to the new PAA and update their associations
+//        if (!updatedDocs.isEmpty()) {
+//            List<Docs> confirmedDocs = new ArrayList<>();
+//            // Create a final reference to newPaa for use in lambdas
+//            final Paa finalNewPaaForDocs = newPaa;
+//
+//            for (Docs doc : updatedDocs) {
+//                try {
+//                    // Verify doc still exists
+//                    Docs confirmedDoc = docsRepository.findById(doc.getId()).orElse(null);
+//                    if (confirmedDoc == null) {
+//                        System.err.println("Warning: Document " + doc.getId() + " not found in database. Skipping.");
+//                        continue;
+//                    }
+//
+//                    // Update the inverse side of the relationship first
+//                    List<Paa> paaList = confirmedDoc.getPaas();
+//                    if (paaList == null) {
+//                        paaList = new ArrayList<>();
+//                        confirmedDoc.setPaas(paaList);
+//                    }
+//
+//                    // Check if PAA already exists in the doc's relationships
+//                    boolean alreadyAssociated = paaList.stream()
+//                            .anyMatch(p -> p.getId().equals(finalNewPaaForDocs.getId()) && p.getVersion().equals(finalNewPaaForDocs.getVersion()));
+//
+//                    if (!alreadyAssociated) {
+//                        paaList.add(finalNewPaaForDocs);
+//                    }
+//
+//                    // Save document with relationship
+//                    confirmedDoc = docsRepository.save(confirmedDoc);
+//                    confirmedDocs.add(confirmedDoc);
+//                } catch (Exception e) {
+//                    System.err.println("Error associating Document with PAA: " + e.getMessage());
+//                }
+//            }
+//
+//            // Now set the documents on the PAA
+//            newPaa.setDocs(confirmedDocs);
+//            System.out.println("Copied " + confirmedDocs.size() + " documents to new PAA version with correct delete status");
+//        } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//            // Copy all existing documents to new PAA
+//            List<Docs> confirmedDocs = new ArrayList<>();
+//            // Create a final reference to newPaa for use in lambdas
+//            final Paa finalNewPaaForExistingDocs = newPaa;
+//
+//            for (Docs existingDoc : existingPaa.getDocs()) {
+//                try {
+//                    // Verify doc still exists
+//                    Docs confirmedDoc = docsRepository.findById(existingDoc.getId()).orElse(null);
+//                    if (confirmedDoc == null) {
+//                        System.err.println("Warning: Document " + existingDoc.getId() + " not found in database. Skipping.");
+//                        continue;
+//                    }
+//
+//                    // Update the inverse side of the relationship first
+//                    List<Paa> paaList = confirmedDoc.getPaas();
+//                    if (paaList == null) {
+//                        paaList = new ArrayList<>();
+//                        confirmedDoc.setPaas(paaList);
+//                    }
+//
+//                    // Check if PAA already exists in the doc's relationships
+//                    boolean alreadyAssociated = paaList.stream()
+//                            .anyMatch(p -> p.getId().equals(finalNewPaaForExistingDocs.getId()) && p.getVersion().equals(finalNewPaaForExistingDocs.getVersion()));
+//
+//                    if (!alreadyAssociated) {
+//                        paaList.add(finalNewPaaForExistingDocs);
+//                    }
+//
+//                    // Save document with relationship
+//                    confirmedDoc = docsRepository.save(confirmedDoc);
+//                    confirmedDocs.add(confirmedDoc);
+//                } catch (Exception e) {
+//                    System.err.println("Error associating existing Document with PAA: " + e.getMessage());
+//                }
+//            }
+//
+//            // Now set the documents on the PAA
+//            newPaa.setDocs(confirmedDocs);
+//            System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
+//        }
+//
+//        // Final save after setting up all relationships
+//        newPaa = repository.save(newPaa);
+//        System.out.println("Final save of PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+//
+//        // Clear the existing relationships between this PAA ID and the selected realisations to prevent duplicates
+//        // This approach prevents duplicate key violations in the join table
+//        try {
+//            // Create a final reference to newPaa for use in lambda expressions
+//            final Paa finalNewPaa = newPaa;
+//
+//            // Get the list of realisation IDs we're associating
+//            List<Integer> realisationIds = finalNewPaa.getRealisations().stream()
+//                    .map(Realisation::getId)
+//                    .collect(Collectors.toList());
+//
+//            // Only attempt to clean up if we have realisations to associate
+//            if (!realisationIds.isEmpty()) {
+//                // Clear any existing relationships in the join table before saving the new ones
+//                // Use direct repository calls to manipulate the relationships properly
+//
+//                System.out.println("Refreshing PAA-Realisation relationships to prevent primary key conflicts");
+//
+//                // Detach existing realisations from any other version of this PAA to avoid conflicts
+//                for (Realisation realisation : finalNewPaa.getRealisations()) {
+//                    // Filter out other versions of the current PAA from each realisation's PAAs
+//                    if (realisation.getPaas() != null) {
+//                        List<Paa> filteredPaas = realisation.getPaas().stream()
+//                                .filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion())))
+//                                .collect(Collectors.toList());
+//                        realisation.setPaas(filteredPaas);
+//                        realisationRepository.save(realisation);
+//
+//                        // Add the new PAA version back to ensure the relationship exists
+//                        if (!realisation.getPaas().contains(finalNewPaa)) {
+//                            realisation.getPaas().add(finalNewPaa);
+//                            realisationRepository.save(realisation);
+//                        }
+//                    }
+//                }
+//
+//                // Clear the in-memory collection and rebuild it
+//                List<Realisation> tempRealisations = new ArrayList<>(finalNewPaa.getRealisations());
+//                finalNewPaa.getRealisations().clear();
+//                // Save with empty collection to remove all relationships
+//                newPaa = repository.save(finalNewPaa);
+//
+//                // Create a new final reference after reassignment
+//                final Paa updatedNewPaa = newPaa;
+//
+//                // Add back the relationships one by one
+//                for (Realisation realisation : tempRealisations) {
+//                    updatedNewPaa.getRealisations().add(realisation);
+//                }
+//                // Save again with the rebuilt relationships
+//                newPaa = repository.save(updatedNewPaa);
+//                System.out.println("Successfully refreshed PAA-Realisation relationships");
+//            }
+//        } catch (Exception e) {
+//            System.err.println("Warning: Error handling relationship refresh: " + e.getMessage());
+//            e.printStackTrace();
+//            // Continue execution - we'll let Hibernate try to handle it
+//        }
+//
+//        // Handle PAA files if provided - this was missing
+//        if (request.getPaaFiles() != null) {
+//            try {
+//                System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
+//                processAndSaveDocuments(request.getPaaFiles(), newPaa);
+//                // Save again after adding documents
+//                newPaa = repository.save(newPaa);
+//                System.out.println("Saved PAA after processing files: " + newPaa.getId() + " version " + newPaa.getVersion());
+//            } catch (IOException e) {
+//                System.err.println("Error processing PAA files for new version: " + e.getMessage());
+//                throw new RuntimeException("Error processing PAA files for new version: " + e.getMessage(), e);
+//            }
+//        }
+//
+//        // Update the hash for the new version
+//        storePreviousRequestHash(paaId, newPaa.getVersion(), requestHash);
+//        Paa copyForReturn = new Paa();
+//        BeanUtils.copyProperties(newPaa, copyForReturn);
+//        copyForReturn.setDocs(
+//                newPaa.getDocs().stream()
+//                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                        .collect(Collectors.toList())
+//        );
+//
+//        // Also filter realisation documents
+//        if (copyForReturn.getRealisations() != null) {
+//            copyForReturn.getRealisations().forEach(realisation -> {
+//                if (realisation.getDocs() != null) {
+//                    realisation.setDocs(
+//                            realisation.getDocs().stream()
+//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//
+//                // Also filter lots in realisations
+//                if (realisation.getLots() != null) {
+//                    realisation.setLots(
+//                            realisation.getLots().stream()
+//                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                    .collect(Collectors.toSet())
+//                    );
+//                }
+//            });
+//        }
+//
+//        return copyForReturn;
+//    }
+
+//    2222222
+//@Transactional
+//@Override
+//public Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
+//    // Find the existing PAA
+//    CompositeId compositeId = new CompositeId(paaId, paaVer);
+//    Paa existingPaa = repository.findById(compositeId)
+//            .orElseThrow(() -> new PaaNotFound(
+//                    "PAA with ID " + paaId + " and version " + paaVer + " not found",List.of(paaId),List.of(paaVer)));
+//
+//    if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//        throw new PaaNotFound(
+//                "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,List.of(paaId),List.of(paaVer));
+//    }
+//
+//    // Log the current state and request
+//    System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
+//    System.out.println("Request data: " + request);
+//
+//    // Track whether any documents have changed
+//    boolean documentsChanged = false;
+//
+//    // Process any document changes
+//    if (request.getDocIds() != null) {
+//        // Get only the active (non-deleted) existing document IDs
+//        Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                existingPaa.getDocs().stream()
+//                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                        .map(Docs::getId)
+//                        .collect(Collectors.toSet()) : new HashSet<>();
+//
+//        // Compare with requested document IDs
+//        Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
+//        documentsChanged = !requestDocIds.equals(activeExistingDocIds);
+//
+//        if (documentsChanged) {
+//            System.out.println("Document changes detected:");
+//            System.out.println("  - Active existing docs: " + activeExistingDocIds);
+//            System.out.println("  - Requested docs: " + requestDocIds);
+//        }
+//    }
+//
+//    // Get hash for the current request
+//    String requestHash = generateRequestHash(request);
+//    String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
+//
+//    // Check if files are present - if so, we'll always create a new version
+//    boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
+//    if (hasFiles) {
+//        System.out.println("Files detected in request - will create new version regardless of other changes");
+//    } else {
+//        // Only check hash if no files are present
+//        System.out.println("Current request hash: " + requestHash);
+//        System.out.println("Previous request hash: " + previousRequestHash);
+//
+//        // If this is the exact same request as the previous one, return the existing PAA without changes
+//        if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged) {
+//            System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
+//
+//            // Create a filtered copy for response
+//            Paa copyForResponse = new Paa();
+//            BeanUtils.copyProperties(existingPaa, copyForResponse);
+//
+//            // Filter out deleted documents for the response
+//            if (existingPaa.getDocs() != null) {
+//                copyForResponse.setDocs(
+//                        existingPaa.getDocs().stream()
+//                                .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                .collect(Collectors.toList())
+//                );
+//            }
+//
+//            // Also filter realisation documents
+//            if (copyForResponse.getRealisations() != null) {
+//                copyForResponse.getRealisations().forEach(realisation -> {
+//                    if (realisation.getDocs() != null) {
+//                        realisation.setDocs(
+//                                realisation.getDocs().stream()
+//                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                        .collect(Collectors.toList())
+//                        );
+//                    }
+//
+//                    // Also filter lots in realisations
+//                    if (realisation.getLots() != null) {
+//                        realisation.setLots(
+//                                realisation.getLots().stream()
+//                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                        .collect(Collectors.toSet())
+//                        );
+//                    }
+//                });
+//            }
+//
+//            return copyForResponse;
+//        }
+//    }
+//
+//    // Create a temporary PAA to check for changes in direct fields
+//    Paa tempPaa = new Paa();
+//
+//    // Only use request values when they're not null, otherwise keep existing values
+//    tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
+//    tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
+//    tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
+//    tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
+//    tempPaa.setStatus(existingPaa.getStatus());
+//    // Handle AC
+//    Ac requestAc = null;
+//    if (request.getAcId() != null) {
+//        requestAc = acRepository.findById(request.getAcId()).orElse(null);
+//    }
+//    tempPaa.setAc(requestAc != null ? requestAc : existingPaa.getAc());
+//
+//    // Check for changes in direct PAA fields
+//    boolean hasDirectChanges = !arePaaFieldsIdentical(existingPaa, tempPaa);
+//    System.out.println("Direct field changes detected: " + hasDirectChanges);
+//
+//    // Track whether any realisations have changed
+//    boolean realisationsChanged = false;
+//
+//    // Prepare lists for relationships
+//    List<Realisation> updatedRealisations = new ArrayList<>();
+//    List<Docs> updatedDocs = new ArrayList<>();
+//
+//    // Keep track of newly created lots to detect duplicates
+//    Map<String, Lot> newLotsMap = new HashMap<>();
+//
+//    // Process Realisation DTOs
+//    if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//        System.out.println("Processing " + request.getRealisations().size() + " realisations");
+//        for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
+//            try {
+//                System.out.println("Processing realisation DTO: " + realisationDto);
+//                System.out.println("Realisation ID: " + realisationDto.getId() + ", Lots: " +
+//                        (realisationDto.getLots() != null ? realisationDto.getLots().size() : "null"));
+//
+//                if (realisationDto.getId() != null) {
+//                    Integer versionToUse = realisationDto.getVersion();
+//                    if (versionToUse == null) {
+//                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationDto.getId());
+//                        if (maxVersion != null) {
+//                            versionToUse = maxVersion;
+//                            System.out.println("Found latest version for Realisation " + realisationDto.getId() + ": " + maxVersion);
+//                        } else {
+//                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationDto.getId());
+//                        }
+//                    }
+//
+//                    CompositeId realisationId = new CompositeId(realisationDto.getId(), versionToUse);
+//                    Realisation existingRealisation = realisationRepository.findById(realisationId)
+//                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " +
+//                                    realisationId.getId() + " and version: " + realisationId.getVersion()));
+//
+//                    System.out.println("Found existing Realisation: " + existingRealisation.getId() + " version " + existingRealisation.getVersion());
+//                    System.out.println("Current lots: " + (existingRealisation.getLots() != null ? existingRealisation.getLots().size() : "null"));
+//
+//                    boolean updateNeeded = realisationNeedsUpdate(existingRealisation, realisationDto);
+//                    System.out.println("Realisation update needed: " + updateNeeded);
+//
+//                    // Always check for files even if no other changes
+//                    boolean hasRealisationFiles = realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty();
+//                    if (hasRealisationFiles) {
+//                        System.out.println("Files detected in realisation, forcing update");
+//                        updateNeeded = true;
+//                    }
+//
+//                    if (updateNeeded) {
+//                        System.out.println("Updating Realisation with versioning...");
+//                        Realisation updatedRealisation = realisationService.updateWithVersioning(
+//                                realisationDto.getId(), versionToUse, realisationDto);
+//
+//                        // Handle realisation files if provided
+//                        if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                            try {
+//                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                        " files for Realisation ID: " + updatedRealisation.getId() +
+//                                        " version: " + updatedRealisation.getVersion());
+//                                processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
+//                                // Save the realisation again after adding documents
+//                                updatedRealisation = realisationRepository.save(updatedRealisation);
+//                                System.out.println("Saved Realisation after processing files");
+//                            } catch (IOException e) {
+//                                System.err.println("Error processing Realisation files: " + e.getMessage());
+//                                throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
+//                            }
+//                        }
+//
+//                        // Handle realisation document IDs if provided
+//                        if (realisationDto.getDocIds() != null) {
+//                            Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationDto.getDocIds());
+//
+//                            // Get active document IDs
+//                            Set<Integer> activeExistingRealisationDocIds = updatedRealisation.getDocs() != null ?
+//                                    updatedRealisation.getDocs().stream()
+//                                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                            .map(Docs::getId)
+//                                            .collect(Collectors.toSet()) : new HashSet<>();
+//
+//                            // Log document changes
+//                            if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
+//                                System.out.println("Document changes detected for Realisation update ID: " + updatedRealisation.getId());
+//                                System.out.println("  - Active existing docs: " + activeExistingRealisationDocIds);
+//                                System.out.println("  - Requested docs: " + requestedRealisationDocIds);
+//                            }
+//
+//                            // Process documents - mark as deleted or active based on request
+//                            List<Docs> updatedRealisationDocs = new ArrayList<>();
+//
+//                            if (updatedRealisation.getDocs() != null) {
+//                                // For each existing document in the realisation
+//                                for (Docs existingDoc : updatedRealisation.getDocs()) {
+//                                    if (requestedRealisationDocIds.contains(existingDoc.getId())) {
+//                                        // This doc is in the request, ensure it's not marked as deleted
+//                                        existingDoc.setIsDeleted(false);
+//                                        docsRepository.save(existingDoc);
+//                                        updatedRealisationDocs.add(existingDoc);
+//
+//                                        // Remove from requested IDs since we've handled it
+//                                        requestedRealisationDocIds.remove(existingDoc.getId());
+//                                    } else {
+//                                        // This doc is not in the request, mark it as deleted
+//                                        existingDoc.setIsDeleted(true);
+//                                        docsRepository.save(existingDoc);
+//                                        updatedRealisationDocs.add(existingDoc); // Keep it in the collection
+//                                        System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
+//                                    }
+//                                }
+//                            }
+//
+//                            // Add any new docs from the request
+//                            for (Integer docId : requestedRealisationDocIds) {
+//                                Docs doc = docsRepository.findById(docId)
+//                                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//
+//                                // Set up bidirectional relationship
+//                                if (doc.getRealisations() == null) {
+//                                    doc.setRealisations(new ArrayList<>());
+//                                }
+//                                if (!doc.getRealisations().contains(updatedRealisation)) {
+//                                    doc.getRealisations().add(updatedRealisation);
+//                                }
+//
+//                                // Ensure doc is active
+//                                doc.setIsDeleted(false);
+//                                docsRepository.save(doc);
+//
+//                                updatedRealisationDocs.add(doc);
+//                                System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
+//                            }
+//
+//                            // Update the realisation's docs
+//                            updatedRealisation.setDocs(updatedRealisationDocs);
+//                            updatedRealisation = realisationRepository.save(updatedRealisation);
+//                            System.out.println("Updated realisation documents");
+//                        }
+//
+//                        System.out.println("Updated Realisation: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+//                        updatedRealisations.add(updatedRealisation);
+//                        realisationsChanged = true;
+//                    } else {
+//                        System.out.println("Using existing Realisation without changes");
+//
+//                        // Even if no field changes detected, still process realisation files if any
+//                        if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                            try {
+//                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                        " files for existing Realisation ID: " + existingRealisation.getId() +
+//                                        " version: " + existingRealisation.getVersion());
+//                                processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
+//                                existingRealisation = realisationRepository.save(existingRealisation);
+//                                System.out.println("Saved existing Realisation after processing files");
+//                                updateNeeded = true; // Force update needed
+//                                realisationsChanged = true;
+//
+//                                // Create a new version of the Realisation through the service
+//                                System.out.println("Creating new Realisation version due to file uploads");
+//                                Realisation updatedRealisation = realisationService.updateWithVersioning(
+//                                        realisationDto.getId(), versionToUse, realisationDto);
+//                                updatedRealisations.add(updatedRealisation);
+//                                continue; // Skip to next iteration since we've handled this Realisation
+//                            } catch (IOException e) {
+//                                System.err.println("Error processing existing Realisation files: " + e.getMessage());
+//                                throw new RuntimeException("Error processing existing Realisation files: " + e.getMessage(), e);
+//                            }
+//                        }
+//
+//                        if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+//                            System.out.println("Processing " + realisationDto.getLots().size() + " lots in DTO");
+//
+//                            Set<Lot> updatedLots = new HashSet<>();
+//                            Set<Integer> processedLotIds = new HashSet<>();
+//                            boolean lotChanges = false;
+//
+//                            Set<Integer> existingLotIds = existingRealisation.getLots() != null ?
+//                                    existingRealisation.getLots().stream().map(Lot::getId).collect(Collectors.toSet()) : new HashSet<>();
+//                            Map<Integer, String> existingLotDescriptions = existingRealisation.getLots() != null ?
+//                                    existingRealisation.getLots().stream().collect(
+//                                            Collectors.toMap(Lot::getId, lot -> lot.getDescription() != null ? lot.getDescription() : "", (a, b) -> a)) :
+//                                    new HashMap<>();
+//
+//                            for (LotResponse lotDto : realisationDto.getLots()) {
+//                                if (lotDto.getId() == null) {
+//                                    // Handle new lot without ID
+//                                    String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+//                                    System.out.println("Processing new lot with description: " + lotHash);
+//
+//                                    if (newLotsMap.containsKey(lotHash)) {
+//                                        System.out.println("Using previously created lot for description: " + lotHash);
+//                                        updatedLots.add(newLotsMap.get(lotHash));
+//                                        processedLotIds.add(newLotsMap.get(lotHash).getId());
+//                                        continue;
+//                                    }
+//
+//                                    boolean lotExists = false;
+//                                    if (existingRealisation.getLots() != null) {
+//                                        for (Lot existingLot : existingRealisation.getLots()) {
+//                                            String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+//                                            if (existingDesc.equals(lotHash)) {
+//                                                System.out.println("Found matching existing lot with description: " + lotHash);
+//                                                updatedLots.add(existingLot);
+//                                                processedLotIds.add(existingLot.getId());
+//                                                lotExists = true;
+//                                                break;
+//                                            }
+//                                        }
+//                                    }
+//
+//                                    if (lotExists) continue;
+//
+//                                    System.out.println("Creating new lot with description: " + lotHash);
+//                                    Lot newLot = new Lot();
+//                                    newLot.setDescription(lotDto.getDescription());
+//                                    newLot.setVersion(1); // First version
+//
+//                                    // Generate new ID if not provided
+//                                    Integer maxLotId = lotRepository.findMaxId();
+//                                    Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+//                                    newLot.setId(lotId);
+//
+//                                    Lot savedLot = lotRepository.save(newLot);
+//                                    updatedLots.add(savedLot);
+//                                    processedLotIds.add(savedLot.getId());
+//                                    newLotsMap.put(lotHash, savedLot);
+//                                    System.out.println("Created new Lot with ID: " + savedLot.getId());
+//                                    lotChanges = true;
+//
+//
+//                                } else {
+//                                    if (processedLotIds.contains(lotDto.getId())) {
+//                                        System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
+//                                        continue;
+//                                    }
+//
+//                                    Integer lotId = lotDto.getId();
+//                                    Integer lotVersion = lotDto.getVersion();
+//                                    if (lotVersion == null) {
+//                                        lotVersion = lotRepository.findMaxVersionById(lotId);
+//                                        if (lotVersion == null) {
+//                                            System.out.println("Lot ID " + lotId + " not found, skipping");
+//                                            continue;
+//                                        }
+//                                    }
+//
+//                                    Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
+//                                    if (existingLotOpt.isPresent()) {
+//                                        Lot existingLot = existingLotOpt.get();
+//                                        String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+//                                        String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+//                                        if (!requestDesc.equals(existingDesc)) {
+//                                            Lot newLot = new Lot();
+//                                            newLot.setId(existingLot.getId());
+//                                            newLot.setVersion(existingLot.getVersion() + 1);
+//                                            newLot.setDescription(lotDto.getDescription());
+//
+//                                            Lot savedLot = lotRepository.save(newLot);
+//                                            updatedLots.add(savedLot);
+//                                            processedLotIds.add(savedLot.getId());
+//                                            System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion());
+//                                            lotChanges = true;
+//                                        } else {
+//                                            updatedLots.add(existingLot);
+//                                            processedLotIds.add(existingLot.getId());
+//                                        }
+//                                    }
+//                                }
+//                            }
+//
+//                            Set<Integer> requestLotIds = realisationDto.getLots().stream()
+//                                    .filter(lotDto -> lotDto.getId() != null)
+//                                    .map(LotResponse::getId)
+//                                    .collect(Collectors.toSet());
+//                            requestLotIds.addAll(processedLotIds.stream()
+//                                    .filter(id -> !existingLotIds.contains(id))
+//                                    .collect(Collectors.toSet()));
+//
+//                            if (!requestLotIds.equals(existingLotIds)) {
+//                                lotChanges = true;
+//                            }
+//
+//                            if (lotChanges) {
+//                                System.out.println("Lot associations changed, updating Realisation");
+//                                existingRealisation.setLots(updatedLots);
+//                                Realisation savedRealisation = realisationRepository.save(existingRealisation);
+//                                updatedRealisations.add(savedRealisation);
+//                                realisationsChanged = true;
+//                            } else {
+//                                System.out.println("No changes to lot associations, using existing Realisation");
+//                                updatedRealisations.add(existingRealisation);
+//                            }
+//                        } else {
+//                            updatedRealisations.add(existingRealisation);
+//                        }
+//                    }
+//                } else {
+//                    System.out.println("Creating new Realisation");
+//                    RealisationRequest newRealisationRequest = new RealisationRequest();
+//                    newRealisationRequest.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
+//                    newRealisationRequest.setService(realisationDto.getService());
+//                    newRealisationRequest.setDirection(realisationDto.getDirection());
+//                    newRealisationRequest.setSourceFinancement(realisationDto.getSourceFinancement());
+//                    newRealisationRequest.setMonais(realisationDto.getMonais());
+//                    newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
+//                    newRealisationRequest.setModeSelection(realisationDto.getModeSelection());
+//                    newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
+//                    newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
+//                    newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
+//                    newRealisationRequest.setDatePrevAp(realisationDto.getDatePrevAp());
+//                    newRealisationRequest.setBudgetEstime(realisationDto.getBudgetEstime());
+//                    newRealisationRequest.setIsPublished(realisationDto.getIsPublished());
+//                    newRealisationRequest.setPublishedAt(realisationDto.getPublishedAt());
+//                    newRealisationRequest.setSort(realisationDto.getSort());
+//                    newRealisationRequest.setDocIds(realisationDto.getDocIds());
+//
+//                    if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+//                        newRealisationRequest.setLots((Set<LotResponse>) realisationDto.getLots());
+//                    }
+//
+//                    Realisation newRealisation = realisationService.create(newRealisationRequest);
+//
+//                    // Handle new realisation files if provided
+//                    if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+//                        try {
+//                            System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+//                                    " files for new Realisation ID: " + newRealisation.getId() +
+//                                    " version: " + newRealisation.getVersion());
+//                            processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
+//                            // Save the new realisation again after adding documents
+//                            newRealisation = realisationRepository.save(newRealisation);
+//                            System.out.println("Saved new Realisation after processing files");
+//                        } catch (IOException e) {
+//                            System.err.println("Error processing new Realisation files: " + e.getMessage());
+//                            throw new RuntimeException("Error processing new Realisation files: " + e.getMessage(), e);
+//                        }
+//                    }
+//
+//                    updatedRealisations.add(newRealisation);
+//                    realisationsChanged = true;
+//                }
+//            } catch (Exception e) {
+//                System.err.println("Failed to process Realisation: " + e.getMessage());
+//                e.printStackTrace();
+//                throw new RuntimeException("Failed to process Realisation: " + e.getMessage(), e);
+//            }
+//        }
+//
+//        // Check if realisations have changed compared to existing ones
+//        if (!realisationsChanged && existingPaa.getRealisations() != null) {
+//            if (existingPaa.getRealisations().size() != updatedRealisations.size()) {
+//                System.out.println("Realisation count changed: " + existingPaa.getRealisations().size() + " -> " + updatedRealisations.size());
+//                realisationsChanged = true;
+//            } else {
+//                // Create a map of existing realisation IDs to their versions
+//                Map<Integer, Integer> existingRealisationVersions = existingPaa.getRealisations().stream()
+//                        .collect(Collectors.toMap(Realisation::getId, Realisation::getVersion, (a, b) -> a));
+//
+//                // Check if any realisation versions have changed
+//                for (Realisation updatedRealisation : updatedRealisations) {
+//                    Integer existingVersion = existingRealisationVersions.get(updatedRealisation.getId());
+//                    if (existingVersion == null || !existingVersion.equals(updatedRealisation.getVersion())) {
+//                        System.out.println("Realisation changed: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+//                        realisationsChanged = true;
+//                        break;
+//                    }
+//                }
+//            }
+//        } else if (existingPaa.getRealisations() == null || existingPaa.getRealisations().isEmpty()) {
+//            // If existing PAA had no realisations but now we have some
+//            if (!updatedRealisations.isEmpty()) {
+//                System.out.println("Adding realisations to previously empty PAA");
+//                realisationsChanged = true;
+//            }
+//        }
+//    } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
+//        // No realisations in request but there were some before - this is a change
+//        System.out.println("Realisations removed from PAA");
+//        realisationsChanged = true;
+//    }
+//
+//    // Process document IDs - improved document handling
+//    if (request.getDocIds() != null) {
+//        Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
+//
+//        // Get only the active (non-deleted) existing document IDs
+//        Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                existingPaa.getDocs().stream()
+//                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                        .map(Docs::getId)
+//                        .collect(Collectors.toSet()) : new HashSet<>();
+//
+//        // Compare requested doc IDs with active doc IDs
+//        System.out.println("Comparing document IDs:");
+//        System.out.println("  - Existing active docs: " + activeExistingDocIds);
+//        System.out.println("  - Requested docs: " + requestDocIds);
+//
+//        // If the sets don't match exactly, we need to mark it as changed
+//        if (!requestDocIds.equals(activeExistingDocIds)) {
+//            System.out.println("Document ID sets are different - marking as changed");
+//            documentsChanged = true;
+//        } else {
+//            System.out.println("Document ID sets match - no document changes detected");
+//        }
+//
+//        // Prepare documents for the new version
+//        updatedDocs = new ArrayList<>();
+//
+//        // Process existing documents first
+//        if (existingPaa.getDocs() != null) {
+//            for (Docs existingDoc : existingPaa.getDocs()) {
+//                // Get a fresh copy of the document to avoid stale data
+//                Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+//                if (docToProcess == null) {
+//                    System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
+//                    continue;
+//                }
+//
+//                if (requestDocIds.contains(docToProcess.getId())) {
+//                    // This document is in the request, make sure it's not deleted
+//                    docToProcess.setIsDeleted(false);
+//                    docToProcess = docsRepository.save(docToProcess);
+//                    updatedDocs.add(docToProcess);
+//
+//                    // Remove from requestDocIds to track what we've processed
+//                    requestDocIds.remove(docToProcess.getId());
+//                } else {
+//                    // This document is not in the request, mark as deleted
+//                    docToProcess.setIsDeleted(true);
+//                    docToProcess = docsRepository.save(docToProcess);
+//                    updatedDocs.add(docToProcess);
+//                    System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted for new version");
+//                }
+//            }
+//        }
+//
+//        // Now process any new documents in the request
+//        for (Integer docId : requestDocIds) {
+//            Docs doc = docsRepository.findById(docId)
+//                    .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
+//
+//            // Ensure it's active
+//            doc.setIsDeleted(false);
+//            doc = docsRepository.save(doc);
+//            updatedDocs.add(doc);
+//            System.out.println("Added new document with ID " + doc.getId() + " for new version");
+//        }
+//    } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//        // No document IDs provided, but existing docs exist - mark all as deleted
+//        updatedDocs = new ArrayList<>();
+//        for (Docs existingDoc : existingPaa.getDocs()) {
+//            // Get a fresh copy of the document
+//            Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
+//            if (docToProcess == null) continue;
+//
+//            // Mark as deleted
+//            docToProcess.setIsDeleted(true);
+//            docToProcess = docsRepository.save(docToProcess);
+//            updatedDocs.add(docToProcess);
+//            System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
+//        }
+//        documentsChanged = true;
+//    } else {
+//        // No docs in request or existing PAA
+//        updatedDocs = new ArrayList<>();
+//    }
+//
+//    // Determine if we need to create a new PAA version
+//    boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
+//
+//    // Log detailed versioning decision information
+//    System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
+//    System.out.println("  - Direct field changes: " + hasDirectChanges);
+//    System.out.println("  - Realisations changed: " + realisationsChanged);
+//    System.out.println("  - Documents changed: " + documentsChanged);
+//    System.out.println("  - Files uploaded: " + (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
+//
+//    // Force version increment if files are uploaded - this ensures files alone trigger a new version
+//    if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
+//        System.out.println("Files are present - forcing creation of new version");
+//        shouldCreateNewVersion = true;
+//    }
+//
+//    // Forcing version increment if any of the update criteria are met
+//    if (shouldCreateNewVersion) {
+//        System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
+//        storePreviousRequestHash(paaId, paaVer, requestHash);
+//    } else {
+//        System.out.println("No changes detected, returning existing PAA version: " + paaVer);
+//
+//        // Even if no changes detected, still process uploaded files if any - this is the fix
+//        if (request.getPaaFiles() != null) {
+//            try {
+//                System.out.println("Processing " + request.getPaaFiles().size() + " files for existing PAA version");
+//                processAndSaveDocuments(request.getPaaFiles(), existingPaa);
+//                existingPaa = repository.save(existingPaa);
+//                System.out.println("Saved PAA after processing files: " + existingPaa.getId() + " version " + existingPaa.getVersion());
+//                // Force creation of new version if files are uploaded
+//                if (!request.getPaaFiles().isEmpty()) {
+//                    System.out.println("Files were uploaded - forcing creation of new version");
+//                    shouldCreateNewVersion = true;
+//                    storePreviousRequestHash(paaId, paaVer, requestHash);
+//                    // No need to continue with this block since we'll be creating a new version
+//                }
+//            } catch (IOException e) {
+//                System.err.println("Error processing PAA files for existing version: " + e.getMessage());
+//                throw new RuntimeException("Error processing PAA files for existing version: " + e.getMessage(), e);
+//            }
+//        }
+//
+//        // Only return existing PAA if we're still not creating a new version
+//        if (!shouldCreateNewVersion) {
+//            // Create a filtered copy for response when no changes
+//            Paa copyForResponse = new Paa();
+//            BeanUtils.copyProperties(existingPaa, copyForResponse);
+//
+//            // Filter out deleted documents for the response
+//            if (existingPaa.getDocs() != null) {
+//                copyForResponse.setDocs(
+//                        existingPaa.getDocs().stream()
+//                                .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                .collect(Collectors.toList())
+//                );
+//            }
+//
+//            // Also filter realisation documents
+//            if (copyForResponse.getRealisations() != null) {
+//                copyForResponse.getRealisations().forEach(realisation -> {
+//                    if (realisation.getDocs() != null) {
+//                        realisation.setDocs(
+//                                realisation.getDocs().stream()
+//                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                        .collect(Collectors.toList())
+//                        );
+//                    }
+//
+//                    // Also filter lots in realisations
+//                    if (realisation.getLots() != null) {
+//                        realisation.setLots(
+//                                realisation.getLots().stream()
+//                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                        .collect(Collectors.toSet())
+//                        );
+//                    }
+//                });
+//            }
+//
+//            return copyForResponse;
+//        }
+//    }
+//
+//    // Create a new PAA version
+//    System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
+//    Paa newPaa = new Paa();
+//    newPaa.setId(paaId);
+//    newPaa.setVersion(paaVer + 1);
+//
+//    // Copy properties from temp PAA
+//    newPaa.setRef(tempPaa.getRef());
+//    newPaa.setNom(tempPaa.getNom());
+//    newPaa.setAnnee(tempPaa.getAnnee());
+//    newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
+//    newPaa.setStatus(tempPaa.getStatus());
+//    newPaa.setAc(tempPaa.getAc());
+//
+//    // Initialize empty collections
+//    newPaa.setRealisations(new ArrayList<>());
+//    newPaa.setDocs(new ArrayList<>());
+//
+//    // Save the new PAA entity
+//    newPaa = repository.save(newPaa);
+//    System.out.println("Saved new PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+//
+//    // Set up relationships
+//    if (!updatedRealisations.isEmpty()) {
+//        System.out.println("Setting up relationships with " + updatedRealisations.size() + " realisations");
+//        List<Realisation> confirmedRealisations = new ArrayList<>();
+//
+//        // Create a final reference to newPaa for use in lambdas
+//        final Paa finalNewPaa = newPaa;
+//
+//        for (Realisation realisation : updatedRealisations) {
+//            try {
+//                // Verify the realisation still exists in the database
+//                Realisation confirmedRealisation = realisationRepository
+//                        .findById(new CompositeId(realisation.getId(), realisation.getVersion()))
+//                        .orElse(null);
+//
+//                if (confirmedRealisation == null) {
+//                    System.err.println("Warning: Realisation " + realisation.getId() +
+//                            " version " + realisation.getVersion() +
+//                            " not found in database. Skipping relationship setup.");
+//                    continue;
+//                }
+//
+//                // Check if this realisation is already associated with this PAA version
+//                boolean alreadyAssociated = false;
+//                if (confirmedRealisation.getPaas() != null) {
+//                    alreadyAssociated = confirmedRealisation.getPaas().stream()
+//                            .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+//                }
+//
+//                if (alreadyAssociated) {
+//                    System.out.println("Realisation " + confirmedRealisation.getId() +
+//                            " version " + confirmedRealisation.getVersion() +
+//                            " is already associated with PAA " + finalNewPaa.getId() +
+//                            " version " + finalNewPaa.getVersion() + ". Skipping association.");
+//                    confirmedRealisations.add(confirmedRealisation);
+//                    continue;
+//                }
+//
+//                // Similar to PpmServiceImpl approach: Update the inverse side of the relationship first
+//                List<Paa> paaList = confirmedRealisation.getPaas();
+//                if (paaList == null) {
+//                    paaList = new ArrayList<>();
+//                    confirmedRealisation.setPaas(paaList);
+//                }
+//
+//                // Add the PAA to the realisation if not already present
+//                if (!paaList.contains(finalNewPaa)) {
+//                    paaList.add(finalNewPaa);
+//                }
+//
+//                // Save the realisation with updated relationship
+//                try {
+//                    confirmedRealisation = realisationRepository.save(confirmedRealisation);
+//                    System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
+//                            " version " + confirmedRealisation.getVersion() + " with new PAA");
+//                    confirmedRealisations.add(confirmedRealisation);
+//                } catch (Exception e) {
+//                    System.err.println("Error saving realisation relationship: " + e.getMessage());
+//                    // If we encounter an error, try to continue with other realisations
+//                }
+//            } catch (Exception e) {
+//                System.err.println("Error associating Realisation with PAA: " + e.getMessage());
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        // Now set all realisations on the PAA at once
+//        newPaa.setRealisations(confirmedRealisations);
+//        System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
+//    } else if (existingPaa.getRealisations() != null) {
+//        List<Realisation> confirmedRealisations = new ArrayList<>();
+//        System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
+//
+//        // Create a final reference to newPaa for use in lambdas
+//        final Paa finalNewPaa = newPaa;
+//
+//        for (Realisation existingRealization : existingPaa.getRealisations()) {
+//            try {
+//                // Find the latest version of this realisation
+//                Integer latestVersion = realisationRepository.findMaxVersionById(existingRealization.getId());
+//                if (latestVersion == null) {
+//                    System.err.println("Warning: No versions found for Realisation ID " + existingRealization.getId());
+//                    continue;
+//                }
+//
+//                Realisation latestRealisation = realisationRepository
+//                        .findById(new CompositeId(existingRealization.getId(), latestVersion))
+//                        .orElse(null);
+//
+//                if (latestRealisation == null) {
+//                    System.err.println("Warning: Latest Realisation " + existingRealization.getId() +
+//                            " version " + latestVersion +
+//                            " not found in database. Skipping.");
+//                    continue;
+//                }
+//
+//                // Check if this realisation is already associated with this PAA version
+//                boolean alreadyAssociated = false;
+//                if (latestRealisation.getPaas() != null) {
+//                    alreadyAssociated = latestRealisation.getPaas().stream()
+//                            .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+//                }
+//
+//                if (alreadyAssociated) {
+//                    System.out.println("Realisation " + latestRealisation.getId() +
+//                            " version " + latestRealisation.getVersion() +
+//                            " is already associated with PAA " + finalNewPaa.getId() +
+//                            " version " + finalNewPaa.getVersion() + ". Skipping association.");
+//                    confirmedRealisations.add(latestRealisation);
+//                    continue;
+//                }
+//
+//                // Update the inverse side of the relationship first
+//                List<Paa> paaList = latestRealisation.getPaas();
+//                if (paaList == null) {
+//                    paaList = new ArrayList<>();
+//                    latestRealisation.setPaas(paaList);
+//                }
+//
+//                // Add the PAA to the realisation if not already present
+//                if (!paaList.contains(finalNewPaa)) {
+//                    paaList.add(finalNewPaa);
+//                }
+//
+//                // Save the realisation with updated relationship
+//                try {
+//                    latestRealisation = realisationRepository.save(latestRealisation);
+//                    System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() +
+//                            " version " + latestRealisation.getVersion() + " with new PAA");
+//                    confirmedRealisations.add(latestRealisation);
+//                } catch (Exception e) {
+//                    System.err.println("Error saving relationship with latest realisation: " + e.getMessage());
+//                    // If we encounter an error, try to continue with other realisations
+//                }
+//            } catch (Exception e) {
+//                System.err.println("Error handling Realisation relationship: " + e.getMessage());
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        // Now set all realisations on the PAA at once
+//        newPaa.setRealisations(confirmedRealisations);
+//        System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
+//    }
+//
+//    // Handle documents - copy all documents to the new PAA and update their associations
+//    if (!updatedDocs.isEmpty()) {
+//        List<Docs> confirmedDocs = new ArrayList<>();
+//        // Create a final reference to newPaa for use in lambdas
+//        final Paa finalNewPaaForDocs = newPaa;
+//
+//        for (Docs doc : updatedDocs) {
+//            try {
+//                // Verify doc still exists
+//                Docs confirmedDoc = docsRepository.findById(doc.getId()).orElse(null);
+//                if (confirmedDoc == null) {
+//                    System.err.println("Warning: Document " + doc.getId() + " not found in database. Skipping.");
+//                    continue;
+//                }
+//
+//                // Update the inverse side of the relationship first
+//                List<Paa> paaList = confirmedDoc.getPaas();
+//                if (paaList == null) {
+//                    paaList = new ArrayList<>();
+//                    confirmedDoc.setPaas(paaList);
+//                }
+//
+//                // Check if PAA already exists in the doc's relationships
+//                boolean alreadyAssociated = paaList.stream()
+//                        .anyMatch(p -> p.getId().equals(finalNewPaaForDocs.getId()) && p.getVersion().equals(finalNewPaaForDocs.getVersion()));
+//
+//                if (!alreadyAssociated) {
+//                    paaList.add(finalNewPaaForDocs);
+//                }
+//
+//                // Save document with relationship
+//                confirmedDoc = docsRepository.save(confirmedDoc);
+//                confirmedDocs.add(confirmedDoc);
+//            } catch (Exception e) {
+//                System.err.println("Error associating Document with PAA: " + e.getMessage());
+//            }
+//        }
+//
+//        // Now set the documents on the PAA
+//        newPaa.setDocs(confirmedDocs);
+//        System.out.println("Copied " + confirmedDocs.size() + " documents to new PAA version with correct delete status");
+//    } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//        // Copy all existing documents to new PAA
+//        List<Docs> confirmedDocs = new ArrayList<>();
+//        // Create a final reference to newPaa for use in lambdas
+//        final Paa finalNewPaaForExistingDocs = newPaa;
+//
+//        for (Docs existingDoc : existingPaa.getDocs()) {
+//            try {
+//                // Verify doc still exists
+//                Docs confirmedDoc = docsRepository.findById(existingDoc.getId()).orElse(null);
+//                if (confirmedDoc == null) {
+//                    System.err.println("Warning: Document " + existingDoc.getId() + " not found in database. Skipping.");
+//                    continue;
+//                }
+//
+//                // Update the inverse side of the relationship first
+//                List<Paa> paaList = confirmedDoc.getPaas();
+//                if (paaList == null) {
+//                    paaList = new ArrayList<>();
+//                    confirmedDoc.setPaas(paaList);
+//                }
+//
+//                // Check if PAA already exists in the doc's relationships
+//                boolean alreadyAssociated = paaList.stream()
+//                        .anyMatch(p -> p.getId().equals(finalNewPaaForExistingDocs.getId()) && p.getVersion().equals(finalNewPaaForExistingDocs.getVersion()));
+//
+//                if (!alreadyAssociated) {
+//                    paaList.add(finalNewPaaForExistingDocs);
+//                }
+//
+//                // Save document with relationship
+//                confirmedDoc = docsRepository.save(confirmedDoc);
+//                confirmedDocs.add(confirmedDoc);
+//            } catch (Exception e) {
+//                System.err.println("Error associating existing Document with PAA: " + e.getMessage());
+//            }
+//        }
+//
+//        // Now set the documents on the PAA
+//        newPaa.setDocs(confirmedDocs);
+//        System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
+//    }
+//
+//    // Final save after setting up all relationships
+//    newPaa = repository.save(newPaa);
+//    System.out.println("Final save of PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+//
+//    // Clear the existing relationships between this PAA ID and the selected realisations to prevent duplicates
+//    // This approach prevents duplicate key violations in the join table
+//    try {
+//        // Create a final reference to newPaa for use in lambda expressions
+//        final Paa finalNewPaa = newPaa;
+//
+//        // Get the list of realisation IDs we're associating
+//        List<Integer> realisationIds = finalNewPaa.getRealisations().stream()
+//                .map(Realisation::getId)
+//                .collect(Collectors.toList());
+//
+//        // Only attempt to clean up if we have realisations to associate
+//        if (!realisationIds.isEmpty()) {
+//            // Clear any existing relationships in the join table before saving the new ones
+//            // Use direct repository calls to manipulate the relationships properly
+//
+//            System.out.println("Refreshing PAA-Realisation relationships to prevent primary key conflicts");
+//
+//            // Detach existing realisations from any other version of this PAA to avoid conflicts
+//            for (Realisation realisation : finalNewPaa.getRealisations()) {
+//                // Filter out other versions of the current PAA from each realisation's PAAs
+//                if (realisation.getPaas() != null) {
+//                    List<Paa> filteredPaas = realisation.getPaas().stream()
+//                            .filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion())))
+//                            .collect(Collectors.toList());
+//                    realisation.setPaas(filteredPaas);
+//                    realisationRepository.save(realisation);
+//
+//                    // Add the new PAA version back to ensure the relationship exists
+//                    if (!realisation.getPaas().contains(finalNewPaa)) {
+//                        realisation.getPaas().add(finalNewPaa);
+//                        realisationRepository.save(realisation);
+//                    }
+//                }
+//            }
+//
+//            // Clear the in-memory collection and rebuild it
+//            List<Realisation> tempRealisations = new ArrayList<>(finalNewPaa.getRealisations());
+//            finalNewPaa.getRealisations().clear();
+//            // Save with empty collection to remove all relationships
+//            newPaa = repository.save(finalNewPaa);
+//
+//            // Create a new final reference after reassignment
+//            final Paa updatedNewPaa = newPaa;
+//
+//            // Add back the relationships one by one
+//            for (Realisation realisation : tempRealisations) {
+//                updatedNewPaa.getRealisations().add(realisation);
+//            }
+//            // Save again with the rebuilt relationships
+//            newPaa = repository.save(updatedNewPaa);
+//            System.out.println("Successfully refreshed PAA-Realisation relationships");
+//        }
+//    } catch (Exception e) {
+//        System.err.println("Warning: Error handling relationship refresh: " + e.getMessage());
+//        e.printStackTrace();
+//        // Continue execution - we'll let Hibernate try to handle it
+//    }
+//
+//    // Handle PAA files if provided - this was missing
+//    if (request.getPaaFiles() != null) {
+//        try {
+//            System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
+//            processAndSaveDocuments(request.getPaaFiles(), newPaa);
+//            // Save again after adding documents
+//            newPaa = repository.save(newPaa);
+//            System.out.println("Saved PAA after processing files: " + newPaa.getId() + " version " + newPaa.getVersion());
+//        } catch (IOException e) {
+//            System.err.println("Error processing PAA files for new version: " + e.getMessage());
+//            throw new RuntimeException("Error processing PAA files for new version: " + e.getMessage(), e);
+//        }
+//    }
+//
+//    // Update the hash for the new version
+//    storePreviousRequestHash(paaId, newPaa.getVersion(), requestHash);
+//    Paa copyForReturn = new Paa();
+//    BeanUtils.copyProperties(newPaa, copyForReturn);
+//    copyForReturn.setDocs(
+//            newPaa.getDocs().stream()
+//                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                    .collect(Collectors.toList())
+//    );
+//
+//    // Also filter realisation documents
+//    if (copyForReturn.getRealisations() != null) {
+//        copyForReturn.getRealisations().forEach(realisation -> {
+//            if (realisation.getDocs() != null) {
+//                realisation.setDocs(
+//                        realisation.getDocs().stream()
+//                                .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                .collect(Collectors.toList())
+//                );
+//            }
+//
+//            // Also filter lots in realisations
+//            if (realisation.getLots() != null) {
+//                realisation.setLots(
+//                        realisation.getLots().stream()
+//                                .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                .collect(Collectors.toSet())
+//                );
+//            }
+//        });
+//    }
+//
+//    return copyForReturn;
+//}
 
 
     @Transactional
@@ -667,7 +2646,7 @@ public class PaaServiceImpl implements PaaService {
 
         // Track whether any documents have changed
         boolean documentsChanged = false;
-        
+
         // Process any document changes
         if (request.getDocIds() != null) {
             // Get only the active (non-deleted) existing document IDs
@@ -676,22 +2655,22 @@ public class PaaServiceImpl implements PaaService {
                             .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                             .map(Docs::getId)
                             .collect(Collectors.toSet()) : new HashSet<>();
-                            
+
             // Compare with requested document IDs
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
             documentsChanged = !requestDocIds.equals(activeExistingDocIds);
-            
+
             if (documentsChanged) {
                 System.out.println("Document changes detected:");
                 System.out.println("  - Active existing docs: " + activeExistingDocIds);
                 System.out.println("  - Requested docs: " + requestDocIds);
             }
         }
-        
+
         // Get hash for the current request
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
-        
+
         // Check if files are present - if so, we'll always create a new version
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
@@ -704,42 +2683,42 @@ public class PaaServiceImpl implements PaaService {
             // If this is the exact same request as the previous one, return the existing PAA without changes
             if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged) {
                 System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
-                
+
                 // Create a filtered copy for response
                 Paa copyForResponse = new Paa();
                 BeanUtils.copyProperties(existingPaa, copyForResponse);
-                
+
                 // Filter out deleted documents for the response
                 if (existingPaa.getDocs() != null) {
                     copyForResponse.setDocs(
-                        existingPaa.getDocs().stream()
-                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            .collect(Collectors.toList())
+                            existingPaa.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
                     );
                 }
-                
+
                 // Also filter realisation documents
                 if (copyForResponse.getRealisations() != null) {
                     copyForResponse.getRealisations().forEach(realisation -> {
                         if (realisation.getDocs() != null) {
                             realisation.setDocs(
-                                realisation.getDocs().stream()
-                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                                    .collect(Collectors.toList())
+                                    realisation.getDocs().stream()
+                                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                            .collect(Collectors.toList())
                             );
                         }
-                        
+
                         // Also filter lots in realisations
                         if (realisation.getLots() != null) {
                             realisation.setLots(
-                                realisation.getLots().stream()
-                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                                    .collect(Collectors.toSet())
+                                    realisation.getLots().stream()
+                                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                            .collect(Collectors.toSet())
                             );
                         }
                     });
                 }
-                
+
                 return copyForResponse;
             }
         }
@@ -817,41 +2796,25 @@ public class PaaServiceImpl implements PaaService {
                             System.out.println("Updating Realisation with versioning...");
                             Realisation updatedRealisation = realisationService.updateWithVersioning(
                                     realisationDto.getId(), versionToUse, realisationDto);
-                            
-                            // Handle realisation files if provided
-                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
-                                try {
-                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
-                                                      " files for Realisation ID: " + updatedRealisation.getId() + 
-                                                      " version: " + updatedRealisation.getVersion());
-                                    processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
-                                    // Save the realisation again after adding documents
-                                    updatedRealisation = realisationRepository.save(updatedRealisation);
-                                    System.out.println("Saved Realisation after processing files");
-                                } catch (IOException e) {
-                                    System.err.println("Error processing Realisation files: " + e.getMessage());
-                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
-                                }
-                            }
-                            
-                            System.out.println("Updated Realisation: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+
+                            // Handle realisation files if provided                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {                                try {                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +                                                       " files for Realisation ID: " + updatedRealisation.getId() +                                                       " version: " + updatedRealisation.getVersion());                                    processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);                                    // Save the realisation again after adding documents                                    updatedRealisation = realisationRepository.save(updatedRealisation);                                    System.out.println("Saved Realisation after processing files");                                } catch (IOException e) {                                    System.err.println("Error processing Realisation files: " + e.getMessage());                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);                                }                            }                                                        // Handle realisation document IDs if provided                            if (realisationDto.getDocIds() != null) {                                Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationDto.getDocIds());                                // Get active document IDs                                Set<Integer> activeExistingRealisationDocIds = updatedRealisation.getDocs() != null ?                                        updatedRealisation.getDocs().stream()                                                .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))                                                .map(Docs::getId)                                                .collect(Collectors.toSet()) : new HashSet<>();                                // Log document changes                                if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {                                    System.out.println("Document changes detected for Realisation update ID: " + updatedRealisation.getId());                                    System.out.println("  - Active existing docs: " + activeExistingRealisationDocIds);                                    System.out.println("  - Requested docs: " + requestedRealisationDocIds);                                }                                // Process documents - mark as deleted or active based on request                                List<Docs> updatedRealisationDocs = new ArrayList<>();                                if (updatedRealisation.getDocs() != null) {                                    // For each existing document in the realisation                                    for (Docs existingDoc : updatedRealisation.getDocs()) {                                        if (requestedRealisationDocIds.contains(existingDoc.getId())) {                                            // This doc is in the request, ensure it's not marked as deleted                                            existingDoc.setIsDeleted(false);                                            docsRepository.save(existingDoc);                                            updatedRealisationDocs.add(existingDoc);                                            // Remove from requested IDs since we've handled it                                            requestedRealisationDocIds.remove(existingDoc.getId());                                        } else {                                            // This doc is not in the request, mark it as deleted                                            existingDoc.setIsDeleted(true);                                            docsRepository.save(existingDoc);                                            updatedRealisationDocs.add(existingDoc); // Keep it in the collection                                            System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");                                        }                                    }                                }                                // Add any new docs from the request                                for (Integer docId : requestedRealisationDocIds) {                                    Docs doc = docsRepository.findById(docId)                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));                                    // Set up bidirectional relationship                                    if (doc.getRealisations() == null) {                                        doc.setRealisations(new ArrayList<>());                                    }                                    if (!doc.getRealisations().contains(updatedRealisation)) {                                        doc.getRealisations().add(updatedRealisation);                                    }                                    // Ensure doc is active                                    doc.setIsDeleted(false);                                    docsRepository.save(doc);                                    updatedRealisationDocs.add(doc);                                    System.out.println("Added new document with ID " + doc.getId() + " to Realisation");                                }                                // Update the realisation's docs                                updatedRealisation.setDocs(updatedRealisationDocs);                                updatedRealisation = realisationRepository.save(updatedRealisation);                                System.out.println("Updated realisation documents");                            }                                                        System.out.println("Updated Realisation: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
                             updatedRealisations.add(updatedRealisation);
                             realisationsChanged = true;
                         } else {
                             System.out.println("Using existing Realisation without changes");
-                            
+
                             // Even if no field changes detected, still process realisation files if any
                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                                 try {
-                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
-                                                      " files for existing Realisation ID: " + existingRealisation.getId() + 
-                                                      " version: " + existingRealisation.getVersion());
+                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                            " files for existing Realisation ID: " + existingRealisation.getId() +
+                                            " version: " + existingRealisation.getVersion());
                                     processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
                                     existingRealisation = realisationRepository.save(existingRealisation);
                                     System.out.println("Saved existing Realisation after processing files");
                                     updateNeeded = true; // Force update needed
                                     realisationsChanged = true;
-                                    
+
                                     // Create a new version of the Realisation through the service
                                     System.out.println("Creating new Realisation version due to file uploads");
                                     Realisation updatedRealisation = realisationService.updateWithVersioning(
@@ -883,7 +2846,7 @@ public class PaaServiceImpl implements PaaService {
                                         // Handle new lot without ID
                                         String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
                                         System.out.println("Processing new lot with description: " + lotHash);
-                                        
+
                                         if (newLotsMap.containsKey(lotHash)) {
                                             System.out.println("Using previously created lot for description: " + lotHash);
                                             updatedLots.add(newLotsMap.get(lotHash));
@@ -911,7 +2874,7 @@ public class PaaServiceImpl implements PaaService {
                                         Lot newLot = new Lot();
                                         newLot.setDescription(lotDto.getDescription());
                                         newLot.setVersion(1); // First version
-                                        
+
                                         // Generate new ID if not provided
                                         Integer maxLotId = lotRepository.findMaxId();
                                         Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
@@ -1016,13 +2979,13 @@ public class PaaServiceImpl implements PaaService {
                         }
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
-                        
+
                         // Handle new realisation files if provided
                         if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                             try {
-                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() + 
-                                                  " files for new Realisation ID: " + newRealisation.getId() + 
-                                                  " version: " + newRealisation.getVersion());
+                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                        " files for new Realisation ID: " + newRealisation.getId() +
+                                        " version: " + newRealisation.getVersion());
                                 processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
                                 // Save the new realisation again after adding documents
                                 newRealisation = realisationRepository.save(newRealisation);
@@ -1032,7 +2995,7 @@ public class PaaServiceImpl implements PaaService {
                                 throw new RuntimeException("Error processing new Realisation files: " + e.getMessage(), e);
                             }
                         }
-                        
+
                         updatedRealisations.add(newRealisation);
                         realisationsChanged = true;
                     }
@@ -1076,22 +3039,22 @@ public class PaaServiceImpl implements PaaService {
             realisationsChanged = true;
         }
 
-         // Process document IDs - improved document handling
+        // Process document IDs - improved document handling
         if (request.getDocIds() != null) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
-            
+
             // Get only the active (non-deleted) existing document IDs
             Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
                     existingPaa.getDocs().stream()
                             .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                             .map(Docs::getId)
                             .collect(Collectors.toSet()) : new HashSet<>();
-            
+
             // Compare requested doc IDs with active doc IDs
             System.out.println("Comparing document IDs:");
             System.out.println("  - Existing active docs: " + activeExistingDocIds);
             System.out.println("  - Requested docs: " + requestDocIds);
-            
+
             // If the sets don't match exactly, we need to mark it as changed
             if (!requestDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document ID sets are different - marking as changed");
@@ -1099,10 +3062,10 @@ public class PaaServiceImpl implements PaaService {
             } else {
                 System.out.println("Document ID sets match - no document changes detected");
             }
-            
+
             // Prepare documents for the new version
             updatedDocs = new ArrayList<>();
-            
+
             // Process existing documents first
             if (existingPaa.getDocs() != null) {
                 for (Docs existingDoc : existingPaa.getDocs()) {
@@ -1112,13 +3075,13 @@ public class PaaServiceImpl implements PaaService {
                         System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
                         continue;
                     }
-                    
+
                     if (requestDocIds.contains(docToProcess.getId())) {
                         // This document is in the request, make sure it's not deleted
                         docToProcess.setIsDeleted(false);
                         docToProcess = docsRepository.save(docToProcess);
                         updatedDocs.add(docToProcess);
-                        
+
                         // Remove from requestDocIds to track what we've processed
                         requestDocIds.remove(docToProcess.getId());
                     } else {
@@ -1130,12 +3093,12 @@ public class PaaServiceImpl implements PaaService {
                     }
                 }
             }
-            
+
             // Now process any new documents in the request
             for (Integer docId : requestDocIds) {
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-                
+
                 // Ensure it's active
                 doc.setIsDeleted(false);
                 doc = docsRepository.save(doc);
@@ -1149,7 +3112,7 @@ public class PaaServiceImpl implements PaaService {
                 // Get a fresh copy of the document
                 Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                 if (docToProcess == null) continue;
-                
+
                 // Mark as deleted
                 docToProcess.setIsDeleted(true);
                 docToProcess = docsRepository.save(docToProcess);
@@ -1164,27 +3127,27 @@ public class PaaServiceImpl implements PaaService {
 
         // Determine if we need to create a new PAA version
         boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
-        
+
         // Log detailed versioning decision information
         System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
         System.out.println("  - Direct field changes: " + hasDirectChanges);
         System.out.println("  - Realisations changed: " + realisationsChanged);
         System.out.println("  - Documents changed: " + documentsChanged);
         System.out.println("  - Files uploaded: " + (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
-        
+
         // Force version increment if files are uploaded - this ensures files alone trigger a new version
         if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
             System.out.println("Files are present - forcing creation of new version");
             shouldCreateNewVersion = true;
         }
-        
+
         // Forcing version increment if any of the update criteria are met
         if (shouldCreateNewVersion) {
             System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
             storePreviousRequestHash(paaId, paaVer, requestHash);
         } else {
             System.out.println("No changes detected, returning existing PAA version: " + paaVer);
-            
+
             // Even if no changes detected, still process uploaded files if any - this is the fix
             if (request.getPaaFiles() != null) {
                 try {
@@ -1204,44 +3167,44 @@ public class PaaServiceImpl implements PaaService {
                     throw new RuntimeException("Error processing PAA files for existing version: " + e.getMessage(), e);
                 }
             }
-            
+
             // Only return existing PAA if we're still not creating a new version
             if (!shouldCreateNewVersion) {
                 // Create a filtered copy for response when no changes
                 Paa copyForResponse = new Paa();
                 BeanUtils.copyProperties(existingPaa, copyForResponse);
-                
+
                 // Filter out deleted documents for the response
                 if (existingPaa.getDocs() != null) {
                     copyForResponse.setDocs(
-                        existingPaa.getDocs().stream()
-                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            .collect(Collectors.toList())
+                            existingPaa.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
                     );
                 }
-                
+
                 // Also filter realisation documents
                 if (copyForResponse.getRealisations() != null) {
                     copyForResponse.getRealisations().forEach(realisation -> {
                         if (realisation.getDocs() != null) {
                             realisation.setDocs(
-                                realisation.getDocs().stream()
-                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                                    .collect(Collectors.toList())
+                                    realisation.getDocs().stream()
+                                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                            .collect(Collectors.toList())
                             );
                         }
-                        
+
                         // Also filter lots in realisations
                         if (realisation.getLots() != null) {
                             realisation.setLots(
-                                realisation.getLots().stream()
-                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                                    .collect(Collectors.toSet())
+                                    realisation.getLots().stream()
+                                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                            .collect(Collectors.toSet())
                             );
                         }
                     });
                 }
-                
+
                 return copyForResponse;
             }
         }
@@ -1272,52 +3235,52 @@ public class PaaServiceImpl implements PaaService {
         if (!updatedRealisations.isEmpty()) {
             System.out.println("Setting up relationships with " + updatedRealisations.size() + " realisations");
             List<Realisation> confirmedRealisations = new ArrayList<>();
-            
+
             // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaa = newPaa;
-            
+
             for (Realisation realisation : updatedRealisations) {
                 try {
                     // Verify the realisation still exists in the database
                     Realisation confirmedRealisation = realisationRepository
-                        .findById(new CompositeId(realisation.getId(), realisation.getVersion()))
-                        .orElse(null);
-                    
+                            .findById(new CompositeId(realisation.getId(), realisation.getVersion()))
+                            .orElse(null);
+
                     if (confirmedRealisation == null) {
-                        System.err.println("Warning: Realisation " + realisation.getId() + 
-                                         " version " + realisation.getVersion() + 
-                                         " not found in database. Skipping relationship setup.");
+                        System.err.println("Warning: Realisation " + realisation.getId() +
+                                " version " + realisation.getVersion() +
+                                " not found in database. Skipping relationship setup.");
                         continue;
                     }
-                    
+
                     // Check if this realisation is already associated with this PAA version
                     boolean alreadyAssociated = false;
                     if (confirmedRealisation.getPaas() != null) {
                         alreadyAssociated = confirmedRealisation.getPaas().stream()
-                            .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+                                .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
                     }
-                    
+
                     if (alreadyAssociated) {
-                        System.out.println("Realisation " + confirmedRealisation.getId() + 
-                                         " version " + confirmedRealisation.getVersion() + 
-                                         " is already associated with PAA " + finalNewPaa.getId() + 
-                                         " version " + finalNewPaa.getVersion() + ". Skipping association.");
+                        System.out.println("Realisation " + confirmedRealisation.getId() +
+                                " version " + confirmedRealisation.getVersion() +
+                                " is already associated with PAA " + finalNewPaa.getId() +
+                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
                         confirmedRealisations.add(confirmedRealisation);
                         continue;
                     }
-                    
+
                     // Similar to PpmServiceImpl approach: Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedRealisation.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedRealisation.setPaas(paaList);
                     }
-                    
+
                     // Add the PAA to the realisation if not already present
                     if (!paaList.contains(finalNewPaa)) {
                         paaList.add(finalNewPaa);
                     }
-                    
+
                     // Save the realisation with updated relationship
                     try {
                         confirmedRealisation = realisationRepository.save(confirmedRealisation);
@@ -1333,17 +3296,17 @@ public class PaaServiceImpl implements PaaService {
                     e.printStackTrace();
                 }
             }
-            
+
             // Now set all realisations on the PAA at once
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
         } else if (existingPaa.getRealisations() != null) {
             List<Realisation> confirmedRealisations = new ArrayList<>();
             System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
-            
+
             // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaa = newPaa;
-            
+
             for (Realisation existingRealization : existingPaa.getRealisations()) {
                 try {
                     // Find the latest version of this realisation
@@ -1352,46 +3315,46 @@ public class PaaServiceImpl implements PaaService {
                         System.err.println("Warning: No versions found for Realisation ID " + existingRealization.getId());
                         continue;
                     }
-                    
+
                     Realisation latestRealisation = realisationRepository
-                        .findById(new CompositeId(existingRealization.getId(), latestVersion))
-                        .orElse(null);
-                    
+                            .findById(new CompositeId(existingRealization.getId(), latestVersion))
+                            .orElse(null);
+
                     if (latestRealisation == null) {
-                        System.err.println("Warning: Latest Realisation " + existingRealization.getId() + 
-                                         " version " + latestVersion + 
-                                         " not found in database. Skipping.");
+                        System.err.println("Warning: Latest Realisation " + existingRealization.getId() +
+                                " version " + latestVersion +
+                                " not found in database. Skipping.");
                         continue;
                     }
-                    
+
                     // Check if this realisation is already associated with this PAA version
                     boolean alreadyAssociated = false;
                     if (latestRealisation.getPaas() != null) {
                         alreadyAssociated = latestRealisation.getPaas().stream()
-                            .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
+                                .anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
                     }
-                    
+
                     if (alreadyAssociated) {
-                        System.out.println("Realisation " + latestRealisation.getId() + 
-                                         " version " + latestRealisation.getVersion() + 
-                                         " is already associated with PAA " + finalNewPaa.getId() + 
-                                         " version " + finalNewPaa.getVersion() + ". Skipping association.");
+                        System.out.println("Realisation " + latestRealisation.getId() +
+                                " version " + latestRealisation.getVersion() +
+                                " is already associated with PAA " + finalNewPaa.getId() +
+                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
                         confirmedRealisations.add(latestRealisation);
                         continue;
                     }
-                    
+
                     // Update the inverse side of the relationship first
                     List<Paa> paaList = latestRealisation.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         latestRealisation.setPaas(paaList);
                     }
-                    
+
                     // Add the PAA to the realisation if not already present
                     if (!paaList.contains(finalNewPaa)) {
                         paaList.add(finalNewPaa);
                     }
-                    
+
                     // Save the realisation with updated relationship
                     try {
                         latestRealisation = realisationRepository.save(latestRealisation);
@@ -1407,7 +3370,7 @@ public class PaaServiceImpl implements PaaService {
                     e.printStackTrace();
                 }
             }
-            
+
             // Now set all realisations on the PAA at once
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
@@ -1418,7 +3381,7 @@ public class PaaServiceImpl implements PaaService {
             List<Docs> confirmedDocs = new ArrayList<>();
             // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaaForDocs = newPaa;
-            
+
             for (Docs doc : updatedDocs) {
                 try {
                     // Verify doc still exists
@@ -1427,22 +3390,22 @@ public class PaaServiceImpl implements PaaService {
                         System.err.println("Warning: Document " + doc.getId() + " not found in database. Skipping.");
                         continue;
                     }
-                    
+
                     // Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedDoc.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedDoc.setPaas(paaList);
                     }
-                    
+
                     // Check if PAA already exists in the doc's relationships
                     boolean alreadyAssociated = paaList.stream()
-                        .anyMatch(p -> p.getId().equals(finalNewPaaForDocs.getId()) && p.getVersion().equals(finalNewPaaForDocs.getVersion()));
-                    
+                            .anyMatch(p -> p.getId().equals(finalNewPaaForDocs.getId()) && p.getVersion().equals(finalNewPaaForDocs.getVersion()));
+
                     if (!alreadyAssociated) {
                         paaList.add(finalNewPaaForDocs);
                     }
-                    
+
                     // Save document with relationship
                     confirmedDoc = docsRepository.save(confirmedDoc);
                     confirmedDocs.add(confirmedDoc);
@@ -1450,16 +3413,16 @@ public class PaaServiceImpl implements PaaService {
                     System.err.println("Error associating Document with PAA: " + e.getMessage());
                 }
             }
-            
+
             // Now set the documents on the PAA
             newPaa.setDocs(confirmedDocs);
             System.out.println("Copied " + confirmedDocs.size() + " documents to new PAA version with correct delete status");
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
-             // Copy all existing documents to new PAA
+            // Copy all existing documents to new PAA
             List<Docs> confirmedDocs = new ArrayList<>();
             // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaaForExistingDocs = newPaa;
-            
+
             for (Docs existingDoc : existingPaa.getDocs()) {
                 try {
                     // Verify doc still exists
@@ -1468,22 +3431,22 @@ public class PaaServiceImpl implements PaaService {
                         System.err.println("Warning: Document " + existingDoc.getId() + " not found in database. Skipping.");
                         continue;
                     }
-                    
+
                     // Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedDoc.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedDoc.setPaas(paaList);
                     }
-                    
+
                     // Check if PAA already exists in the doc's relationships
                     boolean alreadyAssociated = paaList.stream()
-                        .anyMatch(p -> p.getId().equals(finalNewPaaForExistingDocs.getId()) && p.getVersion().equals(finalNewPaaForExistingDocs.getVersion()));
-                    
+                            .anyMatch(p -> p.getId().equals(finalNewPaaForExistingDocs.getId()) && p.getVersion().equals(finalNewPaaForExistingDocs.getVersion()));
+
                     if (!alreadyAssociated) {
                         paaList.add(finalNewPaaForExistingDocs);
                     }
-                    
+
                     // Save document with relationship
                     confirmedDoc = docsRepository.save(confirmedDoc);
                     confirmedDocs.add(confirmedDoc);
@@ -1491,7 +3454,7 @@ public class PaaServiceImpl implements PaaService {
                     System.err.println("Error associating existing Document with PAA: " + e.getMessage());
                 }
             }
-            
+
             // Now set the documents on the PAA
             newPaa.setDocs(confirmedDocs);
             System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
@@ -1506,29 +3469,29 @@ public class PaaServiceImpl implements PaaService {
         try {
             // Create a final reference to newPaa for use in lambda expressions
             final Paa finalNewPaa = newPaa;
-            
+
             // Get the list of realisation IDs we're associating
             List<Integer> realisationIds = finalNewPaa.getRealisations().stream()
-                .map(Realisation::getId)
-                .collect(Collectors.toList());
-                
+                    .map(Realisation::getId)
+                    .collect(Collectors.toList());
+
             // Only attempt to clean up if we have realisations to associate
             if (!realisationIds.isEmpty()) {
                 // Clear any existing relationships in the join table before saving the new ones
                 // Use direct repository calls to manipulate the relationships properly
-                
+
                 System.out.println("Refreshing PAA-Realisation relationships to prevent primary key conflicts");
-                
+
                 // Detach existing realisations from any other version of this PAA to avoid conflicts
                 for (Realisation realisation : finalNewPaa.getRealisations()) {
                     // Filter out other versions of the current PAA from each realisation's PAAs
                     if (realisation.getPaas() != null) {
                         List<Paa> filteredPaas = realisation.getPaas().stream()
-                            .filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion())))
-                            .collect(Collectors.toList());
+                                .filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion())))
+                                .collect(Collectors.toList());
                         realisation.setPaas(filteredPaas);
                         realisationRepository.save(realisation);
-                        
+
                         // Add the new PAA version back to ensure the relationship exists
                         if (!realisation.getPaas().contains(finalNewPaa)) {
                             realisation.getPaas().add(finalNewPaa);
@@ -1536,16 +3499,16 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
                 }
-                
+
                 // Clear the in-memory collection and rebuild it
                 List<Realisation> tempRealisations = new ArrayList<>(finalNewPaa.getRealisations());
                 finalNewPaa.getRealisations().clear();
                 // Save with empty collection to remove all relationships
                 newPaa = repository.save(finalNewPaa);
-                
+
                 // Create a new final reference after reassignment
                 final Paa updatedNewPaa = newPaa;
-                
+
                 // Add back the relationships one by one
                 for (Realisation realisation : tempRealisations) {
                     updatedNewPaa.getRealisations().add(realisation);
@@ -1583,24 +3546,24 @@ public class PaaServiceImpl implements PaaService {
                         .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                         .collect(Collectors.toList())
         );
-        
+
         // Also filter realisation documents
         if (copyForReturn.getRealisations() != null) {
             copyForReturn.getRealisations().forEach(realisation -> {
                 if (realisation.getDocs() != null) {
                     realisation.setDocs(
-                        realisation.getDocs().stream()
-                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            .collect(Collectors.toList())
+                            realisation.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
                     );
                 }
-                
+
                 // Also filter lots in realisations
                 if (realisation.getLots() != null) {
                     realisation.setLots(
-                        realisation.getLots().stream()
-                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                            .collect(Collectors.toSet())
+                            realisation.getLots().stream()
+                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                    .collect(Collectors.toSet())
                     );
                 }
             });
@@ -1615,7 +3578,7 @@ public class PaaServiceImpl implements PaaService {
      * This method finds the latest version of the PAA with the given ID and then
      * calls the version-specific updateWithVersioning method.
      *
-     * @param paaId the ID of the PAA to update
+     * @param paaId   the ID of the PAA to update
      * @param request the request containing the updated data
      * @return the newly created version of the PAA
      * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
@@ -1627,7 +3590,7 @@ public class PaaServiceImpl implements PaaService {
         Integer latestVersion = repository.findMaxVersionById(paaId);
 
         if (latestVersion == null) {
-            throw new PaaNotFound( "No versions found for PAA with ID: " + paaId,List.of(paaId),List.of(null));
+            throw new PaaNotFound("No versions found for PAA with ID: " + paaId, List.of(paaId), List.of(null));
         }
 
         System.out.println("Found latest version for PAA ID " + paaId + ": " + latestVersion);
@@ -1769,7 +3732,7 @@ public class PaaServiceImpl implements PaaService {
     /**
      * Gets the hash of the previous request for a PAA ID and version.
      *
-     * @param paaId The PAA ID
+     * @param paaId  The PAA ID
      * @param paaVer The PAA version
      * @return The hash string or null if no previous request
      */
@@ -1781,9 +3744,9 @@ public class PaaServiceImpl implements PaaService {
     /**
      * Stores the hash of a request for a PAA ID and version.
      *
-     * @param paaId The PAA ID
+     * @param paaId  The PAA ID
      * @param paaVer The PAA version
-     * @param hash The hash string to store
+     * @param hash   The hash string to store
      */
     private void storePreviousRequestHash(Integer paaId, Integer paaVer, String hash) {
         String key = paaId + "-" + paaVer;
@@ -1816,7 +3779,7 @@ public class PaaServiceImpl implements PaaService {
         Optional<Paa> existingPaa = repository.findById(new CompositeId(paaId, paaVersion));
         if (existingPaa.isPresent()) {
             throw new PaaAlreadyExistsException(
-                    "Paa with ID " + paaId + " and version " + paaVersion + " already exists.",paaId, paaVersion);
+                    "Paa with ID " + paaId + " and version " + paaVersion + " already exists.", paaId, paaVersion);
         }
 
         // Create new PAA
@@ -1877,7 +3840,7 @@ public class PaaServiceImpl implements PaaService {
             savedPaa.setDocs(docs);
         }
 
-        if(request.getPaaFiles() != null) {
+        if (request.getPaaFiles() != null) {
             try {
                 processAndSaveDocuments(request.getPaaFiles(), savedPaa);
             } catch (IOException e) {
@@ -1919,7 +3882,7 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setSort(realisationRequest.getSort());
                 System.out.println("the relisations have files");
                 System.out.println(realisationRequest.getRealisationFiles());
-                if(realisationRequest.getRealisationFiles() != null) {
+                if (realisationRequest.getRealisationFiles() != null) {
                     try {
                         processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
                     } catch (IOException e) {
@@ -2069,6 +4032,7 @@ public class PaaServiceImpl implements PaaService {
 
         return false;
     }
+
     private boolean isLotBeingReplaced(Collection<LotResponse> lotDtos, Lot existingLot) {
         if (lotDtos == null || existingLot == null) {
             return false;
@@ -2096,22 +4060,18 @@ public class PaaServiceImpl implements PaaService {
         UUID uuid = UUID.randomUUID();
         // Add a file counter to ensure unique filenames even with the same UUID
         AtomicInteger fileCounter = new AtomicInteger(0);
-        
+
         if (files != null && !files.isEmpty()) {
             // Create a unique folder path with timestamp to prevent any possible conflict
             String timestamp = String.valueOf(System.currentTimeMillis());
             // Use parent folder path from Constants but add our unique structure
             String baseFolder = Constants.PATH_ENTREPOT_GED_PAA.replace("/SIGMAP-DEV/ARCHIVE/PAA/", "/SIGMAP-DEV/ARCHIVE/PAA_DOCS/");
-            //String baseFolder = Constants.PATH_ENTREPOT_GED_PAA;
-//            String folderPath = String.format("%s/PAA_%d_%d_%s",
-//                    baseFolder, savedPaa.getId(), savedPaa.getVersion(), timestamp);
-
             String folderPath = String.format("%s/PAA_%d/%d_%s",
                     baseFolder, savedPaa.getId(), savedPaa.getVersion(), timestamp);
 
             // Create the folder structure first, synchronizing to prevent conflicts
             String folderId;
-            synchronized(folderCreationLock) {
+            synchronized (folderCreationLock) {
                 try {
                     // Get or create the folder first, outside the file processing loop
                     folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
@@ -2179,16 +4139,17 @@ public class PaaServiceImpl implements PaaService {
             }
         }
     }
-    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws  PaaNotFound {
+
+    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound {
         Integer latestVersion = findLatestVersionById(paaId)
                 .orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of(paaVer)));
         Paa paa = repository.findById(new CompositeId(paaId, latestVersion))
                 .orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
 
 
-
         return paa;
     }
+
     private Optional<Integer> findLatestVersionById(Integer paaId) {
         return Optional.ofNullable(repository.findMaxVersionById(paaId));
     }
@@ -2211,7 +4172,7 @@ public class PaaServiceImpl implements PaaService {
 
             // Create the folder structure first, synchronizing to prevent conflicts
             String folderId;
-            synchronized(folderCreationLock) {
+            synchronized (folderCreationLock) {
                 try {
                     // Get or create the folder first, outside the file processing loop
                     folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
@@ -2289,23 +4250,8 @@ public class PaaServiceImpl implements PaaService {
         savedRealisation.setDocs(docs);
     }
 
-//    @Override
-//    public Paa findByIdPaa(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
-//        Integer latestVersion = findLatestVersionById(agpmId)
-//                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID", List.of(agpmId), List.of(agpmVer)));
-//        Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
-//                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID and version", List.of(agpmId), List.of(latestVersion)));
-//
-//        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
-//        log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
-//                agpmId, latestVersion, responseAgpm.getDocs() != null
-//                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
-//                        : Collections.emptyList());
-//
-//        return responseAgpm;
-//    }
     @Transactional
-    public Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws  PaaNotFound {
+    public Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Paa paa = repository.findById(compositeId)
                 .orElseThrow(() -> new PaaNotFound("Paa not found", List.of(paaId), List.of(paaVer)));
@@ -2408,462 +4354,4 @@ public class PaaServiceImpl implements PaaService {
         // Update the realisation's docs
         savedRealisation.setDocs(docs);
     }
-
-
-
-    // Helper method to upload a file to an existing folder by ID, not by path
-//    private String uploadToExistingFolder(MultipartFile file, String folderId) throws IOException {
-//        try {
-//            // Create a modified version of alfrescoService.uploadDocument that takes folderId directly
-//            // instead of folderPath, thus skipping the getOrCreateFolderByPath step
-//
-//            // Construct the URL for file upload to Alfresco
-//            String url = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/nodes/"
-//                    + folderId + "/children"
-//                    + "?majorVersion=true&alf_ticket=" + alfrescoService.getTokenHolder().getTicket();
-//
-//            // Create HTTP headers for the request
-//            HttpHeaders headers = new HttpHeaders();
-//            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-//
-//            // Convert the file to ByteArrayResource
-//            ByteArrayResource fileAsResource = new ByteArrayResource(file.getBytes()) {
-//                @Override
-//                public String getFilename() {
-//                    return file.getOriginalFilename();
-//                }
-//            };
-//
-//            // Create multipart request body
-//            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-//            body.add("filedata", fileAsResource);
-//            body.add("name", file.getOriginalFilename());
-//            body.add("nodeType", "cm:content");
-//
-//            // Create request entity with headers and body
-//            HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-//
-//            // Send POST request to upload the file
-//            ResponseEntity<String> response = alfrescoService.getRestTemplate().exchange(url, HttpMethod.POST, request, String.class);
-//
-//            // Parse response to get document ID
-//            String responseBody = response.getBody();
-//            JsonNode jsonNode = new ObjectMapper().readTree(responseBody);
-//            String nodeId = jsonNode.path("entry").path("id").asText();
-//            String versionLabel = jsonNode.path("entry").path("versionLabel").asText();
-//
-//            // Update document properties if needed
-//            alfrescoService.updateProperties(nodeId);
-//
-//            // Return document ID and version
-//            return nodeId + ";" + versionLabel;
-//        } catch (Exception e) {
-//            throw new IOException("Error uploading document to existing folder: " + e.getMessage(), e);
-//        }
-//    }
-
-//    private void processAndSaveDocuments(List<MultipartFile> files, Paa savedPaa) throws IOException {
-//        UUID uuid = UUID.randomUUID();
-//        if (files != null && !files.isEmpty()) {
-//            for (MultipartFile file : files) {
-//                if (file != null && !file.isEmpty()) {
-//                    try {
-//                        Tika tika = new Tika();
-//                        String detectedMimeType = tika.detect(file.getInputStream());
-//                        String originalFilename = file.getOriginalFilename();
-//
-//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                        }
-//
-//                        long fileSize = file.getSize();
-//                        String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                        // Use a more specific folder path with PAA identifier
-//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PAA + "/%d/%d",
-//                                savedPaa.getId(), savedPaa.getVersion());
-//
-//                        String[] parts = originalFilename.split("\\.");
-//                        String baseName = parts[0];
-//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                        String uniqueFileName = "paa_" + uuid + "_" + extension;
-//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                        log.info(alfrescoId);
-//
-//                        Docs document = new Docs();
-//                        document.setName(baseName);
-//                        document.setAlfresco_id(alfrescoId);
-//                        document.setPathFolder(folderPath);
-//                        document.setFileSize(formattedSize);
-//                        document.setContentType(detectedMimeType);
-//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                        document.setAlfrescoName(uniqueFileName);
-//                        if (document.getPaas() == null) {
-//                            document.setPaas(new ArrayList<>());
-//                        }
-//                        if (savedPaa.getDocs() == null) {
-//                            savedPaa.setDocs(new ArrayList<>());
-//                        }
-//                        document.getPaas().add(savedPaa);
-//                        savedPaa.getDocs().add(document);
-//
-//                        docsRepository.save(document);
-//                    } catch (Exception e) {
-//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-//                    }
-//                }
-//            }
-//        }
-//    }
-
-
-//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-//        List<Docs> docs = new ArrayList<>(); // Initialize collection for documents
-//        UUID uuid = UUID.randomUUID();
-//
-//        if (files != null && !files.isEmpty()) {
-//            for (MultipartFile file : files) {
-//                if (file != null && !file.isEmpty()) {
-//                    try {
-//                        Tika tika = new Tika();
-//                        String detectedMimeType = tika.detect(file.getInputStream());
-//                        String originalFilename = file.getOriginalFilename();
-//
-//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                        }
-//
-//                        long fileSize = file.getSize();
-//                        String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                        // Add an additional timestamp to make the folder path unique for each realisation upload
-//                        String timestamp = String.valueOf(System.currentTimeMillis());
-//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d/%s",
-//                                savedRealisation.getId(), savedRealisation.getVersion(), timestamp);
-//
-//                        String[] parts = originalFilename.split("\\.");
-//                        String baseName = parts[0];
-//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                        String uniqueFileName = "realisation_" + uuid + "_" + extension;
-//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                        // Log the path before uploading to help with debugging
-//                        log.info("Uploading to Alfresco folder path: {}", folderPath);
-//
-//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                        log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
-//
-//                        Docs document = new Docs();
-//                        document.setName(baseName);
-//                        document.setAlfresco_id(alfrescoId);
-//                        document.setPathFolder(folderPath);
-//                        document.setFileSize(formattedSize);
-//                        document.setContentType(detectedMimeType);
-//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                        document.setAlfrescoName(uniqueFileName);
-//
-//                        // Ensure collections are initialized
-//                        if (document.getRealisations() == null) {
-//                            document.setRealisations(new ArrayList<>());
-//                        }
-//                        if (savedRealisation.getDocs() == null) {
-//                            savedRealisation.setDocs(new ArrayList<>());
-//                        }
-//
-//                        // Set up bidirectional relationship
-//                        document.getRealisations().add(savedRealisation);
-//                        savedRealisation.getDocs().add(document);
-//
-//                        // Save the document
-//                        docsRepository.save(document);
-//                        docs.add(document);
-//                    } catch (Exception e) {
-//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-//                    }
-//                }
-//            }
-//        }
-//
-//        // Update the realisation's docs
-//        savedRealisation.setDocs(docs);
-//    }
-
-    //TODO: nejah
-//    private void processAndSaveDocuments(List<MultipartFile> files, Paa savedPaa) throws IOException {
-//        UUID uuid = UUID.randomUUID();
-//        if (files != null && !files.isEmpty()) {
-//            for (MultipartFile file : files) {
-//                if (file != null && !file.isEmpty()) {
-//                    try {
-//                        Tika tika = new Tika();
-//                        String detectedMimeType = tika.detect(file.getInputStream());
-//                        String originalFilename = file.getOriginalFilename();
-//
-//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                        }
-//
-//                        long fileSize = file.getSize();
-//                        String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PAA+ "/%d/%d",
-//                                savedPaa.getId(), savedPaa.getVersion());
-//
-//                        String[] parts = originalFilename.split("\\.");
-//                        String baseName = parts[0];
-//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                        String uniqueFileName = "paa_" + uuid + "_" + extension;
-//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                        log.info(alfrescoId);
-//
-//                        Docs document = new Docs();
-//                        document.setName(baseName);
-//                        document.setAlfresco_id(alfrescoId);
-//                        document.setPathFolder(folderPath);
-//                        document.setFileSize(formattedSize);
-//                        document.setContentType(detectedMimeType);
-//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                        document.setAlfrescoName(uniqueFileName);
-//                        if (document.getPaas() == null) {
-//                            document.setPaas(new ArrayList<>());
-//                        }
-//                        if (savedPaa.getDocs() == null) {
-//                            savedPaa.setDocs(new ArrayList<>());
-//                        }
-//                        document.getPaas().add(savedPaa);
-//                        savedPaa.getDocs().add(document);
-//
-//                        docsRepository.save(document);
-//                    } catch (Exception e) {
-//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-//        List<Docs> docs = new ArrayList<>(); // Initialize collection for documents
-//        UUID uuid = UUID.randomUUID();
-//
-//        if (files != null && !files.isEmpty()) {
-//            for (MultipartFile file : files) {
-//                if (file != null && !file.isEmpty()) {
-//                    try {
-//                        Tika tika = new Tika();
-//                        String detectedMimeType = tika.detect(file.getInputStream());
-//                        String originalFilename = file.getOriginalFilename();
-//
-//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                        }
-//
-//                        long fileSize = file.getSize();
-//                        String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
-//                                savedRealisation.getId(), savedRealisation.getVersion());
-//
-//                        String[] parts = originalFilename.split("\\.");
-//                        String baseName = parts[0];
-//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                        String uniqueFileName = "realisation_" + uuid + "_" + extension;
-//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                        log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
-//
-//                        Docs document = new Docs();
-//                        document.setName(baseName);
-//                        document.setAlfresco_id(alfrescoId);
-//                        document.setPathFolder(folderPath);
-//                        document.setFileSize(formattedSize);
-//                        document.setContentType(detectedMimeType);
-//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                        document.setAlfrescoName(uniqueFileName);
-//
-//                        // Ensure collections are initialized
-//                        if (document.getRealisations() == null) {
-//                            document.setRealisations(new ArrayList<>());
-//                        }
-//                        if (savedRealisation.getDocs() == null) {
-//                            savedRealisation.setDocs(new ArrayList<>());
-//                        }
-//
-//                        // Set up bidirectional relationship
-//                        document.getRealisations().add(savedRealisation);
-//                        savedRealisation.getDocs().add(document);
-//
-//                        // Save the document
-//                        docsRepository.save(document);
-//                        docs.add(document);
-//                    } catch (Exception e) {
-//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-//                    }
-//                }
-//            }
-//        }
-//
-//        // Update the realisation's docs
-//        savedRealisation.setDocs(docs);
-//    }
-
-
-//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-//        List<Docs> docs = new ArrayList<>();
-//        UUID uuid = UUID.randomUUID();
-//
-//        if (files != null && !files.isEmpty()) {
-//            for (MultipartFile file : files) {
-//                if (file != null && !file.isEmpty()) {
-//                    try {
-//                        Tika tika = new Tika();
-//                        String detectedMimeType = tika.detect(file.getInputStream());
-//                        String originalFilename = file.getOriginalFilename();
-//
-//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                        }
-//
-//                        long fileSize = file.getSize();
-//                        String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
-//                                savedRealisation.getId(), savedRealisation.getVersion());
-//
-//                        String[] parts = originalFilename.split("\\.");
-//                        String baseName = parts[0];
-//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                        String uniqueFileName = "realisation_" + uuid + "_" + extension;
-//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                        // Log the path before uploading to help with debugging
-//                        log.info("Uploading to Alfresco folder path: {}", folderPath);
-//
-//                        String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                        log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
-//
-//                        Docs document = new Docs();
-//                        document.setName(baseName);
-//                        document.setAlfresco_id(alfrescoId);
-//                        document.setPathFolder(folderPath);
-//                        document.setFileSize(formattedSize);
-//                        document.setContentType(detectedMimeType);
-//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                        document.setAlfrescoName(uniqueFileName);
-//
-//                        // Ensure collections are initialized
-//                        if (document.getRealisations() == null) {
-//                            document.setRealisations(new ArrayList<>());
-//                        }
-//                        if (savedRealisation.getDocs() == null) {
-//                            savedRealisation.setDocs(new ArrayList<>());
-//                        }
-//
-//                        // Set up bidirectional relationship
-//                        document.getRealisations().add(savedRealisation);
-//                        savedRealisation.getDocs().add(document);
-//
-//                        // Save the document
-//                        docsRepository.save(document);
-//                        docs.add(document);
-//                        log.info("Saved document with ID: {} for Realisation ID: {}", document.getId(), savedRealisation.getId());
-//                    } catch (Exception e) {
-////                        log.error("Failed to process or upload document '{}': {}", originalFilename, e.getMessage(), e);
-////                        throw new IOException("Failed to process or upload document: " + originalFilename + " - " + e.getMessage(), e);
-//                    }
-//                } else {
-//                    log.warn("Skipping empty or null file");
-//                }
-//            }
-//        } else {
-//            log.info("No files provided for Realisation ID: {}", savedRealisation.getId());
-//        }
-//
-//        // Update the realisation's docs
-//        savedRealisation.setDocs(docs);
-//    }
-
-
-//void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-//    List<Docs> docs = new ArrayList<>();
-//    UUID uuid = UUID.randomUUID();
-//
-//    if (files != null && !files.isEmpty()) {
-//        for (MultipartFile file : files) {
-//            if (file != null && !file.isEmpty()) {
-//                try {
-//                    Tika tika = new Tika();
-//                    String detectedMimeType = tika.detect(file.getInputStream());
-//                    String originalFilename = file.getOriginalFilename();
-//
-//                    String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                    if (fileExtension.isEmpty()) {
-//                        fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-//                    }
-//
-//                    long fileSize = file.getSize();
-//                    String formattedSize = documentCommuneService.formatSize(fileSize);
-//
-//                    String folderPath = String.format(Constants.PATH_ENTREPOT_GED_REALISATION + "/%d/%d",
-//                            savedRealisation.getId(), savedRealisation.getVersion());
-//
-//                    String[] parts = originalFilename.split("\\.");
-//                    String baseName = parts[0];
-//                    String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-//                    String uniqueFileName = "realisation_" + uuid + "_" + extension;
-//                    MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-//
-//                    log.info("Uploading file: {} to folder: {}", uniqueFileName, folderPath);
-//
-//                    // Check for existing file in Alfresco (optional, requires alfrescoService method)
-//                    // if (alfrescoService.fileExists(folderPath, uniqueFileName)) {
-//                    //     throw new IOException("File already exists: " + uniqueFileName);
-//                    // }
-//
-//                    String alfrescoId = alfrescoService.uploadDocument(renamedFile, folderPath);
-//                    log.info("Uploaded document to Alfresco with ID: {}", alfrescoId);
-//
-//                    Docs document = new Docs();
-//                    document.setName(baseName);
-//                    document.setAlfresco_id(alfrescoId);
-//                    document.setPathFolder(folderPath);
-//                    document.setFileSize(formattedSize);
-//                    document.setContentType(detectedMimeType);
-//                    document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-//                    document.setAlfrescoName(uniqueFileName);
-//
-//                    if (document.getRealisations() == null) {
-//                        document.setRealisations(new ArrayList<>());
-//                    }
-//                    if (savedRealisation.getDocs() == null) {
-//                        savedRealisation.setDocs(new ArrayList<>());
-//                    }
-//
-//                    document.getRealisations().add(savedRealisation);
-//                    savedRealisation.getDocs().add(document);
-//
-//                    docsRepository.save(document);
-//                    docs.add(document);
-//                } catch (Exception e) {
-//                    log.error("Failed to process or upload document: {}", e.getMessage(), e);
-//                    throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-//                }
-//            }
-//        }
-//    }
-//
-//    savedRealisation.setDocs(docs);
-//}
-
-
 }

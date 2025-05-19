@@ -39,7 +39,7 @@ public interface PaaService {
     /**
      * Return a page of Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -48,7 +48,7 @@ public interface PaaService {
     /**
      * Return a page of deleted Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -65,7 +65,7 @@ public interface PaaService {
     /**
      * Return the deleted Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
@@ -82,7 +82,7 @@ public interface PaaService {
     /**
      * Return the Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
@@ -128,7 +128,7 @@ public interface PaaService {
     /**
      * Delete a Paa entity by its composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      */
     void delete(Integer paaId, Integer paaVer);
@@ -143,8 +143,9 @@ public interface PaaService {
      * - If any PAA field changes, a new PAA version is created
      * - If any Realisation is added, modified, or removed, a new PAA version is created
      * <p>
-     * @param paaId the ID of the PAA to update
-     * @param paaVer the current version of the PAA
+     *
+     * @param paaId   the ID of the PAA to update
+     * @param paaVer  the current version of the PAA
      * @param request the request containing the updated data
      * @return the newly created version of the PAA
      * @throws PaaNotFound if the PAA is not found or is deleted
@@ -157,7 +158,7 @@ public interface PaaService {
      * This method finds the latest version of the PAA with the given ID and then
      * calls the version-specific updateWithVersioning method.
      *
-     * @param paaId the ID of the PAA to update
+     * @param paaId   the ID of the PAA to update
      * @param request the request containing the updated data
      * @return the newly created version of the PAA if changes detected, otherwise the existing PAA
      * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
@@ -165,6 +166,7 @@ public interface PaaService {
     Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
 
     Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound;
-  Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
+
+    Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
 
 }
