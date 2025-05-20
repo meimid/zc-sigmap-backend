@@ -1573,7 +1573,54 @@ public class PaaServiceImpl implements PaaService {
             e.printStackTrace();
             // Continue execution - we'll let Hibernate try to handle it
         }
+       // Handle document IDs for realizations
+        if (request.getRealisations() != null) {
+            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+                if (realisationRequest.getDocIds() != null) {
+                    // Find the corresponding realisation in the new PAA
+                    Realisation realisation = newPaa.getRealisations().stream()
+                            .filter(r -> r.getId().equals(realisationRequest.getId()))
+                            .findFirst()
+                            .orElse(null);
 
+                    if (realisation != null) {
+                        // Get existing document IDs
+                        Set<Integer> existingDocIds = realisation.getDocs().stream()
+                                .map(Docs::getId)
+                                .collect(Collectors.toSet());
+
+                        // Get requested document IDs
+                        Set<Integer> requestedDocIds = new HashSet<>(realisationRequest.getDocIds());
+
+                        // Find documents to soft delete (in existing but not in requested)
+                        Set<Integer> docsToDelete = existingDocIds.stream()
+                                .filter(id -> !requestedDocIds.contains(id))
+                                .collect(Collectors.toSet());
+
+                        // Soft delete the documents
+                        for (Integer docId : docsToDelete) {
+                            Docs doc = docsRepository.findById(docId).orElse(null);
+                            if (doc != null) {
+                                doc.setIsDeleted(true);
+                                docsRepository.save(doc);
+                            }
+                        }
+
+                        // Add new documents
+                        for (Integer docId : requestedDocIds) {
+                            if (!existingDocIds.contains(docId)) {
+                                Docs doc = docsRepository.findById(docId).orElse(null);
+                                if (doc != null) {
+                                    doc.setIsDeleted(false);
+                                    doc = docsRepository.save(doc);
+                                    realisation.getDocs().add(doc);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // Handle PAA files if provided - this was missing
         if (request.getPaaFiles() != null) {
             try {
