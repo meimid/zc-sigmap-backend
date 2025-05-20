@@ -67,8 +67,9 @@ public class PaaController {
      * @param pageable the pageable to use
      * @return a page of paas
      */
+
     @GetMapping
-    public ResponseEntity<Page<PaaResponse>> findAll(
+    public ResponseEntity<Page<PaaResponseWithRealisations>> findAll(
             PaaQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -76,7 +77,7 @@ public class PaaController {
         logger.info("User {}", user.getSubject());
 
         Page<Paa> paas = paaService.findAll(query.toSpecification(), pageable);
-        Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
+        Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
         return ResponseEntity.ok(responses);
     }
 
