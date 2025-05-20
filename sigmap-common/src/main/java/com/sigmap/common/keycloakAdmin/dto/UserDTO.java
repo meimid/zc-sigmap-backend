@@ -2,6 +2,8 @@ package com.sigmap.common.keycloakAdmin.dto;
 
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class UserDTO {
     private String id;
@@ -14,4 +16,6 @@ public class UserDTO {
     private Integer ac;
     private Long createdTimestamp;
     private boolean enabled;
+    private List<String> roles;
+
 }
