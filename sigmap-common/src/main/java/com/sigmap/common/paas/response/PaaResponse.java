@@ -22,6 +22,6 @@ public class PaaResponse {
     private BigDecimal budgetEstime;
     private RefParam status;
     private List<Realisation> realisations;
-    private BaseEntityResponse metadata;
     private String processInstanceId;
+    private BaseEntityResponse metadata;
 }

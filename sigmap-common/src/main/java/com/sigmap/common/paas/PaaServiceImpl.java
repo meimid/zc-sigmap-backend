@@ -373,7 +373,7 @@ public class PaaServiceImpl implements PaaService {
 
         existingPaa.setRef(request.getRef());
         existingPaa.setNom(request.getNom());
-        existingPaa.setAnnee(request.getAnnee());
+        existingPaa.setAnnee(existingPaa.getAnnee());
         existingPaa.setBudgetEstime(request.getBudgetEstime());
 
         if (request.getAcId() != null) {
@@ -781,6 +781,7 @@ public class PaaServiceImpl implements PaaService {
         tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
+        tempPaa.setProcessInstanceId(existingPaa.getProcessInstanceId());
         tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
         tempPaa.setStatus(existingPaa.getStatus());
         // Handle AC
@@ -1271,6 +1272,7 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setNom(tempPaa.getNom());
         newPaa.setAnnee(tempPaa.getAnnee());
         newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
+        newPaa.setProcessInstanceId(tempPaa.getProcessInstanceId());
         newPaa.setStatus(tempPaa.getStatus());
         newPaa.setAc(tempPaa.getAc());
 
@@ -1827,7 +1829,7 @@ public class PaaServiceImpl implements PaaService {
         Integer paaVersion = 1;
 
         // Check if PAA already exists for the current year
-        restrictPaaCreationForCurrentYear();
+//        restrictPaaCreationForCurrentYear();
 
         // Create new PAA
         Paa paa = new Paa();
@@ -2007,8 +2009,6 @@ public class PaaServiceImpl implements PaaService {
             return true;
         }
 
-        // Add more field checks as needed...
-
         // Check if doc IDs have changed
         if (dto.getDocIds() != null) {
             if (existingRealisation.getDocs() == null && !dto.getDocIds().isEmpty()) {
@@ -2033,7 +2033,6 @@ public class PaaServiceImpl implements PaaService {
             }
         }
 
-        // Check for lot changes that require Realisation version increment (adding/removing)
         // Description changes to existing lots are handled separately and don't increment Realisation version
         if (dto.getLots() != null) {
             // If there are no lots in the request but the realisation has lots, this is a major change

@@ -32,10 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -176,7 +173,6 @@ public class PaaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-//    @PutMapping("/{paaId}/{paaVer}")
 @PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
@@ -190,14 +186,27 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
     return ResponseEntity.ok(response);
 }
-
     private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
-            // Where the keys are realisation indices
+            logger.info("Processing lots JSON: {}", lotsJson);
+
+            // Validate input
+            if (lotsJson == null || lotsJson.trim().isEmpty()) {
+                logger.warn("Lots JSON is empty or null, skipping processing");
+                return;
+            }
+
+            // Parse JSON into a map of realisation indices to lists of lot data
             Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+            logger.info("Parsed {} realisation indices from lots JSON", lotsMap.size());
+
+            // Ensure realisations list exists
+            if (request.getRealisations() == null) {
+                request.setRealisations(new ArrayList<>());
+                logger.warn("Realisations list was null, initialized as empty");
+            }
 
             // Process each realisation's lots
             for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
@@ -205,12 +214,18 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
                 // Skip if index is out of bounds
                 if (realisationIndex >= request.getRealisations().size()) {
-                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+                    logger.warn("Skipping lots for realisation index {} as it's out of bounds (size: {})",
+                            realisationIndex, request.getRealisations().size());
                     continue;
                 }
 
                 // Get the target realisation
                 RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+                if (realisation == null) {
+                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+                    continue;
+                }
+
                 Set<LotResponse> lots = new HashSet<>();
 
                 // Process lots for this realisation
@@ -219,14 +234,21 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
                     if (lotData.containsKey("id")) {
                         lot.setId(((Number) lotData.get("id")).intValue());
+                    } else {
+                        logger.debug("Lot data missing id, setting to null");
                     }
 
                     if (lotData.containsKey("version")) {
                         lot.setVersion(((Number) lotData.get("version")).intValue());
+                    } else {
+                        logger.debug("Lot data missing version, setting to null");
                     }
 
                     if (lotData.containsKey("description")) {
                         lot.setDescription((String) lotData.get("description"));
+                    } else {
+                        logger.warn("Lot data missing description, skipping lot");
+                        continue;
                     }
 
                     lots.add(lot);
@@ -237,10 +259,60 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                 logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
             }
         } catch (Exception e) {
-            logger.error("Failed to parse lots JSON: {}", e.getMessage());
+            logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
         }
     }
+//    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
+//            // Where the keys are realisation indices
+//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
+//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+//
+//            // Process each realisation's lots
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+//                int realisationIndex = Integer.parseInt(entry.getKey());
+//
+//                // Skip if index is out of bounds
+//                if (realisationIndex >= request.getRealisations().size()) {
+//                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+//                    continue;
+//                }
+//
+//                // Get the target realisation
+//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+//                Set<LotResponse> lots = new HashSet<>();
+//
+//                // Process lots for this realisation
+//                for (Map<String, Object> lotData : entry.getValue()) {
+//                    LotResponse lot = new LotResponse();
+//
+//                    if (lotData.containsKey("id")) {
+//                        lot.setId(((Number) lotData.get("id")).intValue());
+//                    }
+//
+//                    if (lotData.containsKey("version")) {
+//                        lot.setVersion(((Number) lotData.get("version")).intValue());
+//                    }
+//
+//                    if (lotData.containsKey("description")) {
+//                        lot.setDescription((String) lotData.get("description"));
+//                    }
+//
+//                    lots.add(lot);
+//                }
+//
+//                // Set the processed lots on the realisation
+//                realisation.setLots(lots);
+//                logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+//            }
+//        } catch (Exception e) {
+//            logger.error("Failed to parse lots JSON: {}", e.getMessage());
+//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
+//        }
+//    }
 
 
     /**
