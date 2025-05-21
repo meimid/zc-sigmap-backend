@@ -84,7 +84,7 @@ public class RealisationController {
     public ResponseEntity<RealisationResponse> findById(
             @PathVariable Integer realisationId,
             @PathVariable Integer realisationVer) throws RealisationNotFoundException {
-        Realisation realisation = realisationService.findById(realisationId, realisationVer);
+        Realisation realisation = realisationService.findById(realisationId, realisationVer).get();
 
         RealisationResponse response = RealisationMapper.INSTANCE.map(realisation);
         return ResponseEntity.ok(response);

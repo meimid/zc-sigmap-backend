@@ -15,7 +15,7 @@ public interface LotMapper {
 //    @Mapping(target = "id", source = "id")
 //    @Mapping(target = "version", source = "version")
 //    @Mapping(target = "description", source = "description")
-    @Mapping(target = "realisations")
+    @Mapping(target = "realisations",ignore = true)
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

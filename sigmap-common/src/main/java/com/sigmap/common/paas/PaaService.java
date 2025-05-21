@@ -1,10 +1,17 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,7 +41,7 @@ public interface PaaService {
     /**
      * Return a page of Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -43,7 +50,7 @@ public interface PaaService {
     /**
      * Return a page of deleted Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -60,7 +67,7 @@ public interface PaaService {
     /**
      * Return the deleted Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
@@ -77,11 +84,19 @@ public interface PaaService {
     /**
      * Return the Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
-    Paa findById(Integer paaId, Integer paaVer) throws PaaNotFound;
+    Optional<Paa> findById(Integer paaId, Integer paaVer);
+
+    /**
+     * Find the latest version of a Paa entity by its ID.
+     *
+     * @param paaId The ID of the Paa to find.
+     * @return An Optional containing the latest version of the Paa, or empty if not found.
+     */
+    Optional<Paa> findLatestById(Integer paaId);
 
     /**
      * Save a Paa entity.
@@ -97,15 +112,63 @@ public interface PaaService {
      * @param request the request to create the Paa entity from
      * @return the created Paa entity
      */
-    Paa create(PaaRequest request) throws PaaAlreadyExistsException, ReferenceNotFound, RealisationsMinimumRequirement;
+    Paa create(PaaRequest request) throws PaaAlreadyExistsException;
+
+    /**
+     * Create a PAA with its Realisations and Lots in a single operation.
+     * This method allows for creating a complete PAA hierarchy including:
+     * - PAA entity with basic properties
+     * - Associated Realisations
+     * - Lots within each Realisation
+     *
+     * @param request the global request containing PAA, Realisations, and Lots data
+     * @return the created PAA entity with all relationships established
+     * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
+     */
+    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException;
 
     /**
      * Delete a Paa entity by its composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequest request) throws PaaNotFound ;
+    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException;
+
+    /**
+     * Updates a PAA by creating a new version with the updated data.
+     * The old version is preserved in the database.
+     * <p>
+     * This method handles versioning:
+     * - If any PAA field changes, a new PAA version is created
+     * - If any Realisation is added, modified, or removed, a new PAA version is created
+     * <p>
+     *
+     * @param paaId   the ID of the PAA to update
+     * @param paaVer  the current version of the PAA
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA
+     * @throws PaaNotFound if the PAA is not found or is deleted
+     */
+    Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
+
+    /**
+     * Updates a PAA with versioning by automatically finding and using the latest version.
+     * <p>
+     * This method finds the latest version of the PAA with the given ID and then
+     * calls the version-specific updateWithVersioning method.
+     *
+     * @param paaId   the ID of the PAA to update
+     * @param request the request containing the updated data
+     * @return the newly created version of the PAA if changes detected, otherwise the existing PAA
+     * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
+     */
+    Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
+
+    Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound;
+
+    Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
+
 }
