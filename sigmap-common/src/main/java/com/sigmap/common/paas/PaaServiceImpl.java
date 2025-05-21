@@ -107,9 +107,7 @@ public class PaaServiceImpl implements PaaService {
     @Override
     public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
-        if (spec != null) {
-            deletedSpec = deletedSpec.and(spec);
-        }
+
         return repository.findAll(deletedSpec, pageable);
     }
 
