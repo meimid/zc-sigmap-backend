@@ -189,7 +189,54 @@ public class RefParamController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
-
+    @GetMapping("/service")
+    public ResponseEntity<List<RefParamResponseDto>> findAllServices() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.SERVICE);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/direction")
+    public ResponseEntity<List<RefParamResponseDto>> findAllDirections() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.DIRECTION);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/source-financement")
+    public ResponseEntity<List<RefParamResponseDto>> findAllSourceFinancements() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.SOURCE_FINANCEMENT);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/monais")
+    public ResponseEntity<List<RefParamResponseDto>> findAllMonais() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.MONAIS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/type-marcher")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeMarchers() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.TYPE_MARCHER);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/mode-selection")
+    public ResponseEntity<List<RefParamResponseDto>> findAllModeSelections() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.MODE_SELECTION);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 
 
 }
