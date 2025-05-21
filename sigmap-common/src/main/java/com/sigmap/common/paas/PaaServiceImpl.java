@@ -88,6 +88,11 @@ public class PaaServiceImpl implements PaaService {
         this.acService = acService;
     }
 
+    public List<Paa> getPaaOfCurrentYear() {
+        String currentYear = String.valueOf(Calendar.getInstance().get(Calendar.YEAR));
+        return repository.findByCurrentYear(currentYear);
+    }
+
     @Override
     public List<Paa> findAll() {
         Specification<Paa> spec = PaaSpecifications.deleted(false);
@@ -102,9 +107,7 @@ public class PaaServiceImpl implements PaaService {
     @Override
     public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
-        if (spec != null) {
-            deletedSpec = deletedSpec.and(spec);
-        }
+
         return repository.findAll(deletedSpec, pageable);
     }
 

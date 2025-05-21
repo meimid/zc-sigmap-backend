@@ -81,6 +81,12 @@ public class PaaController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/current-year")
+    public ResponseEntity<List<Paa>> getPaaOfCurrentYear() {
+        List<Paa> paas = paaService.getPaaOfCurrentYear();
+        return ResponseEntity.ok(paas);
+    }
+
     /**
      * Return a page of deleted paas based on the given specification and pageable.
      *
