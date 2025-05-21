@@ -25,6 +25,18 @@ public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecif
     @Query("SELECT MAX(p.version) FROM Paa p WHERE p.id = :id AND p.isDeleted = false")
     Integer findMaxVersionById(@Param("id") Integer id);
 
-    @Query("SELECT p FROM Paa p WHERE p.annee = :currentYear")
-    List<Paa> findByCurrentYear(@Param("currentYear") String currentYear);
+    @Query(value = """
+    SELECT * FROM paa p
+    WHERE p.is_deleted = false
+      AND p.annee = :currentYear
+      AND p.paa_ver = (
+        SELECT MAX(p2.paa_ver) 
+        FROM paa p2 
+        WHERE p2.paa_id = p.paa_id
+          AND p2.annee = :currentYear
+          AND p2.is_deleted = false
+      )
+    LIMIT 1
+    """, nativeQuery = true)
+    Paa findByCurrentYear(@Param("currentYear") String currentYear);
 }

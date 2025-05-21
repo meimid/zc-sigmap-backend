@@ -82,8 +82,8 @@ public class PaaController {
     }
 
     @GetMapping("/current-year")
-    public ResponseEntity<List<Paa>> getPaaOfCurrentYear() {
-        List<Paa> paas = paaService.getPaaOfCurrentYear();
+    public ResponseEntity<Paa> getPaaOfCurrentYear() {
+        Paa paas = paaService.getPaaOfCurrentYear();
         return ResponseEntity.ok(paas);
     }
 

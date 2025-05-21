@@ -88,7 +88,7 @@ public class PaaServiceImpl implements PaaService {
         this.acService = acService;
     }
 
-    public List<Paa> getPaaOfCurrentYear() {
+    public Paa getPaaOfCurrentYear() {
         String currentYear = String.valueOf(Calendar.getInstance().get(Calendar.YEAR));
         return repository.findByCurrentYear(currentYear);
     }
@@ -1879,7 +1879,7 @@ public class PaaServiceImpl implements PaaService {
         Integer paaVersion = 1;
 
         // Check if PAA already exists for the current year
-//        restrictPaaCreationForCurrentYear();
+       restrictPaaCreationForCurrentYear();
 
         // Create new PAA
         Paa paa = new Paa();
