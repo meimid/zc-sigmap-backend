@@ -88,6 +88,11 @@ public class PaaServiceImpl implements PaaService {
         this.acService = acService;
     }
 
+    public List<Paa> getPaaOfCurrentYear() {
+        String currentYear = String.valueOf(Calendar.getInstance().get(Calendar.YEAR));
+        return repository.findByCurrentYear(currentYear);
+    }
+
     @Override
     public List<Paa> findAll() {
         Specification<Paa> spec = PaaSpecifications.deleted(false);
