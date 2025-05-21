@@ -31,13 +31,14 @@ public class AcServiceImpl implements AcService{
     private final AcRepository repository;
     private final ComRepository comRepository;
 
-    @Autowired
-    private KeycloakAdminService keycloakAdminService;
+    private final KeycloakAdminService keycloakAdminService;
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository) {
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
         this.comRepository = comRepository;
+        this.keycloakAdminService = keycloakAdminService;
     }
+
 
     @Override
     public List<Ac> findAll() {
