@@ -89,8 +89,8 @@ public class PaaServiceImpl implements PaaService {
     }
 
     public Paa getPaaOfCurrentYear() {
-        String currentYear = String.valueOf(Calendar.getInstance().get(Calendar.YEAR));
-        return repository.findByCurrentYear(currentYear);
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+        return repository.findByCurrentYear(currentYear).orElseThrow();
     }
 
     @Override
