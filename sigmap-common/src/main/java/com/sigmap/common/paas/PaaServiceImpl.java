@@ -7,6 +7,7 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.Constants;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaMapper;
@@ -90,7 +91,7 @@ public class PaaServiceImpl implements PaaService {
 
     public Paa getPaaOfCurrentYear() {
         String currentYear = String.valueOf(LocalDate.now().getYear());
-        return repository.findByCurrentYear(currentYear).orElseThrow();
+        return repository.findByCurrentYear(currentYear).orElseThrow(() -> new PaaCurrentYearNotFound("",currentYear));
     }
 
     @Override
