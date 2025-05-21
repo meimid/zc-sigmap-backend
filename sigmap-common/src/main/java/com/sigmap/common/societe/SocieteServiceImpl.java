@@ -62,7 +62,11 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe findById(Integer id) throws SocieteNotFound {
-        return repository.findById(id).orElseThrow(() -> new SocieteNotFound("",List.of(id)));    }
+        Societe societe = repository.findById(id).orElseThrow(() -> new SocieteNotFound("",List.of(id)));
+        if(societe.getIsDeleted()){
+          throw new SocieteNotFound("",List.of(id));
+        }
+        return societe;    }
 
     @Override
     public Societe save(Societe societe) {
@@ -83,7 +87,7 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound, SocieteNotFound {
-        Societe societe=repository.findById(id).orElseThrow(() -> new SocieteNotFound(" ",List.of(id)));
+        Societe societe=findById(id);
         RefParam type=refParamService.findById(request.getTypeId());
         RefParam pays=refParamService.findById(request.getPaysId());
         RefParam categorieSoumissionnaireId=refParamService.findById(request.getCategorieSoumissionnaireId());
@@ -96,7 +100,6 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public void delete(Integer id) {
-
         repository.softDelete(id);
     }
 }

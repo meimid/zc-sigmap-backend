@@ -2,6 +2,7 @@ package com.sigmap.common.ref_types;
 
 
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypeDeleted;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.ref_types.request.RefTypeRequest;

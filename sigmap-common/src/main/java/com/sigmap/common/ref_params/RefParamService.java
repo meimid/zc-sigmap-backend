@@ -6,7 +6,6 @@ import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -93,14 +92,14 @@ public interface RefParamService {
    * @param request the request to create the RefParam from
    * @return the created RefParam
    */
-  RefParam create(RefParamRequest request) throws RefParamNotFound;
+  RefParam create(RefParamRequest request) throws RefTypeNotFound;
   /**
    * update RefParam.
    *
    * @param request the request to update the RefParam from
    * @return the updated RefParam
    */
-  RefParam update(Integer id,RefParamRequest request)throws RefParamNotFound, RefTypeNotFound;
+  RefParam update(Integer id,RefParamRequest request)throws RefParamNotFound, RefTypeNotFound ;
 
   /**
    * Delete a RefParam.
@@ -112,5 +111,11 @@ public interface RefParamService {
           RefParamHasAssociatedSociete,
           RefParamHasAssociatedSocieteAddress;
 
-  List<RefParam> findByRefType(@Param("refTpeId") Integer refTpeId);
+  List<RefParam> findByRefType( Integer refTpeId);
+
+ RefParam findByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound;
+  RefParam UpdateRefParamByRefTypeId(Integer refParamId, Integer refTypeId,RefParamRequest request) throws RefParamNotFound;
+  void deleteByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound;
+  RefParam createUnderRefType(Integer refTpeId,RefParamRequest request) throws RefTypeNotFound;
+
 }

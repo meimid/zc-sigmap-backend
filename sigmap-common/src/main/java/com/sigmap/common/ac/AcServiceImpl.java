@@ -1,7 +1,7 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
-import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
@@ -9,11 +9,9 @@ import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -77,7 +75,11 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public Ac findById(Integer id) throws AcNotFound {
-        return repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
+        Ac ac=repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
+        if(ac.getIsDeleted()){
+            throw new AcNotFound("",List.of(id));
+        }
+        return ac;
 
     }
 
@@ -105,6 +107,12 @@ public class AcServiceImpl implements AcService{
                         .toList();
                 throw new ComNotFound("", nonExistentComIds);
             }
+            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedComs.isEmpty()){
+               List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
+               throw new ComNotFound("",deletedComIds);
+
+            }
             ac.setComs(coms);
 
         }
@@ -125,7 +133,7 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
-        Ac ac = repository.findById(id).orElseThrow(() -> new AcNotFound("", List.of(id)));
+        Ac ac = findById(id);
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
@@ -144,6 +152,12 @@ public class AcServiceImpl implements AcService{
                         .filter(comId -> !existingComIds.contains(comId))
                         .toList();
                 throw new ComNotFound("", nonExistentComIds);
+            }
+            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedComs.isEmpty()){
+                List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
+                throw new ComNotFound("",deletedComIds);
+
             }
             ac.setComs(coms);
         }

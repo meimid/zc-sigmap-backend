@@ -3,8 +3,10 @@ package com.sigmap.common.com;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -82,8 +84,12 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com findById(Integer id) throws ComNotFound {
-        return repository.findById(id)
+        Com com=repository.findById(id)
                 .orElseThrow(() -> new ComNotFound("", List.of(id)));
+        if(com.getIsDeleted()){
+            throw new ComNotFound("", List.of(id));
+        }
+        return com;
     }
 
     @Override
@@ -117,6 +123,12 @@ public class ComServiceImpl implements ComService{
                         .filter(acId -> !existingAcIds.contains(acId))
                         .toList();
                 throw new AcNotFound("", nonExistentAcIds);
+            }
+            List<Ac> checkDeletedAcs=acs.stream().filter(ac-> ac.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedAcs.isEmpty()){
+                List<Integer> deletedComIds = checkDeletedAcs.stream().map(Ac::getId).toList();
+                throw new AcNotFound("",deletedComIds);
+
             }
             com.setAcs(acs);
         }
@@ -163,6 +175,12 @@ public class ComServiceImpl implements ComService{
                         .filter(acId -> !existingAcIds.contains(acId))
                         .toList();
                 throw new AcNotFound("", nonExistentAcIds);
+            }
+            List<Ac> checkDeletedAcs=acs.stream().filter(ac-> ac.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedAcs.isEmpty()){
+                List<Integer> deletedComIds = checkDeletedAcs.stream().map(Ac::getId).toList();
+                throw new AcNotFound("",deletedComIds);
+
             }
             com.setAcs(acs);
         }

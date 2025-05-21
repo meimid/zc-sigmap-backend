@@ -65,7 +65,11 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress findById(Integer id) throws SocieteAdresseNotFound {
-        return repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound(" " , List.of(id)));
+        SocieteAddress societeAddress=repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound("" , List.of(id)));
+        if(societeAddress.getIsDeleted()){
+            throw new SocieteAdresseNotFound("" , List.of(id));
+        }
+        return societeAddress;
     }
 
     @Override
@@ -102,7 +106,6 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress createUnderSociete(Integer societeId, SocieteAdressUnderSocieteRequest request) throws RefParamNotFound, SocieteNotFound {
-
         SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.mapFromSocieteAddressUnderSocieteRequest(request);
         RefParam type=refParamService.findById(request.getTypeId());
         Societe societe=societeService.findById(societeId);
