@@ -31,7 +31,7 @@ public class DacController {
     public void generatePdfPost(@RequestBody PdfDacRequest request, HttpServletResponse response) {
         try {
             // Step 1: Generate PDF and get the output file
-            File pdfFile = dacService.replaceBookmarksAndGeneratePDF(request.getDocPath(), request.getDacId(), request.getDacVer());
+            File pdfFile = dacService.replaceBookmarksAndGeneratePDF(request.getDacId(), request.getDacVer());
 
             // Step 2: Read generated PDF file
             if (!pdfFile.exists()) {

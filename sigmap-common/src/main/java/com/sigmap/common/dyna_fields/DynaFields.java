@@ -1,6 +1,5 @@
 package com.sigmap.common.dyna_fields;
 
-import com.sigmap.common.dyna_docs_fields.DynaDocsFields;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

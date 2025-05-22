@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs;
 
+import com.sigmap.common.categorie.Categorie;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,6 +23,12 @@ public class DynaDocs {
     private String name;
     @Column(name = "template_file_name")
     private String templateFileName;
-    @Column(name = "category_id")
-    private Integer categoryId;
+
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private Categorie categorie;
+    @Column(name = "exported_type")
+    private String exportedType;
+    @Column(name = "active")
+    private boolean active;
 }

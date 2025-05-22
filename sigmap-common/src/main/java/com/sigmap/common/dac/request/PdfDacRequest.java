@@ -7,7 +7,7 @@ import lombok.Data;
 @Data
 public class PdfDacRequest {
    // @NotBlank(message = "Document path cannot be empty")
-    private String docPath;
+  //  private String docPath;
 
     //@NotNull(message = "DAC ID cannot be null")
     private Integer dacId;
