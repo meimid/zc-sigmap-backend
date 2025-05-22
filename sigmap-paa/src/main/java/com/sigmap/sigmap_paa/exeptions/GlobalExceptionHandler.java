@@ -4,6 +4,8 @@ package com.sigmap.sigmap_paa.exeptions;
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import org.springframework.context.MessageSource;
@@ -15,7 +17,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -91,4 +95,25 @@ public class GlobalExceptionHandler {
        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
    }
+
+    @ExceptionHandler(PaaInvalidStateException.class)
+    public ResponseEntity<Map<String, Object>> handlePaaInvalidStateException(PaaInvalidStateException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 400);
+        response.put("message", ex.getMessage());
+        response.put("id", ex.getId());
+        response.put("version", ex.getVersion());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(PaaCreationLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handlePaaCreationLimitExceededException(PaaCreationLimitExceededException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 400);
+        response.put("message", ex.getMessage());
+        response.put("id", ex.getId());
+        response.put("version", ex.getVersion());
+        response.put("limit", ex.getLimit());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 }

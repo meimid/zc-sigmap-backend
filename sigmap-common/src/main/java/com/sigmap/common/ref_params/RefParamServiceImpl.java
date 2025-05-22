@@ -86,18 +86,22 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam create(RefParamRequest request) throws RefTypeNotFound {
-        RefType refType = refTypeService.findById(request.getRefTypeId());
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
-        refParam.setRefType(refType);
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
+            refParam.setRefType(refType);
+        }
         return save(refParam);
     }
 
     @Override
     public RefParam update(Integer id,RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
         RefParam refParam = findById(id);
-        RefType refType = refTypeService.findById(request.getRefTypeId());
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
-        refParam.setRefType(refType);
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
+            refParam.setRefType(refType);
+        }
         return save(refParam);
     }
 

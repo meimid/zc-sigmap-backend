@@ -1,11 +1,13 @@
 package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class PpmResponse {
@@ -18,4 +20,6 @@ public class PpmResponse {
     private BigDecimal budgetEstime;
     private RefParam status;
     private BaseEntityResponse metadata;
+    private List<RealisationResponseDTO> realisations;
+
 }

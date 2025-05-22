@@ -1,10 +1,12 @@
 package com.sigmap.common.ppms.request;
 
+import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sun.istack.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class PpmRequest {
@@ -24,4 +26,6 @@ public class PpmRequest {
     private BigDecimal budgetEstime;
 
     private RefParam status;
+
+    private List<RealisationRequest> realisations;
 }

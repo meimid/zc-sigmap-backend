@@ -53,6 +53,7 @@ cors:
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+
 keycloak-admin:
   server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
   realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}

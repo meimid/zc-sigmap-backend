@@ -87,7 +87,6 @@ public class SocieteContactServiceImpl implements SocieteContactService {
         return findOne(specification);
     }
 
-    // a verifier
     @Override
     public Optional<SocieteContact> findOne(Specification<SocieteContact> specification) {
         return repository.findOne(specification);

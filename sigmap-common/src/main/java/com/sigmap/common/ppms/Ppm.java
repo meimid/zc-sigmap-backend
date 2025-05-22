@@ -1,5 +1,6 @@
 package com.sigmap.common.ppms;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
@@ -51,6 +52,7 @@ public class Ppm  extends BaseEntity {
     private RefParam status;
 
     @ManyToMany(mappedBy = "ppms")
+    @JsonBackReference
     private List<Realisation> realisations;
 
     @ManyToMany

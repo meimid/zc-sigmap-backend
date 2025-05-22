@@ -29,19 +29,19 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
             @Param("refTypeDescription") String refTypeDescription
     );
 
-    @Query("SELECT EXISTS (SELECT c FROM Com c WHERE c.comType.id = :refParamId and c.isDeleted=false )")
+    @Query("SELECT EXISTS (SELECT c FROM Com c WHERE c.comType.id = :refParamId and c.isDeleted=false and c.comType.isDeleted=false)")
     boolean hasAssociatedCom(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT EXISTS (SELECT cb FROM CompteBancaire cb WHERE cb.pays.id = :refParamId and cb.isDeleted=false )")
+    @Query("SELECT EXISTS (SELECT cb FROM CompteBancaire cb WHERE cb.pays.id = :refParamId and cb.isDeleted=false and cb.pays.isDeleted=false)")
     boolean hasAssociatedCompteBancaire(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT EXISTS (SELECT s FROM Societe s WHERE s.pays.id = :refParamId or s.type.id = :refParamId and s.isDeleted=false )")
+    @Query("SELECT EXISTS (SELECT s FROM Societe s WHERE s.pays.id = :refParamId or s.type.id = :refParamId and s.isDeleted=false and s.type.isDeleted=false)")
     boolean hasAssociatedSociete(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.type.id = :refParamId and sa.isDeleted=false )")
+    @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.type.id = :refParamId and sa.isDeleted=false and sa.type.isDeleted=false)")
     boolean hasAssociatedSocieteAddress(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.isDeleted=false")
+    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.isDeleted=false and r.refType.isDeleted=false")
     List<RefParam> findByRefType(@Param("refTypeId") Integer refTypeId);
 
    Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, Integer refTypeId) ;
