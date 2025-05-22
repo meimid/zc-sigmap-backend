@@ -1,3 +1,9 @@
+/**
+ * Service interface for managing Agpm entities.
+ * Defines methods for CRUD operations, filtering, pagination, and status updates of Agpm entities.
+ * Provides functionality to interact with Agpm entities, including creation, retrieval, updating,
+ * and soft deletion, with support for versioning and exception handling.
+ */
 package com.sigmap.common.agpm;
 
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -18,17 +24,10 @@ import java.util.Optional;
  */
 public interface AgpmService {
 
-//    /**
-//     * Retrieves a list of all non-deleted Agpm entities.
-//     *
-//     * @return A list of AgpmResponse DTOs representing non-deleted Agpm entities
-//     */
-//    List<Agpm> findAll();
-
     /**
-     * Retrieves a paginated list of Agpm entities based on the given specification.
+     * Retrieves a paginated list of Agpm entities based on the provided specification.
      *
-     * @param spec     The specification to filter Agpm entities (e.g., by ref, nom, statusId)
+     * @param spec     The JPA specification to filter Agpm entities (e.g., by ref, nom, statusId)
      * @param pageable The pagination and sorting information
      * @return A Page of Agpm entities matching the specification
      */
@@ -43,10 +42,10 @@ public interface AgpmService {
     Page<Agpm> findAllDeleted(Pageable pageable);
 
     /**
-     * Retrieves a single Agpm entity based on the given specification.
+     * Retrieves a single Agpm entity based on the provided specification.
      *
-     * @param specification The specification to filter the Agpm entity
-     * @return An Optional containing the AgpmResponse DTO if found, or empty if not found
+     * @param specification The JPA specification to filter the Agpm entity
+     * @return An Optional containing the Agpm entity if found, or empty if not found
      */
     Optional<Agpm> findOne(Specification<Agpm> specification);
 
@@ -54,8 +53,9 @@ public interface AgpmService {
      * Retrieves an Agpm entity by its ID and version.
      *
      * @param agpmId  The ID of the Agpm entity
-     * @param agpmVer The version of the Agpm entity
-     * @return An Optional containing the Agpm entity if found, or empty if not found
+     * @param agpmVer The version of the Agpm entity (nullable to fetch the latest version)
+     * @return The Agpm entity if found
+     * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
     Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound;
 
@@ -68,11 +68,16 @@ public interface AgpmService {
     Agpm save(Agpm agpm);
 
     /**
-     * Creates a new Agpm entity based on the provided request.
+     * Creates a new Agpm entity based on the provided request data.
      *
      * @param request The AgpmRequest DTO containing the data to create the Agpm entity
-     * @return The created AgpmResponse DTO
+     * @return The created Agpm entity
      * @throws AgpmAlreadyExistsException if an Agpm with the same ID and version already exists
+     * @throws AgpmNotNull if required fields in the request are null
+     * @throws AcNotFound if the associated Ac entity is not found
+     * @throws DocNotFound if a document referenced in the request is not found
+     * @throws AgpmDefaultStatus if the default status is invalid
+     * @throws IOException if an error occurs during file processing
      */
     Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException;
 
@@ -82,21 +87,49 @@ public interface AgpmService {
      * @param agpmId  The ID of the Agpm entity to delete
      * @param agpmVer The version of the Agpm entity to delete
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
+     * @throws AgpmSoftDelete if soft deletion is not allowed
+     * @throws AgpmInvalidStatusException if the Agpm entity has an invalid status for deletion
      */
-    void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AgpmSoftDelete;
+    void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AgpmSoftDelete, AgpmInvalidStatusException;
 
     /**
-     * Updates an existing Agpm entity by its ID and version with the provided request data.
+     * Updates an existing Agpm entity with versioning, using the provided request data.
      *
      * @param agpmId  The ID of the Agpm entity to update
      * @param agpmVer The version of the Agpm entity to update
      * @param request The AgpmRequest DTO containing the updated data
-     * @return The updated AgpmResponse DTO
+     * @return The updated Agpm entity
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
+     * @throws AcNotFound if the associated Ac entity is not found
+     * @throws DocNotFound if a document referenced in the request is not found
+     * @throws ReferenceNotFound if a referenced parameter is not found
+     * @throws IOException if an error occurs during file processing
      */
     Agpm updateWithVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, AcNotFound, DocNotFound, ReferenceNotFound, IOException;
 
-     Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm;
+    /**
+     * Updates an existing Agpm entity without versioning, using the provided request data.
+     *
+     * @param agpmId  The ID of the Agpm entity to update
+     * @param agpmVer The version of the Agpm entity to update
+     * @param request The AgpmRequest DTO containing the updated data
+     * @return The updated Agpm entity
+     * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
+     * @throws DocNotFound if a document referenced in the request is not found
+     * @throws IOException if an error occurs during file processing
+     * @throws InvalidIdAndVersionAgpm if the ID and version combination is invalid
+     * @throws AgpmInvalidStateException if the Agpm entity is in an invalid state for updating
+     */
+    Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm, AgpmInvalidStateException;
 
-        Agpm updateStatus(Integer agpmId, Integer agpmVer,Integer statusId) throws AgpmNotFound;
+    /**
+     * Updates the status of an Agpm entity.
+     *
+     * @param agpmId   The ID of the Agpm entity to update
+     * @param agpmVer  The version of the Agpm entity to update
+     * @param statusId The new status ID to set
+     * @return The updated Agpm entity
+     * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
+     */
+    Agpm updateStatus(Integer agpmId, Integer agpmVer, Integer statusId) throws AgpmNotFound;
 }

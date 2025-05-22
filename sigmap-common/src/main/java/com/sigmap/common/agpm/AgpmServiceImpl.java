@@ -1,3 +1,9 @@
+/**
+ * Service implementation for managing Agpm entities.
+ * Provides functionality for CRUD operations, document management, versioning, and status updates
+ * for Agpm entities, with integration to Alfresco for document storage and handling of associated
+ * Ac and Docs entities. Includes soft deletion and filtering of non-deleted documents in responses.
+ */
 package com.sigmap.common.agpm;
 
 import com.github.dockerjava.api.exception.NotFoundException;
@@ -51,6 +57,18 @@ public class AgpmServiceImpl implements AgpmService {
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
 
+    /**
+     * Constructor for AgpmServiceImpl with dependency injection.
+     *
+     * @param repository              Repository for Agpm entities
+     * @param docsRepository          Repository for Docs entities
+     * @param agpmMapper              Mapper for converting between Agpm and DTOs
+     * @param refParamRepository      Repository for reference parameters
+     * @param messageSource           Source for internationalized messages
+     * @param alfrescoService         Service for Alfresco document storage
+     * @param documentCommuneService  Service for common document operations
+     * @param acService               Service for Ac entities
+     */
     public AgpmServiceImpl(AgpmRepository repository,
                            DocsRepository docsRepository,
                            AgpmMapper agpmMapper,
@@ -127,7 +145,7 @@ public class AgpmServiceImpl implements AgpmService {
     /**
      * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response.
      *
-     * @param agpmId ID of the Agpm entity
+     * @param agpmId  ID of the Agpm entity
      * @param agpmVer Ignored parameter (kept for compatibility); latest version is fetched
      * @return Agpm entity with the latest version and only non-deleted Docs
      * @throws AgpmNotFound if no Agpm entity is found for the ID
@@ -180,7 +198,6 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws DocNotFound if a requested document is not found
      * @throws AgpmDefaultStatus if the default status cannot be set
      * @throws IOException if an error occurs during file processing
-     * @note Relies on Authentication for Ac ID; consider abstracting security logic
      */
     @Override
     public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
@@ -235,19 +252,28 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     /**
-     * Soft deletes an Agpm entity by its ID and version.
+     * Soft deletes an Agpm entity by its ID and version, only if the status is DRAFT.
      *
      * @param agpmId  ID of the Agpm entity to delete
      * @param agpmVer Version of the Agpm entity to delete
      * @throws AgpmNotFound if the Agpm entity is not found
      * @throws AgpmSoftDelete if the soft delete operation fails
+     * @throws AgpmInvalidStatusException if the Agpm status is not DRAFT
      */
     @Override
-    public void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AgpmSoftDelete {
+    public void delete(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AgpmSoftDelete, AgpmInvalidStatusException {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Optional<Agpm> existingAgpm = repository.findById(compositeId);
         if (existingAgpm.isEmpty()) {
             throw new AgpmNotFound("Agpm not found", List.of(agpmId), List.of(agpmVer));
+        }
+
+        Agpm agpm = existingAgpm.get();
+        if (!Constants.DRAFT_STATUS.equals(agpm.getStatus().getId())) {
+            throw new AgpmInvalidStatusException("Agpm can only be deleted when status is DRAFT",
+                    List.of(agpmId),
+                    List.of(agpmVer),
+                    agpm.getStatus().getId());
         }
 
         Integer rowsAffected = repository.softDelete(agpmId, agpmVer, Calendar.getInstance());
@@ -413,10 +439,11 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws DocNotFound if a requested document is not found
      * @throws IOException if an error occurs during file processing
      * @throws InvalidIdAndVersionAgpm if the ID is invalid
+     * @throws AgpmInvalidStateException if the Agpm is not in DRAFT status or has a non-null processInstanceId
      */
     @Override
     @Transactional
-    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm {
+    public Agpm updateWithoutVersioning(Integer agpmId, Integer agpmVer, AgpmRequest request) throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm, AgpmInvalidStateException {
         if (agpmId < 0) {
             throw new InvalidIdAndVersionAgpm("Invalid ID", List.of(agpmId), List.of(agpmVer));
         }
@@ -430,6 +457,9 @@ public class AgpmServiceImpl implements AgpmService {
         if (Boolean.TRUE.equals(agpm.getIsDeleted())) {
             throw new IllegalArgumentException(messageSource.getMessage("agpm.deleted.update", new Object[]{agpmId, latestVersion}, getLocal()));
         }
+
+        // Check if Agpm is in DRAFT status and has null processInstanceId
+        restrictUpdateAgpm(agpm);
 
         agpmMapper.updateAgpmFromRequest(request, agpm);
 
@@ -499,10 +529,12 @@ public class AgpmServiceImpl implements AgpmService {
     /**
      * Updates the status of an Agpm entity by its ID and version.
      *
-     * @param agpmId  ID of the Agpm entity to update
-     * @param agpmVer Version of the Agpm entity to update
+     * @param agpmId   ID of the Agpm entity to update
+     * @param agpmVer  Version of the Agpm entity to update
+     * @param statusId The new status ID to set
      * @return Updated Agpm entity
      * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws ReferenceNotFound if the status ID is not found
      */
     @Override
     @Transactional
@@ -520,11 +552,11 @@ public class AgpmServiceImpl implements AgpmService {
     }
 
     /**
-     * Processes and saves uploaded documents for an Agpm entity.
+     * Processes and saves uploaded documents for an Agpm entity, storing them in Alfresco.
      *
      * @param files     List of MultipartFile objects to process
      * @param savedAgpm Agpm entity to associate the documents with
-     * @throws IOException if an error occurs during file processing
+     * @throws IOException if an error occurs during file processing or upload to Alfresco
      */
     private void processAndSaveDocuments(List<MultipartFile> files, Agpm savedAgpm) throws IOException {
         if (files != null && !files.isEmpty()) {
@@ -578,6 +610,12 @@ public class AgpmServiceImpl implements AgpmService {
         }
     }
 
+    /**
+     * Creates a filtered response Agpm entity, excluding soft-deleted documents.
+     *
+     * @param source Source Agpm entity
+     * @return Filtered Agpm entity with only non-deleted documents
+     */
     private Agpm createFilteredResponseAgpm(Agpm source) {
         Agpm responseAgpm = new Agpm();
         responseAgpm.setId(source.getId());
@@ -600,5 +638,40 @@ public class AgpmServiceImpl implements AgpmService {
                     .collect(Collectors.toList()));
         }
         return responseAgpm;
+    }
+
+    /**
+     * Restricts updates to Agpm entities that are in DRAFT status and have a null processInstanceId.
+     *
+     * @param agpm The Agpm entity to check
+     * @throws AgpmInvalidStateException if the Agpm is not in DRAFT status or has a non-null processInstanceId
+     */
+    private void restrictUpdateAgpm(Agpm agpm) throws AgpmInvalidStateException {
+        RefParam draftStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
+                .orElseThrow(() -> new NotFoundException("Default status not found"));
+
+        boolean isDraft = Objects.equals(agpm.getStatus().getId(), draftStatus.getId());
+        boolean hasNoProcessInstance = agpm.getProcessInstanceId() == null;
+
+        if (!isDraft || !hasNoProcessInstance) {
+            StringBuilder message = new StringBuilder("Agpm with ID " + agpm.getId() + " and version " + agpm.getVersion() +
+                    " cannot be updated because it does not meet the required state: ");
+            if (!isDraft) {
+                message.append("it is not in DRAFT status");
+            }
+            if (!isDraft && !hasNoProcessInstance) {
+                message.append(" and ");
+            }
+            if (!hasNoProcessInstance) {
+                message.append("it has an active process instance (processInstanceId: " + agpm.getProcessInstanceId() + ")");
+            }
+            message.append(".");
+
+            throw new AgpmInvalidStateException(
+                    message.toString(),
+                    List.of(agpm.getId()),
+                    List.of(agpm.getVersion())
+            );
+        }
     }
 }

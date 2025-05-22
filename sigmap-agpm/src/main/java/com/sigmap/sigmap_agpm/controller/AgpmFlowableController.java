@@ -1,3 +1,8 @@
+/**
+ * REST Controller for managing Flowable process instances and tasks related to Agpm entities.
+ * Provides endpoints for starting processes, retrieving tasks, validating tasks, and fetching user-specific tasks,
+ * integrating with the AgpmFlowableService for workflow management.
+ */
 package com.sigmap.sigmap_agpm.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -33,8 +38,8 @@ public class AgpmFlowableController {
      * Starts a Flowable process instance for an Agpm entity using its ID.
      * Automatically retrieves the latest version of the Agpm entity.
      *
-     * @param id The Agpm ID
-     * @return ResponseEntity with ProcessStartResponseDTO
+     * @param id The ID of the Agpm entity
+     * @return ResponseEntity with ProcessStartResponseDTO and HTTP status 200 (OK)
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @PostMapping("/start/{id}")
@@ -47,7 +52,7 @@ public class AgpmFlowableController {
     /**
      * Retrieves all active tasks for the tenant.
      *
-     * @return ResponseEntity with TaskListResponseDTO
+     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
      */
     @GetMapping("/tasks")
     public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {
@@ -60,7 +65,7 @@ public class AgpmFlowableController {
      * Retrieves details of a specific task.
      *
      * @param taskId The ID of the task
-     * @return ResponseEntity with TaskDetailsDTO
+     * @return ResponseEntity with TaskDetailsDTO and HTTP status 200 (OK)
      * @throws AgpmNotFound if the associated Agpm entity is not found
      */
     @GetMapping("/tasks/{taskId}")
@@ -74,17 +79,17 @@ public class AgpmFlowableController {
      * Validates a task and updates the associated Agpm entity.
      *
      * @param taskId  The ID of the task to validate
-     * @param request The validation request
-     * @return ResponseEntity with TaskDTO
+     * @param request The validation request containing validation details
+     * @return ResponseEntity with TaskDTO and HTTP status 200 (OK)
      * @throws AgpmNotFound if the Agpm entity is not found
      * @throws DocNotFound if a document is not found
      * @throws AcNotFound if the associated Ac entity is not found
      * @throws IOException if an error occurs during file processing
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value ="/tasks/{taskId}/validate")
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate")
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
-            @ModelAttribute("request")  ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
+            @ModelAttribute("request") ValidationRequest request) throws AgpmNotFound, DocNotFound, AcNotFound, IOException {
         log.info("Validating task ID: {} with request: {}", taskId, request);
         TaskDTO response = agpmFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
@@ -93,7 +98,7 @@ public class AgpmFlowableController {
     /**
      * Retrieves tasks assigned to the current user based on their candidate groups.
      *
-     * @return ResponseEntity with TaskListResponseDTO
+     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
      */
     @GetMapping("/tasks/user")
     public ResponseEntity<TaskListResponseDTO> getUserTasks() {

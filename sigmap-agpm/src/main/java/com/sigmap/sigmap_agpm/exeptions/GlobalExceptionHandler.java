@@ -132,5 +132,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AgpmInvalidStatusException.class)
+    public ResponseEntity<ErrorResponse> handleAgpmInvalidStatusException(AgpmInvalidStatusException ex) {
+        String message = messageSource.getMessage("agpm.invalid.status", new Object[] {
+                String.join((CharSequence) ",", ex.getAgpmIds().stream().map(String::valueOf).collect(Collectors.toList())),
+                String.join((CharSequence) ",", ex.getAgpmVersions().stream().map(String::valueOf).collect(Collectors.toList())),
+                ex.getCurrentStatusId() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
 
 }

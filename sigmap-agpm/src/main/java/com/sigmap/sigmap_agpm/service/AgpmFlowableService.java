@@ -1,3 +1,8 @@
+/**
+ * Service class for managing Flowable processes related to Agpm entities.
+ * This class handles process initiation, task management, validation, and retrieval of tasks
+ * within the Flowable workflow engine, ensuring proper authorization and integration with Agpm entities.
+ */
 package com.sigmap.sigmap_agpm.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -71,7 +76,7 @@ public class AgpmFlowableService {
     private HistoryService historyService;
 
     /**
-     * Checks if the user has the specified role.
+     * Checks if the user has the specified role based on their JWT authentication token.
      *
      * @param jwtAuth The JWT authentication token
      * @param role    The role to check
@@ -84,7 +89,7 @@ public class AgpmFlowableService {
     }
 
     /**
-     * Checks if the task is assigned to the user.
+     * Checks if the task is assigned to the user based on their JWT authentication token.
      *
      * @param task    The Flowable task
      * @param jwtAuth The JWT authentication token
@@ -189,8 +194,7 @@ public class AgpmFlowableService {
     }
 
     /**
-     * Starts a Flowable process instance for an Agpm entity using its ID.
-     * Automatically retrieves the latest version of the Agpm entity.
+     * Starts a Flowable process instance for an Agpm entity using its ID, retrieving the latest version.
      *
      * @param id             The Agpm ID
      * @param processKey     The process definition key (optional)
@@ -316,8 +320,7 @@ public class AgpmFlowableService {
     }
 
     /**
-     * Starts a Flowable process instance for an Agpm entity using its ID.
-     * Automatically retrieves the latest version of the Agpm entity.
+     * Overloaded method to start a Flowable process instance for an Agpm entity using default process and task keys.
      *
      * @param id The Agpm ID
      * @return ProcessStartResponseDTO with the process details
@@ -329,7 +332,7 @@ public class AgpmFlowableService {
     }
 
     /**
-     * Retrieves all active tasks for the tenant.
+     * Retrieves all active tasks for the tenant, including Agpm details where applicable.
      *
      * @return TaskListResponseDTO containing the list of tasks
      */
@@ -340,18 +343,33 @@ public class AgpmFlowableService {
                 .orderByTaskCreateTime().asc()
                 .list();
 
-        List<TaskDTO> taskList = tasks.stream().map(task -> {
+        List<TaskDTO> taskList = new ArrayList<>();
+        for (Task task1 : tasks) {
             TaskDTO taskInfo = new TaskDTO();
-            taskInfo.setTaskId(task.getId());
-            taskInfo.setTaskName(task.getName());
-            taskInfo.setTaskDefinitionKey(task.getTaskDefinitionKey());
-            taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
-            taskInfo.setProcessInstanceId(task.getProcessInstanceId());
-            taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+            taskInfo.setTaskId(task1.getId());
+            taskInfo.setTaskName(task1.getName());
+            taskInfo.setTaskDefinitionKey(task1.getTaskDefinitionKey());
+            taskInfo.setAssignee(task1.getAssignee() != null ? task1.getAssignee() : "");
+            taskInfo.setProcessInstanceId(task1.getProcessInstanceId());
+            taskInfo.setCreated(task1.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
 
-            Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Map<String, Object> processVariables = runtimeService.getVariables(task1.getProcessInstanceId());
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
+
+            if (id != null && version != null) {
+                try {
+                    Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
+                    agpmOptional.ifPresent(agpm -> {
+                        taskInfo.setId(id);
+                        taskInfo.setVersion(version);
+                        taskInfo.setNom(agpm.getNom());
+                        taskInfo.setRef(agpm.getRef());
+                    });
+                } catch (AgpmNotFound e) {
+                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task1.getId(), e);
+                }
+            }
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -360,12 +378,13 @@ public class AgpmFlowableService {
             variables.put("treater", processVariables.getOrDefault("treater", ""));
             taskInfo.setTraceability(variables);
 
-            Map<String, Boolean> taskProperties = getTaskProperties(task);
+            Map<String, Boolean> taskProperties = getTaskProperties(task1);
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
 
-            return taskInfo;
-        }).collect(Collectors.toList());
+            TaskDTO apply = taskInfo;
+            taskList.add(apply);
+        }
 
         TaskListResponseDTO response = new TaskListResponseDTO();
         response.setTenantId(TENANT_ID);
@@ -430,7 +449,7 @@ public class AgpmFlowableService {
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        List<AgpmResponseDto> agpmResponses = List.of();
+        AgpmResponseDto agpmResponse = null;
         if (id != null && version != null) {
             Optional<Agpm> relatedAgpmOptional = Optional.ofNullable(agpmService.findById(id, version));
             if (relatedAgpmOptional.isPresent()) {
@@ -442,10 +461,10 @@ public class AgpmFlowableService {
                             .collect(Collectors.toList());
                     agpm.setDocs(nonDeletedDocs);
                 }
-                agpmResponses = List.of(AgpmMapper.INSTANCE.mapToDto(agpm));
+                agpmResponse = AgpmMapper.INSTANCE.mapToDto(agpm);
             }
         }
-        response.setAgpms(agpmResponses);
+        response.setAgpm(agpmResponse); // Update to accept a single AgpmResponseDto
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -521,7 +540,7 @@ public class AgpmFlowableService {
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Complete");
+                            nextStep.setActionLabel("Passer pour validation");
                             nextSteps.add(nextStep);
                             log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, "Complete");
                         }
@@ -545,10 +564,10 @@ public class AgpmFlowableService {
     }
 
     /**
-     * Validates a task and updates the associated Agpm entity.
+     * Validates a task and updates the associated Agpm entity based on the validation request.
      *
      * @param taskId  The ID of the task to validate
-     * @param request The validation request
+     * @param request The validation request containing validation details
      * @return TaskDTO with the validation result
      * @throws AgpmNotFound if the Agpm entity is not found
      * @throws DocNotFound if a document is not found
@@ -738,8 +757,22 @@ public class AgpmFlowableService {
             taskInfo.setCandidateGroup(getCandidateGroup(task));
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
+
+            if (id != null && version != null) {
+                try {
+                    Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
+                    agpmOptional.ifPresent(agpm -> {
+                        taskInfo.setId(id);
+                        taskInfo.setVersion(version);
+                        taskInfo.setNom(agpm.getNom());
+                        taskInfo.setRef(agpm.getRef());
+                    });
+                } catch (AgpmNotFound e) {
+                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+                }
+            }
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
