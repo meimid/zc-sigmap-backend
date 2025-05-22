@@ -1,5 +1,6 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;

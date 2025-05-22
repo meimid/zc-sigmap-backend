@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -121,5 +123,25 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    @ExceptionHandler(MaxUploadSizeFile.class)
+    public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(MaxUploadSizeFile ex) {
+        String message = messageSource.getMessage("doc.maxSize",new Object[] {ex.getMaxFileUploadSize()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AgpmInvalidStatusException.class)
+    public ResponseEntity<ErrorResponse> handleAgpmInvalidStatusException(AgpmInvalidStatusException ex) {
+        String message = messageSource.getMessage("agpm.invalid.status", new Object[] {
+                String.join((CharSequence) ",", ex.getAgpmIds().stream().map(String::valueOf).collect(Collectors.toList())),
+                String.join((CharSequence) ",", ex.getAgpmVersions().stream().map(String::valueOf).collect(Collectors.toList())),
+                ex.getCurrentStatusId() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
 
 }

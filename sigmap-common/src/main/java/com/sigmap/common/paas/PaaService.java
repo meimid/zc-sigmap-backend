@@ -6,6 +6,8 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -34,12 +36,15 @@ import java.util.Optional;
  * @see Specification
  */
 public interface PaaService {
+
+    public Paa getPaaOfCurrentYear();
+
     List<Paa> findAll();
 
     /**
      * Return a page of Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -48,7 +53,7 @@ public interface PaaService {
     /**
      * Return a page of deleted Paa entities based on the given specification and pageable.
      *
-     * @param spec the specification to use
+     * @param spec     the specification to use
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
@@ -65,7 +70,7 @@ public interface PaaService {
     /**
      * Return the deleted Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
@@ -82,7 +87,7 @@ public interface PaaService {
     /**
      * Return the Paa entity with the given composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
@@ -123,17 +128,17 @@ public interface PaaService {
      * @return the created PAA entity with all relationships established
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound;
+    Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException;
 
     /**
      * Delete a Paa entity by its composite ID components.
      *
-     * @param paaId the first part of the composite ID (paa_id)
+     * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      */
     void delete(Integer paaId, Integer paaVer);
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound;
+    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException;
 
     /**
      * Updates a PAA by creating a new version with the updated data.
@@ -143,8 +148,9 @@ public interface PaaService {
      * - If any PAA field changes, a new PAA version is created
      * - If any Realisation is added, modified, or removed, a new PAA version is created
      * <p>
-     * @param paaId the ID of the PAA to update
-     * @param paaVer the current version of the PAA
+     *
+     * @param paaId   the ID of the PAA to update
+     * @param paaVer  the current version of the PAA
      * @param request the request containing the updated data
      * @return the newly created version of the PAA
      * @throws PaaNotFound if the PAA is not found or is deleted
@@ -157,7 +163,7 @@ public interface PaaService {
      * This method finds the latest version of the PAA with the given ID and then
      * calls the version-specific updateWithVersioning method.
      *
-     * @param paaId the ID of the PAA to update
+     * @param paaId   the ID of the PAA to update
      * @param request the request containing the updated data
      * @return the newly created version of the PAA if changes detected, otherwise the existing PAA
      * @throws PaaNotFound if no versions of the PAA exist or if all versions are deleted
@@ -165,6 +171,7 @@ public interface PaaService {
     Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
 
     Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound;
-  Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
+
+    Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
 
 }

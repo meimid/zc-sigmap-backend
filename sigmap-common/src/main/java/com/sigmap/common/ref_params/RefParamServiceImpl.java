@@ -70,9 +70,13 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public RefParam findById(Integer id) throws RefParamNotFound {
-        return repository.findById(id)
+    public RefParam findById(Integer id) throws RefParamNotFound  {
+        RefParam refParam= repository.findById(id)
                 .orElseThrow(() -> new RefParamNotFound("",List.of(id)));
+        if(refParam.getIsDeleted()){
+            throw new RefParamNotFound("",List.of(id));
+        }
+        return refParam;
     }
 
     @Override
@@ -82,19 +86,22 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam create(RefParamRequest request) throws RefTypeNotFound {
-        RefType refType = refTypeService.findById(request.getRefTypeId());
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
-        refParam.setRefType(refType);
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
+            refParam.setRefType(refType);
+        }
         return save(refParam);
     }
 
     @Override
-    public RefParam update(Integer id,RefParamRequest request) throws RefParamNotFound, RefTypeNotFound{
-        RefParam refParam = repository.findById(id)
-                .orElseThrow(() -> new RefParamNotFound("",List.of(id)));
-        RefType refType = refTypeService.findById(request.getRefTypeId());
+    public RefParam update(Integer id,RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
+        RefParam refParam = findById(id);
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
-        refParam.setRefType(refType);
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
+            refParam.setRefType(refType);
+        }
         return save(refParam);
     }
 
@@ -129,4 +136,33 @@ public class RefParamServiceImpl implements RefParamService {
         refTypeService.findById(refTpeId);
        return repository.findByRefType(refTpeId);
     }
+
+    @Override
+    public RefParam findByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound  {
+        refTypeService.findById(refTypeId);
+        RefParam refParam=repository.findByIdAndRefType_Id(refPramId, refTypeId).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
+        if(refParam.getIsDeleted()){
+            throw new RefParamNotFound("",List.of(refPramId));
+        }
+        return  repository.findByIdAndRefType_Id(refPramId, refTypeId).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
+    }
+
+    @Override
+    public RefParam UpdateRefParamByRefTypeId(Integer refParamId, Integer refTypeId,RefParamRequest request) throws RefParamNotFound {
+        return update(findByIdAndRefTypeId( refParamId, refTypeId).getId(),request);
+    }
+
+    @Override
+    public void deleteByIdAndRefTypeId(Integer refParamId, Integer refTypeId) throws RefParamNotFound {
+        delete(findByIdAndRefTypeId( refParamId, refTypeId).getId());
+    }
+
+    @Override
+    public RefParam createUnderRefType(Integer refTpeId, RefParamRequest request) throws RefTypeNotFound {
+        RefType refType = refTypeService.findById(refTpeId);
+        RefParam refParam = RefParamMapper.INSTANCE.map(request);
+        refParam.setRefType(refType);
+        return save(refParam);
+    }
+
 }

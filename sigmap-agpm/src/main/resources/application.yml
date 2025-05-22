@@ -2,11 +2,6 @@ server:
   port: ${PORT:8082}
   servlet:
     context-path: /agpm
-    multipart:
-      max-file-size:
-        ${UPLOAD_MAX_FILE_SIZE:30MB}
-      max-request-size:
-        ${UPLOAD_MAX_REQUEST_SIZE:30MB}
 
 spring:
   application:
@@ -15,7 +10,10 @@ spring:
     url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
-
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
   jpa:
     show-sql: true
     properties:
@@ -55,6 +53,12 @@ keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
 
+keycloak-admin:
+  server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
+  realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+
 # Flowable: use a dedicated database
 flowable:
   process-definition-key: agpmProcess
@@ -69,7 +73,7 @@ flowable:
     password: ${FLOWABLE_DB_PASSWORD:root}
     driver-class-name: org.mariadb.jdbc.Driver
 tenant:
-  id: ${TENANT_ID:agpm}
+  id: ${TENANT_ID:AGPM}
 process:
   definition:
     location: ${PROCESS_DEFINITION_LOCATION:processes/}
@@ -78,3 +82,6 @@ alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
   username: ${ALFRESCO_USERNAME:admin}
   password: ${ALFRESCO_PASSWORD:admin}
+
+max-file-size: ${UPLOAD_MAX_FILE_SIZE:31457280}
+max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:31457280}

@@ -24,7 +24,7 @@ public class TaskDetailsDTO {
     private LocalDateTime created;
     private String candidateGroup;
     private Map<String, Object> traceability;
-    private List<PaaResponseWithRealisations> agpms;
+    private List<PaaResponseWithRealisations> Paas;
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;

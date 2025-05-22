@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecificationExecutor<Paa>,
@@ -23,4 +24,8 @@ public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecif
      */
     @Query("SELECT MAX(p.version) FROM Paa p WHERE p.id = :id AND p.isDeleted = false")
     Integer findMaxVersionById(@Param("id") Integer id);
+
+    @Query(" SELECT p FROM Paa p WHERE p.isDeleted = false AND p.annee = :currentYear AND p.version = (" +
+            "   SELECT MAX (p2.version) FROM Paa p2 WHERE p2.id = p.id AND p2.annee = :currentYear AND p2.isDeleted = false)")
+    Optional<Paa> findByCurrentYear(@Param("currentYear") String currentYear);
 }

@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa;
+package com.sigmap.sigmap_paa.config;
 
 import java.util.Collection;
 import java.util.List;

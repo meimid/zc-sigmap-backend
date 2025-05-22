@@ -1,18 +1,14 @@
-package com.sigmap.sigmap_paa.paas;
+package com.sigmap.sigmap_paa.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.agpm.mappers.AgpmMapper;
-import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.mappers.PaaMapper;
-import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
@@ -36,10 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -74,8 +67,9 @@ public class PaaController {
      * @param pageable the pageable to use
      * @return a page of paas
      */
+
     @GetMapping
-    public ResponseEntity<Page<PaaResponse>> findAll(
+    public ResponseEntity<Page<PaaResponseWithRealisations>> findAll(
             PaaQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -83,8 +77,14 @@ public class PaaController {
         logger.info("User {}", user.getSubject());
 
         Page<Paa> paas = paaService.findAll(query.toSpecification(), pageable);
-        Page<PaaResponse> responses = paas.map(PaaMapper.INSTANCE::map);
+        Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/current-year")
+    public ResponseEntity<Paa> getPaaOfCurrentYear() {
+        Paa paas = paaService.getPaaOfCurrentYear();
+        return ResponseEntity.ok(paas);
     }
 
     /**
@@ -160,7 +160,7 @@ public class PaaController {
 //    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
     public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(
             @ModelAttribute("request") PaaRequestGlobal request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
         logger.info("Creating PAA with relationships using RealisationRequestForPaa");
 
         // Process lots from JSON string if provided
@@ -180,12 +180,11 @@ public class PaaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-//    @PutMapping("/{paaId}/{paaVer}")
 @PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
         @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
+        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
     logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
     Paa updatedPaa = paaService.update(paaId, paaVer, request);
 
@@ -194,14 +193,27 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
     return ResponseEntity.ok(response);
 }
-
     private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
-            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
-            // Where the keys are realisation indices
+            logger.info("Processing lots JSON: {}", lotsJson);
+
+            // Validate input
+            if (lotsJson == null || lotsJson.trim().isEmpty()) {
+                logger.warn("Lots JSON is empty or null, skipping processing");
+                return;
+            }
+
+            // Parse JSON into a map of realisation indices to lists of lot data
             Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+            logger.info("Parsed {} realisation indices from lots JSON", lotsMap.size());
+
+            // Ensure realisations list exists
+            if (request.getRealisations() == null) {
+                request.setRealisations(new ArrayList<>());
+                logger.warn("Realisations list was null, initialized as empty");
+            }
 
             // Process each realisation's lots
             for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
@@ -209,12 +221,18 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
                 // Skip if index is out of bounds
                 if (realisationIndex >= request.getRealisations().size()) {
-                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+                    logger.warn("Skipping lots for realisation index {} as it's out of bounds (size: {})",
+                            realisationIndex, request.getRealisations().size());
                     continue;
                 }
 
                 // Get the target realisation
                 RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+                if (realisation == null) {
+                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+                    continue;
+                }
+
                 Set<LotResponse> lots = new HashSet<>();
 
                 // Process lots for this realisation
@@ -223,14 +241,21 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
                     if (lotData.containsKey("id")) {
                         lot.setId(((Number) lotData.get("id")).intValue());
+                    } else {
+                        logger.debug("Lot data missing id, setting to null");
                     }
 
                     if (lotData.containsKey("version")) {
                         lot.setVersion(((Number) lotData.get("version")).intValue());
+                    } else {
+                        logger.debug("Lot data missing version, setting to null");
                     }
 
                     if (lotData.containsKey("description")) {
                         lot.setDescription((String) lotData.get("description"));
+                    } else {
+                        logger.warn("Lot data missing description, skipping lot");
+                        continue;
                     }
 
                     lots.add(lot);
@@ -241,10 +266,60 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                 logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
             }
         } catch (Exception e) {
-            logger.error("Failed to parse lots JSON: {}", e.getMessage());
+            logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
         }
     }
+//    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
+//            // Where the keys are realisation indices
+//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
+//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+//
+//            // Process each realisation's lots
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+//                int realisationIndex = Integer.parseInt(entry.getKey());
+//
+//                // Skip if index is out of bounds
+//                if (realisationIndex >= request.getRealisations().size()) {
+//                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+//                    continue;
+//                }
+//
+//                // Get the target realisation
+//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+//                Set<LotResponse> lots = new HashSet<>();
+//
+//                // Process lots for this realisation
+//                for (Map<String, Object> lotData : entry.getValue()) {
+//                    LotResponse lot = new LotResponse();
+//
+//                    if (lotData.containsKey("id")) {
+//                        lot.setId(((Number) lotData.get("id")).intValue());
+//                    }
+//
+//                    if (lotData.containsKey("version")) {
+//                        lot.setVersion(((Number) lotData.get("version")).intValue());
+//                    }
+//
+//                    if (lotData.containsKey("description")) {
+//                        lot.setDescription((String) lotData.get("description"));
+//                    }
+//
+//                    lots.add(lot);
+//                }
+//
+//                // Set the processed lots on the realisation
+//                realisation.setLots(lots);
+//                logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+//            }
+//        } catch (Exception e) {
+//            logger.error("Failed to parse lots JSON: {}", e.getMessage());
+//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
+//        }
+//    }
 
 
     /**
@@ -296,18 +371,6 @@ public ResponseEntity<PaaResponseWithRealisations> update(
 
         return ResponseEntity.ok(response);
     }
-//    @PutMapping(value="/{paaId}/versioning/multi", consumes = {"multipart/form-data"})
-//    public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
-//            @PathVariable Integer paaId,
-//            @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound {
-//        logger.info("Updating PAA ID: {} version: {} with versioning", paaId);
-//        Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
-//
-//        // Use the detailed mapper to create a response with specialised DTOs
-//        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
-//
-//        return ResponseEntity.ok(response);
-//    }
 
     /**
      * Updates a PAA by creating a new version with the updated data using the latest version.

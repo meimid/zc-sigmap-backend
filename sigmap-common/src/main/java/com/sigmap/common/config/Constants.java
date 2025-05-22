@@ -14,5 +14,12 @@ public class Constants {
     public static final Integer VALIDE_STATUS = 34;
     public static final Integer PUBLIE_STATUS = 35;
     public static final String PATH_ENTREPOT_GED = "/SIGMAP-DEV/ARCHIVE/AGPM/" + LocalDate.now().getYear();
+    public static final Integer SERVICE=16;
+    public static final Integer TYPE_MARCHER=17;
+    public static final Integer SOURCE_FINANCEMENT=18;
+    public static final Integer MONAIS=19;
+    public static final Integer MODE_SELECTION=20;
+    public static final Integer DIRECTION=21;
+
 
     private Constants() {}}

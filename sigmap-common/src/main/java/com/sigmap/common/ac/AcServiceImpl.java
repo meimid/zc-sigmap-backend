@@ -1,7 +1,7 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
-import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
@@ -9,25 +9,34 @@ import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class AcServiceImpl implements AcService{
+
+    private final Logger logger = LoggerFactory.getLogger(AcService.class);
+
     private final AcRepository repository;
     private final ComRepository comRepository;
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository) {
+    private final KeycloakAdminService keycloakAdminService;
+
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
         this.comRepository = comRepository;
+        this.keycloakAdminService = keycloakAdminService;
     }
+
 
     @Override
     public List<Ac> findAll() {
@@ -66,7 +75,11 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public Ac findById(Integer id) throws AcNotFound {
-        return repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
+        Ac ac=repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
+        if(ac.getIsDeleted()){
+            throw new AcNotFound("",List.of(id));
+        }
+        return ac;
 
     }
 
@@ -94,16 +107,33 @@ public class AcServiceImpl implements AcService{
                         .toList();
                 throw new ComNotFound("", nonExistentComIds);
             }
+            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedComs.isEmpty()){
+               List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
+               throw new ComNotFound("",deletedComIds);
+
+            }
             ac.setComs(coms);
 
         }
-        return repository.save(ac);
+        Ac savedAc = repository.save(ac);
+        /*if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+            for (String userId : request.getUserIds()) {
+                try {
+                    keycloakAdminService.updateUserAttribute(userId, "ac", savedAc.getId().toString());
+                } catch (Exception e) {
+                    // Logger et continuer
+                    logger.warn("Impossible de mettre à jour l'utilisateur {} : {}", userId, e.getMessage());
+                }
+            }
+        }*/
+        return  savedAc;
     }
 
 
     @Override
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
-        Ac ac = repository.findById(id).orElseThrow(() -> new AcNotFound("", List.of(id)));
+        Ac ac = findById(id);
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
         if (request.getComIds() != null && !request.getComIds().isEmpty()) {
@@ -123,8 +153,44 @@ public class AcServiceImpl implements AcService{
                         .toList();
                 throw new ComNotFound("", nonExistentComIds);
             }
+            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
+            if(!checkDeletedComs.isEmpty()){
+                List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
+                throw new ComNotFound("",deletedComIds);
+
+            }
             ac.setComs(coms);
         }
+   /*     // **Gestion des utilisateurs liés à cet Ac via Keycloak**
+        if (request.getUserIds() != null) {
+            // 1. Récupérer les users actuellement liés à cet Ac dans Keycloak
+            List<UserDTO> currentUsers = keycloakAdminService.getUsersByAc(id);
+
+            Set<String> currentUserIds = currentUsers.stream()
+                    .map(UserDTO::getId)
+                    .collect(Collectors.toSet());
+
+            Set<String> newUserIds = new HashSet<>(request.getUserIds());
+
+            // 2. Users à ajouter (nouveaux)
+            Set<String> toAdd = new HashSet<>(newUserIds);
+            toAdd.removeAll(currentUserIds);
+
+            // 3. Users à retirer (plus dans la liste)
+            Set<String> toRemove = new HashSet<>(currentUserIds);
+            toRemove.removeAll(newUserIds);
+
+            // 4. Mettre à jour Keycloak : ajouter attribut ac=id
+            for (String userIdToAdd : toAdd) {
+                keycloakAdminService.updateUserAttribute(userIdToAdd, "ac", id.toString());
+            }
+
+            // 5. Mettre à jour Keycloak : supprimer attribut ac (mettre à null)
+            for (String userIdToRemove : toRemove) {
+                keycloakAdminService.updateUserAttribute(userIdToRemove, "ac", null);
+            }
+        }*/
+
 
         return repository.save(ac);
     }

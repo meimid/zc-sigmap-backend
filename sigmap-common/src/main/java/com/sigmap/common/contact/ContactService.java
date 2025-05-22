@@ -95,4 +95,6 @@ public interface ContactService {
 
     Page<Contact> findContactsBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound;
 
+
+
 }

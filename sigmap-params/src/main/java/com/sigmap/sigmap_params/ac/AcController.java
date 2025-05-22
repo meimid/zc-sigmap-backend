@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
@@ -10,12 +11,17 @@ import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * Controller to manage ac.
@@ -31,7 +37,8 @@ import org.springframework.web.bind.annotation.*;
 
 public class AcController {
     private final Logger logger = LoggerFactory.getLogger(AcController.class);
-
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
     private final AcService acService;
 
     public AcController(AcService acService) {
@@ -78,6 +85,8 @@ public class AcController {
     public ResponseEntity<AcResponse> findById(@PathVariable Integer id) throws AcNotFound {
         Ac param = acService.findById(id);
         AcResponse response = AcMapper.INSTANCE.map(param);
+        List<UserDTO> users = keycloakAdminService.getUsersByAc(id);
+        response.setUsers(users);
         return ResponseEntity.ok(response);
     }
 
@@ -88,7 +97,7 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound {
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted {
         Ac ac = acService.create(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
@@ -100,7 +109,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException,ComDeleted{
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
