@@ -2,6 +2,8 @@ package com.sigmap.common.contact;
 
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -89,5 +91,10 @@ public interface ContactService {
      *
      * @param id the id of the Contact to delete
      */
-    void delete(Integer id);
+    void delete(Integer id) throws ContactNotFound, SocieteContactNotFound;
+
+    Page<Contact> findContactsBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound;
+
+
+
 }

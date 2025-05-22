@@ -1,6 +1,7 @@
 package com.sigmap.common.ref_types;
 
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
 import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
@@ -84,15 +85,20 @@ public class RefTypeServiceImpl implements RefTypeService {
 
 
   @Override
-  public RefType update(RefTypeRequest request) throws RefParamNotFound {
+  public RefType update(RefTypeRequest request) throws RefTypeNotFound {
     RefType refType = repository.findById(request.getId())
-            .orElseThrow(() -> new RefParamNotFound("",List.of( request.getId())));
+            .orElseThrow(() -> new RefTypeNotFound("",request.getId()));
     RefTypeMapper.INSTANCE.updateFromRequest(request, refType);
     return save(refType);
   }
 
   @Override
-  public void delete(Integer id) {
+  public void delete(Integer id) throws HasAssociatedRefParams {
+    boolean hasAssociatedRefParams = repository.hasAssociatedRefParams(id);
+    if (hasAssociatedRefParams) {
+      throw new HasAssociatedRefParams("",id);
+    }
     repository.softDelete(id);
   }
+
 }

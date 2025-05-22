@@ -1,11 +1,12 @@
 package com.sigmap.common.ref_params;
 
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -106,5 +107,10 @@ public interface RefParamService {
    *
    * @param id the id of the RefParam to delete
    */
-  void delete(Integer id);
+  void delete(Integer id)throws RefParamHasAssociatedCom,
+          RefParamHasAssociatedCompteBancaire,
+          RefParamHasAssociatedSociete,
+          RefParamHasAssociatedSocieteAddress;
+
+  List<RefParam> findByRefType(@Param("refTpeId") Integer refTpeId);
 }

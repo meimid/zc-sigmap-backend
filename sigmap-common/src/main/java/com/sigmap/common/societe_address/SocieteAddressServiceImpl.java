@@ -9,12 +9,11 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
+import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -86,7 +85,7 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound , SocieteAdresseNotFound{
-        SocieteAddress societeAddress = repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound(" " , List.of(id)));
+        SocieteAddress societeAddress = findById(id);
         SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId());
         Societe societe=societeService.findById(request.getSocieteId());
@@ -99,5 +98,22 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     public void delete(Integer id) {
         repository.softDelete(id);
 
+    }
+
+    @Override
+    public SocieteAddress createUnderSociete(Integer societeId, SocieteAdressUnderSocieteRequest request) throws RefParamNotFound, SocieteNotFound {
+
+        SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.mapFromSocieteAddressUnderSocieteRequest(request);
+        RefParam type=refParamService.findById(request.getTypeId());
+        Societe societe=societeService.findById(societeId);
+        societeAddress.setType(type);
+        societeAddress.setSociete(societe);
+        return save(societeAddress);
+    }
+
+    @Override
+    public Page<SocieteAddress> findSocieteAddressBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound {
+        societeService.findById(societeId);
+        return repository.findSocieteAddressBySocieteId(societeId, pageable);
     }
 }

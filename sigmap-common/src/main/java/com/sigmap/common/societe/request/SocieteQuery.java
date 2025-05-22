@@ -13,7 +13,6 @@ public class SocieteQuery {
     private String search;
     private String nom;
     private String nni;
-    private String categorieSoumissionnaireId;
     private boolean deleted;
     /**
      * Creates a {@link Specification} from the properties of the current object.
@@ -54,9 +53,7 @@ public class SocieteQuery {
         if (nni != null && !nni.isBlank()) {
             spec = spec.and(SocieteSpecifications.nni(nni));
         }
-        if (categorieSoumissionnaireId != null && !categorieSoumissionnaireId.isBlank()) {
-            spec = spec.and(SocieteSpecifications.nom(categorieSoumissionnaireId));
-        }
+
         return spec;
     }
 }

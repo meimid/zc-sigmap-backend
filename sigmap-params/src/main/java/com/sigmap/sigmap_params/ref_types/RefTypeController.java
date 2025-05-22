@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.ref_types;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
+import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
@@ -57,14 +58,14 @@ public class RefTypeController {
   }
 
   @PutMapping
-  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefParamNotFound {
+  public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefTypeNotFound {
     RefType refType = refTypeService.update(request);
     RefTypeResponse response = RefTypeMapper.INSTANCE.map(refType);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @DeleteMapping("/{id}")
-  public ResponseEntity<RefTypeResponse> deleteById(@PathVariable Integer id) {
+  public ResponseEntity<RefTypeResponse> deleteById(@PathVariable Integer id) throws HasAssociatedRefParams {
     refTypeService.delete(id);
 
     RefType deleted = refTypeService.findDeletedById(id)

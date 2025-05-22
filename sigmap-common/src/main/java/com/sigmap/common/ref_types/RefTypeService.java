@@ -8,6 +8,7 @@ import com.sigmap.common.ref_types.request.RefTypeRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -98,11 +99,12 @@ public interface RefTypeService {
    * @param request the request to update the RefType from
    * @return the updated RefType
    */
-  RefType update(RefTypeRequest request)throws RefParamNotFound;
+  RefType update(RefTypeRequest request)throws RefTypeNotFound;
   /**
    * Delete a RefType.
    *
    * @param id the id of the RefType to delete
    */
   void delete(Integer id);
+
 }

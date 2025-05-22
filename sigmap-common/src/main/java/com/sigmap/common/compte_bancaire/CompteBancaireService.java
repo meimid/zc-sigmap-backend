@@ -1,6 +1,7 @@
 package com.sigmap.common.compte_bancaire;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import org.springframework.data.domain.Page;
@@ -90,4 +91,15 @@ public interface CompteBancaireService {
      * @param id the id of the CompteBancaire to delete
      */
     void delete(Integer id);
+
+    /**
+     * Create a CompteBancaire.
+     *
+     * @param request the request to create the CompteBancaireUnderSociete from
+     * @return the created CompteBancaire
+     */
+    CompteBancaire createUnderSociete(Integer societeId,CompteBancaireUnderSocieteRequest request)throws RefParamNotFound, SocieteNotFound;
+
+    Page <CompteBancaire> findCompteBancaireListBySocieteId(Integer societeId,Pageable pageable) throws SocieteNotFound;
+
 }

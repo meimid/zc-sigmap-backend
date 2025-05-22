@@ -1,7 +1,9 @@
 package com.sigmap.sigmap_params.exeptions;
 
+import com.sigmap.common.ac.exception.AcHasAssociatedCom;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactNotFound;
@@ -20,13 +22,16 @@ import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsExcepti
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
+import com.sigmap.common.ref_params.exceptions.*;
+import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
 import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -35,6 +40,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -283,4 +289,89 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedRefParams.class)
+    public ResponseEntity<ErrorResponse> HasAssociatedRefParamsException(HasAssociatedRefParams ex) {
+        String message = messageSource.getMessage("refType.hasAssociatedRefParams",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedCom.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedComException(RefParamHasAssociatedCom ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedCom",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedCompteBancaire.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedCompteBancaireException(RefParamHasAssociatedCompteBancaire ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedCompteBancaire",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(SocieteHasAssociatedCompteBancaire.class)
+    public ResponseEntity<ErrorResponse> SocieteHasAssociatedCompteBancaireException(SocieteHasAssociatedCompteBancaire ex) {
+        String message = messageSource.getMessage("societe.hasAssociatedCompteBancaire",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedSociete.class)
+    public ResponseEntity<ErrorResponse> RefParamhasAssociatedSocieteException(RefParamHasAssociatedSociete ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedSociete",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedSocieteAddress.class)
+    public ResponseEntity<ErrorResponse> RefParamHasAssociatedSocieteAddressException(RefParamHasAssociatedSocieteAddress ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedSocieteAddress",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(SocieteHasAssociatedSocieteAddress.class)
+    public ResponseEntity<ErrorResponse> SocieteHasAssociatedSocieteAddressException(SocieteHasAssociatedSocieteAddress ex) {
+        String message = messageSource.getMessage("societe.hasAssociatedSocieteAddress",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ComHasAssociatedAc.class)
+    public ResponseEntity<ErrorResponse> ComHasAssociatedAcException(ComHasAssociatedAc ex) {
+        String message = messageSource.getMessage("com.hasAssociatedAc",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedCom.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedComException(AcHasAssociatedCom ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedcom",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SocieteContactNotFound.class)
+    public ResponseEntity<ErrorResponse> SocieteContactNotFoundException(SocieteContactNotFound ex) {
+        String message = messageSource.getMessage("societe.societeContactNotFound", new Object[]{ex.getSocieteId(), ex.getContactId()}, getLocal());
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+/*    // Handler for MaxUploadSizeExceededException (from Spring's MultipartResolver)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        String message = messageSource.getMessage("doc.maxSize", new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }*/
 }

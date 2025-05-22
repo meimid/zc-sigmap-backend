@@ -3,14 +3,18 @@ package com.sigmap.sigmap_params.com;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,12 +24,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/com")
 public class ComController {
     private final Logger logger = LoggerFactory.getLogger(ComController.class);
 
     private final ComService comService;
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
 
     public ComController(ComService comService) {
         this.comService = comService;
@@ -71,6 +79,8 @@ public class ComController {
     public ResponseEntity<ComResponse> findById(@PathVariable Integer id) throws ComNotFound {
         Com param = comService.findById(id);
         ComResponse response = ComMapper.INSTANCE.map(param);
+        List<UserDTO> users = keycloakAdminService.getUsersByCom(id);
+        response.setUsers(users);
         return ResponseEntity.ok(response);
     }
 
@@ -105,7 +115,7 @@ public class ComController {
      * @return the deleted Com
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ComResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<ComResponse> deleteById(@PathVariable Integer id) throws ComHasAssociatedAc {
         comService.delete(id);
 
         Com deleted = comService.findDeletedById(id)

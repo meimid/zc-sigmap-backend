@@ -36,6 +36,8 @@ public interface SocieteContactRepository extends JpaRepository<SocieteContact, 
     Page<SocieteContact> findSocieteContactsDeletedBySocieteId(Integer societeId, Pageable pageable);
     @Query("select s from SocieteContact s where s.societeContactId.societe.id=:societeId and s.isDeleted = true")
     Page<SocieteContact> findSocieteContactsDeletedBySocieteId(Integer societeId, Specification<SocieteContact> societeContact, Pageable pageable);
+    @Query("select sc from SocieteContact sc where sc.societeContactId.contact.id =: contactId")
+    SocieteContact findSocieteContactByContactId(@Param("contactId")Integer contactId);
 
 
 }

@@ -1,7 +1,7 @@
 package com.sigmap.common.ref_params;
 
 
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.RefType;
@@ -99,7 +99,34 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public void delete(Integer id) {
+    public void delete(Integer id) throws RefParamHasAssociatedCom,
+            RefParamHasAssociatedCompteBancaire,
+            RefParamHasAssociatedSociete,
+            RefParamHasAssociatedSocieteAddress {
+        boolean hasAssociatedCom = repository.hasAssociatedCom(id);
+        if (hasAssociatedCom) {
+            throw new RefParamHasAssociatedCom("",id);
+        }
+        boolean hasAssociatedCompteBancaire = repository.hasAssociatedCompteBancaire(id);
+        if (hasAssociatedCompteBancaire) {
+            throw new RefParamHasAssociatedCompteBancaire("",id);
+        }
+
+        boolean hasAssociatedSociete = repository.hasAssociatedSociete(id);
+        if (hasAssociatedSociete) {
+            throw new RefParamHasAssociatedSociete("",id);
+        }
+        boolean hasAssociatedSocieteAddress = repository.hasAssociatedSocieteAddress(id);
+        if (hasAssociatedSocieteAddress) {
+            throw new RefParamHasAssociatedSocieteAddress("",id);
+        }
+
         repository.softDelete(id);
+    }
+
+    @Override
+    public List<RefParam> findByRefType(Integer refTpeId) throws RefTypeNotFound {
+        refTypeService.findById(refTpeId);
+       return repository.findByRefType(refTpeId);
     }
 }

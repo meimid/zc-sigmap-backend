@@ -1,6 +1,7 @@
 package com.sigmap.common.lots;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
@@ -34,6 +35,7 @@ public class Lot extends BaseEntity{
     @EqualsAndHashCode.Exclude
     @ToString.Exclude
     @JsonBackReference
+    @JsonIgnore
     private Set<Realisation> realisations;
 
 }

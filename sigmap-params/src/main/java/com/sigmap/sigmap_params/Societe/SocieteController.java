@@ -1,21 +1,41 @@
 package com.sigmap.sigmap_params.Societe;
 
+import com.sigmap.common.compte_bancaire.CompteBancaire;
+import com.sigmap.common.compte_bancaire.CompteBancaireService;
+import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
+import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
+import com.sigmap.common.compte_bancaire.response.CompteBancaireResponseDto;
 import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.ContactService;
 import com.sigmap.common.contact.Mapper.ContactMapper;
+import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.response.ContactResponse;
+import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
+import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteQuery;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.response.SocieteResponse;
+import com.sigmap.common.societe_address.SocieteAddress;
+import com.sigmap.common.societe_address.SocieteAddressService;
+import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
+import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
+import com.sigmap.common.societe_address.response.SocieteAddressResponse;
+import com.sigmap.common.societe_address.response.SocieteAdressResponseDto;
+import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
 import com.sigmap.common.societe_contact.Response.SocieteContactResponse;
+import com.sigmap.common.societe_contact.Response.SocieteContactResponseDto;
 import com.sigmap.common.societe_contact.SocieteContact;
 import com.sigmap.common.societe_contact.SocieteContactService;
+import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +47,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+
 @RestController
 @RequestMapping("/api/societe")
 
@@ -34,10 +55,16 @@ public class SocieteController {
     private final Logger logger = LoggerFactory.getLogger(SocieteController.class);
     private final SocieteService societeService;
     private final  SocieteContactService societeContactService;
+    private final SocieteAddressService societeAddressService;
+    private final CompteBancaireService  compteBancaireService;
+    private final ContactService contactService;
 
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService) {
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, SocieteAddressService societeAddressService, CompteBancaireService compteBancaireService, ContactService contactService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
+        this.societeAddressService = societeAddressService;
+        this.compteBancaireService = compteBancaireService;
+        this.contactService = contactService;
     }
 
     /**
@@ -114,7 +141,7 @@ public class SocieteController {
      * @return the deleted Societe
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id) {
+    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id)  {
         societeService.delete(id);
 
         Societe deleted = societeService.findDeletedById(id)
@@ -141,16 +168,17 @@ public class SocieteController {
      * @return a page of SocieteContact
      */
     @GetMapping("/{societeId}/contact")
-    public ResponseEntity<Page<ContactResponse>> findAll(@PathVariable Integer societeId,
+    public ResponseEntity<Page<SocieteContactResponseDto>> findAll(@PathVariable Integer societeId,
                                                          SocieteContactQuery query, Pageable pageable) {
-        Page<Contact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
-        Page<ContactResponse> contactResponses = params.map(ContactMapper.INSTANCE::map);
+        Page<SocieteContact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
+        Page<SocieteContactResponseDto> contactResponses = params.map(SociteContactMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(contactResponses);
     }
 
 
     @GetMapping("/{societeId}/contact/deleted")
-    public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) {
+    public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) throws SocieteNotFound {
+
         Page<Contact> params = societeContactService.findAllDeleted(societeId,query.toSpecification(), pageable);
         Page<ContactResponse> ContactResponse = params.map(ContactMapper.INSTANCE::map);
         return ResponseEntity.ok(ContactResponse);
@@ -158,9 +186,9 @@ public class SocieteController {
 
     // a verifier fi url wella kifech taccedi li contact avec id x
     @GetMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) {
+    public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) throws SocieteContactNotFound {
         SocieteContact param = societeContactService.findByIds(societeId,contactId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new SocieteContactNotFound("",societeId,contactId));
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -174,7 +202,7 @@ public class SocieteController {
     }
 
     @PutMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteContactNotFound{
         SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -182,12 +210,70 @@ public class SocieteController {
     }
 
     @DeleteMapping("/{idSociete}/contact/{idContact}")
-    public ResponseEntity<SocieteContactResponse> deleteById(@PathVariable Integer idSociete,@PathVariable Integer idContact) {
+    public ResponseEntity<SocieteContactResponse> deleteById(@PathVariable Integer idSociete,@PathVariable Integer idContact)throws ContactNotFound, SocieteContactNotFound {
         societeContactService.delete(idSociete,idContact);
         SocieteContact deleted = societeContactService.findDeletedByIds(idSociete,idContact)
                 .orElseThrow();
+        contactService.delete(idContact);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
+    }
+// create Contact with Socicete Id
+@PostMapping("/{societeId}/contact")
+public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Integer societeId,@RequestBody ContactAndSocieteContactRequest request) throws RuntimeException, SocieteNotFound {
+    SocieteContact societeContact = societeContactService.createContactAndSocieteContact(societeId,request);
+    SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+}
+
+    // create Adress with Socicete Id
+    @PostMapping("/{societeId}/societe_address")
+    public ResponseEntity<SocieteAddressResponse> createAdress(@PathVariable Integer societeId, @RequestBody SocieteAdressUnderSocieteRequest request) throws RuntimeException, SocieteNotFound,RefParamNotFound {
+        SocieteAddress SocieteAddress = societeAddressService.createUnderSociete(societeId,request);
+        SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // create CompteBancaire with Socicete Id
+    @PostMapping("/{societeId}/compte_bancaire")
+    public ResponseEntity<CompteBancaireResponse> createCompteBancaire(@PathVariable Integer societeId, @RequestBody CompteBancaireUnderSocieteRequest request) throws RuntimeException, SocieteNotFound,RefParamNotFound {
+        CompteBancaire compteBancaire = compteBancaireService.createUnderSociete(societeId,request);
+        CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(compteBancaire);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // get list of compte bancaire under societe
+    @GetMapping("/{societeId}/compte_bancaire")
+    public ResponseEntity<Page<CompteBancaireResponseDto>> findCompteBancaireListBySocieteId(@PathVariable Integer societeId,Pageable pageable) throws SocieteNotFound {
+        Page<CompteBancaire> params=compteBancaireService.findCompteBancaireListBySocieteId(societeId,pageable);
+        Page<CompteBancaireResponseDto> compteBancaireResponses = params.map(CompteBancaireMapper.INSTANCE::mapToDtoResponse);
+        return ResponseEntity.ok(compteBancaireResponses);
+
+
+    }
+
+    // get list of contact under societe
+    @GetMapping("/{societeId}/contact_list")
+    public ResponseEntity<Page<ContactResponseDto>> findContactsBySocieteId(@PathVariable Integer societeId, Pageable pageable) throws SocieteNotFound {
+        Page<Contact> params = contactService.findContactsBySocieteId(societeId, pageable);
+        Page<ContactResponseDto> contactResponses = params.map(ContactMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(contactResponses);
+    }
+
+    //get list of societe adress by societe by societe id
+    @GetMapping("/{societeId}/societe_address")
+    public ResponseEntity<Page<SocieteAdressResponseDto>> findSocieteAdressySocieteId(@PathVariable Integer societeId, Pageable pageable) throws SocieteNotFound {
+        Page<SocieteAddress> params = societeAddressService.findSocieteAddressBySocieteId(societeId, pageable);
+        Page<SocieteAdressResponseDto> SocieteAdressResponset = params.map(SocieteAddressMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(SocieteAdressResponset);
+    }
+
+    @PutMapping("/{societeId}/contact/{contactId}/societe-contact")
+    public ResponseEntity<SocieteContactResponseDto> updateContactAndSocieteContact(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody ContactAndSocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
+        SocieteContact param = societeContactService.updateContactAndSocieteContact(societeId,contactId,request);
+        SocieteContactResponseDto response = SociteContactMapper.INSTANCE.mapToDto(param);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+
     }
 
 }

@@ -1,6 +1,7 @@
 package com.sigmap.common.realisations.request;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 
@@ -35,5 +36,6 @@ public class RealisationRequest {
     private List<CompositeId> paaIds;
     private Set<CompositeId> lotIds;
     private List<Integer> docIds;
+    private Set<LotResponse> lots;
 
 }
