@@ -3,10 +3,7 @@ package com.sigmap.sigmap_paa.exeptions;
 
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
-import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -115,5 +112,13 @@ public class GlobalExceptionHandler {
         response.put("version", ex.getVersion());
         response.put("limit", ex.getLimit());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    @ExceptionHandler(PaaCurrentYearNotFound.class)
+    public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(PaaCurrentYearNotFound ex) {
+        String message = messageSource.getMessage("paa.notFound.CuurentYear",new Object[] {ex.getCurrentYear()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
     }
 }
