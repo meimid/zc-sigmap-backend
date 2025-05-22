@@ -1,10 +1,7 @@
 package com.sigmap.common.ref_types;
 
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
-import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
-import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
-import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
+import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
@@ -59,7 +56,11 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public RefType findById(Integer id) throws RefTypeNotFound {
-    return repository.findById(id).orElseThrow(() -> new RefTypeNotFound("",id));
+    RefType refType = repository.findById(id).orElseThrow(() -> new RefTypeNotFound("",id));
+    if(refType.getIsDeleted()){
+      throw new RefTypeNotFound("",id);
+    }
+    return refType;
   }
 
   @Override
@@ -86,8 +87,7 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public RefType update(RefTypeRequest request) throws RefTypeNotFound {
-    RefType refType = repository.findById(request.getId())
-            .orElseThrow(() -> new RefTypeNotFound("",request.getId()));
+    RefType refType = findById(request.getId());
     RefTypeMapper.INSTANCE.updateFromRequest(request, refType);
     return save(refType);
   }

@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
@@ -96,7 +97,7 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound {
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted {
         Ac ac = acService.create(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
@@ -108,7 +109,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException,ComDeleted{
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
