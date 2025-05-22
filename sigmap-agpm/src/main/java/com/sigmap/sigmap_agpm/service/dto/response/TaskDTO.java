@@ -23,6 +23,8 @@ public class TaskDTO {
     private Map<String, Object> traceability;
     private Integer id;
     private Integer version;
+    private String nom;
+    private String ref;
     private Integer newStatus;
     private Boolean validate;
     private String status;
