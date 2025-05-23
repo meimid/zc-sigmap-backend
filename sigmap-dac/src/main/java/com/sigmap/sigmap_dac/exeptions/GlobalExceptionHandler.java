@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.exeptions;
+package com.sigmap.sigmap_dac.exeptions;
 
 
 import com.sigmap.common.dac.exeption.*;

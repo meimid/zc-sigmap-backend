@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa;
+package com.sigmap.sigmap_dac;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

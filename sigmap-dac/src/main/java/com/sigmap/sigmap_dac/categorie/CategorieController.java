@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.categorie;
+package com.sigmap.sigmap_dac.categorie;
 
 import com.sigmap.common.categorie.Categorie;
 import com.sigmap.common.categorie.CategorieService;

@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa;
+package com.sigmap.sigmap_dac;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

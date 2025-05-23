@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa;
+package com.sigmap.sigmap_dac;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;

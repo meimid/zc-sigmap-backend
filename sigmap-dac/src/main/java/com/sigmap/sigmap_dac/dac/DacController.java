@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.dac;
+package com.sigmap.sigmap_dac.dac;
 
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.exeption.RequiredDacIDAndVersion;

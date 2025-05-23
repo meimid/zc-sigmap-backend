@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.config;
+package com.sigmap.sigmap_dac.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

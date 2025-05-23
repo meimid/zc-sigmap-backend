@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_paa.config;
+package com.sigmap.sigmap_dac.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
