@@ -1,57 +1,48 @@
 package com.sigmap.sigmap_paa.dac;
 
 import com.sigmap.common.dac.DacServiceImpl;
-import com.sigmap.common.dac.request.PdfDacRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import com.sigmap.common.dac.exeption.RequiredDacIDAndVersion;
+import com.sigmap.common.dac.exeption.RequiredPath;
+import com.sigmap.common.dac.request.DacRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.OutputStream;
 
 @RestController
 @RequestMapping("/api/dac")
-@AllArgsConstructor
 public class DacController {
 
-    @Autowired
-    DacServiceImpl dacService;
+    private final DacServiceImpl dacService;
 
+    @Value("${templateDac.dac.inputDocPath}")
+    private String basePath;
+
+    @Value("${templateDac.dac.outputDocPath}")
+    private String customDirPath;
+
+    public DacController(DacServiceImpl dacService) {
+        this.dacService = dacService;
+    }
 
     @PostMapping("/pdf")
-    public void generatePdfPost(@RequestBody PdfDacRequest request, HttpServletResponse response) {
-        try {
-            // Step 1: Generate PDF and get the output file
-            File pdfFile = dacService.replaceBookmarksAndGeneratePDF(request.getDacId(), request.getDacVer());
+    public void generatePdfPost(@RequestBody DacRequest request) {
 
-            // Step 2: Read generated PDF file
-            if (!pdfFile.exists()) {
-                throw new RuntimeException("PDF file not found: " + pdfFile.getAbsolutePath());
-            }
+       //log.debug("Dac id is : {} , dac version is : {} , input path is : {} and output path is : {}", request.getDacId(), request.getDacVer(), basePath,customDirPath);
 
-            InputStreamResource resource = new InputStreamResource(new FileInputStream(pdfFile));
-
-            // Step 3: Write to HTTP response
-            response.setContentType("application/pdf");
-            response.setHeader("Content-Disposition", "attachment; filename=dac_" + request.getDacId() + "_" + request.getDacVer() + ".pdf");
-            try (FileInputStream fis = new FileInputStream(pdfFile);
-                 OutputStream os = response.getOutputStream()) {
-                fis.transferTo(os);
-                os.flush();
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error generating PDF", e);
+        if (request.getDacId() == null || request.getDacVer() == null) {
+            throw new RequiredDacIDAndVersion();
         }
+
+        if ((basePath == null || basePath.isEmpty()) || (customDirPath == null || customDirPath.isEmpty())) {
+            throw new RequiredPath();
+        }
+
+        // Step 1: Generate and get the output file
+        File pdfFile = dacService.replaceBookmarksAndGenerateDOC(request.getDacId(), request.getDacVer(),this.basePath, customDirPath);
 
     }
 

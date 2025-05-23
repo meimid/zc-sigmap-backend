@@ -1,17 +1,19 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.dac.exeption.InputFileDocument;
+import com.sigmap.common.dac.exeption.LoadDocumentExeption;
+import com.sigmap.common.dac.exeption.SaveTempDocument;
+import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs_fields.DynaDocsFields;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,60 +22,67 @@ import java.util.Optional;
 
 @Slf4j
 @Service
+@AllArgsConstructor
 public class DacServiceImpl implements DacService {
 
-    @Autowired
-    DacRepository dacDocsRepository;
-
-    @Autowired
-    private DynaDocsRepository dynaDocsRepository;
-
+    private final DacRepository dacDocsRepository;
+    private final  DynaDocsRepository dynaDocsRepository;
 
     @Override
-    public File replaceBookmarksAndGeneratePDF(Integer dacId, Integer dacVersion) throws Exception {
+    public File replaceBookmarksAndGenerateDOC(Integer dacId, Integer dacVersion ,String basePath, String customDirPath ) {
+        log.debug("Dac id is : {} , dac version is : {} , input path is : {} and output path is : {}", dacId, dacVersion, basePath,customDirPath);
 
-
+        // get template file name from database by dacId and dacVersion
         String templateFileName = getTemplateFileName(dacId, dacVersion);
-        if (templateFileName == null) {
-            throw new IllegalArgumentException("No document found for dacId: " + dacId + ", dacVersion: " + dacVersion);
+
+
+        if (templateFileName == null || templateFileName.isEmpty()) {
+            throw new TemplateFileNameNotFound( dacId , dacVersion);
         }
 
-        log.info("template file name is : ---- : " + templateFileName);
+        log.debug("template file name is : ---- : " + templateFileName);
 
-
-        String basePath = "E:\\word\\templates\\";
         File file = new File(basePath + templateFileName);
-        FileInputStream resource = new FileInputStream(file);
 
-        // FileInputStream fis = new FileInputStream(resource.getFile());
+        FileInputStream resource = inputFileDocument(file);
+
         XWPFDocument document = loadDocument(resource);
 
         Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion);
         replaceBookmarks(document, bookmarks);
 
-        File tempDocxFile = saveTempDocument(document, templateFileName);
-
-        log.info("Generated PDF file: " + tempDocxFile);
-
-        return tempDocxFile; // <-- Return the generated PDF file
+        File tempDocxFile = saveTempDocument(document, templateFileName, customDirPath);
+        return tempDocxFile; // <-- Return the generated file
     }
 
     private String getTemplateFileName(Integer dacId, Integer dacVersion) {
         // Récupérer une entrée de dac_docs pour obtenir dyna_docs_id
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
         if (dacDocsList.isEmpty()) {
-            return null;
+            throw new TemplateFileNameNotFound( dacId, dacVersion);
         }
         // Prendre le premier dyna_docs_id (suppose que tous les dac_docs pour ce dac_id/dac_ver pointent vers le même dyna_docs)
         Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getDynaDocsId();
 
         // Récupérer le template_file_name depuis dyna_docs
         Optional<DynaDocs> dynaDocs = dynaDocsRepository.findById(dynaDocsId);
-        return dynaDocs.map(DynaDocs::getTemplateFileName).orElse(null);
+        return dynaDocs.map(DynaDocs::getTemplateFileName).orElseThrow(() -> new TemplateFileNameNotFound( dacId, dacVersion));
     }
 
-    private XWPFDocument loadDocument(FileInputStream fis) throws Exception {
-        return new XWPFDocument(fis);
+    private FileInputStream inputFileDocument (File file) {
+        try {
+            return new FileInputStream(file);
+        } catch (FileNotFoundException e) {
+            throw new InputFileDocument();
+        }
+    }
+
+    private XWPFDocument loadDocument(FileInputStream fis) {
+        try {
+            return new XWPFDocument(fis);
+        } catch (IOException e) {
+            throw new LoadDocumentExeption();
+        }
     }
 
     private Map<String, String> createBookmarkMap(Integer dacId, Integer dacVersion) {
@@ -92,8 +101,6 @@ public class DacServiceImpl implements DacService {
         }
         return bookmarks;
     }
-
-
 
     private void replaceBookmarks(XWPFDocument document, Map<String, String> bookmarks) {
         // Ne traiter que les paragraphes qui contiennent potentiellement des signets
@@ -114,9 +121,10 @@ public class DacServiceImpl implements DacService {
                     });
                 });
     }
-    private File saveTempDocument(XWPFDocument document, String docPath) throws Exception {
+
+    private File saveTempDocument(XWPFDocument document, String docPath, String customDirPath) {
         // Custom directory
-        String customDirPath = "E:\\word\\temp";
+       // String customDirPath = "E:\\word\\temp";
         File customDir = new File(customDirPath);
 
         // Create the directory if it doesn't exist
@@ -130,6 +138,9 @@ public class DacServiceImpl implements DacService {
         // Write the document to the file
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
             document.write(fos);
+        }
+        catch (IOException e) {
+            throw new SaveTempDocument();
         }
 
         return tempFile;

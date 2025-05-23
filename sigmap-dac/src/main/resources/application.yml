@@ -51,6 +51,12 @@ keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
 
+keycloak-admin:
+  server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
+  realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+
 # Flowable: use a dedicated database
 flowable:
   use-default-data-source: false
@@ -72,3 +78,8 @@ alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
   username: ${ALFRESCO_USERNAME:admin}
   password: ${ALFRESCO_PASSWORD:admin}
+
+templateDac:
+  dac:
+    inputDocPath: ${INPUT_DAC_PATH:E:\\word\\templates\\}
+    outputDocPath: ${OUTPUT_DAC_PATH:E:\\word\\temp\\}

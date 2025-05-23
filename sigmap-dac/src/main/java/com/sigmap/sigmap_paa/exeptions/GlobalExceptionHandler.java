@@ -1,10 +1,8 @@
 package com.sigmap.sigmap_paa.exeptions;
 
 
+import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -14,7 +12,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -47,31 +44,50 @@ public class GlobalExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(PaaNotFound.class)
-    public ResponseEntity<ErrorResponse> paaNotFoundException(PaaNotFound ex) {
-        String message = messageSource.getMessage("paa.notfound",new Object[] {
-                        String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
-                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
-                getLocal());
+    @ExceptionHandler(TemplateFileNameNotFound.class)
+    public ResponseEntity<ErrorResponse> templateFileNameNotFoundExeption(TemplateFileNameNotFound ex) {
+        String message = messageSource.getMessage("dac.template.notFound",new Object[] {ex.getDacId(),ex.getDacVersion()},getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(PaaAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> paaNotFoundException(PaaAlreadyExistsException ex) {
-        String message = messageSource.getMessage("app.alreadyexists",new Object[] {ex.getId(), ex.getVersion()},getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RequiredDacIDAndVersion.class)
+    public ResponseEntity<ErrorResponse> requiredDacIDAndVersionException(RequiredDacIDAndVersion ex) {
+        String message = messageSource.getMessage("dac.required.idAndVersion",new Object[] {},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RequiredPath.class)
+    public ResponseEntity<ErrorResponse> RequiredPathException(RequiredPath ex) {
+        String message = messageSource.getMessage("dac.required.paths",new Object[] {},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(LoadDocumentExeption.class)
+    public ResponseEntity<ErrorResponse> RequiredPathException(LoadDocumentExeption ex) {
+        String message = messageSource.getMessage("dac.failed.LoadDocuments",new Object[] {},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(RealisationsMinimumRequirement.class)
-    public ResponseEntity<ErrorResponse> realisationsMinimumRequirementException(RealisationsMinimumRequirement ex) {
-        String message = messageSource.getMessage("realisation.some.not.found",new Object[] {}, getLocal());
+    @ExceptionHandler(InputFileDocument.class)
+    public ResponseEntity<ErrorResponse> inputFileDocumentException(InputFileDocument ex) {
+        String message = messageSource.getMessage("dac.failed.inputFileDocument",new Object[] {},getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SaveTempDocument.class)
+    public ResponseEntity<ErrorResponse> saveTempDocumentException(SaveTempDocument ex) {
+        String message = messageSource.getMessage("dac.failed.saveTempFile",new Object[] {},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
 
 
 
