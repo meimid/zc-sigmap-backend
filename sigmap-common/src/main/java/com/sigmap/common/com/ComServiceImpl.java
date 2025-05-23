@@ -84,12 +84,10 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public Com findById(Integer id) throws ComNotFound {
-        Com com=repository.findById(id)
+        Specification<Com> specification = ComSpecifications.id(id)
+                .and(ComSpecifications.deleted(false));
+        return findOne(specification)
                 .orElseThrow(() -> new ComNotFound("", List.of(id)));
-        if(com.getIsDeleted()){
-            throw new ComNotFound("", List.of(id));
-        }
-        return com;
     }
 
     @Override
@@ -241,10 +239,7 @@ public class ComServiceImpl implements ComService{
 
     @Override
     public void delete (Integer id) throws ComHasAssociatedAc {
-        boolean hasAssociatedAc = repository.hasAssociatedAc(id);
-        if (hasAssociatedAc) {
-            throw new ComHasAssociatedAc("",id);
-        }
+
         repository.softDelete(id);
     }
 }

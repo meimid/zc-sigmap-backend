@@ -11,7 +11,13 @@ import org.springframework.stereotype.Repository;
 public interface AcRepository extends JpaRepository<Ac, Integer>,
         JpaSpecificationExecutor<Ac>,
         SoftDeleteRepository<Ac, Integer> {
-    @Query("SELECT EXISTS (SELECT com FROM Com com JOIN com.acs ac WHERE ac.id = :acId and com.isDeleted=false and ac.isDeleted=false)")
-    boolean hasAssociatedCom(@Param("acId") Integer acId);
+   /* @Query("SELECT EXISTS (SELECT com FROM Com com JOIN com.acs ac WHERE ac.id = :acId and com.isDeleted=false and ac.isDeleted=false)")
+    boolean hasAssociatedCom(@Param("acId") Integer acId);*/
+   @Query("SELECT EXISTS (SELECT a FROM Agpm a WHERE a.ac.id = :acId and a.isDeleted=false)")
+   boolean hasAssociatedAgpm(@Param("acId") Integer acId);
+    @Query("SELECT EXISTS (SELECT p FROM Paa p WHERE p.ac.id = :acId and p.isDeleted=false)")
+    boolean hasAssociatedPaa(@Param("acId") Integer acId);
+    @Query("SELECT EXISTS (SELECT p FROM Ppm p WHERE p.ac.id = :acId and p.isDeleted=false)")
+    boolean hasAssociatedPpm(@Param("acId") Integer acId);
 }
 

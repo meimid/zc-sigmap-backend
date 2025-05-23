@@ -70,13 +70,11 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public RefParam findById(Integer id) throws RefParamNotFound  {
-        RefParam refParam= repository.findById(id)
-                .orElseThrow(() -> new RefParamNotFound("",List.of(id)));
-        if(refParam.getIsDeleted()){
-            throw new RefParamNotFound("",List.of(id));
-        }
-        return refParam;
+    public RefParam findById(Integer id) throws RefParamNotFound {
+        Specification<RefParam> specification = RefParamSpecifications.id(id)
+                .and(RefParamSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new RefParamNotFound("", List.of(id)));
     }
 
     @Override
@@ -109,7 +107,9 @@ public class RefParamServiceImpl implements RefParamService {
     public void delete(Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
-            RefParamHasAssociatedSocieteAddress {
+            RefParamHasAssociatedSocieteAddress,
+            HasAssociatedPpm, HasAssociatedPaa,
+            HasAssociatedAgpm,HasAssociatedRefRealisation{
         boolean hasAssociatedCom = repository.hasAssociatedCom(id);
         if (hasAssociatedCom) {
             throw new RefParamHasAssociatedCom("",id);
@@ -127,6 +127,23 @@ public class RefParamServiceImpl implements RefParamService {
         if (hasAssociatedSocieteAddress) {
             throw new RefParamHasAssociatedSocieteAddress("",id);
         }
+        boolean hasAssociatedPpm = repository.hasAssociatedPpm(id);
+        if (hasAssociatedPpm) {
+            throw new HasAssociatedPpm("",id);
+        }
+        boolean hasAssociatedPaa = repository.hasAssociatedPaa(id);
+        if (hasAssociatedPaa) {
+            throw new HasAssociatedPaa("",id);
+        }
+        boolean hasAssociatedAgpm = repository.hasAssociatedAgpm(id);
+        if (hasAssociatedAgpm) {
+            throw new HasAssociatedAgpm("",id);
+        }
+        boolean hasAssociatedRealisation = repository.hasAssociatedRealisation(id);
+        if (hasAssociatedRealisation) {
+            throw new HasAssociatedRefRealisation("",id);
+        }
+
 
         repository.softDelete(id);
     }
@@ -144,7 +161,7 @@ public class RefParamServiceImpl implements RefParamService {
         if(refParam.getIsDeleted()){
             throw new RefParamNotFound("",List.of(refPramId));
         }
-        return  repository.findByIdAndRefType_Id(refPramId, refTypeId).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
+        return  refParam;
     }
 
     @Override

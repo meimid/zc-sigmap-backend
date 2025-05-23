@@ -10,6 +10,11 @@ public class DocsSpecifications {
             return criteriaBuilder.equal(root.get("id"), id);
         };
     }
+    public  static  Specification<Docs> alfrescoId(String alfrescoId) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.equal(root.get("alfresco_id"), alfrescoId);
+        };
+    }
 
     /** deleted. */
 
