@@ -5,10 +5,7 @@ import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
-import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
@@ -136,7 +133,7 @@ public interface PaaService {
      * @param paaId  the first part of the composite ID (paa_id)
      * @param paaVer the second part of the composite ID (paa_ver)
      */
-    void delete(Integer paaId, Integer paaVer);
+    void delete(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete, PaaInvalidStatusException;
 
     Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException;
 

@@ -1,7 +1,10 @@
 package com.sigmap.sigmap_paa.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.agpm.mappers.AgpmMapper;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
@@ -313,7 +316,7 @@ public class PaaFlowableService {
      *
      * @param id The Agpm ID
      * @return ProcessStartResponseDTO with the process details
-     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws PaaNotFound if the Agpm entity is not found
      */
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id) throws  PaaNotFound {
@@ -342,8 +345,19 @@ public class PaaFlowableService {
             taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
+
+            if (id != null && version != null) {
+                Optional<Paa> paaOptional = paaService.findById(id, version);
+                paaOptional.ifPresent(paa -> {
+                    taskInfo.setId(id);
+                    taskInfo.setVersion(version);
+                    taskInfo.setNom(paa.getNom());
+                    taskInfo.setRef(paa.getRef());
+                });
+            }
+
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -422,11 +436,11 @@ public class PaaFlowableService {
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        List<PaaResponseWithRealisations> paaResponseWithRealisations = List.of();
+        PaaResponseWithRealisations paaResponseWithRealisations = null;
         if (id != null && version != null) {
-            Optional<Paa> relatedAgpmOptional = paaService.findById(id, version);
-            if (relatedAgpmOptional.isPresent()) {
-                Paa paa = relatedAgpmOptional.get();
+            Optional<Paa> relatedPaaOptional = paaService.findById(id, version);
+            if (relatedPaaOptional.isPresent()) {
+                Paa paa = relatedPaaOptional.get();
                 // Filter out deleted documents
                 if (paa.getDocs() != null) {
                     List<Docs> nonDeletedDocs = paa.getDocs().stream()
@@ -434,10 +448,10 @@ public class PaaFlowableService {
                             .collect(Collectors.toList());
                     paa.setDocs(nonDeletedDocs);
                 }
-                paaResponseWithRealisations = List.of(PaaDetailedMapper.INSTANCE.mapDetailed(paa));
+                paaResponseWithRealisations = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
             }
         }
-        response.setPaas(paaResponseWithRealisations);
+        response.setPaa(paaResponseWithRealisations);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -513,7 +527,7 @@ public class PaaFlowableService {
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Complete");
+                            nextStep.setActionLabel("Passer pour validation");
                             nextSteps.add(nextStep);
                             log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, "Complete");
                         }
@@ -730,8 +744,18 @@ public class PaaFlowableService {
             taskInfo.setCandidateGroup(getCandidateGroup(task));
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
+
+            if (id != null && version != null) {
+                Optional<Paa> paaOptional = paaService.findById(id, version);
+                paaOptional.ifPresent(paa -> {
+                    taskInfo.setId(id);
+                    taskInfo.setVersion(version);
+                    taskInfo.setNom(paa.getNom());
+                    taskInfo.setRef(paa.getRef());
+                });
+            }
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
