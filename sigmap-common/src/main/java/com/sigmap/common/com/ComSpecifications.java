@@ -26,7 +26,9 @@ public class ComSpecifications {
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
                     criteriaBuilder.like(ac.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ac.get("ancrage"), "%" + search + "%"),
-                    criteriaBuilder.like(ac.get("contact"), "%" + search + "%")
+                    criteriaBuilder.like(ac.get("contact"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%")
+
             );
         };
     }

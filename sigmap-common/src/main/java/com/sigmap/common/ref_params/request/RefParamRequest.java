@@ -9,4 +9,6 @@ public class RefParamRequest {
   private String description;
 
   private Integer refTypeId;
+
+  private String codeColor;
 }
