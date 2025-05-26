@@ -120,6 +120,7 @@ public class RealisationServiceImpl implements RealisationService {
     @Transactional
     @Override
     public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+        log.info("Starting create with request: {}", request);
         Integer id = request.getId();
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
@@ -127,21 +128,24 @@ public class RealisationServiceImpl implements RealisationService {
         // Generate ID if not provided
         if (id == null) {
             id = repository.findMaxId() + 1;
-            System.out.println("Generated Realisation ID: " + id);
+            log.info("Generated Realisation ID: {}", id);
         }
 
         CompositeId compositeId = new CompositeId(id, version);
+        log.info("CompositeId: {}", compositeId);
 
         // Check if realisation already exists
         if (repository.existsById(compositeId)) {
             throw new RealisationAlreadyExistsException(
-                    "Realisation with ID " + id + " and version " + version + " already exists in the database.",List.of(id), List.of(version));
+                    "Realisation with ID " + id + " and version " + version + " already exists in the database.",
+                    List.of(id), List.of(version));
         }
 
         // Map request to entity
         Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
         realisation.setId(compositeId.getId());
         realisation.setVersion(version);
+        log.info("Realisation after mapping: {}", realisation);
 
         // Set empty associations initially
         realisation.setPaas(new ArrayList<>());
@@ -151,43 +155,32 @@ public class RealisationServiceImpl implements RealisationService {
 
         // Fetch and set RefParam associations
         if (request.getService() != null) {
+            log.info("Fetching Service with ID: {}", request.getService().getId());
             realisation.setService(refParamRepository.findById(request.getService().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Service not found")));
         }
         if (request.getDirection() != null) {
+            log.info("Fetching Direction with ID: {}", request.getDirection().getId());
             realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
         }
         if (request.getSourceFinancement() != null) {
+            log.info("Fetching SourceFinancement with ID: {}", request.getSourceFinancement().getId());
             realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
         }
-        if (request.getMonais() != null) {
-            realisation.setMonais(refParamRepository.findById(request.getMonais().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-        }
-        if (request.getTypeMarcher() != null) {
-            realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
-        }
-        if (request.getModeSelection() != null) {
-            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
-        }
-
-        // Save entity first (without associations)
-        Realisation savedRealisation = repository.save(realisation);
+        // Similar logging for monais, typeMarcher, modeSelection
 
         // Fetch associated PAAs if needed
         if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
             List<Paa> paas = request.getPaaIds().stream()
-                    .peek(paaId -> System.out.println("Associating PAA ID: " + paaId.getId() + ", Version: " + paaId.getVersion()))
+                    .peek(paaId -> log.info("Associating PAA ID: {}, Version: {}", paaId.getId(), paaId.getVersion()))
                     .map(paaId -> paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion())))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
-                    .collect(Collectors.toList());
-
-            savedRealisation.setPaas(paas);
+                    .collect(Collectors.toCollection(ArrayList::new));
+            realisation.getPaas().addAll(paas);
+            log.info("Associated PAAs: {}", paas);
         }
 
         // Fetch and set PPMs
@@ -196,43 +189,265 @@ public class RealisationServiceImpl implements RealisationService {
                     .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
                     .filter(Optional::isPresent)
                     .map(Optional::get)
-                    .toList();
-            savedRealisation.setPpms(ppms);
+                    .collect(Collectors.toCollection(ArrayList::new));
+            realisation.getPpms().addAll(ppms);
+            log.info("Associated PPMs: {}", ppms);
         }
 
-        // Handle Lots - both existing and new ones
+        // Handle Lots
         if (request.getLots() != null && !request.getLots().isEmpty()) {
             Set<Lot> lots = new HashSet<>();
-
             for (LotResponse lotResponse : request.getLots()) {
                 if (lotResponse.getId() != null) {
-                    // Existing lot - fetch it
                     lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
                             .ifPresent(lots::add);
                 } else {
-                    // New lot - create it
                     Lot newLot = new Lot();
                     newLot.setDescription(lotResponse.getDescription());
-                    newLot.setVersion(1); // First version
-
-                    // Generate new ID if not provided
+                    newLot.setVersion(1);
                     Integer lotId = lotRepository.findMaxId() + 1;
                     newLot.setId(lotId);
-
-                    // Save the new lot
                     Lot savedLot = lotRepository.save(newLot);
                     lots.add(savedLot);
                 }
             }
-
-            savedRealisation.setLots(lots);
+            realisation.getLots().addAll(lots);
+            log.info("Associated Lots: {}", lots);
         }
 
-        ///TODO:add DOCs
+        log.info("Realisation before save: {}", realisation);
 
-        // Save again with associations
-        return repository.save(savedRealisation);
+        // Save entity with all associations
+        Realisation savedRealisation = repository.save(realisation);
+        log.info("Saved Realisation: {}", savedRealisation);
+
+        return savedRealisation;
     }
+
+//    @Transactional
+//    @Override
+//    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+//        Integer id = request.getId();
+//        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+//        request.setVersion(version);
+//
+//        // Generate ID if not provided
+//        if (id == null) {
+//            id = repository.findMaxId() + 1;
+//            System.out.println("Generated Realisation ID: " + id);
+//        }
+//
+//        CompositeId compositeId = new CompositeId(id, version);
+//
+//        // Check if realisation already exists
+//        if (repository.existsById(compositeId)) {
+//            throw new RealisationAlreadyExistsException(
+//                    "Realisation with ID " + id + " and version " + version + " already exists in the database.",
+//                    List.of(id), List.of(version));
+//        }
+//
+//        // Map request to entity
+//        Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
+//        realisation.setId(compositeId.getId());
+//        realisation.setVersion(version);
+//
+//        // Set empty associations initially
+//        realisation.setPaas(new ArrayList<>());
+//        realisation.setPpms(new ArrayList<>());
+//        realisation.setLots(new HashSet<>());
+//        realisation.setDocs(new ArrayList<>());
+//
+//        // Fetch and set RefParam associations
+//        if (request.getService() != null) {
+//            realisation.setService(refParamRepository.findById(request.getService().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
+//        }
+//        if (request.getDirection() != null) {
+//            realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
+//        }
+//        if (request.getSourceFinancement() != null) {
+//            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+//        }
+//        if (request.getMonais() != null) {
+//            realisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+//        }
+//        if (request.getTypeMarcher() != null) {
+//            realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
+//        }
+//        if (request.getModeSelection() != null) {
+//            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+//        }
+//
+//        // Fetch associated PAAs if needed
+//        if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
+//            List<Paa> paas = request.getPaaIds().stream()
+//                    .peek(paaId -> System.out.println("Associating PAA ID: " + paaId.getId() + ", Version: " + paaId.getVersion()))
+//                    .map(paaId -> paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion())))
+//                    .filter(Optional::isPresent)
+//                    .map(Optional::get)
+//                    .collect(Collectors.toCollection(ArrayList::new));
+//            realisation.getPaas().addAll(paas);
+//        }
+//
+//        // Fetch and set PPMs
+//        if (request.getPpmIds() != null) {
+//            List<Ppm> ppms = request.getPpmIds().stream()
+//                    .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
+//                    .filter(Optional::isPresent)
+//                    .map(Optional::get)
+//                    .collect(Collectors.toCollection(ArrayList::new));
+//            realisation.getPpms().addAll(ppms);
+//        }
+//
+//        // Handle Lots - both existing and new ones
+//        if (request.getLots() != null && !request.getLots().isEmpty()) {
+//            Set<Lot> lots = new HashSet<>();
+//            for (LotResponse lotResponse : request.getLots()) {
+//                if (lotResponse.getId() != null) {
+//                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+//                            .ifPresent(lots::add);
+//                } else {
+//                    Lot newLot = new Lot();
+//                    newLot.setDescription(lotResponse.getDescription());
+//                    newLot.setVersion(1);
+//                    Integer lotId = lotRepository.findMaxId() + 1;
+//                    newLot.setId(lotId);
+//                    Lot savedLot = lotRepository.save(newLot);
+//                    lots.add(savedLot);
+//                }
+//            }
+//            realisation.getLots().addAll(lots);
+//        }
+//
+//        System.out.println("Realisation: " + realisation.toString());
+//
+//        // TODO: Add DOCs handling if needed
+//
+//        // Save entity with all associations
+//        return repository.save(realisation);
+//    }
+
+//    @Transactional
+//    @Override
+//    public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+//        Integer id = request.getId();
+//        Integer version = request.getVersion() != null ? request.getVersion() : 1;
+//        request.setVersion(version);
+//
+//        // Generate ID if not provided
+//        if (id == null) {
+//            id = repository.findMaxId() + 1;
+//            System.out.println("Generated Realisation ID: " + id);
+//        }
+//
+//        CompositeId compositeId = new CompositeId(id, version);
+//
+//        // Check if realisation already exists
+//        if (repository.existsById(compositeId)) {
+//            throw new RealisationAlreadyExistsException(
+//                    "Realisation with ID " + id + " and version " + version + " already exists in the database.",List.of(id), List.of(version));
+//        }
+//
+//        // Map request to entity
+//        Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
+//        realisation.setId(compositeId.getId());
+//        realisation.setVersion(version);
+//
+//        // Set empty associations initially
+//        realisation.setPaas(new ArrayList<>());
+//        realisation.setPpms(new ArrayList<>());
+//        realisation.setLots(new HashSet<>());
+//        realisation.setDocs(new ArrayList<>());
+//
+//        // Fetch and set RefParam associations
+//        if (request.getService() != null) {
+//            realisation.setService(refParamRepository.findById(request.getService().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
+//        }
+//        if (request.getDirection() != null) {
+//            realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
+//        }
+//        if (request.getSourceFinancement() != null) {
+//            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+//        }
+//        if (request.getMonais() != null) {
+//            realisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+//        }
+//        if (request.getTypeMarcher() != null) {
+//            realisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
+//        }
+//        if (request.getModeSelection() != null) {
+//            realisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+//        }
+//
+//        // Save entity first (without associations)
+//        Realisation savedRealisation = repository.save(realisation);
+//
+//        // Fetch associated PAAs if needed
+//        if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
+//            List<Paa> paas = request.getPaaIds().stream()
+//                    .peek(paaId -> System.out.println("Associating PAA ID: " + paaId.getId() + ", Version: " + paaId.getVersion()))
+//                    .map(paaId -> paaRepository.findById(new CompositeId(paaId.getId(), paaId.getVersion())))
+//                    .filter(Optional::isPresent)
+//                    .map(Optional::get)
+//                    .collect(Collectors.toList());
+//
+//            savedRealisation.setPaas(paas);
+//        }
+//
+//        // Fetch and set PPMs
+//        if (request.getPpmIds() != null) {
+//            List<Ppm> ppms = request.getPpmIds().stream()
+//                    .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
+//                    .filter(Optional::isPresent)
+//                    .map(Optional::get)
+//                    .toList();
+//            savedRealisation.setPpms(ppms);
+//        }
+//
+//        // Handle Lots - both existing and new ones
+//        if (request.getLots() != null && !request.getLots().isEmpty()) {
+//            Set<Lot> lots = new HashSet<>();
+//
+//            for (LotResponse lotResponse : request.getLots()) {
+//                if (lotResponse.getId() != null) {
+//                    // Existing lot - fetch it
+//                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+//                            .ifPresent(lots::add);
+//                } else {
+//                    // New lot - create it
+//                    Lot newLot = new Lot();
+//                    newLot.setDescription(lotResponse.getDescription());
+//                    newLot.setVersion(1); // First version
+//
+//                    // Generate new ID if not provided
+//                    Integer lotId = lotRepository.findMaxId() + 1;
+//                    newLot.setId(lotId);
+//
+//                    // Save the new lot
+//                    Lot savedLot = lotRepository.save(newLot);
+//                    lots.add(savedLot);
+//                }
+//            }
+//
+//            savedRealisation.setLots(lots);
+//        }
+//
+//        ///TODO:add DOCs
+//
+//        // Save again with associations
+//        return repository.save(savedRealisation);
+//    }
 
     @Override
     public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException {

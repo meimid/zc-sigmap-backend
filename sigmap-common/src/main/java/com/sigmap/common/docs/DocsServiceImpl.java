@@ -1,5 +1,9 @@
 package com.sigmap.common.docs;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -9,14 +13,19 @@ import java.util.Optional;
 @Service
 public class DocsServiceImpl implements DocsService {
     private final DocsRepository repository;
+    private final AlfrescoService alfrescoService;
 
-    public DocsServiceImpl(DocsRepository repository) {
+    public DocsServiceImpl(DocsRepository repository, AlfrescoService alfrescoService) {
         this.repository = repository;
+        this.alfrescoService = alfrescoService;
     }
 
     @Override
-    public Optional<Docs> findById(Integer id) {
-        return repository.findById(id);
+    public Docs findById(Integer id) throws DocsNotFoundException {
+        Specification<Docs> specification = DocsSpecifications.id(id)
+                .and(DocsSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new DocsNotFoundException(""));
     }
 
 
@@ -53,5 +62,10 @@ public class DocsServiceImpl implements DocsService {
     @Override
     public Optional<Docs> findOne(Specification<Docs> specification) {
         return repository.findOne(specification);
+    }
+
+    @Override
+    public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
+        return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
 }

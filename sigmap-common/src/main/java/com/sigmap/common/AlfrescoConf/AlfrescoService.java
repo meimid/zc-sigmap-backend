@@ -505,8 +505,8 @@ public class AlfrescoService {
         String responseBody = response.getBody();
         JsonNode jsonNode = new ObjectMapper().readTree(responseBody);
         String nodeId = jsonNode.path("entry").path("id").asText(); // ID du document
-        String versionLabel = jsonNode.path("entry").path("versionLabel").asText(); // Version du document
-
+        String versionLabel = jsonNode.path("entry").path("properties").path("cm:versionLabel").asText(); // Version du document
+        System.out.println("------------------------------------------------"+versionLabel);
         // 9. Met à jour les propriétés du fichier téléchargé
         updateProperties(nodeId);
 

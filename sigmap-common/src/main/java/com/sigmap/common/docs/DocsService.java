@@ -1,6 +1,7 @@
 package com.sigmap.common.docs;
 
 
+import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
 import com.sigmap.common.docs.Docs;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -14,7 +15,7 @@ public interface DocsService {
      * @param id  The ID of the Docs entity
      * @return An Optional containing the Docs entity if found, or empty if not found
      */
-    Optional<Docs> findById(Integer id);
+    Docs findById(Integer id);
 
     /**
      * Soft deletes an Docs entity by its ID and version.
@@ -75,5 +76,6 @@ public interface DocsService {
      * @return the Docs with the given specification
      */
     Optional<Docs> findOne(Specification<Docs> specification);
+    Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId);
 
 }
