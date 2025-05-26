@@ -2,6 +2,28 @@
 
 -- changeset db:1732196145836-1
 
+
+-- Drop the existing dac table
+DROP TABLE `dac`;
+
+-- Create the updated dac table
+CREATE TABLE `dac` (
+       `dac_id` int NOT NULL AUTO_INCREMENT,
+       `dac_ver` int NOT NULL,
+       `ppm_id` int NULL,
+       `ppm_ver` int NULL,
+       `created_at` DATETIME(0) NULL,
+       `created_by` VARCHAR(100) NULL,
+       `updated_at` DATETIME(0) NULL,
+       `updated_by` VARCHAR(100) NULL,
+       `deleted_at` DATETIME(0) NULL,
+       `deleted_by` VARCHAR(100) NULL,
+       `is_deleted` TINYINT(1) NOT NULL DEFAULT FALSE,
+       PRIMARY KEY (`dac_id`, `dac_ver`),
+       CONSTRAINT `fk_dac_ppm` FOREIGN KEY (`ppm_id`, `ppm_ver`) REFERENCES `ppm` (`ppm_id`, `ppm_ver`) ON DELETE NO ACTION ON UPDATE NO ACTION
+);
+
+
 CREATE TABLE `dac_docs`
 (
     `dac_id`         int NOT NULL,
