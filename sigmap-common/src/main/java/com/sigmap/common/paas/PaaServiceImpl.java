@@ -658,6 +658,20 @@ public class PaaServiceImpl implements PaaService {
         return copyForResponse;
     }
 
+    private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
+        if (realisations == null) {
+            return false;
+        }
+
+        for (RealisationRequestForPaa real : realisations) {
+            if (real.getRealisationFiles() != null && !real.getRealisationFiles().isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     @Transactional
     @Override
     public Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
@@ -696,7 +710,17 @@ public class PaaServiceImpl implements PaaService {
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
 
-        // Check if files are present - if so, we'll always create a new version
+
+        // Check for new lots without IDs to force versioning
+        boolean hasNewLotsWithoutIds = false;
+        if (request.getRealisations() != null) {
+            for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
+                if (realisationDto.getLots() != null) {
+                    hasNewLotsWithoutIds |= realisationDto.getLots().stream().anyMatch(lot -> lot.getId() == null);
+                }
+            }
+        }
+// Check if files are present - if so, we'll always create a new version
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
             System.out.println("Files detected in request - will create new version regardless of other changes");
@@ -706,7 +730,8 @@ public class PaaServiceImpl implements PaaService {
             System.out.println("Previous request hash: " + previousRequestHash);
 
             // If this is the exact same request as the previous one, return the existing PAA without changes
-            if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged) {
+            boolean hasRealisationFiles = hasRealisationFiles(request.getRealisations());
+            if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged && !hasNewLotsWithoutIds && !hasRealisationFiles) {
                 System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
 
                 // Create a filtered copy for response
@@ -788,7 +813,7 @@ public class PaaServiceImpl implements PaaService {
                         }
 
                         CompositeId realisationId = new CompositeId(realisationDto.getId(), versionToUse);
-                        Realisation existingRealisation = realisationRepository.findById(realisationId).orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId() + " and version: " + realisationId.getVersion()));
+                        Realisation existingRealisation = realisationRepository.findById(realisationId).orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
 
                         System.out.println("Found existing Realisation: " + existingRealisation.getId() + " version " + existingRealisation.getVersion());
                         System.out.println("Current lots: " + (existingRealisation.getLots() != null ? existingRealisation.getLots().size() : "null"));
@@ -808,78 +833,85 @@ public class PaaServiceImpl implements PaaService {
                             Realisation updatedRealisation = realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
 
                             // Handle realisation files if provided
-                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
-                             try {
-                             System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
-                             " files for Realisation ID: " + updatedRealisation.getId() +
-                             " version: " + updatedRealisation.getVersion());
-                             processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
-                            // Save the realisation again after adding documents
-                             updatedRealisation = realisationRepository.save(updatedRealisation);
-                             System.out.println("Saved Realisation after processing files");
-                             } catch (IOException e) {
-                             System.err.println("Error processing Realisation files: " + e.getMessage());
-                             throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
-                             }                            }
+                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
+                                try {
+                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                            " files for Realisation ID: " + updatedRealisation.getId() +
+                                            " version: " + updatedRealisation.getVersion());
+                                    processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
+                                    // Save the realisation again after adding documents
+                                    updatedRealisation = realisationRepository.save(updatedRealisation);
+                                    System.out.println("Saved Realisation after processing files");
+                                } catch (IOException e) {
+                                    System.err.println("Error processing Realisation files: " + e.getMessage());
+                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
+                                }                            }
                             // Handle realisation document IDs if provided
-//                             if (realisationDto.getDocIds() != null) {
-//                             Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationDto.getDocIds());
-                            // Get active document IDs
-                            // Set<Integer> activeExistingRealisationDocIds = updatedRealisation.getDocs() != null ?
-                            // updatedRealisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            // .map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
-                            // Log document changes
-                            // if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
-                            // System.out.println("Document changes detected for Realisation update ID: " + updatedRealisation.getId());
-                            // System.out.println("  - Active existing docs: " + activeExistingRealisationDocIds);
-                            // System.out.println("  - Requested docs: " + requestedRealisationDocIds);
-                            // }
-                            // Process documents - mark as deleted or active based on request
-                            // List<Docs> updatedRealisationDocs = new ArrayList<>();
-                            // if (updatedRealisation.getDocs() != null) {
-                            // For each existing document in the realisation
-                            // for (Docs existingDoc : updatedRealisation.getDocs()) {
-                            // if (requestedRealisationDocIds.contains(existingDoc.getId())) {
-                            // This doc is in the request, ensure it's not marked as deleted
-                            // existingDoc.setIsDeleted(false);
-                            // docsRepository.save(existingDoc);
-                            // updatedRealisationDocs.add(existingDoc);
-                            // Remove from requested IDs since we've handled it
-                            // requestedRealisationDocIds.remove(existingDoc.getId());
-                            // } else {
-                            // This doc is not in the request, mark it as deleted
-                            // existingDoc.setIsDeleted(true);
-                            // docsRepository.save(existingDoc);
-                            // updatedRealisationDocs.add(existingDoc);
-                            // Keep it in the collection
-                            // System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
-                            // }
-                            // }
-                            // }
-                            // Add any new docs from the request
-                            // for (Integer docId : requestedRealisationDocIds) {
-                            // Docs doc = docsRepository.findById(docId)
-                            // .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                            // Set up bidirectional relationship
-                            // if (doc.getRealisations() == null) {
-                            // doc.setRealisations(new ArrayList<>());
-                            // }
-                            // if (!doc.getRealisations().contains(updatedRealisation)) {
-                            // doc.getRealisations().add(updatedRealisation);
-                            // }
-                            // Ensure doc is active
-                            // doc.setIsDeleted(false);
-                            // docsRepository.save(doc);
-                            // updatedRealisationDocs.add(doc);
-                            // System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
-                            // }
-                            // Update the realisation's docs
-                            // updatedRealisation.setDocs(updatedRealisationDocs);
-                            // updatedRealisation = realisationRepository.save(updatedRealisation);
-                            // System.out.println("Updated realisation documents");
-                            // }
-                            // System.out.println("Updated Realisation: " + updatedRealisation.getId() + " version " + updatedRealisation.getVersion());
+                            // --- Merge docIds and uploaded files ---
+                            if (realisationDto.getDocIds() != null) {
+                                // Start with docs from uploaded files (if any)
+                                List<Docs> allDocs = new ArrayList<>();
+                                if (updatedRealisation.getDocs() != null) {
+                                    allDocs.addAll(updatedRealisation.getDocs());
+                                }
+                                System.out.println("[DEBUG] Docs from uploaded files for realisation " + updatedRealisation.getId() + ": " + allDocs.stream().map(Docs::getId).toList());
+                                Set<Integer> alreadyAddedDocIds = allDocs.stream().map(Docs::getId).collect(Collectors.toSet());
+                                System.out.println("[DEBUG] DocIds from request for realisation " + updatedRealisation.getId() + ": " + realisationDto.getDocIds());
+                                for (Integer docId : realisationDto.getDocIds()) {
 
+                                    if (alreadyAddedDocIds.contains(docId)) {
+                                        System.out.println("[DEBUG] Skipping already added docId: " + docId);
+                                        continue;
+                                    }
+
+                                    Docs doc = docsRepository.findById(docId)
+                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+
+                                    doc.setIsDeleted(false);
+
+                                    // Don't attempt to set realisation on doc here to avoid circular references
+
+                                    docsRepository.save(doc);
+                                    allDocs.add(doc);
+
+                                    System.out.println("[DEBUG] Added docId from docIds: " + docId);
+
+//                                    if (alreadyAddedDocIds.contains(docId)) {
+//                                        System.out.println("[DEBUG] Skipping already added docId: " + docId);
+//                                        continue;
+//                                    }
+//                                    Docs doc = docsRepository.findById(docId)
+//                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                                    if (doc.getRealisations() == null) {
+//                                        doc.setRealisations(new ArrayList<>());
+//                                    }
+//                                    if (!doc.getRealisations().contains(updatedRealisation)) {
+//                                        doc.getRealisations().add(updatedRealisation);
+//                                    }
+//                                    doc.setIsDeleted(false);
+//                                    docsRepository.save(doc);
+//                                    allDocs.add(doc);
+//                                    System.out.println("[DEBUG] Added docId from docIds: " + docId);
+                                }
+
+                                System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " +  allDocs.stream().map(Docs::getId).toList());
+                                updatedRealisation.setDocs(allDocs);
+                                updatedRealisation = realisationRepository.save(updatedRealisation);
+                                // --- Ensure bidirectional relationship and save docs ---
+                                final Realisation realToCheck = updatedRealisation;
+//                                for (Docs doc : allDocs) {
+//                                    if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
+//                                    boolean found = doc.getRealisations().stream()
+//                                            .anyMatch(r -> r.getId().equals(realToCheck.getId()) && r.getVersion().equals(realToCheck.getVersion()));
+//                                    if (!found) {
+//                                        doc.getRealisations().add(realToCheck);
+//                                        docsRepository.save(doc);
+//                                        System.out.println("[DEBUG] Added realisation " + realToCheck.getId() + " v" + realToCheck.getVersion() + " to doc " + doc.getId());
+//                                    }
+//                                }
+                            }
+                            // --- End merge ---
+                            // Update the realisation's docs
                             updatedRealisations.add(updatedRealisation);
 
                             realisationsChanged = true;
@@ -1551,46 +1583,103 @@ public class PaaServiceImpl implements PaaService {
             // Continue execution - we'll let Hibernate try to handle it
         }
         // Handle document IDs for realizations
+
+
+
         if (request.getRealisations() != null) {
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 if (realisationRequest.getDocIds() != null) {
-                    // Find the corresponding realisation in the new PAA
-                    Realisation realisation = newPaa.getRealisations().stream().filter(r -> r.getId().equals(realisationRequest.getId())).findFirst().orElse(null);
+                    Realisation realisation = newPaa.getRealisations().stream()
+                            .filter(r -> r.getId().equals(realisationRequest.getId()))
+                            .findFirst().orElse(null);
 
                     if (realisation != null) {
-                        // Get existing document IDs
-                        Set<Integer> existingDocIds = realisation.getDocs().stream().map(Docs::getId).collect(Collectors.toSet());
+                        // Get existing (possibly uploaded) doc IDs
+                        Set<Integer> existingDocIds = realisation.getDocs() != null
+                                ? realisation.getDocs().stream().map(Docs::getId).collect(Collectors.toSet())
+                                : new HashSet<>();
 
-                        // Get requested document IDs
+                        // Get docIds from request
                         Set<Integer> requestedDocIds = new HashSet<>(realisationRequest.getDocIds());
 
-                        // Find documents to soft delete (in existing but not in requested)
-                        Set<Integer> docsToDelete = existingDocIds.stream().filter(id -> !requestedDocIds.contains(id)).collect(Collectors.toSet());
+                        // Merge both sets
+                        requestedDocIds.addAll(existingDocIds);
 
-                        // Soft delete the documents
-                        for (Integer docId : docsToDelete) {
+                        List<Docs> finalDocList = new ArrayList<>();
+
+//                        for (Integer docId : realisationRequest.getDocIds()) {
+//                            Docs doc = docsRepository.findById(docId).orElse(null);
+//                            if (doc != null) {
+//                                doc.setIsDeleted(false);
+//                                // DO NOT set realisation back on doc to avoid circular reference
+//                                docsRepository.save(doc); // Still save updated doc
+//                                finalDocList.add(doc);
+//                            }
+//                        }
+
+                        for (Integer docId : requestedDocIds) {
                             Docs doc = docsRepository.findById(docId).orElse(null);
                             if (doc != null) {
-                                doc.setIsDeleted(true);
-                                docsRepository.save(doc);
+//                                doc.setIsDeleted(false);
+//                                if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
+//                                boolean found = doc.getRealisations().stream()
+//                                        .anyMatch(r -> r.getId().equals(realisation.getId()) && r.getVersion().equals(realisation.getVersion()));
+//                                if (!found) {
+//                                    doc.getRealisations().add(realisation);
+//                                    System.out.println("[DEBUG] Added realisation " + realisation.getId() + " v" + realisation.getVersion() + " to doc " + doc.getId());
+//                                }
+//                                doc = docsRepository.save(doc);
+
+                                // Prevent circular linking if already handled on the Realisation side
+
+                                boolean bidirectionalHandledElsewhere = true; // or make this a config flag
+
+                                if (!bidirectionalHandledElsewhere) {
+                                    if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
+                                    boolean found = doc.getRealisations().stream()
+                                            .anyMatch(r -> r.getId().equals(realisation.getId()) && r.getVersion().equals(realisation.getVersion()));
+                                    if (!found) {
+                                        doc.getRealisations().add(realisation);
+                                        System.out.println("[DEBUG] Added realisation " + realisation.getId() + " v" + realisation.getVersion() + " to doc " + doc.getId());
+                                    }
+                                }
+
+                                // Still update isDeleted and save
+                                doc.setIsDeleted(false);
+                                doc = docsRepository.save(doc);
+
+                                finalDocList.add(doc);
                             }
                         }
 
-                        // Add new documents
-                        for (Integer docId : requestedDocIds) {
-                            if (!existingDocIds.contains(docId)) {
-                                Docs doc = docsRepository.findById(docId).orElse(null);
-                                if (doc != null) {
-                                    doc.setIsDeleted(false);
-                                    doc = docsRepository.save(doc);
-                                    realisation.getDocs().add(doc);
-                                }
-                            }
-                        }
+//                        for (Integer docId : requestedDocIds) {
+//                            Docs doc = docsRepository.findById(docId).orElse(null);
+//                            if (doc != null) {
+//                                // Mark the document as not deleted
+//                                doc.setIsDeleted(false);
+//
+//                                // Do NOT link the realisation here to avoid circular references
+//                                // We're assuming the realisation->docs relationship is already set
+//
+//                                // Save updated doc
+//                                docsRepository.save(doc);
+//
+//                                // Add to final doc list
+//                                finalDocList.add(doc);
+//                            }
+//                        }
+
+
+
+                        realisation.setDocs(finalDocList);
+                        realisationRepository.save(realisation);
+
+                        System.out.println("[DEBUG-FINAL] Realisation " + realisation.getId() + " final docs: " + finalDocList.stream().map(Docs::getId).toList());
                     }
                 }
             }
         }
+
         // Handle PAA files if provided - this was missing
         if (request.getPaaFiles() != null) {
             try {
@@ -1627,6 +1716,8 @@ public class PaaServiceImpl implements PaaService {
 
         return copyForReturn;
     }
+
+
 
     /**
      * Updates a PAA with versioning by automatically finding and using the latest version.
@@ -1803,6 +1894,8 @@ public class PaaServiceImpl implements PaaService {
         String key = paaId + "-" + paaVer;
         requestHashCache.put(key, hash);
     }
+
+
 
     /**
      * Creates a PAA with its Realisations and Lots in a single operation.
