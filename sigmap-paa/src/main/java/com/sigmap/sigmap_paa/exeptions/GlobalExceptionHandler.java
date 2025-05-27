@@ -114,11 +114,11 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
-    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(PaaCurrentYearNotFound.class)
     public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(PaaCurrentYearNotFound ex) {
         String message = messageSource.getMessage("paa.notFound.CuurentYear",new Object[] {ex.getCurrentYear()},getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }

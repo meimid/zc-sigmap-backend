@@ -3,10 +3,7 @@ package com.sigmap.sigmap_paa.controller;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
-import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
@@ -82,9 +79,10 @@ public class PaaController {
     }
 
     @GetMapping("/current-year")
-    public ResponseEntity<Paa> getPaaOfCurrentYear() {
+    public ResponseEntity<PaaResponseWithRealisations> getPaaOfCurrentYear() {
         Paa paas = paaService.getPaaOfCurrentYear();
-        return ResponseEntity.ok(paas);
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paas);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -404,9 +402,21 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @DeleteMapping("/{paaId}/{paaVer}")
     public ResponseEntity<PaaResponse> deleteById(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) {
+            @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
 
         paaService.delete(paaId, paaVer);
+        Paa deleted = paaService.findDeletedById(paaId, paaVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
+        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
+    public ResponseEntity<PaaResponse> deleteTest(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
+
+        paaService.deleteTest(paaId, paaVer);
         Paa deleted = paaService.findDeletedById(paaId, paaVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
         PaaResponse response = PaaMapper.INSTANCE.map(deleted);
