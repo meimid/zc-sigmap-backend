@@ -411,7 +411,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{paaId}/{paaVer}")
+    @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
     public ResponseEntity<PaaResponse> deleteTest(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
