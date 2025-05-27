@@ -28,10 +28,8 @@ public class DacController {
         this.dacService = dacService;
     }
 
-    @PostMapping("/pdf")
-    public void generatePdfPost(@RequestBody DacRequest request) {
-
-       //log.debug("Dac id is : {} , dac version is : {} , input path is : {} and output path is : {}", request.getDacId(), request.getDacVer(), basePath,customDirPath);
+    @PostMapping("/generate-doc")
+    public void replaceBookmarksAndGenerateDOC(@RequestBody DacRequest request) {
 
         if (request.getDacId() == null || request.getDacVer() == null) {
             throw new RequiredDacIDAndVersion();
