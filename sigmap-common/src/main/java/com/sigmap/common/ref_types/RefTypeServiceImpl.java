@@ -1,5 +1,8 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsSpecifications;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
@@ -56,11 +59,10 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public RefType findById(Integer id) throws RefTypeNotFound {
-    RefType refType = repository.findById(id).orElseThrow(() -> new RefTypeNotFound("",id));
-    if(refType.getIsDeleted()){
-      throw new RefTypeNotFound("",id);
-    }
-    return refType;
+    Specification<RefType> specification = RefTypeSpecifications.id(id)
+            .and(RefTypeSpecifications.deleted(false));
+    return findOne(specification)
+            .orElseThrow(() -> new RefTypeNotFound("",id));
   }
 
   @Override

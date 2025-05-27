@@ -14,11 +14,12 @@ public interface AcMapper {
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AcResponse map(Ac source);
     Ac map(AcRequest source);
-
     void updateAcFromRequest(AcRequest source, @MappingTarget Ac target);
 
 

@@ -65,11 +65,10 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress findById(Integer id) throws SocieteAdresseNotFound {
-        SocieteAddress societeAddress=repository.findById(id).orElseThrow(() -> new SocieteAdresseNotFound("" , List.of(id)));
-        if(societeAddress.getIsDeleted()){
-            throw new SocieteAdresseNotFound("" , List.of(id));
-        }
-        return societeAddress;
+        Specification<SocieteAddress> specification = SocieteAddressSpecifications.id(id)
+                .and(SocieteAddressSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new SocieteAdresseNotFound("",List.of(id)));
     }
 
     @Override

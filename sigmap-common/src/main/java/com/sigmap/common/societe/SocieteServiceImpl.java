@@ -5,6 +5,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedCom;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -62,11 +63,11 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe findById(Integer id) throws SocieteNotFound {
-        Societe societe = repository.findById(id).orElseThrow(() -> new SocieteNotFound("",List.of(id)));
-        if(societe.getIsDeleted()){
-          throw new SocieteNotFound("",List.of(id));
-        }
-        return societe;    }
+        Specification<Societe> specification = SocieteSpecifications.id(id)
+                .and(SocieteSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(id)));
+    }
 
     @Override
     public Societe save(Societe societe) {

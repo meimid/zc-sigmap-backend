@@ -1,15 +1,16 @@
 package com.sigmap.common.ac;
 
-import com.sigmap.common.ac.exception.AcDeleted;
-import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
-import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamSpecifications;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -75,11 +76,10 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public Ac findById(Integer id) throws AcNotFound {
-        Ac ac=repository.findById(id).orElseThrow(() -> new AcNotFound("",List.of(id)));
-        if(ac.getIsDeleted()){
-            throw new AcNotFound("",List.of(id));
-        }
-        return ac;
+        Specification<Ac> specification = AcSpecifications.id(id)
+                .and(AcSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new AcNotFound("", List.of(id)));
 
     }
 
@@ -217,11 +217,20 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public void delete(Integer id) throws  AcHasAssociatedCom{
-        boolean hasAssociatedCom = repository.hasAssociatedCom(id);
-        if (hasAssociatedCom) {
-            throw new AcHasAssociatedCom("",id);
+    public void delete(Integer id) throws  AcHasAssociatedAgpm {
+        boolean hasAssociatedAgpm = repository.hasAssociatedAgpm(id);
+        if (hasAssociatedAgpm) {
+            throw new AcHasAssociatedAgpm("" , id);
         }
+        boolean hasAssociatedPpm = repository.hasAssociatedPpm(id);
+        if (hasAssociatedPpm) {
+            throw new AcHasAssociatedPpm("" , id);
+        }
+        boolean hasAssociatedPaa = repository.hasAssociatedPaa(id);
+        if (hasAssociatedPaa) {
+            throw new AcHasAssociatedPaa("" , id);
+        }
+
         repository.softDelete(id);
     }
 }

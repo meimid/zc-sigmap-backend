@@ -21,6 +21,8 @@ public interface SocieteMapper {
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     SocieteResponse map(Societe source);

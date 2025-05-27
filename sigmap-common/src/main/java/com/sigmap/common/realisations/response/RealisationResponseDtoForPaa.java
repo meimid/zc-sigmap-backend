@@ -3,6 +3,7 @@ package com.sigmap.common.realisations.response;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotPaaResponse;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -20,12 +21,12 @@ public class RealisationResponseDtoForPaa {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParam service;
-    private RefParam direction;
-    private RefParam sourceFinancement;
-    private RefParam monais;
-    private RefParam typeMarcher;
-    private RefParam modeSelection;
+    private RefParamResponseDto service;
+    private RefParamResponseDto direction;
+    private RefParamResponseDto sourceFinancement;
+    private RefParamResponseDto monais;
+    private RefParamResponseDto typeMarcher;
+    private RefParamResponseDto modeSelection;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;
     private LocalDate datePrevDp;

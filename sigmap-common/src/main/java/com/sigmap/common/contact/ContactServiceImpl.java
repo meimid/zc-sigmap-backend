@@ -61,11 +61,10 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     public Contact findById(Integer id) throws ContactNotFound {
-        Contact contact = repository.findById(id).orElseThrow(() -> new ContactNotFound("",List.of(id)));
-        if(contact.getIsDeleted()){
-            throw new ContactNotFound("", List.of(id));
-        }
-        return contact;
+        Specification<Contact> specification = ContactSpecifications.id(id)
+                .and(ContactSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new ContactNotFound("", List.of(id)));
     }
 
     @Override
