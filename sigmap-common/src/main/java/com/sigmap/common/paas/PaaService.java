@@ -171,4 +171,6 @@ public interface PaaService {
 
     Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
 
+    void deleteTest(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete;
+
 }

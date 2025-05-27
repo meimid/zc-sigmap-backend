@@ -4,7 +4,6 @@ import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
-
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.config.Constants;
@@ -231,72 +230,6 @@ public class PaaServiceImpl implements PaaService {
         return savedPaa;
     }
 
-//    @Override
-//    public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
-//        // Check if a PAA already exists for the current year
-//        restrictPaaCreationForCurrentYear();
-//
-//        Integer version = request.getVersion() != null ? request.getVersion() : 1;
-//        request.setVersion(version);
-//
-//        Integer id = request.getId();
-//        if (id == null) {
-//            id = repository.findMaxId();
-//            if (id == null) {
-//                id = 1;
-//            } else {
-//                id++;
-//            }
-//        }
-//
-//        Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
-//        if (existingPaa.isPresent()) {
-//            throw new PaaAlreadyExistsException(
-//                    "Paa with ID " + id + " and version " + version + " already exists.", id, version);
-//        }
-//
-//        Paa paa = PaaMapper.INSTANCE.toEntity(request);
-//        paa.setRealisations(new ArrayList<>());
-//
-//        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
-//                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
-//        paa.setStatus(defaultStatus);
-//
-//        // Set the annee field as a string with the current year
-//        paa.setAnnee(String.valueOf(LocalDate.now().getYear()));
-//
-//        paa.setId(id);
-//        paa.setVersion(version);
-//
-//        Paa savedPaa = repository.save(paa);
-//
-//        if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
-//            List<Realisation> realisations = realisationRepository.findAllById(request.getRealisationIds());
-//            if (realisations.size() != request.getRealisationIds().size()) {
-//                throw new RuntimeException("Some realisations were not found");
-//            }
-//
-//            // Update both sides of the relationship in memory
-//            for (Realisation realisation : realisations) {
-//                if (realisation.getPaas() == null) {
-//                    realisation.setPaas(new ArrayList<>());
-//                }
-//                if (!realisation.getPaas().contains(savedPaa)) {
-//                    realisation.getPaas().add(savedPaa);
-//                }
-//            }
-//
-//            // Save all realisations in a single batch operation
-//            realisationRepository.saveAll(realisations);
-//
-//            // Update and save PAA with the realisations
-//            savedPaa.setRealisations(realisations);
-//            savedPaa = repository.save(savedPaa);
-//        }
-//
-//        return savedPaa;
-//    }
-
     /**
      * Soft deletes a Paa entity by its ID and version, only if the status is DRAFT.
      *
@@ -324,7 +257,6 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaSoftDelete("Soft delete failed", rowsAffected, paaId, paaVer);
         }
     }
-
 
     /**
      * Checks if the PAA is in DRAFT status and has a null processInstanceId.
@@ -875,23 +807,6 @@ public class PaaServiceImpl implements PaaService {
                                     allDocs.add(doc);
 
                                     System.out.println("[DEBUG] Added docId from docIds: " + docId);
-
-//                                    if (alreadyAddedDocIds.contains(docId)) {
-//                                        System.out.println("[DEBUG] Skipping already added docId: " + docId);
-//                                        continue;
-//                                    }
-//                                    Docs doc = docsRepository.findById(docId)
-//                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-//                                    if (doc.getRealisations() == null) {
-//                                        doc.setRealisations(new ArrayList<>());
-//                                    }
-//                                    if (!doc.getRealisations().contains(updatedRealisation)) {
-//                                        doc.getRealisations().add(updatedRealisation);
-//                                    }
-//                                    doc.setIsDeleted(false);
-//                                    docsRepository.save(doc);
-//                                    allDocs.add(doc);
-//                                    System.out.println("[DEBUG] Added docId from docIds: " + docId);
                                 }
 
                                 System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " +  allDocs.stream().map(Docs::getId).toList());
@@ -899,18 +814,7 @@ public class PaaServiceImpl implements PaaService {
                                 updatedRealisation = realisationRepository.save(updatedRealisation);
                                 // --- Ensure bidirectional relationship and save docs ---
                                 final Realisation realToCheck = updatedRealisation;
-//                                for (Docs doc : allDocs) {
-//                                    if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
-//                                    boolean found = doc.getRealisations().stream()
-//                                            .anyMatch(r -> r.getId().equals(realToCheck.getId()) && r.getVersion().equals(realToCheck.getVersion()));
-//                                    if (!found) {
-//                                        doc.getRealisations().add(realToCheck);
-//                                        docsRepository.save(doc);
-//                                        System.out.println("[DEBUG] Added realisation " + realToCheck.getId() + " v" + realToCheck.getVersion() + " to doc " + doc.getId());
-//                                    }
-//                                }
                             }
-                            // --- End merge ---
                             // Update the realisation's docs
                             updatedRealisations.add(updatedRealisation);
 
@@ -1539,8 +1443,6 @@ public class PaaServiceImpl implements PaaService {
 
             // Only attempt to clean up if we have realisations to associate
             if (!realisationIds.isEmpty()) {
-                // Clear any existing relationships in the join table before saving the new ones
-                // Use direct repository calls to manipulate the relationships properly
 
                 System.out.println("Refreshing PAA-Realisation relationships to prevent primary key conflicts");
 
@@ -1607,29 +1509,9 @@ public class PaaServiceImpl implements PaaService {
 
                         List<Docs> finalDocList = new ArrayList<>();
 
-//                        for (Integer docId : realisationRequest.getDocIds()) {
-//                            Docs doc = docsRepository.findById(docId).orElse(null);
-//                            if (doc != null) {
-//                                doc.setIsDeleted(false);
-//                                // DO NOT set realisation back on doc to avoid circular reference
-//                                docsRepository.save(doc); // Still save updated doc
-//                                finalDocList.add(doc);
-//                            }
-//                        }
-
                         for (Integer docId : requestedDocIds) {
                             Docs doc = docsRepository.findById(docId).orElse(null);
                             if (doc != null) {
-//                                doc.setIsDeleted(false);
-//                                if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
-//                                boolean found = doc.getRealisations().stream()
-//                                        .anyMatch(r -> r.getId().equals(realisation.getId()) && r.getVersion().equals(realisation.getVersion()));
-//                                if (!found) {
-//                                    doc.getRealisations().add(realisation);
-//                                    System.out.println("[DEBUG] Added realisation " + realisation.getId() + " v" + realisation.getVersion() + " to doc " + doc.getId());
-//                                }
-//                                doc = docsRepository.save(doc);
-
                                 // Prevent circular linking if already handled on the Realisation side
 
                                 boolean bidirectionalHandledElsewhere = true; // or make this a config flag
@@ -1651,25 +1533,6 @@ public class PaaServiceImpl implements PaaService {
                                 finalDocList.add(doc);
                             }
                         }
-
-//                        for (Integer docId : requestedDocIds) {
-//                            Docs doc = docsRepository.findById(docId).orElse(null);
-//                            if (doc != null) {
-//                                // Mark the document as not deleted
-//                                doc.setIsDeleted(false);
-//
-//                                // Do NOT link the realisation here to avoid circular references
-//                                // We're assuming the realisation->docs relationship is already set
-//
-//                                // Save updated doc
-//                                docsRepository.save(doc);
-//
-//                                // Add to final doc list
-//                                finalDocList.add(doc);
-//                            }
-//                        }
-
-
 
                         realisation.setDocs(finalDocList);
                         realisationRepository.save(realisation);
@@ -2141,9 +2004,6 @@ public class PaaServiceImpl implements PaaService {
                     System.out.println("Major lot change: Different lot IDs");
                     return true;
                 }
-
-                // Description changes are considered minor and don't require Realisation version increment
-                // That is handled separately in the updateWithVersioningWithLots method
             }
         }
 
@@ -2164,10 +2024,6 @@ public class PaaServiceImpl implements PaaService {
 
         return false;
     }
-
-
-    // Solution that modifies document processing with synchronized folder creation
-// Add a synchronization object
 
     // Add a synchronization object
     private final Object folderCreationLock = new Object();
@@ -2403,9 +2259,6 @@ public class PaaServiceImpl implements PaaService {
                         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
 
                         String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-//                        if (fileExtension.isEmpty()) {
-//                            fileExtension = documentCommuneService.detectExtensionFromFileName(originalFilename);
-//                        }
 
                         long fileSize = file.getSize();
                         String formattedSize = documentCommuneService.formatSize(fileSize);
@@ -2457,4 +2310,20 @@ public class PaaServiceImpl implements PaaService {
         // Update the realisation's docs
         savedRealisation.setDocs(docs);
     }
+
+    @Transactional
+    @Override
+    public void deleteTest(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete {
+        CompositeId compositeId = new CompositeId(paaId, paaVer);
+        if (!repository.existsById(compositeId)) {
+            throw new PaaNotFound("Paa not found", List.of(paaId), List.of(paaVer));
+        }
+
+        try {
+            repository.deleteById(compositeId);
+        } catch (Exception e) {
+            throw new PaaSoftDelete("Soft delete failed", 0, paaId, paaVer);
+        }
+    }
+
 }

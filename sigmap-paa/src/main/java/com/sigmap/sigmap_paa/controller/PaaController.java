@@ -411,6 +411,18 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/{paaId}/{paaVer}")
+    public ResponseEntity<PaaResponse> deleteTest(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
+
+        paaService.deleteTest(paaId, paaVer);
+        Paa deleted = paaService.findDeletedById(paaId, paaVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
+        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * Get all realisations associated with a specific PAA.
      *
