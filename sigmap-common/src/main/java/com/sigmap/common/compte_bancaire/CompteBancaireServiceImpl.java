@@ -1,5 +1,6 @@
 package com.sigmap.common.compte_bancaire;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
@@ -67,7 +68,10 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public CompteBancaire findById(Integer id) throws CompteBancaireNotFound {
-        return repository.findById(id).orElseThrow(() -> new CompteBancaireNotFound("",List.of(id)));
+        Specification<CompteBancaire> specification = CompteBancaireSpecifications.id(id)
+                .and(CompteBancaireSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new CompteBancaireNotFound("", List.of(id)));
     }
 
     @Override

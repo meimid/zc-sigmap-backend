@@ -23,7 +23,7 @@ public class TaskDetailsDTO {
     private LocalDateTime created;
     private String candidateGroup;
     private Map<String, Object> traceability;
-    private List<AgpmResponseDto> agpms;
+    private AgpmResponseDto agpm;
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;

@@ -11,7 +11,7 @@ public interface ComRepository extends JpaRepository<Com, Integer>,
         JpaSpecificationExecutor<Com>,
         SoftDeleteRepository<Com, Integer> {
 
-    @Query("SELECT EXISTS (SELECT ac FROM Ac ac JOIN ac.coms c WHERE c.id = :comId)")
-    boolean hasAssociatedAc(@Param("comId") Integer comId);
+    /*@Query("SELECT EXISTS (SELECT ac FROM Ac ac JOIN ac.coms c WHERE c.id = :comId and ac.isDeleted=false and c.isDeleted=false)")
+    boolean hasAssociatedAc(@Param("comId") Integer comId);*/
 
 }

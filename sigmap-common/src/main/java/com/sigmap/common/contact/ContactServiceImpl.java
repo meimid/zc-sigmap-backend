@@ -5,8 +5,6 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.request.ContactRequest;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
-import com.sigmap.common.societe_contact.SocieteContact;
-import com.sigmap.common.societe_contact.SocieteContactService;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -63,7 +61,10 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     public Contact findById(Integer id) throws ContactNotFound {
-        return repository.findById(id).orElseThrow(() -> new ContactNotFound("",List.of(id)));
+        Specification<Contact> specification = ContactSpecifications.id(id)
+                .and(ContactSpecifications.deleted(false));
+        return findOne(specification)
+                .orElseThrow(() -> new ContactNotFound("", List.of(id)));
     }
 
     @Override
@@ -79,7 +80,7 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     public Contact update(Integer id,ContactRequest request) throws ContactNotFound {
-        Contact contact=repository.findById(id).orElseThrow(() -> new ContactNotFound("",List.of(id)));
+        Contact contact=findById(id);
         ContactMapper.INSTANCE.updateFromRequest(request, contact);
         return repository.save(contact);
     }

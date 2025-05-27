@@ -37,7 +37,7 @@ import java.util.Optional;
  */
 public interface PaaService {
 
-    public List<Paa> getPaaOfCurrentYear();
+    public Paa getPaaOfCurrentYear();
 
     List<Paa> findAll();
 

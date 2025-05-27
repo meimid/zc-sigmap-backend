@@ -5,6 +5,7 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
+import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -67,7 +68,7 @@ public interface SocieteContactService {
      * @param contactId
      * @return the SocieteContact with the given id
      */
-    Optional<SocieteContact> findByIds(Integer societeId, Integer contactId) throws SocieteContactNotFound;
+    SocieteContact findByIds(Integer societeId, Integer contactId) throws SocieteContactNotFound;
 
     /**
      * Save a SocieteContact.
@@ -83,14 +84,14 @@ public interface SocieteContactService {
      * @param request the request to create the SocieteContact from
      * @return the created SocieteContact
      */
-    SocieteContact create(Integer societeId, Integer contactId,SocieteContactRequest request) throws RuntimeException;
+    SocieteContact create(Integer societeId, Integer contactId,SocieteContactRequest request) throws RuntimeException, SocieteContactAlreadyExist, SocieteNotFound;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated SocieteContact
      */
-    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) throws SocieteContactNotFound;
+    SocieteContact update(Integer societeId, Integer contactId,SocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound;
     /**
      * Delete a SocieteAddress.
      *

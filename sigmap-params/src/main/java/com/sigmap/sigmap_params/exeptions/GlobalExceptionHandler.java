@@ -1,14 +1,15 @@
 package com.sigmap.sigmap_params.exeptions;
 
-import com.sigmap.common.ac.exception.AcHasAssociatedCom;
-import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
+import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
+import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
@@ -16,6 +17,7 @@ import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
 import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -23,14 +25,12 @@ import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
-import com.sigmap.common.ref_types.exceptions.HasAssociatedRefParams;
-import com.sigmap.common.ref_types.exceptions.RefTypeAlreadyExist;
-import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
-import com.sigmap.common.ref_types.exceptions.RefTypePositiveIdAndNotEmpty;
+import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
+import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -374,4 +374,107 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
     }*/
+
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(AcDeleted.class)
+    public ResponseEntity<ErrorResponse> acDeletedException(AcDeleted ex) {
+        String message = messageSource.getMessage("ac.deleted",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(ComDeleted.class)
+    public ResponseEntity<ErrorResponse> comDeletedException(ComDeleted ex) {
+        String message = messageSource.getMessage("com.deleted",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(RefTypeDeleted.class)
+    public ResponseEntity<ErrorResponse> RefTypeDeletedException(RefTypeDeleted ex) {
+        String message = messageSource.getMessage("refType.deleted",new Object[] {ex.getId() } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(RefParamDeleted.class)
+    public ResponseEntity<ErrorResponse> RefParamDeletedException(RefParamDeleted ex) {
+        String message = messageSource.getMessage("refparam.deleted",new Object[] {ex.getId() } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(ContactDeleted.class)
+    public ResponseEntity<ErrorResponse> ContactDeletedException(ContactDeleted ex) {
+        String message = messageSource.getMessage("contact.deleted",new Object[] {ex.getId() } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+
+    @ResponseStatus(HttpStatus.GONE)
+    @ExceptionHandler(DocDeleted.class)
+    public ResponseEntity<ErrorResponse> DocDeletedException(DocDeleted ex) {
+        String message = messageSource.getMessage("doc.deleted",new Object[] {ex.getId() } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.GONE.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.GONE);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(SocieteContactAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> societeContactAlreadyExistException(SocieteContactAlreadyExist ex) {
+        String message = messageSource.getMessage("societe.societeContactAlreadyExist",new Object[] {ex.getSocieteId(), ex.getContactId()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedPpm.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedPpmException(HasAssociatedPpm ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedPpm",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedPaa.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedPaaException(HasAssociatedPaa ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedPaa",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedAgpm.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedAgpmException(HasAssociatedAgpm ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedAgpm",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedRefRealisation.class)
+    public ResponseEntity<ErrorResponse> RefPramHasAssociatedRefRealisationException(HasAssociatedRefRealisation ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedRealisation",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedAgpm.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedAgpmException(AcHasAssociatedAgpm ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedAgpm",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedPaa.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedAgpmException(AcHasAssociatedPaa ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedPaa",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedPpm.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedAgpmException(AcHasAssociatedPpm ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedPpm",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 }

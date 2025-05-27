@@ -12,6 +12,6 @@ public interface SocieteAddressRepository  extends JpaRepository<SocieteAddress,
         JpaSpecificationExecutor<SocieteAddress>,
         SoftDeleteRepository<SocieteAddress, Integer> {
 
-    @Query("select sa from SocieteAddress sa where sa.societe.id= :societeId and sa.isDeleted=false")
+    @Query("select sa from SocieteAddress sa where sa.societe.id= :societeId and sa.isDeleted=false and sa.societe.isDeleted=false")
     Page<SocieteAddress> findSocieteAddressBySocieteId(Integer societeId, Pageable pageable);
 }

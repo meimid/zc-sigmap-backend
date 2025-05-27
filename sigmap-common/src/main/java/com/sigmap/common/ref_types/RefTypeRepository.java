@@ -10,6 +10,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface RefTypeRepository extends JpaRepository<RefType, Integer>, JpaSpecificationExecutor<RefType>,
         SoftDeleteRepository<RefType, Integer> {
-    @Query("SELECT EXISTS (SELECT rp FROM RefParam rp WHERE rp.refType.id = :refTypeId)")
+    @Query("SELECT EXISTS (SELECT rp FROM RefParam rp WHERE rp.refType.id = :refTypeId and rp.isDeleted=false and rp.refType.isDeleted=false)")
     boolean hasAssociatedRefParams(@Param("refTypeId") Integer refTypeId);
 }

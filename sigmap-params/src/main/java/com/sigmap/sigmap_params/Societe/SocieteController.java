@@ -35,6 +35,7 @@ import com.sigmap.common.societe_contact.Response.SocieteContactResponse;
 import com.sigmap.common.societe_contact.Response.SocieteContactResponseDto;
 import com.sigmap.common.societe_contact.SocieteContact;
 import com.sigmap.common.societe_contact.SocieteContactService;
+import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import org.slf4j.Logger;
@@ -187,22 +188,21 @@ public class SocieteController {
     // a verifier fi url wella kifech taccedi li contact avec id x
     @GetMapping("/{societeId}/contact/{contactId}")
     public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) throws SocieteContactNotFound {
-        SocieteContact param = societeContactService.findByIds(societeId,contactId)
-                .orElseThrow(() -> new SocieteContactNotFound("",societeId,contactId));
+        SocieteContact param = societeContactService.findByIds(societeId,contactId);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
 
 
     @PostMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> create(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) {
+    public ResponseEntity<SocieteContactResponse> create(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteNotFound, SocieteContactAlreadyExist {
         SocieteContact societeContact = societeContactService.create(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{societeId}/contact/{contactId}")
-    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteContactNotFound{
+    public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
         SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
         return ResponseEntity.status(HttpStatus.OK).body(response);
