@@ -16,10 +16,10 @@ spring:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           time_zone: "UTC"
     hibernate:
@@ -33,7 +33,7 @@ spring:
       resourceserver:
         jwt:
           principal-claim-name: preferred_username
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://sigmap-auth-insecure.zedneycreative.com/realms/sigmap-realm}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
 springdoc:
   default-support-form-data: true

@@ -1,17 +1,17 @@
-package com.sigmap.sigmap_ppm.ppms;
+package com.sigmap.sigmap_ppm.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
-import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.ppms.response.PpmResponse;
+import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -24,7 +24,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,11 +35,6 @@ import java.util.*;
 import java.lang.reflect.Method;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @RestController
 @RequestMapping("/api/ppms")
@@ -72,7 +66,7 @@ public class PpmController {
      * @return a page of ppms
      */
     @GetMapping
-    public ResponseEntity<Page<PpmResponse>> findAll(
+    public ResponseEntity<Page<PpmResponseDto>> findAll(
             PpmQuery query, Pageable pageable) {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -80,7 +74,7 @@ public class PpmController {
         logger.info("User {}", user.getSubject());
 
         Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
-        Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
     }
 
@@ -92,10 +86,10 @@ public class PpmController {
      * @return a page of deleted ppms
      */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<PpmResponse>> findAllDeleted(
+    public ResponseEntity<Page<PpmResponseDto>> findAllDeleted(
             PpmQuery query, Pageable pageable) {
         Page<Ppm> ppms = ppmService.findAllDeleted(pageable);
-        Page<PpmResponse> responses = ppms.map(PpmMapper.INSTANCE::map);
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
     }
 
@@ -107,12 +101,12 @@ public class PpmController {
      * @return the ppm
      */
     @GetMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<PpmResponse> findById(
+    public ResponseEntity<PpmResponseDto> findById(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer) {
         Ppm ppm = ppmService.findById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
     }
 
@@ -123,9 +117,9 @@ public class PpmController {
      * @return the created ppm
      */
     @PostMapping
-    public ResponseEntity<PpmResponse> create(@RequestBody PpmRequest request) {
+    public ResponseEntity<PpmResponseDto> create(@RequestBody PpmRequest request) {
         Ppm ppm = ppmService.create(request);
-        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -137,10 +131,10 @@ public class PpmController {
      * @return the created PPM with all relationships established
      */
     @PostMapping("/with-relationships")
-    public ResponseEntity<PpmResponse> createWithRelationships(
+    public ResponseEntity<PpmResponseDto> createWithRelationships(
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson
-    ) {
+    ) throws AcNotFound {
         logger.info("Creating PPM with relationships (documents, realisations, and lots)");
 
         // DIRECT CHECK FOR PARAMETER: Log the exact parameter value
@@ -223,7 +217,7 @@ public class PpmController {
         Ppm ppm = ppmService.createWithRelationships(request);
 
         // Map the result to a response
-        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -238,12 +232,12 @@ public class PpmController {
      */
 
     @PutMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<PpmResponse> update(
+    public ResponseEntity<PpmResponseDto> update(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             @RequestBody PpmRequest request) {
         Ppm updatedPpm = ppmService.update(ppmId, ppmVer, request);
-        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
 
@@ -255,13 +249,13 @@ public class PpmController {
      * @return the deleted ppm
      */
     @DeleteMapping("/{ppmId}/{ppmVer}")
-    public ResponseEntity<PpmResponse> deleteById(
+    public ResponseEntity<PpmResponseDto> deleteById(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer) {
         ppmService.delete(ppmId, ppmVer);
         Ppm deleted = ppmService.findDeletedById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Ppm not found"));
-        PpmResponse response = PpmMapper.INSTANCE.map(deleted);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(deleted);
         return ResponseEntity.ok(response);
     }
 
@@ -434,7 +428,7 @@ public class PpmController {
      * @return the newly created version of the PPM, or the existing version if no changes
      */
     @PutMapping("/{ppmId}/{ppmVer}/version")
-    public ResponseEntity<PpmResponse> updateWithVersioning(
+    public ResponseEntity<PpmResponseDto> updateWithVersioning(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             @RequestBody PpmBaseRequestDto request) {
@@ -444,7 +438,7 @@ public class PpmController {
 
         Ppm updatedPpm = ppmService.updateWithVersioning(ppmId, ppmVer, request);
 
-        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
 
@@ -460,7 +454,7 @@ public class PpmController {
 
     //TODO:fix processRealisationLotsFromJson(request, realisationsLotsJson);
     @PutMapping(value="/{ppmId}/versioning/multi", consumes = {"multipart/form-data"})
-    public ResponseEntity<PpmResponse> updateWithVersioningMultipart(
+    public ResponseEntity<PpmResponseDto> updateWithVersioningMultipart(
             @PathVariable Integer ppmId,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) {
@@ -478,7 +472,7 @@ public class PpmController {
 
         Ppm updatedPpm = ppmService.updateWithVersioning(ppmId, request);
 
-        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
 
@@ -685,39 +679,39 @@ public class PpmController {
         }
     }
 
-    /**
-     * Update a PPM by creating a new version with updated data.
-     * Automatically uses the latest version of the PPM.
-     * <p>
-     * This endpoint handles hierarchical versioning:
-     * - If any PPM field changes, a new PPM version is created
-     * - If any Realisation is added, modified, or removed, a new PPM version is created
-     * - If a Lot within a Realisation changes, both Realisation and PPM versions increment
-     * - If any document is added/modified/removed, a new PPM version is created
-     *
-     * @param ppmId the ID of the PPM to update
-     * @param request the request containing fields to update (can be PpmWithLotsRequestDto or PpmBaseRequestDto)
-     * @return the newly created version of the PPM, or the existing version if no changes
-     */
-    @PutMapping("/{ppmId}/version")
-    public ResponseEntity<PpmResponse> updateWithVersioningLatest(
-            @PathVariable Integer ppmId,
-            @RequestBody PpmBaseRequestDto request) {
-
-        Ppm updatedPpm;
-
-        // Check if this is a PpmWithLotsRequestDto
-        if (request instanceof PpmWithLotsRequestDto) {
-            // If it's a PpmWithLotsRequestDto, use the specialized method
-            updatedPpm = ppmService.updateWithVersioningWithLots(ppmId, (PpmWithLotsRequestDto) request);
-        } else {
-            // Otherwise use the standard method
-            updatedPpm = ppmService.updateWithVersioning(ppmId, request);
-        }
-
-        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
-        return ResponseEntity.ok(response);
-    }
+//    /**
+//     * Update a PPM by creating a new version with updated data.
+//     * Automatically uses the latest version of the PPM.
+//     * <p>
+//     * This endpoint handles hierarchical versioning:
+//     * - If any PPM field changes, a new PPM version is created
+//     * - If any Realisation is added, modified, or removed, a new PPM version is created
+//     * - If a Lot within a Realisation changes, both Realisation and PPM versions increment
+//     * - If any document is added/modified/removed, a new PPM version is created
+//     *
+//     * @param ppmId the ID of the PPM to update
+//     * @param request the request containing fields to update (can be PpmWithLotsRequestDto or PpmBaseRequestDto)
+//     * @return the newly created version of the PPM, or the existing version if no changes
+//     */
+//    @PutMapping("/{ppmId}/version")
+//    public ResponseEntity<PpmResponse> updateWithVersioningLatest(
+//            @PathVariable Integer ppmId,
+//            @RequestBody PpmBaseRequestDto request) {
+//
+//        Ppm updatedPpm;
+//
+//        // Check if this is a PpmWithLotsRequestDto
+//        if (request instanceof PpmWithLotsRequestDto) {
+//            // If it's a PpmWithLotsRequestDto, use the specialized method
+//            updatedPpm = ppmService.updateWithVersioningWithLots(ppmId, (PpmWithLotsRequestDto) request);
+//        } else {
+//            // Otherwise use the standard method
+//            updatedPpm = ppmService.updateWithVersioning(ppmId, request);
+//        }
+//
+//        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+//        return ResponseEntity.ok(response);
+//    }
 
     /**
      * Update a PPM by creating a new version with updated data.
@@ -1152,13 +1146,13 @@ public class PpmController {
      * @throws ResponseStatusException if the PPM is not found
      */
     @GetMapping("/{ppmId}")
-    public ResponseEntity<PpmResponse> getPpmById(@PathVariable Integer ppmId) {
+    public ResponseEntity<PpmResponseDto> getPpmById(@PathVariable Integer ppmId) {
         logger.info("Getting detailed PPM with ID: {}", ppmId);
         
         Ppm ppm = ppmService.findByIdPpm(ppmId, null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
-                
-        PpmResponse response = PpmMapper.INSTANCE.map(ppm);
+
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
     }
 

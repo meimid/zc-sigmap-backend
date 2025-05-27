@@ -19,8 +19,6 @@ public class PpmRequest {
 
     private String nom;
 
-    private String annee;
-
     private Integer acId;
 
     private BigDecimal budgetEstime;

@@ -1,5 +1,6 @@
 package com.sigmap.common.ppms;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -28,6 +29,7 @@ import java.util.Optional;
 public interface PpmService {
     List<Ppm> findAll();
 
+    Integer findLatestVersionById(Integer ppmId);
     /**
      * Return a page of Ppms based on the given specification and pageable.
      *
@@ -119,7 +121,7 @@ public interface PpmService {
      * @param request the request containing PPM data, realisations, lots, and document files
      * @return the created PPM with all relationships established
      */
-    Ppm createWithRelationships(PpmWithLotsRequestDto request);
+    Ppm createWithRelationships(PpmWithLotsRequestDto request) throws AcNotFound;
 
     /**
      * Update an existing Ppm.
@@ -274,4 +276,5 @@ public interface PpmService {
      * @return Optional containing the PPM if found
      */
     Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer);
+
 }

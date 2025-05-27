@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_ppm.ppms.services;//package com.sigmap.sigmap_ppm.ppms.services;
+package com.sigmap.sigmap_ppm.services;//package com.sigmap.sigmap_ppm.ppms.services;
 //
 //import com.sigmap.common.ppms.Ppm;
 //import com.sigmap.common.ppms.PpmService;

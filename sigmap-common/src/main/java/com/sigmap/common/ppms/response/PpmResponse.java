@@ -21,7 +21,7 @@ public class PpmResponse {
     private BigDecimal budgetEstime;
     private RefParam status;
     private List<DocsResponseDTO> docs;
-    private BaseEntityResponse metadata;
     private List<RealisationResponseDTO> realisations;
+    private BaseEntityResponse metadata;
 
 }
