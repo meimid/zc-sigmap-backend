@@ -49,4 +49,7 @@ public class RefParam extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "ref_type_id")
   private RefType refType;
+
+  @Column(name = "code_color")
+  private String codeColor;
 }
