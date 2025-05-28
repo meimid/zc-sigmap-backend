@@ -91,31 +91,6 @@ public class AcServiceImpl implements AcService{
     @Override
     public Ac create(AcRequest request) throws ComNotFound {
         Ac ac = AcMapper.INSTANCE.map(request);
-        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            List<Integer> comIds = request.getComIds();
-
-            int size = getSizeList(comIds);
-
-            // Check if all Com IDs exist
-            var coms = comRepository.findAllById(comIds);
-            if (coms.size() !=size) {
-                List<Integer> existingComIds = coms.stream()
-                        .map(Com::getId)
-                        .toList();
-                List<Integer> nonExistentComIds = comIds.stream()
-                        .filter(comId -> !existingComIds.contains(comId))
-                        .toList();
-                throw new ComNotFound("", nonExistentComIds);
-            }
-            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
-            if(!checkDeletedComs.isEmpty()){
-               List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
-               throw new ComNotFound("",deletedComIds);
-
-            }
-            ac.setComs(coms);
-
-        }
         Ac savedAc = repository.save(ac);
         /*if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
             for (String userId : request.getUserIds()) {
@@ -136,31 +111,6 @@ public class AcServiceImpl implements AcService{
         Ac ac = findById(id);
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
 
-        if (request.getComIds() != null && !request.getComIds().isEmpty()) {
-            // Manually check for duplicate Com IDs
-            List<Integer> comIds = request.getComIds();
-            int size = getSizeList(comIds);
-
-            // Check if all Com IDs exist
-            var coms = comRepository.findAllById(comIds);
-            if (coms.size() != size) {
-                // Identify existent and non-existent comIds
-                List<Integer> existingComIds = coms.stream()
-                        .map(Com::getId)
-                        .toList();
-                List<Integer> nonExistentComIds = comIds.stream()
-                        .filter(comId -> !existingComIds.contains(comId))
-                        .toList();
-                throw new ComNotFound("", nonExistentComIds);
-            }
-            List<Com> checkDeletedComs=coms.stream().filter(com-> com.getIsDeleted()).collect(Collectors.toList());
-            if(!checkDeletedComs.isEmpty()){
-                List<Integer> deletedComIds = checkDeletedComs.stream().map(Com::getId).toList();
-                throw new ComNotFound("",deletedComIds);
-
-            }
-            ac.setComs(coms);
-        }
    /*     // **Gestion des utilisateurs liés à cet Ac via Keycloak**
         if (request.getUserIds() != null) {
             // 1. Récupérer les users actuellement liés à cet Ac dans Keycloak
