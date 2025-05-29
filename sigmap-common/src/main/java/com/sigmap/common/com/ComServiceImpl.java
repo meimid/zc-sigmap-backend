@@ -3,15 +3,23 @@ package com.sigmap.common.com;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.*;
+
+import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +38,12 @@ public class ComServiceImpl implements ComService {
   private final ComRepository repository;
   private final RefParamService refParamService;
   private final AcRepository acRepository;
-  @Autowired private KeycloakAdminService keycloakAdminService;
+  @Autowired
+  private KeycloakAdminService keycloakAdminService;
+  @Autowired
+  private UserComRepository userComRepository;
+  @Autowired
+  private RefParamRepository refParamRepository;
 
   public ComServiceImpl(
       ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
@@ -97,24 +110,32 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
-
     Com savedCom = repository.save(com);
-    /*if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
-        for (String userId : request.getUserIds()) {
-            try {
-                keycloakAdminService.updateUserAttribute(userId, "com", savedCom.getId().toString());
-            } catch (Exception e) {
-                // Logger et continuer
-                logger.warn("Impossible de mettre à jour l'utilisateur {} : {}", userId, e.getMessage());
-            }
+
+    if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+      for (String userId : request.getUserIds()) {
+        try {
+          UserCom userCom = new UserCom();
+          userCom.setUserId(userId);
+          userCom.setComId(savedCom.getId());
+          userCom.setIsDeleted(false);
+          RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
+                  .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+          userCom.setStatus(defaultStatus);
+          userComRepository.save(userCom);
+        } catch (Exception e) {
+          logger.warn("Impossible d'associer l'utilisateur {} à l'COM {} : {}", userId, savedCom.getId(), e.getMessage());
         }
-    }*/
+      }
+    }
+
     return savedCom;
   }
 
   @Override
+  @Transactional
   public Com update(Integer id, ComRequest request)
-      throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException {
+          throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, AgpmDefaultStatus {
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
     RefParam comType = refParamService.findById(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);
@@ -124,38 +145,36 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
+    Com savedCom = repository.save(com);
 
-    /*// **Gestion des utilisateurs liés à cet Com via Keycloak**
-    if (request.getUserIds() != null) {
-        // 1. Récupérer les users actuellement liés à cet Com dans Keycloak
-        List<UserDTO> currentUsers = keycloakAdminService.getUsersByCom(id);
+    // 1. Récupérer les anciens UserAc liés à ce AC
+    List<UserCom> existingUserComs = userComRepository.findAllByComId(id);
 
-        Set<String> currentUserIds = currentUsers.stream()
-                .map(UserDTO::getId)
-                .collect(Collectors.toSet());
+    // 2. Construire la nouvelle liste à partir des userIds reçus
+    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
 
-        Set<String> newUserIds = new HashSet<>(request.getUserIds());
+    // 3. Supprimer ceux qui n'existent plus
+    for (UserCom existing : existingUserComs) {
+      if (!newUserIds.contains(existing.getUserId())) {
+        userComRepository.softDelete(existing.getComId(), existing.getUserId());
+      }
+    }
 
-        // 2. Users à ajouter (nouveaux)
-        Set<String> toAdd = new HashSet<>(newUserIds);
-        toAdd.removeAll(currentUserIds);
-
-        // 3. Users à retirer (plus dans la liste)
-        Set<String> toRemove = new HashSet<>(currentUserIds);
-        toRemove.removeAll(newUserIds);
-
-        // 4. Mettre à jour Keycloak : ajouter attribut com=id
-        for (String userIdToAdd : toAdd) {
-            keycloakAdminService.updateUserAttribute(userIdToAdd, "com", id.toString());
-        }
-
-        // 5. Mettre à jour Keycloak : supprimer attribut com (mettre à null)
-        for (String userIdToRemove : toRemove) {
-            keycloakAdminService.updateUserAttribute(userIdToRemove, "com", null);
-        }
-    }*/
-
-    return repository.save(com);
+    // 4. Ajouter les nouveaux
+    for (String userId : newUserIds) {
+      boolean exists = existingUserComs.stream()
+              .anyMatch(e -> e.getUserId().equals(userId));
+      if (!exists) {
+        UserCom userCom = new UserCom();
+        userCom.setUserId(userId);
+        userCom.setComId(id);
+        RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
+                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+        userCom.setStatus(defaultStatus);
+        userComRepository.save(userCom);
+      }
+    }
+    return  savedCom;
   }
 
   private static int getSizeList(List<Integer> listIds) throws AcNotFound, DuplicateAcIdsException {

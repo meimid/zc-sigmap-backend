@@ -2,6 +2,7 @@ package com.sigmap.sigmap_params.com;
 
 import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.ComDeleted;
@@ -14,6 +15,9 @@ import com.sigmap.common.com.response.ComResponse;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Page;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/com")
@@ -36,6 +41,8 @@ public class ComController {
     private final ComService comService;
     @Autowired
     private KeycloakAdminService keycloakAdminService;
+    @Autowired
+    private UserComRepository userComRepository;
 
     public ComController(ComService comService) {
         this.comService = comService;
@@ -81,7 +88,25 @@ public class ComController {
     public ResponseEntity<ComResponse> findById(@PathVariable Integer id) throws ComNotFound {
         Com param = comService.findById(id);
         ComResponse response = ComMapper.INSTANCE.map(param);
-        List<UserDTO> users = keycloakAdminService.getUsersByCom(id);
+        // Étape 1 : récupérer les userIds depuis UserCom (non supprimés)
+        List<String> userIds = userComRepository.findAllByComIdAndIsDeletedFalse(id)
+                .stream()
+                .map(UserCom::getUserId)
+                .toList();
+
+        // Étape 2 : récupérer les infos utilisateurs depuis Keycloak pour chaque userId
+        List<UserDTO> users = userIds.stream()
+                .map(userId -> {
+                    try {
+                        return keycloakAdminService.getUserById(userId);
+                    } catch (Exception e) {
+                        logger.warn("Impossible de récupérer les informations de l'utilisateur {} depuis Keycloak : {}", userId, e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
         response.setUsers(users);
         return ResponseEntity.ok(response);
     }
@@ -105,7 +130,7 @@ public class ComController {
      * @return the updated com
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
+    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus {
         Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.ok(response);
