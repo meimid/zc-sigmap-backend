@@ -10,6 +10,8 @@ import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
@@ -673,5 +675,61 @@ public class AgpmServiceImpl implements AgpmService {
                     List.of(agpm.getVersion())
             );
         }
+    }
+
+    @Override
+    public Page<AgpmResponseDto> findAllVersionsByIdFull(Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        if (agpmId == null || agpmId < 0) {
+            throw new IllegalArgumentException("Invalid AGPM ID: " + agpmId);
+        }
+
+        Optional<Integer> maxVersion = findLatestVersionById(agpmId);
+        if (maxVersion.isEmpty()) {
+            throw new AgpmNotFound("No Agpm found for ID", List.of(agpmId), Collections.emptyList());
+        }
+
+        Page<Agpm> agpmPage = repository.findAllById(agpmId, pageable);
+        if (agpmPage.isEmpty()) {
+            throw new AgpmNotFound("No Agpm versions found for ID", List.of(agpmId), Collections.emptyList());
+        }
+
+        List<AgpmResponseDto> responseDtos = agpmPage.getContent().stream()
+                .map(this::createFilteredResponseAgpm)
+                .map(agpmMapper::mapToDto)
+                .collect(Collectors.toList());
+
+        log.info("Retrieved {} versions for Agpm ID {} (page {} of {})",
+                responseDtos.size(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+
+        return new PageImpl<>(responseDtos, pageable, agpmPage.getTotalElements());
+    }
+
+    @Override
+    public Page<AgpmMinimalResponseDto> findAllVersionsByIdMinimal(Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        if (agpmId == null || agpmId < 0) {
+            throw new IllegalArgumentException("Invalid AGPM ID: " + agpmId);
+        }
+
+        // Check if any versions exist for the given ID
+        Optional<Integer> maxVersion = findLatestVersionById(agpmId);
+        if (maxVersion.isEmpty()) {
+            throw new AgpmNotFound("No Agpm found for ID", List.of(agpmId), Collections.emptyList());
+        }
+
+        // Fetch paginated versions for the given ID
+        Page<Agpm> agpmPage = repository.findAllById(agpmId, pageable);
+        if (agpmPage.isEmpty()) {
+            throw new AgpmNotFound("No Agpm versions found for ID", List.of(agpmId), Collections.emptyList());
+        }
+
+        // Map to AgpmMinimalResponseDto
+        List<AgpmMinimalResponseDto> responseDtos = agpmPage.getContent().stream()
+                .map(agpmMapper::toMinimalResponseDto)
+                .collect(Collectors.toList());
+
+        log.info("Retrieved {} minimal versions for Agpm ID {} (page {} of {})",
+                responseDtos.size(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+
+        return new PageImpl<>(responseDtos, pageable, agpmPage.getTotalElements());
     }
 }

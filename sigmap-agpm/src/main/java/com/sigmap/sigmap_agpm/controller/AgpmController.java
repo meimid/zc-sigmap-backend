@@ -13,7 +13,9 @@ import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponse;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
 import lombok.extern.slf4j.Slf4j;
@@ -156,5 +158,41 @@ public class AgpmController {
             throws AgpmNotFound, AgpmSoftDelete, AgpmInvalidStatusException {
         agpmService.delete(agpmId, agpmVer);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID with full details in AgpmResponseDto format.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of AgpmResponseDto
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    @GetMapping("/history/full/{agpmId}")
+    public ResponseEntity<Page<AgpmResponseDto>> getAgpmHistoryFull(@PathVariable Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        log.info("Received request to fetch full history for Agpm ID {}, page {}, size {}, sort {}",
+                agpmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<AgpmResponseDto> agpmPage = agpmService.findAllVersionsByIdFull(agpmId, pageable);
+        log.info("Returning {} versions for Agpm ID {} (page {} of {})",
+                agpmPage.getNumberOfElements(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+        return ResponseEntity.ok(agpmPage);
+    }
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID with minimal details in AgpmMinimalResponseDto format.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of AgpmMinimalResponseDto
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    @GetMapping("/history/minimal/{agpmId}")
+    public ResponseEntity<Page<AgpmMinimalResponseDto>> getAgpmHistoryMinimal(@PathVariable Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        log.info("Received request to fetch minimal history for Agpm ID {}, page {}, size {}, sort {}",
+                agpmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<AgpmMinimalResponseDto> agpmPage = agpmService.findAllVersionsByIdMinimal(agpmId, pageable);
+        log.info("Returning {} minimal versions for Agpm ID {} (page {} of {})",
+                agpmPage.getNumberOfElements(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+        return ResponseEntity.ok(agpmPage);
     }
 }
