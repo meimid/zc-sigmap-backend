@@ -11,4 +11,5 @@ public class RefParamResponseDto {
   private String code;
 
   private String description;
+  private  final String codeColor;
 }

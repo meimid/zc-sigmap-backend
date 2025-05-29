@@ -23,6 +23,14 @@ public class RefType extends BaseEntity {
   @Column(name = "ref_type_id")
   private Integer id;
 
+
   @Column(name = "description")
   private String description;
+
+  @Column(name = "ref_code", nullable = false)
+  private String refCode;
+
+  @Column(name = "system_type")
+  private Boolean systemType = false;
+
 }

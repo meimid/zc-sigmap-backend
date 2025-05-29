@@ -7,4 +7,6 @@ public class RefParamRequestWithoutRefTypeIdDto {
     private String code;
 
     private String description;
+
+    private String codeColor;
 }

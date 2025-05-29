@@ -21,5 +21,6 @@ public class RefParamResponse {
 
     private BaseEntityResponse metadata;
 
+    private final String codeColor;
 
 }

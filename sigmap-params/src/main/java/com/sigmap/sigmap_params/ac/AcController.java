@@ -2,6 +2,7 @@ package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.AcHasAssociatedAgpm;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.Ac;
@@ -14,6 +15,8 @@ import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_ac.UserAcRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Controller to manage ac.
@@ -40,6 +44,9 @@ public class AcController {
     private final Logger logger = LoggerFactory.getLogger(AcController.class);
     @Autowired
     private KeycloakAdminService keycloakAdminService;
+
+    @Autowired
+    private UserAcRepository userAcRepository;
     private final AcService acService;
 
     public AcController(AcService acService) {
@@ -86,10 +93,31 @@ public class AcController {
     public ResponseEntity<AcResponse> findById(@PathVariable Integer id) throws AcNotFound {
         Ac param = acService.findById(id);
         AcResponse response = AcMapper.INSTANCE.map(param);
-        List<UserDTO> users = keycloakAdminService.getUsersByAc(id);
+
+        // Étape 1 : récupérer les userIds depuis UserAc (non supprimés)
+        List<String> userIds = userAcRepository.findAllByAcIdAndIsDeletedFalse(id)
+                .stream()
+                .map(UserAc::getUserId)
+                .toList();
+
+        // Étape 2 : récupérer les infos utilisateurs depuis Keycloak pour chaque userId
+        List<UserDTO> users = userIds.stream()
+                .map(userId -> {
+                    try {
+                        return keycloakAdminService.getUserById(userId);
+                    } catch (Exception e) {
+                        logger.warn("Impossible de récupérer les informations de l'utilisateur {} depuis Keycloak : {}", userId, e.getMessage());
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
         response.setUsers(users);
+
         return ResponseEntity.ok(response);
     }
+
 
     /**
      * Create a new ac.
@@ -110,7 +138,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException,ComDeleted{
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, AgpmDefaultStatus {
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);

@@ -182,8 +182,16 @@ public class PaaController {
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
         @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
+        @ModelAttribute("request") PaaRequestGlobal request, @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound, PaaInvalidStateException {
     logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
+    if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+        try {
+            processRealisationLotsFromJson(request, realisationsLotsJson);
+            logger.info("Successfully processed lots from JSON string");
+        } catch (Exception e) {
+            logger.error("Error processing lots JSON: {}", e.getMessage());
+        }
+    }
     Paa updatedPaa = paaService.update(paaId, paaVer, request);
 
     // Use the detailed mapper to create a response with specialised DTOs

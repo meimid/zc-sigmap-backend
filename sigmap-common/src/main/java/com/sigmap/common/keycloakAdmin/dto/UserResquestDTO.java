@@ -10,7 +10,7 @@ public class UserResquestDTO {
     private String lastName;
     private String email;
     private String password;
-    private Integer com;
-    private Integer ac;
+    private List<Integer> comIds;
+    private List<Integer> acIds;
     private List<String> roles;
 }

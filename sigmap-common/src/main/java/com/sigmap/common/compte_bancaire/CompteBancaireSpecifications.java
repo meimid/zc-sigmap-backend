@@ -21,7 +21,8 @@ public class CompteBancaireSpecifications {
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
                     criteriaBuilder.like(joinSociete.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(joinSociete.get("nni"), "%" + search + "%"),
-                    criteriaBuilder.like(joinSociete.get("categorieSoumissionnaireId"), "%" + search + "%")
+                    criteriaBuilder.like(joinSociete.get("categorieSoumissionnaireId"), "%" + search + "%"),                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%")
+
             );
         };
     }
