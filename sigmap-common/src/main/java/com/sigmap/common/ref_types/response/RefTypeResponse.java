@@ -9,5 +9,7 @@ import lombok.Data;
 public class RefTypeResponse {
     private Integer id;
     private String description;
+    private String refCode;
+    private Boolean systemType;
     private BaseEntityResponse metadata;
 }

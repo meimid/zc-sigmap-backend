@@ -1,5 +1,7 @@
 package com.sigmap.common.keycloakAdmin.dto;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.com.Com;
 import lombok.Data;
 
 import java.util.List;
@@ -12,8 +14,8 @@ public class UserDTO {
     private String lastName;
     private String email;
     private boolean emailVerified;
-    private Integer com;
-    private Integer ac;
+    private List<Com> coms;
+    private List<Ac> acs;
     private Long createdTimestamp;
     private boolean enabled;
     private List<String> roles;

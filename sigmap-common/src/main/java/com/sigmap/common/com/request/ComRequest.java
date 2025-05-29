@@ -2,6 +2,8 @@ package com.sigmap.common.com.request;
 
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -16,6 +18,6 @@ public class ComRequest {
   private String adresse;
   private Integer comTypeId;
   // private List<Integer> acIds;
-  // private List<String> userIds;
+   private List<String> userIds;
 
 }
