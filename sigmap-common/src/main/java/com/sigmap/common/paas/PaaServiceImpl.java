@@ -294,12 +294,16 @@ public class PaaServiceImpl implements PaaService {
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
 
         if (existingPaaOpt.isEmpty()) {
-            throw new PaaNotFound("Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.", List.of(paaId), List.of(paaVer));
+            throw new PaaNotFound(
+                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",
+                    List.of(paaId), List.of(paaVer));
         }
 
         Paa existingPaa = existingPaaOpt.get();
         if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
-            throw new PaaNotFound("Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer, List.of(paaId), List.of(paaVer));
+            throw new PaaNotFound(
+                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
+                    List.of(paaId), List.of(paaVer));
         }
 
         // Check if PAA is in DRAFT status and has null processInstanceId
@@ -311,13 +315,18 @@ public class PaaServiceImpl implements PaaService {
         existingPaa.setBudgetEstime(request.getBudgetEstime());
 
         if (request.getAcId() != null) {
-            Ac ac = acRepository.findById(request.getAcId()).orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
+            Ac ac = acRepository.findById(request.getAcId())
+                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
             existingPaa.setAc(ac);
         }
 
         if (request.getDocIds() != null) {
             Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
-            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ? existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
+            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+                    existingPaa.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .map(Docs::getId)
+                            .collect(Collectors.toSet()) : new HashSet<>();
 
             if (!requestedDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document changes detected for PAA update ID: " + paaId);
@@ -351,7 +360,8 @@ public class PaaServiceImpl implements PaaService {
             }
 
             for (Integer docId : requestedDocIds) {
-                Docs doc = docsRepository.findById(docId).orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
                 if (doc.getPaas() == null) {
                     doc.setPaas(new ArrayList<>());
                 }
@@ -398,7 +408,8 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
                     CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
-                    realisation = realisationRepository.findById(realisationId).orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
+                    realisation = realisationRepository.findById(realisationId)
+                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
@@ -417,7 +428,11 @@ public class PaaServiceImpl implements PaaService {
 
                     if (realisationRequest.getDocIds() != null) {
                         Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
-                        Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ? realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
+                        Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ?
+                                realisation.getDocs().stream()
+                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                        .map(Docs::getId)
+                                        .collect(Collectors.toSet()) : new HashSet<>();
                         if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
                             System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
                         }
@@ -438,7 +453,8 @@ public class PaaServiceImpl implements PaaService {
                             }
                         }
                         for (Integer docId : requestedRealisationDocIds) {
-                            Docs doc = docsRepository.findById(docId).orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                            Docs doc = docsRepository.findById(docId)
+                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
                             if (doc.getRealisations() == null) {
                                 doc.setRealisations(new ArrayList<>());
                             }
@@ -462,9 +478,36 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
 
+                    // Process uploaded files AFTER setting the docIds documents
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
+                            // Get current docs list to preserve it
+                            List<Docs> currentDocs = realisation.getDocs();
+                            if (currentDocs == null) {
+                                currentDocs = new ArrayList<>();
+                            }
+
+                            // Process the uploaded files
                             processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+
+                            // After processing, get the new docs and merge with existing ones
+                            List<Docs> newDocs = realisation.getDocs();
+                            if (newDocs != null) {
+                                // Create a set to track existing doc IDs to avoid duplicates
+                                Set<Integer> existingDocIds = currentDocs.stream()
+                                        .map(Docs::getId)
+                                        .collect(Collectors.toSet());
+
+                                // Add only new documents that weren't already in the list
+                                for (Docs newDoc : newDocs) {
+                                    if (!existingDocIds.contains(newDoc.getId())) {
+                                        currentDocs.add(newDoc);
+                                    }
+                                }
+
+                                // Set the combined list back
+                                realisation.setDocs(currentDocs);
+                            }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -533,7 +576,8 @@ public class PaaServiceImpl implements PaaService {
                     if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
                         List<Docs> docs = new ArrayList<>();
                         for (Integer docId : realisationRequest.getDocIds()) {
-                            Docs doc = docsRepository.findById(docId).orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                            Docs doc = docsRepository.findById(docId)
+                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
                             if (doc.getRealisations() == null) {
                                 doc.setRealisations(new ArrayList<>());
                             }
@@ -578,17 +622,26 @@ public class PaaServiceImpl implements PaaService {
         Paa copyForResponse = new Paa();
         BeanUtils.copyProperties(savedPaa, copyForResponse);
         if (savedPaa.getDocs() != null) {
-            copyForResponse.setDocs(savedPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
+            copyForResponse.setDocs(
+                    savedPaa.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList())
+            );
         }
         if (copyForResponse.getRealisations() != null) {
             copyForResponse.getRealisations().forEach(realisation -> {
                 if (realisation.getDocs() != null) {
-                    realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
+                    realisation.setDocs(
+                            realisation.getDocs().stream()
+                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                                    .collect(Collectors.toList())
+                    );
                 }
             });
         }
         return copyForResponse;
     }
+
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
