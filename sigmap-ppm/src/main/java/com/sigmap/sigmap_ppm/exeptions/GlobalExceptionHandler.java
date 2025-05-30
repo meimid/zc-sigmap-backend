@@ -6,6 +6,7 @@ import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -177,5 +178,13 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("doc.maxSize",new Object[] {ex.getMaxFileUploadSize()},getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidPpmStatusException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPpmStatusException(InvalidPpmStatusException ex) {
+        String message = ex.getMessage();
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }

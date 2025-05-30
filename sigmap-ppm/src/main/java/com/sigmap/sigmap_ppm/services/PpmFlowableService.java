@@ -162,6 +162,21 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        // Fetch PPM entity to check status
+        Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+        if (ppmOptional.isEmpty()) {
+            ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
+            errorResponse.setStatus("No PPM entity found for id " + id + " and version " + version);
+            return errorResponse;
+        }
+        Ppm ppm = ppmOptional.get();
+        if (ppm.getStatus() == null || ppm.getStatus().getId() != Constants.DRAFT_STATUS) {
+            ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
+            errorResponse.setStatus("Process can only be started when PPM is in draft status. Current status ID: " +
+                    (ppm.getStatus() != null ? ppm.getStatus().getId() : "null"));
+            return errorResponse;
+        }
+
         // Use provided processKey or fallback to default
         String effectiveProcessKey = (processKey != null && !processKey.isEmpty()) ? processKey : this.processKey;
         String effectiveTaskKey = (initialTaskKey != null && !initialTaskKey.isEmpty()) ? initialTaskKey : this.initialTaskKey;
