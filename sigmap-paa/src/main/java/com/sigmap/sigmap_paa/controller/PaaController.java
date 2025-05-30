@@ -3,10 +3,7 @@ package com.sigmap.sigmap_paa.controller;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
-import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
-import com.sigmap.common.paas.exceptions.PaaInvalidStateException;
-import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
@@ -82,9 +79,10 @@ public class PaaController {
     }
 
     @GetMapping("/current-year")
-    public ResponseEntity<Paa> getPaaOfCurrentYear() {
+    public ResponseEntity<PaaResponseWithRealisations> getPaaOfCurrentYear() {
         Paa paas = paaService.getPaaOfCurrentYear();
-        return ResponseEntity.ok(paas);
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paas);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -184,8 +182,16 @@ public class PaaController {
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
         @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
+        @ModelAttribute("request") PaaRequestGlobal request, @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound, PaaInvalidStateException {
     logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
+    if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+        try {
+            processRealisationLotsFromJson(request, realisationsLotsJson);
+            logger.info("Successfully processed lots from JSON string");
+        } catch (Exception e) {
+            logger.error("Error processing lots JSON: {}", e.getMessage());
+        }
+    }
     Paa updatedPaa = paaService.update(paaId, paaVer, request);
 
     // Use the detailed mapper to create a response with specialised DTOs
@@ -404,9 +410,21 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @DeleteMapping("/{paaId}/{paaVer}")
     public ResponseEntity<PaaResponse> deleteById(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) {
+            @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
 
         paaService.delete(paaId, paaVer);
+        Paa deleted = paaService.findDeletedById(paaId, paaVer)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
+        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
+    public ResponseEntity<PaaResponse> deleteTest(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
+
+        paaService.deleteTest(paaId, paaVer);
         Paa deleted = paaService.findDeletedById(paaId, paaVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
         PaaResponse response = PaaMapper.INSTANCE.map(deleted);

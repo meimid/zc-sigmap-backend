@@ -1,12 +1,27 @@
 package com.sigmap.common.keycloakAdmin.service;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_ac.UserAcRepository;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
@@ -15,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class KeycloakAdminService {
+    private final Logger logger = LoggerFactory.getLogger(KeycloakAdminService.class);
 
     @Autowired
     private KeycloakTokenService tokenService;
@@ -27,87 +43,127 @@ public class KeycloakAdminService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    @Autowired
+    private UserAcRepository userAcRepository;
+    @Autowired
+    private UserComRepository userComRepository;
+
+    @Autowired
+    private RefParamRepository refParamRepository;
+
     public List<UserDTO> getAllUsers() {
         String accessToken = tokenService.getAccessToken();
+        HttpHeaders headers = createHeaders(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
         String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        List<UserDTO> users = fetchUsersFromKeycloak(baseUrl, entity);
 
-        ResponseEntity<List> response = restTemplate.exchange(
-                baseUrl + "/users", HttpMethod.GET, entity, List.class);
-
-        List<Map<String, Object>> userList = response.getBody();
-        List<UserDTO> dtoList = new ArrayList<>();
-
-        for (Map<String, Object> userMap : userList) {
-            UserDTO dto = new UserDTO();
-            String userId = (String) userMap.get("id");
-            dto.setId(userId);
-            dto.setUsername((String) userMap.get("username"));
-            dto.setFirstName((String) userMap.get("firstName"));
-            dto.setLastName((String) userMap.get("lastName"));
-            dto.setEmail((String) userMap.get("email"));
-            dto.setEmailVerified((Boolean) userMap.getOrDefault("emailVerified", false));
-            dto.setCreatedTimestamp(userMap.get("createdTimestamp") != null ? Long.parseLong(userMap.get("createdTimestamp").toString()) : null);
-            dto.setEnabled((Boolean) userMap.getOrDefault("enabled", false));
-
-            // Attributs com et ac
-            Map<String, List<String>> attributes = (Map<String, List<String>>) userMap.get("attributes");
-            if (attributes != null) {
-                List<String> comValues = attributes.get("com");
-                List<String> acValues = attributes.get("ac");
-                if (comValues != null && !comValues.isEmpty()) {
-                    dto.setCom(Integer.parseInt(comValues.get(0)));
-                }
-                if (acValues != null && !acValues.isEmpty()) {
-                    dto.setAc(Integer.parseInt(acValues.get(0)));
-                }
-            }
-
-            // Appel pour récupérer les roles de l'utilisateur
-            String rolesUrl = baseUrl + "/users/" + userId + "/role-mappings/realm";
-            ResponseEntity<List> rolesResponse = restTemplate.exchange(rolesUrl, HttpMethod.GET, entity, List.class);
-            List<Map<String, Object>> roles = rolesResponse.getBody();
-
-            List<String> roleNames = new ArrayList<>();
-            if (roles != null) {
-                for (Map<String, Object> role : roles) {
-                    roleNames.add((String) role.get("name"));
-                }
-            }
-
-            dto.setRoles(roleNames);
-
-            dtoList.add(dto);
+        if (users.isEmpty()) {
+            return Collections.emptyList();
         }
 
-        return dtoList;
+
+        return users;
     }
 
-    public List<UserDTO> getUsersByCom(Integer com) {
-        return getAllUsers().stream()
-                .filter(user -> user.getCom() != null && user.getCom().equals(com))
+    private HttpHeaders createHeaders(String accessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        return headers;
+    }
+
+    private List<UserDTO> fetchUsersFromKeycloak(String baseUrl, HttpEntity<Void> entity) {
+        String url = baseUrl + "/users";
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+
+        List<Map<String, Object>> rawUsers = response.getBody();
+        if (rawUsers == null) return Collections.emptyList();
+
+        return rawUsers.stream()
+                .map(this::mapToUserDTO)
                 .collect(Collectors.toList());
     }
 
-    public List<UserDTO> getUsersByAc(Integer ac) {
-        return getAllUsers().stream()
-                .filter(user -> user.getAc() != null && user.getAc().equals(ac))
-                .collect(Collectors.toList());
+    private UserDTO mapToUserDTO(Map<String, Object> userMap) {
+        UserDTO dto = new UserDTO();
+        dto.setId((String) userMap.get("id"));
+        dto.setUsername((String) userMap.get("username"));
+        dto.setFirstName((String) userMap.get("firstName"));
+        dto.setLastName((String) userMap.get("lastName"));
+        dto.setEmail((String) userMap.get("email"));
+        dto.setEmailVerified((Boolean) userMap.getOrDefault("emailVerified", false));
+        dto.setCreatedTimestamp(userMap.get("createdTimestamp") != null ?
+                Long.parseLong(userMap.get("createdTimestamp").toString()) : null);
+        dto.setEnabled((Boolean) userMap.getOrDefault("enabled", false));
+        return dto;
     }
-    public List<UserDTO> getUsersWithoutCom() {
-        return getAllUsers().stream()
-                .filter(user -> user.getCom() == null)
+
+    public UserDTO getUserById(String userId) {
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+
+        Map<String, Object> userMap = fetchUserData(userId, entity);
+        if (userMap == null || userMap.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé avec l'ID : " + userId);
+        }
+
+        UserDTO userDTO = mapToUserDTO(userMap);
+
+        userDTO.setRoles(fetchRolesForUser(userId, entity));
+        userDTO.setAcs(fetchAcsForUser(userId));
+        userDTO.setComs(fetchComsForUser(userId));
+
+        return userDTO;
+    }
+
+    private HttpEntity<Void> createHttpEntityWithToken() {
+        String accessToken = tokenService.getAccessToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        return new HttpEntity<>(headers);
+    }
+
+    private Map<String, Object> fetchUserData(String userId, HttpEntity<Void> entity) {
+        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId;
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+        return response.getBody();
+    }
+
+
+
+    private List<String> fetchRolesForUser(String userId, HttpEntity<Void> entity) {
+        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId + "/role-mappings/realm";
+        try {
+            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+            List<Map<String, Object>> roles = response.getBody();
+            if (roles == null) return Collections.emptyList();
+
+            return roles.stream()
+                    .map(role -> (String) role.get("name"))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            logger.warn("Failed to fetch roles for user: " + userId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private List<Ac> fetchAcsForUser(String userId) {
+        return userAcRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
+                .map(UserAc::getAc)
                 .collect(Collectors.toList());
     }
 
-    public List<UserDTO> getUsersWithoutAc() {
-        return getAllUsers().stream()
-                .filter(user -> user.getAc() == null)
+    private List<Com> fetchComsForUser(String userId) {
+        return userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
+                .map(UserCom::getCom)
                 .collect(Collectors.toList());
     }
+
+
+
+
     public List<String> getAllRealmRoleNames() {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
@@ -123,83 +179,148 @@ public class KeycloakAdminService {
                 .map(role -> (String) role.get("name"))
                 .collect(Collectors.toList());
     }
-    public void createUser(UserResquestDTO userDTO) {
+    public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users", keycloakBaseUrl, realm);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders headers = buildHeaders(token);
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(buildUserPayload(userDTO), headers);
 
-        Map<String, Object> user = new HashMap<>();
-        user.put("username", userDTO.getUsername());
-        user.put("firstName", userDTO.getFirstName());
-        user.put("lastName", userDTO.getLastName());
-        user.put("email", userDTO.getEmail());
-        user.put("enabled", true);
-
-        // Gérer les attributs "com" et "ac"
-        Map<String, List<String>> attributes = new HashMap<>();
-        if (userDTO.getCom() != null) {
-            attributes.put("com", List.of(userDTO.getCom().toString()));
-        }
-        if (userDTO.getAc() != null) {
-            attributes.put("ac", List.of(userDTO.getAc().toString()));
-        }
-        if (!attributes.isEmpty()) {
-            user.put("attributes", attributes);
-        }
-
-        // Set password
-        Map<String, Object> credentials = new HashMap<>();
-        credentials.put("type", "password");
-        credentials.put("value", userDTO.getPassword());
-        credentials.put("temporary", true);
-
-        user.put("credentials", List.of(credentials));
-
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(user, headers);
         ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
-
-        // Récupération de l’ID depuis l’en-tête Location
         URI location = response.getHeaders().getLocation();
-        if (location != null) {
-            String userId = location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
-
-            // Affectation des rôles si présents
-            if (userDTO.getRoles() != null && !userDTO.getRoles().isEmpty()) {
-                assignRolesToUser(userId, userDTO.getRoles());
-            }
+        if (location == null) {
+            throw new RuntimeException("Erreur lors de la création de l'utilisateur : ID introuvable");
         }
+
+        String userId = extractUserIdFromLocation(location);
+
+        if (!CollectionUtils.isEmpty(userDTO.getRoles())) {
+            assignRolesToUser(userId, userDTO.getRoles());
+        }
+
+        linkUserToEntities(userId, userDTO.getAcIds(), true);
+        linkUserToEntities(userId, userDTO.getComIds(), false);
+
+        return getUserById(userId);
+
     }
-    public void updateUser(String userId, UserResquestDTO userDTO) {
+    public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
 
+        HttpHeaders headers = buildHeaders(token);
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(buildUserPayload(userDTO), headers);
+
+        restTemplate.exchange(url, HttpMethod.PUT, requestEntity, Void.class);
+
+        if (userDTO.getRoles() != null) {
+            updateUserRolesSmart(userId, userDTO.getRoles());
+        }
+
+        updateLinkedEntities(userId, userDTO.getAcIds(), true);
+        updateLinkedEntities(userId, userDTO.getComIds(), false);
+
+        return getUserById(userId);
+
+    }
+    private HttpHeaders buildHeaders(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
+        return headers;
+    }
 
+    private Map<String, Object> buildUserPayload(UserResquestDTO userDTO) {
         Map<String, Object> user = new HashMap<>();
-        user.put("id", userId);
         user.put("username", userDTO.getUsername());
         user.put("firstName", userDTO.getFirstName());
         user.put("lastName", userDTO.getLastName());
         user.put("email", userDTO.getEmail());
         user.put("enabled", true);
+        Map<String, Object> credentials = Map.of(
+                "type", "password",
+                "value", userDTO.getPassword(),
+                "temporary", true
+        );
+        user.put("credentials", List.of(credentials));
+        return user;
+    }
 
-        Map<String, List<String>> attributes = new HashMap<>();
-        if (userDTO.getCom() != null) attributes.put("com", List.of(userDTO.getCom().toString()));
-        if (userDTO.getAc() != null) attributes.put("ac", List.of(userDTO.getAc().toString()));
-        if (!attributes.isEmpty()) user.put("attributes", attributes);
+    private String extractUserIdFromLocation(URI location) {
+        return location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
+    }
+    private void linkUserToEntities(String userId, List<Integer> ids, boolean isAc) {
+        if (ids == null || ids.isEmpty()) return;
 
-        restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(user, headers), Void.class);
-
-        // Mise à jour des rôles de manière fine
-        if (userDTO.getRoles() != null) {
-            updateUserRolesSmart(userId, userDTO.getRoles());
+        for (Integer id : ids) {
+            try {
+                if (isAc) {
+                    UserAc userAc = new UserAc();
+                    userAc.setUserId(userId);
+                    userAc.setAcId(id);
+                    userAc.setIsDeleted(false);
+                    userAc.setStatus(getDefaultStatus());
+                    userAcRepository.save(userAc);
+                } else {
+                    UserCom userCom = new UserCom();
+                    userCom.setUserId(userId);
+                    userCom.setComId(id);
+                    userCom.setIsDeleted(false);
+                    userCom.setStatus(getDefaultStatus());
+                    userComRepository.save(userCom);
+                }
+            } catch (Exception e) {
+                logger.warn("Impossible d'associer l'utilisateur {} à l'entité {} : {}", userId, id, e.getMessage());
+            }
         }
     }
+
+    private void updateLinkedEntities(String userId, List<Integer> newIds, boolean isAc) throws AgpmDefaultStatus {
+        if (newIds == null) return;
+
+        Set<Integer> newIdSet = new HashSet<>(newIds);
+        if (isAc) {
+            List<UserAc> existing = userAcRepository.findByUserIdAndIsDeletedFalse(userId);
+            for (UserAc e : existing) {
+                if (!newIdSet.contains(e.getAcId())) {
+                    userAcRepository.softDelete(e.getAcId(), userId);
+                }
+            }
+            for (Integer id : newIdSet) {
+                if (existing.stream().noneMatch(e -> e.getAcId().equals(id))) {
+                    UserAc userAc = new UserAc();
+                    userAc.setUserId(userId);
+                    userAc.setAcId(id);
+                    userAc.setIsDeleted(false);
+                    userAc.setStatus(getDefaultStatus());
+                    userAcRepository.save(userAc);
+                }
+            }
+        } else {
+            List<UserCom> existing = userComRepository.findByUserIdAndIsDeletedFalse(userId);
+            for (UserCom e : existing) {
+                if (!newIdSet.contains(e.getComId())) {
+                    userComRepository.softDelete(e.getComId(), userId);
+                }
+            }
+            for (Integer id : newIdSet) {
+                if (existing.stream().noneMatch(e -> e.getComId().equals(id))) {
+                    UserCom userCom = new UserCom();
+                    userCom.setUserId(userId);
+                    userCom.setComId(id);
+                    userCom.setIsDeleted(false);
+                    userCom.setStatus(getDefaultStatus());
+                    userComRepository.save(userCom);
+                }
+            }
+        }
+    }
+
+    private RefParam getDefaultStatus() throws AgpmDefaultStatus {
+        return refParamRepository.findById(Constants.ACTIF_STATUS)
+                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+    }
+
     public void updatePassword(String userId, String newPassword) {
         String token = tokenService.getAccessToken();
         HttpHeaders headers = new HttpHeaders();

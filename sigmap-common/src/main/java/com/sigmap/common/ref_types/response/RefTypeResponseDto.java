@@ -6,4 +6,6 @@ import lombok.Data;
 public class RefTypeResponseDto {
     private Integer id;
     private String description;
+    private String refCode;
+    private Boolean systemType;
 }

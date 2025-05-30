@@ -15,7 +15,8 @@ public class RefParamSpecifications {
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("code"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("description"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("description"), "%" + search + "%")
+                    criteriaBuilder.like(join.get("description"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("codeColor"), "%" + search + "%")
             );
         };
     }
@@ -53,4 +54,11 @@ public class RefParamSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+    /** code color */
+    public static Specification<RefParam> codeColor(String codeColor) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("codeColor"), "%" + codeColor + "%");
+        };
+    }
+
 }

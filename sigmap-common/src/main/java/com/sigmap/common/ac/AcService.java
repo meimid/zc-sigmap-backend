@@ -3,6 +3,7 @@ package com.sigmap.common.ac;
 import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcHasAssociatedAgpm;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.request.AcRequest;
@@ -89,7 +90,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException;
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, AgpmDefaultStatus;
 
     /**
      * Delete a Ac.

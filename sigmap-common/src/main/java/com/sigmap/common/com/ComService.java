@@ -1,6 +1,7 @@
 package com.sigmap.common.com;
 import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -87,7 +88,7 @@ public interface ComService {
      * @param request the request to update the com from
      * @return the updated com
      */
-    Com update(Integer id,ComRequest request)throws ComNotFound, RefParamNotFound, AcNotFound;
+    Com update(Integer id,ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus;
     /**
      * Delete a Com.
      *
