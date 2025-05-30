@@ -7,11 +7,14 @@ import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -38,17 +41,28 @@ public class RefParamServiceImpl implements RefParamService {
     @Override
     public List<RefParam> findAll() {
         Specification<RefParam> spec = RefParamSpecifications.deleted(false);
-        return repository.findAll(spec);
+        return repository.findAll(spec).stream().filter(el->!el.getRefType().getSystemType()).collect(Collectors.toList());
     }
 
     @Override
     public Page<RefParam> findAll(Specification<RefParam> spec, Pageable pageable) {
-        return repository.findAll(spec, pageable);
+        Page<RefParam> page = repository.findAll(spec, pageable);
+        List<RefParam> filteredContent = page.getContent().stream()
+                .filter(el ->
+                     !el.getRefType().getSystemType())
+                .collect(Collectors.toList());
+        return new PageImpl<>(filteredContent, pageable, page.getTotalElements());
+
     }
 
     @Override
     public Optional<RefParam> findOne(Specification<RefParam> specification) {
+        Optional<RefParam> ref = repository.findOne(specification);
+        if (ref.isPresent()&&ref.get().getRefType().getSystemType()) {
+            return Optional.empty();
+        }
         return repository.findOne(specification);
+
     }
 
     @Override
@@ -73,8 +87,12 @@ public class RefParamServiceImpl implements RefParamService {
     public RefParam findById(Integer id) throws RefParamNotFound {
         Specification<RefParam> specification = RefParamSpecifications.id(id)
                 .and(RefParamSpecifications.deleted(false));
-        return findOne(specification)
+        RefParam ref= findOne(specification)
                 .orElseThrow(() -> new RefParamNotFound("", List.of(id)));
+        if(ref.getRefType().getSystemType()!=null&&ref.getRefType().getSystemType()) {
+            throw new RefParamNotFound("", List.of(id));
+        }
+        return ref;
     }
 
     @Override
@@ -87,19 +105,31 @@ public class RefParamServiceImpl implements RefParamService {
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         if(request.getRefTypeId()!=null) {
             RefType refType = refTypeService.findById(request.getRefTypeId());
-            refParam.setRefType(refType);
+            if(refType.getSystemType()!=null&&refType.getSystemType()) {
+                throw new RefTypeNotFound("",request.getRefTypeId());
+            }
+            else{
+                refParam.setRefType(refType);
+            }
+
         }
+
         return save(refParam);
     }
 
     @Override
     public RefParam update(Integer id,RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
         RefParam refParam = findById(id);
+        if(refParam.getRefType().getSystemType()) {
+            throw new RefParamNotFound("", List.of(id));
+        }
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
+
         if(request.getRefTypeId()!=null) {
             RefType refType = refTypeService.findById(request.getRefTypeId());
             refParam.setRefType(refType);
         }
+
         return save(refParam);
     }
 
@@ -109,7 +139,7 @@ public class RefParamServiceImpl implements RefParamService {
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress,
             HasAssociatedPpm, HasAssociatedPaa,
-            HasAssociatedAgpm,HasAssociatedRefRealisation{
+            HasAssociatedAgpm, HasAssociatedRefRealisation, RefParamNotFound {
         boolean hasAssociatedCom = repository.hasAssociatedCom(id);
         if (hasAssociatedCom) {
             throw new RefParamHasAssociatedCom("",id);
@@ -143,22 +173,25 @@ public class RefParamServiceImpl implements RefParamService {
         if (hasAssociatedRealisation) {
             throw new HasAssociatedRefRealisation("",id);
         }
+        RefParam refType = findById(id);
 
-
+        if(refType.getRefType().getSystemType()) {
+            throw new RefParamNotFound("", List.of(id));
+        }
         repository.softDelete(id);
     }
 
     @Override
     public List<RefParam> findByRefType(Integer refTpeId) throws RefTypeNotFound {
-        refTypeService.findById(refTpeId);
-       return repository.findByRefType(refTpeId);
+      refTypeService.findById(refTpeId);
+       return repository.findByRefType(refTpeId).stream().filter(el->!el.getRefType().getSystemType()).collect(Collectors.toList());
     }
 
     @Override
     public RefParam findByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound  {
         refTypeService.findById(refTypeId);
         RefParam refParam=repository.findByIdAndRefType_Id(refPramId, refTypeId).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
-        if(refParam.getIsDeleted()){
+        if(refParam.getIsDeleted()|refParam.getRefType().getSystemType()) {
             throw new RefParamNotFound("",List.of(refPramId));
         }
         return  refParam;
@@ -166,17 +199,28 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam UpdateRefParamByRefTypeId(Integer refParamId, Integer refTypeId,RefParamRequest request) throws RefParamNotFound {
+        RefType refType = refTypeService.findById(refTypeId);
+        if(refType.getSystemType()) {
+            throw new RefParamNotFound("",List.of(refParamId));
+        }
         return update(findByIdAndRefTypeId( refParamId, refTypeId).getId(),request);
     }
 
     @Override
     public void deleteByIdAndRefTypeId(Integer refParamId, Integer refTypeId) throws RefParamNotFound {
+        RefType refType = refTypeService.findById(refTypeId);
+        if(refType.getSystemType()) {
+            throw new RefParamNotFound("",List.of(refParamId));
+        }
         delete(findByIdAndRefTypeId( refParamId, refTypeId).getId());
     }
 
     @Override
     public RefParam createUnderRefType(Integer refTpeId, RefParamRequest request) throws RefTypeNotFound {
         RefType refType = refTypeService.findById(refTpeId);
+        if(refType.getSystemType()) {
+            throw new RefTypeNotFound("",refTpeId);
+        }
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
         return save(refParam);

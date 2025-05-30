@@ -125,10 +125,10 @@ public class RefParamController {
      * @return the deleted ref param
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id)throws RefParamHasAssociatedCom,
+    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
-            RefParamHasAssociatedSocieteAddress {
+            RefParamHasAssociatedSocieteAddress, RefParamNotFound {
         refParamService.delete(id);
 
         RefParam deleted = refParamService.findDeletedById(id)
