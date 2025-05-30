@@ -4,6 +4,7 @@ import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_fields.DynaFields;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinColumns;
 import jakarta.persistence.ManyToOne;
 import lombok.*;
 
@@ -17,8 +18,13 @@ import java.io.Serializable;
 public class DynaDocsFieldsId implements Serializable {
 
     @ManyToOne
-    @JoinColumn(name = "dyna_docs_id", nullable = false)
+    @JoinColumns({
+            @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
+            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver")
+    })
     private DynaDocs dynaDocsId;
+
+
     @ManyToOne
     @JoinColumn(name = "dyna_fields_id", nullable = false)
     private DynaFields DynaFieldsId;

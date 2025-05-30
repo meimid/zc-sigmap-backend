@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_fields;
 
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,7 +28,12 @@ public class DynaFields {
     private String label;
     @Column(name = "description")
     private String description;
-    @Column(name = "type_id")
-    private Integer type_id;
+    @ManyToOne
+    @JoinColumn(name = "type_id")
+    private RefParam type_id;
+    @Column(name = "source")
+    private String source;
+    @Column(name = "source_field")
+    private String sourceField;
 
 }

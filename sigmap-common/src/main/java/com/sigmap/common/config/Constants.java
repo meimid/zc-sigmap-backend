@@ -21,5 +21,7 @@ public class Constants {
     public static final Integer MODE_SELECTION=20;
     public static final Integer DIRECTION=21;
 
+    public static final Integer CATEGORIE_DAC=50;
+
 
     private Constants() {}}

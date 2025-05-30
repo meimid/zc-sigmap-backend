@@ -62,7 +62,8 @@ public class DacServiceImpl implements DacService {
             throw new TemplateFileNameNotFound( dacId, dacVersion);
         }
         // Prendre le premier dyna_docs_id (suppose que tous les dac_docs pour ce dac_id/dac_ver pointent vers le même dyna_docs)
-        Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getDynaDocsId();
+        //Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().
+        Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getId().getDynaDocsId();
 
         // Récupérer le template_file_name depuis dyna_docs
         Optional<DynaDocs> dynaDocs = dynaDocsRepository.findById(dynaDocsId);

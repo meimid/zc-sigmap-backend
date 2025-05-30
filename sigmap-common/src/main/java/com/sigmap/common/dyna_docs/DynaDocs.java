@@ -1,6 +1,7 @@
 package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.categorie.Categorie;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,20 +16,21 @@ import lombok.Setter;
 @Table(name = "dyna_docs")
 
 public class DynaDocs {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "dyna_docs_id")
-    private Integer dynaDocsId;
+    @EmbeddedId
+    private DynaDocID id;
     @Column(name = "name")
     private String name;
     @Column(name = "template_file_name")
     private String templateFileName;
+    @Column(name = "guide_file_name")
+    private String guideFileName;
 
     @ManyToOne
     @JoinColumn(name = "category_id")
-    private Categorie categorie;
-    @Column(name = "exported_type")
-    private String exportedType;
-    @Column(name = "active")
-    private boolean active;
+    private RefParam categorieId;
+
+    @Column(name = "dyna_doc_order")
+    private Integer dynaDocOrder;
+    @Column(name = "status")
+    private Integer status;
 }

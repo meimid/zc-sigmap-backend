@@ -15,6 +15,8 @@ import lombok.*;
 public class DynaDocsFields {
     @EmbeddedId
     private DynaDocsFieldsId id;
+    @Column(name = "dyna_field_order")
+    private Integer dynaFieldOrder;
     @Column(name = "status")
     private boolean status;
 }

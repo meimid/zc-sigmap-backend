@@ -27,6 +27,7 @@ public class DacDocsId implements Serializable {
     @ManyToOne
     @JoinColumns({
             @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
+            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver"),
             @JoinColumn(name = "dyna_fields_id", referencedColumnName = "dyna_fields_id")
     })
     private DynaDocsFields dinaDocsFields;
