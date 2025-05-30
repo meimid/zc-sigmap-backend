@@ -1,6 +1,6 @@
 package com.sigmap.common.dyna_docs;
 
-import com.sigmap.common.categorie.Categorie;
+
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

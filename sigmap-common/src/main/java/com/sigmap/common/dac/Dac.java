@@ -25,10 +25,6 @@ public class Dac extends BaseEntity {
     private Ppm ppm;
 
     @ManyToOne
-    @JoinColumn(name = "ac_id", referencedColumnName = "ac_id")
-    private Ac ac;
-
-    @ManyToOne
     @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
     private RefParam category;
 

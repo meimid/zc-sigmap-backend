@@ -6,12 +6,8 @@ import com.sigmap.common.dac.exeption.SaveTempDocument;
 import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
-import com.sigmap.common.dyna_docs.DynaDocID;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
-import com.sigmap.common.dyna_docs_fields.DynaDocsFields;
-import com.sigmap.common.dyna_docs_fields.DynaDocsFieldsRepository;
-import com.sigmap.common.dyna_fields.DynaFields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -21,8 +17,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,7 +25,6 @@ public class DacListServiceImpl {
 
     private final DacDocsRepository dacDocsRepository;
     private final DynaDocsRepository dynaDocsRepository;
-    private final DynaDocsFieldsRepository dynaDocsFieldsRepository;
     private final DacRepository dacRepository;
 
     public List<String> replaceBookmarksAndGenerateListDOC(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -46,8 +39,8 @@ public class DacListServiceImpl {
 
         if (dac.getPpm()==null && dac.getPpm().getId() == null){
 
-            log.info("dac.getPpm().getId(): {}, dac.getPpm().getVersion(): {} ,dac.getAc().getId(): {} ",
-                    dac.getPpm().getId(), dac.getPpm().getVersion(), dac.getAc());
+            log.info("dac.getPpm().getId(): {}, dac.getPpm().getVersion(): {} ",
+                    dac.getPpm().getId(), dac.getPpm().getVersion());
 
             log.info ("**********************************");
             throw new IllegalArgumentException("Dac must have either ppm_id/ppm_ver or ac_id, but not both or none");
@@ -113,8 +106,10 @@ public class DacListServiceImpl {
             throw new IllegalArgumentException("Base path and custom directory path must not be null or empty");
         }
     }
-
-    private List<DynaDocs> getActiveDynaDocsForDac(Integer dacId, Integer dacVersion) {
+    private List<DynaDocs> getActiveDynaDocsForDac(Integer dacId, Integer dacVersion){
+        return null;
+    }
+    /*private List<DynaDocs> getActiveDynaDocsForDac(Integer dacId, Integer dacVersion) {
         // Récupérer les DacDocs pour le Dac donné
         List<DacDocs> dacDocsList = dacDocsRepository.findAll();
         log.info("dacDocsList.size(): {}", dacDocsList.size());
@@ -124,7 +119,7 @@ public class DacListServiceImpl {
 
         // Extraire les IDs uniques de DynaDocs
         Set<DynaDocID> dynaDocsIds = dacDocsList.stream()
-                .map(dacDoc -> dacDoc.getId().getDinaDocsFields().getId().getDynaDocsId().getId())
+                .map(dacDoc -> dacDoc.getId().getDinaDocsFields().getId().getDynaDocsId().getDynaDocsId().getId())
                 .collect(Collectors.toSet());
         log.info("dynaDocsIds ------------ : {}", dynaDocsIds.size());
 
@@ -133,7 +128,7 @@ public class DacListServiceImpl {
                 .filter(dynaDoc -> dynaDoc.getStatus() == 1)
                 .sorted(Comparator.comparing(DynaDocs::getDynaDocOrder))
                 .collect(Collectors.toList());
-    }
+    }*/
     private FileInputStream inputFileDocument(File file) {
         try {
             return new FileInputStream(file);
@@ -155,26 +150,26 @@ public class DacListServiceImpl {
         Map<String, String> bookmarks = new HashMap<>();
 
         // Récupérer les DynaDocsFields actifs pour le document spécifique
-        List<DynaDocsFields> dynaDocsFieldsList = dynaDocsFieldsRepository
+        /*List<DynaDocsFields> dynaDocsFieldsList = dynaDocsFieldsRepository
                 .findByIdDynaDocsIdAndIdDynaDocsVerAndStatus(
-                        dynaDocsId, dynaDocsVer, 1);
+                        dynaDocsId, dynaDocsVer, 1);*/
 
         // Trier par field_order (ou dyna_fields_id si field_order n'existe pas)
-        dynaDocsFieldsList.sort(Comparator.comparing(
+        /*dynaDocsFieldsList.sort(Comparator.comparing(
                 dynaDocsFields -> dynaDocsFields.getDynaFieldOrder() != null
                         ? dynaDocsFields.getDynaFieldOrder()
-                        : dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId()));
+                        : dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId()));*/
 
         // Récupérer les DacDocs pour le Dac
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
 
         // Créer une carte des DynaFields pour un accès rapide
-        Map<Integer, DynaFields> dynaFieldsMap = dynaDocsFieldsList.stream()
+        /*Map<Integer, DynaFields> dynaFieldsMap = dynaDocsFieldsList.stream()
                 .map(dynaDocsFields -> dynaDocsFields.getId().getDynaFieldsId())
-                .collect(Collectors.toMap(DynaFields::getDynaFieldId, Function.identity()));
+                .collect(Collectors.toMap(DynaFields::getDynaFieldId, Function.identity()));*/
 
         // Associer les valeurs des champs
-        for (DacDocs dacDoc : dacDocsList) {
+        /*for (DacDocs dacDoc : dacDocsList) {
             DynaDocsFields dynaDocsFields = dacDoc.getId().getDinaDocsFields();
             if (dynaDocsFields != null &&
                     dynaDocsFields.getId().getDynaDocsId().getId().getDynaDocsId().equals(dynaDocsId) &&
@@ -190,7 +185,7 @@ public class DacListServiceImpl {
                     }
                 }
             }
-        }
+        }*/
 
         return bookmarks;
     }

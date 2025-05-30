@@ -7,7 +7,6 @@ import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
-import com.sigmap.common.dyna_docs_fields.DynaDocsFields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -63,11 +62,12 @@ public class DacServiceImpl implements DacService {
         }
         // Prendre le premier dyna_docs_id (suppose que tous les dac_docs pour ce dac_id/dac_ver pointent vers le même dyna_docs)
         //Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().
-        Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getId().getDynaDocsId();
+       // Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getId().getDynaDocsId();
 
         // Récupérer le template_file_name depuis dyna_docs
-        Optional<DynaDocs> dynaDocs = dynaDocsRepository.findById(dynaDocsId);
-        return dynaDocs.map(DynaDocs::getTemplateFileName).orElseThrow(() -> new TemplateFileNameNotFound( dacId, dacVersion));
+        //Optional<DynaDocs> dynaDocs = dynaDocsRepository.findById(dynaDocsId);
+        //return dynaDocs.map(DynaDocs::getTemplateFileName).orElseThrow(() -> new TemplateFileNameNotFound( dacId, dacVersion));
+        return "dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getDynaDocsId().getTemplateFileName()";
     }
 
     private FileInputStream inputFileDocument (File file) {
@@ -89,7 +89,7 @@ public class DacServiceImpl implements DacService {
     private Map<String, String> createBookmarkMap(Integer dacId, Integer dacVersion) {
         Map<String, String> bookmarks = new HashMap<>();
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
-        for (DacDocs dacDoc : dacDocsList) {
+        /*for (DacDocs dacDoc : dacDocsList) {
             DynaDocsFields dynaDocsFields = dacDoc.getId().getDinaDocsFields();
             if (dynaDocsFields != null && dynaDocsFields.getId() != null && dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId() != null) {
                 String bookmarkName = dynaDocsFields.getId().getDynaFieldsId().getName();
@@ -99,7 +99,7 @@ public class DacServiceImpl implements DacService {
             } else {
                 log.error("Navigation failed for dacDoc: {}", dacDoc);
             }
-        }
+        }*/
         return bookmarks;
     }
 
