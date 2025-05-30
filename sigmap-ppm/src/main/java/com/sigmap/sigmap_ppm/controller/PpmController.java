@@ -1047,7 +1047,7 @@ public class PpmController {
      * @return the updated PPM with all relationships established
      */
     @PutMapping("/{ppmId}/{ppmVer}/with-relationships")
-    public ResponseEntity<PpmResponse> updateWithRelations(
+    public ResponseEntity<PpmResponseDto> updateWithRelations(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
@@ -1133,7 +1133,7 @@ public class PpmController {
         }
 
         Ppm updatedPpm = ppmService.updateWithRelationships(ppmId, ppmVer, request);
-        PpmResponse response = PpmMapper.INSTANCE.map(updatedPpm);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
 

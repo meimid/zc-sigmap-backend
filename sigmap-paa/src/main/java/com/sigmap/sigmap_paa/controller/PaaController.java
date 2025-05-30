@@ -152,10 +152,7 @@ public class PaaController {
      * @return the created PAA with all established relationships and specialized DTOs
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-//    @PostMapping("/with-relationships")
     @PostMapping(value="/with-relationships",consumes = {"multipart/form-data"})
-
-//    public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(@RequestBody PaaRequestGlobal request) throws PaaAlreadyExistsException {
     public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(
             @ModelAttribute("request") PaaRequestGlobal request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
@@ -276,57 +273,6 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
         }
     }
-//    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
-//        try {
-//            ObjectMapper objectMapper = new ObjectMapper();
-//            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
-//            // Where the keys are realisation indices
-//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
-//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
-//
-//            // Process each realisation's lots
-//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
-//                int realisationIndex = Integer.parseInt(entry.getKey());
-//
-//                // Skip if index is out of bounds
-//                if (realisationIndex >= request.getRealisations().size()) {
-//                    logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
-//                    continue;
-//                }
-//
-//                // Get the target realisation
-//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
-//                Set<LotResponse> lots = new HashSet<>();
-//
-//                // Process lots for this realisation
-//                for (Map<String, Object> lotData : entry.getValue()) {
-//                    LotResponse lot = new LotResponse();
-//
-//                    if (lotData.containsKey("id")) {
-//                        lot.setId(((Number) lotData.get("id")).intValue());
-//                    }
-//
-//                    if (lotData.containsKey("version")) {
-//                        lot.setVersion(((Number) lotData.get("version")).intValue());
-//                    }
-//
-//                    if (lotData.containsKey("description")) {
-//                        lot.setDescription((String) lotData.get("description"));
-//                    }
-//
-//                    lots.add(lot);
-//                }
-//
-//                // Set the processed lots on the realisation
-//                realisation.setLots(lots);
-//                logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
-//            }
-//        } catch (Exception e) {
-//            logger.error("Failed to parse lots JSON: {}", e.getMessage());
-//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
-//        }
-//    }
-
 
     /**
      * Updates a PAA by creating a new version with the updated data.
