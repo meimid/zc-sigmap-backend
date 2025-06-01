@@ -2,6 +2,7 @@ package com.sigmap.common.agpm.mappers;
 
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.ref_params.RefParam;
@@ -67,4 +68,19 @@ public interface AgpmMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "createdBy", ignore = true)
     void updateAgpmFromRequest(AgpmRequest request, @MappingTarget Agpm agpm);
+
+
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "version", source = "version")
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    AgpmMinimalResponseDto toMinimalResponseDto(Agpm agpm);
+
 }
