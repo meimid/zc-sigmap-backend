@@ -3,6 +3,16 @@ server:
   servlet:
     context-path: /ppm
 
+management: 
+  endpoints:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
 
 spring:
   application:
