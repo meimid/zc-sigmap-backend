@@ -3,6 +3,17 @@ server:
   servlet:
     context-path: /params
 
+management: 
+  endpoints:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
 spring:
   application:
     name: Sigmap PARAMS

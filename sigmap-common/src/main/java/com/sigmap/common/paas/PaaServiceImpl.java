@@ -2373,7 +2373,7 @@ public class PaaServiceImpl implements PaaService {
         }
 
         try {
-            repository.deleteById(compositeId);
+            repository.softDelete(paaId, paaVer);
         } catch (Exception e) {
             throw new PaaSoftDelete("Soft delete failed", 0, paaId, paaVer);
         }

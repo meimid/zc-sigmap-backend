@@ -46,6 +46,7 @@ public class SecurityConfig {
             request ->
                 request
                     .requestMatchers(
+                        "/actuator/**",
                         "/token/**",
                         "/test",
                         "/swagger-ui/**",
