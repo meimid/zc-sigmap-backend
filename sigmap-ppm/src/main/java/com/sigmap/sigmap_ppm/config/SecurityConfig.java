@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_ppm;
+package com.sigmap.sigmap_ppm.config;
 
 import java.util.List;
 

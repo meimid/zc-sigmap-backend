@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -19,7 +20,8 @@ public class PpmResponse {
     private Ac ac;
     private BigDecimal budgetEstime;
     private RefParam status;
-    private BaseEntityResponse metadata;
+    private List<DocsResponseDTO> docs;
     private List<RealisationResponseDTO> realisations;
+    private BaseEntityResponse metadata;
 
 }
