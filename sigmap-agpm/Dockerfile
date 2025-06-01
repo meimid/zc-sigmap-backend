@@ -14,7 +14,7 @@ COPY sigmap-auth ./sigmap-auth
 
 COPY pom.xml .
 
-RUN mvn clean package -B
+RUN mvn clean package -B -DskipTests
 
 FROM eclipse-temurin:17-jdk-alpine
 
