@@ -4109,5 +4109,10 @@ public class PpmServiceImpl implements PpmService {
         return findById(ppmId, ppmVer);
     }
 
+    @Override
+    public Page<Ppm> findPpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound {
+        acService.findById(acId);
+        return repository.findPpmsByAcId(acId,pageable);
+    }
 
 }

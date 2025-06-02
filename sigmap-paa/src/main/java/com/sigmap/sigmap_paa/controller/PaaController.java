@@ -10,6 +10,7 @@ import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.PaaResponse;
+import com.sigmap.common.paas.response.PaaResponseDto;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
@@ -529,5 +530,16 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                 List.of();
 
         return ResponseEntity.ok(lots);
+    }
+
+
+    /**
+     * find page of paas with Ac Id*/
+
+    @GetMapping("/ac/{acId}")
+    public ResponseEntity<Page<PaaResponseDto>> findPaasByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
+        Page<Paa> paas = paaService.findPaasByAcId(acId,pageable);
+        Page<PaaResponseDto> responses = paas.map(PaaMapper.INSTANCE::toDto);
+        return ResponseEntity.ok(responses);
     }
 }

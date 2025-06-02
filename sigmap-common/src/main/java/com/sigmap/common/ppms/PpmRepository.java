@@ -3,11 +3,12 @@ package com.sigmap.common.ppms;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
-import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
         JpaSpecificationExecutor<Ppm>,
@@ -24,5 +25,10 @@ public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
      */
     @Query("SELECT MAX(p.version) FROM Ppm p WHERE p.id = :id AND p.isDeleted = false")
     Integer findMaxVersionById(@Param("id") Integer id);
+
+
+    @Query("SELECT p FROM Ppm p WHERE p.ac.id = :acId AND p.isDeleted = false AND p.ac.isDeleted = false " +
+            "AND p.version = (SELECT MAX(b.version) FROM Ppm b WHERE b.id = p.id AND b.isDeleted = false) ORDER BY p.id")
+    Page<Ppm> findPpmsByAcId(@Param("acId") Integer acId, Pageable pageable);
 }
 

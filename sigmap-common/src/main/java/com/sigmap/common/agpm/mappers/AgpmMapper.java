@@ -5,6 +5,7 @@ import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
 import com.sigmap.common.ref_params.RefParam;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -82,5 +83,5 @@ public interface AgpmMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AgpmMinimalResponseDto toMinimalResponseDto(Agpm agpm);
-
+    AgpmResponseDtoSoft toDto(Agpm agpm);
 }

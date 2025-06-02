@@ -12,6 +12,7 @@ import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.ppms.response.PpmResponse;
 import com.sigmap.common.ppms.response.PpmResponseDto;
+import com.sigmap.common.ppms.response.PpmResponseSoftDto;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -1155,5 +1156,14 @@ public class PpmController {
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
     }
+    /**
+    * find page of ppms with Ac Id*/
 
+    @GetMapping("/ac/{acId}")
+    public ResponseEntity<Page<PpmResponseSoftDto>> findPpmsByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
+        Page<Ppm> ppms = ppmService.findPpmsByAcId(acId,pageable);
+        Page<PpmResponseSoftDto> responses = ppms.map(PpmMapper.INSTANCE::toDto);
+        return ResponseEntity.ok(responses);
+
+    }
 }
