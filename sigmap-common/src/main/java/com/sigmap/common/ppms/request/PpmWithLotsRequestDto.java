@@ -5,6 +5,7 @@ import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,7 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
-    
+
     /**
      * List of Realisations with Lots associated with this PPM.
      * This is a transient field not directly mapped to the parent class.
@@ -25,15 +26,21 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
      * while avoiding collision with the parent's realisations field.
      */
     private List<RealisationWithLotsRequestDto> realisationsWithLots;
-    
+
+    /**
+     * Document files to be uploaded and associated with the PPM.
+     * This field is used when creating or updating PPMs with document uploads.
+     */
+    private List<MultipartFile> ppmFiles;
+
     /**
      * Sets realisations with lots and updates the parent class's realisations field.
-     * 
+     *
      * @param realisationsWithLots the realisations with lots to set
      */
     public void setRealisationsWithLots(List<RealisationWithLotsRequestDto> realisationsWithLots) {
         this.realisationsWithLots = realisationsWithLots;
-        
+
         // Update the parent class's realisations field
         if (realisationsWithLots != null) {
             List<RealisationBaseRequestDto> baseRealisations = new ArrayList<>();
@@ -43,7 +50,7 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
             super.setRealisations(null);
         }
     }
-    
+
     /**
      * This method is used by Jackson to set the realisations field when deserializing JSON.
      * It will correctly handle the case when the realisations array is used instead of realisationsWithLots.
@@ -52,11 +59,11 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
     public void setRealisationsFromJson(List<RealisationWithLotsRequestDto> realisations) {
         setRealisationsWithLots(realisations);
     }
-    
+
     /**
      * Gets the realisations with lots.
      * If not explicitly set, converts from the parent class's realisations field.
-     * 
+     *
      * @return the realisations with lots
      */
     public List<RealisationWithLotsRequestDto> getRealisationsWithLots() {
@@ -88,7 +95,8 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setSort(baseDto.getSort());
                     withLotsDto.setDocIds(baseDto.getDocIds());
                     withLotsDto.setLots(baseDto.getLots());
-                    
+
+                    withLotsDto.setRealisationFiles(baseDto.getRealisationFiles());
                     result.add(withLotsDto);
                 }
             }

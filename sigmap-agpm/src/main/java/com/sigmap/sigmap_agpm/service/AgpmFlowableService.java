@@ -524,7 +524,12 @@ public class AgpmFlowableService {
                                         nextStep.setValidationVariable(variableName);
                                         nextStep.setValidationValue(Boolean.parseBoolean(conditionValue));
                                         nextStep.setNextTaskName(nextStepName);
-                                        nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextStep.setActionLabel("Publier");
+                                            log.info("Next element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                                        } else {
+                                            nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        }
                                         nextSteps.add(nextStep);
                                         log.info("Added next step for task [{}]: variable={}, value={}, nextTask={}, action={}",
                                                 task.getId(), variableName, conditionValue, nextStepName, nextStep.getActionLabel());
@@ -540,9 +545,14 @@ public class AgpmFlowableService {
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Passer pour validation");
+                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                nextStep.setActionLabel("Publier");
+                                log.info("Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                            } else {
+                                nextStep.setActionLabel("Passer pour validation");
+                            }
                             nextSteps.add(nextStep);
-                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, "Complete");
+                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, nextStep.getActionLabel());
                         }
                     }
                 } else {

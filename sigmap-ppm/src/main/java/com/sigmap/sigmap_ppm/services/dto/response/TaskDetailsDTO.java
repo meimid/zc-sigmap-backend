@@ -1,7 +1,7 @@
-package com.sigmap.sigmap_ppm.ppms.dto;
+package com.sigmap.sigmap_ppm.services.dto.response;
 
-import com.sigmap.common.ppms.response.PpmResponse;
-import com.sigmap.common.response.NextStepDTO;
+
+import com.sigmap.common.ppms.response.PpmResponseDto;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -21,7 +21,7 @@ public class TaskDetailsDTO {
     private Map<String, Object> traceability;
     
     // PPM entity information
-    private List<PpmResponse> ppms;
+    private PpmResponseDto ppm;
     
     // Status information
     private String status;

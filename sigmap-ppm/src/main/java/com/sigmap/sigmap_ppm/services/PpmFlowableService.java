@@ -1,25 +1,24 @@
-package com.sigmap.sigmap_ppm.ppms.services;
+package com.sigmap.sigmap_ppm.services;
 
-
-
-
+import com.sigmap.common.config.Constants;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
-import com.sigmap.common.ppms.response.PpmResponse;
-import com.sigmap.common.request.ValidationRequest;
-import com.sigmap.common.response.NextStepDTO;
-import com.sigmap.common.response.ProcessStartResponseDTO;
-import com.sigmap.common.response.TaskDTO;
-import com.sigmap.common.response.TaskListResponseDTO;
-import com.sigmap.sigmap_ppm.ppms.dto.TaskDetailsDTO;
+import com.sigmap.common.ppms.response.PpmResponseDto;
+import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
+import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
+import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
+import com.sigmap.sigmap_ppm.services.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.flowable.task.api.Task;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.task.api.Task;
 import org.flowable.identitylink.api.IdentityLink;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,25 +35,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-
-
-
-import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.bpmn.model.ExclusiveGateway;
-import org.flowable.bpmn.model.FlowElement;
-import org.flowable.bpmn.model.SequenceFlow;
-import org.flowable.bpmn.model.FormProperty;
-import com.sigmap.common.realisations.mappers.RealisationResponseMapper;
-import com.sigmap.common.realisations.response.RealisationResponseDTO;
-
-
-
 @Service
 @Slf4j
 public class PpmFlowableService {
 
     @Value("${tenant.id}")
     private String TENANT_ID;
+
+    @Value("${flowable.process-definition-key:ppmProcess}")
+    private String processKey;
+
+    @Value("${flowable.task-definition-key:saisieTask}")
+    private String initialTaskKey;
 
     @Autowired
     private RuntimeService runtimeService;
@@ -67,16 +59,6 @@ public class PpmFlowableService {
 
     @Autowired
     private PpmService ppmService;
-
-
-    @Value("${flowable.process-definition-key:ppmProcess}")
-    private String processKey;
-
-    @Value("${flowable.task-definition-key:saisieTask}")
-    private String initialTaskKey;
-
-
-
 
     // Utility method to check if the user has a specific role
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
@@ -115,7 +97,7 @@ public class PpmFlowableService {
                 .orElse(null);
     }
 
-    // Utility method to check if user's roles match the candidate groups defined in the BPMN model for a task
+    // Utility method to check if user's roles match the candidate groups defined in the BPMN model
     private boolean hasCandidateGroupFromModel(UserTask userTask, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = userTask.getCandidateGroups();
         if (candidateGroups == null || candidateGroups.isEmpty()) {
@@ -126,7 +108,7 @@ public class PpmFlowableService {
         return candidateGroups.stream().anyMatch(group -> hasRole(jwtAuth, group));
     }
 
-    // Updated method to retrieve both isUpdatable and isPublishable properties
+    // Method to retrieve task properties (isUpdatable, isPublishable)
     private Map<String, Boolean> getTaskProperties(Task task) {
         Map<String, Boolean> properties = new HashMap<>();
         properties.put("isUpdatable", false);
@@ -164,19 +146,34 @@ public class PpmFlowableService {
 
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) {
+        // Validate authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("Invalid or missing JWT authentication");
             return errorResponse;
         }
-
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
         // Validate input parameters
         if (id == null || version == null) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("ID and version must not be null");
+            return errorResponse;
+        }
+
+        // Fetch PPM entity to check status
+        Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+        if (ppmOptional.isEmpty()) {
+            ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
+            errorResponse.setStatus("No PPM entity found for id " + id + " and version " + version);
+            return errorResponse;
+        }
+        Ppm ppm = ppmOptional.get();
+        if (ppm.getStatus() == null || ppm.getStatus().getId() != Constants.DRAFT_STATUS) {
+            ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
+            errorResponse.setStatus("Process can only be started when PPM is in draft status. Current status ID: " +
+                    (ppm.getStatus() != null ? ppm.getStatus().getId() : "null"));
             return errorResponse;
         }
 
@@ -223,7 +220,8 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
-        Ppm updated = ppmService.updateStatus(id, version, 2); // BROUILLON
+        // Update PPM status to TRAITMENT_STATUS (33) instead of 2
+        Ppm updated = ppmService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
@@ -269,6 +267,18 @@ public class PpmFlowableService {
 
         return response;
     }
+    /**
+     * Overloaded method to start a Flowable process instance for a Ppm entity using default process and task keys.
+     *
+     * @param id The Ppm ID
+     * @return ProcessStartResponseDTO with the process details
+     * @throws PpmNotFound if the Ppm entity is not found
+     */
+    @jakarta.transaction.Transactional
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws PpmNotFound {
+        Integer latestVersion = ppmService.findLatestVersionById(id);
+        return startProcessInstance(id, latestVersion);
+    }
 
 
 
@@ -289,9 +299,18 @@ public class PpmFlowableService {
             taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
 
+            if (id != null && version != null) {
+                Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+                ppmOptional.ifPresent(ppm -> {
+                    taskInfo.setId(id);
+                    taskInfo.setVersion(version);
+                    taskInfo.setNom(ppm.getNom());
+                    taskInfo.setRef(ppm.getRef());
+                });
+            }
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
             variables.put("comment", processVariables.getOrDefault("comment", ""));
@@ -303,7 +322,6 @@ public class PpmFlowableService {
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
 
-
             return taskInfo;
         }).collect(Collectors.toList());
 
@@ -314,7 +332,6 @@ public class PpmFlowableService {
 
         return response;
     }
-
     public TaskDetailsDTO getTaskDetails(String taskId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
@@ -363,25 +380,23 @@ public class PpmFlowableService {
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-        List<PpmResponse> ppmResponses = List.of();
+        PpmResponseDto ppmResponse = null;
         if (id != null && version != null) {
-            Optional<Ppm> relatedPpms = ppmService.findById(id, version);
-            ppmResponses = relatedPpms.stream()
-                    .map(ppm -> {
-                        PpmResponse ppmResponse = PpmMapper.INSTANCE.map(ppm);
-                        // Always include realisations with their lots
-                        if (ppm.getRealisations() != null) {
-                            List<RealisationResponseDTO> realisationDTOs = ppm.getRealisations().stream()
-                                    .map(RealisationResponseMapper.INSTANCE::map)
-                                    .collect(Collectors.toList());
-                            ppmResponse.setRealisations(realisationDTOs);
-                        }
-                        return ppmResponse;
-                    })
-                    .collect(Collectors.toList());
+            Optional<Ppm> relatedPpmOptional = ppmService.findById(id, version);
+            if (relatedPpmOptional.isPresent()) {
+                Ppm ppm = relatedPpmOptional.get();
+                // Filter out deleted documents
+                if (ppm.getDocs() != null) {
+                    List<Docs> nonDeletedDocs = ppm.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList());
+                    ppm.setDocs(nonDeletedDocs);
+                }
+                ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
+            }
         }
-        response.setPpms(ppmResponses);
-        log.info("PPM Responses for task [{}]: {}", taskId, ppmResponses);
+        response.setPpm(ppmResponse);
+        log.info("PPM Responses for task [{}]: {}", taskId, ppmResponse);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -393,86 +408,17 @@ public class PpmFlowableService {
         Map<String, Boolean> taskProperties = getTaskProperties(task);
         response.setUpdatable(taskProperties.get("isUpdatable"));
         response.setPublishable(taskProperties.get("isPublishable"));
-        response.setStatus("Task details retrieved successfully");
 
-        // Determine next steps based on validation outcomes
-        List<NextStepDTO> nextSteps = new ArrayList<>();
-        try {
-            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-            if (bpmnModel != null) {
-                FlowElement taskElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
-                log.info("Task element for [{}]: {}", taskId, taskElement != null ? taskElement.getId() : "null");
-                if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
-                    List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement).getOutgoingFlows();
-                    log.info("Outgoing flows for task [{}]: {}", taskId, outgoingFlows.size());
-                    for (SequenceFlow flow : outgoingFlows) {
-                        FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
-                        log.info("Target element for flow [{}]: {}", flow.getId(), targetElement != null ? targetElement.getId() : "null");
-                        if (targetElement instanceof ExclusiveGateway) {
-                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
-                            log.info("Gateway flows for gateway [{}]: {}", targetElement.getId(), gatewayFlows.size());
-                            for (SequenceFlow gatewayFlow : gatewayFlows) {
-                                String conditionExpression = gatewayFlow.getConditionExpression();
-                                log.info("Condition expression for gateway flow [{}]: {}", gatewayFlow.getId(), conditionExpression);
-                                if (conditionExpression != null) {
-                                    String variableName = extractVariableName(conditionExpression);
-                                    String conditionValue = extractConditionValue(conditionExpression);
-                                    log.info("Extracted variable: {}, value: {}", variableName, conditionValue);
-                                    if (variableName != null && conditionValue != null) {
-                                        FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
-                                        String nextStepName = nextElement != null ? nextElement.getName() : "Unknown";
-                                        if (nextStepName == null || nextStepName.isEmpty()) {
-                                            nextStepName = nextElement != null ? nextElement.getId() : "Unknown";
-                                        }
-                                        NextStepDTO nextStep = new NextStepDTO();
-                                        nextStep.setValidationVariable(variableName);
-                                        nextStep.setValidationValue(Boolean.parseBoolean(conditionValue));
-                                        nextStep.setNextTaskName(nextStepName);
-                                        nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
-                                        nextSteps.add(nextStep);
-                                        log.info("Added next step for task [{}]: variable={}, value={}, nextTask={}, action={}",
-                                                taskId, variableName, conditionValue, nextStepName, nextStep.getActionLabel());
-                                    }
-                                }
-                            }
-                        } else {
-                            // Handle tasks with a single outgoing flow (no gateway)
-                            String nextStepName = targetElement != null ? targetElement.getName() : "Complete";
-                            if (nextStepName == null || nextStepName.isEmpty()) {
-                                nextStepName = targetElement != null ? targetElement.getId() : "Complete";
-                            }
-                            NextStepDTO nextStep = new NextStepDTO();
-                            nextStep.setValidationVariable(null);
-                            nextStep.setValidationValue(null);
-                            nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Complete");
-                            nextSteps.add(nextStep);
-                            log.info("Added single next step for task [{}]: nextTask={}, action={}", taskId, nextStepName, "Complete");
-                        }
-                    }
-                } else {
-                    log.info("Task [{}] is not a UserTask: {}", taskId, taskElement != null ? taskElement.getClass().getSimpleName() : "null");
-                }
-            } else {
-                log.info("BPMN model not found for process definition [{}] for task [{}]", task.getProcessDefinitionId(), taskId);
-            }
-        } catch (Exception e) {
-            log.info("Failed to determine next steps for task [" + taskId + "]: " + e.getMessage());
-            // Fallback to a generic complete action
-            NextStepDTO nextStep = new NextStepDTO();
-            nextStep.setValidationVariable(null);
-            nextStep.setValidationValue(null);
-            nextStep.setNextTaskName("Unknown");
-            nextStep.setActionLabel("Complete");
-            nextSteps.add(nextStep);
-        }
-
+        // Use getPossibleNextSteps to determine next steps
+        List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         log.info("Setting nextSteps for task [{}]: {}", taskId, nextSteps);
-        System.out.println("the next steps are" + nextSteps);
         response.setNextSteps(nextSteps);
+
+        response.setStatus("Task details retrieved successfully");
 
         return response;
     }
+
 
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) {
@@ -483,7 +429,6 @@ public class PpmFlowableService {
             errorResponse.setStatus("Invalid or missing JWT authentication");
             return errorResponse;
         }
-
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
         // Fetch task
@@ -549,23 +494,34 @@ public class PpmFlowableService {
                 errorResponse.setStatus("Ppm object is required in the request when isUpdatable is true");
                 return errorResponse;
             }
-            Ppm updatedPpm = ppmService.update(id, version, request.getPpm(), isUpdatable);
+            // Log the state of realisationFiles before calling updateWithVersioning
+            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
+            if (request.getPpm() != null && request.getPpm().getRealisationsWithLots() != null) {
+                for (RealisationWithLotsRequestDto realisation : request.getPpm().getRealisationsWithLots()) {
+                    log.info("Realisation ID: {}, Files: {}", realisation.getId(),
+                            (realisation.getRealisationFiles() != null ? realisation.getRealisationFiles().size() : "null"));
+                }
+            } else {
+                log.info("No realisations or PPM data in request for task [{}]", taskId);
+            }
+            // Create new Ppm with incremented version
+            Ppm updatedPpm = ppmService.updateWithVersioning(id, request.getPpm());
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
                 errorResponse.setStatus("Failed to update PPM object");
                 return errorResponse;
             }
             latestPpm = updatedPpm;
-            version = updatedPpm.getVersion(); // Update the version to the new one
-            // Update process variables with the new version
-            processVariables.put("version", version);
-            runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
+            // Update process variable to reflect new version
+            log.info("Updated PPM version for task [{}]: {} -> {}", taskId, version, latestPpm.getVersion());
+            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
         }
 
         // Handle status update
         Integer newStatus = null;
         if (isPublishable) {
-            newStatus = 3; // Publiée
+            // For the final task, set status to Publiée
+            newStatus = Constants.PUBLIE_STATUS; // Set to PUBLIE_STATUS (e.g., 35)
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -573,38 +529,30 @@ public class PpmFlowableService {
                 return errorResponse;
             }
             latestPpm = updatedPpm;
+            log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus().getId()); // Debug log
+        } else if (request.getValidate() != null && request.getValidate()) {
+            newStatus = Constants.TRAITMENT_STATUS; // Set to TRAITMENT_STATUS (36) if validated, keeping "en cours de traitement"
+            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+            if (updatedPpm == null) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Failed to update PPM status to En cours de traitement");
+                return errorResponse;
+            }
+            latestPpm = updatedPpm;
+        } else if (request.getValidate() != null && !request.getValidate()) {
+            newStatus = Constants.TRAITMENT_STATUS; // Set to TRAITMENT_STATUS (36) if rejected, keeping "en cours de traitement"
+            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+            if (updatedPpm == null) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Failed to keeping en cours de traitement");
+                return errorResponse;
+            }
+            latestPpm = updatedPpm;
         }
 
-        // Commented-out status update logic preserved
-
-        else {
-            switch (candidateGroup) {
-                case "VALIDATEUR_AC":
-                    newStatus = 5; // A_rectifiee
-                    break;
-                case "REDACTEUR_AC":
-                    newStatus = 2; // A_VALIDERR
-                    break;
-                case "PUB_AC":
-                    newStatus = 3; // Should not reach here since isPublishable handles this
-                    break;
-                default:
-                    newStatus = latestPpm.getStatus().getId(); // Keep existing status
-            }
-            if (!isUpdatable) {
-                Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
-                if (updatedPpm == null) {
-                    TaskDTO errorResponse = new TaskDTO();
-                    errorResponse.setStatus("Failed to update PPM status");
-                    return errorResponse;
-                }
-                latestPpm = updatedPpm;
-            }
-        }
-
-
-        // Determine process variable name dynamically
+        // Determine process variable name dynamically and check if the next task is the last one
         String processVariable = candidateGroup.toLowerCase() + "_valide"; // Fallback
+        boolean nextTaskIsLast = false;
         try {
             BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
             if (bpmnModel != null) {
@@ -621,31 +569,70 @@ public class PpmFlowableService {
                                     String variableName = extractVariableName(conditionExpression);
                                     if (variableName != null && variableName.toLowerCase().contains("valide")) {
                                         processVariable = variableName;
-                                        break;
                                     }
                                 }
+                                // Check if the target of this flow leads to the last task
+                                FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
+                                if (nextElement instanceof org.flowable.bpmn.model.UserTask) {
+                                    List<SequenceFlow> nextOutgoingFlows = ((org.flowable.bpmn.model.UserTask) nextElement).getOutgoingFlows();
+                                    for (SequenceFlow nextFlow : nextOutgoingFlows) {
+                                        FlowElement finalElement = bpmnModel.getFlowElement(nextFlow.getTargetRef());
+                                        if (finalElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextTaskIsLast = true;
+                                            log.info("Next task after [{}] is the last task", taskId);
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (nextTaskIsLast) break;
                             }
-                            if (processVariable != null) break;
+                            if (nextTaskIsLast || processVariable != null) break;
+                        } else if (targetElement instanceof org.flowable.bpmn.model.UserTask) {
+                            List<SequenceFlow> nextOutgoingFlows = ((org.flowable.bpmn.model.UserTask) targetElement).getOutgoingFlows();
+                            for (SequenceFlow nextFlow : nextOutgoingFlows) {
+                                FlowElement finalElement = bpmnModel.getFlowElement(nextFlow.getTargetRef());
+                                if (finalElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                    nextTaskIsLast = true;
+                                    log.info("Next task after [{}] is the last task", taskId);
+                                    break;
+                                }
+                            }
+                            if (nextTaskIsLast) break;
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            log.info("Failed to extract gateway condition: " + e.getMessage());
+            log.info("Failed to extract gateway condition or determine next task for task [" + taskId + "]: " + e.getMessage());
         }
 
         // Set process variables
-        boolean validate = request.getIsValid() != null ? request.getIsValid() : false;
+        boolean validate = request.getValidate() != null ? request.getValidate() : false;
         Map<String, Object> variables = new HashMap<>();
         variables.put(processVariable, validate);
         variables.put("comment", request.getComment() != null ? request.getComment() : "");
         variables.put("dateComment", LocalDateTime.now());
         variables.put("treater", jwtAuth.getName());
+        if (isPublishable) {
+            variables.put("isPublishable", true); // Track for final status update
+        }
 
         log.info("Setting process variables for task [{}]: {}={}, comment={}, dateComment={}, treater={}",
                 taskId, processVariable, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
+
+        // If this task's completion leads to the last task, set status to Validée
+        if (nextTaskIsLast && !isPublishable) {
+            Integer intermediateStatus = Constants.VALIDE_STATUS; // Set to VALIDE_STATUS (34) before entering the last task
+            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), intermediateStatus);
+            if (updatedPpm == null) {
+                log.warn("Failed to update PPM status to Validée before entering last task for task [{}]", taskId);
+            } else {
+                latestPpm = updatedPpm;
+                log.info("Updated PPM status to Validée before entering last task for task [{}], new status: {}", taskId, latestPpm.getStatus().getId());
+            }
+        }
 
         // Complete task
         taskService.complete(taskId);
@@ -657,9 +644,9 @@ public class PpmFlowableService {
         response.setTaskDefinitionKey(task.getTaskDefinitionKey());
         response.setProcessInstanceId(task.getProcessInstanceId());
         response.setId(id);
-        response.setVersion(version);
+        response.setVersion(latestPpm.getVersion());
         response.setNewStatus(newStatus != null ? newStatus : latestPpm.getStatus().getId());
-        response.setIsValid(validate);
+        response.setValidate(validate);
         response.setTraceability(variables);
         response.setIsUpdatable(isUpdatable);
         response.setIsPublishable(isPublishable);
@@ -667,7 +654,279 @@ public class PpmFlowableService {
 
         return response;
     }
+    //    public TaskDTO validateTask(String taskId, ValidationRequest request) {
+//        // Authenticate user
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (!(authentication instanceof JwtAuthenticationToken)) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Invalid or missing JWT authentication");
+//            return errorResponse;
+//        }
+//        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+//
+//        // Fetch task
+//        Task task = taskService.createTaskQuery()
+//                .taskId(taskId)
+//                .taskTenantId(TENANT_ID)
+//                .active()
+//                .singleResult();
+//
+//        if (task == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Task not found or not active");
+//            return errorResponse;
+//        }
+//
+//        // Get candidate group
+//        String candidateGroup = getCandidateGroup(task);
+//        if (candidateGroup == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("Task does not have a candidate group");
+//            return errorResponse;
+//        }
+//
+//        // Check user permissions
+//        if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("User does not have the required role or assignment to validate this task");
+//            return errorResponse;
+//        }
+//
+//        // Retrieve process variables
+//        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+//        log.info("Process variables for task [{}]: {}", taskId, processVariables);
+//        Integer id = (Integer) processVariables.getOrDefault("id", null);
+//        Integer version = (Integer) processVariables.getOrDefault("version", null);
+//
+//        // Validate process variables
+//        if (id == null || version == null) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
+//            return errorResponse;
+//        }
+//
+//        // Fetch Ppm entity
+//        Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+//        if (ppmOptional.isEmpty()) {
+//            TaskDTO errorResponse = new TaskDTO();
+//            errorResponse.setStatus("No PPM entities found for id " + id + " and version " + version);
+//            return errorResponse;
+//        }
+//
+//        Ppm latestPpm = ppmOptional.get();
+//
+//        // Get task properties
+//        Map<String, Boolean> taskProperties = getTaskProperties(task);
+//        Boolean isUpdatable = taskProperties.get("isUpdatable");
+//        Boolean isPublishable = taskProperties.get("isPublishable");
+//
+//        // Handle isUpdatable
+//        if (isUpdatable) {
+//            if (request.getPpm() == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Ppm object is required in the request when isUpdatable is true");
+//                return errorResponse;
+//            }
+//            // Log the state of realisationFiles before calling updateWithVersioning
+//            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
+//            if (request.getPpm() != null && request.getPpm().getRealisationsWithLots() != null) {
+//                for (RealisationWithLotsRequestDto realisation : request.getPpm().getRealisationsWithLots()) {
+//                    log.info("Realisation ID: {}, Files: {}", realisation.getId(),
+//                            (realisation.getRealisationFiles() != null ? realisation.getRealisationFiles().size() : "null"));
+//                }
+//            } else {
+//                log.info("No realisations or PPM data in request for task [{}]", taskId);
+//            }
+//            // Create new Ppm with incremented version
+//            Ppm updatedPpm = ppmService.updateWithVersioning(id, request.getPpm());
+//            if (updatedPpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update PPM object");
+//                return errorResponse;
+//            }
+//            latestPpm = updatedPpm;
+//            // Update process variable to reflect new version
+//            log.info("Updated PPM version for task [{}]: {} -> {}", taskId, version, latestPpm.getVersion());
+//            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
+//        }
+//
+//        // Handle status update
+//        Integer newStatus = null;
+//        if (isPublishable) {
+//            newStatus = Constants.PUBLIE_STATUS; // Set to PUBLIE_STATUS (35)
+//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+//            if (updatedPpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update PPM status to Publiée");
+//                return errorResponse;
+//            }
+//            latestPpm = updatedPpm;
+//        } else if (request.getValidate() != null && request.getValidate()) {
+//            newStatus = Constants.VALIDE_STATUS; // Set to VALIDE_STATUS (34) if validated
+//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+//            if (updatedPpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update PPM status to Validée");
+//                return errorResponse;
+//            }
+//            latestPpm = updatedPpm;
+//        } else if (request.getValidate() != null && !request.getValidate()) {
+//            newStatus = Constants.TRAITMENT_STATUS; // Set to REJECTED_STATUS (assumed 36, added below)
+//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+//            if (updatedPpm == null) {
+//                TaskDTO errorResponse = new TaskDTO();
+//                errorResponse.setStatus("Failed to update PPM status to Rejetée");
+//                return errorResponse;
+//            }
+//            latestPpm = updatedPpm;
+//        }
+//
+//        // Determine process variable name dynamically
+//        String processVariable = candidateGroup.toLowerCase() + "_valide"; // Fallback
+//        try {
+//            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+//            if (bpmnModel != null) {
+//                FlowElement taskElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
+//                if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
+//                    List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement).getOutgoingFlows();
+//                    for (SequenceFlow flow : outgoingFlows) {
+//                        FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
+//                        if (targetElement instanceof ExclusiveGateway) {
+//                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
+//                            for (SequenceFlow gatewayFlow : gatewayFlows) {
+//                                String conditionExpression = gatewayFlow.getConditionExpression();
+//                                if (conditionExpression != null && conditionExpression.toLowerCase().contains("valide")) {
+//                                    String variableName = extractVariableName(conditionExpression);
+//                                    if (variableName != null && variableName.toLowerCase().contains("valide")) {
+//                                        processVariable = variableName;
+//                                        break;
+//                                    }
+//                                }
+//                            }
+//                            if (processVariable != null) break;
+//                        }
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            log.info("Failed to extract gateway condition for task [" + taskId + "]: " + e.getMessage());
+//        }
+//
+//        // Set process variables
+//        boolean validate = request.getValidate() != null ? request.getValidate() : false;
+//        Map<String, Object> variables = new HashMap<>();
+//        variables.put(processVariable, validate);
+//        variables.put("comment", request.getComment() != null ? request.getComment() : "");
+//        variables.put("dateComment", LocalDateTime.now());
+//        variables.put("treater", jwtAuth.getName());
+//
+//        log.info("Setting process variables for task [{}]: {}={}, comment={}, dateComment={}, treater={}",
+//                taskId, processVariable, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
+//
+//        runtimeService.setVariables(task.getProcessInstanceId(), variables);
+//
+//        // Complete task
+//        taskService.complete(taskId);
+//
+//        // Prepare response
+//        TaskDTO response = new TaskDTO();
+//        response.setTaskId(task.getId());
+//        response.setTaskName(task.getName());
+//        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+//        response.setProcessInstanceId(task.getProcessInstanceId());
+//        response.setId(id);
+//        response.setVersion(latestPpm.getVersion());
+//        response.setNewStatus(newStatus != null ? newStatus : latestPpm.getStatus().getId());
+//        response.setValidate(validate);
+//        response.setTraceability(variables);
+//        response.setIsUpdatable(isUpdatable);
+//        response.setIsPublishable(isPublishable);
+//        response.setStatus("Task validated successfully");
+//
+//        return response;
+//    }
 
+    private List<NextStepDTO> getPossibleNextSteps(Task task) {
+        List<NextStepDTO> nextSteps = new ArrayList<>();
+        try {
+            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            if (bpmnModel != null) {
+                FlowElement taskElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
+                log.info("Task element for [{}]: {}", task.getId(), taskElement != null ? taskElement.getId() : "null");
+                if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
+                    List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement).getOutgoingFlows();
+                    log.info("Outgoing flows for task [{}]: {}", task.getId(), outgoingFlows.size());
+                    for (SequenceFlow flow : outgoingFlows) {
+                        FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
+                        log.info("Target element for flow [{}]: {}", flow.getId(), targetElement != null ? targetElement.getId() : "null");
+                        if (targetElement instanceof ExclusiveGateway) {
+                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
+                            log.info("Gateway flows for gateway [{}]: {}", targetElement.getId(), gatewayFlows.size());
+                            for (SequenceFlow gatewayFlow : gatewayFlows) {
+                                String conditionExpression = gatewayFlow.getConditionExpression();
+                                log.info("Condition expression for gateway flow [{}]: {}", gatewayFlow.getId(), conditionExpression);
+                                if (conditionExpression != null) {
+                                    String variableName = extractVariableName(conditionExpression);
+                                    String conditionValue = extractConditionValue(conditionExpression);
+                                    log.info("Extracted variable: {}, value: {}", variableName, conditionValue);
+                                    if (variableName != null && conditionValue != null) {
+                                        FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
+                                        String nextStepName = nextElement != null ? nextElement.getName() : "Unknown";
+                                        if (nextStepName == null || nextStepName.isEmpty()) {
+                                            nextStepName = nextElement != null ? nextElement.getId() : "Unknown";
+                                        }
+                                        NextStepDTO nextStep = new NextStepDTO();
+                                        nextStep.setValidationVariable(variableName);
+                                        nextStep.setValidationValue(Boolean.parseBoolean(conditionValue));
+                                        nextStep.setNextTaskName(nextStepName);
+                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextStep.setActionLabel("Publier");
+                                            log.info("Next element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                                        } else {
+                                            nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        }
+                                        nextSteps.add(nextStep);
+                                        log.info("Added next step for task [{}]: variable={}, value={}, nextTask={}, action={}",
+                                                task.getId(), variableName, conditionValue, nextStepName, nextStep.getActionLabel());
+                                    }
+                                }
+                            }
+                        } else {
+                            String nextStepName = targetElement != null ? targetElement.getName() : "Complete";
+                            if (nextStepName == null || nextStepName.isEmpty()) {
+                                nextStepName = targetElement != null ? targetElement.getId() : "Complete";
+                            }
+                            NextStepDTO nextStep = new NextStepDTO();
+                            nextStep.setValidationVariable(null);
+                            nextStep.setValidationValue(null);
+                            nextStep.setNextTaskName(nextStepName);
+                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                nextStep.setActionLabel("Publier");
+                                log.info("Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                            } else {
+                                nextStep.setActionLabel("Passer pour validation");
+                            }
+                            nextSteps.add(nextStep);
+                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, nextStep.getActionLabel());
+                        }
+                    }
+                } else {
+                    log.info("Task [{}] is not a UserTask: {}", task.getId(), taskElement != null ? taskElement.getClass().getSimpleName() : "null");
+                }
+            } else {
+                log.info("BPMN model not found for process definition [{}] for task [{}]", task.getProcessDefinitionId(), task.getId());
+            }
+        } catch (Exception e) {
+            log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
+            NextStepDTO nextStep = new NextStepDTO();
+            nextStep.setValidationVariable(null);
+            nextStep.setValidationValue(null);
+            nextStep.setNextTaskName("Unknown");
+            nextStep.setActionLabel("Complete");
+            nextSteps.add(nextStep);
+        }
+        return nextSteps;
+    }
     public TaskListResponseDTO getUserTasks() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
@@ -707,9 +966,19 @@ public class PpmFlowableService {
             taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-            taskInfo.setId((Integer) processVariables.getOrDefault("id", null));
-            taskInfo.setVersion((Integer) processVariables.getOrDefault("version", null));
+            Integer id = (Integer) processVariables.getOrDefault("id", null);
+            Integer version = (Integer) processVariables.getOrDefault("version", null);
+
             taskInfo.setCandidateGroup(getCandidateGroup(task));
+            if (id != null && version != null) {
+                Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+                ppmOptional.ifPresent(ppm -> {
+                    taskInfo.setId(id);
+                    taskInfo.setVersion(version);
+                    taskInfo.setNom(ppm.getNom());
+                    taskInfo.setRef(ppm.getRef());
+                });
+            }
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -733,23 +1002,7 @@ public class PpmFlowableService {
 
         return response;
     }
-
-    private String extractConditionValue(String conditionExpression) {
-        if (conditionExpression == null) return null;
-        String cleanedExpression = conditionExpression.trim().replace("#{", "${");
-        Pattern pattern = Pattern.compile("\\$\\{[^\\s}]+?\\s*(==|!=)\\s*(true|false)\\}");
-        Matcher matcher = pattern.matcher(cleanedExpression);
-        if (matcher.find()) {
-            String value = matcher.group(2).trim();
-            log.info("Matched condition value: {}", value);
-            return value;
-        }
-        log.info("No condition value matched in expression: {}", conditionExpression);
-        return null;
-    }
-
-
-    // Helper method to extract variable name from condition expression
+   //  Helper method to extract variable name from condition expression
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
         // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
@@ -771,6 +1024,19 @@ public class PpmFlowableService {
             }
         }
         log.info("No variable name matched in expression: {}", conditionExpression);
+        return null;
+    }
+    private String extractConditionValue(String conditionExpression) {
+        if (conditionExpression == null) return null;
+        String cleanedExpression = conditionExpression.trim().replace("#{", "${");
+        Pattern pattern = Pattern.compile("\\$\\{[^\\s}]+?\\s*(==|!=)\\s*(true|false)\\}");
+        Matcher matcher = pattern.matcher(cleanedExpression);
+        if (matcher.find()) {
+            String value = matcher.group(2).trim();
+            log.info("Matched condition value: {}", value);
+            return value;
+        }
+        log.info("No condition value matched in expression: {}", conditionExpression);
         return null;
     }
 }
