@@ -166,7 +166,6 @@ public class PpmServiceImpl implements PpmService {
             id = (maxId != null) ? maxId + 1 : 1;
             request.setId(id);
         }
-
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
 
