@@ -8,6 +8,7 @@ import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_fields.DynaFields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,21 +35,23 @@ public class DacListServiceImpl {
         // Étape 1 : Valider les paramètres
         validateParams(dacId, dacVersion, basePath, customDirPath);
 
-        // Vérifier l'existence du Dac et la contrainte si ppm_id ==> alors no ac_id
+        // Vérifier l'existence du Dac
         Dac dac = dacRepository.findById(new DacId(dacId, dacVersion))
                 .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
 
-        if (dac.getPpm()==null && dac.getPpm().getId() == null){
+        // Vérifier l'existence du Dac.ppm
+        if (dac.getPpm()==null ){
 
             log.info("dac.getPpm().getId(): {}, dac.getPpm().getVersion(): {} ",
                     dac.getPpm().getId(), dac.getPpm().getVersion());
 
             log.info ("**********************************");
-            throw new IllegalArgumentException("Dac must have either ppm_id/ppm_ver or ac_id, but not both or none");
+            throw new IllegalArgumentException("Dac must have ppm");
         }
 
+
         // Étape 2 : Récupérer les documents actifs associés
-        List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dacId, dacVersion);
+        List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dac.getCategory().getId());
         if (dynaDocsList.isEmpty()) {
             log.warn("No active documents found for Dac ID: {}, Version: {}", dacId, dacVersion);
             throw new TemplateFileNameNotFound(dacId, dacVersion);
@@ -106,29 +110,14 @@ public class DacListServiceImpl {
             throw new IllegalArgumentException("Base path and custom directory path must not be null or empty");
         }
     }
-    private List<DynaDocs> getActiveDynaDocsForDac(Integer dacId, Integer dacVersion){
-        return null;
-    }
-    /*private List<DynaDocs> getActiveDynaDocsForDac(Integer dacId, Integer dacVersion) {
-        // Récupérer les DacDocs pour le Dac donné
-        List<DacDocs> dacDocsList = dacDocsRepository.findAll();
-        log.info("dacDocsList.size(): {}", dacDocsList.size());
-        if (dacDocsList.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        // Extraire les IDs uniques de DynaDocs
-        Set<DynaDocID> dynaDocsIds = dacDocsList.stream()
-                .map(dacDoc -> dacDoc.getId().getDinaDocsFields().getId().getDynaDocsId().getDynaDocsId().getId())
-                .collect(Collectors.toSet());
-        log.info("dynaDocsIds ------------ : {}", dynaDocsIds.size());
-
-        // Récupérer les DynaDocs actifs, triés par dyna_doc_order
-        return dynaDocsRepository.findAllByIdIn(dynaDocsIds).stream()
-                .filter(dynaDoc -> dynaDoc.getStatus() == 1)
+    private List<DynaDocs> getActiveDynaDocsForDac(Integer categorieId){
+        // recupere tous les documents actif pour le dac donné
+        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllActifForCategorie(categorieId);
+       // trier par dyna_doc_order
+        return dynaDocsList.stream()
                 .sorted(Comparator.comparing(DynaDocs::getDynaDocOrder))
                 .collect(Collectors.toList());
-    }*/
+    }
     private FileInputStream inputFileDocument(File file) {
         try {
             return new FileInputStream(file);
@@ -146,46 +135,27 @@ public class DacListServiceImpl {
     }
 
     private Map<String, String> createBookmarkMap(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer) {
-
         Map<String, String> bookmarks = new HashMap<>();
 
-        // Récupérer les DynaDocsFields actifs pour le document spécifique
-        /*List<DynaDocsFields> dynaDocsFieldsList = dynaDocsFieldsRepository
-                .findByIdDynaDocsIdAndIdDynaDocsVerAndStatus(
-                        dynaDocsId, dynaDocsVer, 1);*/
-
-        // Trier par field_order (ou dyna_fields_id si field_order n'existe pas)
-        /*dynaDocsFieldsList.sort(Comparator.comparing(
-                dynaDocsFields -> dynaDocsFields.getDynaFieldOrder() != null
-                        ? dynaDocsFields.getDynaFieldOrder()
-                        : dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId()));*/
-
-        // Récupérer les DacDocs pour le Dac
+        // Get DacDocs entries for the given DAC
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
 
-        // Créer une carte des DynaFields pour un accès rapide
-        /*Map<Integer, DynaFields> dynaFieldsMap = dynaDocsFieldsList.stream()
-                .map(dynaDocsFields -> dynaDocsFields.getId().getDynaFieldsId())
-                .collect(Collectors.toMap(DynaFields::getDynaFieldId, Function.identity()));*/
+        // Process each DacDocs entry
+        for (DacDocs dacDoc : dacDocsList) {
+            DynaFields dynaField = dacDoc.getId().getDynaField();
+            if (dynaField != null &&
+                dynaField.getDynaDocs().getId().getDynaDocsId().equals(dynaDocsId) &&
+                dynaField.getDynaDocs().getId().getDynaDocsVer().equals(dynaDocsVer)) {
 
-        // Associer les valeurs des champs
-        /*for (DacDocs dacDoc : dacDocsList) {
-            DynaDocsFields dynaDocsFields = dacDoc.getId().getDinaDocsFields();
-            if (dynaDocsFields != null &&
-                    dynaDocsFields.getId().getDynaDocsId().getId().getDynaDocsId().equals(dynaDocsId) &&
-                    dynaDocsFields.getId().getDynaDocsId().getId().getDynaDocsVer().equals(dynaDocsVer)) {
+                String bookmarkName = dynaField.getName();
+                String fieldValue = dacDoc.getFieldValue();
 
-                DynaFields dynaField = dynaFieldsMap.get(dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId());
-                if (dynaField != null) {
-                    String bookmarkName = dynaField.getName();
-                    String fieldValue = dacDoc.getFieldValue();
-                    if (bookmarkName != null && fieldValue != null) {
-                        log.info("Bookmark: {} -> Value: {}", bookmarkName, fieldValue);
-                        bookmarks.put(bookmarkName, fieldValue);
-                    }
+                if (bookmarkName != null && fieldValue != null) {
+                    log.info("Processing bookmark: {} -> Value: {}", bookmarkName, fieldValue);
+                    bookmarks.put(bookmarkName, fieldValue);
                 }
             }
-        }*/
+        }
 
         return bookmarks;
     }

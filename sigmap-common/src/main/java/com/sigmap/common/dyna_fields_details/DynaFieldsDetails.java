@@ -39,5 +39,6 @@ public class DynaFieldsDetails {
     @ManyToOne
     @JoinColumn(name = "dyna_fields_id")
     private DynaFields dynaFieldsId;
+    // dyna fields fiha akther men pk w hnaa 3ana fk wa7ed ??
 
 }

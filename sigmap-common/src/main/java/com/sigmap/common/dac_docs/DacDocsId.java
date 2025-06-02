@@ -1,6 +1,7 @@
 package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dyna_fields.DynaFields;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -23,4 +24,11 @@ public class DacDocsId implements Serializable {
     })
     private Dac dac;
 
+    @ManyToOne
+    @JoinColumns({
+            @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
+            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver"),
+            @JoinColumn(name = "dyna_fields_id", referencedColumnName = "dyna_fields_id")
+    })
+    private DynaFields dynaField;
 }

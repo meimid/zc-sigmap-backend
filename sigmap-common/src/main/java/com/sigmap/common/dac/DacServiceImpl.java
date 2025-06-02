@@ -7,6 +7,7 @@ import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_fields.DynaFields;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.xwpf.usermodel.*;
@@ -61,8 +62,7 @@ public class DacServiceImpl implements DacService {
             throw new TemplateFileNameNotFound( dacId, dacVersion);
         }
         // Prendre le premier dyna_docs_id (suppose que tous les dac_docs pour ce dac_id/dac_ver pointent vers le même dyna_docs)
-        //Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().
-       // Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getId().getDynaDocsId();
+        //Integer dynaDocsId = dacDocsList.get(0).getId().getDinaDocsFields().getId().getDynaDocsId().getId().getDynaDocsId();
 
         // Récupérer le template_file_name depuis dyna_docs
         //Optional<DynaDocs> dynaDocs = dynaDocsRepository.findById(dynaDocsId);
@@ -89,17 +89,18 @@ public class DacServiceImpl implements DacService {
     private Map<String, String> createBookmarkMap(Integer dacId, Integer dacVersion) {
         Map<String, String> bookmarks = new HashMap<>();
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
-        /*for (DacDocs dacDoc : dacDocsList) {
-            DynaDocsFields dynaDocsFields = dacDoc.getId().getDinaDocsFields();
-            if (dynaDocsFields != null && dynaDocsFields.getId() != null && dynaDocsFields.getId().getDynaFieldsId().getDynaFieldId() != null) {
-                String bookmarkName = dynaDocsFields.getId().getDynaFieldsId().getName();
+        
+        for (DacDocs dacDoc : dacDocsList) {
+            DynaFields dynaField = dacDoc.getId().getDynaField();
+            if (dynaField != null) {
+                String bookmarkName = dynaField.getName();
                 String fieldValue = dacDoc.getFieldValue();
-                log.debug("Bookmark: {} -> Value: {}", bookmarkName, fieldValue);
-                bookmarks.put(bookmarkName, fieldValue);
-            } else {
-                log.error("Navigation failed for dacDoc: {}", dacDoc);
+                if (bookmarkName != null && fieldValue != null) {
+                    log.debug("Bookmark: {} -> Value: {}", bookmarkName, fieldValue);
+                    bookmarks.put(bookmarkName, fieldValue);
+                }
             }
-        }*/
+        }
         return bookmarks;
     }
 

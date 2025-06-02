@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_fields;
 
+import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -15,10 +16,12 @@ import lombok.Setter;
 @Entity
 public class DynaFields {
 
+   // @EmbeddedId
+    //private DynaFieldsId id;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "dyna_fields_id")
-    private Integer dynaFieldId;
+    private Integer dynaFieldsId;
 
     @Column(name = "name")
     private String name;
@@ -35,5 +38,13 @@ public class DynaFields {
     private String source;
     @Column(name = "source_field")
     private String sourceField;
+
+
+    @ManyToOne
+    @JoinColumns({
+            @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
+            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver"),
+    })
+    private DynaDocs dynaDocs;
 
 }
