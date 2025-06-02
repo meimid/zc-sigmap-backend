@@ -1,13 +1,11 @@
 package com.sigmap.common.dyna_fields;
 
-import com.sigmap.common.dyna_docs.DynaDocs;
 import jakarta.persistence.*;
+import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.io.Serializable;
 
 @Embeddable
 @Getter
@@ -16,14 +14,13 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class DynaFieldsId implements Serializable {
 
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
-            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver"),
-    })
-    private DynaDocs dynaDocs;
+  @Column(name = "dyna_docs_id")
+  private Integer dynaDocsId;
 
+  @Column(name = "dyna_docs_ver")
+  private Integer dynaDocsVer;
 
-    @Column(name = "dyna_fields_id")
-    private Integer dynaFieldsId;
+  // @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "dyna_fields_id")
+  private Integer dynaFieldsId;
 }

@@ -13,23 +13,19 @@ import lombok.*;
 @Entity
 @Table(name = "dac")
 public class Dac extends BaseEntity {
-    @EmbeddedId
-    private DacId id;
+  @EmbeddedId private DacId id;
 
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
-            @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
-    })
-    private Ppm ppm;
+  @ManyToOne
+  @JoinColumns({
+    @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
+    @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
+  })
+  private Ppm ppm;
 
-    @ManyToOne
-    @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
-    private RefParam category;
+  @ManyToOne
+  @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
+  private RefParam category;
 
-    @Column(name = "status_id")
-    private Integer statusId;
-
-
-
+  @Column(name = "status_id")
+  private Integer statusId;
 }

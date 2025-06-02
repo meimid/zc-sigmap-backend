@@ -92,7 +92,9 @@ CREATE TABLE `dyna_fields_details`
     `source`         varchar(255) NULL,
     `source_field`   varchar(255) NULL,
     `dyna_fields_id`  int NULL,
-    PRIMARY KEY (`dyna_fields_details_id`)
+    `dyna_docs_id`  int NULL,
+    `dyna_docs_ver`  int NULL,
+    PRIMARY KEY (`dyna_fields_details_id`, `dyna_docs_id`, `dyna_docs_ver`, `dyna_fields_id`)
 );
 
 

@@ -1,13 +1,11 @@
 package com.sigmap.common.dac_docs_details;
 
-import com.sigmap.common.dac.Dac;
 import jakarta.persistence.*;
+import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.io.Serializable;
 
 @Embeddable
 @Getter
@@ -15,18 +13,25 @@ import java.io.Serializable;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DacDocsDetailsId implements Serializable {
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),
-            @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver")
-    })
-    private Dac dac;
 
+  @Column(name = "dac_id")
+  private Integer dacId;
 
-    @Column(name = "dyna_fields_details_id")
-    private Integer dynaFiledsDetailsId;
+  @Column(name = "dac_ver")
+  private Integer dacVer;
 
-    @Column(name = "row_id")
-    private Integer rowId;
+  @Column(name = "dyna_docs_id")
+  private Integer dynaDocsId;
 
+  @Column(name = "dyna_docs_ver")
+  private Integer dynaDocsVer;
+
+  @Column(name = "dyna_fields_id")
+  private Integer dynaFieldsId;
+
+  @Column(name = "dyna_fields_details_id")
+  private Integer dynaFieldsDetailsId;
+
+  @Column(name = "row_id")
+  private Integer rowId;
 }

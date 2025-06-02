@@ -91,7 +91,7 @@ public class DacServiceImpl implements DacService {
         List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
         
         for (DacDocs dacDoc : dacDocsList) {
-            DynaFields dynaField = dacDoc.getId().getDynaField();
+            DynaFields dynaField = dacDoc.getDynaField();
             if (dynaField != null) {
                 String bookmarkName = dynaField.getName();
                 String fieldValue = dacDoc.getFieldValue();
