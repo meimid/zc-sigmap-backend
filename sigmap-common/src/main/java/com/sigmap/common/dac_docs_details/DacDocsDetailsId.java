@@ -23,7 +23,7 @@ public class DacDocsDetailsId implements Serializable {
     private Dac dac;
 
 
-    @Column(name = "dyna_fileds_details_id")
+    @Column(name = "dyna_fields_details_id")
     private Integer dynaFiledsDetailsId;
 
     @Column(name = "row_id")

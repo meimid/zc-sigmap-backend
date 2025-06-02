@@ -46,7 +46,7 @@ CREATE TABLE `dac_docs`
     `dyna_docs_id`   int NOT NULL,
     `dyna_docs_ver`  int NOT NULL,
     `dyna_fields_id` int NOT NULL,
-    `source_id`      int NOT NULL,
+    `source_id`      varchar(255) NULL,
     `field_value`    varchar(255) NULL,
     PRIMARY KEY (`dac_id`, `dac_ver`, `dyna_docs_id`,`dyna_docs_ver`, `dyna_fields_id`)
 );

@@ -38,8 +38,8 @@ public class DynaFields {
     private String source;
     @Column(name = "source_field")
     private String sourceField;
-    @Column(name = "source_field_order")
-    private String sourceFieldOrder;
+    @Column(name = "dyna_fields_order")
+    private Integer dynaFieldsOrder;
     @Column(name = "status")
     private Integer status;
 
