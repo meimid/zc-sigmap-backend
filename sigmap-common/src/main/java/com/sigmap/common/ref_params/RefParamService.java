@@ -106,10 +106,10 @@ public interface RefParamService {
    *
    * @param id the id of the RefParam to delete
    */
-  void delete(Integer id)throws RefParamHasAssociatedCom,
+  void delete(Integer id) throws RefParamHasAssociatedCom,
           RefParamHasAssociatedCompteBancaire,
           RefParamHasAssociatedSociete,
-          RefParamHasAssociatedSocieteAddress;
+          RefParamHasAssociatedSocieteAddress, RefParamNotFound;
 
   List<RefParam> findByRefType( Integer refTpeId);
 
