@@ -6,15 +6,10 @@ import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
-
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -40,19 +35,20 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public List<RefParam> findAll() {
-        Specification<RefParam> spec = RefParamSpecifications.deleted(false);
-        return repository.findAll(spec).stream().filter(el->el.getRefType().getSystemType() != null&&
-                !el.getRefType().getSystemType()).collect(Collectors.toList());
+        Specification<RefParam> spec = RefParamSpecifications.systemType(false);
+        return repository.findAll(spec);
     }
 
     @Override
     public Page<RefParam> findAll(Specification<RefParam> spec, Pageable pageable) {
-        Page<RefParam> page = repository.findAll(spec, pageable);
-        List<RefParam> filteredContent = page.getContent().stream()
-                .filter(el ->el.getRefType().getSystemType() != null&&
-                     !el.getRefType().getSystemType())
-                .collect(Collectors.toList());
-        return new PageImpl<>(filteredContent, pageable, page.getTotalElements());
+        Specification<RefParam> systemTypeSpec = RefParamSpecifications.systemType(false);
+        Specification<RefParam> combinedSpec;
+        if (spec != null) {
+            combinedSpec = spec.and(systemTypeSpec);
+        } else {
+            combinedSpec = systemTypeSpec;
+        }
+        return repository.findAll(combinedSpec, pageable);
 
     }
 
@@ -185,9 +181,11 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public List<RefParam> findByRefType(Integer refTpeId) throws RefTypeNotFound {
-      refTypeService.findById(refTpeId);
-       return repository.findByRefType(refTpeId).stream().filter(el->el.getRefType().getSystemType()!=null&&
-               !el.getRefType().getSystemType()).collect(Collectors.toList());
+     RefType ref= refTypeService.findById(refTpeId);
+     if(ref.getSystemType()){
+         throw new RefTypeNotFound("",refTpeId);
+     }
+       return repository.findByRefType(refTpeId);
     }
 
     @Override

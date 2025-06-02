@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_types;
 
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -29,7 +30,7 @@ public class RefTypeSpecifications {
         };
     }
 
- 
+
 
     /** deleted. */
     public static Specification<RefType> deleted(boolean deleted) {
@@ -43,4 +44,21 @@ public class RefTypeSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+
+    /** systemType. */
+    public static Specification<RefType> systemType() {
+        return (root, query, criteriaBuilder) -> {
+            Predicate notDeleted = criteriaBuilder.or(
+                    criteriaBuilder.isNull(root.get("isDeleted")),
+                    criteriaBuilder.isFalse(root.get("isDeleted"))
+            );
+                Predicate notSystemType = criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("systemType")),
+                        criteriaBuilder.isFalse(root.get("systemType"))
+                );
+
+                return criteriaBuilder.and(notDeleted, notSystemType);
+        };
+    }
+
 }

@@ -1,24 +1,15 @@
 package com.sigmap.common.ref_types;
 
-import com.sigmap.common.docs.Docs;
-import com.sigmap.common.docs.DocsSpecifications;
-import com.sigmap.common.docs.exeptions.DocsNotFoundException;
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class RefTypeServiceImpl implements RefTypeService {
@@ -30,19 +21,20 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public List<RefType> findAll() {
-
-    Specification<RefType> spec = RefTypeSpecifications.deleted(false);
-    return repository.findAll(spec).stream().filter(el->el.getSystemType()!=null&&!el.getSystemType()).collect(Collectors.toList());
+    Specification<RefType> spec = RefTypeSpecifications.systemType();
+    return repository.findAll(spec);
   }
 
   @Override
   public Page<RefType> findAll(Specification<RefType> spec, Pageable pageable) {
-    Page<RefType> page = repository.findAll(spec, pageable);
-    List<RefType> filteredContent = page.getContent().stream()
-            .filter(el ->el.getSystemType()!=null&&
-                    !el.getSystemType())
-            .collect(Collectors.toList());
-    return new PageImpl<>(filteredContent, pageable, page.getTotalElements());
+    Specification<RefType> systemTypeSpec = RefTypeSpecifications.systemType();
+    Specification<RefType> combinedSpec;
+    if (spec != null) {
+      combinedSpec = spec.and(systemTypeSpec);
+    } else {
+      combinedSpec = systemTypeSpec;
+    }
+    return repository.findAll(combinedSpec, pageable);
   }
 
   @Override
