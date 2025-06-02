@@ -98,4 +98,12 @@ public class AgpmSpecifications {
             return criteriaBuilder.like(join.get("nom"), "%" + acNom + "%");
         };
     }
+
+    public static Specification<Agpm> hasStatusId(Integer statusId) {
+        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    }
+
+    public static Specification<Agpm> statusNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    }
 }

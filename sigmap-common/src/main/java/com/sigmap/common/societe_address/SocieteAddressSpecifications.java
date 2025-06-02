@@ -55,4 +55,8 @@ public class SocieteAddressSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+
+    public static Specification<SocieteAddress> hasTypeId(Integer typeId) {
+        return (root, query, cb) -> cb.equal(root.get("type").get("id"), typeId);
+    }
 }

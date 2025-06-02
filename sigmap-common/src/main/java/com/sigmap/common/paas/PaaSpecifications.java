@@ -140,4 +140,12 @@ public class PaaSpecifications {
             return criteriaBuilder.like(join.get("nom"), "%" + acNom + "%");
         };
     }
+
+    public static Specification<Paa> hasStatusId(Integer statusId) {
+        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    }
+
+    public static Specification<Paa> statusNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    }
 }

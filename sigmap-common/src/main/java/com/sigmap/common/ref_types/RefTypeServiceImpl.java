@@ -1,5 +1,8 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
@@ -14,9 +17,11 @@ import org.springframework.stereotype.Service;
 @Service
 public class RefTypeServiceImpl implements RefTypeService {
   private final RefTypeRepository repository;
+  private final RefParamRepository refParamRepository;
 
-  public RefTypeServiceImpl(RefTypeRepository repository) {
+  public RefTypeServiceImpl(RefTypeRepository repository,RefParamRepository refParamRepository) {
     this.repository = repository;
+    this.refParamRepository = refParamRepository;
   }
 
   @Override
@@ -104,9 +109,19 @@ public class RefTypeServiceImpl implements RefTypeService {
 
   @Override
   public void delete(Integer id) throws HasAssociatedRefParams {
-    boolean hasAssociatedRefParams = repository.hasAssociatedRefParams(id);
+    findById(id);
+
+    // Create specification to find non-deleted RefParams for this RefType
+    Specification<RefParam> nonDeletedForRefType = Specification.where(
+            RefParamSpecifications.deleted(false)
+                    .and(RefParamSpecifications.hasRefTypeId(id))
+    );
+
+    long count = refParamRepository.count(nonDeletedForRefType);
+    boolean hasAssociatedRefParams = count > 0;
+
     if (hasAssociatedRefParams) {
-      throw new HasAssociatedRefParams("",id);
+      throw new HasAssociatedRefParams("", id);
     }
     repository.softDelete(id);
   }

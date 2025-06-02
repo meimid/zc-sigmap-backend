@@ -1,6 +1,9 @@
 package com.sigmap.common.realisations;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.ref_params.RefParam;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 public class RealisationSpecifications {
@@ -59,6 +62,7 @@ public class RealisationSpecifications {
         };
     }
 
+
     /**
      * Filter by serviceId.
      */
@@ -81,5 +85,80 @@ public class RealisationSpecifications {
             }
             return criteriaBuilder.equal(root.get("directionId"), directionId);
         };
+    }
+
+    public static Specification<Realisation> hasServiceId(Integer serviceId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> serviceJoin = root.join("service", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(serviceJoin.get("id"), serviceId),
+                    cb.equal(serviceJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Check if refParam is used as direction
+    public static Specification<Realisation> hasDirectionId(Integer directionId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> directionJoin = root.join("direction", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(directionJoin.get("id"), directionId),
+                    cb.equal(directionJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Check if refParam is used as sourceFinancement
+    public static Specification<Realisation> hasSourceFinancementId(Integer sourceFiId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> sfJoin = root.join("sourceFinancement", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(sfJoin.get("id"), sourceFiId),
+                    cb.equal(sfJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Check if refParam is used as monais
+    public static Specification<Realisation> hasMonaisId(Integer monaisId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> monaisJoin = root.join("monais", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(monaisJoin.get("id"), monaisId),
+                    cb.equal(monaisJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Check if refParam is used as typeMarcher
+    public static Specification<Realisation> hasTypeMarcherId(Integer typeMarcherId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> tmJoin = root.join("typeMarcher", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(tmJoin.get("id"), typeMarcherId),
+                    cb.equal(tmJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Check if refParam is used as modeSelection
+    public static Specification<Realisation> hasModeSelectionId(Integer modeSelectionId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> msJoin = root.join("modeSelection", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(msJoin.get("id"), modeSelectionId),
+                    cb.equal(msJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    // Combined specification that checks all possible uses of refParam in Realisation
+    public static Specification<Realisation> hasRefParamId(Integer refParamId) {
+        return hasServiceId(refParamId)
+                .or(hasDirectionId(refParamId))
+                .or(hasSourceFinancementId(refParamId))
+                .or(hasMonaisId(refParamId))
+                .or(hasTypeMarcherId(refParamId))
+                .or(hasModeSelectionId(refParamId));
     }
 }

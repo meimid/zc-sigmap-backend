@@ -152,4 +152,12 @@ public class PpmSpecifications {
             return criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + acNom.toLowerCase() + "%");
         };
     }
+
+    public static Specification<Ppm> hasStatusId(Integer statusId) {
+        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    }
+
+    public static Specification<Ppm> statusNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    }
 }
