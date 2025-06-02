@@ -33,7 +33,7 @@ public interface AgpmService {
      * @param pageable The pagination and sorting information
      * @return A Page of Agpm entities matching the specification
      */
-    Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable);
+    Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AcNotFound, AgpmNotFound;
 
     /**
      * Retrieves a paginated list of deleted Agpm entities.
@@ -59,7 +59,7 @@ public interface AgpmService {
      * @return The Agpm entity if found
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound;
+    Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound;
 
     /**
      * Saves an Agpm entity to the database.

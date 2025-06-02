@@ -47,6 +47,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AgpmNotAssociatedWithUserAcException.class)
+    public ResponseEntity<ErrorResponse> handleAgpmNotAssociatedWithUserAc(AgpmNotAssociatedWithUserAcException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(AgpmNotFound.class)
     public ResponseEntity<ErrorResponse> agpmNotFoundException(AgpmNotFound ex) {

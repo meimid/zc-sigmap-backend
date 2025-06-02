@@ -23,6 +23,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
@@ -38,6 +39,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 
 import java.io.IOException;
 import java.util.*;
@@ -58,6 +60,7 @@ public class AgpmServiceImpl implements AgpmService {
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
+    private final CurrentUserService currentUserService;
 
     /**
      * Constructor for AgpmServiceImpl with dependency injection.
@@ -78,7 +81,8 @@ public class AgpmServiceImpl implements AgpmService {
                            MessageSource messageSource,
                            AlfrescoService alfrescoService,
                            DocumentCommuneService documentCommuneService,
-                           AcService acService) {
+                           AcService acService,
+                           CurrentUserService currentUserService) {
         this.repository = repository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
@@ -87,6 +91,7 @@ public class AgpmServiceImpl implements AgpmService {
         this.alfrescoService = alfrescoService;
         this.documentCommuneService = documentCommuneService;
         this.acService = acService;
+        this.currentUserService = currentUserService;
     }
 
     /**
@@ -100,25 +105,134 @@ public class AgpmServiceImpl implements AgpmService {
 
     /**
      * Retrieves a paginated list of non-deleted Agpm entities, returning only the latest version for each ID
-     * based on the given specification. Only non-deleted Docs are included in the response.
+     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
      *
      * @param spec     Specification to filter Agpm entities
      * @param pageable Pagination and sorting configuration
      * @return Page of Agpm entities with the latest version per ID and only non-deleted Docs
+     * @throws AgpmNotFound if no Agpm entities are found for the user's ACs
+     * @throws AgpmNotAssociatedWithUserAcException if an Agpm is not associated with the user's ACs
      */
-    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) {
-        Page<Agpm> allAgpms = repository.findAll(spec, pageable);
+    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AgpmNotAssociatedWithUserAcException, AcNotFound, AgpmNotFound {
+        log.info("Recherche de tous les AGPM avec spécification: {}", spec);
+
+        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
+        if (userAcIdsLong.isEmpty()) {
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
+            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
+        Set<Integer> userAcIds = userAcIdsLong.stream()
+                .map(Long::intValue)
+                .collect(Collectors.toSet());
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
+        }
+
+        Specification<Agpm> acFilterSpec = (root, query, criteriaBuilder) ->
+                root.get("ac").get("id").in(userAcIds);
+        Specification<Agpm> combinedSpec = spec != null ? spec.and(acFilterSpec) : acFilterSpec;
+
+        Page<Agpm> allAgpms = repository.findAll(combinedSpec, pageable);
+
+        if (allAgpms.isEmpty()) {
+            log.warn("Aucun AGPM trouvé pour les AC de l'utilisateur: {}", userAcIds);
+            throw new AgpmNotFound("Aucun AGPM trouvé pour les AC de l'utilisateur: " + userAcIds,
+                    Collections.emptyList(), Collections.emptyList());
+        }
 
         Map<Integer, Agpm> latestAgpms = allAgpms.getContent().stream()
                 .collect(Collectors.toMap(
                         Agpm::getId,
-                        this::createFilteredResponseAgpm,
+                        agpm -> agpm,
                         (agpm1, agpm2) -> agpm1.getVersion() > agpm2.getVersion() ? agpm1 : agpm2
                 ));
 
-        List<Agpm> latestAgpmList = new ArrayList<>(latestAgpms.values());
+        for (Agpm agpm : latestAgpms.values()) {
+            if (agpm.getAc() == null || !userAcIds.contains(agpm.getAc().getId())) {
+                log.warn("AGPM avec ID {} n'est pas associé à un AC de l'utilisateur", agpm.getId());
+                throw new AgpmNotAssociatedWithUserAcException(
+                        "L'AGPM avec l'ID " + agpm.getId() + " n'est pas associé à un AC de l'utilisateur connecté",
+                        List.of(agpm.getId()),
+                        List.of(agpm.getVersion())
+                );
+            }
+        }
+
+        List<Agpm> latestAgpmList = latestAgpms.values().stream()
+                .map(this::createFilteredResponseAgpm)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
         int totalElements = (int) allAgpms.getTotalElements();
+
+        log.info("Récupération de {} AGPM pour les AC de l'utilisateur {}", latestAgpmList.size(), userAcIds);
+
         return new PageImpl<>(latestAgpmList, pageable, totalElements);
+    }
+
+    /**
+     * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response,
+     * and the Agpm must be associated with one of the ACs of the current user.
+     *
+     * @param agpmId  ID of the Agpm entity
+     * @param agpmVer Ignored parameter (kept for compatibility); latest version is fetched
+     * @return Agpm entity with the latest version and only non-deleted Docs
+     * @throws AgpmNotFound if no Agpm entity is found for the ID
+     * @throws AcNotFound if no AC is found for the current user
+     * @throws AgpmNotAssociatedWithUserAcException if the Agpm is not associated with the user's ACs
+     */
+    @Override
+    public Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound, AgpmNotAssociatedWithUserAcException {
+        log.info("Recherche de l'AGPM avec ID: {}", agpmId);
+
+        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
+        if (userAcIdsLong.isEmpty()) {
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
+            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
+        Set<Integer> userAcIds = userAcIdsLong.stream()
+                .map(Long::intValue)
+                .collect(Collectors.toSet());
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
+        }
+
+        Integer latestVersion = repository.findMaxVersionById(agpmId);
+        if (latestVersion == null) {
+            log.warn("Aucun AGPM trouvé pour l'ID: {}", agpmId);
+            throw new AgpmNotFound("Aucun AGPM trouvé pour l'ID", List.of(agpmId), agpmVer != null ? List.of(agpmVer) : Collections.emptyList());
+        }
+
+        Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
+                .orElseThrow(() -> new AgpmNotFound("Aucun AGPM trouvé pour l'ID et la version", List.of(agpmId), List.of(latestVersion)));
+
+        if (agpm.getAc() == null || !userAcIds.contains(agpm.getAc().getId())) {
+            log.warn("AGPM avec ID {} n'est pas associé à un AC de l'utilisateur", agpmId);
+            throw new AgpmNotAssociatedWithUserAcException(
+                    "L'AGPM avec l'ID " + agpmId + " n'est pas associé à un AC de l'utilisateur connecté",
+                    List.of(agpmId),
+                    List.of(latestVersion)
+            );
+        }
+
+        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
+        log.info("Retour de l'AGPM {}:{} avec uniquement les documents non supprimés: {}",
+                agpmId, latestVersion, responseAgpm.getDocs() != null
+                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
+                        : Collections.emptyList());
+
+        return responseAgpm;
     }
 
     /**
@@ -144,29 +258,7 @@ public class AgpmServiceImpl implements AgpmService {
         return repository.findOne(specification);
     }
 
-    /**
-     * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response.
-     *
-     * @param agpmId  ID of the Agpm entity
-     * @param agpmVer Ignored parameter (kept for compatibility); latest version is fetched
-     * @return Agpm entity with the latest version and only non-deleted Docs
-     * @throws AgpmNotFound if no Agpm entity is found for the ID
-     */
-    @Override
-    public Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound {
-        Integer latestVersion = findLatestVersionById(agpmId)
-                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID", List.of(agpmId), List.of(agpmVer)));
-        Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
-                .orElseThrow(() -> new AgpmNotFound("No Agpm found for ID and version", List.of(agpmId), List.of(latestVersion)));
 
-        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
-        log.info("Returning Agpm {}:{} with only non-soft-deleted document IDs: {}",
-                agpmId, latestVersion, responseAgpm.getDocs() != null
-                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
-                        : Collections.emptyList());
-
-        return responseAgpm;
-    }
 
     /**
      * Retrieves the latest version number for a given Agpm ID.
@@ -227,7 +319,7 @@ public class AgpmServiceImpl implements AgpmService {
         agpm.setId(id);
         agpm.setVersion(version);
 
-        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
+        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();// will be replaced by the logic of acIds
         if (acIdOptional.isPresent()) {
             Long acIdLong = acIdOptional.get();
             Integer acIdInt = Math.toIntExact(acIdLong);
@@ -618,7 +710,15 @@ public class AgpmServiceImpl implements AgpmService {
      * @param source Source Agpm entity
      * @return Filtered Agpm entity with only non-deleted documents
      */
-    private Agpm createFilteredResponseAgpm(Agpm source) {
+    private Agpm createFilteredResponseAgpm(Agpm source)  {
+        if (source == null) {
+            log.error("AGPM passé à createFilteredResponseAgpm est null");
+            try {
+                throw new AgpmNotFound("AGPM cannot be null", List.of(source.getId()), List.of(source.getVersion()));
+            } catch (AgpmNotFound e) {
+                throw new RuntimeException(e);
+            }
+        }
         Agpm responseAgpm = new Agpm();
         responseAgpm.setId(source.getId());
         responseAgpm.setVersion(source.getVersion());

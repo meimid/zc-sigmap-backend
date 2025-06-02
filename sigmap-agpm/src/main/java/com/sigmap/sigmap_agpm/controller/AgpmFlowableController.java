@@ -43,7 +43,7 @@ public class AgpmFlowableController {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @PostMapping("/start/{id}")
-    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws AgpmNotFound {
+    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws AgpmNotFound, AcNotFound {
         log.info("Starting process instance for Agpm ID: {}", id);
         ProcessStartResponseDTO response = agpmFlowableService.startProcessInstance(id);
         return ResponseEntity.ok(response);
@@ -69,7 +69,7 @@ public class AgpmFlowableController {
      * @throws AgpmNotFound if the associated Agpm entity is not found
      */
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws AgpmNotFound {
+    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws AgpmNotFound, AcNotFound {
         log.info("Retrieving details for task ID: {}", taskId);
         TaskDetailsDTO response = agpmFlowableService.getTaskDetails(taskId);
         return ResponseEntity.ok(response);

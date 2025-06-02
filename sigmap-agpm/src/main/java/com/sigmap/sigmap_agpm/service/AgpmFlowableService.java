@@ -203,7 +203,7 @@ public class AgpmFlowableService {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws AgpmNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws AgpmNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
@@ -327,7 +327,7 @@ public class AgpmFlowableService {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id) throws AgpmNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws AgpmNotFound, AcNotFound {
         return startProcessInstance(id, null, null);
     }
 
@@ -366,7 +366,7 @@ public class AgpmFlowableService {
                         taskInfo.setNom(agpm.getNom());
                         taskInfo.setRef(agpm.getRef());
                     });
-                } catch (AgpmNotFound e) {
+                } catch (AgpmNotFound | AcNotFound e) {
                     log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task1.getId(), e);
                 }
             }
@@ -401,7 +401,7 @@ public class AgpmFlowableService {
      * @return TaskDetailsDTO with the task details
      * @throws AgpmNotFound if the associated Agpm entity is not found
      */
-    public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound {
+    public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
@@ -779,7 +779,7 @@ public class AgpmFlowableService {
                         taskInfo.setNom(agpm.getNom());
                         taskInfo.setRef(agpm.getRef());
                     });
-                } catch (AgpmNotFound e) {
+                } catch (AgpmNotFound | AcNotFound e) {
                     log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
                 }
             }
