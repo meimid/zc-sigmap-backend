@@ -41,10 +41,10 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
     @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.type.id = :refParamId and sa.isDeleted=false)")
     boolean hasAssociatedSocieteAddress(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.isDeleted=false and r.refType.isDeleted=false and r.refType.systemType=false")
+    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.isDeleted=false and r.refType.isDeleted=false ")
     List<RefParam> findByRefType(@Param("refTypeId") Integer refTypeId);
-    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.id = :refPramId and r.isDeleted=false and r.refType.isDeleted=false and r.refType.systemType=false")
 
+    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.id = :refPramId ")
    Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, Integer refTypeId) ;
 
     @Query("SELECT EXISTS (SELECT p FROM Ppm p WHERE p.status.id = :refParamId and p.isDeleted=false and p.status.isDeleted=false)")
