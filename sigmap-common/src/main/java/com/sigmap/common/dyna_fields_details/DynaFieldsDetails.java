@@ -15,30 +15,42 @@ import lombok.Setter;
 @Table(name = "dyna_fields_details")
 @Entity
 public class DynaFieldsDetails {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "dyna_fields_details_id")
-    private Integer dynaFieldsDetailsId;
 
-    @Column(name = "column_name", length = 100)
-    private String columnName;
+  @EmbeddedId private DynaFieldsDetailsId id;
 
-    @Column(name = "column_pos")
-    private Integer columnPos;
+  @Column(name = "column_name", length = 100)
+  private String columnName;
 
-    @ManyToOne
-    @JoinColumn(name = "type_id")
-    private RefParam typeId;
+  @Column(name = "column_pos")
+  private Integer columnPos;
 
-    @Column(name = "source", length = 100)
-    private String source;
+  @ManyToOne
+  @JoinColumn(name = "type_id")
+  private RefParam typeId;
 
-    @Column(name = "source_field", length = 100)
-    private String source_field;
+  @Column(name = "source", length = 100)
+  private String source;
 
-    @ManyToOne
-    @JoinColumn(name = "dyna_fields_id")
-    private DynaFields dynaFieldsId;
-    // dyna fields fiha akther men pk w hnaa 3ana fk wa7ed ??
+  @Column(name = "source_field", length = 100)
+  private String source_field;
 
+  @ManyToOne
+  @JoinColumns({
+    @JoinColumn(
+        name = "dyna_fields_id",
+        referencedColumnName = "dyna_fields_id",
+        updatable = false,
+        insertable = false),
+    @JoinColumn(
+        name = "dyna_docs_id",
+        referencedColumnName = "dyna_docs_id",
+        updatable = false,
+        insertable = false),
+    @JoinColumn(
+        name = "dyna_docs_ver",
+        referencedColumnName = "dyna_docs_ver",
+        updatable = false,
+        insertable = false)
+  })
+  private DynaFields dynaFieldsId;
 }

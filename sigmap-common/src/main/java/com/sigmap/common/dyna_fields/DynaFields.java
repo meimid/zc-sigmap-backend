@@ -16,39 +16,48 @@ import lombok.Setter;
 @Entity
 public class DynaFields {
 
-   // @EmbeddedId
-    //private DynaFieldsId id;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "dyna_fields_id")
-    private Integer dynaFieldsId;
+  @EmbeddedId private DynaFieldsId id;
 
-    @Column(name = "name")
-    private String name;
-    @Column(name = "ref")
-    private String ref;
-    @Column(name = "label")
-    private String label;
-    @Column(name = "description")
-    private String description;
-    @ManyToOne
-    @JoinColumn(name = "type_id")
-    private RefParam type_id;
-    @Column(name = "source")
-    private String source;
-    @Column(name = "source_field")
-    private String sourceField;
-    @Column(name = "dyna_fields_order")
-    private Integer dynaFieldsOrder;
-    @Column(name = "status")
-    private Integer status;
+  @Column(name = "name")
+  private String name;
 
+  @Column(name = "ref")
+  private String ref;
 
-    @ManyToOne
-    @JoinColumns({
-            @JoinColumn(name = "dyna_docs_id", referencedColumnName = "dyna_docs_id"),
-            @JoinColumn(name = "dyna_docs_ver", referencedColumnName = "dyna_docs_ver"),
-    })
-    private DynaDocs dynaDocs;
+  @Column(name = "label")
+  private String label;
 
+  @Column(name = "description")
+  private String description;
+
+  @ManyToOne
+  @JoinColumn(name = "type_id")
+  private RefParam type_id;
+
+  @Column(name = "source")
+  private String source;
+
+  @Column(name = "source_field")
+  private String sourceField;
+
+  @Column(name = "dyna_fields_order")
+  private Integer dynaFieldsOrder;
+
+  @Column(name = "status")
+  private Integer status;
+
+  @ManyToOne
+  @JoinColumns({
+    @JoinColumn(
+        name = "dyna_docs_id",
+        referencedColumnName = "dyna_docs_id",
+        insertable = false,
+        updatable = false),
+    @JoinColumn(
+        name = "dyna_docs_ver",
+        referencedColumnName = "dyna_docs_ver",
+        insertable = false,
+        updatable = false),
+  })
+  private DynaDocs dynaDocs;
 }

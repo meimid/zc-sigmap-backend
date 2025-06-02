@@ -7,6 +7,11 @@ server:
 spring:
   application:
     name: Sigmap DAC
+
+  devtools:
+    restart:
+      additional-paths: ../sigmap-common
+
   datasource:
     url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
@@ -30,7 +35,7 @@ spring:
       resourceserver:
         jwt:
           principal-claim-name: preferred_username
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://sigmap-auth-insecure.zedneycreative.com/realms/sigmap-realm}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
 springdoc:
   default-support-form-data: true
