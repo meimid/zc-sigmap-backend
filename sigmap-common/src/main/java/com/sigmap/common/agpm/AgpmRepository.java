@@ -34,8 +34,4 @@ public interface AgpmRepository extends JpaRepository<Agpm, CompositeId>, JpaSpe
     @Query("SELECT a FROM Agpm a WHERE a.id = :agpmId")
     Page<Agpm> findAllById(Integer agpmId, Pageable pageable);
 
-    @Query("SELECT a FROM Agpm a WHERE a.ac.id = :acId AND a.isDeleted = false AND a.ac.isDeleted = false " +
-            "AND a.version = (SELECT MAX(b.version) FROM Agpm b WHERE b.id = a.id AND b.isDeleted = false) ORDER BY a.id")
-    Page<Agpm> findAgpmsByAcId(@Param("acId") Integer acId, Pageable pageable);
-
 }

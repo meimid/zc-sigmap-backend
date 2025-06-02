@@ -6,6 +6,8 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.*;
@@ -2381,6 +2383,10 @@ public class PaaServiceImpl implements PaaService {
     @Override
     public Page<Paa> findPaasByAcId(Integer acId, Pageable pageable) throws AcNotFound {
         acService.findById(acId);
-        return repository.findPaasByAcId(acId,pageable);
+        Specification<Paa> paaSpec = Specification.where(
+                        PaaSpecifications.deleted(false)
+                        .and(PaaSpecifications.isLatestVersion())
+        );
+        return repository.findAll(paaSpec, pageable);
     }
 }

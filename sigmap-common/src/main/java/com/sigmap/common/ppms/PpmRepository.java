@@ -27,8 +27,5 @@ public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
     Integer findMaxVersionById(@Param("id") Integer id);
 
 
-    @Query("SELECT p FROM Ppm p WHERE p.ac.id = :acId AND p.isDeleted = false AND p.ac.isDeleted = false " +
-            "AND p.version = (SELECT MAX(b.version) FROM Ppm b WHERE b.id = p.id AND b.isDeleted = false) ORDER BY p.id")
-    Page<Ppm> findPpmsByAcId(@Param("acId") Integer acId, Pageable pageable);
 }
 

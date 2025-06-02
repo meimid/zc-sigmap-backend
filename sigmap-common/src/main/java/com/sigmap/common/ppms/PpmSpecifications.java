@@ -4,6 +4,8 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -159,5 +161,16 @@ public class PpmSpecifications {
 
     public static Specification<Ppm> statusNotDeleted() {
         return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    }
+
+    public static Specification<Ppm> isLatestVersion() {
+        return (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")),
+                            criteriaBuilder.equal(subRoot.get("isDeleted"), false));
+            return criteriaBuilder.equal(root.get("version"), subquery);
+        };
     }
 }

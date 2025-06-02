@@ -738,7 +738,11 @@ public class AgpmServiceImpl implements AgpmService {
     @Override
     public Page<Agpm> findAgpmsByAcId(Integer acId,Pageable pageable) throws AcNotFound {
         acService.findById(acId);
-        return repository.findAgpmsByAcId(acId,pageable);
+        Specification<Agpm> agpmSpec = Specification.where(
+                AgpmSpecifications.deleted(false)
+                        .and(AgpmSpecifications.isLatestVersion())
+        );
+        return repository.findAll(agpmSpec, pageable);
 
     }
 }
