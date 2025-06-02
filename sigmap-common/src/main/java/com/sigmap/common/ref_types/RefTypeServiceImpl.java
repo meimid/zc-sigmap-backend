@@ -32,14 +32,14 @@ public class RefTypeServiceImpl implements RefTypeService {
   public List<RefType> findAll() {
 
     Specification<RefType> spec = RefTypeSpecifications.deleted(false);
-    return repository.findAll(spec).stream().filter(el->!el.getSystemType()).collect(Collectors.toList());
+    return repository.findAll(spec).stream().filter(el->el.getSystemType()!=null&&!el.getSystemType()).collect(Collectors.toList());
   }
 
   @Override
   public Page<RefType> findAll(Specification<RefType> spec, Pageable pageable) {
     Page<RefType> page = repository.findAll(spec, pageable);
     List<RefType> filteredContent = page.getContent().stream()
-            .filter(el ->
+            .filter(el ->el.getSystemType()!=null&&
                     !el.getSystemType())
             .collect(Collectors.toList());
     return new PageImpl<>(filteredContent, pageable, page.getTotalElements());
