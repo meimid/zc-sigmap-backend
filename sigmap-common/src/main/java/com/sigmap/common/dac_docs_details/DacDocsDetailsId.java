@@ -7,12 +7,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
+
 @Embeddable
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class DacDocsDetailsId {
+public class DacDocsDetailsId implements Serializable {
     @ManyToOne
     @JoinColumns({
             @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),

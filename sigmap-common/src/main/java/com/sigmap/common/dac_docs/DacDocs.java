@@ -19,7 +19,9 @@ public class DacDocs {
 
     @EmbeddedId
     private DacDocsId id;
-    @Column(name = "field_value")
+    @Column(name = "source_id", length = 100)
+    private String sourceId;
+    @Column(name = "field_value", length = 255)
     private String fieldValue;
 
 }
