@@ -13,6 +13,7 @@ public class UserDTO {
     private String firstName;
     private String lastName;
     private String email;
+    private String address;
     private boolean emailVerified;
     private List<Com> coms;
     private List<Ac> acs;

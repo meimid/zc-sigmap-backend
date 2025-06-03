@@ -1,11 +1,8 @@
 package com.sigmap.common.ac;
 
-import com.sigmap.common.ac.exception.AcDeleted;
-import com.sigmap.common.ac.exception.AcHasAssociatedAgpm;
-import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
-import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.exception.ComNotFound;
 import org.springframework.data.domain.Page;
@@ -90,7 +87,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, AgpmDefaultStatus;
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus;
 
     /**
      * Delete a Ac.

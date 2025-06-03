@@ -12,5 +12,8 @@ public class UserResquestDTO {
     private String password;
     private List<Integer> comIds;
     private List<Integer> acIds;
+    private Integer acPiloteId;
     private List<String> roles;
+    private boolean enable;
+
 }

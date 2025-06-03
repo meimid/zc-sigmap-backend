@@ -92,6 +92,7 @@ public class KeycloakAdminService {
         dto.setFirstName((String) userMap.get("firstName"));
         dto.setLastName((String) userMap.get("lastName"));
         dto.setEmail((String) userMap.get("email"));
+        dto.setAddress((String) userMap.get("address"));
         dto.setEmailVerified((Boolean) userMap.getOrDefault("emailVerified", false));
         dto.setCreatedTimestamp(userMap.get("createdTimestamp") != null ?
                 Long.parseLong(userMap.get("createdTimestamp").toString()) : null);
@@ -198,8 +199,8 @@ public class KeycloakAdminService {
             assignRolesToUser(userId, userDTO.getRoles());
         }
 
-        linkUserToEntities(userId, userDTO.getAcIds(), true);
-        linkUserToEntities(userId, userDTO.getComIds(), false);
+        linkUserToEntities(userId, userDTO.getAcIds(),userDTO.getAcPiloteId(), true);
+        linkUserToEntities(userId, userDTO.getComIds(), null,false);
 
         return getUserById(userId);
 
@@ -217,8 +218,8 @@ public class KeycloakAdminService {
             updateUserRolesSmart(userId, userDTO.getRoles());
         }
 
-        updateLinkedEntities(userId, userDTO.getAcIds(), true);
-        updateLinkedEntities(userId, userDTO.getComIds(), false);
+        updateLinkedEntities(userId, userDTO.getAcIds(),userDTO.getAcPiloteId(), true);
+        updateLinkedEntities(userId, userDTO.getComIds(), null, false);
 
         return getUserById(userId);
 
@@ -236,20 +237,14 @@ public class KeycloakAdminService {
         user.put("firstName", userDTO.getFirstName());
         user.put("lastName", userDTO.getLastName());
         user.put("email", userDTO.getEmail());
-        user.put("enabled", true);
-        Map<String, Object> credentials = Map.of(
-                "type", "password",
-                "value", userDTO.getPassword(),
-                "temporary", true
-        );
-        user.put("credentials", List.of(credentials));
+        user.put("enabled", userDTO.isEnable());
         return user;
     }
 
     private String extractUserIdFromLocation(URI location) {
         return location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
     }
-    private void linkUserToEntities(String userId, List<Integer> ids, boolean isAc) {
+    private void linkUserToEntities(String userId, List<Integer> ids,Integer acPiloteId, boolean isAc) {
         if (ids == null || ids.isEmpty()) return;
 
         for (Integer id : ids) {
@@ -260,6 +255,9 @@ public class KeycloakAdminService {
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
                     userAc.setStatus(getDefaultStatus());
+                    if (id  == acPiloteId){
+                        userAc.setAcPilote(true);
+                    }
                     userAcRepository.save(userAc);
                 } else {
                     UserCom userCom = new UserCom();
@@ -275,7 +273,7 @@ public class KeycloakAdminService {
         }
     }
 
-    private void updateLinkedEntities(String userId, List<Integer> newIds, boolean isAc) throws AgpmDefaultStatus {
+    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus {
         if (newIds == null) return;
 
         Set<Integer> newIdSet = new HashSet<>(newIds);
@@ -292,6 +290,9 @@ public class KeycloakAdminService {
                     userAc.setUserId(userId);
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
+                    if (id  == acPiloteId){
+                        userAc.setAcPilote(true);
+                    }
                     userAc.setStatus(getDefaultStatus());
                     userAcRepository.save(userAc);
                 }

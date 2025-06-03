@@ -1,5 +1,6 @@
 package com.sigmap.common.ac.response;
 
+import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.response.BaseEntityResponse;
 import java.util.List;
@@ -14,6 +15,7 @@ public class AcResponse {
   private String nom;
   private String ancrage;
   private String contact;
-  private List<UserDTO> users;
+  //private List<UserDTO> users;
+  private List<AcMemberDTO> users;
   private BaseEntityResponse metadata;
 }

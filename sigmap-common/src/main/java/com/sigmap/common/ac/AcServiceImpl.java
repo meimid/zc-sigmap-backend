@@ -117,7 +117,7 @@ public class AcServiceImpl implements AcService{
                     userAc.setAcId(savedAc.getId());
                     userAc.setIsDeleted(false);
                     RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                            .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+                            .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
                     userAc.setStatus(defaultStatus);
                     userAcRepository.save(userAc);
                 } catch (Exception e) {
@@ -133,7 +133,7 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, AgpmDefaultStatus {
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus {
         Ac ac = findById(id);
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
         Ac savedAc = repository.save(ac);
@@ -160,7 +160,7 @@ public class AcServiceImpl implements AcService{
                 userAc.setUserId(userId);
                 userAc.setAcId(id);
                 RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                        .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+                        .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
                 userAc.setStatus(defaultStatus);
                 userAcRepository.save(userAc);
             }
