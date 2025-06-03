@@ -2347,7 +2347,7 @@ public class PpmServiceImpl implements PpmService {
         ppm.setId(ppmId);
         ppm.setVersion(ppmVersion);
 //        ppm.setRef(request.getRef());
-        setRef(ppm);
+
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
@@ -2356,7 +2356,7 @@ public class PpmServiceImpl implements PpmService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         ppm.setStatus(defaultStatus);
-
+        setRef(ppm);
         Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
         if (acIdOptional.isPresent()) {
             Long acIdLong = acIdOptional.get();
