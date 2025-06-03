@@ -28,6 +28,8 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.context.MessageSource;
@@ -116,6 +118,7 @@ public class AgpmServiceImpl implements AgpmService {
     public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AgpmNotAssociatedWithUserAcException, AcNotFound, AgpmNotFound {
         log.info("Recherche de tous les AGPM avec spécification: {}", spec);
 
+        // Récupérer les IDs des AC de l'utilisateur connecté
         List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
         if (userAcIdsLong.isEmpty()) {
             log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
@@ -125,6 +128,7 @@ public class AgpmServiceImpl implements AgpmService {
                 .map(Long::intValue)
                 .collect(Collectors.toSet());
 
+        // Vérifier l'existence des AC
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
@@ -135,8 +139,19 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         Specification<Agpm> acFilterSpec = (root, query, criteriaBuilder) ->
-                root.get("ac").get("id").in(userAcIds);
-        Specification<Agpm> combinedSpec = spec != null ? spec.and(acFilterSpec) : acFilterSpec;
+                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+
+        Specification<Agpm> latestVersionSpec = (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Agpm> subRoot = subquery.from(Agpm.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
+            return criteriaBuilder.equal(root.get("version"), subquery);
+        };
+
+        Specification<Agpm> combinedSpec = spec != null
+                ? spec.and(acFilterSpec).and(latestVersionSpec)
+                : acFilterSpec.and(latestVersionSpec);
 
         Page<Agpm> allAgpms = repository.findAll(combinedSpec, pageable);
 
@@ -146,27 +161,9 @@ public class AgpmServiceImpl implements AgpmService {
                     Collections.emptyList(), Collections.emptyList());
         }
 
-        Map<Integer, Agpm> latestAgpms = allAgpms.getContent().stream()
-                .collect(Collectors.toMap(
-                        Agpm::getId,
-                        agpm -> agpm,
-                        (agpm1, agpm2) -> agpm1.getVersion() > agpm2.getVersion() ? agpm1 : agpm2
-                ));
-
-        for (Agpm agpm : latestAgpms.values()) {
-            if (agpm.getAc() == null || !userAcIds.contains(agpm.getAc().getId())) {
-                log.warn("AGPM avec ID {} n'est pas associé à un AC de l'utilisateur", agpm.getId());
-                throw new AgpmNotAssociatedWithUserAcException(
-                        "L'AGPM avec l'ID " + agpm.getId() + " n'est pas associé à un AC de l'utilisateur connecté",
-                        List.of(agpm.getId()),
-                        List.of(agpm.getVersion())
-                );
-            }
-        }
-
-        List<Agpm> latestAgpmList = latestAgpms.values().stream()
+        // Transformer les AGPM pour inclure uniquement les documents non supprimés
+        List<Agpm> latestAgpmList = allAgpms.getContent().stream()
                 .map(this::createFilteredResponseAgpm)
-                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         int totalElements = (int) allAgpms.getTotalElements();
 
@@ -227,11 +224,6 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         Agpm responseAgpm = createFilteredResponseAgpm(agpm);
-        log.info("Retour de l'AGPM {}:{} avec uniquement les documents non supprimés: {}",
-                agpmId, latestVersion, responseAgpm.getDocs() != null
-                        ? responseAgpm.getDocs().stream().map(Docs::getId).collect(Collectors.toList())
-                        : Collections.emptyList());
-
         return responseAgpm;
     }
 
