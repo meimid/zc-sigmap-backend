@@ -1,6 +1,9 @@
 package com.sigmap.sigmap_paa.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -11,12 +14,14 @@ import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.PaaResponse;
 import com.sigmap.common.paas.response.PaaResponseDto;
+import com.sigmap.common.paas.response.PaaResponseDtoWithMetdata;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.propertyeditors.CustomCollectionEditor;
@@ -34,7 +39,7 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+@Slf4j
 @RestController
 @RequestMapping("/api/paas")
 public class PaaController {
@@ -541,5 +546,39 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         Page<Paa> paas = paaService.findPaasByAcId(acId,pageable);
         Page<PaaResponseDto> responses = paas.map(PaaMapper.INSTANCE::toDto);
         return ResponseEntity.ok(responses);
+    }
+
+    /**
+     * Retrieves all versions of an Paa entity by its ID with full details in PaaResponseWithRealisations format.
+     *
+     * @param paaId   ID of the Paa entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of PaaResponseWithRealisations
+     * @throws PaaNotFound if no Paa entities are found for the ID
+     */
+    @GetMapping("/history/full/{paaId}")
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getPaaHistoryFull(@PathVariable Integer paaId, Pageable pageable) throws  PaaIdNotFound {
+        log.info("Received request to fetch full history for Paa ID {}, page {}, size {}, sort {}",
+                paaId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<Paa> paas = paaService.findAllVersionsById(paaId, pageable);
+        Page<PaaResponseWithRealisations> paaResponseWithRealisations=paas.map(PaaMapper.INSTANCE::toDtoWithRelations);
+        return ResponseEntity.ok(paaResponseWithRealisations);
+    }
+
+    /**
+     * Retrieves all versions of an Paa entity by its ID with minimal details in PaaDto format.
+     *
+     * @param paaId   ID of the Paa entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of PaaResponseDtoWithMetdata
+     * @throws PaaIdNotFound if no Paa entities are found for the ID
+     */
+    @GetMapping("/history/minimal/{paaId}")
+    public ResponseEntity<Page<PaaResponseDtoWithMetdata>> getPaaHistoryMinimal(@PathVariable Integer paaId, Pageable pageable) throws PaaIdNotFound {
+        log.info("Received request to fetch full history for Paa ID {}, page {}, size {}, sort {}",
+                paaId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<Paa> paas = paaService.findAllVersionsById(paaId, pageable);
+        Page<PaaResponseDtoWithMetdata> paaResponseDtoWithMetdata=paas.map(PaaMapper.INSTANCE::toDtoWithMetadata);
+        return ResponseEntity.ok(paaResponseDtoWithMetdata);
     }
 }

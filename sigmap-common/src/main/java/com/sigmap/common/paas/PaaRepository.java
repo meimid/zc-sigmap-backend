@@ -28,4 +28,13 @@ public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecif
             "   SELECT MAX (p2.version) FROM Paa p2 WHERE p2.id = p.id AND p2.annee = :currentYear AND p2.isDeleted = false)")
     Optional<Paa> findByCurrentYear(@Param("currentYear") String currentYear);
 
+    /**
+     * Finds all Paa entities by ID with pagination.
+     *
+     * @param paaId   ID of the Paa entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Paa entities for the given ID
+     */
+    @Query("SELECT a FROM Paa a WHERE a.id = :paaId")
+    Page<Paa> findAllById(Integer paaId, Pageable pageable);
 }

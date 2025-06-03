@@ -1,15 +1,9 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.*;
-import com.sigmap.common.paas.request.PaaBaseRequestDto;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
-import com.sigmap.common.ref_params.request.RefParamRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -177,5 +171,19 @@ public interface PaaService {
      * find the list of paas with Ac id
      * */
     Page<Paa> findPaasByAcId(Integer acId, Pageable pageable) throws AcNotFound;
+
+    /**
+     * Retrieves all versions of an Paa entity by its ID, including only non-deleted documents,
+     * in Paa format with pagination.
+     *
+     * @param paaId   ID of the Paa entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Paa representing all versions for the given ID
+     * @throws PaaIdNotFound if no Paa entities are found for the ID
+     */
+    Page<Paa> findAllVersionsById(Integer paaId, Pageable pageable) throws PaaIdNotFound;
+
+
+
 
 }

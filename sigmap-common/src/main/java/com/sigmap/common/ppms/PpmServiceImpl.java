@@ -23,6 +23,7 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -1801,24 +1802,24 @@ public class PpmServiceImpl implements PpmService {
     private boolean lotsChanged(Realisation existingRealisation, RealisationBaseRequestDto realisationDto, Set<Lot> updatedLots) {
         // Early exit if one has lots and the other doesn't
         boolean existingHasLots = existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty();
-        boolean dtoHasLots = realisationDto instanceof RealisationWithLotsRequestDto && 
-                            ((RealisationWithLotsRequestDto) realisationDto).getLots() != null && 
+        boolean dtoHasLots = realisationDto instanceof RealisationWithLotsRequestDto &&
+                            ((RealisationWithLotsRequestDto) realisationDto).getLots() != null &&
                             !((RealisationWithLotsRequestDto) realisationDto).getLots().isEmpty();
-        
+
         if (existingHasLots != dtoHasLots) {
             System.out.println("Lots changed: one has lots, the other doesn't");
             return true;
         }
-        
+
         // If neither has lots, no change
         if (!existingHasLots && !dtoHasLots) {
             return false;
         }
-        
+
         // At this point, both have lots
         RealisationWithLotsRequestDto realisationWithLotsDto = (RealisationWithLotsRequestDto) realisationDto;
         Set<LotResponse> requestLots = realisationWithLotsDto.getLots();
-        
+
         // Create maps for both existing and request lots using description as key for content-based comparison
         Map<String, Lot> existingLotsMap = new HashMap<>();
         if (existingRealisation.getLots() != null) {
@@ -1828,18 +1829,18 @@ public class PpmServiceImpl implements PpmService {
                 }
             }
         }
-        
+
         Map<String, LotResponse> requestLotsMap = new HashMap<>();
         for (LotResponse lotResponse : requestLots) {
             requestLotsMap.put(lotResponse.getDescription(), lotResponse);
         }
-        
+
         // Compare lot descriptions (content) rather than just IDs
         if (existingLotsMap.size() != requestLotsMap.size()) {
             System.out.println("Lot count differs: " + existingLotsMap.size() + " vs " + requestLotsMap.size());
             return true;
         }
-        
+
         // Check if the lot descriptions match
         for (String description : existingLotsMap.keySet()) {
             if (!requestLotsMap.containsKey(description)) {
@@ -1847,7 +1848,7 @@ public class PpmServiceImpl implements PpmService {
                 return true;
             }
         }
-        
+
         // If we get here, both have the same lot descriptions - they are content-equivalent
         return false;
     }
@@ -1883,18 +1884,18 @@ public class PpmServiceImpl implements PpmService {
             System.out.println("Document changes detected for PPM " + existingPpm.getId() + ":");
             System.out.println("  - Active existing docs: " + sortedExistingIds);
             System.out.println("  - Requested docs: " + sortedRequestIds);
-            
+
             // Log details about what's changed for better debugging
             if (sortedExistingIds.size() != sortedRequestIds.size()) {
                 System.out.println("  - Document count changed: " + sortedExistingIds.size() + " -> " + sortedRequestIds.size());
             }
-            
+
             List<Integer> added = new ArrayList<>(sortedRequestIds);
             added.removeAll(sortedExistingIds);
             if (!added.isEmpty()) {
                 System.out.println("  - Documents added: " + added);
             }
-            
+
             List<Integer> removed = new ArrayList<>(sortedExistingIds);
             removed.removeAll(sortedRequestIds);
             if (!removed.isEmpty()) {
@@ -1903,14 +1904,14 @@ public class PpmServiceImpl implements PpmService {
 
             // Clear the list and add the requested documents
             updatedDocs.clear();
-            
+
             // First, handle existing documents - mark some as deleted
             if (existingPpm.getDocs() != null) {
                 for (Docs existingDoc : existingPpm.getDocs()) {
                     // Get a fresh copy to avoid stale data
                     Docs doc = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (doc == null) continue;
-                    
+
                     if (requestDocIds.contains(doc.getId())) {
                         // Keep document active
                         doc.setIsDeleted(false);
@@ -1926,14 +1927,14 @@ public class PpmServiceImpl implements PpmService {
                     }
                 }
             }
-            
+
             // Add any new documents that didn't exist before
             for (Integer docId : requestDocIds) {
                 // Skip if we've already processed this document
                 if (updatedDocs.stream().anyMatch(doc -> doc.getId().equals(docId))) {
                     continue;
                 }
-                
+
                 // This is a new document to add
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
@@ -1945,7 +1946,7 @@ public class PpmServiceImpl implements PpmService {
         } else {
             System.out.println("No document changes detected for PPM " + existingPpm.getId());
             System.out.println("  - Documents: " + sortedExistingIds);
-            
+
             // No changes detected, just use existing active documents
             updatedDocs.clear();
             if (existingPpm.getDocs() != null) {
@@ -2028,7 +2029,7 @@ public class PpmServiceImpl implements PpmService {
      */
     private boolean checkRealisationDocumentsChanged(Realisation existingRealisation, RealisationBaseRequestDto realisationDto) {
         System.out.println("Checking document changes for realisation " + existingRealisation.getId() + ":");
-        
+
         // Get the active document IDs from the existing realisation
         Set<Integer> existingDocIds = new HashSet<>();
         if (existingRealisation.getDocs() != null) {
@@ -2038,44 +2039,44 @@ public class PpmServiceImpl implements PpmService {
                 }
             }
         }
-        
+
         // Get document IDs from the request
         Set<Integer> requestedDocIds = new HashSet<>();
         if (realisationDto.getDocIds() != null) {
             requestedDocIds.addAll(realisationDto.getDocIds());
         }
-        
+
         // Sort both sets for deterministic comparison
         List<Integer> sortedExistingIds = new ArrayList<>(existingDocIds);
         List<Integer> sortedRequestedIds = new ArrayList<>(requestedDocIds);
         Collections.sort(sortedExistingIds);
         Collections.sort(sortedRequestedIds);
-        
+
         // Check if there are changes
         boolean changed = !sortedExistingIds.equals(sortedRequestedIds);
-        
+
         System.out.println("  - Existing docs: " + sortedExistingIds);
         System.out.println("  - Requested docs: " + sortedRequestedIds);
         System.out.println("  - Documents changed: " + changed);
-        
+
         if (changed && sortedExistingIds.size() != sortedRequestedIds.size()) {
             System.out.println("  - Document count changed: " + sortedExistingIds.size() + " -> " + sortedRequestedIds.size());
         }
-        
+
         if (changed) {
             List<Integer> added = new ArrayList<>(sortedRequestedIds);
             added.removeAll(sortedExistingIds);
             if (!added.isEmpty()) {
                 System.out.println("  - Documents added: " + added);
             }
-            
+
             List<Integer> removed = new ArrayList<>(sortedExistingIds);
             removed.removeAll(sortedRequestedIds);
             if (!removed.isEmpty()) {
                 System.out.println("  - Documents removed: " + removed);
             }
         }
-        
+
         return changed;
     }
 
@@ -2084,53 +2085,53 @@ public class PpmServiceImpl implements PpmService {
      */
     private boolean realisationNeedsUpdate(Realisation existingRealisation, RealisationBaseRequestDto realisationDto) {
         System.out.println("==== CHECKING IF REALISATION " + existingRealisation.getId() + " NEEDS UPDATE ====");
-        
+
         // Check if documents have changed
         boolean docsChanged = checkRealisationDocumentsChanged(existingRealisation, realisationDto);
-        
+
         // Check if text has changed
         boolean textChanged = fieldChanged(
-            existingRealisation.getRealisationEnvisagees(), 
+            existingRealisation.getRealisationEnvisagees(),
             realisationDto.getRealisationEnvisagees()
         );
-        
+
         if (textChanged) {
             System.out.println("  - Text changed");
             System.out.println("    - Existing: " + (existingRealisation.getRealisationEnvisagees() != null ? existingRealisation.getRealisationEnvisagees().substring(0, Math.min(existingRealisation.getRealisationEnvisagees().length(), 50)) + "..." : "null"));
             System.out.println("    - New: " + (realisationDto.getRealisationEnvisagees() != null ? realisationDto.getRealisationEnvisagees().substring(0, Math.min(realisationDto.getRealisationEnvisagees().length(), 50)) + "..." : "null"));
         }
-        
+
         // Check other fields
         boolean serviceChanged = fieldChanged(
             existingRealisation.getService() != null ? existingRealisation.getService().getId() : null,
             realisationDto.getService() != null ? realisationDto.getService().getId() : null
         );
-        
+
         boolean directionChanged = fieldChanged(
             existingRealisation.getDirection() != null ? existingRealisation.getDirection().getId() : null,
             realisationDto.getDirection() != null ? realisationDto.getDirection().getId() : null
         );
-        
+
         boolean sourceFinChanged = fieldChanged(
             existingRealisation.getSourceFinancement() != null ? existingRealisation.getSourceFinancement().getId() : null,
             realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
         );
-        
+
         boolean monaisChanged = fieldChanged(
             existingRealisation.getMonais() != null ? existingRealisation.getMonais().getId() : null,
             realisationDto.getMonais() != null ? realisationDto.getMonais().getId() : null
         );
-        
+
         boolean typeMarcherChanged = fieldChanged(
             existingRealisation.getTypeMarcher() != null ? existingRealisation.getTypeMarcher().getId() : null,
             realisationDto.getTypeMarcher() != null ? realisationDto.getTypeMarcher().getId() : null
         );
-        
+
         boolean modeSelectionChanged = fieldChanged(
             existingRealisation.getModeSelection() != null ? existingRealisation.getModeSelection().getId() : null,
             realisationDto.getModeSelection() != null ? realisationDto.getModeSelection().getId() : null
         );
-        
+
         // Log field changes for debugging
         if (serviceChanged) System.out.println("  - Service changed");
         if (directionChanged) System.out.println("  - Direction changed");
@@ -2138,12 +2139,12 @@ public class PpmServiceImpl implements PpmService {
         if (monaisChanged) System.out.println("  - Monais changed");
         if (typeMarcherChanged) System.out.println("  - Type marcher changed");
         if (modeSelectionChanged) System.out.println("  - Mode selection changed");
-        
+
         // Important: Lot changes should NOT trigger a new Realisation version
         // Just checking the actual field changes, not lot relationships
-        boolean result = docsChanged || textChanged || serviceChanged || directionChanged || 
+        boolean result = docsChanged || textChanged || serviceChanged || directionChanged ||
                          sourceFinChanged || monaisChanged || typeMarcherChanged || modeSelectionChanged;
-        
+
         System.out.println("Realisation needs update: " + result);
         return result;
     }
@@ -3994,19 +3995,19 @@ public class PpmServiceImpl implements PpmService {
         BeanUtils.copyProperties(tempPpm, newPpm, "id", "version");
         newPpm.setId(ppmId);
         newPpm.setVersion(ppmVer + 1);
-        
+
         // If the PPM has a created date, keep it
         if (existingPpm.getCreatedAt() != null) {
             newPpm.setCreatedAt(existingPpm.getCreatedAt());
             newPpm.setCreatedBy(existingPpm.getCreatedBy());
         }
-        
+
         // Log document statuses before saving
         if (updatedDocs != null) {
             System.out.println("Documents before saving new PPM version:");
             for (Docs doc : updatedDocs) {
                 System.out.println("  - Doc ID: " + doc.getId() + ", isDeleted: " + doc.getIsDeleted());
-                
+
                 // Ensure isDeleted is properly set
                 if (doc.getIsDeleted() == null) {
                     doc.setIsDeleted(false);
@@ -4120,4 +4121,19 @@ public class PpmServiceImpl implements PpmService {
         return repository.findAll(ppmSpec, pageable);
     }
 
+    @Override
+    public Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound {
+        if (ppmId == null || ppmId < 0) {
+            throw new IllegalArgumentException("Invalid Ppm ID: " + ppmId);
+        }
+        Integer maxVersion = findLatestVersionById(ppmId);
+        if (maxVersion==null) {
+            throw new PpmIdNotFound("No Ppm found for ID", ppmId);
+        }
+        Page<Ppm> ppmPage = repository.findAllById(ppmId, pageable);
+        if (ppmPage.isEmpty()) {
+            throw new PpmIdNotFound("No Ppm versions found for ID", ppmId);
+        }
+        return ppmPage;
+    }
 }

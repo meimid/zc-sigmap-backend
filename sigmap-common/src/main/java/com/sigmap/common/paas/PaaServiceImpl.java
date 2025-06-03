@@ -6,8 +6,7 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmSpecifications;
+
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.paas.exceptions.*;
@@ -2389,4 +2388,21 @@ public class PaaServiceImpl implements PaaService {
         );
         return repository.findAll(paaSpec, pageable);
     }
+
+    @Override
+    public Page<Paa> findAllVersionsById(Integer paaId, Pageable pageable) throws PaaIdNotFound {
+        if (paaId == null || paaId < 0) {
+            throw new IllegalArgumentException("Invalid Paa ID: " + paaId);
+        }
+        Optional<Integer> maxVersion = findLatestVersionById(paaId);
+        if (maxVersion.isEmpty()) {
+            throw new PaaIdNotFound("No Paa found for ID", paaId);
+        }
+        Page<Paa> paaPage = repository.findAllById(paaId, pageable);
+        if (paaPage.isEmpty()) {
+            throw new PaaIdNotFound("No Paa versions found for ID", paaId);
+        }
+        return paaPage;
+    }
+
 }
