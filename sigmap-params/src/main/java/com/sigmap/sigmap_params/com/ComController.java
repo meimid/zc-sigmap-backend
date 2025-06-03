@@ -12,6 +12,7 @@ import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -88,28 +89,51 @@ public class ComController {
     public ResponseEntity<ComResponse> findById(@PathVariable Integer id) throws ComNotFound {
         Com param = comService.findById(id);
         ComResponse response = ComMapper.INSTANCE.map(param);
-        // Étape 1 : récupérer les userIds depuis UserCom (non supprimés)
-        List<String> userIds = userComRepository.findAllByComIdAndIsDeletedFalse(id)
-                .stream()
-                .map(UserCom::getUserId)
-                .toList();
 
-        // Étape 2 : récupérer les infos utilisateurs depuis Keycloak pour chaque userId
-        List<UserDTO> users = userIds.stream()
-                .map(userId -> {
-                    try {
-                        return keycloakAdminService.getUserById(userId);
-                    } catch (Exception e) {
-                        logger.warn("Impossible de récupérer les informations de l'utilisateur {} depuis Keycloak : {}", userId, e.getMessage());
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .toList();
+        List<UserCom> userComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
+
+        List<ComMemberDTO> users = userComs.stream().map(userCom -> {
+            try {
+                UserDTO keycloakUser = keycloakAdminService.getUserById(userCom.getUserId());
+
+                ComMemberDTO dto = new ComMemberDTO();
+                dto.setId(keycloakUser.getId());
+                dto.setFirstName(keycloakUser.getFirstName());
+                dto.setLastName(keycloakUser.getLastName());
+                dto.setEmail(keycloakUser.getEmail());
+                dto.setCreatedAt(userCom.getCreatedAt());
+                dto.setCreatedBy(userCom.getCreatedBy());
+
+                return dto;
+            } catch (Exception e) {
+                logger.warn("Impossible de récupérer l'utilisateur {} depuis Keycloak : {}", userCom.getUserId(), e.getMessage());
+                return null;
+            }
+        }).filter(Objects::nonNull).toList();
 
         response.setUsers(users);
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/user/{userId}/coms")
+    public ResponseEntity<List<ComResponse>> getComsByUserId(@PathVariable String userId) {
+        List<UserCom> userComs = userComRepository.findAllByUserIdAndIsDeletedFalse(userId);
+
+        List<ComResponse> coms = userComs.stream()
+                .map(userCom -> {
+                    Com com = userCom.getCom();
+                    ComResponse response = ComMapper.INSTANCE.map(com);
+
+                    // Exclure les membres et les métadonnées
+                    response.setUsers(null);
+                    response.setMetadata(null);
+
+                    return response;
+                })
+                .toList();
+
+        return ResponseEntity.ok(coms);
+    }
+
 
     /**
      * Create a new Com.

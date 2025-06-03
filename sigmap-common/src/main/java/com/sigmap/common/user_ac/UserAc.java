@@ -31,6 +31,9 @@ public class UserAc extends BaseEntity {
     @JoinColumn(name = "ac_id", insertable = false, updatable = false)
     private Ac ac;
 
+    @Column(name = "ac_pilote")
+    private Boolean acPilote = false;
+
     @ManyToOne
     @JoinColumn(name = "status_id", referencedColumnName = "ref_param_id")
     private RefParam status;
