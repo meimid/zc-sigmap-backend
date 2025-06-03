@@ -16,6 +16,7 @@ import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponse;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
 import lombok.extern.slf4j.Slf4j;
@@ -194,5 +195,13 @@ public class AgpmController {
         log.info("Returning {} minimal versions for Agpm ID {} (page {} of {})",
                 agpmPage.getNumberOfElements(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
         return ResponseEntity.ok(agpmPage);
+    }
+    /**
+     * find page of Agpms with Ac Id*/
+    @GetMapping("/ac/{acId}")
+    public ResponseEntity<Page<AgpmResponseDtoSoft>> findAgpmsByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
+        Page<Agpm> agpms = agpmService.findAgpmsByAcId(acId,pageable);
+        Page<AgpmResponseDtoSoft> responses = agpms.map(AgpmMapper.INSTANCE::toDto);
+        return ResponseEntity.ok(responses);
     }
 }

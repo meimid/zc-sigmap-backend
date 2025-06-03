@@ -33,4 +33,5 @@ public interface AgpmRepository extends JpaRepository<Agpm, CompositeId>, JpaSpe
      */
     @Query("SELECT a FROM Agpm a WHERE a.id = :agpmId")
     Page<Agpm> findAllById(Integer agpmId, Pageable pageable);
+
 }

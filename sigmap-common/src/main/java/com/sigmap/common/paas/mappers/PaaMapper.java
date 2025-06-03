@@ -3,6 +3,7 @@ package com.sigmap.common.paas.mappers;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.response.PaaResponse;
+import com.sigmap.common.paas.response.PaaResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -49,4 +50,6 @@ public interface PaaMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "realisations", ignore = true) // Ignored as it's typically managed separately
     Paa updatePaaFromRequest(PaaRequest request, @MappingTarget Paa paa);
+    PaaResponseDto toDto(Paa paa);
+
 }

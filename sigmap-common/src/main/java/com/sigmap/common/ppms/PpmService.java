@@ -277,4 +277,9 @@ public interface PpmService {
      */
     Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer);
 
+    /**
+     * find the list of paas with Ac id
+     * */
+    Page<Ppm> findPpmsByAcId( Integer acId, Pageable pageable) throws AcNotFound;
+
 }

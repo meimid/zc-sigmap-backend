@@ -83,6 +83,10 @@ public class RefParamSpecifications {
             return criteriaBuilder.and(criteriaForAssociatedRefType, predicateForRefParamDeleted);
         };
     }
+    public static Specification<RefParam> hasRefTypeId(Integer refTypeId) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("refType").get("id"), refTypeId);
+    }
 
 
 

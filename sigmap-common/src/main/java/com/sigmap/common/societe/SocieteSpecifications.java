@@ -63,4 +63,16 @@ public class SocieteSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+
+    public static Specification<Societe> hasPaysId(Integer paysId) {
+        return (root, query, cb) -> cb.equal(root.get("pays").get("id"), paysId);
+    }
+
+    public static Specification<Societe> hasTypeId(Integer typeId) {
+        return (root, query, cb) -> cb.equal(root.get("type").get("id"), typeId);
+    }
+
+    public static Specification<Societe> hasPaysIdOrTypeId(Integer refParamId) {
+        return hasPaysId(refParamId).or(hasTypeId(refParamId));
+    }
 }

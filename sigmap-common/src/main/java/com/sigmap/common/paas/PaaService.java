@@ -173,4 +173,9 @@ public interface PaaService {
 
     void deleteTest(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete;
 
+    /**
+     * find the list of paas with Ac id
+     * */
+    Page<Paa> findPaasByAcId(Integer acId, Pageable pageable) throws AcNotFound;
+
 }

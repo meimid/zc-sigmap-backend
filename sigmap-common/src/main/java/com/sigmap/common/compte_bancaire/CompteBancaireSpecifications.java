@@ -67,4 +67,9 @@ public class CompteBancaireSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+
+
+    public static Specification<CompteBancaire> hasPaysId(Integer paysId) {
+        return (root, query, cb) -> cb.equal(root.get("pays").get("id"), paysId);
+    }
 }

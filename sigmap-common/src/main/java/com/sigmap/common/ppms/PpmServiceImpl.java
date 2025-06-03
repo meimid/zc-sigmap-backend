@@ -19,6 +19,8 @@ import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.request.LotRequest;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
 import com.sigmap.common.ppms.exception.PpmNotFound;
@@ -4108,5 +4110,14 @@ public class PpmServiceImpl implements PpmService {
         return findById(ppmId, ppmVer);
     }
 
+    @Override
+    public Page<Ppm> findPpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound {
+        acService.findById(acId);
+        Specification<Ppm> ppmSpec = Specification.where(
+                PpmSpecifications.deleted(false)
+                        .and(PpmSpecifications.isLatestVersion())
+        );
+        return repository.findAll(ppmSpec, pageable);
+    }
 
 }

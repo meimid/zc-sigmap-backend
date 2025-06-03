@@ -1,9 +1,12 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
@@ -138,6 +141,25 @@ public class PaaSpecifications {
             }
             Join<Paa, Ac> join = root.join("ac");
             return criteriaBuilder.like(join.get("nom"), "%" + acNom + "%");
+        };
+    }
+
+    public static Specification<Paa> hasStatusId(Integer statusId) {
+        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    }
+
+    public static Specification<Paa> statusNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    }
+
+    public static Specification<Paa> isLatestVersion() {
+        return (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Paa> subRoot = subquery.from(Paa.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")),
+                            criteriaBuilder.equal(subRoot.get("isDeleted"), false));
+            return criteriaBuilder.equal(root.get("version"), subquery);
         };
     }
 }

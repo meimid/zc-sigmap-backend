@@ -84,4 +84,8 @@ public class ComSpecifications {
       return criteriaBuilder.isTrue(root.get("isDeleted"));
     };
   }
+
+  public static Specification<Com> hasComTypeId(Integer comTypeId) {
+    return (root, query, cb) -> cb.equal(root.get("comType").get("id"), comTypeId);
+  }
 }

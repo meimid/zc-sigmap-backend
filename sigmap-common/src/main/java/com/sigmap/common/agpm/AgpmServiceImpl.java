@@ -732,4 +732,17 @@ public class AgpmServiceImpl implements AgpmService {
 
         return new PageImpl<>(responseDtos, pageable, agpmPage.getTotalElements());
     }
+
+    /**
+     * find page of Agpms with Ac Id*/
+    @Override
+    public Page<Agpm> findAgpmsByAcId(Integer acId,Pageable pageable) throws AcNotFound {
+        acService.findById(acId);
+        Specification<Agpm> agpmSpec = Specification.where(
+                AgpmSpecifications.deleted(false)
+                        .and(AgpmSpecifications.isLatestVersion())
+        );
+        return repository.findAll(agpmSpec, pageable);
+
+    }
 }

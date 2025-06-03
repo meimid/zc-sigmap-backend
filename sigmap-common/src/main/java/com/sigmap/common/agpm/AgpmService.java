@@ -16,6 +16,7 @@ import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -156,4 +157,8 @@ public interface AgpmService {
      * @throws AgpmNotFound if no Agpm entities are found for the ID
      */
     Page<AgpmMinimalResponseDto> findAllVersionsByIdMinimal(Integer agpmId, Pageable pageable) throws AgpmNotFound;
+    /**
+     * find the list of agpms with Ac id
+     * */
+    Page<Agpm> findAgpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound;
 }
