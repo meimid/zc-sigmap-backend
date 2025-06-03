@@ -121,4 +121,12 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(PaaIdNotFound.class)
+    public ResponseEntity<ErrorResponse> PaaIdNotFoundException(PaaIdNotFound ex) {
+        String message = messageSource.getMessage("paa.notFoundId",new Object[] {ex.getPaaId()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 }

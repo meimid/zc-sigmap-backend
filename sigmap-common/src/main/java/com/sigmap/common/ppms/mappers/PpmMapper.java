@@ -5,6 +5,7 @@ import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.response.PpmResponse;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.ppms.response.PpmResponseSoftDto;
+import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -51,4 +52,13 @@ public interface PpmMapper {
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     PpmResponseDto mapToDto(Ppm source);
     PpmResponseSoftDto toDto(Ppm ppm);
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    PpmResponseSoftDtoWithMetaData mapToDtoWithMetaData(Ppm ppm);
+
 }

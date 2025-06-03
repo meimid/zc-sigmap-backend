@@ -5,8 +5,10 @@ import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
+import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -186,5 +188,13 @@ public class GlobalExceptionHandler {
         String message = ex.getMessage();
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(PpmIdNotFound.class)
+    public ResponseEntity<ErrorResponse> PpmIdNotFoundException(PpmIdNotFound ex) {
+        String message = messageSource.getMessage("ppm.notFoundId",new Object[] {ex.getPpmId()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }

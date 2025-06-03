@@ -1,6 +1,9 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.exceptions.PaaIdNotFound;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -278,8 +281,19 @@ public interface PpmService {
     Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer);
 
     /**
-     * find the list of paas with Ac id
+     * find the list of ppms with Ac id
      * */
     Page<Ppm> findPpmsByAcId( Integer acId, Pageable pageable) throws AcNotFound;
+
+    /**
+     * Retrieves all versions of an Ppm entity by its ID, including only non-deleted documents,
+     * in PpmResponseWithRealisations format with pagination.
+     *
+     * @param ppmId   ID of the Ppm entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Ppm representing all versions for the given ID
+     * @throws PpmIdNotFound if no Ppm entities are found for the ID
+     */
+    Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound;
 
 }
