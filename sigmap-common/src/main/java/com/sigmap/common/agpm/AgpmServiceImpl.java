@@ -162,14 +162,11 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         // Transformer les AGPM pour inclure uniquement les documents non supprimés
-        List<Agpm> latestAgpmList = allAgpms.getContent().stream()
-                .map(this::createFilteredResponseAgpm)
-                .collect(Collectors.toList());
-        int totalElements = (int) allAgpms.getTotalElements();
+        Page<Agpm> AgpmsResponse = allAgpms.map(this::createFilteredResponseAgpm);
 
-        log.info("Récupération de {} AGPM pour les AC de l'utilisateur {}", latestAgpmList.size(), userAcIds);
+        log.info("Récupération de {} AGPM pour les AC de l'utilisateur {}", AgpmsResponse.getContent().size(), userAcIds);
 
-        return new PageImpl<>(latestAgpmList, pageable, totalElements);
+        return AgpmsResponse;
     }
 
     /**
