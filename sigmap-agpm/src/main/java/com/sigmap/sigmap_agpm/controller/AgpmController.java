@@ -65,7 +65,7 @@ public class AgpmController {
      * @return ResponseEntity with a Page of AgpmResponse DTOs and HTTP status 200 (OK)
      */
     @GetMapping
-    public ResponseEntity<Page<AgpmResponse>> getAllLatestAgpms(AgpmQuery query, Pageable pageable) {
+    public ResponseEntity<Page<AgpmResponse>> getAllLatestAgpms(AgpmQuery query, Pageable pageable) throws AgpmNotFound, AcNotFound {
         Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
         Page<Agpm> agpmPage = agpmService.findAll(spec, pageable);
         Page<AgpmResponse> agpmResponsePage = agpmPage.map(AgpmMapper.INSTANCE::map);
@@ -93,7 +93,7 @@ public class AgpmController {
      * @throws AgpmNotFound if the Agpm with the specified ID is not found
      */
     @GetMapping("/{agpmId}")
-    public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId) throws AgpmNotFound {
+    public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId) throws AgpmNotFound, AcNotFound {
         Agpm agpm = agpmService.findById(agpmId, null);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(agpm);
         return ResponseEntity.ok(agpmResponse);
