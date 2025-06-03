@@ -14,9 +14,21 @@ import lombok.Setter;
 @NoArgsConstructor
 @Table(name = "dyna_fields")
 @Entity
+@IdClass(DynaFieldsId.class)
 public class DynaFields {
 
-  @EmbeddedId private DynaFieldsId id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "dyna_fields_id")
+  private Integer dynaFieldsId;
+
+  @Id
+  @Column(name = "dyna_docs_id")
+  private Integer dynaDocsId;
+
+  @Id
+  @Column(name = "dyna_docs_ver")
+  private Integer dynaDocsVer;
 
   @Column(name = "name")
   private String name;

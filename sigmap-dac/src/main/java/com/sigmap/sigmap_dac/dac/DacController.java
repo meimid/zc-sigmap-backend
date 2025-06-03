@@ -2,6 +2,7 @@ package com.sigmap.sigmap_dac.dac;
 
 import com.sigmap.common.dac.DacListServiceImpl;
 import com.sigmap.common.dac.DacServiceImpl;
+import com.sigmap.common.dac.TestDacListService;
 import com.sigmap.common.dac.exeption.RequiredDacIDAndVersion;
 import com.sigmap.common.dac.exeption.RequiredPath;
 import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
@@ -23,7 +24,7 @@ import java.util.List;
 public class DacController {
 
     private final DacServiceImpl dacService;
-    private final DacListServiceImpl dacListService;
+    private final TestDacListService dacListService;
 
     @Value("${templateDac.dac.inputDocPath}")
     private String basePath;
@@ -31,7 +32,7 @@ public class DacController {
     @Value("${templateDac.dac.outputDocPath}")
     private String customDirPath;
 
-    public DacController(DacServiceImpl dacService, DacListServiceImpl dacListService) {
+    public DacController(DacServiceImpl dacService, TestDacListService dacListService) {
         this.dacService = dacService;
         this.dacListService = dacListService;
     }
@@ -61,7 +62,7 @@ public class DacController {
         }
 
         try {
-            List<String> generatedFiles = dacListService.replaceBookmarksAndGenerateListDOC(
+            List<String> generatedFiles = dacListService.generateDocumentsWithBookmarks(
                     request.getDacId(), request.getDacVer(), basePath, customDirPath);
             return ResponseEntity.ok(generatedFiles);
         } catch (IllegalArgumentException e) {

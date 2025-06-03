@@ -1,6 +1,7 @@
 package com.sigmap.common.dyna_docs;
 
 
+import com.sigmap.common.dac.DacId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -14,10 +15,18 @@ import lombok.Setter;
 @NoArgsConstructor
 @Entity
 @Table(name = "dyna_docs")
-
+@IdClass(DynaDocID.class)
 public class DynaDocs {
-    @EmbeddedId
-    private DynaDocID id;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "dyna_docs_id")
+    private Integer dynaDocsId;
+
+    @Id
+    @Column(name = "dyna_docs_ver")
+    private Integer dynaDocsVer;
+
     @Column(name = "name")
     private String name;
     @Column(name = "template_file_name")

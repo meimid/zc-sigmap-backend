@@ -28,38 +28,26 @@ public class DacListServiceImpl {
   private final DynaDocsRepository dynaDocsRepository;
   private final DacRepository dacRepository;
 
-  public List<String> replaceBookmarksAndGenerateListDOC(
-      Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
-    log.debug(
-        "Processing Dac id: {}, dac version: {}, input path: {}, output path: {} ",
-        dacId,
-        dacVersion,
-        basePath,
+  public List<String> replaceBookmarksAndGenerateListDOC(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
+    log.debug("Dac id: {}, dac version: {}, input path: {}, output path: {} ",dacId, dacVersion,basePath,
         customDirPath);
 
     // Étape 1 : Valider les paramètres
     validateParams(dacId, dacVersion, basePath, customDirPath);
 
     // Vérifier l'existence du Dac
-    Dac dac =
-        dacRepository
-            .findById(new DacId(dacId, dacVersion))
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        "Dac not found for ID: " + dacId + ", Version: " + dacVersion));
+    Dac dac = dacRepository .findById(new DacId(dacId, dacVersion)) .orElseThrow( () -> new IllegalArgumentException( "Dac not found for ID: " + dacId + ", Version: " + dacVersion));
 
+    log.info("dac ----- {}", dac);
     // Vérifier l'existence du Dac.ppm
     if (dac.getPpm() == null) {
 
-      log.info(
-          "dac.getPpm().getId(): {}, dac.getPpm().getVersion(): {} ",
-          dac.getPpm().getId(),
-          dac.getPpm().getVersion());
+
 
       log.info("**********************************");
       throw new IllegalArgumentException("Dac must have ppm");
     }
+    log.info("dac.getPpm() ---: {} ", dac.getPpm());
 
     // Étape 2 : Récupérer les documents actifs associés
     List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dac.getCategory().getId());
@@ -67,6 +55,9 @@ public class DacListServiceImpl {
       log.warn("No active documents found for Dac ID: {}, Version: {}", dacId, dacVersion);
       throw new TemplateFileNameNotFound(dacId, dacVersion);
     }
+
+    log.info("dynaDocsList ******* {} ", dynaDocsList);
+    log.info("dynaDocsList size ******* {} ", dynaDocsList.size());
 
     List<String> generatedFilePaths = new ArrayList<>();
 
@@ -76,8 +67,8 @@ public class DacListServiceImpl {
       log.debug(
           "Processing template file: {} for DynaDocs ID: {}, Version: {}",
           templateFileName,
-          dynaDoc.getId().getDynaDocsId(),
-          dynaDoc.getId().getDynaDocsVer());
+          dynaDoc.getDynaDocsId(),
+          dynaDoc.getDynaDocsVer());
 
       File file = new File(basePath, templateFileName);
       if (!file.exists()) {
@@ -93,8 +84,8 @@ public class DacListServiceImpl {
             createBookmarkMap(
                 dacId,
                 dacVersion,
-                dynaDoc.getId().getDynaDocsId(),
-                dynaDoc.getId().getDynaDocsVer());
+                dynaDoc.getDynaDocsId(),
+                dynaDoc.getDynaDocsVer());
 
         // Étape 5 : Remplacer les signets
         replaceBookmarks(document, bookmarks);
@@ -163,13 +154,15 @@ public class DacListServiceImpl {
 
     // Get DacDocs entries for the given DAC
     List<DacDocs> dacDocsList = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
+    log.info("DacDocs entries for DAC ID {} and version {}:", dacId, dacVersion);
 
     // Process each DacDocs entry
     for (DacDocs dacDoc : dacDocsList) {
+      //log.info("Processing document id: {} and document version: {}", dacDoc.getDynaField().getDynaDocs().getDynaDocsId(), dacDoc.getDynaField().getDynaDocs().getDynaDocsVer());
       DynaFields dynaField = dacDoc.getDynaField();
       if (dynaField != null
-          && dynaField.getDynaDocs().getId().getDynaDocsId().equals(dynaDocsId)
-          && dynaField.getDynaDocs().getId().getDynaDocsVer().equals(dynaDocsVer)) {
+          && dynaField.getDynaDocs().getDynaDocsId().equals(dynaDocsId)
+          && dynaField.getDynaDocs().getDynaDocsVer().equals(dynaDocsVer)) {
 
         String bookmarkName = dynaField.getName();
         String fieldValue = dacDoc.getFieldValue();

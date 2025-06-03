@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_fields_details;
 
+import com.sigmap.common.dyna_docs.DynaDocID;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -14,9 +15,25 @@ import lombok.Setter;
 @NoArgsConstructor
 @Table(name = "dyna_fields_details")
 @Entity
+@IdClass(DynaFieldsDetailsId.class)
 public class DynaFieldsDetails {
 
-  @EmbeddedId private DynaFieldsDetailsId id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "dyna_fields_details_id")
+  private Integer dynaFieldsDetailsId;
+
+  @Id
+  @Column(name = "dyna_docs_id")
+  private Integer dynaDocsId;
+
+  @Id
+  @Column(name = "dyna_docs_ver")
+  private Integer dynaDocsVer;
+
+  @Id
+  @Column(name = "dyna_fields_id")
+  private Integer dynaFieldsId;
 
   @Column(name = "column_name", length = 100)
   private String columnName;
@@ -52,5 +69,5 @@ public class DynaFieldsDetails {
         updatable = false,
         insertable = false)
   })
-  private DynaFields dynaFieldsId;
+  private DynaFields dynaFields;
 }

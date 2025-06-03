@@ -10,10 +10,10 @@ import java.util.Set;
 
 @Repository
 public interface DynaDocsRepository extends JpaRepository<DynaDocs, Integer> {
-    List<DynaDocs> findAllByIdIn(Set<DynaDocID> ids);
+
     @Query("SELECT d FROM DynaDocs d WHERE d.status = 1 AND d.categorieId.id = :categorieId " +
-            "AND d.id.dynaDocsVer = (SELECT MAX(d2.id.dynaDocsVer) FROM DynaDocs d2 " +
-            "WHERE d2.id.dynaDocsId = d.id.dynaDocsId AND d2.categorieId.id = :categorieId AND d2.status = 1)")
+            "AND d.dynaDocsVer = (SELECT MAX(d2.dynaDocsVer) FROM DynaDocs d2 " +
+            "WHERE d2.dynaDocsId = d.dynaDocsId AND d2.categorieId.id = :categorieId AND d2.status = 1)")
     List<DynaDocs> findAllActifForCategorie(@Param("categorieId") Integer categorieId);
 }
 
