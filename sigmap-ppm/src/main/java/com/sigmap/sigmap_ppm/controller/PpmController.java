@@ -6,6 +6,7 @@ import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmQuery;
@@ -18,6 +19,8 @@ import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.sigmap_ppm.services.PpmFlowableService;
+import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
@@ -48,6 +51,8 @@ public class PpmController {
 
     @Autowired
     private RuntimeService runtimeService;
+    @Autowired
+    private PpmFlowableService flowableService;
 
     @Autowired
     private TaskService taskService;
@@ -1192,5 +1197,17 @@ public class PpmController {
         Page<Ppm> ppms = ppmService.findAllVersionsById(ppmId, pageable);
         Page<PpmResponseSoftDtoWithMetaData> ppmResponseDtoWithMetdata=ppms.map(PpmMapper.INSTANCE::mapToDtoWithMetaData);
         return ResponseEntity.ok(ppmResponseDtoWithMetdata);
+    }
+
+    @GetMapping("/details/{ppmId}")
+    public ResponseEntity<TaskDetailsDTO> getPpmWithTasks(@PathVariable Integer ppmId) {
+        try {
+            TaskDetailsDTO response = flowableService.getPpmWithTasks(ppmId);
+            return ResponseEntity.ok(response);
+        } catch (PpmNotFound e) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
 }

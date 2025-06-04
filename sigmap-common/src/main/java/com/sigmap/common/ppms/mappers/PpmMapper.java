@@ -21,6 +21,7 @@ public interface PpmMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "status", source = "status")
     PpmResponse map(Ppm source);
 
@@ -43,6 +44,7 @@ public interface PpmMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "docs", source = "docs")
     @Mapping(target = "realisations", source = "realisations")
+    @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

@@ -853,4 +853,114 @@ public class AgpmFlowableService {
         log.info("No variable name matched in expression: {}", conditionExpression);
         return null;
     }
+
+    /**
+     * Retrieves an Agpm entity by its ID along with its associated task, if any.
+     * If a task exists and the user has permission to view it, includes the task details and sets hasTask to true.
+     * Otherwise, sets hasTask to false and omits task details.
+     *
+     * @param agpmId The ID of the Agpm entity
+     * @return TaskDetailsDTO containing the Agpm details and task information (if applicable)
+     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws AcNotFound if no AC is found for the current user
+     */
+    @Transactional
+    public TaskDetailsDTO getAgpmWithTasks(Integer agpmId) throws AgpmNotFound, AcNotFound {
+        log.info("Récupération de l'AGPM avec ID: {} et sa tâche associée", agpmId);
+
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("Invalid or missing JWT authentication");
+            return errorResponse;
+        }
+
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+
+        // Récupérer l'AGPM avec la dernière version
+        Agpm agpm = agpmService.findById(agpmId, null); // null pour la dernière version
+        if (agpm == null) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("AGPM non trouvé pour l'ID: " + agpmId);
+            return errorResponse;
+        }
+
+        // Préparer l'objet de réponse
+        TaskDetailsDTO response = new TaskDetailsDTO();
+
+        // Mapper l'AGPM vers AgpmResponseDto
+        if (agpm.getDocs() != null) {
+            List<Docs> nonDeletedDocs = agpm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            agpm.setDocs(nonDeletedDocs);
+        }
+        AgpmResponseDto agpmResponse = AgpmMapper.INSTANCE.mapToDto(agpm);
+        response.setAgpm(agpmResponse);
+
+        // Vérifier si l'AGPM a un processus actif
+        String processInstanceId = agpm.getProcessInstanceId();
+        if (processInstanceId == null) {
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, aucune tâche associée");
+            return response;
+        }
+
+        // Récupérer la tâche active pour ce processInstanceId (une seule tâche est attendue)
+        Task task = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .taskTenantId(TENANT_ID)
+                .active()
+                .singleResult();
+
+        // S'il n'y a pas de tâche active
+        if (task == null) {
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, aucune tâche active associée");
+            return response;
+        }
+
+        // Vérifier si l'utilisateur a les droits de voir la tâche
+        boolean userCanViewTask = hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth);
+
+        if (!userCanViewTask) {
+            log.warn("L'utilisateur {} n'a pas les droits pour voir la tâche {} de l'AGPM {}",
+                    jwtAuth.getName(), task.getId(), agpmId);
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, une tâche existe mais l'utilisateur n'a pas les droits de la voir");
+            return response;
+        }
+
+        // Si l'utilisateur a les droits, inclure les détails de la tâche et définir hasTask à true
+        response.setHasTask(true);
+        response.setTaskId(task.getId());
+        response.setTaskName(task.getName());
+        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+        response.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+        response.setProcessInstanceId(task.getProcessInstanceId());
+        response.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        response.setCandidateGroup(getCandidateGroup(task));
+
+        // Ajouter les variables de traçabilité
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("decision", processVariables.getOrDefault("decision", ""));
+        variables.put("comment", processVariables.getOrDefault("comment", ""));
+        variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
+        variables.put("treater", processVariables.getOrDefault("treater", ""));
+        response.setTraceability(variables);
+
+        // Ajouter les propriétés de la tâche
+        Map<String, Boolean> taskProperties = getTaskProperties(task);
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
+
+        // Ajouter les prochaines étapes possibles
+        List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
+        response.setNextSteps(nextSteps);
+
+        response.setStatus("AGPM et détails de la tâche récupérés avec succès");
+
+        return response;
+    }
 }

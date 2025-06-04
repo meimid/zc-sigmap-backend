@@ -220,12 +220,22 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
-        // Update PPM status to TRAITMENT_STATUS (33) instead of 2
+        // Update PPM status to TRAITMENT_STATUS
         Ppm updated = ppmService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
+        String processInstanceId = processInstance.getProcessInstanceId();
+
+        // Set the processInstanceId on the PPM entity
+        Optional<Ppm> ppmOptionalUpdated = ppmService.findById(id, version);
+        if (ppmOptionalUpdated.isPresent()) {
+            Ppm updatedPpm = ppmOptionalUpdated.get();
+            updatedPpm.setProcessInstanceId(processInstanceId);
+            ppmService.save(updatedPpm);
+        }
+
         List<Task> tasks = taskService.createTaskQuery()
                 .processInstanceId(processInstance.getId())
                 .taskTenantId(TENANT_ID)
@@ -267,6 +277,7 @@ public class PpmFlowableService {
 
         return response;
     }
+
     /**
      * Overloaded method to start a Flowable process instance for a Ppm entity using default process and task keys.
      *
@@ -654,197 +665,6 @@ public class PpmFlowableService {
 
         return response;
     }
-    //    public TaskDTO validateTask(String taskId, ValidationRequest request) {
-//        // Authenticate user
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        if (!(authentication instanceof JwtAuthenticationToken)) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus("Invalid or missing JWT authentication");
-//            return errorResponse;
-//        }
-//        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
-//
-//        // Fetch task
-//        Task task = taskService.createTaskQuery()
-//                .taskId(taskId)
-//                .taskTenantId(TENANT_ID)
-//                .active()
-//                .singleResult();
-//
-//        if (task == null) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus("Task not found or not active");
-//            return errorResponse;
-//        }
-//
-//        // Get candidate group
-//        String candidateGroup = getCandidateGroup(task);
-//        if (candidateGroup == null) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus("Task does not have a candidate group");
-//            return errorResponse;
-//        }
-//
-//        // Check user permissions
-//        if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus("User does not have the required role or assignment to validate this task");
-//            return errorResponse;
-//        }
-//
-//        // Retrieve process variables
-//        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-//        log.info("Process variables for task [{}]: {}", taskId, processVariables);
-//        Integer id = (Integer) processVariables.getOrDefault("id", null);
-//        Integer version = (Integer) processVariables.getOrDefault("version", null);
-//
-//        // Validate process variables
-//        if (id == null || version == null) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
-//            return errorResponse;
-//        }
-//
-//        // Fetch Ppm entity
-//        Optional<Ppm> ppmOptional = ppmService.findById(id, version);
-//        if (ppmOptional.isEmpty()) {
-//            TaskDTO errorResponse = new TaskDTO();
-//            errorResponse.setStatus("No PPM entities found for id " + id + " and version " + version);
-//            return errorResponse;
-//        }
-//
-//        Ppm latestPpm = ppmOptional.get();
-//
-//        // Get task properties
-//        Map<String, Boolean> taskProperties = getTaskProperties(task);
-//        Boolean isUpdatable = taskProperties.get("isUpdatable");
-//        Boolean isPublishable = taskProperties.get("isPublishable");
-//
-//        // Handle isUpdatable
-//        if (isUpdatable) {
-//            if (request.getPpm() == null) {
-//                TaskDTO errorResponse = new TaskDTO();
-//                errorResponse.setStatus("Ppm object is required in the request when isUpdatable is true");
-//                return errorResponse;
-//            }
-//            // Log the state of realisationFiles before calling updateWithVersioning
-//            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
-//            if (request.getPpm() != null && request.getPpm().getRealisationsWithLots() != null) {
-//                for (RealisationWithLotsRequestDto realisation : request.getPpm().getRealisationsWithLots()) {
-//                    log.info("Realisation ID: {}, Files: {}", realisation.getId(),
-//                            (realisation.getRealisationFiles() != null ? realisation.getRealisationFiles().size() : "null"));
-//                }
-//            } else {
-//                log.info("No realisations or PPM data in request for task [{}]", taskId);
-//            }
-//            // Create new Ppm with incremented version
-//            Ppm updatedPpm = ppmService.updateWithVersioning(id, request.getPpm());
-//            if (updatedPpm == null) {
-//                TaskDTO errorResponse = new TaskDTO();
-//                errorResponse.setStatus("Failed to update PPM object");
-//                return errorResponse;
-//            }
-//            latestPpm = updatedPpm;
-//            // Update process variable to reflect new version
-//            log.info("Updated PPM version for task [{}]: {} -> {}", taskId, version, latestPpm.getVersion());
-//            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
-//        }
-//
-//        // Handle status update
-//        Integer newStatus = null;
-//        if (isPublishable) {
-//            newStatus = Constants.PUBLIE_STATUS; // Set to PUBLIE_STATUS (35)
-//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
-//            if (updatedPpm == null) {
-//                TaskDTO errorResponse = new TaskDTO();
-//                errorResponse.setStatus("Failed to update PPM status to Publiée");
-//                return errorResponse;
-//            }
-//            latestPpm = updatedPpm;
-//        } else if (request.getValidate() != null && request.getValidate()) {
-//            newStatus = Constants.VALIDE_STATUS; // Set to VALIDE_STATUS (34) if validated
-//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
-//            if (updatedPpm == null) {
-//                TaskDTO errorResponse = new TaskDTO();
-//                errorResponse.setStatus("Failed to update PPM status to Validée");
-//                return errorResponse;
-//            }
-//            latestPpm = updatedPpm;
-//        } else if (request.getValidate() != null && !request.getValidate()) {
-//            newStatus = Constants.TRAITMENT_STATUS; // Set to REJECTED_STATUS (assumed 36, added below)
-//            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
-//            if (updatedPpm == null) {
-//                TaskDTO errorResponse = new TaskDTO();
-//                errorResponse.setStatus("Failed to update PPM status to Rejetée");
-//                return errorResponse;
-//            }
-//            latestPpm = updatedPpm;
-//        }
-//
-//        // Determine process variable name dynamically
-//        String processVariable = candidateGroup.toLowerCase() + "_valide"; // Fallback
-//        try {
-//            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-//            if (bpmnModel != null) {
-//                FlowElement taskElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
-//                if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
-//                    List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement).getOutgoingFlows();
-//                    for (SequenceFlow flow : outgoingFlows) {
-//                        FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
-//                        if (targetElement instanceof ExclusiveGateway) {
-//                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
-//                            for (SequenceFlow gatewayFlow : gatewayFlows) {
-//                                String conditionExpression = gatewayFlow.getConditionExpression();
-//                                if (conditionExpression != null && conditionExpression.toLowerCase().contains("valide")) {
-//                                    String variableName = extractVariableName(conditionExpression);
-//                                    if (variableName != null && variableName.toLowerCase().contains("valide")) {
-//                                        processVariable = variableName;
-//                                        break;
-//                                    }
-//                                }
-//                            }
-//                            if (processVariable != null) break;
-//                        }
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            log.info("Failed to extract gateway condition for task [" + taskId + "]: " + e.getMessage());
-//        }
-//
-//        // Set process variables
-//        boolean validate = request.getValidate() != null ? request.getValidate() : false;
-//        Map<String, Object> variables = new HashMap<>();
-//        variables.put(processVariable, validate);
-//        variables.put("comment", request.getComment() != null ? request.getComment() : "");
-//        variables.put("dateComment", LocalDateTime.now());
-//        variables.put("treater", jwtAuth.getName());
-//
-//        log.info("Setting process variables for task [{}]: {}={}, comment={}, dateComment={}, treater={}",
-//                taskId, processVariable, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
-//
-//        runtimeService.setVariables(task.getProcessInstanceId(), variables);
-//
-//        // Complete task
-//        taskService.complete(taskId);
-//
-//        // Prepare response
-//        TaskDTO response = new TaskDTO();
-//        response.setTaskId(task.getId());
-//        response.setTaskName(task.getName());
-//        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
-//        response.setProcessInstanceId(task.getProcessInstanceId());
-//        response.setId(id);
-//        response.setVersion(latestPpm.getVersion());
-//        response.setNewStatus(newStatus != null ? newStatus : latestPpm.getStatus().getId());
-//        response.setValidate(validate);
-//        response.setTraceability(variables);
-//        response.setIsUpdatable(isUpdatable);
-//        response.setIsPublishable(isPublishable);
-//        response.setStatus("Task validated successfully");
-//
-//        return response;
-//    }
 
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
         List<NextStepDTO> nextSteps = new ArrayList<>();
@@ -1038,5 +858,117 @@ public class PpmFlowableService {
         }
         log.info("No condition value matched in expression: {}", conditionExpression);
         return null;
+    }
+
+    /**
+     * Retrieves a Ppm entity by its ID along with its associated task, if any.
+     * If a task exists and the user has permission to view it, includes the task details and sets hasTask to true.
+     * Otherwise, sets hasTask to false and omits task details.
+     *
+     * @param ppmId The ID of the Ppm entity
+     * @return TaskDetailsDTO containing the Ppm details and task information (if applicable)
+     * @throws PpmNotFound if the Ppm entity is not found
+     */
+    @Transactional
+    public TaskDetailsDTO getPpmWithTasks(Integer ppmId) throws PpmNotFound {
+        log.info("Récupération du PPM avec ID: {} et sa tâche associée", ppmId);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("Invalid or missing JWT authentication");
+            return errorResponse;
+        }
+
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+
+        // Récupérer le PPM avec la dernière version
+        Integer latestVersion = ppmService.findLatestVersionById(ppmId);
+        Optional<Ppm> ppmOptional = ppmService.findById(ppmId, latestVersion);
+        if (ppmOptional.isEmpty()) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("PPM non trouvé pour l'ID: " + ppmId);
+            return errorResponse;
+        }
+
+        Ppm ppm = ppmOptional.get();
+
+        // Préparer l'objet de réponse
+        TaskDetailsDTO response = new TaskDetailsDTO();
+
+        // Mapper le PPM vers PpmResponseDto
+        if (ppm.getDocs() != null) {
+            List<Docs> nonDeletedDocs = ppm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            ppm.setDocs(nonDeletedDocs);
+        }
+        PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
+        response.setPpm(ppmResponse);
+
+        // Vérifier si le PPM a un processus actif
+        String processInstanceId = ppm.getProcessInstanceId();
+        if (processInstanceId == null) {
+            response.setHasTask(false);
+            response.setStatus("PPM récupéré avec succès, aucune tâche associée");
+            return response;
+        }
+
+        // Récupérer la tâche active pour ce processInstanceId (une seule tâche est attendue)
+        Task task = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .taskTenantId(TENANT_ID)
+                .active()
+                .singleResult();
+
+        // S'il n'y a pas de tâche active
+        if (task == null) {
+            response.setHasTask(false);
+            response.setStatus("PPM récupéré avec succès, aucune tâche active associée");
+            return response;
+        }
+
+        // Vérifier si l'utilisateur a les droits de voir la tâche
+        boolean userCanViewTask = hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth);
+
+        if (!userCanViewTask) {
+            log.warn("L'utilisateur {} n'a pas les droits pour voir la tâche {} du PPM {}",
+                    jwtAuth.getName(), task.getId(), ppmId);
+            response.setHasTask(false);
+            response.setStatus("PPM récupéré avec succès, une tâche existe mais l'utilisateur n'a pas les droits de la voir");
+            return response;
+        }
+
+        // Si l'utilisateur a les droits, inclure les détails de la tâche et définir hasTask à true
+        response.setHasTask(true);
+        response.setTaskId(task.getId());
+        response.setTaskName(task.getName());
+        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+        response.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+        response.setProcessInstanceId(task.getProcessInstanceId());
+        response.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        response.setCandidateGroup(getCandidateGroup(task));
+
+        // Ajouter les variables de traçabilité
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("decision", processVariables.getOrDefault("decision", ""));
+        variables.put("comment", processVariables.getOrDefault("comment", ""));
+        variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
+        variables.put("treater", processVariables.getOrDefault("treater", ""));
+        response.setTraceability(variables);
+
+        // Ajouter les propriétés de la tâche
+        Map<String, Boolean> taskProperties = getTaskProperties(task);
+        response.setUpdatable(taskProperties.get("isUpdatable"));
+        response.setPublishable(taskProperties.get("isPublishable"));
+
+        // Ajouter les prochaines étapes possibles
+        List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
+        response.setNextSteps(nextSteps);
+
+        response.setStatus("PPM et détails de la tâche récupérés avec succès");
+
+        return response;
     }
 }

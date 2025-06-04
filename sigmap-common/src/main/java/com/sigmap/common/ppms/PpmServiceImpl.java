@@ -3475,6 +3475,7 @@ public class PpmServiceImpl implements PpmService {
         existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
+        existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
         // Set status if provided
         if (request.getStatus() != null) {

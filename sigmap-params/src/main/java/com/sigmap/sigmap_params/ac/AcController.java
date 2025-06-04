@@ -109,6 +109,7 @@ public class AcController {
                 dto.setFirstName(keycloakUser.getFirstName());
                 dto.setLastName(keycloakUser.getLastName());
                 dto.setEmail(keycloakUser.getEmail());
+                dto.setMobile(keycloakUser.getMobile());
                 dto.setAcPilote(userAc.getAcPilote());
                 dto.setCreatedAt(userAc.getCreatedAt());
                 dto.setCreatedBy(userAc.getCreatedBy());

@@ -84,4 +84,5 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
         }
         return this.docs;
     }
+    private String processInstanceId;
 }
