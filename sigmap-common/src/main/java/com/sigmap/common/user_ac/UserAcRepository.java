@@ -23,6 +23,12 @@ public interface UserAcRepository extends JpaRepository<UserAc, UserAcId>,
     @Query("UPDATE UserAc s SET s.isDeleted = true,s.acPilote =false, s.deletedAt = CURRENT_TIMESTAMP, s.deletedBy = :#{principal.subject} WHERE s.acId = :acId AND s.userId = :userId")
     Integer softDelete(@Param("acId") Integer acId, @Param("userId") String userId);
 
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("UPDATE UserAc s SET s.acPilote =false, s.updatedAt = CURRENT_TIMESTAMP, s.updatedBy = :#{principal.subject} WHERE s.acId <> :acId AND s.userId = :userId")
+    Integer removeAcPilote(@Param("acId") Integer acId, @Param("userId") String userId);
+
     List<UserAc> findAllByAcId(Integer acId);
 
     List<UserAc> findAllByAcIdAndIsDeletedFalse(Integer acId);

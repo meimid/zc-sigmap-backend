@@ -112,7 +112,8 @@ public class AcController {
                 dto.setMobile(keycloakUser.getMobile());
                 dto.setAcPilote(userAc.getAcPilote());
                 dto.setCreatedAt(userAc.getCreatedAt());
-                dto.setCreatedBy(userAc.getCreatedBy());
+                String userNameAffectedBy = keycloakAdminService.getUserById(userAc.getCreatedBy()).getUsername();
+                dto.setCreatedBy(userNameAffectedBy);
 
                 return dto;
             } catch (Exception e) {

@@ -103,8 +103,8 @@ public class ComController {
                 dto.setEmail(keycloakUser.getEmail());
                 dto.setMobile(keycloakUser.getMobile());
                 dto.setCreatedAt(userCom.getCreatedAt());
-                dto.setCreatedBy(userCom.getCreatedBy());
-
+                String userNameAffectedBy = keycloakAdminService.getUserById(userCom.getCreatedBy()).getUsername();
+                dto.setCreatedBy(userNameAffectedBy);
                 return dto;
             } catch (Exception e) {
                 logger.warn("Impossible de récupérer l'utilisateur {} depuis Keycloak : {}", userCom.getUserId(), e.getMessage());

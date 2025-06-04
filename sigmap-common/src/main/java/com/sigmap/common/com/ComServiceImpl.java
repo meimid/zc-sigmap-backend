@@ -147,14 +147,15 @@ public class ComServiceImpl implements ComService {
     }
     Com savedCom = repository.save(com);
 
-    // 1. Récupérer les anciens UserAc liés à ce AC
-    List<UserCom> existingUserComs = userComRepository.findAllByComId(id);
+    // 1. Récupérer les anciens UserCom liés à ce COM
+    List<UserCom> existingUserComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
 
     // 2. Construire la nouvelle liste à partir des userIds reçus
     List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
 
     // 3. Supprimer ceux qui n'existent plus
     for (UserCom existing : existingUserComs) {
+      logger.info("*************"+ existing);
       if (!newUserIds.contains(existing.getUserId())) {
         userComRepository.softDelete(existing.getComId(), existing.getUserId());
       }
@@ -162,9 +163,11 @@ public class ComServiceImpl implements ComService {
 
     // 4. Ajouter les nouveaux
     for (String userId : newUserIds) {
+      logger.info("*************"+ userId);
       boolean exists = existingUserComs.stream()
               .anyMatch(e -> e.getUserId().equals(userId));
       if (!exists) {
+        logger.info("************* save", userId);
         UserCom userCom = new UserCom();
         userCom.setUserId(userId);
         userCom.setComId(id);
