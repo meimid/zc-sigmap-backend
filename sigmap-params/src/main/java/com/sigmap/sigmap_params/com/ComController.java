@@ -101,6 +101,7 @@ public class ComController {
                 dto.setFirstName(keycloakUser.getFirstName());
                 dto.setLastName(keycloakUser.getLastName());
                 dto.setEmail(keycloakUser.getEmail());
+                dto.setMobile(keycloakUser.getMobile());
                 dto.setCreatedAt(userCom.getCreatedAt());
                 dto.setCreatedBy(userCom.getCreatedBy());
 
