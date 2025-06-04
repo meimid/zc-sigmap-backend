@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_auth.keycloakAdmin;
+package com.sigmap.sigmap_auth.keycloak;
 
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.keycloakAdmin.dto.PasswordRequestDTO;
@@ -20,7 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/keycloak")
 @RequiredArgsConstructor
-public class KeycloakController {
+public class KeycloakAdminController {
 
     // Service pour interagir avec l’API Admin de Keycloak
     @Autowired

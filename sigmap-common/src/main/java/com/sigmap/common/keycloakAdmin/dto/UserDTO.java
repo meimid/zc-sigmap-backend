@@ -14,9 +14,11 @@ public class UserDTO {
     private String lastName;
     private String email;
     private String address;
+    private String mobile;
+    private String fixe;
     private boolean emailVerified;
-    private List<Com> coms;
-    private List<Ac> acs;
+    private List<UserComDTO> coms;
+    private List<UserAcDTO> acs;
     private Long createdTimestamp;
     private boolean enabled;
     private List<String> roles;
