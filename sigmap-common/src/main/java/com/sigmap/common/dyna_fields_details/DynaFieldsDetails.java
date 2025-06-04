@@ -1,6 +1,5 @@
 package com.sigmap.common.dyna_fields_details;
 
-import com.sigmap.common.dyna_docs.DynaDocID;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -19,7 +18,11 @@ import lombok.Setter;
 public class DynaFieldsDetails {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dyna_fields_details_id_seq")
+  @SequenceGenerator(
+      name = "dyna_fields_details_id_seq",
+      sequenceName = "dyna_fields_details_id_seq",
+      allocationSize = 1)
   @Column(name = "dyna_fields_details_id")
   private Integer dynaFieldsDetailsId;
 

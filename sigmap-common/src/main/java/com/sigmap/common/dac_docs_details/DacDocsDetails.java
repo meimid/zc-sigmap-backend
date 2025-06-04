@@ -17,7 +17,6 @@ import lombok.Setter;
 public class DacDocsDetails {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "dyna_fields_details_id")
   private Integer dynaFieldsDetailsId;
 
