@@ -139,7 +139,7 @@ public class AcServiceImpl implements AcService{
         Ac savedAc = repository.save(ac);
 
         // 1. Récupérer les anciens UserAc liés à ce AC
-        List<UserAc> existingUserAcs = userAcRepository.findAllByAcId(id);
+        List<UserAc> existingUserAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
 
         // 2. Construire la nouvelle liste à partir des userIds reçus
         List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();

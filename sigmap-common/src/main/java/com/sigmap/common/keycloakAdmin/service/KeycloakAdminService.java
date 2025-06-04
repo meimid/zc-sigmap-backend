@@ -1,8 +1,10 @@
 package com.sigmap.common.keycloakAdmin.service;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.keycloakAdmin.dto.UserAcDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
@@ -42,6 +44,11 @@ public class KeycloakAdminService {
 
     @Value("${keycloak-admin.realm}")
     private String realm;
+
+    @Autowired
+    private AcRepository acRepository;
+    @Autowired
+    private ComRepository comRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -165,7 +172,8 @@ public class KeycloakAdminService {
     private List<UserAcDTO> fetchAcsForUser(String userId) {
         return userAcRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
                 .map(userAc -> {
-                    Ac ac = userAc.getAc();
+                    Ac ac = null;
+                    ac = acRepository.findById(userAc.getAcId()).get();
                     UserAcDTO dto = new UserAcDTO();
                     dto.setId(ac.getId());
                     dto.setNom(ac.getNom());
@@ -182,7 +190,8 @@ public class KeycloakAdminService {
     private List<UserComDTO> fetchComsForUser(String userId) {
         return userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
                 .map(userCom -> {
-                    Com com = userCom.getCom();
+                    Com com = null;
+                    com = comRepository.findById(userCom.getComId()).get();
                     UserComDTO dto = new UserComDTO();
                     dto.setId(com.getId());
                     dto.setNom(com.getNom());
@@ -338,6 +347,7 @@ public class KeycloakAdminService {
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
                     if (id  == acPiloteId){
+                        userAcRepository.removeAcPilote(id, userId);
                         userAc.setAcPilote(true);
                     }
                     userAc.setStatus(getDefaultStatus());
