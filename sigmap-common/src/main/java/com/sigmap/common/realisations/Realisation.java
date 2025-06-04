@@ -3,6 +3,7 @@ package com.sigmap.common.realisations;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
@@ -15,6 +16,7 @@ import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -23,7 +25,7 @@ import java.util.Set;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
-public class Realisation extends BaseEntity {
+public class Realisation extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "realisation_id")
     private Integer id;
@@ -139,4 +141,22 @@ public class Realisation extends BaseEntity {
     )
     @JsonManagedReference
     private List<Docs> docs;
+
+    @Override
+    public Integer getId() {
+        return this.id;
+    }
+
+    @Override
+    public Integer getVersion() {
+        return this.version;
+    }
+
+    @Override
+    public List<Docs> getDocs() {
+        if (this.docs == null) {
+            this.docs = new ArrayList<>();
+        }
+        return this.docs;
+    }
 }

@@ -615,7 +615,9 @@ public class PpmServiceImpl implements PpmService {
             if (lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty()) {
                 try {
                     System.out.println("Processing " + lotsRequest.getPpmFiles().size() + " new files for PPM");
-                    processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    //processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    documentCommuneService.processAndSaveDocuments(lotsRequest.getPpmFiles(),newPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                     // Save the PPM again after adding documents
                     newPpm = repository.save(newPpm);
                     System.out.println("Saved PPM after processing files");
@@ -1181,7 +1183,8 @@ public class PpmServiceImpl implements PpmService {
                                     System.out.println("Processing " + withLotsDto.getRealisationFiles().size() +
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
-                                    processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
+                                    //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
@@ -2406,7 +2409,9 @@ public class PpmServiceImpl implements PpmService {
         if (request.getPpmFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),savedPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());
@@ -2485,7 +2490,11 @@ public class PpmServiceImpl implements PpmService {
                     try {
                         System.out.println("Processing " + realisationRequest.getRealisationFiles().size() +
                                 " files for realisation ID: " + realisation.getId());
+/*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+*/
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
                         System.err.println("Error processing realisation files: " + e.getMessage());
@@ -2671,6 +2680,7 @@ public class PpmServiceImpl implements PpmService {
         return savedPpm;
     }
 
+/*
     private void processAndSaveDocuments(List<MultipartFile> files, Ppm savedPpm) throws IOException {
 
         if (files != null && !files.isEmpty()) {
@@ -2722,6 +2732,7 @@ public class PpmServiceImpl implements PpmService {
             }
         }
     }
+*/
 
     private final Object folderCreationLock = new Object();
 
@@ -2821,7 +2832,7 @@ public class PpmServiceImpl implements PpmService {
         savedRealisation.setDocs(docs);
     }
 
-    void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+    /*void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         System.out.println("============== DOCUMENT UPLOAD LOG START ==============");
         System.out.println("Starting file upload process for realisation ID: " + savedRealisation.getId() +
                           ", Version: " + savedRealisation.getVersion());
@@ -3024,7 +3035,7 @@ public class PpmServiceImpl implements PpmService {
         }
 
         System.out.println("============== DOCUMENT UPLOAD LOG END ==============");
-    }
+    }*/
 
     /**
      * Utility method to check if a document with the given ID is already in the collection
@@ -3326,7 +3337,9 @@ public class PpmServiceImpl implements PpmService {
                         RealisationWithLotsRequestDto realisationWithLots = (RealisationWithLotsRequestDto) realisationRequest;
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
-                                processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
+                               // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
+                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
                             } catch (Exception e) {
                                 throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
                             }
@@ -3551,7 +3564,9 @@ public class PpmServiceImpl implements PpmService {
         if(request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),existingPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());
@@ -3786,7 +3801,9 @@ public class PpmServiceImpl implements PpmService {
                                 " files for realisation ID: " + realisation.getId());
 
                         // Process all files at once using the new method
-                        processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+                       // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
 
                         // After processing files, fetch the updated realisation with its documents
                         realisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion()))
