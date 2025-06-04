@@ -2493,7 +2493,7 @@ public class PpmServiceImpl implements PpmService {
 /*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
 */
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
@@ -3801,7 +3801,7 @@ public class PpmServiceImpl implements PpmService {
 
                         // Process all files at once using the new method
                        // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                         // After processing files, fetch the updated realisation with its documents
