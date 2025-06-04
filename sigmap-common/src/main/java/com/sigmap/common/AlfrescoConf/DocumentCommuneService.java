@@ -1,6 +1,15 @@
 package com.sigmap.common.AlfrescoConf;
 
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.Request.DocumentHolder;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.realisations.Realisation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -8,14 +17,16 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DocumentCommuneService {
     @Autowired
     private AlfrescoService alfrescoService;
+    private final DocsRepository docsRepository;
+
     /**
      * Detects the file extension based on the MIME type provided.
      * The method uses a map of MIME types and their corresponding file extensions.
@@ -178,5 +189,91 @@ public class DocumentCommuneService {
 
         return aa;
     }
+    public <T extends DocumentHolder> void processAndSaveDocuments(List<MultipartFile> files, T entity, String path) throws IOException {
 
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d/%d",path  , entity.getId(), entity.getVersion());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue; // Skip to the next file
+            }
+
+            try {
+                //helper methode for mapping document
+                Docs document = mapperDocument(file,entityTypeName,baseFolderPath);
+
+                if (entity instanceof Realisation realisation) {
+                    if(realisation.getDocs() == null) {
+                        realisation.setDocs(new ArrayList<>());
+                    }
+                    realisation.getDocs().add(document);
+                } else if (entity instanceof Paa paa) {
+                    if(paa.getDocs() == null) {
+                        paa.setDocs(new ArrayList<>());
+                    }
+                    paa.getDocs().add(document);
+                }
+                else if(entity instanceof Agpm agpm) {
+                    if(agpm.getDocs() == null) {
+                        agpm.setDocs(new ArrayList<>());
+                    }
+                    agpm.getDocs().add(document);
+                }
+                else {
+                    Ppm ppm= (Ppm) entity;
+                    if(ppm.getDocs() == null) {
+                        ppm.setDocs(new ArrayList<>());
+                    }
+                }
+                // Save the document (Docs entity)
+                docsRepository.save(document);
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                // Re-throw as IOException for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+
+    }
+    private Docs mapperDocument (MultipartFile file , String entityTypeName , String baseFolderPath ) throws Exception {
+        //1-extract file data
+
+        UUID uuid = UUID.randomUUID();
+        Tika tika = new Tika();
+        String detectedMimeType = tika.detect(file.getInputStream());
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+
+        String fileExtension = detectExtensionFromMimeType(detectedMimeType);
+        if (fileExtension.isEmpty()) {
+            // Fallback to original filename extension if MIME type detection fails
+            fileExtension = detectExtensionFromMimeType(originalFilename);
+        }
+        String[] parts = originalFilename.split("\\.");
+        String baseName = parts[0];
+        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+        String uniqueFileName = entityTypeName +"_"+ uuid + "_" + extension;
+        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+        long fileSize = file.getSize();
+        String formattedSize = formatSize(fileSize);
+
+        String alfrescoId = alfrescoService.uploadDocument(renamedFile, baseFolderPath);
+        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}, Path={}", alfrescoId, uniqueFileName, baseFolderPath);
+
+        //2-remplissage mte3 document with data
+        Docs document = new Docs();
+        document.setName(baseName);
+        document.setAlfresco_id(alfrescoId);
+        document.setPathFolder(baseFolderPath);
+        document.setFileSize(formattedSize);
+        document.setContentType(detectedMimeType);
+        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+        document.setAlfrescoName(uniqueFileName);
+        return document;
+
+    }
 }
+
+

@@ -615,7 +615,9 @@ public class PpmServiceImpl implements PpmService {
             if (lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty()) {
                 try {
                     System.out.println("Processing " + lotsRequest.getPpmFiles().size() + " new files for PPM");
-                    processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    //processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    documentCommuneService.processAndSaveDocuments(lotsRequest.getPpmFiles(),newPpm,Constants.PATH_ENTREPOT_GED);
+
                     // Save the PPM again after adding documents
                     newPpm = repository.save(newPpm);
                     System.out.println("Saved PPM after processing files");
@@ -2406,7 +2408,9 @@ public class PpmServiceImpl implements PpmService {
         if (request.getPpmFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),savedPpm,Constants.PATH_ENTREPOT_GED);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());
@@ -2671,6 +2675,7 @@ public class PpmServiceImpl implements PpmService {
         return savedPpm;
     }
 
+/*
     private void processAndSaveDocuments(List<MultipartFile> files, Ppm savedPpm) throws IOException {
 
         if (files != null && !files.isEmpty()) {
@@ -2722,6 +2727,7 @@ public class PpmServiceImpl implements PpmService {
             }
         }
     }
+*/
 
     private final Object folderCreationLock = new Object();
 
@@ -3550,7 +3556,9 @@ public class PpmServiceImpl implements PpmService {
         if(request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),existingPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());

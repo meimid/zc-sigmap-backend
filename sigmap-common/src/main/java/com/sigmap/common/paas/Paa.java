@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.realisations.Realisation;
@@ -14,6 +15,7 @@ import lombok.EqualsAndHashCode;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -23,7 +25,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
 @EntityListeners(AuditingEntityListener.class)
-public class Paa extends BaseEntity {
+public class Paa extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "paa_id")
     private Integer id;
@@ -71,4 +73,22 @@ public class Paa extends BaseEntity {
     private List<Docs> docs;
 
     private String processInstanceId;
+
+    @Override
+    public Integer getId() {
+        return this.id;
+    }
+
+    @Override
+    public Integer getVersion() {
+        return this.version;
+    }
+
+    @Override
+    public List<Docs> getDocs() {
+        if (this.docs == null) {
+            this.docs = new ArrayList<>();
+        }
+        return this.docs;
+    }
 }
