@@ -307,7 +307,7 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm agpm = agpmMapper.toEntity(request);
         agpm.setId(id);
         agpm.setVersion(version);
-
+        setRef(agpm);
         Optional<Long> acIdOptional = Authentication.getCurrentUserAC();// will be replaced by the logic of acIds
         if (acIdOptional.isPresent()) {
             Long acIdLong = acIdOptional.get();
@@ -833,5 +833,20 @@ public class AgpmServiceImpl implements AgpmService {
         );
         return repository.findAll(agpmSpec, pageable);
 
+    }
+
+    /**
+     * Generates and sets a reference string for the Agpm entity.
+     * Format: AGPM_<YEAR>_<ID>
+     *
+     * @param agpm the Agpm entity to set the reference for
+     */
+    private void setRef(Agpm agpm) {
+        if (agpm == null || agpm.getId() == null) {
+            throw new IllegalArgumentException("Cannot set reference: agpm or agpm ID is null.");
+        }
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        String ref = "AGPM_" + year + "_" + agpm.getId();
+        agpm.setRef(ref);
     }
 }

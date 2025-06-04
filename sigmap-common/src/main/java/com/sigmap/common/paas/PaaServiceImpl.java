@@ -310,7 +310,7 @@ public class PaaServiceImpl implements PaaService {
         // Check if PAA is in DRAFT status and has null processInstanceId
         restrictUpdatePaa(existingPaa);
 
-        existingPaa.setRef(request.getRef());
+//        existingPaa.setRef(request.getRef());
         existingPaa.setNom(request.getNom());
         existingPaa.setAnnee(existingPaa.getAnnee());
         existingPaa.setBudgetEstime(request.getBudgetEstime());
@@ -751,7 +751,8 @@ public class PaaServiceImpl implements PaaService {
         Paa tempPaa = new Paa();
 
         // Only use request values when they're not null, otherwise keep existing values
-        tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
+
+//        tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
         tempPaa.setProcessInstanceId(existingPaa.getProcessInstanceId());
@@ -1257,7 +1258,7 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setVersion(paaVer + 1);
 
         // Copy properties from temp PAA
-        newPaa.setRef(tempPaa.getRef());
+//        newPaa.setRef(tempPaa.getRef());
         newPaa.setNom(tempPaa.getNom());
         newPaa.setAnnee(tempPaa.getAnnee());
         newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
@@ -1839,11 +1840,12 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = new Paa();
         paa.setId(paaId);
         paa.setVersion(paaVersion);
-        paa.setRef(request.getRef());
+//        paa.setRef(request.getRef());
         paa.setNom(request.getNom());
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
         log.info("Setting annee to: {}", currentYearStr);
         paa.setAnnee(currentYearStr);
+        setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
 
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
@@ -2403,6 +2405,20 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaIdNotFound("No Paa versions found for ID", paaId);
         }
         return paaPage;
+    }
+
+    /**
+     * Generates and sets the reference for a Paa entity.
+     * Format: PAA_<YEAR>_<ID>
+     *
+     * @param paa the Paa entity
+     */
+    private void setRef(Paa paa) {
+        if (paa == null || paa.getId() == null || paa.getAnnee() == null) {
+            throw new IllegalArgumentException("Cannot set reference: paa, id, or year is null.");
+        }
+        String ref = "PAA_" + paa.getAnnee() + "_" + paa.getId();
+        paa.setRef(ref);
     }
 
 }

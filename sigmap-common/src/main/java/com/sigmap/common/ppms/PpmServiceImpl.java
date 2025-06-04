@@ -175,10 +175,10 @@ public class PpmServiceImpl implements PpmService {
         Ppm ppm = new Ppm();
         ppm.setId(id);
         ppm.setVersion(version);
-        ppm.setRef(request.getRef());
+//        pos(request.getRef());
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
-
+        setRef(ppm);
 
 
 
@@ -295,7 +295,7 @@ public class PpmServiceImpl implements PpmService {
             newPpm.setId(ppmId);
             newPpm.setVersion(ppmVer + 1); // Increment version
             // Set fields from PpmRequest, falling back to existing values if null
-            newPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//            newPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
             newPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
             newPpm.setAnnee(existingPpm.getAnnee());
             newPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
@@ -320,7 +320,7 @@ public class PpmServiceImpl implements PpmService {
             return repository.save(newPpm);
         } else {
             // Update existing version
-            existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//            existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
             existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
             existingPpm.setAnnee( existingPpm.getAnnee());
             existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
@@ -932,7 +932,7 @@ public class PpmServiceImpl implements PpmService {
 
     private Ppm buildTempPpm(Ppm existingPpm, PpmBaseRequestDto request) {
         Ppm tempPpm = new Ppm();
-        tempPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//        tempPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
         tempPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
         tempPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         tempPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
@@ -2346,7 +2346,8 @@ public class PpmServiceImpl implements PpmService {
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
         ppm.setVersion(ppmVersion);
-        ppm.setRef(request.getRef());
+//        ppm.setRef(request.getRef());
+
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
@@ -2355,7 +2356,7 @@ public class PpmServiceImpl implements PpmService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         ppm.setStatus(defaultStatus);
-
+        setRef(ppm);
         Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
         if (acIdOptional.isPresent()) {
             Long acIdLong = acIdOptional.get();
@@ -3117,7 +3118,7 @@ public class PpmServiceImpl implements PpmService {
         }
 
         // Update fields of the existing PPM
-        existingPpm.setRef(request.getRef());
+//        existingPpm.setRef(request.getRef());
         existingPpm.setNom(request.getNom());
         existingPpm.setAnnee(request.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime());
@@ -3457,7 +3458,7 @@ public class PpmServiceImpl implements PpmService {
                     (existingPpm.getStatus() != null ? existingPpm.getStatus().getId() : "null"));
         }
         // Update PPM fields
-        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
         existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
@@ -4136,5 +4137,19 @@ public class PpmServiceImpl implements PpmService {
             throw new PpmIdNotFound("No Ppm versions found for ID", ppmId);
         }
         return ppmPage;
+    }
+
+    /**
+     * Generates and sets the reference string for the Ppm entity.
+     * Format: PPM_<YEAR>_<ID>
+     *
+     * @param ppm the Ppm entity to set the reference for
+     */
+    private void setRef(Ppm ppm) {
+        if (ppm == null || ppm.getId() == null || ppm.getAnnee() == null) {
+            throw new IllegalArgumentException("Cannot set reference: ppm, id, or year is null.");
+        }
+        String ref = "PPM_" + ppm.getAnnee() + "_" + ppm.getId();
+        ppm.setRef(ref);
     }
 }
