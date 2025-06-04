@@ -65,4 +65,5 @@ public class Ppm  extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "doc_id")
     )
     private List<Docs> docs;
+    private String processInstanceId;
 }

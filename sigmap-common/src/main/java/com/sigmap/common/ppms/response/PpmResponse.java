@@ -22,6 +22,7 @@ public class PpmResponse {
     private RefParam status;
     private List<DocsResponseDTO> docs;
     private List<RealisationResponseDTO> realisations;
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 
 }

@@ -19,7 +19,10 @@ import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
+import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +44,9 @@ public class AgpmController {
 
     private final AgpmService agpmService;
     private final FileCheckServices fileCheckServices;
+
+    @Autowired
+    private AgpmFlowableService flowableService;
 
     @Value("${max-file-size}")
     private long maxFileUploadSize;
@@ -203,5 +209,17 @@ public class AgpmController {
         Page<Agpm> agpms = agpmService.findAgpmsByAcId(acId,pageable);
         Page<AgpmResponseDtoSoft> responses = agpms.map(AgpmMapper.INSTANCE::toDto);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/details/{agpmId}")
+    public ResponseEntity<TaskDetailsDTO> getAgpmWithTasks(@PathVariable Integer agpmId) {
+        try {
+            TaskDetailsDTO response = flowableService.getAgpmWithTasks(agpmId);
+            return ResponseEntity.ok(response);
+        } catch (AgpmNotFound | AcNotFound e) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
 }

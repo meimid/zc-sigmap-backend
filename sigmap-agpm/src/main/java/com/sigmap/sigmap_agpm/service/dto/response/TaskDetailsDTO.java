@@ -27,5 +27,6 @@ public class TaskDetailsDTO {
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;
+    private Boolean hasTask;
     private List<NextStepDTO> nextSteps;
 }

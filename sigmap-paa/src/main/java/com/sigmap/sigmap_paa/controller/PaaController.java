@@ -1,9 +1,6 @@
 package com.sigmap.sigmap_paa.controller;
 
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
-import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -21,9 +18,12 @@ import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.sigmap_paa.service.PaaFlowableService;
+import com.sigmap.sigmap_paa.service.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.CustomCollectionEditor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -45,6 +45,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class PaaController {
     private final Logger logger = LoggerFactory.getLogger(PaaController.class);
     private final PaaService paaService;
+    @Autowired
+    private PaaFlowableService flowableService;
 
     public PaaController(PaaService paaService) {
         this.paaService = paaService;
@@ -580,5 +582,17 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         Page<Paa> paas = paaService.findAllVersionsById(paaId, pageable);
         Page<PaaResponseDtoWithMetdata> paaResponseDtoWithMetdata=paas.map(PaaMapper.INSTANCE::toDtoWithMetadata);
         return ResponseEntity.ok(paaResponseDtoWithMetdata);
+    }
+
+    @GetMapping("/details/{paaId}")
+    public ResponseEntity<TaskDetailsDTO> getPaaWithTasks(@PathVariable Integer paaId) {
+        try {
+            TaskDetailsDTO response = flowableService.getPaaWithTasks(paaId);
+            return ResponseEntity.ok(response);
+        } catch (PaaNotFound | AcNotFound e) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
 }
