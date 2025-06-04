@@ -13,4 +13,6 @@ public interface TemplateService {
   TemplateResponse getTemplate(String templateName);
 
   List<TemplateResponse> getTemplates();
+
+  void deleteTemplate(String templateName);
 }

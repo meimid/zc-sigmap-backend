@@ -2,9 +2,39 @@ package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 public class DynaDocsSpecifications {
+
+  public static Specification<DynaDocs> latestVersionPerId() {
+    return (root, query, cb) -> {
+      query.distinct(true);
+
+      Subquery<Integer> subquery = query.subquery(Integer.class);
+      Root<DynaDocs> subRoot = subquery.from(DynaDocs.class);
+      subquery
+          .select(cb.max(subRoot.get("dynaDocsVer")))
+          .where(cb.equal(subRoot.get("dynaDocsId"), root.get("dynaDocsId")));
+
+      return cb.equal(root.get("dynaDocsVer"), subquery);
+    };
+  }
+
+  public static Specification<DynaDocs> latestById(Integer dynaDocsId) {
+    return (root, query, cb) -> {
+      Subquery<Integer> subquery = query.subquery(Integer.class);
+      Root<DynaDocs> subRoot = subquery.from(DynaDocs.class);
+      subquery
+          .select(cb.max(subRoot.get("dynaDocsVer")))
+          .where(cb.equal(subRoot.get("dynaDocsId"), dynaDocsId));
+
+      return cb.and(
+          cb.equal(root.get("dynaDocsId"), dynaDocsId),
+          cb.equal(root.get("dynaDocsVer"), subquery));
+    };
+  }
 
   public static Specification<DynaDocs> search(String search) {
     return (root, query, criteriaBuilder) -> {

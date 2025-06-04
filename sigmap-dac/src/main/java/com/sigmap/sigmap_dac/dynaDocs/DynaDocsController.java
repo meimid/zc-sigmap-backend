@@ -15,9 +15,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -45,6 +47,22 @@ public class DynaDocsController {
       DynaDocsQuery query, Pageable pageable) {
     Page<DynaDocs> dynaDocs = dynaDocsService.findAll(query.toSpecification(), pageable);
     Page<DynaDocsResponse> dynaDocsResponse = dynaDocs.map(DynaDocsMapper.INSTANCE::map);
+
+    return ResponseEntity.ok(dynaDocsResponse);
+  }
+
+  @GetMapping("/{dynaDocsId}")
+  public ResponseEntity<DynaDocsResponse> getDynaDocsById(
+      @PathVariable Integer dynaDocsId, @RequestParam(required = false) Integer version) {
+    if (version == null) {
+      DynaDocs dynaDocs = dynaDocsService.findLatestById(dynaDocsId).orElseThrow();
+      DynaDocsResponse dynaDocsResponse = DynaDocsMapper.INSTANCE.map(dynaDocs);
+
+      return ResponseEntity.ok(dynaDocsResponse);
+    }
+
+    DynaDocs dynaDocs = dynaDocsService.findById(dynaDocsId, version).orElseThrow();
+    DynaDocsResponse dynaDocsResponse = DynaDocsMapper.INSTANCE.map(dynaDocs);
 
     return ResponseEntity.ok(dynaDocsResponse);
   }

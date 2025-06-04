@@ -27,12 +27,19 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
   @Override
   public Page<DynaDocs> findAll(Specification<DynaDocs> spec, Pageable pageable) {
+    spec = spec.and(DynaDocsSpecifications.latestVersionPerId());
     return dynaDocsRepository.findAll(spec, pageable);
   }
 
   @Override
   public Optional<DynaDocs> findOne(Specification<DynaDocs> specification) {
     return dynaDocsRepository.findOne(specification);
+  }
+
+  @Override
+  public Optional<DynaDocs> findLatestById(Integer dynaDocId) {
+    Specification<DynaDocs> spec = DynaDocsSpecifications.latestById(dynaDocId);
+    return dynaDocsRepository.findOne(spec);
   }
 
   @Override

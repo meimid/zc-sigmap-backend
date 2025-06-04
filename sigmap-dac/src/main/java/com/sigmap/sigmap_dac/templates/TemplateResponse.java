@@ -15,4 +15,6 @@ public class TemplateResponse {
   private String mimeType;
 
   private Long size;
+
+  private long lastModified;
 }

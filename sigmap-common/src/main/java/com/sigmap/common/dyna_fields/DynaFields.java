@@ -1,8 +1,11 @@
 package com.sigmap.common.dyna_fields;
 
 import com.sigmap.common.dyna_docs.DynaDocs;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -76,4 +79,7 @@ public class DynaFields {
         updatable = false),
   })
   private DynaDocs dynaDocs;
+
+  @OneToMany(mappedBy = "dynaFields")
+  private Set<DynaFieldsDetails> dynaFieldsDetails = new HashSet<>();
 }

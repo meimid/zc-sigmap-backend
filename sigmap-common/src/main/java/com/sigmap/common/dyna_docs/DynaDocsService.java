@@ -35,7 +35,7 @@ public interface DynaDocsService {
   long count(Specification<DynaDocs> specification);
 
   /**
-   * Retrieves an Agpm entity by its ID and version.
+   * Retrieves an DynaDocs entity by its ID and version.
    *
    * @param dynaDocId The ID
    * @param dynaDocVer The version
@@ -43,6 +43,15 @@ public interface DynaDocsService {
    * @throws DynaDocNotFound if the Agpm with the specified ID and version is not found
    */
   Optional<DynaDocs> findById(Integer dynaDocId, Integer dynaDocVer) throws DynaDocNotFound;
+
+  /**
+   * Retrieves the latest version of an DynaDocs entity by its ID.
+   *
+   * @param dynaDocId The ID
+   * @return The DynaDoc entity if found
+   * @throws DynaDocNotFound if the Agpm with the specified ID and version is not found
+   */
+  Optional<DynaDocs> findLatestById(Integer dynaDocId);
 
   /**
    * Saves a DynaDoc entity to the database.

@@ -130,7 +130,23 @@ public class TemplateServiceImpl implements TemplateService {
     templateResponse.setFileName(file.getName());
     templateResponse.setMimeType(mimeType);
     templateResponse.setSize(file.length());
+    templateResponse.setLastModified(file.lastModified());
 
     return templateResponse;
+  }
+
+  @Override
+  public void deleteTemplate(String templateName) {
+    if (!exists(templateName)) {
+      return;
+    }
+
+    Path templatePath = Paths.get(basePath, templateName);
+
+    try {
+      Files.delete(templatePath);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }
