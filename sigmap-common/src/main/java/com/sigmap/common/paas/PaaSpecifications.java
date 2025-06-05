@@ -162,4 +162,7 @@ public class PaaSpecifications {
             return criteriaBuilder.equal(root.get("version"), subquery);
         };
     }
+    public static Specification<Paa> paaAc(Integer acId) {
+        return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
+    }
 }

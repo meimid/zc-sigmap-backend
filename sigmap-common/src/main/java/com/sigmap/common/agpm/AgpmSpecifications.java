@@ -109,6 +109,10 @@ public class AgpmSpecifications {
         return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
     }
 
+    public static Specification<Agpm> agpmAc(Integer acId) {
+        return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
+    }
+
     public static Specification<Agpm> isLatestVersion() {
         return (root, query, criteriaBuilder) -> {
             Subquery<Integer> subquery = query.subquery(Integer.class);
