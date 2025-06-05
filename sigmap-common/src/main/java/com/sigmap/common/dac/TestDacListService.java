@@ -7,13 +7,18 @@ import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
+
 import java.util.*;
 import java.util.stream.Collectors;
+
+import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.xwpf.usermodel.XWPFDocument;
-import org.apache.poi.xwpf.usermodel.XWPFRun;
+import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -25,6 +30,8 @@ public class TestDacListService {
     private final DacDocsRepository dacDocsRepository;
     private final DynaDocsRepository dynaDocsRepository;
     private final DacRepository dacRepository;
+    private final DynaFieldsRepository dynaFieldsRepository;
+    private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
 
 
     public List<String> generateDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -57,8 +64,12 @@ public class TestDacListService {
 
         List<String> generatedFilePaths = new ArrayList<>();
 
+        Integer docOreder =0;
         // Step 3: Process each document in order
         for (DynaDocs dynaDoc : dynaDocsList) {
+            log.info("docOreder initial : {}", docOreder);
+            docOreder=docOreder+1;
+            log.info("docOreder after increment : {}", docOreder);
             String templateFileName = dynaDoc.getTemplateFileName();
             log.info("Processing DynaDocs ID: {}, Version: {}, Template: {}",
                     dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer(), templateFileName);
@@ -73,9 +84,12 @@ public class TestDacListService {
                  XWPFDocument document = new XWPFDocument(fis)) {
 
                 // Create bookmark map with values from DacDocs, respecting field order
-                Map<String, String> bookmarks = createBookmarkMap(
-                        dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
+                // Create bookmark map for single-value fields
+                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
                 log.info("//////////////: {}",bookmarks);
+
+                // Handle multi-value fields (table and list bookmarks)
+                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
 
                 // Replace bookmarks in the document
                 replaceBookmarks(document, bookmarks);
@@ -83,7 +97,7 @@ public class TestDacListService {
 
 
                 // Save the generated document
-                String outputFilePath = saveTempDocument(document, templateFileName, customDirPath);
+                String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, docOreder);
                 generatedFilePaths.add(outputFilePath);
                 log.info("Generated document: {}", outputFilePath);
 
@@ -161,33 +175,93 @@ public class TestDacListService {
         return bookmarks;
     }
 
+    /**
+     * Replaces bookmarks in the document with values from the provided map.
+     * If a bookmark is not found in paragraphs, attempts to write in table cells as a fallback.
+     */
     private void replaceBookmarks(XWPFDocument document, Map<String, String> bookmarks) {
-        // Ne traiter que les paragraphes qui contiennent potentiellement des signets
+        // Loop through all paragraphs in the document
         document.getParagraphs().stream()
                 .filter(paragraph -> paragraph.getCTP().getBookmarkStartList() != null
                         && !paragraph.getCTP().getBookmarkStartList().isEmpty())
                 .forEach(paragraph -> {
-                    // Pour chaque signet trouvé dans le paragraphe
+                    // For each bookmark found in the paragraph
                     paragraph.getCTP().getBookmarkStartList().forEach(bookmark -> {
                         String bookmarkName = bookmark.getName();
-                        // Si le nom du signet est dans notre Map
+                        // If the bookmark name is in our map
                         if (bookmarks.containsKey(bookmarkName)) {
-                            // Remplacer le texte dans le premier run du paragraphe
+                            // Create a run and set the text to the bookmark value
                             XWPFRun run = paragraph.createRun();
                             run.setText(bookmarks.get(bookmarkName));
+                            // Insert the run before the bookmark in the paragraph
                             paragraph.getCTP().getDomNode().insertBefore(run.getCTR().getDomNode(), bookmark.getDomNode());
                         }
                     });
                 });
+        // Fallback: For any bookmark not found in paragraphs, try to write in table cells
+        for (String bookmarkName : bookmarks.keySet()) {
+            if (!isBookmarkInParagraphs(document, bookmarkName)) {
+                // If not found in paragraphs, write in table cell
+                writeSingleRowAtBkInTbl(document, bookmarkName, bookmarks.get(bookmarkName));
+            }
+        }
     }
-
-    private String saveTempDocument(XWPFDocument document, String templateFileName, String customDirPath) {
+    /**
+     * Checks if a bookmark exists in any paragraph in the document.
+     */
+    private boolean isBookmarkInParagraphs(XWPFDocument document, String bookmarkName) {
+        // Loop through all paragraphs
+        for (XWPFParagraph paragraph : document.getParagraphs()) {
+            // Check if the paragraph contains bookmarks
+            if (paragraph.getCTP().getBookmarkStartList() != null) {
+                for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
+                    // If the bookmark name matches, return true
+                    if (bookmarkName.equals(bookmark.getName())) {
+                        return true;
+                    }
+                }
+            }
+        }
+        // Not found
+        return false;
+    }
+    /**
+     * Fallback: Write a value at a bookmark inside a table cell if not found in paragraphs.
+     */
+    private void writeSingleRowAtBkInTbl(XWPFDocument document, String bookmarkName, String bookmarkValue) {
+        // Loop through all tables in the document
+        for (XWPFTable table : document.getTables()) {
+            // Loop through all rows in the table
+            for (XWPFTableRow row : table.getRows()) {
+                // Loop through all cells in the row
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    // Loop through all paragraphs in the cell
+                    for (XWPFParagraph paragraph : cell.getParagraphs()) {
+                        // Check if the paragraph contains bookmarks
+                        if (paragraph.getCTP().getBookmarkStartList() != null) {
+                            for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
+                                // If the bookmark name matches
+                                if (bookmarkName.equals(bookmark.getName())) {
+                                    // Remove the first paragraph (optional, to clear old content)
+                                    cell.removeParagraph(0);
+                                    // Set the cell text to the bookmark value
+                                    cell.setText(bookmarkValue);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    private String saveTempDocument(XWPFDocument document, String templateFileName, String customDirPath,Integer docOrder) {
         File customDir = new File(customDirPath);
         if (!customDir.exists()) {
             customDir.mkdirs();
         }
 
-        String outputFileName = templateFileName.replace(".docx", "_" + System.currentTimeMillis() + ".docx");
+        String outputFileName = templateFileName.replace(".docx", "_" + docOrder + ".docx");
         File tempFile = new File(customDir, outputFileName);
 
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -197,5 +271,141 @@ public class TestDacListService {
         }
 
         return tempFile.getAbsolutePath();
+    }
+    /**
+     * This method processes both list and table type fields and inserts the corresponding tables into the document.
+     * - For list fields: generates a table with 1 column (each value in a row)
+     * - For table fields: generates a table with columns as defined in dyna_fields_details and rows from dac_docs_details
+     */
+    private void processTableAndListBookmarks(XWPFDocument document, Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer) {
+
+        // Fetch all DynaFields for the document template and version
+        List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
+
+        for (DynaFields dynaField : dynaFieldsList) {
+            // Get the type of the field (e.g., 2 for list, 3 for table)
+            int typeId = dynaField.getType_id().getId();
+            // Get the bookmark name for this field
+            String bookmarkName = dynaField.getName();
+
+            if (typeId == 2) { // List type
+                // Fetch all values for this list field from the repository
+                List<String> values = dacDocsRepository.findListValuesForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+                // If there are values, insert a single-column table at the bookmark
+                if (!values.isEmpty()) {
+                    insertSingleColumnTableAtBookmark(document, bookmarkName, values);
+                }
+            } else if (typeId == 6) { // Table type
+
+                log.info("Table type : {} and code {} " , dynaField.getType_id().getCode(),typeId);
+                // Fetch all column definitions for this table field
+
+                List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
+                log.info("Fetch all column definitions for this table field {} " , columns.toString());
+                log.info("Fetch all column sizes for this table field {} " , columns.size());
+                // Fetch all row data for this table field
+                List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+
+                log.info("map of reows ---- {} " , rows);
+                // If there are columns and rows, insert a multi-column table at the bookmark
+                if (!columns.isEmpty() && !rows.isEmpty()) {
+                    insertMultiColumnTableAtBookmark(document, bookmarkName, columns, rows);
+                }
+            }
+        }
+    }
+    /**
+     * Inserts a single-column table at the location of the given bookmark, with each value in a new row.
+     */
+    private void insertSingleColumnTableAtBookmark(XWPFDocument document, String bookmarkName, List<String> values) {
+        // Loop through all paragraphs in the document
+        for (XWPFParagraph paragraph : document.getParagraphs()) {
+            // Check if the paragraph contains bookmarks
+            if (paragraph.getCTP().getBookmarkStartList() != null) {
+                // Loop through all bookmarks in the paragraph
+                for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
+                    // If the bookmark name matches
+                    if (bookmarkName.equals(bookmark.getName())) {
+                        // Get the XML cursor at the end of the paragraph
+                        org.apache.xmlbeans.XmlCursor cursor = paragraph.getCTP().newCursor();
+                        cursor.toEndToken();
+                        // Insert a new table at the cursor position
+                        XWPFTable table = document.insertNewTbl(cursor);
+                        // For each value, create a new row and set the cell text
+                        for (String value : values) {
+                            XWPFTableRow row = table.createRow();
+                            row.getCell(0).setText(value);
+                        }
+                        // Optionally, you could remove the original paragraph if needed
+                        // document.removeBodyElement(document.getPosOfParagraph(paragraph));
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Inserts a multi-column table at the location of the given bookmark, with columns and rows as provided.
+     */
+    private void insertMultiColumnTableAtBookmark(XWPFDocument document, String bookmarkName, List<DynaFieldsDetails> columns, List<Map<String, String>> rows) {
+        // Loop through all paragraphs in the document
+        for (XWPFParagraph paragraph : document.getParagraphs()) {
+            // Check if the paragraph contains bookmarks
+            if (paragraph.getCTP().getBookmarkStartList() != null) {
+                // Loop through all bookmarks in the paragraph
+                for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
+                    log.info("Loop through all bookmarks in the paragraph {} " , bookmark.getName());
+                    // If the bookmark name matches
+                    if (bookmarkName.equals(bookmark.getName())) {
+                        log.info("in condition of bookmark name matches  {} " , bookmark.getName());
+                        // Get the XML cursor at the end of the paragraph
+                        org.apache.xmlbeans.XmlCursor cursor = paragraph.getCTP().newCursor();
+                        cursor.toParent(); // Move to the parent (the body)
+                        cursor.toEndToken(); // Move to the end of the body
+                        // Insert a new table at the cursor position (should now be valid)
+                        XWPFTable table = document.insertNewTbl(cursor);
+                        log.info("table ..............  {} " , table);
+
+                        if (table == null) {
+                            throw new RuntimeException("Failed to insert table: table is null. Check cursor position.");
+                        }
+                        // Create the header row and set the column names
+                        XWPFTableRow headerRow = table.createRow();
+                        log.info("columns.size()..............  {} " , columns.size());
+                        for (int i = 0; i < columns.size(); i++) {
+
+                            XWPFTableCell cell = headerRow.createCell();
+
+                            cell.setText(columns.get(i).getColumnName());
+
+                            log.info(" indexe --++ {}",i);
+                            log.info(" headerRow.getCell(i) -- {}",headerRow.createCell());
+                           // headerRow.getCell(i).setText(columns.get(i).getColumnName());
+                            log.info(" indexe --++ {}",i);
+
+
+
+
+                            log.info(" headerRow.getCell(i).setText(){}");
+                            log.info(" indexe --++ {}",columns.get(i));
+                           log.info(" coloumn nanme {}",columns.get(i).getColumnName());
+                        }
+                        log.info(" after coloumn nanme **********");
+                        // For each row of data, create a new table row and set cell values
+                        for (Map<String, String> rowData : rows) {
+                            XWPFTableRow row = table.createRow();
+                            for (int i = 0; i < columns.size(); i++) {
+                                String colName = columns.get(i).getColumnName();
+                                row.getCell(i).setText(rowData.getOrDefault(colName, ""));
+                            }
+                        }
+                        // Optionally, you could remove the original paragraph if needed
+                        // document.removeBodyElement(document.getPosOfParagraph(paragraph));
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
