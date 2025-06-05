@@ -270,6 +270,7 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public List<RefParam> findByRefType(Integer refTypeId) throws RefTypeNotFound {
+        refTypeService.findById(refTypeId);
         Specification<RefType> refTypeSpec = RefTypeSpecifications.id(refTypeId)
                 .and(RefTypeSpecifications.systemType());
         refTypeService.findOne(refTypeSpec).orElseThrow(() -> new RefTypeNotFound("", refTypeId));
