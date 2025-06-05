@@ -309,6 +309,13 @@ public class PpmServiceImpl implements PpmService {
                 newPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
             }
 
+            if (request.getModePassation() != null) {
+                newPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
+                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getModePassation().getId() + " not found")));
+            } else {
+                newPpm.setModePassation(existingPpm.getModePassation()); // Preserve existing status
+            }
+
             if (request.getAcId() != null) {
                 Ac ac = acRepository.findById(request.getAcId())
                         .orElseThrow(() -> new RuntimeException("Ac with ID " + request.getAcId() + " not found"));
@@ -331,6 +338,13 @@ public class PpmServiceImpl implements PpmService {
                         .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
             } else {
                 existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
+            }
+
+            if (request.getModePassation() != null) {
+                existingPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
+                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getModePassation().getId() + " not found")));
+            } else {
+                existingPpm.setModePassation(existingPpm.getModePassation()); // Preserve existing status
             }
 
             if (request.getAcId() != null) {
@@ -781,6 +795,7 @@ public class PpmServiceImpl implements PpmService {
         baseRequest.setAnnee(request.getAnnee());
         baseRequest.setBudgetEstime(request.getBudgetEstime());
         baseRequest.setStatus(request.getStatus());
+        baseRequest.setModePassation(request.getModePassation());
         baseRequest.setAcId(request.getAcId());
         baseRequest.setDocIds(request.getDocIds());
 
@@ -943,6 +958,7 @@ public class PpmServiceImpl implements PpmService {
             requestStatus = refParamRepository.findById(request.getStatus().getId()).orElse(null);
         }
         tempPpm.setStatus(requestStatus != null ? requestStatus : existingPpm.getStatus());
+        tempPpm.setModePassation(requestStatus != null ? requestStatus : existingPpm.getModePassation());
         Ac requestAc = null;
         if (request.getAcId() != null) {
             requestAc = acRepository.findById(request.getAcId()).orElse(null);
@@ -1091,7 +1107,10 @@ public class PpmServiceImpl implements PpmService {
 
                         // If the hashes match and no files are present, there are no substantive changes
                         boolean hasFiles = false;
-                        if (realisationDto instanceof RealisationWithLotsRequestDto || realisationDto.getRealisationFiles().size() != 0 ) {
+
+                        if (realisationDto instanceof RealisationWithLotsRequestDto
+                                || (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty())) {
+
                             RealisationBaseRequestDto withLotsDto = (RealisationBaseRequestDto) realisationDto;
                             hasFiles = withLotsDto.getRealisationFiles() != null && !withLotsDto.getRealisationFiles().isEmpty();
                         }
@@ -2177,6 +2196,7 @@ public class PpmServiceImpl implements PpmService {
                 Objects.equals(ppm1.getAnnee(), ppm2.getAnnee()) &&
                 Objects.equals(ppm1.getBudgetEstime(), ppm2.getBudgetEstime()) &&
                 Objects.equals(getRefParamId(ppm1.getStatus()), getRefParamId(ppm2.getStatus())) &&
+                Objects.equals(getRefParamId(ppm1.getModePassation()), getRefParamId(ppm2.getModePassation())) &&
                 Objects.equals(getAcId(ppm1.getAc()), getAcId(ppm2.getAc()));
     }
 
@@ -2359,6 +2379,9 @@ public class PpmServiceImpl implements PpmService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         ppm.setStatus(defaultStatus);
+        RefParam modePassation = refParamRepository.findById(request.getModePassation().getId())
+                .orElseThrow(() -> new PaaDefaultStatus("Mode Passation not found"));
+        ppm.setModePassation(modePassation);
         setRef(ppm);
         Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
         if (acIdOptional.isPresent()) {

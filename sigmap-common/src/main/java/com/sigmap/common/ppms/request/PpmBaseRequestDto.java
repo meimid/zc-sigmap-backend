@@ -30,7 +30,7 @@ public class PpmBaseRequestDto {
     private Integer acId;
     private BigDecimal budgetEstime;
     private RefParam status;
-    
+    private RefParam modePassation;
     // For updating existing or creating new realisations with versioning
     private List<RealisationBaseRequestDto> realisations;
     

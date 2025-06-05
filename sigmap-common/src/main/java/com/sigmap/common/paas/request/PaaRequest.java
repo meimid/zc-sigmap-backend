@@ -28,6 +28,8 @@ public class PaaRequest {
 
     private RefParam status;
 
+    private RefParam modePassation;
+
     private List<CompositeId> realisationIds;
     // toDO: nejah
     private List<MultipartFile> files;

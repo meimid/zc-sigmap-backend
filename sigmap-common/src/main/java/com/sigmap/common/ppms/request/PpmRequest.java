@@ -25,5 +25,7 @@ public class PpmRequest {
 
     private RefParam status;
 
+    private RefParam modePassation;
+
     private List<RealisationRequest> realisations;
 }

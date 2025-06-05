@@ -2,6 +2,7 @@ package com.sigmap.common.paas.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
 
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class PaaResponseDtoWithMetdata {
     private AcResponseDto ac;
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
+    private RefParam modePassation;
     private String processInstanceId;
     private BaseEntityResponse metadata;
 }

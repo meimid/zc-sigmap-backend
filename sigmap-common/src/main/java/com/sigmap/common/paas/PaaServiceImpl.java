@@ -191,7 +191,7 @@ public class PaaServiceImpl implements PaaService {
 
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
-
+        paa.setModePassation(request.getModePassation());
         // Set the annee field as a string with the current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
         log.info("Setting annee to: {}", currentYear); // Debug log
@@ -314,7 +314,7 @@ public class PaaServiceImpl implements PaaService {
         existingPaa.setNom(request.getNom());
         existingPaa.setAnnee(existingPaa.getAnnee());
         existingPaa.setBudgetEstime(request.getBudgetEstime());
-
+        existingPaa.setModePassation(request.getModePassation());
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
                     .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
@@ -758,6 +758,8 @@ public class PaaServiceImpl implements PaaService {
         tempPaa.setProcessInstanceId(existingPaa.getProcessInstanceId());
         tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
         tempPaa.setStatus(existingPaa.getStatus());
+        tempPaa.setModePassation(request.getModePassation() != null ? request.getModePassation() : existingPaa.getModePassation());
+
         // Handle AC
         Ac requestAc = null;
         if (request.getAcId() != null) {
@@ -1676,7 +1678,7 @@ public class PaaServiceImpl implements PaaService {
         if (paa1 == paa2) return true;
         if (paa1 == null || paa2 == null) return false;
 
-        return Objects.equals(paa1.getRef(), paa2.getRef()) && Objects.equals(paa1.getNom(), paa2.getNom()) && Objects.equals(paa1.getAnnee(), paa2.getAnnee()) && Objects.equals(paa1.getBudgetEstime(), paa2.getBudgetEstime()) && Objects.equals(getRefParamId(paa1.getStatus()), getRefParamId(paa2.getStatus())) && Objects.equals(getAcId(paa1.getAc()), getAcId(paa2.getAc()));
+        return Objects.equals(paa1.getRef(), paa2.getRef()) && Objects.equals(paa1.getNom(), paa2.getNom()) && Objects.equals(paa1.getAnnee(), paa2.getAnnee()) && Objects.equals(paa1.getBudgetEstime(), paa2.getBudgetEstime()) && Objects.equals(getRefParamId(paa1.getStatus()), getRefParamId(paa2.getStatus())) && Objects.equals(getRefParamId(paa1.getModePassation()), getRefParamId(paa2.getModePassation())) && Objects.equals(getAcId(paa1.getAc()), getAcId(paa2.getAc()));
     }
 
     /**
@@ -1842,6 +1844,8 @@ public class PaaServiceImpl implements PaaService {
         paa.setVersion(paaVersion);
 //        paa.setRef(request.getRef());
         paa.setNom(request.getNom());
+        paa.setModePassation(request.getModePassation());
+
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
         log.info("Setting annee to: {}", currentYearStr);
         paa.setAnnee(currentYearStr);

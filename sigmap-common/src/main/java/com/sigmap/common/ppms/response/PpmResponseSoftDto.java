@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
 
@@ -16,4 +17,5 @@ public class PpmResponseSoftDto {
     private AcResponseDto ac;
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
+    private RefParam modePassation;
 }

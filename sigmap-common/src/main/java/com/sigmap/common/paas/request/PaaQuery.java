@@ -20,6 +20,7 @@ public class PaaQuery {
     private String annee;
     private BigDecimal budgetEstime;
     private RefParam status;
+    private RefParam modePassation;
     private boolean deleted;
 
     /**

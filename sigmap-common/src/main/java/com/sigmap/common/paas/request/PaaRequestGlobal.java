@@ -21,6 +21,7 @@ public class PaaRequestGlobal {
     private String annee;
     private BigDecimal budgetEstime;
     private RefParam status;
+    private RefParam modePassation;
     private Integer acId;
     private List<Integer> docIds;
     private List<RealisationRequestForPaa> realisations = new ArrayList<>();

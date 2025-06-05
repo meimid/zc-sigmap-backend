@@ -26,6 +26,7 @@ public class PaaResponseWithRealisations {
     private AcResponseDto ac;
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
+    private RefParam modePassation;
     private List<DocsResponseDTO> docs;
     // Using the specialized Realisation DTO to avoid circular references
     private List<RealisationResponseDtoForPaa> realisations;
