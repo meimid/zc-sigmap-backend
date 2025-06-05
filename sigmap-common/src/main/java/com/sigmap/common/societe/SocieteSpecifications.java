@@ -17,7 +17,8 @@ public class SocieteSpecifications {
                     criteriaBuilder.like(root.get("nni"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("categorieSoumissionnaireId"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%")
+                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
+                    criteriaBuilder.like(join.get("code"),"%" + search + "%")
 
             );
         };
