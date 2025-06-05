@@ -829,7 +829,7 @@ public class AgpmServiceImpl implements AgpmService {
         acService.findById(acId);
         Specification<Agpm> agpmSpec = Specification.where(
                 AgpmSpecifications.deleted(false)
-                        .and(AgpmSpecifications.isLatestVersion())
+                        .and(AgpmSpecifications.isLatestVersion().and(AgpmSpecifications.agpmAc(acId)))
         );
         return repository.findAll(agpmSpec, pageable);
 

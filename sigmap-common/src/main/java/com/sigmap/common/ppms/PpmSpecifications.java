@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
@@ -172,5 +173,8 @@ public class PpmSpecifications {
                             criteriaBuilder.equal(subRoot.get("isDeleted"), false));
             return criteriaBuilder.equal(root.get("version"), subquery);
         };
+    }
+    public static Specification<Ppm> ppmAc(Integer acId) {
+        return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
     }
 }

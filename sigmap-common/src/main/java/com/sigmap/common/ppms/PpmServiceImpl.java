@@ -4135,7 +4135,7 @@ public class PpmServiceImpl implements PpmService {
         acService.findById(acId);
         Specification<Ppm> ppmSpec = Specification.where(
                 PpmSpecifications.deleted(false)
-                        .and(PpmSpecifications.isLatestVersion())
+                        .and(PpmSpecifications.isLatestVersion().and(PpmSpecifications.ppmAc(acId)))
         );
         return repository.findAll(ppmSpec, pageable);
     }

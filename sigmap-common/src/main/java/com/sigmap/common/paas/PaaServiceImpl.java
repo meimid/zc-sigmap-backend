@@ -2386,7 +2386,7 @@ public class PaaServiceImpl implements PaaService {
         acService.findById(acId);
         Specification<Paa> paaSpec = Specification.where(
                         PaaSpecifications.deleted(false)
-                        .and(PaaSpecifications.isLatestVersion())
+                        .and(PaaSpecifications.isLatestVersion().and(PaaSpecifications.paaAc(acId)))
         );
         return repository.findAll(paaSpec, pageable);
     }
