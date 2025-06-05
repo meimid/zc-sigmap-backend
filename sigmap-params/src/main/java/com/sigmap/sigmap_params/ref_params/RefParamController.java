@@ -481,4 +481,12 @@ public class RefParamController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+    @GetMapping("/tutel")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTutel() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(Constants.TUTEL);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 }

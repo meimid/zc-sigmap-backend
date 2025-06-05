@@ -17,6 +17,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import org.slf4j.Logger;
@@ -150,7 +151,7 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted {
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted, RefParamNotFound {
         Ac ac = acService.create(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
@@ -162,7 +163,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, UserAcDefaultStatus {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, UserAcDefaultStatus, RefParamNotFound {
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
