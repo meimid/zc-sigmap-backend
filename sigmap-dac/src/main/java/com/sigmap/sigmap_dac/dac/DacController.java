@@ -1,10 +1,6 @@
 package com.sigmap.sigmap_dac.dac;
 
-import com.sigmap.common.dac.DacListServiceImpl;
 import com.sigmap.common.dac.DacServiceImpl;
-import com.sigmap.common.dac.TestDacListService;
-import com.sigmap.common.dac.exeption.RequiredDacIDAndVersion;
-import com.sigmap.common.dac.exeption.RequiredPath;
 import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac.request.DacRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
@@ -23,8 +18,7 @@ import java.util.List;
 @RequestMapping("/api/dac")
 public class DacController {
 
-    private final DacServiceImpl dacService;
-    private final TestDacListService dacListService;
+    private final DacServiceImpl dacListService;
 
     @Value("${templateDac.dac.inputDocPath}")
     private String basePath;
@@ -32,29 +26,11 @@ public class DacController {
     @Value("${templateDac.dac.outputDocPath}")
     private String customDirPath;
 
-    public DacController(DacServiceImpl dacService, TestDacListService dacListService) {
-        this.dacService = dacService;
+    public DacController(DacServiceImpl dacListService) {
         this.dacListService = dacListService;
     }
 
     @PostMapping("/generate-doc")
-    public void replaceBookmarksAndGenerateDOC(@RequestBody DacRequest request) {
-
-        if (request.getDacId() == null || request.getDacVer() == null) {
-            throw new RequiredDacIDAndVersion();
-        }
-
-        if ((basePath == null || basePath.isEmpty()) || (customDirPath == null || customDirPath.isEmpty())) {
-            throw new RequiredPath();
-        }
-
-        // Step 1: Generate and get the output file
-        File pdfFile = dacService.replaceBookmarksAndGenerateDOC(request.getDacId(), request.getDacVer(),this.basePath, customDirPath);
-
-    }
-
-
-    @PostMapping("/generate-list-doc")
     public ResponseEntity<List<String>> replaceBookmarksAndGenerateListDOC(@RequestBody DacRequest request) {
         if (request.getDacId() == null || request.getDacVer() == null) {
             return ResponseEntity.badRequest()
