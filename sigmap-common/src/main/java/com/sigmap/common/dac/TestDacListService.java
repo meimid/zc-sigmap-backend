@@ -21,6 +21,8 @@ import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.springframework.stereotype.Service;
 
+import static org.testcontainers.shaded.org.apache.commons.lang3.StringUtils.lowerCase;
+
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -283,30 +285,28 @@ public class TestDacListService {
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
         for (DynaFields dynaField : dynaFieldsList) {
-            // Get the type of the field (e.g., 2 for list, 3 for table)
+            // Get the type of the field (e.g., 2 for list, 6 for table)
             int typeId = dynaField.getType_id().getId();
+            String typeCode = dynaField.getType_id().getCode();
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
-            if (typeId == 2) { // List type
+            //if (typeId == 2) { // List type
+            if (lowerCase(typeCode).equals("list") ) {
                 // Fetch all values for this list field from the repository
                 List<String> values = dacDocsRepository.findListValuesForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                 // If there are values, insert a single-column table at the bookmark
                 if (!values.isEmpty()) {
                     insertSingleColumnTableAtBookmark(document, bookmarkName, values);
                 }
-            } else if (typeId == 6) { // Table type
+            } //else if (typeId == 6) { // Table type
+            else if (lowerCase(typeCode).equals("table")) {
 
-                log.info("Table type : {} and code {} " , dynaField.getType_id().getCode(),typeId);
+                log.debug("Table type : {} and code {} " , dynaField.getType_id().getCode(),typeId);
                 // Fetch all column definitions for this table field
-
                 List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
-                log.info("Fetch all column definitions for this table field {} " , columns.toString());
-                log.info("Fetch all column sizes for this table field {} " , columns.size());
                 // Fetch all row data for this table field
                 List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-
-                log.info("map of reows ---- {} " , rows);
                 // If there are columns and rows, insert a multi-column table at the bookmark
                 if (!columns.isEmpty() && !rows.isEmpty()) {
                     insertMultiColumnTableAtBookmark(document, bookmarkName, columns, rows);
@@ -355,7 +355,7 @@ public class TestDacListService {
             if (paragraph.getCTP().getBookmarkStartList() != null) {
                 // Loop through all bookmarks in the paragraph
                 for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
-                    log.info("Loop through all bookmarks in the paragraph {} " , bookmark.getName());
+                    log.debug("Loop through all bookmarks in the paragraph {} " , bookmark.getName());
                     // If the bookmark name matches
                     if (bookmarkName.equals(bookmark.getName())) {
                         log.info("in condition of bookmark name matches  {} " , bookmark.getName());
@@ -372,36 +372,36 @@ public class TestDacListService {
                         }
                         // Create the header row and set the column names
                         XWPFTableRow headerRow = table.createRow();
-                        log.info("columns.size()..............  {} " , columns.size());
+                        // Sort columns by order ascending before creating the header
+                        columns = columns.stream()
+                                .sorted(Comparator.comparing(DynaFieldsDetails::getColumnPos))
+                                .collect(Collectors.toList());
                         for (int i = 0; i < columns.size(); i++) {
 
-                            XWPFTableCell cell = headerRow.createCell();
 
+                            XWPFTableCell cell;
+                            if (i == 0) {
+                                // The first cell is already created by createRow()
+                                cell = headerRow.getCell(0);
+                            } else {
+                                cell = headerRow.createCell();
+                            }
                             cell.setText(columns.get(i).getColumnName());
-
-                            log.info(" indexe --++ {}",i);
-                            log.info(" headerRow.getCell(i) -- {}",headerRow.createCell());
-                           // headerRow.getCell(i).setText(columns.get(i).getColumnName());
-                            log.info(" indexe --++ {}",i);
-
-
-
-
-                            log.info(" headerRow.getCell(i).setText(){}");
-                            log.info(" indexe --++ {}",columns.get(i));
-                           log.info(" coloumn nanme {}",columns.get(i).getColumnName());
                         }
-                        log.info(" after coloumn nanme **********");
+
                         // For each row of data, create a new table row and set cell values
                         for (Map<String, String> rowData : rows) {
                             XWPFTableRow row = table.createRow();
                             for (int i = 0; i < columns.size(); i++) {
-                                String colName = columns.get(i).getColumnName();
-                                row.getCell(i).setText(rowData.getOrDefault(colName, ""));
+                                XWPFTableCell cell;
+                                if (i == 0) {
+                                    cell = row.getCell(0);
+                                } else {
+                                    cell = row.createCell();
+                                }
+                                cell.setText(rowData.getOrDefault(columns.get(i).getColumnName(), ""));
                             }
                         }
-                        // Optionally, you could remove the original paragraph if needed
-                        // document.removeBodyElement(document.getPosOfParagraph(paragraph));
                         return;
                     }
                 }
