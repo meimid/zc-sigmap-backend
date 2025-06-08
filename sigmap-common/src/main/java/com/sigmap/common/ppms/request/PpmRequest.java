@@ -27,5 +27,7 @@ public class PpmRequest {
 
     private RefParam modePassation;
 
+    private String remarque;
+
     private List<RealisationRequest> realisations;
 }

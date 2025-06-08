@@ -192,6 +192,7 @@ public class PaaServiceImpl implements PaaService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
         paa.setModePassation(request.getModePassation());
+        paa.setRemarque(request.getRemarque());
         // Set the annee field as a string with the current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
         log.info("Setting annee to: {}", currentYear); // Debug log
@@ -315,6 +316,7 @@ public class PaaServiceImpl implements PaaService {
         existingPaa.setAnnee(existingPaa.getAnnee());
         existingPaa.setBudgetEstime(request.getBudgetEstime());
         existingPaa.setModePassation(request.getModePassation());
+        existingPaa.setRemarque(request.getRemarque());
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
                     .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
@@ -759,6 +761,7 @@ public class PaaServiceImpl implements PaaService {
         tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
         tempPaa.setStatus(existingPaa.getStatus());
         tempPaa.setModePassation(request.getModePassation() != null ? request.getModePassation() : existingPaa.getModePassation());
+        tempPaa.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPaa.getRemarque());
 
         // Handle AC
         Ac requestAc = null;
@@ -1678,7 +1681,14 @@ public class PaaServiceImpl implements PaaService {
         if (paa1 == paa2) return true;
         if (paa1 == null || paa2 == null) return false;
 
-        return Objects.equals(paa1.getRef(), paa2.getRef()) && Objects.equals(paa1.getNom(), paa2.getNom()) && Objects.equals(paa1.getAnnee(), paa2.getAnnee()) && Objects.equals(paa1.getBudgetEstime(), paa2.getBudgetEstime()) && Objects.equals(getRefParamId(paa1.getStatus()), getRefParamId(paa2.getStatus())) && Objects.equals(getRefParamId(paa1.getModePassation()), getRefParamId(paa2.getModePassation())) && Objects.equals(getAcId(paa1.getAc()), getAcId(paa2.getAc()));
+        return Objects.equals(paa1.getRef(), paa2.getRef())
+                && Objects.equals(paa1.getNom(), paa2.getNom())
+                && Objects.equals(paa1.getRemarque(), paa2.getRemarque())
+                && Objects.equals(paa1.getAnnee(), paa2.getAnnee())
+                && Objects.equals(paa1.getBudgetEstime(), paa2.getBudgetEstime())
+                && Objects.equals(getRefParamId(paa1.getStatus()), getRefParamId(paa2.getStatus()))
+                && Objects.equals(getRefParamId(paa1.getModePassation()), getRefParamId(paa2.getModePassation()))
+                && Objects.equals(getAcId(paa1.getAc()), getAcId(paa2.getAc()));
     }
 
     /**
@@ -1718,6 +1728,7 @@ public class PaaServiceImpl implements PaaService {
         sb.append("nom:").append(request.getNom() != null ? request.getNom() : "").append(";");
         sb.append("annee:").append(request.getAnnee() != null ? request.getAnnee() : "").append(";");
         sb.append("budgetEstime:").append(request.getBudgetEstime() != null ? request.getBudgetEstime() : "").append(";");
+        sb.append("remarque:").append(request.getRemarque() != null ? request.getRemarque() : "").append(";");
 
         if (request.getStatus() != null && request.getStatus().getId() != null) {
             sb.append("statusId:").append(request.getStatus().getId()).append(";");
@@ -1845,6 +1856,7 @@ public class PaaServiceImpl implements PaaService {
 //        paa.setRef(request.getRef());
         paa.setNom(request.getNom());
         paa.setModePassation(request.getModePassation());
+        paa.setRemarque(request.getRemarque());
 
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
         log.info("Setting annee to: {}", currentYearStr);

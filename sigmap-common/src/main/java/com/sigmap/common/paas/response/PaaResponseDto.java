@@ -18,5 +18,6 @@ public class PaaResponseDto {
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
     private RefParam modePassation;
+    private String remarque;
     private String processInstanceId;
 }

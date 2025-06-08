@@ -22,5 +22,6 @@ public class PpmResponseSoftDtoWithMetaData {
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
     private RefParamResponseDto modePassation;
+    private String remarque;
     private BaseEntityResponse metadata;
 }

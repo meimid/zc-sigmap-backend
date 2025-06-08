@@ -21,6 +21,7 @@ public class PpmResponseDto {
     private BigDecimal budgetEstime;
     private RefParamResponseDto status;
     private RefParamResponseDto modePassation;
+    private String remarque;
     private List<DocsResponseDTO> docs;
     private List<RealisationResponseDTO> realisations;
     private String processInstanceId;

@@ -43,6 +43,7 @@ public interface PpmMapper {
     @Mapping(target = "budgetEstime", source = "budgetEstime")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "remarque", source = "remarque")
     @Mapping(target = "realisations", source = "realisations")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")

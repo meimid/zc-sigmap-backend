@@ -24,6 +24,7 @@ public class PaaBaseRequestDto {
     private BigDecimal budgetEstime;
     private RefParam status;
     private RefParam modePassation;
+    private String remarque;
 
     // IDs for many-to-many relationships
     private Set<CompositeId> realisationIds;

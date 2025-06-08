@@ -56,6 +56,9 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "mode_passation_id")
     private RefParam modePassation;
 
+    @Column(name = "remarque", columnDefinition = "LONGTEXT")
+    private String remarque;
+
     @ManyToMany(mappedBy = "ppms")
     @JsonBackReference
     private List<Realisation> realisations;
