@@ -54,6 +54,13 @@ public class Paa extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "status_id")
     private RefParam status;
 
+    @ManyToOne
+    @JoinColumn(name = "mode_passation_id")
+    private RefParam modePassation;
+
+    @Column(name = "remarque", columnDefinition = "LONGTEXT")
+    private String remarque;
+
     @ManyToMany(mappedBy = "paas")
     @JsonBackReference
     private List<Realisation> realisations;
