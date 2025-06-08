@@ -1,7 +1,11 @@
 package com.sigmap.sigmap_ppm.services;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
@@ -59,6 +63,9 @@ public class PpmFlowableService {
 
     @Autowired
     private PpmService ppmService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
 
     // Utility method to check if the user has a specific role
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
@@ -145,7 +152,7 @@ public class PpmFlowableService {
     }
 
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) {
+    public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws PpmNotFound, AcNotFound {
         // Validate authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
@@ -225,6 +232,12 @@ public class PpmFlowableService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
+        // Add the AC ID from the Ppm entity
+        Integer acId = ppm.getAc() != null ? ppm.getAc().getId() : null;
+        if (acId != null) {
+            variables.put("acId", acId);
+        }
+
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
@@ -273,6 +286,7 @@ public class PpmFlowableService {
         response.setProcessInstanceId(processInstance.getId());
         response.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         response.setTaskId(initialTask.getId());
+        response.setAcId(acId);
         response.setStatus(String.format("Process %s started and task %s completed successfully", effectiveProcessKey, effectiveTaskKey));
 
         return response;
@@ -286,7 +300,7 @@ public class PpmFlowableService {
      * @throws PpmNotFound if the Ppm entity is not found
      */
     @jakarta.transaction.Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id) throws PpmNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws PpmNotFound, AcNotFound {
         Integer latestVersion = ppmService.findLatestVersionById(id);
         return startProcessInstance(id, latestVersion);
     }
@@ -314,7 +328,14 @@ public class PpmFlowableService {
             Integer version = (Integer) processVariables.getOrDefault("version", null);
 
             if (id != null && version != null) {
-                Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+                Optional<Ppm> ppmOptional = null;
+                try {
+                    ppmOptional = ppmService.findById(id, version);
+                } catch (PpmNotFound e) {
+                    throw new RuntimeException(e);
+                } catch (AcNotFound e) {
+                    throw new RuntimeException(e);
+                }
                 ppmOptional.ifPresent(ppm -> {
                     taskInfo.setId(id);
                     taskInfo.setVersion(version);
@@ -343,7 +364,7 @@ public class PpmFlowableService {
 
         return response;
     }
-    public TaskDetailsDTO getTaskDetails(String taskId) {
+    public TaskDetailsDTO getTaskDetails(String taskId) throws PpmNotFound, AcNotFound {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
@@ -432,7 +453,7 @@ public class PpmFlowableService {
 
 
     @Transactional
-    public TaskDTO validateTask(String taskId, ValidationRequest request) {
+    public TaskDTO validateTask(String taskId, ValidationRequest request) throws PpmNotFound, AcNotFound {
         // Authenticate user
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
@@ -747,36 +768,68 @@ public class PpmFlowableService {
         }
         return nextSteps;
     }
-    public TaskListResponseDTO getUserTasks() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken)) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("Invalid or missing JWT authentication");
-            return errorResponse;
-        }
 
+    /**
+     * Retrieves tasks assigned to the current user based on their candidate groups.
+     *
+     * @return TaskListResponseDTO with the user's tasks
+     */
+    public TaskListResponseDTO getUserTasks() {
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
-        // Get all candidate groups that match the user's roles
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the current user");
+            return new TaskListResponseDTO();
+        }
+        log.info("ac ids " + userAcIds);
+
+        // Get user's candidate groups
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
 
         if (userCandidateGroups.isEmpty()) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("User does not have any recognized roles");
-            return errorResponse;
+            log.warn("User does not have any recognized roles");
+            return new TaskListResponseDTO();
+        }
+        List<String> matchingProcessInstanceIds = new ArrayList<>();
+
+        for (Integer acId : userAcIds) {
+
+            List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                    .variableValueEquals("acId", acId)
+                    .list();
+            log.info("ac id " + acId);
+            log.info("nbr instance" + instances.size());
+            matchingProcessInstanceIds.addAll(
+                    instances.stream()
+                            .map(ProcessInstance::getId)
+                            .collect(Collectors.toList()));
         }
 
-        // Query tasks for all matching candidate groups
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskTenantId(TENANT_ID)
-                .taskCandidateGroupIn(userCandidateGroups)
-                .active()
-                .orderByTaskCreateTime().asc()
-                .list();
 
-        List<TaskDTO> taskList = tasks.stream().map(task -> {
+        List<Task> filteredTasks = new ArrayList<>();
+        int chunkSize = 1000;
+        for (int i = 0; i < matchingProcessInstanceIds.size(); i += chunkSize) {
+            List<String> chunk = matchingProcessInstanceIds.subList(i,
+                    Math.min(i + chunkSize, matchingProcessInstanceIds.size()));
+            filteredTasks.addAll(
+                    taskService.createTaskQuery()
+                            .taskTenantId(TENANT_ID)
+                            .taskCandidateGroupIn(userCandidateGroups)
+                            .processInstanceIdIn(List.of(chunk.toArray(new String[0])))
+                            .active()
+                            .orderByTaskCreateTime().desc()
+                            .list()
+            );
+        }
+        log.info("filteredTasks " + filteredTasks);
+
+
+        List<TaskDTO> taskList = filteredTasks.stream().map(task -> {
             TaskDTO taskInfo = new TaskDTO();
             taskInfo.setTaskId(task.getId());
             taskInfo.setTaskName(task.getName());
@@ -784,20 +837,24 @@ public class PpmFlowableService {
             taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
             taskInfo.setProcessInstanceId(task.getProcessInstanceId());
             taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+            taskInfo.setCandidateGroup(getCandidateGroup(task));
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
             Integer id = (Integer) processVariables.getOrDefault("id", null);
             Integer version = (Integer) processVariables.getOrDefault("version", null);
 
-            taskInfo.setCandidateGroup(getCandidateGroup(task));
             if (id != null && version != null) {
-                Optional<Ppm> ppmOptional = ppmService.findById(id, version);
-                ppmOptional.ifPresent(ppm -> {
-                    taskInfo.setId(id);
-                    taskInfo.setVersion(version);
-                    taskInfo.setNom(ppm.getNom());
-                    taskInfo.setRef(ppm.getRef());
-                });
+                try {
+                    Optional<Ppm> ppmOptional = ppmService.findById(id, version);
+                    ppmOptional.ifPresent(ppm -> {
+                        taskInfo.setId(id);
+                        taskInfo.setVersion(version);
+                        taskInfo.setNom(ppm.getNom());
+                        taskInfo.setRef(ppm.getRef());
+                    });
+                } catch ( AcNotFound | PpmNotFound e) {
+                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+                }
             }
 
             Map<String, Object> variables = new HashMap<>();
@@ -822,7 +879,7 @@ public class PpmFlowableService {
 
         return response;
     }
-   //  Helper method to extract variable name from condition expression
+    //  Helper method to extract variable name from condition expression
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
         // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
@@ -870,7 +927,7 @@ public class PpmFlowableService {
      * @throws PpmNotFound if the Ppm entity is not found
      */
     @Transactional
-    public TaskDetailsDTO getPpmWithTasks(Integer ppmId) throws PpmNotFound {
+    public TaskDetailsDTO getPpmWithTasks(Integer ppmId) throws PpmNotFound, AcNotFound {
         log.info("Récupération du PPM avec ID: {} et sa tâche associée", ppmId);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

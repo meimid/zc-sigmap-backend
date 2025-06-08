@@ -7,10 +7,7 @@ import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
-import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
-import com.sigmap.common.ppms.exception.PpmIdNotFound;
-import com.sigmap.common.ppms.exception.PpmNotFound;
-import com.sigmap.common.ppms.exception.UpdateDeletedPpm;
+import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -50,6 +47,12 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("realisation.notfound",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(PpmNotAssociatedWithUserAcException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNotAssociatedWithUserAc(PpmNotAssociatedWithUserAcException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)

@@ -48,7 +48,7 @@ public class PpmFlowableController {
      * @throws PpmNotFound if the Ppm entity is not found
      */
     @PostMapping("/start/{id}")
-    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws PpmNotFound {
+    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws PpmNotFound, AcNotFound {
         log.info("Starting process instance for Ppm ID: {}", id);
         ProcessStartResponseDTO response = ppmFlowableService.startProcessInstance(id);
         return ResponseEntity.ok(response);
@@ -74,7 +74,7 @@ public class PpmFlowableController {
      * @throws PpmNotFound if the associated Ppm entity is not found
      */
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) {
+    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws PpmNotFound, AcNotFound {
         log.info("Retrieving details for task ID: {}", taskId);
         TaskDetailsDTO response = ppmFlowableService.getTaskDetails(taskId);
         return ResponseEntity.ok(response);

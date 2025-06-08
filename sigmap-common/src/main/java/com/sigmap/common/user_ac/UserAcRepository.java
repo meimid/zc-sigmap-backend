@@ -37,7 +37,10 @@ public interface UserAcRepository extends JpaRepository<UserAc, UserAcId>,
 
     List<UserAc> findByUserIdAndIsDeletedFalse(String userId);
     @Query("SELECT ua.ac.id FROM UserAc ua WHERE ua.userId = :userId AND ua.isDeleted = false")
-    List<Long> findAcIdsByUserIdAndIsDeletedFalse(@Param("userId") String userId);
+    List<Integer> findAcIdsByUserIdAndIsDeletedFalse(@Param("userId") String userId);
+
+    @Query("SELECT ua FROM UserAc ua WHERE ua.userId = :userId AND ua.isDeleted = false")
+    List<UserAc> findAcByUserIdAndIsDeletedFalse(@Param("userId") String userId);
 
 
 

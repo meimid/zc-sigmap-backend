@@ -18,4 +18,5 @@ public class AgpmRequest {
     private List<Integer> docIds;
     private String remarque;
     private List<MultipartFile> files;
+    private Integer acId;
 }

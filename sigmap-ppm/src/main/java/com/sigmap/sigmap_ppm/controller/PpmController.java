@@ -75,7 +75,7 @@ public class PpmController {
      */
     @GetMapping
     public ResponseEntity<Page<PpmResponseDto>> findAll(
-            PpmQuery query, Pageable pageable) {
+            PpmQuery query, Pageable pageable) throws PpmNotFound, AcNotFound {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getPrincipal();
@@ -111,7 +111,7 @@ public class PpmController {
     @GetMapping("/{ppmId}/{ppmVer}")
     public ResponseEntity<PpmResponseDto> findById(
             @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer) {
+            @PathVariable Integer ppmVer) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
@@ -276,7 +276,7 @@ public class PpmController {
     @GetMapping("/{ppmId}/{ppmVer}/realisations")
     public ResponseEntity<List<RealisationResponse>> getPpmRealisations(
             @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer) {
+            @PathVariable Integer ppmVer) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -295,7 +295,7 @@ public class PpmController {
      */
     @GetMapping("/{ppmId}/realisations")
     public ResponseEntity<List<RealisationResponse>> getPpmRealisationsLatest(
-            @PathVariable Integer ppmId) {
+            @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findLatestById(ppmId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -317,7 +317,7 @@ public class PpmController {
     @GetMapping("/{ppmId}/{ppmVer}/lots")
     public ResponseEntity<List<LotResponse>> getPpmLots(
             @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVer) {
+            @PathVariable Integer ppmVer) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -341,7 +341,7 @@ public class PpmController {
      */
     @GetMapping("/{ppmId}/lots")
     public ResponseEntity<List<LotResponse>> getPpmLotsLatest(
-            @PathVariable Integer ppmId) {
+            @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findLatestById(ppmId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -368,7 +368,7 @@ public class PpmController {
     public ResponseEntity<List<LotResponse>> getPpmRealisationLots(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
-            @PathVariable Integer realisationId) {
+            @PathVariable Integer realisationId) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findById(ppmId, ppmVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -399,7 +399,7 @@ public class PpmController {
     @GetMapping("/{ppmId}/realisations/{realisationId}/lots")
     public ResponseEntity<List<LotResponse>> getPpmRealisationLotsLatest(
             @PathVariable Integer ppmId,
-            @PathVariable Integer realisationId) {
+            @PathVariable Integer realisationId) throws PpmNotFound, AcNotFound {
         Ppm ppm = ppmService.findLatestById(ppmId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found"));
 
@@ -1153,9 +1153,9 @@ public class PpmController {
      * @throws ResponseStatusException if the PPM is not found
      */
     @GetMapping("/{ppmId}")
-    public ResponseEntity<PpmResponseDto> getPpmById(@PathVariable Integer ppmId) {
+    public ResponseEntity<PpmResponseDto> getPpmById(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         logger.info("Getting detailed PPM with ID: {}", ppmId);
-        
+
         Ppm ppm = ppmService.findByIdPpm(ppmId, null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
 
@@ -1203,7 +1203,7 @@ public class PpmController {
         try {
             TaskDetailsDTO response = flowableService.getPpmWithTasks(ppmId);
             return ResponseEntity.ok(response);
-        } catch (PpmNotFound e) {
+        } catch (PpmNotFound | AcNotFound e) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
             errorResponse.setStatus(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);

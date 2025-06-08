@@ -39,7 +39,7 @@ public interface PaaService {
      * @param pageable the pageable to use
      * @return a page of Paa entities
      */
-    Page<Paa> findAll(Specification<Paa> spec, Pageable pageable);
+    Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws AcNotFound, PaaNotFound;
 
     /**
      * Return a page of deleted Paa entities based on the given specification and pageable.
@@ -82,7 +82,7 @@ public interface PaaService {
      * @param paaVer the second part of the composite ID (paa_ver)
      * @return the Paa entity with the given ID components
      */
-    Optional<Paa> findById(Integer paaId, Integer paaVer);
+    Optional<Paa> findById(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound;
 
     /**
      * Find the latest version of a Paa entity by its ID.

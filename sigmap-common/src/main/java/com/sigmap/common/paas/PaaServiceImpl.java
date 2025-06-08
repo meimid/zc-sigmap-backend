@@ -9,6 +9,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -29,7 +30,10 @@ import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_ac.UserAc;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
@@ -64,11 +68,12 @@ public class PaaServiceImpl implements PaaService {
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
+    private final CurrentUserService currentUserService;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
-    public PaaServiceImpl(PaaRepository repository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService
+    public PaaServiceImpl(PaaRepository repository,  CurrentUserService currentUserService,RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService
 
 
     ) {
@@ -82,6 +87,7 @@ public class PaaServiceImpl implements PaaService {
         this.alfrescoService = alfrescoService;
         this.documentCommuneService = documentCommuneService;
         this.acService = acService;
+        this.currentUserService = currentUserService;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -89,18 +95,77 @@ public class PaaServiceImpl implements PaaService {
         return repository.findByCurrentYear(currentYear).orElseThrow(() -> new PaaCurrentYearNotFound("", currentYear));
     }
 
-    @Override
-    public List<Paa> findAll() {
-        Specification<Paa> spec = PaaSpecifications.deleted(false);
-        return repository.findAll(spec);
-    }
+        @Override
+        public List<Paa> findAll() {
+            Specification<Paa> spec = PaaSpecifications.deleted(false);
+            return repository.findAll(spec);
+        }
 
-    @Override
-    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) {
-        return repository.findAll(spec, pageable);
-    }
+//    /**
+//     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
+//     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
+//     *
+//     * @param spec     Specification to filter Paa entities
+//     * @param pageable Pagination and sorting configuration
+//     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
+//     * @throws PaaNotFound if no Paa entities are found for the user's ACs
+//     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
+//     */
+//    @Override
+//    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
+//        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
+//
+//        // Récupérer les IDs des AC de l'utilisateur connecté
+//        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
+//        if (userAcIdsLong.isEmpty()) {
+//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
+//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+//        }
+//        Set<Integer> userAcIds = userAcIdsLong.stream()
+//                .map(Long::intValue)
+//                .collect(Collectors.toSet());
+//
+//        // Vérifier l'existence des AC
+//        for (Integer acId : userAcIds) {
+//            try {
+//                acService.findById(acId);
+//            } catch (AcNotFound e) {
+//                log.warn("AC non trouvé avec ID: {}", acId);
+//                throw e;
+//            }
+//        }
+//
+//        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
+//                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+//
+//        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
+//            Subquery<Integer> subquery = query.subquery(Integer.class);
+//            Root<Paa> subRoot = subquery.from(Paa.class);
+//            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+//                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
+//            return criteriaBuilder.equal(root.get("version"), subquery);
+//        };
+//
+//        Specification<Paa> combinedSpec = spec != null
+//                ? spec.and(acFilterSpec).and(latestVersionSpec)
+//                : acFilterSpec.and(latestVersionSpec);
+//
+//        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
+//
+//        if (allPaas.isEmpty()) {
+//            log.warn("Aucun PAA trouvé pour les AC de l'utilisateur: {}", userAcIds);
+//            throw new PaaNotFound("Aucun PAA trouvé pour les AC de l'utilisateur: " + userAcIds,
+//                    Collections.emptyList(), Collections.emptyList());
+//        }
+//
+//        // Transformer les PAAs pour inclure uniquement les documents non supprimés
+//        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
+//
+//        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
+//
+//        return paasResponse;
+//    }
 
-    @Override
     public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
 
@@ -124,11 +189,216 @@ public class PaaServiceImpl implements PaaService {
         return repository.findOne(specification);
     }
 
+    /**
+     * Retrieves the latest version of a Paa entity by its ID. Only non-deleted Docs are included in the response,
+     * and the Paa must be associated with one of the ACs of the current user.
+     *
+     * @param paaId  ID of the Paa entity
+     * @param paaVer Ignored parameter (kept for compatibility); latest version is fetched
+     * @return Paa entity with the latest version and only non-deleted Docs
+     * @throws PaaNotFound                         if no Paa entity is found for the ID
+     * @throws AcNotFound                          if no AC is found for the current user
+     * @throws PaaNotAssociatedWithUserAcException if the Paa is not associated with the user's ACs
+     */
     @Override
-    public Optional<Paa> findById(Integer paaId, Integer paaVer) {
-        return repository.findById(new CompositeId(paaId, paaVer));
+    public Optional<Paa> findById(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound, PaaNotAssociatedWithUserAcException {
+        log.info("Recherche du PAA avec ID: {}", paaId);
+
+        // Step 1: Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
+            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
+
+        if (userAcIds.isEmpty()) {
+            log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
+            throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
+        }
+        log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
+
+        // Step 2: Validate ACs
+        for (Integer acId : userAcIds) {
+            try {
+                log.debug("Validation de l'AC ID: {}", acId);
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
+        }
+
+        // Step 3: Find the latest version
+        Integer latestVersion = repository.findMaxVersionById(paaId);
+        if (latestVersion == null) {
+            log.warn("Aucun PAA trouvé pour l'ID: {}", paaId);
+            throw new PaaNotFound("Aucun PAA trouvé pour l'ID", List.of(paaId), paaVer != null ? List.of(paaVer) : Collections.emptyList());
+        }
+        log.debug("Dernière version du PAA ID {}: {}", paaId, latestVersion);
+
+        // Step 4: Retrieve the PAA
+        Optional<Paa> paaOpt = repository.findById(new CompositeId(paaId, latestVersion));
+        if (paaOpt.isEmpty()) {
+            log.warn("Aucun PAA trouvé pour l'ID: {} et la version: {}", paaId, latestVersion);
+            throw new PaaNotFound("Aucun PAA trouvé pour l'ID et la version", List.of(paaId), List.of(latestVersion));
+        }
+        Paa paa = paaOpt.get();
+        log.debug("PAA récupéré: ID={}, Version={}, AC={}", paa.getId(), paa.getVersion(), paa.getAc() != null ? paa.getAc().getId() : "null");
+
+        // Step 5: Check if the PAA is deleted (if applicable)
+        if (Boolean.TRUE.equals(paa.getIsDeleted())) {
+            log.warn("PAA avec ID {} est marqué comme supprimé", paaId);
+            throw new PaaNotFound("PAA est supprimé", List.of(paaId), List.of(latestVersion));
+        }
+
+        // Step 6: Validate AC association
+        Integer paaAcId = paa.getAc() != null ? paa.getAc().getId() : null;
+        log.debug("Validation de l'association AC: PAA AC ID={}, User ACs={}", paaAcId, userAcIds);
+        if (paaAcId == null || !userAcIds.contains(paaAcId)) {
+            log.warn("PAA avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}", paaId, paaAcId, userAcIds);
+            throw new PaaNotAssociatedWithUserAcException(
+                    "Le PAA avec l'ID " + paaId + " n'est pas associé à un AC de l'utilisateur connecté",
+                    List.of(paaId.longValue()),
+                    List.of(latestVersion)
+            );
+        }
+
+        // Step 7: Final validation before return
+        if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
+            log.warn("Validation finale échouée: PAA avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}", paaId, paa.getAc() != null ? paa.getAc().getId() : "null", userAcIds);
+            throw new PaaNotAssociatedWithUserAcException(
+                    "Le PAA avec l'ID " + paaId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
+                    List.of(paaId.longValue()),
+                    List.of(latestVersion)
+            );
+        }
+
+        // Step 8: Prepare and return the response
+        Paa responsePaa = createFilteredResponsePaa(paa);
+        log.info("PAA avec ID {} récupéré avec succès pour l'utilisateur", paaId);
+        return Optional.ofNullable(responsePaa);
     }
 
+    private Paa createFilteredResponsePaa(Paa paa) {
+        if (paa == null) {
+            log.warn("PAA fourni est null");
+            return null; // Should not occur given prior validation
+          }
+
+        Paa filteredPaa = new Paa();
+        filteredPaa.setId(paa.getId());
+        filteredPaa.setVersion(paa.getVersion());
+        filteredPaa.setAc(paa.getAc());
+        filteredPaa.setCreatedAt(paa.getCreatedAt());
+        filteredPaa.setCreatedBy(paa.getCreatedBy());
+        filteredPaa.setUpdatedAt(paa.getUpdatedAt());
+        filteredPaa.setUpdatedBy(paa.getUpdatedBy());
+        filteredPaa.setIsDeleted(paa.getIsDeleted());
+        filteredPaa.setDeletedBy(paa.getDeletedBy());
+        filteredPaa.setDeletedAt(paa.getDeletedAt());
+        filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
+        filteredPaa.setRealisations(paa.getRealisations());
+
+        if (paa.getDocs() != null) {
+            List<Docs> nonDeletedDocs = paa.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            filteredPaa.setDocs(nonDeletedDocs);
+        }
+
+        return filteredPaa;
+    }
+
+    /**
+     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
+     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
+     *
+     * @param spec     Specification to filter Paa entities
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
+     * @throws PaaNotFound                         if no Paa entities are found for the user's ACs
+     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
+     * @throws AcNotFound                          if no AC is found for the current user
+     */
+    @Override
+    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
+        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
+            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
+        }
+
+        // First, check if any non-deleted Paa entities exist at all (without AC filter)
+        Specification<Paa> deletedSpec = (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("isDeleted"));
+        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Paa> subRoot = subquery.from(Paa.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
+            return criteriaBuilder.equal(root.get("version"), subquery);
+        };
+        Specification<Paa> baseSpec = deletedSpec.and(latestVersionSpec);
+        if (spec != null) {
+            baseSpec = baseSpec.and(spec);
+        }
+
+        Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
+        if (allPaasWithoutAcFilter.isEmpty()) {
+            log.warn("Aucun PAA non supprimé trouvé dans la base de données");
+            throw new PaaNotFound("Aucun PAA non supprimé trouvé dans la base de données", Collections.emptyList(), Collections.emptyList());
+        }
+
+        // Now apply AC filter
+        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+
+        Specification<Paa> combinedSpec = baseSpec.and(acFilterSpec);
+        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
+
+        if (allPaas.isEmpty()) {
+            // Since we know Paa entities exist (from the earlier check), the emptiness must be due to AC association
+            log.warn("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
+            throw new PaaNotAssociatedWithUserAcException(
+                    "Aucun PAA associé aux ACs de l'utilisateur: " + userAcIds,
+                    Collections.emptyList(),
+                    Collections.emptyList()
+            );
+        }
+
+        // Double-check AC association for each Paa (for consistency with findById)
+        List<Integer> invalidPaaIds = new ArrayList<>();
+        List<Integer> invalidVersions = new ArrayList<>();
+        for (Paa paa : allPaas.getContent()) {
+            if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
+                invalidPaaIds.add(paa.getId());
+                invalidVersions.add(paa.getVersion());
+            }
+        }
+        if (!invalidPaaIds.isEmpty()) {
+            log.warn("Certains PAAs ne sont pas associés aux ACs de l'utilisateur: IDs={}, Versions={}", invalidPaaIds, invalidVersions);
+            throw new PaaNotAssociatedWithUserAcException(
+                    "Certains PAAs ne sont pas associés aux ACs de l'utilisateur",
+                    invalidPaaIds.stream().map(Integer::longValue).collect(Collectors.toList()),
+                    invalidVersions
+            );
+        }
+
+        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
+        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
+
+        return paasResponse;
+    }
     @Override
     public Optional<Paa> findLatestById(Integer paaId) {
         // Find the maximum version for this PAA ID
@@ -165,8 +435,6 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
-        // Check if a PAA already exists for the current year
-
 
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
@@ -1867,18 +2135,32 @@ public class PaaServiceImpl implements PaaService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
 
-        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
-        if (acIdOptional.isPresent()) {
-            Long acIdLong = acIdOptional.get();
-            Integer acIdInt = Math.toIntExact(acIdLong);
-            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
-            if (acOptional.isPresent()) {
-                paa.setAc(acOptional.get());
-            } else {
-                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
+        if (userAcs == null || userAcs.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for current user",List.of());
+        }
+
+        Integer requestAcId = request.getAcId();
+        if (requestAcId != null) {
+            boolean hasAcId = userAcs.stream()
+                    .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
+            if (!hasAcId) {
+                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
             }
+            paa.setAc(acService.findById(requestAcId));
         } else {
-            throw new NotFoundException("No AC ID found for current user");
+            Optional<UserAc> piloteAc = userAcs.stream()
+                    .filter(UserAc::getAcPilote)
+                    .findFirst();
+            if (piloteAc.isPresent()) {
+                paa.setAc(acService.findById(piloteAc.get().getAcId()));
+            } else {
+                if (!userAcs.isEmpty()) {
+                    paa.setAc(acService.findById(userAcs.get(0).getAcId()));
+                } else {
+                    throw new NotFoundException("No AC IDs available to assign");
+                }
+            }
         }
 
         // Initialize collections

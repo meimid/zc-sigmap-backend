@@ -28,6 +28,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_ac.UserAc;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
@@ -119,14 +120,12 @@ public class AgpmServiceImpl implements AgpmService {
         log.info("Recherche de tous les AGPM avec spécification: {}", spec);
 
         // Récupérer les IDs des AC de l'utilisateur connecté
-        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
-        if (userAcIdsLong.isEmpty()) {
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
             log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
             throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
         }
-        Set<Integer> userAcIds = userAcIdsLong.stream()
-                .map(Long::intValue)
-                .collect(Collectors.toSet());
+
 
         // Vérifier l'existence des AC
         for (Integer acId : userAcIds) {
@@ -184,14 +183,12 @@ public class AgpmServiceImpl implements AgpmService {
     public Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound, AgpmNotAssociatedWithUserAcException {
         log.info("Recherche de l'AGPM avec ID: {}", agpmId);
 
-        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
-        if (userAcIdsLong.isEmpty()) {
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
             log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
             throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
         }
-        Set<Integer> userAcIds = userAcIdsLong.stream()
-                .map(Long::intValue)
-                .collect(Collectors.toSet());
+
 
         for (Integer acId : userAcIds) {
             try {
@@ -283,7 +280,7 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws IOException if an error occurs during file processing
      */
     @Override
-    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
+    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException, NotFoundException, SecurityException {
         Integer version = request.getVersion();
         if (version == null) {
             throw new AgpmNotNull("Version cannot be null");
@@ -308,18 +305,32 @@ public class AgpmServiceImpl implements AgpmService {
         agpm.setId(id);
         agpm.setVersion(version);
         setRef(agpm);
-        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();// will be replaced by the logic of acIds
-        if (acIdOptional.isPresent()) {
-            Long acIdLong = acIdOptional.get();
-            Integer acIdInt = Math.toIntExact(acIdLong);
-            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
-            if (acOptional.isPresent()) {
-                agpm.setAc(acOptional.get());
-            } else {
-                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
+        if (userAcs == null || userAcs.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for current user",List.of());
+        }
+
+        Integer requestAcId = request.getAcId();
+        if (requestAcId != null) {
+            boolean hasAcId = userAcs.stream()
+                    .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
+            if (!hasAcId) {
+                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
             }
+            agpm.setAc(acService.findById(requestAcId));
         } else {
-            throw new NotFoundException("No AC ID found for current user");
+            Optional<UserAc> piloteAc = userAcs.stream()
+                    .filter(UserAc::getAcPilote)
+                    .findFirst();
+            if (piloteAc.isPresent()) {
+                agpm.setAc(acService.findById(piloteAc.get().getAcId()));
+            } else {
+                if (!userAcs.isEmpty()) {
+                    agpm.setAc(acService.findById(userAcs.get(0).getAcId()));
+                } else {
+                    throw new NotFoundException("No AC IDs available to assign");
+                }
+            }
         }
 
         if (request.getFiles() != null) {

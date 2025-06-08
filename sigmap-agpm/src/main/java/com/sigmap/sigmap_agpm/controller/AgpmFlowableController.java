@@ -49,17 +49,17 @@ public class AgpmFlowableController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Retrieves all active tasks for the tenant.
-     *
-     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
-     */
-    @GetMapping("/tasks")
-    public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {
-        log.info("Retrieving all current tasks");
-        TaskListResponseDTO response = agpmFlowableService.getCurrentTasks();
-        return ResponseEntity.ok(response);
-    }
+//    /**
+//     * Retrieves all active tasks for the tenant.
+//     *
+//     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
+//     */
+//    @GetMapping("/tasks")
+//    public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {
+//        log.info("Retrieving all current tasks");
+//        TaskListResponseDTO response = agpmFlowableService.getCurrentTasks();
+//        return ResponseEntity.ok(response);
+//    }
 
     /**
      * Retrieves details of a specific task.
