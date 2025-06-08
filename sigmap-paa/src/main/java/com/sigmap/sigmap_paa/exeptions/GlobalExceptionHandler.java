@@ -22,16 +22,15 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private final MessageSource messageSource ;
+    private final MessageSource messageSource;
 
     public GlobalExceptionHandler(MessageSource messageSource) {
         this.messageSource = messageSource;
     }
 
-    private Locale getLocal (){
+    private Locale getLocal() {
         return LocaleContextHolder.getLocale();
     }
-
 
 
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -52,9 +51,9 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(PaaNotFound.class)
     public ResponseEntity<ErrorResponse> paaNotFoundException(PaaNotFound ex) {
-        String message = messageSource.getMessage("paa.notfound",new Object[] {
+        String message = messageSource.getMessage("paa.notfound", new Object[]{
                         String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())),
-                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList())) },
+                        String.join((CharSequence) ",", ex.getVersion().stream().map(String::valueOf).collect(Collectors.toList()))},
                 getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
@@ -63,7 +62,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(PaaAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> paaNotFoundException(PaaAlreadyExistsException ex) {
-        String message = messageSource.getMessage("app.alreadyexists",new Object[] {ex.getId(), ex.getVersion()},getLocal());
+        String message = messageSource.getMessage("app.alreadyexists", new Object[]{ex.getId(), ex.getVersion()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
@@ -71,27 +70,27 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RealisationsMinimumRequirement.class)
     public ResponseEntity<ErrorResponse> realisationsMinimumRequirementException(RealisationsMinimumRequirement ex) {
-        String message = messageSource.getMessage("realisation.some.not.found",new Object[] {}, getLocal());
+        String message = messageSource.getMessage("realisation.some.not.found", new Object[]{}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-   /* // Handler for MaxUploadSizeExceededException (from Spring's MultipartResolver)
+    /* // Handler for MaxUploadSizeExceededException (from Spring's MultipartResolver)
+     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+     @ExceptionHandler(MaxUploadSizeExceededException.class)
+     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+         String message = messageSource.getMessage("doc.maxSize", new Object[] {}, getLocal());
+         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
+         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+     }
+ */
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
-        String message = messageSource.getMessage("doc.maxSize", new Object[] {}, getLocal());
+    @ExceptionHandler(MaxUploadSizeFile.class)
+    public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(MaxUploadSizeFile ex) {
+        String message = messageSource.getMessage("doc.maxSize", new Object[]{ex.getMaxFileUploadSize()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
     }
-*/
-   @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
-   @ExceptionHandler(MaxUploadSizeFile.class)
-   public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(MaxUploadSizeFile ex) {
-       String message = messageSource.getMessage("doc.maxSize",new Object[] {ex.getMaxFileUploadSize()},getLocal());
-       ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
-       return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
-   }
 
     @ExceptionHandler(PaaInvalidStateException.class)
     public ResponseEntity<Map<String, Object>> handlePaaInvalidStateException(PaaInvalidStateException ex) {
@@ -117,7 +116,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(PaaCurrentYearNotFound.class)
     public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(PaaCurrentYearNotFound ex) {
-        String message = messageSource.getMessage("paa.notFound.CuurentYear",new Object[] {ex.getCurrentYear()},getLocal());
+        String message = messageSource.getMessage("paa.notFound.CuurentYear", new Object[]{ex.getCurrentYear()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
@@ -125,8 +124,15 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(PaaIdNotFound.class)
     public ResponseEntity<ErrorResponse> PaaIdNotFoundException(PaaIdNotFound ex) {
-        String message = messageSource.getMessage("paa.notFoundId",new Object[] {ex.getPaaId()},getLocal());
+        String message = messageSource.getMessage("paa.notFoundId", new Object[]{ex.getPaaId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(PaaNotAssociatedWithUserAcException.class)
+    public ResponseEntity<ErrorResponse> handlePaaNotAssociatedWithUserAc(PaaNotAssociatedWithUserAcException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }

@@ -75,7 +75,7 @@ public class PaaController {
 
     @GetMapping
     public ResponseEntity<Page<PaaResponseWithRealisations>> findAll(
-            PaaQuery query, Pageable pageable) {
+            PaaQuery query, Pageable pageable) throws PaaNotFound, AcNotFound {
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getPrincipal();
@@ -119,7 +119,7 @@ public class PaaController {
     @GetMapping("/{paaId}/{paaVer}")
     public ResponseEntity<PaaResponseWithRealisations> findById(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) throws PaaNotFound {
+            @PathVariable Integer paaVer) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
                 .orElseThrow(() -> new PaaNotFound("Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",List.of(paaId),List.of(paaVer)));
         PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
@@ -395,7 +395,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @GetMapping("/{paaId}/{paaVer}/realisations")
     public ResponseEntity<List<RealisationResponse>> getPaaRealisations(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) throws PaaNotFound {
+            @PathVariable Integer paaVer) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
                 .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(paaVer)));
 
@@ -436,7 +436,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @GetMapping("/{paaId}/{paaVer}/lots")
     public ResponseEntity<List<LotResponse>> getPaaLots(
             @PathVariable Integer paaId,
-            @PathVariable Integer paaVer) throws PaaNotFound {
+            @PathVariable Integer paaVer) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
                 .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 
@@ -487,7 +487,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     public ResponseEntity<List<LotResponse>> getPaaRealisationLots(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer,
-            @PathVariable Integer realisationId) throws PaaNotFound {
+            @PathVariable Integer realisationId) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
                 .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of(null)));
 

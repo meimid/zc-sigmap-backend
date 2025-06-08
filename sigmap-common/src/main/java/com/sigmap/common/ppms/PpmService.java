@@ -4,6 +4,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -40,7 +41,7 @@ public interface PpmService {
      * @param pageable the pageable to use
      * @return a page of Ppms
      */
-    Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable);
+    Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) throws AcNotFound, PpmNotFound;
 
     /**
      * Return a page of deleted Ppms based on the given specification and pageable.
@@ -83,7 +84,7 @@ public interface PpmService {
      * @param ppmVer the second part of the composite ID (ppm_ver)
      * @return the Ppm entity with the given ID components
      */
-    Optional<Ppm> findById(Integer ppmId, Integer ppmVer);
+    Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound;
 
     /**
      * Find the latest version of a Ppm entity by its ID.
@@ -91,7 +92,7 @@ public interface PpmService {
      * @param ppmId The ID of the Ppm to find.
      * @return An Optional containing the latest version of the Ppm, or empty if not found.
      */
-    Optional<Ppm> findLatestById(Integer ppmId);
+    Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound;
 
     /**
      * Save a Ppm entity.
@@ -167,7 +168,7 @@ public interface PpmService {
     void delete(Integer ppmId, Integer ppmVer);
 
 
-    Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId);
+    Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId) throws PpmNotFound, AcNotFound;
 
     /**
      * Updates a PPM by creating a new version with the updated data.
@@ -278,7 +279,7 @@ public interface PpmService {
      * @param ppmVer the version of the PPM (can be null to get latest version)
      * @return Optional containing the PPM if found
      */
-    Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer);
+    Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound;
 
     /**
      * find the list of ppms with Ac id
