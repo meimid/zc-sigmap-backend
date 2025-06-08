@@ -40,6 +40,7 @@ import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_ac.UserAc;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
@@ -2635,8 +2636,6 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
         ppm.setVersion(ppmVersion);
-//        ppm.setRef(request.getRef());
-
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
@@ -2656,18 +2655,34 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
         ppm.setRemarque(request.getRemarque());
         setRef(ppm);
-        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
-        if (acIdOptional.isPresent()) {
-            Long acIdLong = acIdOptional.get();
-            Integer acIdInt = Math.toIntExact(acIdLong);
-            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
-            if (acOptional.isPresent()) {
-                ppm.setAc(acOptional.get());
-            } else {
-                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+
+
+        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
+        if (userAcs == null || userAcs.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for current user",List.of());
+        }
+
+        Integer requestAcId = request.getAcId();
+        if (requestAcId != null) {
+            boolean hasAcId = userAcs.stream()
+                    .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
+            if (!hasAcId) {
+                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
             }
+            ppm.setAc(acService.findById(requestAcId));
         } else {
-            throw new NotFoundException("No AC ID found for current user");
+            Optional<UserAc> piloteAc = userAcs.stream()
+                    .filter(UserAc::getAcPilote)
+                    .findFirst();
+            if (piloteAc.isPresent()) {
+                ppm.setAc(acService.findById(piloteAc.get().getAcId()));
+            } else {
+                if (!userAcs.isEmpty()) {
+                    ppm.setAc(acService.findById(userAcs.get(0).getAcId()));
+                } else {
+                    throw new NotFoundException("No AC IDs available to assign");
+                }
+            }
         }
 
         // Set empty collections to avoid NPEs

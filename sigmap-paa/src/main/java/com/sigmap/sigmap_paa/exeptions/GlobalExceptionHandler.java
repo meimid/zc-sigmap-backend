@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_paa.exeptions;
 
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.exceptions.*;
@@ -133,6 +134,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PaaNotAssociatedWithUserAcException.class)
     public ResponseEntity<ErrorResponse> handlePaaNotAssociatedWithUserAc(PaaNotAssociatedWithUserAcException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    // New Handler for NotFoundException
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
+        String message = messageSource.getMessage("general.notfound", new Object[] { ex.getMessage() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    // New Handler for SecurityException
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex) {
+        String message = messageSource.getMessage("security.unauthorized", new Object[] { ex.getMessage() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }

@@ -307,7 +307,7 @@ public class AgpmServiceImpl implements AgpmService {
         setRef(agpm);
         List<UserAc> userAcs = currentUserService.getCurrentUserAc();
         if (userAcs == null || userAcs.isEmpty()) {
-            throw new NotFoundException("No AC IDs found for current user");
+            throw new AcNotFound("No AC IDs found for current user",List.of());
         }
 
         Integer requestAcId = request.getAcId();
@@ -315,7 +315,7 @@ public class AgpmServiceImpl implements AgpmService {
             boolean hasAcId = userAcs.stream()
                     .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
             if (!hasAcId) {
-                throw new SecurityException("User does not have permission for AC ID: " + requestAcId);
+                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
             }
             agpm.setAc(acService.findById(requestAcId));
         } else {
@@ -344,64 +344,6 @@ public class AgpmServiceImpl implements AgpmService {
 
         return repository.save(agpm);
     }
-//    public Agpm create(AgpmRequest request) throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException {
-//        Integer version = request.getVersion();
-//        if (version == null) {
-//            throw new AgpmNotNull("Version cannot be null");
-//        }
-//
-//        Integer id = request.getId();
-//        if (id == null) {
-//            id = repository.findMaxId();
-//            if (id == null) {
-//                id = 1;
-//            } else {
-//                id++;
-//            }
-//        }
-//
-//        Optional<Agpm> existingAgpm = repository.findById(new CompositeId(id, version));
-//        if (existingAgpm.isPresent()) {
-//            throw new AgpmAlreadyExistsException("Agpm already exists", id, version);
-//        }
-//
-//        Agpm agpm = agpmMapper.toEntity(request);
-//        agpm.setId(id);
-//        agpm.setVersion(version);
-//
-////        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
-////        if (acIdOptional.isPresent()) {
-////            Long acIdLong = acIdOptional.get();
-////            Integer acIdInt = Math.toIntExact(acIdLong);
-////            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
-////            if (acOptional.isPresent()) {
-////                agpm.setAc(acOptional.get());
-////            } else {
-////                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
-////            }
-////        } else {
-////            throw new NotFoundException("No AC ID found for current user");
-////        }
-//
-//        if(request.getAcId() != null) {
-//            agpm.setAc(acService.findById(request.getAcId()));
-//        } else
-//        {
-//            agpm.setAc(null); // to be changed to retrive the ac Pilote
-//        }
-//
-//
-//        if (request.getFiles() != null) {
-//            processAndSaveDocuments(request.getFiles(), agpm);
-//        }
-//
-//        agpm.setIsDeleted(false);
-//        RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
-//                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-//        agpm.setStatus(defaultStatus);
-//
-//        return repository.save(agpm);
-//    }
 
     /**
      * Soft deletes an Agpm entity by its ID and version, only if the status is DRAFT.

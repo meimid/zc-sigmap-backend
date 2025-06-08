@@ -30,6 +30,7 @@ import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_ac.UserAc;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -434,8 +435,6 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Paa create(PaaRequest request) throws PaaAlreadyExistsException {
-        // Check if a PAA already exists for the current year
-
 
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
@@ -2136,18 +2135,32 @@ public class PaaServiceImpl implements PaaService {
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
 
-        Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
-        if (acIdOptional.isPresent()) {
-            Long acIdLong = acIdOptional.get();
-            Integer acIdInt = Math.toIntExact(acIdLong);
-            Optional<Ac> acOptional = Optional.ofNullable(acService.findById(acIdInt));
-            if (acOptional.isPresent()) {
-                paa.setAc(acOptional.get());
-            } else {
-                throw new AcNotFound("AC not found with ID: ", Collections.singletonList(acIdInt));
+        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
+        if (userAcs == null || userAcs.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for current user",List.of());
+        }
+
+        Integer requestAcId = request.getAcId();
+        if (requestAcId != null) {
+            boolean hasAcId = userAcs.stream()
+                    .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
+            if (!hasAcId) {
+                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
             }
+            paa.setAc(acService.findById(requestAcId));
         } else {
-            throw new NotFoundException("No AC ID found for current user");
+            Optional<UserAc> piloteAc = userAcs.stream()
+                    .filter(UserAc::getAcPilote)
+                    .findFirst();
+            if (piloteAc.isPresent()) {
+                paa.setAc(acService.findById(piloteAc.get().getAcId()));
+            } else {
+                if (!userAcs.isEmpty()) {
+                    paa.setAc(acService.findById(userAcs.get(0).getAcId()));
+                } else {
+                    throw new NotFoundException("No AC IDs available to assign");
+                }
+            }
         }
 
         // Initialize collections
