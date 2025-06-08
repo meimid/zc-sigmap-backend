@@ -13,4 +13,5 @@ public class AcRequest {
   private String ancrage;
   private String contact;
   private List<String> userIds;
+  private Integer tutelId;
 }

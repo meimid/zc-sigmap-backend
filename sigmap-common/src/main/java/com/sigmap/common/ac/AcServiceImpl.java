@@ -105,8 +105,13 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac create(AcRequest request) throws ComNotFound {
+    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
         Ac ac = AcMapper.INSTANCE.map(request);
+        if(request.getTutelId() != null) {
+            RefParam tutel= refParamRepository.findById(request.getTutelId()).
+                    orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+            ac.setTutel(tutel);
+        }
         Ac savedAc = repository.save(ac);
 
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -133,13 +138,18 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus {
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
         Ac ac = findById(id);
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
+        if(request.getTutelId() != null) {
+        RefParam tutel= refParamRepository.findById(request.getTutelId()).
+                orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+        ac.setTutel(tutel);
+        }
         Ac savedAc = repository.save(ac);
 
         // 1. Récupérer les anciens UserAc liés à ce AC
-        List<UserAc> existingUserAcs = userAcRepository.findAllByAcId(id);
+        List<UserAc> existingUserAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
 
         // 2. Construire la nouvelle liste à partir des userIds reçus
         List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();

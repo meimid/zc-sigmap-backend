@@ -304,7 +304,7 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm agpm = agpmMapper.toEntity(request);
         agpm.setId(id);
         agpm.setVersion(version);
-
+        setRef(agpm);
         List<UserAc> userAcs = currentUserService.getCurrentUserAc();
         if (userAcs == null || userAcs.isEmpty()) {
             throw new NotFoundException("No AC IDs found for current user");
@@ -319,7 +319,6 @@ public class AgpmServiceImpl implements AgpmService {
             }
             agpm.setAc(acService.findById(requestAcId));
         } else {
-
             Optional<UserAc> piloteAc = userAcs.stream()
                     .filter(UserAc::getAcPilote)
                     .findFirst();
@@ -899,9 +898,24 @@ public class AgpmServiceImpl implements AgpmService {
         acService.findById(acId);
         Specification<Agpm> agpmSpec = Specification.where(
                 AgpmSpecifications.deleted(false)
-                        .and(AgpmSpecifications.isLatestVersion())
+                        .and(AgpmSpecifications.isLatestVersion().and(AgpmSpecifications.agpmAc(acId)))
         );
         return repository.findAll(agpmSpec, pageable);
 
+    }
+
+    /**
+     * Generates and sets a reference string for the Agpm entity.
+     * Format: AGPM_<YEAR>_<ID>
+     *
+     * @param agpm the Agpm entity to set the reference for
+     */
+    private void setRef(Agpm agpm) {
+        if (agpm == null || agpm.getId() == null) {
+            throw new IllegalArgumentException("Cannot set reference: agpm or agpm ID is null.");
+        }
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        String ref = "AGPM_" + year + "_" + agpm.getId();
+        agpm.setRef(ref);
     }
 }

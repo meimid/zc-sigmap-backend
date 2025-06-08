@@ -1,9 +1,13 @@
 package com.sigmap.common.keycloakAdmin.service;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.keycloakAdmin.dto.UserAcDTO;
+import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
@@ -40,6 +44,11 @@ public class KeycloakAdminService {
 
     @Value("${keycloak-admin.realm}")
     private String realm;
+
+    @Autowired
+    private AcRepository acRepository;
+    @Autowired
+    private ComRepository comRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -92,11 +101,21 @@ public class KeycloakAdminService {
         dto.setFirstName((String) userMap.get("firstName"));
         dto.setLastName((String) userMap.get("lastName"));
         dto.setEmail((String) userMap.get("email"));
-        dto.setAddress((String) userMap.get("address"));
         dto.setEmailVerified((Boolean) userMap.getOrDefault("emailVerified", false));
         dto.setCreatedTimestamp(userMap.get("createdTimestamp") != null ?
                 Long.parseLong(userMap.get("createdTimestamp").toString()) : null);
         dto.setEnabled((Boolean) userMap.getOrDefault("enabled", false));
+        Map<String, List<String>> attributes = (Map<String, List<String>>) userMap.get("attributes");
+        if (attributes != null) {
+            List<String> addressList = attributes.get("address");
+            dto.setAddress((addressList != null && !addressList.isEmpty()) ? addressList.get(0) : null);
+
+            List<String> mobileList = attributes.get("mobile");
+            dto.setMobile((mobileList != null && !mobileList.isEmpty()) ? mobileList.get(0) : null);
+
+            List<String> fixeList = attributes.get("fixe");
+            dto.setFixe((fixeList != null && !fixeList.isEmpty()) ? fixeList.get(0) : null);
+        }
         return dto;
     }
 
@@ -150,16 +169,36 @@ public class KeycloakAdminService {
         }
     }
 
-    private List<Ac> fetchAcsForUser(String userId) {
+    private List<UserAcDTO> fetchAcsForUser(String userId) {
         return userAcRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
-                .map(UserAc::getAc)
-                .collect(Collectors.toList());
+                .map(userAc -> {
+                    Ac ac = null;
+                    ac = acRepository.findById(userAc.getAcId()).get();
+                    UserAcDTO dto = new UserAcDTO();
+                    dto.setId(ac.getId());
+                    dto.setNom(ac.getNom());
+                    dto.setAncrage(ac.getAncrage());
+                    dto.setContact(ac.getContact());
+                    dto.setAcPilote(userAc.getAcPilote());
+                    dto.setCreatedAt(userAc.getCreatedAt());
+                    dto.setCreatedBy(userAc.getCreatedBy());
+                    return dto;
+                }).toList();
     }
 
-    private List<Com> fetchComsForUser(String userId) {
+
+    private List<UserComDTO> fetchComsForUser(String userId) {
         return userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
-                .map(UserCom::getCom)
-                .collect(Collectors.toList());
+                .map(userCom -> {
+                    Com com = null;
+                    com = comRepository.findById(userCom.getComId()).get();
+                    UserComDTO dto = new UserComDTO();
+                    dto.setId(com.getId());
+                    dto.setNom(com.getNom());
+                    dto.setCreatedAt(userCom.getCreatedAt());
+                    dto.setCreatedBy(userCom.getCreatedBy());
+                    return dto;
+                }).toList();
     }
 
 
@@ -238,8 +277,25 @@ public class KeycloakAdminService {
         user.put("lastName", userDTO.getLastName());
         user.put("email", userDTO.getEmail());
         user.put("enabled", userDTO.isEnable());
+
+        Map<String, List<String>> attributes = new HashMap<>();
+        if (userDTO.getAddress() != null) {
+            attributes.put("address", List.of(userDTO.getAddress()));
+        }
+        if (userDTO.getMobile() != null) {
+            attributes.put("mobile", List.of(userDTO.getMobile()));
+        }
+        if (userDTO.getFixe() != null) {
+            attributes.put("fixe", List.of(userDTO.getFixe()));
+        }
+
+        if (!attributes.isEmpty()) {
+            user.put("attributes", attributes);
+        }
+
         return user;
     }
+
 
     private String extractUserIdFromLocation(URI location) {
         return location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
@@ -291,6 +347,7 @@ public class KeycloakAdminService {
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
                     if (id  == acPiloteId){
+                        userAcRepository.removeAcPilote(id, userId);
                         userAc.setAcPilote(true);
                     }
                     userAc.setStatus(getDefaultStatus());

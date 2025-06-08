@@ -99,9 +99,6 @@ public class PpmFlowableController {
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException {
         log.info("Validating task ID: {} with request: {}", taskId, request);
 
-        for(RealisationBaseRequestDto r: request.getPpm().getRealisations()){
-        log.info("realisation new document: {}", r.getRealisationFiles());}
-
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
             try {
                 processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);

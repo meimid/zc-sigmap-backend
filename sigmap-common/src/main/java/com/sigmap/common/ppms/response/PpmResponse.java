@@ -20,6 +20,8 @@ public class PpmResponse {
     private Ac ac;
     private BigDecimal budgetEstime;
     private RefParam status;
+    private RefParam modePassation;
+    private String remarque;
     private List<DocsResponseDTO> docs;
     private List<RealisationResponseDTO> realisations;
     private String processInstanceId;

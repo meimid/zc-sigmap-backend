@@ -23,9 +23,9 @@ public class Constants {
     public static final Integer MONAIS=19;
     public static final Integer MODE_SELECTION=20;
     public static final Integer DIRECTION=21;
-
+    public static final Integer MODE_PASSATION=22;
     public static final Integer AC_COM_STATUS=23;
-
+    public static final Integer TUTEL=24;
     public static final Integer ACTIF_STATUS=36;
 
     public static final Integer NON_ACTIF_STATUS=37;

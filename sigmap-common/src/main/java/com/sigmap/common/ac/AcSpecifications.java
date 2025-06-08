@@ -1,15 +1,23 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.ref_params.RefParam;
+import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 public class AcSpecifications {
   public static Specification<Ac> search(String search) {
 
     return (root, query, criteriaBuilder) -> {
+      Join<Ac, RefParam> join = root.join("tutelId");
+
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
-          criteriaBuilder.like(root.get("contact"), "%" + search + "%"));
+          criteriaBuilder.like(root.get("contact"), "%" + search + "%") ,
+          criteriaBuilder.like(join.get("description"), "%" + search + "%"),
+          criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
+          criteriaBuilder.like(join.get("code"),"%" + search + "%"));
     };
   }
 

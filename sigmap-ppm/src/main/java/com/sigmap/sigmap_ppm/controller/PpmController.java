@@ -223,7 +223,6 @@ public class PpmController {
         }
 
         Ppm ppm = ppmService.createWithRelationships(request);
-
         // Map the result to a response
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
 

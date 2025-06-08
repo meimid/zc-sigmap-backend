@@ -5,6 +5,7 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -79,7 +80,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    Ac create(AcRequest request) throws ComNotFound;
+    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound;
 
     /**
      * update Ac.
@@ -87,7 +88,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus;
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound;
 
     /**
      * Delete a Ac.

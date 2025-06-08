@@ -3,9 +3,9 @@ package com.sigmap.common.ppms;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.lots.LotsId;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -14,6 +14,7 @@ import lombok.EqualsAndHashCode;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -22,7 +23,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
 @EntityListeners(AuditingEntityListener.class)
-public class Ppm  extends BaseEntity {
+public class Ppm  extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "ppm_id")
     private Integer id;
@@ -51,6 +52,13 @@ public class Ppm  extends BaseEntity {
     @JoinColumn(name = "status_id")
     private RefParam status;
 
+    @ManyToOne
+    @JoinColumn(name = "mode_passation_id")
+    private RefParam modePassation;
+
+    @Column(name = "remarque", columnDefinition = "LONGTEXT")
+    private String remarque;
+
     @ManyToMany(mappedBy = "ppms")
     @JsonBackReference
     private List<Realisation> realisations;
@@ -65,5 +73,23 @@ public class Ppm  extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "doc_id")
     )
     private List<Docs> docs;
+
+    @Override
+    public Integer getId() {
+        return this.id;
+    }
+
+    @Override
+    public Integer getVersion() {
+        return this.version;
+    }
+
+    @Override
+    public List<Docs> getDocs() {
+        if (this.docs == null) {
+            this.docs = new ArrayList<>();
+        }
+        return this.docs;
+    }
     private String processInstanceId;
 }

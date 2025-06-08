@@ -2,6 +2,7 @@ package com.sigmap.common.agpm;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
@@ -9,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -20,7 +22,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
 @Table(name = "agpm")
-public class Agpm extends BaseEntity {
+public class Agpm extends BaseEntity implements DocumentHolder {
 
     @Id
     @Column(name = "agpm_id")
@@ -64,4 +66,22 @@ public class Agpm extends BaseEntity {
     private String remarque;
 
     private String processInstanceId;
+
+    @Override
+    public Integer getId() {
+        return this.id;
+    }
+
+    @Override
+    public Integer getVersion() {
+        return this.version;
+    }
+
+    @Override
+    public List<Docs> getDocs() {
+        if (this.docs == null) {
+            this.docs = new ArrayList<>();
+        }
+        return this.docs;
+    }
 }

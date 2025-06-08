@@ -434,10 +434,10 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Ppm ppm = new Ppm();
         ppm.setId(id);
         ppm.setVersion(version);
-        ppm.setRef(request.getRef());
+//        pos(request.getRef());
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
-
+        setRef(ppm);
 
 
 
@@ -554,11 +554,13 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             newPpm.setId(ppmId);
             newPpm.setVersion(ppmVer + 1); // Increment version
             // Set fields from PpmRequest, falling back to existing values if null
-            newPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//            newPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
             newPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
             newPpm.setAnnee(existingPpm.getAnnee());
             newPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
             newPpm.setIsDeleted(false);
+            newPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
+
 
             // Update status if provided
             if (request.getStatus() != null) {
@@ -566,6 +568,13 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
             } else {
                 newPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
+            }
+
+            if (request.getModePassation() != null) {
+                newPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
+                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getModePassation().getId() + " not found")));
+            } else {
+                newPpm.setModePassation(existingPpm.getModePassation()); // Preserve existing status
             }
 
             if (request.getAcId() != null) {
@@ -579,17 +588,24 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             return repository.save(newPpm);
         } else {
             // Update existing version
-            existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//            existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
             existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
             existingPpm.setAnnee( existingPpm.getAnnee());
             existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
-
+            existingPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
             // Update status if provided
             if (request.getStatus() != null) {
                 existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
                         .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
             } else {
                 existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
+            }
+
+            if (request.getModePassation() != null) {
+                existingPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
+                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getModePassation().getId() + " not found")));
+            } else {
+                existingPpm.setModePassation(existingPpm.getModePassation()); // Preserve existing status
             }
 
             if (request.getAcId() != null) {
@@ -874,7 +890,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             if (lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty()) {
                 try {
                     System.out.println("Processing " + lotsRequest.getPpmFiles().size() + " new files for PPM");
-                    processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    //processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm);
+                    documentCommuneService.processAndSaveDocuments(lotsRequest.getPpmFiles(),newPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                     // Save the PPM again after adding documents
                     newPpm = repository.save(newPpm);
                     System.out.println("Saved PPM after processing files");
@@ -1038,6 +1056,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         baseRequest.setAnnee(request.getAnnee());
         baseRequest.setBudgetEstime(request.getBudgetEstime());
         baseRequest.setStatus(request.getStatus());
+        baseRequest.setModePassation(request.getModePassation());
+        baseRequest.setRemarque(request.getRemarque());
         baseRequest.setAcId(request.getAcId());
         baseRequest.setDocIds(request.getDocIds());
 
@@ -1191,8 +1211,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
     private Ppm buildTempPpm(Ppm existingPpm, PpmBaseRequestDto request) {
         Ppm tempPpm = new Ppm();
-        tempPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//        tempPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
         tempPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
+
         tempPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         tempPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         RefParam requestStatus = null;
@@ -1200,6 +1221,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             requestStatus = refParamRepository.findById(request.getStatus().getId()).orElse(null);
         }
         tempPpm.setStatus(requestStatus != null ? requestStatus : existingPpm.getStatus());
+        tempPpm.setModePassation(requestStatus != null ? requestStatus : existingPpm.getModePassation());
+        tempPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
         Ac requestAc = null;
         if (request.getAcId() != null) {
             requestAc = acRepository.findById(request.getAcId()).orElse(null);
@@ -1348,7 +1371,10 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
                         // If the hashes match and no files are present, there are no substantive changes
                         boolean hasFiles = false;
-                        if (realisationDto instanceof RealisationWithLotsRequestDto || realisationDto.getRealisationFiles().size() != 0 ) {
+
+                        if (realisationDto instanceof RealisationWithLotsRequestDto
+                                || (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty())) {
+
                             RealisationBaseRequestDto withLotsDto = (RealisationBaseRequestDto) realisationDto;
                             hasFiles = withLotsDto.getRealisationFiles() != null && !withLotsDto.getRealisationFiles().isEmpty();
                         }
@@ -1440,7 +1466,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                     System.out.println("Processing " + withLotsDto.getRealisationFiles().size() +
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
-                                    processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
+                                    //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
@@ -2433,6 +2460,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 Objects.equals(ppm1.getAnnee(), ppm2.getAnnee()) &&
                 Objects.equals(ppm1.getBudgetEstime(), ppm2.getBudgetEstime()) &&
                 Objects.equals(getRefParamId(ppm1.getStatus()), getRefParamId(ppm2.getStatus())) &&
+                Objects.equals(getRefParamId(ppm1.getModePassation()), getRefParamId(ppm2.getModePassation())) &&
+                Objects.equals(ppm1.getRemarque(), ppm2.getRemarque()) &&
                 Objects.equals(getAcId(ppm1.getAc()), getAcId(ppm2.getAc()));
     }
 
@@ -2472,6 +2501,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         sb.append("nom:").append(request.getNom() != null ? request.getNom() : "").append(";");
         sb.append("annee:").append(request.getAnnee() != null ? request.getAnnee() : "").append(";");
         sb.append("budgetEstime:").append(request.getBudgetEstime() != null ? request.getBudgetEstime() : "").append(";");
+        sb.append("remarque:").append(request.getRemarque() != null ? request.getRemarque() : "").append(";");
 
         if (request.getStatus() != null && request.getStatus().getId() != null) {
             sb.append("statusId:").append(request.getStatus().getId()).append(";");
@@ -2605,7 +2635,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
         ppm.setVersion(ppmVersion);
-        ppm.setRef(request.getRef());
+//        ppm.setRef(request.getRef());
+
         ppm.setNom(request.getNom());
         ppm.setBudgetEstime(request.getBudgetEstime());
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
@@ -2614,7 +2645,17 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         ppm.setStatus(defaultStatus);
+        if (request.getModePassation() != null && request.getModePassation().getId() != null) {
+            RefParam modePassation = refParamRepository.findById(request.getModePassation().getId())
+                    .orElseThrow(() -> new PaaDefaultStatus("Mode Passation not found with ID: " + request.getModePassation().getId()));
+            ppm.setModePassation(modePassation);
+        } else {
+            System.out.println("ModePassation is not provided in the request; proceeding with null value");
+            ppm.setModePassation(null);
+        }
 
+        ppm.setRemarque(request.getRemarque());
+        setRef(ppm);
         Optional<Long> acIdOptional = Authentication.getCurrentUserAC();
         if (acIdOptional.isPresent()) {
             Long acIdLong = acIdOptional.get();
@@ -2664,7 +2705,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         if (request.getPpmFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),savedPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());
@@ -2743,7 +2786,11 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                     try {
                         System.out.println("Processing " + realisationRequest.getRealisationFiles().size() +
                                 " files for realisation ID: " + realisation.getId());
+/*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+*/
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
                         System.err.println("Error processing realisation files: " + e.getMessage());
@@ -2925,10 +2972,11 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         ", Lots: " + (r.getLots() != null ? r.getLots().size() : 0));
             }
         }
-
+        System.out.println("the remarque is " + savedPpm.getRemarque());
         return savedPpm;
     }
 
+/*
     private void processAndSaveDocuments(List<MultipartFile> files, Ppm savedPpm) throws IOException {
 
         if (files != null && !files.isEmpty()) {
@@ -2980,6 +3028,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             }
         }
     }
+*/
 
     private final Object folderCreationLock = new Object();
 
@@ -3079,7 +3128,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         savedRealisation.setDocs(docs);
     }
 
-    void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+    /*void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         System.out.println("============== DOCUMENT UPLOAD LOG START ==============");
         System.out.println("Starting file upload process for realisation ID: " + savedRealisation.getId() +
                           ", Version: " + savedRealisation.getVersion());
@@ -3282,7 +3331,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         }
 
         System.out.println("============== DOCUMENT UPLOAD LOG END ==============");
-    }
+    }*/
 
     /**
      * Utility method to check if a document with the given ID is already in the collection
@@ -3376,7 +3425,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         }
 
         // Update fields of the existing PPM
-        existingPpm.setRef(request.getRef());
+//        existingPpm.setRef(request.getRef());
         existingPpm.setNom(request.getNom());
         existingPpm.setAnnee(request.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime());
@@ -3584,7 +3633,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         RealisationWithLotsRequestDto realisationWithLots = (RealisationWithLotsRequestDto) realisationRequest;
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
-                                processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
+                               // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
+                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
                             } catch (Exception e) {
                                 throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
                             }
@@ -3716,7 +3767,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                     (existingPpm.getStatus() != null ? existingPpm.getStatus().getId() : "null"));
         }
         // Update PPM fields
-        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
+//        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
         existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
@@ -3809,7 +3860,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         if(request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-                processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+               // processAndSaveDocuments(request.getPpmFiles(), existingPpm);
+                documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),existingPpm,Constants.PATH_ENTREPOT_GED_PPM);
+
                 System.out.println("Processed PPM files successfully");
             } catch (IOException e) {
                 System.err.println("Error processing PPM files: " + e.getMessage());
@@ -4044,7 +4097,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                 " files for realisation ID: " + realisation.getId());
 
                         // Process all files at once using the new method
-                        processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+                       // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+
 
                         // After processing files, fetch the updated realisation with its documents
                         realisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion()))
@@ -4376,7 +4431,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         acService.findById(acId);
         Specification<Ppm> ppmSpec = Specification.where(
                 PpmSpecifications.deleted(false)
-                        .and(PpmSpecifications.isLatestVersion())
+                        .and(PpmSpecifications.isLatestVersion().and(PpmSpecifications.ppmAc(acId)))
         );
         return repository.findAll(ppmSpec, pageable);
     }
@@ -4395,5 +4450,19 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             throw new PpmIdNotFound("No Ppm versions found for ID", ppmId);
         }
         return ppmPage;
+    }
+
+    /**
+     * Generates and sets the reference string for the Ppm entity.
+     * Format: PPM_<YEAR>_<ID>
+     *
+     * @param ppm the Ppm entity to set the reference for
+     */
+    private void setRef(Ppm ppm) {
+        if (ppm == null || ppm.getId() == null || ppm.getAnnee() == null) {
+            throw new IllegalArgumentException("Cannot set reference: ppm, id, or year is null.");
+        }
+        String ref = "PPM_" + ppm.getAnnee() + "_" + ppm.getId();
+        ppm.setRef(ref);
     }
 }
