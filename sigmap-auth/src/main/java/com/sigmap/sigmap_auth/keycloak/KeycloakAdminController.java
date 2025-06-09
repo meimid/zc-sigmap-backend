@@ -2,6 +2,7 @@ package com.sigmap.sigmap_auth.keycloak;
 
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.keycloakAdmin.dto.PasswordRequestDTO;
+import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
@@ -106,7 +107,37 @@ public class KeycloakAdminController {
      * @return liste des noms de rôles
      */
     @GetMapping("/roles")
-    public List<String> getAllRealmRoles() {
-        return keycloakAdminService.getAllRealmRoleNames();
+    public List<RoleDTO> getAllRealmRoles() {
+        return keycloakAdminService.getAllRealmRolesWithDescriptions();
     }
+
+    /**
+     * Supprimer un utilisateur par son ID.
+     *
+     * @param userId l’ID de l’utilisateur à supprimer
+     * @return 204 No Content si succès, 404 si non trouvé
+     */
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
+        keycloakAdminService.deleteUser(userId);
+        return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    /**
+     * Activer ou désactiver un utilisateur par son ID.
+     *
+     * @param userId  l’ID de l’utilisateur
+     * @param enabled true pour activer, false pour désactiver
+     * @return 200 OK si succès, 404 si utilisateur introuvable
+     */
+    @PutMapping("/users/{userId}/enable")
+    public ResponseEntity<Void> enableUser(@PathVariable String userId, @RequestParam boolean enabled) {
+        try {
+            keycloakAdminService.setUserEnabled(userId, enabled);
+            return ResponseEntity.ok().build(); // 200 OK
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 Not Found
+        }
+    }
+
 }

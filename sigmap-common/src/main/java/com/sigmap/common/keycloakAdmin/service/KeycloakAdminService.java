@@ -6,10 +6,9 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
-import com.sigmap.common.keycloakAdmin.dto.UserAcDTO;
-import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
+import com.sigmap.common.keycloakAdmin.dto.*;
+import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
+import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -204,7 +203,7 @@ public class KeycloakAdminService {
 
 
 
-    public List<String> getAllRealmRoleNames() {
+    public List<RoleDTO> getAllRealmRolesWithDescriptions() {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
 
@@ -215,10 +214,22 @@ public class KeycloakAdminService {
         ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> roles = response.getBody();
 
+        String defaultRoleName = "default-roles-" + realm;
+        Set<String> technicalRoles = Set.of(defaultRoleName, "offline_access", "uma_authorization");
+
         return roles.stream()
-                .map(role -> (String) role.get("name"))
+                .filter(role -> !technicalRoles.contains(role.get("name")))
+                .map(role -> {
+                    String name = (String) role.get("name");
+                    String label = (String) role.get("description");
+                    if (label == null || label.isBlank()) {
+                        label = name; // fallback si pas de description
+                    }
+                    return new RoleDTO(name, label);
+                })
                 .collect(Collectors.toList());
     }
+
     public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users", keycloakBaseUrl, realm);
@@ -456,6 +467,51 @@ public class KeycloakAdminService {
                     new HttpEntity<>(rolesToAdd, headers),
                     Void.class
             );
+        }
+    }
+    public void setUserEnabled(String userId, boolean enabled) {
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> updatePayload = new HashMap<>();
+        updatePayload.put("enabled", enabled);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updatePayload, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Impossible de modifier l’état actif/inactif de l'utilisateur : " + userId);
+        }
+    }
+
+    public void deleteUser(String userId) {
+        List<UserAcDTO> acs = fetchAcsForUser(userId);
+        if (!acs.isEmpty()) {
+            // On prend le premier nom d'AC trouvé pour l'affichage du message
+            throw new UserHasAssociatedAc("", userId);
+        }
+
+        List<UserComDTO> coms = fetchComsForUser(userId);
+        if (!coms.isEmpty()) {
+            throw new UserHasAssociatedCom("", userId);
+        }
+
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.DELETE, entity, Void.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Échec de la suppression de l'utilisateur dans Keycloak : " + userId);
         }
     }
 
