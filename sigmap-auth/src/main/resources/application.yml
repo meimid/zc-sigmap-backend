@@ -19,7 +19,7 @@ spring:
   application:
     name: Sigmap AUTH
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 
@@ -56,7 +56,7 @@ springdoc:
     displayRequestDuration: true
 
 cors:
-  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000}
+  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000,http://localhost:4200}
 
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
