@@ -106,12 +106,18 @@ public class AcServiceImpl implements AcService{
     @Override
     @Transactional
     public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
+
+        if(findOne(specification).isPresent()) {
+            throw new AcNomAlreadyExist("", request.getNom());
+        }
         Ac ac = AcMapper.INSTANCE.map(request);
         if(request.getTutelId() != null) {
             RefParam tutel= refParamRepository.findById(request.getTutelId()).
                     orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
             ac.setTutel(tutel);
         }
+
         Ac savedAc = repository.save(ac);
 
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -140,6 +146,11 @@ public class AcServiceImpl implements AcService{
     @Transactional
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
         Ac ac = findById(id);
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
+
+        if(findOne(specification).isPresent()&& !findOne(specification).get().getId().equals(id)) {
+            throw new AcNomAlreadyExist("", request.getNom());
+        }
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
         if(request.getTutelId() != null) {
         RefParam tutel= refParamRepository.findById(request.getTutelId()).
