@@ -1,6 +1,5 @@
 package com.sigmap.common.dac;
 
-import jakarta.persistence.Column;
 import java.io.Serializable;
 import java.util.Objects;
 import lombok.*;
@@ -11,10 +10,8 @@ import lombok.*;
 @NoArgsConstructor
 public class DacId implements Serializable {
 
-  @Column(name = "dac_id")
   private Integer dacId;
 
-  @Column(name = "dac_ver")
   private Integer dacVer;
 
   @Override
@@ -22,8 +19,7 @@ public class DacId implements Serializable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DacId dacId = (DacId) o;
-    return Objects.equals(this.dacId, dacId.dacId) &&
-            Objects.equals(this.dacVer, dacId.dacVer);
+    return Objects.equals(this.dacId, dacId.dacId) && Objects.equals(this.dacVer, dacId.dacVer);
   }
 
   @Override

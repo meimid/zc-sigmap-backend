@@ -1,7 +1,6 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -17,7 +16,8 @@ import lombok.*;
 public class Dac extends BaseEntity {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dac_id_seq")
+  @SequenceGenerator(name = "dac_id_seq", sequenceName = "dac_id_seq", allocationSize = 1)
   @Column(name = "dac_id")
   private Integer dacId;
 

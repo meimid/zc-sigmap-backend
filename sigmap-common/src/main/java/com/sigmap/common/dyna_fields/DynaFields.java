@@ -1,8 +1,11 @@
 package com.sigmap.common.dyna_fields;
 
 import com.sigmap.common.dyna_docs.DynaDocs;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +21,11 @@ import lombok.Setter;
 public class DynaFields {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  // @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dyna_fields_id_seq")
+  // @SequenceGenerator(
+  //     name = "dyna_fields_id_seq",
+  //     sequenceName = "dyna_fields_id_seq",
+  //     allocationSize = 1)
   @Column(name = "dyna_fields_id")
   private Integer dynaFieldsId;
 
@@ -72,4 +79,7 @@ public class DynaFields {
         updatable = false),
   })
   private DynaDocs dynaDocs;
+
+  @OneToMany(mappedBy = "dynaFields")
+  private Set<DynaFieldsDetails> dynaFieldsDetails = new HashSet<>();
 }
