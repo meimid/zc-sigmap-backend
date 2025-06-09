@@ -12,5 +12,5 @@ public class DynaFieldsDetailsRequest {
 
   private String source;
 
-  private String source_field;
+  private String sourceField;
 }

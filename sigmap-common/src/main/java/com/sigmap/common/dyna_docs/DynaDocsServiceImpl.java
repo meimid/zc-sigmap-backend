@@ -5,6 +5,7 @@ import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -12,15 +13,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
 public class DynaDocsServiceImpl implements DynaDocsService {
+  private final DynaDocsSequenceGenerator dynaDocSequenceGenerator;
   private final DynaDocsRepository dynaDocsRepository;
   private final RefParamService refParamService;
 
   public DynaDocsServiceImpl(
-      DynaDocsRepository dynaDocsRepository, RefParamService refParamService) {
+      DynaDocsSequenceGenerator dynaDocSequenceGenerator,
+      DynaDocsRepository dynaDocsRepository,
+      RefParamService refParamService) {
+    this.dynaDocSequenceGenerator = dynaDocSequenceGenerator;
     this.dynaDocsRepository = dynaDocsRepository;
     this.refParamService = refParamService;
   }
@@ -59,13 +65,30 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   }
 
   @Override
+  @Transactional(rollbackFor = Throwable.class)
   public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
+
+    dynaDocs.setDynaDocsId(dynaDocSequenceGenerator.getNextId());
     dynaDocs.setDynaDocsVer(1);
 
     RefParam refParam = refParamService.findById(request.getCategorieId());
     dynaDocs.setCategorieId(refParam);
 
     return save(dynaDocs);
+  }
+
+  @Override
+  @Transactional(rollbackFor = Throwable.class)
+  public DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound {
+    DynaDocs dynaDoc = findLatestById(dynaDocId).orElseThrow(() -> new DynaDocNotFound(dynaDocId));
+
+    DynaDocsMapper.INSTANCE.map(request, dynaDoc);
+
+    Specification<RefParam> refParamSpec = RefParamSpecifications.id(request.getCategorieId());
+    RefParam refParam = refParamService.findOne(refParamSpec).orElseThrow();
+    dynaDoc.setCategorieId(refParam);
+
+    return save(dynaDoc);
   }
 }

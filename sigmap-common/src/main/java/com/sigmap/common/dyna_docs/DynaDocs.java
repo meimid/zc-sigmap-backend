@@ -17,11 +17,11 @@ import lombok.Setter;
 public class DynaDocs {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dyna_docs_id_seq")
-  @SequenceGenerator(
-      name = "dyna_docs_id_seq",
-      sequenceName = "dyna_docs_id_seq",
-      allocationSize = 1)
+  // @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dyna_docs_id_seq")
+  // @SequenceGenerator(
+  //     name = "dyna_docs_id_seq",
+  //     sequenceName = "dyna_docs_id_seq",
+  //     allocationSize = 1)
   @Column(name = "dyna_docs_id")
   private Integer dynaDocsId;
 

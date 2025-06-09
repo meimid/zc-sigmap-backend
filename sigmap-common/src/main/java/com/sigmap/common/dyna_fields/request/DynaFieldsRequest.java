@@ -22,6 +22,10 @@ public class DynaFieldsRequest {
 
   private String sourceField;
 
+  private Integer dynaFieldsOrder;
+
+  private Integer status = 0;
+
   private List<Detail> details = new ArrayList<>();
 
   @Data
@@ -34,6 +38,6 @@ public class DynaFieldsRequest {
 
     private String source;
 
-    private String source_field;
+    private String sourceField;
   }
 }

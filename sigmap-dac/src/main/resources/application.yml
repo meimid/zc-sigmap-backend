@@ -86,5 +86,5 @@ alfresco:
 
 templateDac:
   dac:
-    inputDocPath: ${INPUT_DAC_PATH:/home/haytham/Desktop/sigmap-dac-templates/}
+    inputDocPath: ${INPUT_DAC_PATH:E:\\word\\templates\\}
     outputDocPath: ${OUTPUT_DAC_PATH:E:\\word\\temp\\}

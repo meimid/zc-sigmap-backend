@@ -50,7 +50,7 @@ public class TemplateController {
       return ResponseEntity.status(HttpStatus.CREATED).body(templateResponse);
     } catch (Exception e) {
       log.error("Error uploading template: {}", e.getMessage());
-      throw new RuntimeException(e);
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Error uploading template");
     }
   }
 

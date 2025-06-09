@@ -4,6 +4,7 @@ import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsService;
 import com.sigmap.common.dyna_docs.DynaDocsSpecifications;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
+import com.sigmap.common.dyna_fields.exceptions.DynaFieldNotFound;
 import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.request.DynaFieldsRequest;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
@@ -12,6 +13,7 @@ import com.sigmap.common.dyna_fields_details.request.DynaFieldsDetailsRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Service;
 public class DynaFieldsServiceImpl implements DynaFieldsService {
   private final DynaDocsService dynaDocsService;
   private final DynaFieldsRepository dynaFieldsRepository;
+  private final DynaFieldsSequenceGenerator dynaFieldsSequenceGenerator;
   private final DynaFieldsDetailsService dynaFieldsDetailsService;
   private final RefParamService refParamService;
 
@@ -38,11 +41,13 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
    */
   public DynaFieldsServiceImpl(
       DynaDocsService dynaDocsService,
+      DynaFieldsSequenceGenerator dynaFieldsSequenceGenerator,
       DynaFieldsRepository dynaFieldsRepository,
       DynaFieldsDetailsService dynaFieldsDetailsService,
       RefParamService refParamService) {
     this.dynaDocsService = dynaDocsService;
     this.dynaFieldsRepository = dynaFieldsRepository;
+    this.dynaFieldsSequenceGenerator = dynaFieldsSequenceGenerator;
     this.dynaFieldsDetailsService = dynaFieldsDetailsService;
     this.refParamService = refParamService;
   }
@@ -70,7 +75,26 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
   @Override
   public Optional<DynaFields> findById(Integer dynaFieldId) {
     Specification<DynaFields> spec = DynaFieldsSpecifications.dynaFieldId(dynaFieldId);
-    return dynaFieldsRepository.findOne(spec);
+
+    List<DynaFields> dynaFields = dynaFieldsRepository.findAll(spec);
+
+    if (dynaFields.isEmpty()) {
+      return Optional.empty();
+    }
+
+    Integer dynaDocsId = dynaFields.get(0).getDynaDocsId();
+
+    Specification<DynaDocs> dynaDocSpec = DynaDocsSpecifications.latestById(dynaDocsId);
+    DynaDocs dynaDocs =
+        dynaDocsService.findOne(dynaDocSpec).orElseThrow(() -> new DynaDocNotFound(dynaDocsId));
+
+    Optional<DynaFields> dynaField =
+        dynaFields.stream()
+            .filter(item -> item.getDynaDocsId().equals(dynaDocsId))
+            .filter(item -> item.getDynaDocsVer().equals(dynaDocs.getDynaDocsVer()))
+            .findFirst();
+
+    return dynaField;
   }
 
   @Override
@@ -90,6 +114,7 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
 
     dynaFields.setDynaDocsId(dynaDocs.getDynaDocsId());
     dynaFields.setDynaDocsVer(dynaDocs.getDynaDocsVer());
+    dynaFields.setDynaFieldsId(dynaFieldsSequenceGenerator.getNextId());
     dynaFields.setDynaDocs(dynaDocs);
 
     RefParam typeId = refParamService.findById(request.getTypeId());
@@ -97,17 +122,72 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
 
     dynaFields = dynaFieldsRepository.save(dynaFields);
 
-    log.info("DynaFields created with ID: {}", dynaFields.getDynaFieldsId());
+    log.info("DynaField created with ID: {}", dynaFields.getDynaFieldsId());
 
     if (request.getDetails() != null && !request.getDetails().isEmpty()) {
       List<DynaFieldsDetailsRequest> detailsReq =
           DynaFieldsMapper.INSTANCE.mapDetails(request.getDetails());
+
       List<DynaFieldsDetails> detailsList =
           dynaFieldsDetailsService.createAll(dynaFields, detailsReq);
+
       Set<DynaFieldsDetails> details = DynaFieldsMapper.INSTANCE.detailsToSet(detailsList);
+
       dynaFields.setDynaFieldsDetails(details);
     }
 
     return dynaFields;
+  }
+
+  @Override
+  public DynaFields update(Integer dynaFieldId, DynaFieldsRequest request) throws RefParamNotFound {
+    Specification<DynaDocs> spec = DynaDocsSpecifications.latestById(request.getDynaDocsId());
+    DynaDocs dynaDocs =
+        dynaDocsService
+            .findOne(spec)
+            .orElseThrow(() -> new DynaDocNotFound(request.getDynaDocsId()));
+
+    Specification<DynaFields> dynaFieldSpec =
+        Specification.allOf(
+            DynaFieldsSpecifications.dynaFieldId(dynaFieldId),
+            DynaFieldsSpecifications.dynaDocId(dynaDocs.getDynaDocsId()),
+            DynaFieldsSpecifications.dynaDocVer(dynaDocs.getDynaDocsVer()));
+
+    DynaFields dynaFields =
+        dynaFieldsRepository
+            .findOne(dynaFieldSpec)
+            .orElseThrow(() -> new DynaFieldNotFound(dynaFieldId));
+
+    DynaFieldsMapper.INSTANCE.map(request, dynaFields);
+
+    save(dynaFields);
+
+    if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+      List<DynaFieldsDetailsRequest> detailsReq =
+          DynaFieldsMapper.INSTANCE.mapDetails(request.getDetails());
+
+      List<DynaFieldsDetails> detailsList =
+          dynaFieldsDetailsService.createAll(dynaFields, detailsReq);
+
+      Set<DynaFieldsDetails> details = DynaFieldsMapper.INSTANCE.detailsToSet(detailsList);
+
+      dynaFields.setDynaFieldsDetails(details);
+    } else {
+      dynaFields.setDynaFieldsDetails(new HashSet<>());
+    }
+
+    return dynaFields;
+  }
+
+  /**
+   * Delete DynaField.
+   *
+   * <p>WARNING : ....
+   *
+   * @param dynaFieldId ID
+   */
+  @Override
+  public void delete(Integer dynaFieldId) {
+    throw new UnsupportedOperationException();
   }
 }

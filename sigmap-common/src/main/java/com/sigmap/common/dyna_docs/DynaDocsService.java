@@ -69,6 +69,14 @@ public interface DynaDocsService {
    */
   DynaDocs create(DynaDocsRequest request) throws RefParamNotFound;
 
+  /**
+   * Update dynadoc
+   *
+   * @param dynaDocId ID
+   * @param request dynaDoc request
+   */
+  DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound;
+
   // /**
   //  * Soft deletes an Agpm entity by its ID and version.
   //  *

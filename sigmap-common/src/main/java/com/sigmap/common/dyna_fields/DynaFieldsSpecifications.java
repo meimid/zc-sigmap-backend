@@ -2,9 +2,27 @@ package com.sigmap.common.dyna_fields;
 
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+
 import org.springframework.data.jpa.domain.Specification;
 
 public class DynaFieldsSpecifications {
+
+  public static Specification<DynaFields> latestVersionPerId() {
+    return (root, query, cb) -> {
+      query.distinct(true);
+
+      Subquery<Integer> subquery = query.subquery(Integer.class);
+      Root<DynaFields> subRoot = subquery.from(DynaFields.class);
+      subquery
+          .select(cb.max(subRoot.get("dynaDocsVer")))
+          .where(cb.equal(subRoot.get("dynaFieldsId"), root.get("dynaFieldsId")));
+
+      return cb.equal(root.get("dynaDocsVer"), subquery);
+    };
+  }
+
   public static Specification<DynaFields> search(String search) {
     return (root, query, criteriaBuilder) -> {
       return criteriaBuilder.or(

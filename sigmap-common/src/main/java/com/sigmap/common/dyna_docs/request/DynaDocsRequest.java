@@ -14,5 +14,5 @@ public class DynaDocsRequest {
 
   private Integer dynaDocOrder;
 
-  private Integer status;
+  private Integer status = 1;
 }

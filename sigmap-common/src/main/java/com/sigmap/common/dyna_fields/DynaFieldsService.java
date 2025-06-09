@@ -27,7 +27,7 @@ public interface DynaFieldsService {
   List<DynaFields> findAll(Specification<DynaFields> spec);
 
   /**
-   * Retrieves a single DynaFields entity based on the provided specification.
+   * Retrieves a single DynaField entity based on the provided specification.
    *
    * @param specification The JPA specification
    * @return An Optional containing the Agpm entity if found, or empty if not found
@@ -35,7 +35,7 @@ public interface DynaFieldsService {
   Optional<DynaFields> findOne(Specification<DynaFields> specification);
 
   /**
-   * Retrieves the number of DynaFields entities matching the provided specification.
+   * Retrieves the number of DynaField entities matching the provided specification.
    *
    * @param specification The JPA specification
    * @return The number of DynaFields entities matching the specification
@@ -43,7 +43,7 @@ public interface DynaFieldsService {
   long count(Specification<DynaFields> specification);
 
   /**
-   * Retrieves an DynaFields entity by its ID and version.
+   * Retrieves an DynaField entity by its ID and version.
    *
    * @param dynaFieldId The ID
    * @return The DynaFields entity if found
@@ -51,7 +51,7 @@ public interface DynaFieldsService {
   Optional<DynaFields> findById(Integer dynaFieldId);
 
   /**
-   * Saves a DynaDoc entity to the database.
+   * Saves a DynaField entity to the database.
    *
    * @param dynaField The dynaDoc entity to save
    * @return The saved DynaDoc entity
@@ -59,10 +59,25 @@ public interface DynaFieldsService {
   DynaFields save(DynaFields dynaField);
 
   /**
-   * Creates a new DynaDoc entity based on the provided request data.
+   * Creates a new DynaField entity based on the provided request data.
    *
    * @param request The Dyna doc DTO containing the data to create the DynaDoc entity
    * @return The created DynaDoc entity
    */
   DynaFields create(DynaFieldsRequest request) throws RefParamNotFound;
+
+  /**
+   * Update DynaFields.
+   *
+   * @param dynaFieldId ID
+   * @param request dynaDoc request
+   */
+  DynaFields update(Integer dynaFieldId, DynaFieldsRequest request) throws RefParamNotFound;
+
+  /**
+   * Delete DynaField.
+   *
+   * @param dynaFieldId ID
+   */
+  void delete(Integer dynaFieldId);
 }

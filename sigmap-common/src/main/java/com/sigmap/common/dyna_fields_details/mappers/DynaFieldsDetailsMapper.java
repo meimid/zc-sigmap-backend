@@ -13,7 +13,14 @@ import org.mapstruct.factory.Mappers;
 public interface DynaFieldsDetailsMapper {
   DynaFieldsDetailsMapper INSTANCE = Mappers.getMapper(DynaFieldsDetailsMapper.class);
 
+  @Mapping(target = "dynaFieldsDetailsId", ignore = true)
+  @Mapping(target = "dynaFieldsId", ignore = true)
+  @Mapping(target = "dynaDocsId", ignore = true)
+  @Mapping(target = "dynaDocsVer", ignore = true)
+  DynaFieldsDetails mapWithoutId(DynaFieldsDetails source);
+
   @Mapping(target = "typeId", ignore = true)
+  @Mapping(target = "source_field", source = "sourceField")
   DynaFieldsDetails map(DynaFieldsDetailsRequest source);
 
   DynaFieldsDetailsResponse map(DynaFieldsDetails source);

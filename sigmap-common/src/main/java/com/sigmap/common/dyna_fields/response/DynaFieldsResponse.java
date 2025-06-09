@@ -21,7 +21,7 @@ public class DynaFieldsResponse {
 
   private String description;
 
-  private RefParam type_id;
+  private RefParam typeId;
 
   private String source;
 
@@ -43,6 +43,6 @@ public class DynaFieldsResponse {
 
     private String source;
 
-    private String source_field;
+    private String sourceField;
   }
 }

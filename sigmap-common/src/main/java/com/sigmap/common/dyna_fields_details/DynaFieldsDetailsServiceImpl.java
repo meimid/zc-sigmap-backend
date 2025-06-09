@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class DynaFieldsDetailsServiceImpl implements DynaFieldsDetailsService {
   private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
+  private final DynaFieldsDetailsSequenceGenerator dynaFieldsDetailsSequenceGenerator;
   private final RefParamService refParamService;
 
   /**
@@ -29,8 +30,11 @@ public class DynaFieldsDetailsServiceImpl implements DynaFieldsDetailsService {
    * @param dynaFieldsDetailsRepository Repository for DynaFieldsDetails entities
    */
   public DynaFieldsDetailsServiceImpl(
-      RefParamService refParamService, DynaFieldsDetailsRepository dynaFieldsDetailsRepository) {
+      DynaFieldsDetailsSequenceGenerator dynaFieldsDetailsSequenceGenerator,
+      RefParamService refParamService,
+      DynaFieldsDetailsRepository dynaFieldsDetailsRepository) {
     this.refParamService = refParamService;
+    this.dynaFieldsDetailsSequenceGenerator = dynaFieldsDetailsSequenceGenerator;
     this.dynaFieldsDetailsRepository = dynaFieldsDetailsRepository;
   }
 
@@ -70,6 +74,7 @@ public class DynaFieldsDetailsServiceImpl implements DynaFieldsDetailsService {
 
     DynaFieldsDetails dynaFieldsDetails = DynaFieldsDetailsMapper.INSTANCE.map(request);
 
+    dynaFieldsDetails.setDynaFieldsDetailsId(dynaFieldsDetailsSequenceGenerator.getNextId());
     dynaFieldsDetails.setDynaFieldsId(dynaField.getDynaFieldsId());
     dynaFieldsDetails.setDynaDocsId(dynaField.getDynaDocsId());
     dynaFieldsDetails.setDynaDocsVer(dynaField.getDynaDocsVer());
