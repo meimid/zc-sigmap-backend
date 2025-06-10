@@ -338,7 +338,9 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         if (request.getFiles() != null) {
-            processAndSaveDocuments(request.getFiles(), agpm);
+          //  processAndSaveDocuments(request.getFiles(), agpm);
+            documentCommuneService.processAndSaveDocuments(request.getFiles(),agpm,Constants.PATH_ENTREPOT_GED);
+
         }
 
         agpm.setIsDeleted(false);
@@ -487,7 +489,9 @@ public class AgpmServiceImpl implements AgpmService {
         // Process uploaded files
         if (request.getFiles() != null && !request.getFiles().isEmpty()) {
             try {
-                processAndSaveDocuments(request.getFiles(), newAgpm);
+               // processAndSaveDocuments(request.getFiles(), newAgpm);
+                documentCommuneService.processAndSaveDocuments(request.getFiles(),newAgpm,Constants.PATH_ENTREPOT_GED);
+
                 log.debug("New documents added from files to Agpm {}:{}", agpmId, nextVersion);
             } catch (IOException e) {
                 log.error("Failed to process files: {}", e.getMessage());
@@ -588,7 +592,9 @@ public class AgpmServiceImpl implements AgpmService {
         // Process uploaded files
         if (request.getFiles() != null && !request.getFiles().isEmpty()) {
             try {
-                processAndSaveDocuments(request.getFiles(), agpm);
+               // processAndSaveDocuments(request.getFiles(), agpm);
+                documentCommuneService.processAndSaveDocuments(request.getFiles(),agpm,Constants.PATH_ENTREPOT_GED);
+
                 log.debug("New documents added from files to Agpm");
             } catch (IOException e) {
                 log.error("Failed to process files: {}", e.getMessage());
@@ -654,7 +660,7 @@ public class AgpmServiceImpl implements AgpmService {
      * @param savedAgpm Agpm entity to associate the documents with
      * @throws IOException if an error occurs during file processing or upload to Alfresco
      */
-    private void processAndSaveDocuments(List<MultipartFile> files, Agpm savedAgpm) throws IOException {
+ /*   private void processAndSaveDocuments(List<MultipartFile> files, Agpm savedAgpm) throws IOException {
         if (files != null && !files.isEmpty()) {
             for (MultipartFile file : files) {
                 if (file != null && !file.isEmpty()) {
@@ -704,7 +710,7 @@ public class AgpmServiceImpl implements AgpmService {
                 }
             }
         }
-    }
+    }*/
 
     /**
      * Creates a filtered response Agpm entity, excluding soft-deleted documents.
