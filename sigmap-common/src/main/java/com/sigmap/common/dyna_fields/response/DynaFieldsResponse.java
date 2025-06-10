@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_fields.response;
 
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +30,7 @@ public class DynaFieldsResponse {
 
   private Integer dynaFieldsOrder;
 
-  private Integer status;
+  private ActiveStatus status;
 
   private List<Detail> details = new ArrayList<>();
 

@@ -23,6 +23,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -338,9 +339,8 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         agpm.setIsDeleted(false);
-        RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
-                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-        agpm.setStatus(defaultStatus);
+
+        agpm.setStatus(ProcessStatus.BROUILLON);
 
         return repository.save(agpm);
     }
@@ -363,11 +363,11 @@ public class AgpmServiceImpl implements AgpmService {
         }
 
         Agpm agpm = existingAgpm.get();
-        if (!Constants.DRAFT_STATUS.equals(agpm.getStatus().getId())) {
+        if (!ProcessStatus.BROUILLON.equals(agpm.getStatus())) {
             throw new AgpmInvalidStatusException("Agpm can only be deleted when status is DRAFT",
                     List.of(agpmId),
                     List.of(agpmVer),
-                    agpm.getStatus().getId());
+                    agpm.getStatus());
         }
 
         Integer rowsAffected = repository.softDelete(agpmId, agpmVer, Calendar.getInstance());
@@ -625,21 +625,20 @@ public class AgpmServiceImpl implements AgpmService {
      *
      * @param agpmId   ID of the Agpm entity to update
      * @param agpmVer  Version of the Agpm entity to update
-     * @param statusId The new status ID to set
+     * @param status The new status ID to set
      * @return Updated Agpm entity
      * @throws AgpmNotFound if the Agpm entity is not found
      * @throws ReferenceNotFound if the status ID is not found
      */
     @Override
     @Transactional
-    public Agpm updateStatus(Integer agpmId, Integer agpmVer, Integer statusId) throws AgpmNotFound {
+    public Agpm updateStatus(Integer agpmId, Integer agpmVer, ProcessStatus status) throws AgpmNotFound {
         CompositeId compositeId = new CompositeId(agpmId, agpmVer);
         Agpm agpm = repository.findById(compositeId)
                 .orElseThrow(() -> new AgpmNotFound("Agpm not found", List.of(agpmId), List.of(agpmVer)));
 
-        RefParam newStatus = refParamRepository.findById(statusId).orElseThrow(() ->
-                new ReferenceNotFound("Status not found with ID: ", List.of(String.valueOf(statusId))));
-        agpm.setStatus(newStatus);
+
+        agpm.setStatus(status);
 
         agpm.setUpdatedAt(Calendar.getInstance());
         return repository.save(agpm);
@@ -749,10 +748,9 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws AgpmInvalidStateException if the Agpm is not in DRAFT status or has a non-null processInstanceId
      */
     private void restrictUpdateAgpm(Agpm agpm) throws AgpmInvalidStateException {
-        RefParam draftStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
-                .orElseThrow(() -> new NotFoundException("Default status not found"));
 
-        boolean isDraft = Objects.equals(agpm.getStatus().getId(), draftStatus.getId());
+
+        boolean isDraft = Objects.equals(agpm.getStatus(), ProcessStatus.BROUILLON);
         boolean hasNoProcessInstance = agpm.getProcessInstanceId() == null;
 
         if (!isDraft || !hasNoProcessInstance) {

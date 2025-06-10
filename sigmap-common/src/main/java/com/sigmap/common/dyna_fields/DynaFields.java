@@ -2,6 +2,8 @@ package com.sigmap.common.dyna_fields;
 
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import java.util.HashSet;
@@ -62,8 +64,8 @@ public class DynaFields {
   @Column(name = "dyna_fields_order")
   private Integer dynaFieldsOrder;
 
-  @Column(name = "status")
-  private Integer status;
+  @Enumerated(EnumType.STRING)
+  private ActiveStatus status;
 
   @ManyToOne
   @JoinColumns({

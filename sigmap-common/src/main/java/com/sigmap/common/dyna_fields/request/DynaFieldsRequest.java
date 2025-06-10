@@ -2,6 +2,8 @@ package com.sigmap.common.dyna_fields.request;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import com.sigmap.common.entity.ActiveStatus;
 import lombok.Data;
 
 @Data
@@ -24,7 +26,7 @@ public class DynaFieldsRequest {
 
   private Integer dynaFieldsOrder;
 
-  private Integer status = 0;
+  private ActiveStatus status = ActiveStatus.NON_ACTIF;
 
   private List<Detail> details = new ArrayList<>();
 

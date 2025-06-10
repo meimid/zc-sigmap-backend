@@ -2,6 +2,7 @@ package com.sigmap.common.dyna_docs.request;
 
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsSpecifications;
+import com.sigmap.common.entity.ActiveStatus;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -15,7 +16,7 @@ public class DynaDocsQuery {
 
   private String guideFileName;
 
-  private Integer status;
+  private ActiveStatus status;
 
   private Integer categorieId;
 
