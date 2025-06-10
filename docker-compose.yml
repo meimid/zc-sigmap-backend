@@ -33,6 +33,15 @@ services:
       timeout: 10s
       retries: 5
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    ports:
+      - "3000:3000"
+    environment:
+      - LIBREOFFICE_AUTO_START=true
+    volumes:
+      - ./documents:/documents
+
 volumes:
   sigmap-data:
   flowable-data:

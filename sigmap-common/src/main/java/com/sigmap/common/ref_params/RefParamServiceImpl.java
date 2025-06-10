@@ -264,6 +264,20 @@ public class RefParamServiceImpl implements RefParamService {
             throw new HasAssociatedRefRealisation("", id);
         }
 
+        boolean hasAssociatedDynaDoc = repository.hasAssociatedDynaDoc(id);
+        if (hasAssociatedDynaDoc) {
+            throw new HasAssociatedDynaDoc(id);
+        }
+
+        boolean hasAssociatedDynaField = repository.hasAssociatedDynaField(id);
+        if (hasAssociatedDynaField) {
+            throw new HasAssociatedDynaField(id);
+        }
+
+        boolean hasAssociatedDynaFieldDetail = repository.hasAssociatedDynaFieldDetail(id);
+        if (hasAssociatedDynaFieldDetail) {
+            throw new HasAssociatedDynaFieldDetail(id);
+        }
 
         repository.softDelete(id);
     }

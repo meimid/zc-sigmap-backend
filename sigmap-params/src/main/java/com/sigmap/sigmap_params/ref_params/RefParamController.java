@@ -191,6 +191,24 @@ public class RefParamController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/dac-category")
+    public ResponseEntity<List<RefParamResponseDto>> findAllDacCategory() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.CATEGORIE_DAC);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type-dyna-field")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeDynaField() throws RefTypeNotFound  {
+        List<RefParam> params = refParamService.findByRefType(Constants.TYPE_FIELD_DAC);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
     @GetMapping("/type-societe/{id}")
     public ResponseEntity<RefParamResponse> findByTypeSocieteAndById(@PathVariable Integer id) throws RefParamNotFound {
         RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.TYPE_SOCIETE);
@@ -229,6 +247,20 @@ public class RefParamController {
     @GetMapping("/status/{id}")
     public ResponseEntity<RefParamResponse> findByStatusAndById(@PathVariable Integer id) throws RefParamNotFound {
         RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.STATUS);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/dac-category/{id}")
+    public ResponseEntity<RefParamResponse> findByDacCategoryAndById(@PathVariable Integer id) throws RefParamNotFound  {
+        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.CATEGORIE_DAC);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/type-dyna-field/{id}")
+    public ResponseEntity<RefParamResponse> findByTypeDynaFieldAndById(@PathVariable Integer id) throws RefParamNotFound  {
+        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.TYPE_FIELD_DAC);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -283,6 +315,24 @@ public class RefParamController {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.STATUS);
         RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.STATUS, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/dac-category/{id}")
+    public ResponseEntity<RefParamResponse> UpdateByDacCategoryAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
+        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.CATEGORIE_DAC);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.CATEGORIE_DAC,request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/type-dyna-field/{id}")
+    public ResponseEntity<RefParamResponse> UpdateByTypeDynaFieldAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
+        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.TYPE_FIELD_DAC);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.TYPE_FIELD_DAC, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -419,11 +469,42 @@ public class RefParamController {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/dac-category/{id}")
+    public ResponseEntity<RefParamResponse> deleteByDacCategoryAndById(@PathVariable Integer id) 
+        throws HasAssociatedDynaDoc, RefParamNotFound {
+        refParamService.deleteByIdAndRefTypeId(id,Constants.CATEGORIE_DAC);
+
+        RefParam deleted = refParamService.findDeletedById(id)
+                .orElseThrow();
+        RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/type-dyna-field/{id}")
+    public ResponseEntity<RefParamResponse> deleteByTypeDynaFieldAndById(@PathVariable Integer id) 
+        throws HasAssociatedDynaDoc, RefParamNotFound {
+        refParamService.deleteByIdAndRefTypeId(id,Constants.TYPE_FIELD_DAC);
+
+        RefParam deleted = refParamService.findDeletedById(id)
+                .orElseThrow();
+        RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/type-societe")
     public ResponseEntity<RefParamResponse> createUnderTypeSociete(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.TYPE_SOCIETE);
         RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_SOCIETE, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/dac-category")
+    public ResponseEntity<RefParamResponse> createUnderDacCategory(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
+        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.CATEGORIE_DAC);
+        RefParam refParam = refParamService.createUnderRefType(Constants.CATEGORIE_DAC,request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -437,6 +518,14 @@ public class RefParamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/type-dyna-field")
+    public ResponseEntity<RefParamResponse> createUnderTypeDynaField(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
+        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.TYPE_FIELD_DAC);
+        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_FIELD_DAC,request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
     @PostMapping("/pays")
     public ResponseEntity<RefParamResponse> createUnderPays(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
