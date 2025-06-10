@@ -10,6 +10,7 @@ import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
@@ -150,10 +151,6 @@ public class PpmServiceImpl implements PpmService {
         return repository.findOne(specification);
     }
 
-//    @Override
-//    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) {
-//        return repository.findById(new CompositeId(ppmId, ppmVer));
-//    }
 @Override
 public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
     log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
@@ -164,28 +161,26 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         throw new IllegalArgumentException("PPM ID cannot be null");
     }
 
-    // Step 2: Get user's AC IDs
+    // Step 2: Get user's AC IDs and comIds
     List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-    log.info(userAcIds+"ee");
-    if (userAcIds == null || userAcIds.isEmpty()) {
-        log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
-        throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+    List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+    log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
+
+    if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+        log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
+        throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
     }
 
-    if (userAcIds.isEmpty()) {
-        log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
-        throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
-    }
-    log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
-
-    // Step 3: Validate ACs
-    for (Integer acId : userAcIds) {
-        try {
-            log.debug("Validation de l'AC ID: {}", acId);
-            acService.findById(acId);
-        } catch (AcNotFound e) {
-            log.warn("AC non trouvé avec ID: {}", acId);
-            throw e;
+    // Step 3: Validate ACs if any exist
+    if (userAcIds != null && !userAcIds.isEmpty()) {
+        for (Integer acId : userAcIds) {
+            try {
+                log.debug("Validation de l'AC ID: {}", acId);
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
         }
     }
 
@@ -213,33 +208,123 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
     }
 
-    // Step 7: Validate AC association
+    // Step 7: Validate AC or com association
     Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-    log.debug("Validation de l'association AC: PPM AC ID={}, User ACs={}", ppmAcId, userAcIds);
-    if (ppmAcId == null || !userAcIds.contains(ppmAcId)) {
-        log.warn("PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppmAcId, userAcIds);
+    boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+    boolean hasMatchingCom = false;
+
+    // Check if any comId in ppm.coms matches user's comIds
+    if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
+        for (Com com : ppm.getComs()) {
+            if (com != null && userComIds.contains(com.getId())) {
+                hasMatchingCom = true;
+                log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
+                break;
+            }
+        }
+    }
+
+    if (!hasMatchingAc && !hasMatchingCom) {
+        log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
+                ppmId, ppmAcId, userAcIds, userComIds);
         throw new PpmNotAssociatedWithUserAcException(
-                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté",
+                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
                 List.of(ppmId.longValue()),
                 List.of(targetVersion)
         );
     }
+    log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-    // Step 8: Final validation before return
-    if (ppm.getAc() == null || !userAcIds.contains(ppm.getAc().getId())) {
-        log.warn("Validation finale échouée: PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppm.getAc() != null ? ppm.getAc().getId() : "null", userAcIds);
-        throw new PpmNotAssociatedWithUserAcException(
-                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
-                List.of(ppmId.longValue()),
-                List.of(targetVersion)
-        );
-    }
-
-    // Step 9: Prepare and return the response
+    // Step 8: Prepare and return the response
     Ppm responsePpm = createFilteredResponsePpm(ppm);
     log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
     return Optional.ofNullable(responsePpm);
 }
+//    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+//        log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
+//
+//        // Step 1: Validate input
+//        if (ppmId == null) {
+//            log.error("PPM ID est null");
+//            throw new IllegalArgumentException("PPM ID cannot be null");
+//        }
+//
+//        // Step 2: Get user's AC IDs
+//        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+//        log.info(userAcIds+"ee");
+//        if (userAcIds == null || userAcIds.isEmpty()) {
+//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
+//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+//        }
+//
+//        if (userAcIds.isEmpty()) {
+//            log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
+//            throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
+//        }
+//        log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
+//
+//        // Step 3: Validate ACs
+//        for (Integer acId : userAcIds) {
+//            try {
+//                log.debug("Validation de l'AC ID: {}", acId);
+//                acService.findById(acId);
+//            } catch (AcNotFound e) {
+//                log.warn("AC non trouvé avec ID: {}", acId);
+//                throw e;
+//            }
+//        }
+//
+//        // Step 4: Determine the version to use
+//        Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
+//        if (targetVersion == null) {
+//            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
+//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
+//        }
+//        log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
+//
+//        // Step 5: Retrieve the PPM
+//        Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
+//        if (ppmOpt.isEmpty()) {
+//            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
+//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
+//        }
+//
+//        Ppm ppm = ppmOpt.get();
+//        log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
+//
+//        // Step 6: Check if the PPM is deleted
+//        if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
+//            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
+//            throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
+//        }
+//
+//        // Step 7: Validate AC association
+//        Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
+//        log.debug("Validation de l'association AC: PPM AC ID={}, User ACs={}", ppmAcId, userAcIds);
+//        if (ppmAcId == null || !userAcIds.contains(ppmAcId)) {
+//            log.warn("PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppmAcId, userAcIds);
+//            throw new PpmNotAssociatedWithUserAcException(
+//                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté",
+//                    List.of(ppmId.longValue()),
+//                    List.of(targetVersion)
+//            );
+//        }
+//
+//        // Step 8: Final validation before return
+//        if (ppm.getAc() == null || !userAcIds.contains(ppm.getAc().getId())) {
+//            log.warn("Validation finale échouée: PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppm.getAc() != null ? ppm.getAc().getId() : "null", userAcIds);
+//            throw new PpmNotAssociatedWithUserAcException(
+//                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
+//                    List.of(ppmId.longValue()),
+//                    List.of(targetVersion)
+//            );
+//        }
+//
+//        // Step 9: Prepare and return the response
+//        Ppm responsePpm = createFilteredResponsePpm(ppm);
+//        log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
+//        return Optional.ofNullable(responsePpm);
+//    }
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -256,6 +341,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         filteredPpm.setId(ppm.getId());
         filteredPpm.setVersion(ppm.getVersion());
         filteredPpm.setAc(ppm.getAc());
+        filteredPpm.setStatus(ppm.getStatus());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
         filteredPpm.setUpdatedAt(ppm.getUpdatedAt());
@@ -2645,7 +2731,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                     .orElseThrow(() -> new PaaDefaultStatus("Mode Passation not found with ID: " + request.getModePassation().getId()));
             ppm.setModePassation(modePassation);
         } else {
-            System.out.println("ModePassation is not provided in the request; proceeding with null value");
+            System.out.println("Mode Passation is not provided in the request; proceeding with null value");
             ppm.setModePassation(null);
         }
 
