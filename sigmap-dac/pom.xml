@@ -149,6 +149,13 @@
             <version>8.3.0</version>
         </dependency>
 
+
+        <dependency>
+            <groupId>dev.inaka</groupId>
+            <artifactId>jotenberg</artifactId>
+            <version>1.1.0</version>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -168,6 +175,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
                         </path>
 
                         <!-- additional annotation processor required as of Lombok 1.18.16 -->
