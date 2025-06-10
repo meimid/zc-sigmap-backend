@@ -443,16 +443,11 @@ public class PaaServiceImpl implements PaaService {
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
 
-        Integer id = request.getId();
-        if (id == null) {
-//            id = repository.findMaxId();
-            id =sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
-            if (id == null) {
-                id = 1;
-            } else {
-                id++;
-            }
-        }
+        // Always generate the id using the sequence
+        Integer id = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
+
+        // Remove the old findMaxId logic and the id++ logic:
+        // If the sequence is working, it always returns the next available number!
 
         Optional<Paa> existingPaa = repository.findById(new CompositeId(id, version));
         if (existingPaa.isPresent()) {
@@ -462,28 +457,30 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
+<<<<<<< HEAD
         paa.setStatus(ProcessStatus.BROUILLON);
+=======
+        RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
+                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
+        paa.setStatus(defaultStatus);
+>>>>>>> 01349e57f9bf2130a49739e1e3c7d013df9cd72f
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
-        // Set the annee field as a string with the current year
-        String currentYear = String.valueOf(LocalDate.now().getYear());
-        log.info("Setting annee to: {}", currentYear); // Debug log
-        paa.setAnnee(currentYear);
+        paa.setAnnee(String.valueOf(LocalDate.now().getYear()));
 
+        // Only set the id and version here
         paa.setId(id);
         paa.setVersion(version);
 
-        log.info("Paa before saving: id={}, version={}, annee={}", paa.getId(), paa.getVersion(), paa.getAnnee()); // Debug log
+        log.info("Paa before saving: id={}, version={}, annee={}", paa.getId(), paa.getVersion(), paa.getAnnee());
         Paa savedPaa = repository.save(paa);
-        log.info("Paa after saving: id={}, version={}, annee={}", savedPaa.getId(), savedPaa.getVersion(), savedPaa.getAnnee()); // Debug log
+        log.info("Paa after saving: id={}, version={}, annee={}", savedPaa.getId(), savedPaa.getVersion(), savedPaa.getAnnee());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             List<Realisation> realisations = realisationRepository.findAllById(request.getRealisationIds());
             if (realisations.size() != request.getRealisationIds().size()) {
                 throw new RuntimeException("Some realisations were not found");
             }
-
-            // Update both sides of the relationship in memory
             for (Realisation realisation : realisations) {
                 if (realisation.getPaas() == null) {
                     realisation.setPaas(new ArrayList<>());
@@ -492,15 +489,10 @@ public class PaaServiceImpl implements PaaService {
                     realisation.getPaas().add(savedPaa);
                 }
             }
-
-            // Save all realisations in a single batch operation
             realisationRepository.saveAll(realisations);
-
-            // Update and save PAA with the realisations
             savedPaa.setRealisations(realisations);
             savedPaa = repository.save(savedPaa);
         }
-
         return savedPaa;
     }
 
