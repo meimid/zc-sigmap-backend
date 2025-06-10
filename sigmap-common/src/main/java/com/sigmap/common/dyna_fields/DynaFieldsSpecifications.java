@@ -4,7 +4,6 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
-
 import org.springframework.data.jpa.domain.Specification;
 
 public class DynaFieldsSpecifications {
