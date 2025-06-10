@@ -1549,7 +1549,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
@@ -1688,8 +1688,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                     try {
                                         System.out.println("Processing " + withLotsDto.getRealisationFiles().size() +
                                                 " files for new realisation " + newRealisation.getId());
-                                        processAndSaveRelisationsDocuments(withLotsDto.getRealisationFiles(), newRealisation);
-
+                                        //processAndSaveRelisationsDocuments(withLotsDto.getRealisationFiles(), newRealisation);
+                                            documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
                                         // Refresh the realisation to get the updated document list
                                         newRealisation = realisationRepository.findById(
                                                         new CompositeId(newRealisation.getId(), newRealisation.getVersion()))
@@ -2887,7 +2887,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 /*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
 */
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+ppm.getId()+"/"+ppm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
@@ -3131,101 +3131,101 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
     private final Object folderCreationLock = new Object();
 
-    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-        List<Docs> docs = new ArrayList<>();
-
-        // Add a file counter to ensure unique filenames even with the same UUID
-        AtomicInteger fileCounter = new AtomicInteger(0);
-
-        if (files != null && !files.isEmpty()) {
-            // Create a completely unique folder name with timestamp to avoid conflicts
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            // Use parent folder path from Constants but avoid using "REALISATION" directly
-             String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
-//            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
-            String folderPath = String.format("%s/REL_%d/%d",
-                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion());
-
-            // Create the folder structure first, synchronizing to prevent conflicts
-            String folderId;
-            synchronized(folderCreationLock) {
-                try {
-                    // Get or create the folder first, outside the file processing loop
-                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
-//                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
-                } catch (Exception e) {
-//                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
-                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
-                }
-            }
-
-            // Now process each file using the already-created folder
-            for (MultipartFile file : files) {
-                UUID uuid = UUID.randomUUID();
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Tika tika = new Tika();
-                        String detectedMimeType = tika.detect(file.getInputStream());
-                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-
-                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-                        if (fileExtension.isEmpty()) {
-                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-                        }
-
-                        long fileSize = file.getSize();
-                        String formattedSize = documentCommuneService.formatSize(fileSize);
-
-                        String[] parts = originalFilename.split("\\.");
-                        String baseName = parts[0];
-                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-                        // Include timestamp and counter to ensure uniqueness
-                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
-                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
-                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-
-//                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
-//                                originalFilename, uniqueFileName, folderPath, folderId);
-
-                        // Upload directly to the already-created folder
-                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
-//                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
-
-                        Docs document = new Docs();
-                        document.setName(baseName);
-                        document.setAlfresco_id(alfrescoId);
-                        document.setPathFolder(folderPath);
-                        document.setFileSize(formattedSize);
-                        document.setContentType(detectedMimeType);
-                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-                        document.setAlfrescoName(uniqueFileName);
-
-                        // Ensure collections are initialized
-                        if (document.getRealisations() == null) {
-                            document.setRealisations(new ArrayList<>());
-                        }
-                        if (savedRealisation.getDocs() == null) {
-                            savedRealisation.setDocs(new ArrayList<>());
-                        }
-
-                        // Set up bidirectional relationship
-                        document.getRealisations().add(savedRealisation);
-                        savedRealisation.getDocs().add(document);
-
-                        // Save the document
-                        docsRepository.save(document);
-                        docs.add(document);
-                    } catch (Exception e) {
-//                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
-                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-                    }
-                }
-            }
-        }
-
-        // Update the realisation's docs
-        savedRealisation.setDocs(docs);
-    }
+//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+//        List<Docs> docs = new ArrayList<>();
+//
+//        // Add a file counter to ensure unique filenames even with the same UUID
+//        AtomicInteger fileCounter = new AtomicInteger(0);
+//
+//        if (files != null && !files.isEmpty()) {
+//            // Create a completely unique folder name with timestamp to avoid conflicts
+//            String timestamp = String.valueOf(System.currentTimeMillis());
+//            // Use parent folder path from Constants but avoid using "REALISATION" directly
+//             String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
+////            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
+//            String folderPath = String.format("%s/REL_%d/%d",
+//                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion());
+//
+//            // Create the folder structure first, synchronizing to prevent conflicts
+//            String folderId;
+//            synchronized(folderCreationLock) {
+//                try {
+//                    // Get or create the folder first, outside the file processing loop
+//                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
+////                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
+//                } catch (Exception e) {
+////                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
+//                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
+//                }
+//            }
+//
+//            // Now process each file using the already-created folder
+//            for (MultipartFile file : files) {
+//                UUID uuid = UUID.randomUUID();
+//                if (file != null && !file.isEmpty()) {
+//                    try {
+//                        Tika tika = new Tika();
+//                        String detectedMimeType = tika.detect(file.getInputStream());
+//                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+//
+//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+//                        }
+//
+//                        long fileSize = file.getSize();
+//                        String formattedSize = documentCommuneService.formatSize(fileSize);
+//
+//                        String[] parts = originalFilename.split("\\.");
+//                        String baseName = parts[0];
+//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+//                        // Include timestamp and counter to ensure uniqueness
+//                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
+//                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
+//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+//
+////                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
+////                                originalFilename, uniqueFileName, folderPath, folderId);
+//
+//                        // Upload directly to the already-created folder
+//                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
+////                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
+//
+//                        Docs document = new Docs();
+//                        document.setName(baseName);
+//                        document.setAlfresco_id(alfrescoId);
+//                        document.setPathFolder(folderPath);
+//                        document.setFileSize(formattedSize);
+//                        document.setContentType(detectedMimeType);
+//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+//                        document.setAlfrescoName(uniqueFileName);
+//
+//                        // Ensure collections are initialized
+//                        if (document.getRealisations() == null) {
+//                            document.setRealisations(new ArrayList<>());
+//                        }
+//                        if (savedRealisation.getDocs() == null) {
+//                            savedRealisation.setDocs(new ArrayList<>());
+//                        }
+//
+//                        // Set up bidirectional relationship
+//                        document.getRealisations().add(savedRealisation);
+//                        savedRealisation.getDocs().add(document);
+//
+//                        // Save the document
+//                        docsRepository.save(document);
+//                        docs.add(document);
+//                    } catch (Exception e) {
+////                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//
+//        // Update the realisation's docs
+//        savedRealisation.setDocs(docs);
+//    }
 
     /*void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         System.out.println("============== DOCUMENT UPLOAD LOG START ==============");
@@ -3735,7 +3735,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
                                // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
-                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                             } catch (Exception e) {
                                 throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
@@ -4197,7 +4197,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
                         // Process all files at once using the new method
                        // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                         // After processing files, fetch the updated realisation with its documents
