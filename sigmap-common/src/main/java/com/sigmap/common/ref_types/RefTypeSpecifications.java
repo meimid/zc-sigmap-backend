@@ -30,7 +30,12 @@ public class RefTypeSpecifications {
         };
     }
 
-
+    /** code. */
+    public static Specification<RefType> code(String code) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.equal(root.get("refCode"), code);
+        };
+    }
 
     /** deleted. */
     public static Specification<RefType> deleted(boolean deleted) {

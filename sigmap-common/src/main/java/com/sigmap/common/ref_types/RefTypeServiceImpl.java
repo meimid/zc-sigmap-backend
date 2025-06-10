@@ -31,6 +31,11 @@ public class RefTypeServiceImpl implements RefTypeService {
   }
 
   @Override
+  public List<RefType> findAllWithSystemType(Specification<RefType> spec) {
+    return repository.findAll(spec);
+  }
+
+  @Override
   public Page<RefType> findAll(Specification<RefType> spec, Pageable pageable) {
     Specification<RefType> systemTypeSpec = RefTypeSpecifications.systemType();
     Specification<RefType> combinedSpec;
