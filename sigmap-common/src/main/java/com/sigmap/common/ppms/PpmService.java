@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -168,7 +169,7 @@ public interface PpmService {
     void delete(Integer ppmId, Integer ppmVer);
 
 
-    Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId) throws PpmNotFound, AcNotFound;
+    Ppm updateStatus(Integer ppmId, Integer ppmVer, ProcessStatus status) throws PpmNotFound, AcNotFound;
 
     /**
      * Updates a PPM by creating a new version with the updated data.

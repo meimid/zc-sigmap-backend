@@ -5,6 +5,7 @@ import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
@@ -177,10 +178,10 @@ public class PpmFlowableService {
             return errorResponse;
         }
         Ppm ppm = ppmOptional.get();
-        if (ppm.getStatus() == null || ppm.getStatus().getId() != Constants.DRAFT_STATUS) {
+        if (ppm.getStatus() == null || ppm.getStatus() != ProcessStatus.BROUILLON) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("Process can only be started when PPM is in draft status. Current status ID: " +
-                    (ppm.getStatus() != null ? ppm.getStatus().getId() : "null"));
+                    (ppm.getStatus() != null ? ppm.getStatus() : "null"));
             return errorResponse;
         }
 
@@ -228,7 +229,7 @@ public class PpmFlowableService {
         }
 
         // Update PPM status to TRAITMENT_STATUS
-        Ppm updated = ppmService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
+        Ppm updated = ppmService.updateStatus(id, version, ProcessStatus.EN_TRAITEMENT);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
@@ -550,10 +551,10 @@ public class PpmFlowableService {
         }
 
         // Handle status update
-        Integer newStatus = null;
+        ProcessStatus newStatus = null;
         if (isPublishable) {
             // For the final task, set status to Publiée
-            newStatus = Constants.PUBLIE_STATUS; // Set to PUBLIE_STATUS (e.g., 35)
+            newStatus = ProcessStatus.PUBLIE; // Set to PUBLIE_STATUS (e.g., 35)
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -561,9 +562,9 @@ public class PpmFlowableService {
                 return errorResponse;
             }
             latestPpm = updatedPpm;
-            log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus().getId()); // Debug log
+            log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus()); // Debug log
         } else if (request.getValidate() != null && request.getValidate()) {
-            newStatus = Constants.TRAITMENT_STATUS; // Set to TRAITMENT_STATUS (36) if validated, keeping "en cours de traitement"
+            newStatus = ProcessStatus.EN_TRAITEMENT; // Set to TRAITMENT_STATUS (36) if validated, keeping "en cours de traitement"
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -572,7 +573,7 @@ public class PpmFlowableService {
             }
             latestPpm = updatedPpm;
         } else if (request.getValidate() != null && !request.getValidate()) {
-            newStatus = Constants.TRAITMENT_STATUS; // Set to TRAITMENT_STATUS (36) if rejected, keeping "en cours de traitement"
+            newStatus = ProcessStatus.EN_TRAITEMENT; // Set to TRAITMENT_STATUS (36) if rejected, keeping "en cours de traitement"
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -656,13 +657,12 @@ public class PpmFlowableService {
 
         // If this task's completion leads to the last task, set status to Validée
         if (nextTaskIsLast && !isPublishable) {
-            Integer intermediateStatus = Constants.VALIDE_STATUS; // Set to VALIDE_STATUS (34) before entering the last task
-            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), intermediateStatus);
+            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), ProcessStatus.VALIDE);
             if (updatedPpm == null) {
                 log.warn("Failed to update PPM status to Validée before entering last task for task [{}]", taskId);
             } else {
                 latestPpm = updatedPpm;
-                log.info("Updated PPM status to Validée before entering last task for task [{}], new status: {}", taskId, latestPpm.getStatus().getId());
+                log.info("Updated PPM status to Validée before entering last task for task [{}], new status: {}", taskId, latestPpm.getStatus());
             }
         }
 
@@ -677,7 +677,7 @@ public class PpmFlowableService {
         response.setProcessInstanceId(task.getProcessInstanceId());
         response.setId(id);
         response.setVersion(latestPpm.getVersion());
-        response.setNewStatus(newStatus != null ? newStatus : latestPpm.getStatus().getId());
+        response.setNewStatus(newStatus != null ? newStatus : latestPpm.getStatus());
         response.setValidate(validate);
         response.setTraceability(variables);
         response.setIsUpdatable(isUpdatable);

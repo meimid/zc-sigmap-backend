@@ -14,9 +14,10 @@ public interface DynaDocsRepository
     extends JpaRepository<DynaDocs, CompositeId>, JpaSpecificationExecutor<DynaDocs> {
 
   @Query(
-      "SELECT d FROM DynaDocs d WHERE d.status = 1 AND d.categorieId.id = :categorieId AND"
+      "SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.categorieId.id = :categorieId AND"
           + " d.version = (SELECT MAX(d2.version) FROM DynaDocs d2 WHERE d2.id ="
-          + " d.id AND d2.categorieId.id = :categorieId AND d2.status = 1)")
+          + " d.id AND d2.categorieId.id = :categorieId AND d2.status = 'ACTIF')")
+
   List<DynaDocs> findAllActifForCategorie(@Param("categorieId") Integer categorieId);
 
   @Query("SELECT d FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")

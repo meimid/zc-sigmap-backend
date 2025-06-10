@@ -15,6 +15,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -569,13 +570,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             newPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
 
 
-            // Update status if provided
-            if (request.getStatus() != null) {
-                newPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-            } else {
+
                 newPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
-            }
+
 
             if (request.getModePassation() != null) {
                 newPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
@@ -601,12 +598,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
             existingPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
             // Update status if provided
-            if (request.getStatus() != null) {
-                existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-            } else {
-                existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
-            }
+
+            existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
+
 
             if (request.getModePassation() != null) {
                 existingPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
@@ -638,9 +632,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Ppm ppm = ppmOptional.get();
 
         // Check if the PPM is in draft status
-        if (ppm.getStatus() == null || ppm.getStatus().getId() != Constants.DRAFT_STATUS) {
+        if (ppm.getStatus() == null || ppm.getStatus() != ProcessStatus.BROUILLON ) {
             throw new IllegalStateException("PPM can only be deleted in draft status. Current status ID: " +
-                    (ppm.getStatus() != null ? ppm.getStatus().getId() : "null"));
+                    (ppm.getStatus() != null ? ppm.getStatus() : "null"));
         }
 
         // Proceed with soft deletion
@@ -649,7 +643,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
 
     @Override
-    public Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId) throws PpmNotFound, AcNotFound {
+    public Ppm updateStatus(Integer ppmId, Integer ppmVer, ProcessStatus status) throws PpmNotFound, AcNotFound {
         Optional<Ppm> ppmOpt = findById(ppmId, ppmVer);
         if (ppmOpt.isEmpty()) {
             return null;
@@ -668,12 +662,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             request.setAcId(existingPpm.getAc().getId());
         }
 
-        // Fetch RefParam for the statusId
-        RefParam status = refParamRepository.findById(statusId)
-                .orElse(null);
-        if (status == null) {
-            return null;
-        }
+
         request.setStatus(status);
 
         try {
@@ -1223,12 +1212,12 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
         tempPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         tempPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
-        RefParam requestStatus = null;
-        if (request.getStatus() != null) {
-            requestStatus = refParamRepository.findById(request.getStatus().getId()).orElse(null);
+        RefParam requestModePassation = null;
+        if (request.getModePassation() != null) {
+            requestModePassation = refParamRepository.findById(request.getModePassation().getId()).orElse(null);
         }
-        tempPpm.setStatus(requestStatus != null ? requestStatus : existingPpm.getStatus());
-        tempPpm.setModePassation(requestStatus != null ? requestStatus : existingPpm.getModePassation());
+        tempPpm.setStatus(existingPpm.getStatus());
+        tempPpm.setModePassation(requestModePassation != null ? requestModePassation : existingPpm.getModePassation());
         tempPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
         Ac requestAc = null;
         if (request.getAcId() != null) {
@@ -2467,7 +2456,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 Objects.equals(ppm1.getNom(), ppm2.getNom()) &&
                 Objects.equals(ppm1.getAnnee(), ppm2.getAnnee()) &&
                 Objects.equals(ppm1.getBudgetEstime(), ppm2.getBudgetEstime()) &&
-                Objects.equals(getRefParamId(ppm1.getStatus()), getRefParamId(ppm2.getStatus())) &&
+                Objects.equals(ppm1.getStatus(), ppm2.getStatus()) &&
                 Objects.equals(getRefParamId(ppm1.getModePassation()), getRefParamId(ppm2.getModePassation())) &&
                 Objects.equals(ppm1.getRemarque(), ppm2.getRemarque()) &&
                 Objects.equals(getAcId(ppm1.getAc()), getAcId(ppm2.getAc()));
@@ -2649,9 +2638,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
         ppm.setAnnee(currentYearStr);
 
-        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
-                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
-        ppm.setStatus(defaultStatus);
+
+        ppm.setStatus(ProcessStatus.BROUILLON);
         if (request.getModePassation() != null && request.getModePassation().getId() != null) {
             RefParam modePassation = refParamRepository.findById(request.getModePassation().getId())
                     .orElseThrow(() -> new PaaDefaultStatus("Mode Passation not found with ID: " + request.getModePassation().getId()));
@@ -3790,9 +3778,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
         }
         // Check if the PPM is in draft status
-        if (existingPpm.getStatus() == null || existingPpm.getStatus().getId() != Constants.DRAFT_STATUS) {
+        if (existingPpm.getStatus() == null || existingPpm.getStatus() != ProcessStatus.BROUILLON) {
             throw new InvalidPpmStatusException("PPM can only be updated in draft status. Current status ID: " +
-                    (existingPpm.getStatus() != null ? existingPpm.getStatus().getId() : "null"));
+                    (existingPpm.getStatus() != null ? existingPpm.getStatus() : "null"));
         }
         // Update PPM fields
 //        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
@@ -3801,11 +3789,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
-        // Set status if provided
-        if (request.getStatus() != null) {
-            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-        }
+        existingPpm.setStatus(existingPpm.getStatus());
 
         // Set Ac if provided
         if (request.getAcId() != null) {

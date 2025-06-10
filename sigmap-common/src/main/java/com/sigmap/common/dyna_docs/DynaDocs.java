@@ -1,5 +1,5 @@
 package com.sigmap.common.dyna_docs;
-
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -46,6 +46,6 @@ public class DynaDocs {
   @Column(name = "dyna_doc_order")
   private Integer dynaDocOrder;
 
-  @Column(name = "status")
-  private Integer status;
+  @Enumerated(EnumType.STRING)
+  private ActiveStatus status;
 }
