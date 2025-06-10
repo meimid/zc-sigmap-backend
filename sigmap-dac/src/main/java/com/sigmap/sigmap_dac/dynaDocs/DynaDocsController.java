@@ -8,7 +8,6 @@ import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.dyna_docs.response.DynaDocsResponse;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsService;
-import com.sigmap.common.dyna_fields.DynaFieldsSpecifications;
 import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.request.DynaFieldsQuery;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
@@ -20,7 +19,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,26 +70,33 @@ public class DynaDocsController {
       @RequestParam(required = false) Integer version,
       @RequestParam(required = false) Boolean withFields) {
 
-    DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
-    dynaFieldsQuery.setAll(true);
-    dynaFieldsQuery.setDynaDocId(dynaDocsId);
-
-    Specification<DynaFields> dynaFieldsSpec = dynaFieldsQuery.toSpecification();
-
-    if (version != null) {
-      dynaFieldsSpec = dynaFieldsSpec.and(DynaFieldsSpecifications.dynaDocVer(version));
-    } else {
-      dynaFieldsSpec = dynaFieldsSpec.and(DynaFieldsSpecifications.latestVersionPerId());
-    }
-
-    List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsSpec);
-    List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+    // DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
+    // dynaFieldsQuery.setAll(true);
+    //
+    // Specification<DynaFields> dynaFieldsSpec = dynaFieldsQuery.toSpecification();
+    //
+    //
+    // if (version != null) {
+    //   dynaFieldsSpec = dynaFieldsSpec.and(DynaFieldsSpecifications.dynaDocVer(version));
+    //   dynaFieldsSpec = dynaFieldsSpec.and(DynaFieldsSpecifications.dynaDocId(dynaDocsId));
+    // } else {
+    //   dynaFieldsSpec =
+    // dynaFieldsSpec.and(DynaFieldsSpecifications.latestVersionPerId(dynaDocsId));
+    // }
 
     if (version == null) {
       DynaDocs dynaDocs = dynaDocsService.findLatestById(dynaDocsId).orElseThrow();
       DynaDocsResponse dynaDocsResponse = DynaDocsMapper.INSTANCE.map(dynaDocs);
 
       if (withFields != null && withFields) {
+        DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
+        dynaFieldsQuery.setAll(true);
+        dynaFieldsQuery.setDynaDocId(dynaDocsId);
+        dynaFieldsQuery.setDynaDocVer(dynaDocs.getDynaDocsVer());
+
+        List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
+        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+
         dynaDocsResponse.setFields(dynaFieldsResponse);
       }
 
@@ -102,6 +107,14 @@ public class DynaDocsController {
     DynaDocsResponse dynaDocsResponse = DynaDocsMapper.INSTANCE.map(dynaDocs);
 
     if (withFields != null && withFields) {
+      DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
+      dynaFieldsQuery.setAll(true);
+      dynaFieldsQuery.setDynaDocId(dynaDocsId);
+      dynaFieldsQuery.setDynaDocVer(dynaDocs.getDynaDocsVer());
+
+      List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
+      List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+
       dynaDocsResponse.setFields(dynaFieldsResponse);
     }
 
