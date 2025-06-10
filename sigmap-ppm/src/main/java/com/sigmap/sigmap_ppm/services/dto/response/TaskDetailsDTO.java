@@ -28,6 +28,7 @@ public class TaskDetailsDTO {
 
     private boolean updatable;
     private boolean isPublishable;
+    private boolean commissionRequired;
     private Boolean hasTask;
     // Next steps information
     private List<NextStepDTO> nextSteps;

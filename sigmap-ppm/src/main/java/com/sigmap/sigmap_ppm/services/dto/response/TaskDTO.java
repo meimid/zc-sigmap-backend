@@ -30,4 +30,5 @@ public class TaskDTO {
     private String status;
     private Boolean isUpdatable;
     private Boolean isPublishable;
+    private boolean commissionRequired;
 }

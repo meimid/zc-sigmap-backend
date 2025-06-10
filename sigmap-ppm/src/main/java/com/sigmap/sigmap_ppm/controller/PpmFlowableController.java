@@ -3,6 +3,7 @@ package com.sigmap.sigmap_ppm.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.exception.PpmNotFound;
@@ -96,7 +97,7 @@ public class PpmFlowableController {
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
         log.info("Validating task ID: {} with request: {}", taskId, request);
 
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {

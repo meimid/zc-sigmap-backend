@@ -31,7 +31,7 @@ public class CurrentUserService {
                 .orElse(Collections.emptyList());
     }
 
-    public List<Long> getCurrentUserComIds() {
+    public List<Integer> getCurrentUserComIds() {
         return Authentication.getCurrentUserId()
                 .map(userId -> userComRepository.findComIdsByUserIdAndIsDeletedFalse(userId))
                 .orElse(Collections.emptyList());
