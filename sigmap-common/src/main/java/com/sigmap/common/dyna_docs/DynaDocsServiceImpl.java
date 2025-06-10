@@ -75,8 +75,8 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
 
-    dynaDocs.setDynaDocsId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
-    dynaDocs.setDynaDocsVer(1);
+    dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
+    dynaDocs.setVersion(1);
 
     RefParam refParam = refParamService.findById(request.getCategorieId());
     dynaDocs.setCategorieId(refParam);
