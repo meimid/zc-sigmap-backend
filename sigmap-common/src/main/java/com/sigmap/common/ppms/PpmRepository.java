@@ -13,8 +13,8 @@ import org.springframework.data.domain.Pageable;
 public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
         JpaSpecificationExecutor<Ppm>,
         CompositeSoftDeleteRepository<Ppm, Integer> {
-    @Query("SELECT COALESCE(MAX(p.id), 0) FROM Ppm p")
-    Integer findMaxId();
+//    @Query("SELECT COALESCE(MAX(p.id), 0) FROM Ppm p")
+//    Integer findMaxId();
 
 
     /**

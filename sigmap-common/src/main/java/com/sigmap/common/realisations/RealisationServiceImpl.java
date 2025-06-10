@@ -3,8 +3,8 @@ package com.sigmap.common.realisations;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
-import com.sigmap.common.Constants;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
@@ -23,6 +23,7 @@ import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -53,10 +54,11 @@ public class RealisationServiceImpl implements RealisationService {
     private final AcService acService;
 
     private final DocsRepository docsRepository;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
 
 
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository) {
+    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
@@ -67,6 +69,7 @@ public class RealisationServiceImpl implements RealisationService {
         this.docsService = docsService;
         this.acService = acService;
         this.docsRepository = docsRepository;
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     @Override
@@ -127,7 +130,8 @@ public class RealisationServiceImpl implements RealisationService {
 
         // Generate ID if not provided
         if (id == null) {
-            id = repository.findMaxId() + 1;
+//            id = repository.findMaxId() + 1;
+            id = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ) + 1;
             log.info("Generated Realisation ID: {}", id);
         }
 
@@ -205,7 +209,8 @@ public class RealisationServiceImpl implements RealisationService {
                     Lot newLot = new Lot();
                     newLot.setDescription(lotResponse.getDescription());
                     newLot.setVersion(1);
-                    Integer lotId = lotRepository.findMaxId() + 1;
+//                    Integer lotId = lotRepository.findMaxId() + 1;
+                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
                     Lot savedLot = lotRepository.save(newLot);
                     lots.add(savedLot);
@@ -618,7 +623,8 @@ public class RealisationServiceImpl implements RealisationService {
                     newLot.setVersion(1); // First version
                     
                     // Generate new ID if not provided
-                    Integer lotId = lotRepository.findMaxId() + 1;
+//                    Integer lotId = lotRepository.findMaxId() + 1;
+                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
                     
                     // Save the new lot
@@ -1062,7 +1068,8 @@ public class RealisationServiceImpl implements RealisationService {
                     newLot.setDescription(lotDto.getDescription());
 
                     // Generate new ID
-                    Integer lotId = lotRepository.findMaxId() + 1;
+//                    Integer lotId = lotRepository.findMaxId() + 1;
+                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
                     newLot.setVersion(1); // First version
 

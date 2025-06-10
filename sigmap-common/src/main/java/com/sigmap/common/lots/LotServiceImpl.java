@@ -1,5 +1,6 @@
 package com.sigmap.common.lots;
 
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
@@ -8,6 +9,7 @@ import com.sigmap.common.lots.request.LotRequest;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,10 +25,12 @@ import java.util.Set;
 public class LotServiceImpl implements LotService {
     private final LotRepository repository;
     private final RealisationRepository realisationRepository;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
-    public LotServiceImpl(LotRepository lotRepository, RealisationRepository realisationRepository) {
+    public LotServiceImpl(LotRepository lotRepository, RealisationRepository realisationRepository, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = lotRepository;
         this.realisationRepository = realisationRepository;
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     @Override
@@ -85,7 +89,8 @@ public class LotServiceImpl implements LotService {
 
         Integer id = request.getId();
         if (id == null) {
-            Integer maxId = repository.findMaxId();
+//            Integer maxId = repository.findMaxId();
+            Integer maxId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             id = (maxId != null) ? maxId + 1 : 1;
             System.out.println("Generated Lot ID: " + id);
         }

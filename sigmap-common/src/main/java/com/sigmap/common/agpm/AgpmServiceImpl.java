@@ -30,6 +30,7 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
@@ -65,7 +66,7 @@ public class AgpmServiceImpl implements AgpmService {
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
-
+    private final SequenceGeneratorService sequenceGeneratorService;
     /**
      * Constructor for AgpmServiceImpl with dependency injection.
      *
@@ -86,7 +87,7 @@ public class AgpmServiceImpl implements AgpmService {
                            AlfrescoService alfrescoService,
                            DocumentCommuneService documentCommuneService,
                            AcService acService,
-                           CurrentUserService currentUserService) {
+                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
@@ -96,6 +97,7 @@ public class AgpmServiceImpl implements AgpmService {
         this.documentCommuneService = documentCommuneService;
         this.acService = acService;
         this.currentUserService = currentUserService;
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     /**
@@ -289,7 +291,8 @@ public class AgpmServiceImpl implements AgpmService {
 
         Integer id = request.getId();
         if (id == null) {
-            id = repository.findMaxId();
+//            id = repository.findMaxId();
+            id =sequenceGeneratorService.getNextId(Constants.AGPM_ID_SEQ);
             if (id == null) {
                 id = 1;
             } else {
