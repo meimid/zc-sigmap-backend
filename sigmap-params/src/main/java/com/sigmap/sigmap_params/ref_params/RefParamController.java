@@ -553,14 +553,14 @@ public class RefParamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/status")
-    public ResponseEntity<RefParamResponse> createUnderStatus(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
-        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.STATUS);
-        RefParam refParam = refParamService.createUnderRefType(Constants.STATUS, request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+    // @PostMapping("/status")
+    // public ResponseEntity<RefParamResponse> createUnderStatus(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+    //     RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    //     request.setRefTypeId(Constants.STATUS);
+    //     RefParam refParam = refParamService.createUnderRefType(Constants.STATUS, request);
+    //     RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+    //     return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    // }
 
     @GetMapping("/mode-passation")
     public ResponseEntity<List<RefParamResponseDto>> findAllModePassation() throws RefTypeNotFound {

@@ -8,11 +8,11 @@ public class Constants {
   public static final Integer CATEGORIE_SOMISSIONAIRE = 12;
   public static final Integer TYPE_COMITE = 13;
   public static final Integer TYPE_ADDRESS = 14;
-  public static final Integer STATUS = 15;
-  public static final Integer DRAFT_STATUS = 32;
-  public static final Integer TRAITMENT_STATUS = 33;
-  public static final Integer VALIDE_STATUS = 34;
-  public static final Integer PUBLIE_STATUS = 35;
+  // public static final Integer STATUS = 15;
+  // public static final Integer DRAFT_STATUS = 32;
+  // public static final Integer TRAITMENT_STATUS = 33;
+  // public static final Integer VALIDE_STATUS = 34;
+  // public static final Integer PUBLIE_STATUS = 35;
   public static final String PATH_ENTREPOT_GED =
       "/SIGMAP-DEV/ARCHIVE/AGPM/" + LocalDate.now().getYear();
   public static final String PATH_ENTREPOT_GED_PAA =
@@ -28,16 +28,16 @@ public class Constants {
   public static final Integer MODE_SELECTION = 20;
   public static final Integer DIRECTION = 21;
   public static final Integer MODE_PASSATION = 22;
-  public static final Integer AC_COM_STATUS = 23;
+  // public static final Integer AC_COM_STATUS = 23;
   public static final Integer TUTEL = 24;
-  public static final Integer ACTIF_STATUS = 36;
-
-  public static final Integer NON_ACTIF_STATUS = 37;
+  // public static final Integer ACTIF_STATUS = 36;
+  //
+  // public static final Integer NON_ACTIF_STATUS = 37;
 
   // DAC category
   public static final Integer CATEGORIE_DAC = 50;
   // DAC dynamic fields type
-  public static final Integer TYPE_FIELD_DAC = 51;
+  // public static final Integer TYPE_FIELD_DAC = 51;
 
   private Constants() {}
 }

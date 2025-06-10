@@ -9,6 +9,7 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -136,9 +137,7 @@ public class AcServiceImpl implements AcService{
                     userAc.setUserId(userId);
                     userAc.setAcId(savedAc.getId());
                     userAc.setIsDeleted(false);
-                    RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                            .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
-                    userAc.setStatus(defaultStatus);
+                    userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
                 } catch (Exception e) {
                     logger.warn("Impossible d'associer l'utilisateur {} à l'AC {} : {}", userId, savedAc.getId(), e.getMessage());
