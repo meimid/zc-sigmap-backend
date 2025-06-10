@@ -41,6 +41,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +77,7 @@ public class PpmServiceImpl implements PpmService {
     private final DocsService docsService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
 
     /**
@@ -90,7 +92,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository,CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService) {
+    public PpmServiceImpl(PpmRepository repository, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -104,6 +106,7 @@ public class PpmServiceImpl implements PpmService {
         this.acService = acService;
         this.currentUserService = currentUserService;
 
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     @Override
@@ -425,7 +428,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
     public Ppm create(PpmRequest request) {
         Integer id = request.getId();
         if (id == null) {
-            Integer maxId = repository.findMaxId();
+//            Integer maxId = repository.findMaxId();
+            Integer maxId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
             id = (maxId != null) ? maxId + 1 : 1;
             request.setId(id);
         }
@@ -460,7 +464,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 // Generate ID if not provided
                 Integer realisationId = realisationRequest.getId();
                 if (realisationId == null) {
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
                     realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                 }
 
@@ -500,7 +505,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         // Generate ID if not provided
                         Integer lotId = lotRequest.getId();
                         if (lotId == null) {
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                         }
 
@@ -2036,7 +2042,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot newLot = new Lot();
 
                             // Generate ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId =  sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer newLotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             newLot.setId(newLotId);
                             newLot.setVersion(1); // Initial version
@@ -2629,7 +2636,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
     @Transactional
     @Override
     public Ppm createWithRelationships(PpmWithLotsRequestDto request) throws AcNotFound {
-        Integer ppmId = repository.findMaxId();
+//        Integer ppmId = repository.findMaxId();
+        Integer ppmId =  sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
         ppmId = (ppmId != null) ? ppmId + 1 : 1;
         Integer ppmVersion = 1;
 
@@ -2761,7 +2769,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Map<String, Lot> newLotsMap = new HashMap<>();
 
         // Get the current max ID for Realisation once before the loop
-        Integer currentMaxRealisationId = realisationRepository.findMaxId();
+//        Integer currentMaxRealisationId = realisationRepository.findMaxId();
+        Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
         Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId + 1 : 1;
 
         if (realisationsToProcess != null && !realisationsToProcess.isEmpty()) {
@@ -2875,7 +2884,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             newLot.setIsDeleted(false); // Ensure it's not deleted
 
                             // Generate new ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                             newLot.setId(lotId);
 
@@ -3604,7 +3614,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -3621,7 +3632,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 } else {
                     // Create new realisation
                     realisation = new Realisation();
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                     realisation.setId(realisationId);
                     realisation.setVersion(1); // Always version 1 for new realisations
@@ -3695,7 +3707,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -4045,7 +4058,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                     realisation = new Realisation();
 
                     // Generate a new ID for the realisation
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
 
                     // Always use version 1 for newly created realisations
@@ -4165,7 +4179,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             newLot.setIsDeleted(false); // Ensure it's not deleted
 
                             // Generate new ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                             newLot.setId(lotId);
 

@@ -31,6 +31,7 @@ import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -69,11 +70,12 @@ public class PaaServiceImpl implements PaaService {
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
-    public PaaServiceImpl(PaaRepository repository,  CurrentUserService currentUserService,RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService
+    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService
 
 
     ) {
@@ -88,6 +90,7 @@ public class PaaServiceImpl implements PaaService {
         this.documentCommuneService = documentCommuneService;
         this.acService = acService;
         this.currentUserService = currentUserService;
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -441,7 +444,8 @@ public class PaaServiceImpl implements PaaService {
 
         Integer id = request.getId();
         if (id == null) {
-            id = repository.findMaxId();
+//            id = repository.findMaxId();
+            id =sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
             if (id == null) {
                 id = 1;
             } else {
@@ -797,7 +801,8 @@ public class PaaServiceImpl implements PaaService {
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -812,7 +817,8 @@ public class PaaServiceImpl implements PaaService {
                     realisation = realisationRepository.save(realisation);
                 } else {
                     realisation = new Realisation();
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                     realisation.setId(realisationId);
                     realisation.setVersion(1);
@@ -868,7 +874,8 @@ public class PaaServiceImpl implements PaaService {
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -1216,7 +1223,8 @@ public class PaaServiceImpl implements PaaService {
                                         newLot.setVersion(1); // First version
 
                                         // Generate new ID if not provided
-                                        Integer maxLotId = lotRepository.findMaxId();
+//                                        Integer maxLotId = lotRepository.findMaxId();
+                                        Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                         Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                                         newLot.setId(lotId);
 
@@ -2112,7 +2120,8 @@ public class PaaServiceImpl implements PaaService {
     @Transactional
     @Override
     public Paa createWithRelationships(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
-        Integer paaId = repository.findMaxId();
+//        Integer paaId = repository.findMaxId();
+        Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
         paaId = (paaId != null) ? paaId + 1 : 1;
         Integer paaVersion = 1;
 
@@ -2203,7 +2212,8 @@ public class PaaServiceImpl implements PaaService {
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             // Get the current max ID for Realisation once before the loop
             // This will be our starting point for generating new IDs
-            Integer currentMaxRealisationId = realisationRepository.findMaxId();
+//            Integer currentMaxRealisationId = realisationRepository.findMaxId();
+            Integer currentMaxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
             // Initialize next ID to use. If no realisations exist, start from 1.
             // Otherwise, start from maxId + 1.
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId + 1 : 1;
@@ -2252,7 +2262,8 @@ public class PaaServiceImpl implements PaaService {
                 // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
                     Set<Lot> lots = new HashSet<>();
-                    Integer currentMaxLotId = lotRepository.findMaxId();
+//                    Integer currentMaxLotId = lotRepository.findMaxId();
+                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                     Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
 
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
