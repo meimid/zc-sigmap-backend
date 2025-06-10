@@ -1,6 +1,7 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
@@ -161,7 +162,7 @@ public interface PaaService {
      */
     Paa updateWithVersioning(Integer paaId, PaaRequestGlobal request) throws PaaNotFound;
 
-    Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound;
+    Paa updateStatus(Integer paaId, Integer paaVer, ProcessStatus status) throws PaaNotFound;
 
     Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
 

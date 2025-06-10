@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_paa.service.dto.response;
 
+import com.sigmap.common.entity.ProcessStatus;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,7 +26,7 @@ public class TaskDTO {
     private Integer version;
     private String nom;
     private String ref;
-    private Integer newStatus;
+    private ProcessStatus newStatus;
     private Boolean validate;
     private String status;
     private Boolean isUpdatable;

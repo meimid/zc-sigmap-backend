@@ -9,6 +9,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaMapper;
@@ -456,9 +457,13 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
+<<<<<<< HEAD
+        paa.setStatus(ProcessStatus.BROUILLON);
+=======
         RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
                 .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
         paa.setStatus(defaultStatus);
+>>>>>>> 01349e57f9bf2130a49739e1e3c7d013df9cd72f
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
         paa.setAnnee(String.valueOf(LocalDate.now().getYear()));
@@ -509,8 +514,8 @@ public class PaaServiceImpl implements PaaService {
         }
 
         Paa paa = existingPaa.get();
-        if (!Constants.DRAFT_STATUS.equals(paa.getStatus().getId())) {
-            throw new PaaInvalidStatusException("Paa can only be deleted when status is DRAFT", List.of(paaId), List.of(paaVer), paa.getStatus().getId());
+        if (!ProcessStatus.BROUILLON.equals(paa.getStatus())) {
+            throw new PaaInvalidStatusException("Paa can only be deleted when status is DRAFT", List.of(paaId), List.of(paaVer), paa.getStatus());
         }
 
         Integer rowsAffected = repository.softDelete(paaId, paaVer, Calendar.getInstance());
@@ -526,9 +531,8 @@ public class PaaServiceImpl implements PaaService {
      * @throws PaaInvalidStateException if the PAA is not in DRAFT status or has a non-null processInstanceId
      */
     private void restrictUpdatePaa(Paa paa) throws PaaInvalidStateException {
-        RefParam draftStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
 
-        boolean isDraft = Objects.equals(paa.getStatus().getId(), draftStatus.getId());
+        boolean isDraft = Objects.equals(paa.getStatus(), ProcessStatus.BROUILLON);
         boolean hasNoProcessInstance = paa.getProcessInstanceId() == null;
 
         if (!isDraft || !hasNoProcessInstance) {
@@ -1949,7 +1953,7 @@ public class PaaServiceImpl implements PaaService {
                 && Objects.equals(paa1.getRemarque(), paa2.getRemarque())
                 && Objects.equals(paa1.getAnnee(), paa2.getAnnee())
                 && Objects.equals(paa1.getBudgetEstime(), paa2.getBudgetEstime())
-                && Objects.equals(getRefParamId(paa1.getStatus()), getRefParamId(paa2.getStatus()))
+                && Objects.equals((paa1.getStatus()), (paa2.getStatus()))
                 && Objects.equals(getRefParamId(paa1.getModePassation()), getRefParamId(paa2.getModePassation()))
                 && Objects.equals(getAcId(paa1.getAc()), getAcId(paa2.getAc()));
     }
@@ -2128,8 +2132,7 @@ public class PaaServiceImpl implements PaaService {
         setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
 
-        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS).orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
-        paa.setStatus(defaultStatus);
+        paa.setStatus(ProcessStatus.BROUILLON);
 
         List<UserAc> userAcs = currentUserService.getCurrentUserAc();
         if (userAcs == null || userAcs.isEmpty()) {
@@ -2567,12 +2570,11 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Transactional
-    public Paa updateStatus(Integer paaId, Integer paaVer, Integer statusId) throws PaaNotFound {
+    public Paa updateStatus(Integer paaId, Integer paaVer, ProcessStatus status) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Paa paa = repository.findById(compositeId).orElseThrow(() -> new PaaNotFound("Paa not found", List.of(paaId), List.of(paaVer)));
 
-        RefParam newStatus = refParamRepository.findById(statusId).orElseThrow(() -> new ReferenceNotFound("Status not found with ID: ", List.of(String.valueOf(statusId))));
-        paa.setStatus(newStatus);
+        paa.setStatus(status);
 
         paa.setUpdatedAt(Calendar.getInstance());
         return repository.save(paa);

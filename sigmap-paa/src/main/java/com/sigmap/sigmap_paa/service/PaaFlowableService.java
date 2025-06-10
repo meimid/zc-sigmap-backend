@@ -6,6 +6,7 @@ import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
@@ -259,7 +260,7 @@ public class PaaFlowableService {
             return errorResponse;
         }
 
-        Paa updated = paaService.updateStatus(id, version, Constants.TRAITMENT_STATUS);
+        Paa updated = paaService.updateStatus(id, version, ProcessStatus.EN_TRAITEMENT);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
@@ -707,10 +708,10 @@ public class PaaFlowableService {
             runtimeService.setVariables(task.getProcessInstanceId(), processVariables);
         }
 
-        Integer newStatus = null;
+        ProcessStatus newStatus = null;
         boolean validate = request.getValidate() != null ? request.getValidate() : false;
         if (validate) {
-            newStatus = Constants.VALIDE_STATUS;
+            newStatus = ProcessStatus.VALIDE;
             Paa updatedPaa = paaService.updateStatus(id, latestPaa.getVersion(), newStatus);
             if (updatedPaa == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -719,7 +720,7 @@ public class PaaFlowableService {
             }
             latestPaa = updatedPaa;
         } else if (!validate) {
-            newStatus = Constants.TRAITMENT_STATUS;
+            newStatus = ProcessStatus.EN_TRAITEMENT;
             Paa updatedPaa = paaService.updateStatus(id, latestPaa.getVersion(), newStatus);
             if (updatedPaa == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -742,7 +743,7 @@ public class PaaFlowableService {
         taskService.complete(taskId);
 
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
-            newStatus = Constants.PUBLIE_STATUS;
+            newStatus = ProcessStatus.PUBLIE;
             Paa updatedPaa = paaService.updateStatus(id, latestPaa.getVersion(), newStatus);
             if (updatedPaa == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -759,7 +760,7 @@ public class PaaFlowableService {
         response.setProcessInstanceId(task.getProcessInstanceId());
         response.setId(id);
         response.setVersion(version);
-        response.setNewStatus(newStatus != null ? newStatus : (latestPaa.getStatus() != null ? latestPaa.getStatus().getId() : null));
+        response.setNewStatus(newStatus != null ? newStatus : (latestPaa.getStatus() != null ? latestPaa.getStatus() : null));
         response.setValidate(validate);
         response.setTraceability(variables);
         response.setIsUpdatable(isUpdatable);

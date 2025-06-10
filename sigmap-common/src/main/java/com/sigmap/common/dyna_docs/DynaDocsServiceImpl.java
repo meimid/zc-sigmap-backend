@@ -3,6 +3,7 @@ package com.sigmap.common.dyna_docs;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.RefParamSpecifications;
@@ -61,7 +62,7 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
   @Override
   public Optional<DynaDocs> findById(Integer dynaDocId, Integer dynaDocVer) throws DynaDocNotFound {
-    DynaDocId dynaDocID = new DynaDocId(dynaDocId, dynaDocVer);
+    CompositeId dynaDocID = new CompositeId(dynaDocId, dynaDocVer);
     return dynaDocsRepository.findById(dynaDocID);
   }
 
