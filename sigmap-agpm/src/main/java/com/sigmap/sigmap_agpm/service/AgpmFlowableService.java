@@ -14,12 +14,9 @@ import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
-import com.sigmap.sigmap_agpm.service.dto.response.NextStepDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskListResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
@@ -29,14 +26,21 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
+import org.flowable.variable.api.persistence.entity.VariableInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -74,6 +78,9 @@ public class AgpmFlowableService {
 
     @Autowired
     private HistoryService historyService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
 
     /**
      * Checks if the user has the specified role based on their JWT authentication token.
@@ -203,7 +210,7 @@ public class AgpmFlowableService {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws AgpmNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws AgpmNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
@@ -267,6 +274,12 @@ public class AgpmFlowableService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
+        // Add the AC ID from the Agpm entity
+        Integer acId = agpm.getAc() != null ? agpm.getAc().getId() : null;
+        if (acId != null) {
+            variables.put("acId", acId);
+        }
+
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
@@ -314,6 +327,7 @@ public class AgpmFlowableService {
         response.setProcessInstanceId(processInstance.getId());
         response.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         response.setTaskId(initialTask.getId());
+        response.setAcId(acId);
         response.setStatus(String.format("Process %s started and task %s completed successfully", effectiveProcessKey, effectiveTaskKey));
 
         return response;
@@ -327,7 +341,7 @@ public class AgpmFlowableService {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id) throws AgpmNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws AgpmNotFound, AcNotFound {
         return startProcessInstance(id, null, null);
     }
 
@@ -336,63 +350,89 @@ public class AgpmFlowableService {
      *
      * @return TaskListResponseDTO containing the list of tasks
      */
-    public TaskListResponseDTO getCurrentTasks() {
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskTenantId(TENANT_ID)
-                .active()
-                .orderByTaskCreateTime().asc()
-                .list();
-
-        List<TaskDTO> taskList = new ArrayList<>();
-        for (Task task1 : tasks) {
-            TaskDTO taskInfo = new TaskDTO();
-            taskInfo.setTaskId(task1.getId());
-            taskInfo.setTaskName(task1.getName());
-            taskInfo.setTaskDefinitionKey(task1.getTaskDefinitionKey());
-            taskInfo.setAssignee(task1.getAssignee() != null ? task1.getAssignee() : "");
-            taskInfo.setProcessInstanceId(task1.getProcessInstanceId());
-            taskInfo.setCreated(task1.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-
-            Map<String, Object> processVariables = runtimeService.getVariables(task1.getProcessInstanceId());
-            Integer id = (Integer) processVariables.getOrDefault("id", null);
-            Integer version = (Integer) processVariables.getOrDefault("version", null);
-
-            if (id != null && version != null) {
-                try {
-                    Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
-                    agpmOptional.ifPresent(agpm -> {
-                        taskInfo.setId(id);
-                        taskInfo.setVersion(version);
-                        taskInfo.setNom(agpm.getNom());
-                        taskInfo.setRef(agpm.getRef());
-                    });
-                } catch (AgpmNotFound e) {
-                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task1.getId(), e);
-                }
-            }
-
-            Map<String, Object> variables = new HashMap<>();
-            variables.put("decision", processVariables.getOrDefault("decision", ""));
-            variables.put("comment", processVariables.getOrDefault("comment", ""));
-            variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
-            variables.put("treater", processVariables.getOrDefault("treater", ""));
-            taskInfo.setTraceability(variables);
-
-            Map<String, Boolean> taskProperties = getTaskProperties(task1);
-            taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
-            taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
-
-            TaskDTO apply = taskInfo;
-            taskList.add(apply);
-        }
-
-        TaskListResponseDTO response = new TaskListResponseDTO();
-        response.setTenantId(TENANT_ID);
-        response.setTasks(taskList);
-        response.setStatus("Tasks retrieved successfully");
-
-        return response;
-    }
+//    public TaskListResponseDTO getCurrentTasks() {
+//        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (!(authentication instanceof JwtAuthenticationToken)) {
+//            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
+//            errorResponse.setStatus("Invalid or missing JWT authentication");
+//            return errorResponse;
+//        }
+//
+//        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+//
+//        // Get user's AC IDs
+//        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+//        if (userAcIds == null || userAcIds.isEmpty()) {
+//            log.warn("No AC IDs found for the current user");
+//            return new TaskListResponseDTO(); // Return empty response
+//        }
+//
+//
+//        // Query all active tasks for the tenant
+//        List<Task> tasks = taskService.createTaskQuery()
+//                .taskTenantId(TENANT_ID)
+//                .active()
+//                .orderByTaskCreateTime().asc()
+//                .list();
+//
+//        // Filter tasks based on acId process variable
+//        List<Task> filteredTasks = tasks.stream()
+//                .filter(task -> {
+//                    Map<String, Object> variables = runtimeService.getVariables(task.getProcessInstanceId());
+//                    Integer acId = (Integer) variables.get("acId");
+//                    return acId != null && userAcIds.contains(acId);
+//                })
+//                .collect(Collectors.toList());
+//
+//        List<TaskDTO> taskList = new ArrayList<>();
+//        for (Task task : filteredTasks) {
+//            TaskDTO taskInfo = new TaskDTO();
+//            taskInfo.setTaskId(task.getId());
+//            taskInfo.setTaskName(task.getName());
+//            taskInfo.setTaskDefinitionKey(task.getTaskDefinitionKey());
+//            taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+//            taskInfo.setProcessInstanceId(task.getProcessInstanceId());
+//            taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+//
+//            Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+//            Integer id = (Integer) processVariables.getOrDefault("id", null);
+//            Integer version = (Integer) processVariables.getOrDefault("version", null);
+//
+//            if (id != null && version != null) {
+//                try {
+//                    Optional<Agpm> agpmOptional = Optional.ofNullable(agpmService.findById(id, version));
+//                    agpmOptional.ifPresent(agpm -> {
+//                        taskInfo.setId(id);
+//                        taskInfo.setVersion(version);
+//                        taskInfo.setNom(agpm.getNom());
+//                        taskInfo.setRef(agpm.getRef());
+//                    });
+//                } catch (AgpmNotFound | AcNotFound e) {
+//                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+//                }
+//            }
+//
+//            Map<String, Object> variables = new HashMap<>();
+//            variables.put("decision", processVariables.getOrDefault("decision", ""));
+//            variables.put("comment", processVariables.getOrDefault("comment", ""));
+//            variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
+//            variables.put("treater", processVariables.getOrDefault("treater", ""));
+//            taskInfo.setTraceability(variables);
+//
+//            Map<String, Boolean> taskProperties = getTaskProperties(task);
+//            taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
+//            taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
+//
+//            taskList.add(taskInfo);
+//        }
+//
+//        TaskListResponseDTO response = new TaskListResponseDTO();
+//        response.setTenantId(TENANT_ID);
+//        response.setTasks(taskList);
+//        response.setStatus("Tasks retrieved successfully");
+//
+//        return response;
+//    }
 
     /**
      * Retrieves details of a specific task, including associated Agpm entities with non-deleted documents.
@@ -401,7 +441,7 @@ public class AgpmFlowableService {
      * @return TaskDetailsDTO with the task details
      * @throws AgpmNotFound if the associated Agpm entity is not found
      */
-    public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound {
+    public TaskDetailsDTO getTaskDetails(String taskId) throws AgpmNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
@@ -524,7 +564,12 @@ public class AgpmFlowableService {
                                         nextStep.setValidationVariable(variableName);
                                         nextStep.setValidationValue(Boolean.parseBoolean(conditionValue));
                                         nextStep.setNextTaskName(nextStepName);
-                                        nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextStep.setActionLabel("Publier");
+                                            log.info("Next element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                                        } else {
+                                            nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        }
                                         nextSteps.add(nextStep);
                                         log.info("Added next step for task [{}]: variable={}, value={}, nextTask={}, action={}",
                                                 task.getId(), variableName, conditionValue, nextStepName, nextStep.getActionLabel());
@@ -540,9 +585,14 @@ public class AgpmFlowableService {
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Passer pour validation");
+                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                nextStep.setActionLabel("Publier");
+                                log.info("Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                            } else {
+                                nextStep.setActionLabel("Passer pour validation");
+                            }
                             nextSteps.add(nextStep);
-                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, "Complete");
+                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, nextStep.getActionLabel());
                         }
                     }
                 } else {
@@ -721,32 +771,60 @@ public class AgpmFlowableService {
      */
     public TaskListResponseDTO getUserTasks() {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken)) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("Invalid or missing JWT authentication");
-            return errorResponse;
-        }
-
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the current user");
+            return new TaskListResponseDTO();
+        }
+        log.info("ac ids " + userAcIds);
+
+        // Get user's candidate groups
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
 
         if (userCandidateGroups.isEmpty()) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("User does not have any recognized roles");
-            return errorResponse;
+            log.warn("User does not have any recognized roles");
+            return new TaskListResponseDTO();
+        }
+        List<String> matchingProcessInstanceIds = new ArrayList<>();
+
+        for (Integer acId : userAcIds) {
+
+            List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                    .variableValueEquals("acId", acId)
+                    .list();
+            log.info("ac id " + acId);
+            log.info("nbr instance" + instances.size());
+            matchingProcessInstanceIds.addAll(
+                    instances.stream()
+                            .map(ProcessInstance::getId)
+                            .collect(Collectors.toList()));
         }
 
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskTenantId(TENANT_ID)
-                .taskCandidateGroupIn(userCandidateGroups)
-                .active()
-                .orderByTaskCreateTime().asc()
-                .list();
 
-        List<TaskDTO> taskList = tasks.stream().map(task -> {
+        List<Task> filteredTasks = new ArrayList<>();
+        int chunkSize = 1000;
+        for (int i = 0; i < matchingProcessInstanceIds.size(); i += chunkSize) {
+            List<String> chunk = matchingProcessInstanceIds.subList(i,
+                    Math.min(i + chunkSize, matchingProcessInstanceIds.size()));
+            filteredTasks.addAll(
+                    taskService.createTaskQuery()
+                            .taskTenantId(TENANT_ID)
+                            .taskCandidateGroupIn(userCandidateGroups)
+                            .processInstanceIdIn(List.of(chunk.toArray(new String[0])))
+                            .active()
+                            .orderByTaskCreateTime().desc()
+                            .list()
+            );
+        }
+        log.info("filteredTasks " + filteredTasks);
+
+
+        List<TaskDTO> taskList = filteredTasks.stream().map(task -> {
             TaskDTO taskInfo = new TaskDTO();
             taskInfo.setTaskId(task.getId());
             taskInfo.setTaskName(task.getName());
@@ -769,7 +847,7 @@ public class AgpmFlowableService {
                         taskInfo.setNom(agpm.getNom());
                         taskInfo.setRef(agpm.getRef());
                     });
-                } catch (AgpmNotFound e) {
+                } catch (AgpmNotFound | AcNotFound e) {
                     log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
                 }
             }
@@ -842,5 +920,115 @@ public class AgpmFlowableService {
         }
         log.info("No variable name matched in expression: {}", conditionExpression);
         return null;
+    }
+
+    /**
+     * Retrieves an Agpm entity by its ID along with its associated task, if any.
+     * If a task exists and the user has permission to view it, includes the task details and sets hasTask to true.
+     * Otherwise, sets hasTask to false and omits task details.
+     *
+     * @param agpmId The ID of the Agpm entity
+     * @return TaskDetailsDTO containing the Agpm details and task information (if applicable)
+     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws AcNotFound if no AC is found for the current user
+     */
+    @Transactional
+    public TaskDetailsDTO getAgpmWithTasks(Integer agpmId) throws AgpmNotFound, AcNotFound {
+        log.info("Récupération de l'AGPM avec ID: {} et sa tâche associée", agpmId);
+
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("Invalid or missing JWT authentication");
+            return errorResponse;
+        }
+
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+
+        // Récupérer l'AGPM avec la dernière version
+        Agpm agpm = agpmService.findById(agpmId, null); // null pour la dernière version
+        if (agpm == null) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("AGPM non trouvé pour l'ID: " + agpmId);
+            return errorResponse;
+        }
+
+        // Préparer l'objet de réponse
+        TaskDetailsDTO response = new TaskDetailsDTO();
+
+        // Mapper l'AGPM vers AgpmResponseDto
+        if (agpm.getDocs() != null) {
+            List<Docs> nonDeletedDocs = agpm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            agpm.setDocs(nonDeletedDocs);
+        }
+        AgpmResponseDto agpmResponse = AgpmMapper.INSTANCE.mapToDto(agpm);
+        response.setAgpm(agpmResponse);
+
+        // Vérifier si l'AGPM a un processus actif
+        String processInstanceId = agpm.getProcessInstanceId();
+        if (processInstanceId == null) {
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, aucune tâche associée");
+            return response;
+        }
+
+        // Récupérer la tâche active pour ce processInstanceId (une seule tâche est attendue)
+        Task task = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .taskTenantId(TENANT_ID)
+                .active()
+                .singleResult();
+
+        // S'il n'y a pas de tâche active
+        if (task == null) {
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, aucune tâche active associée");
+            return response;
+        }
+
+        // Vérifier si l'utilisateur a les droits de voir la tâche
+        boolean userCanViewTask = hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth);
+
+        if (!userCanViewTask) {
+            log.warn("L'utilisateur {} n'a pas les droits pour voir la tâche {} de l'AGPM {}",
+                    jwtAuth.getName(), task.getId(), agpmId);
+            response.setHasTask(false);
+            response.setStatus("AGPM récupéré avec succès, une tâche existe mais l'utilisateur n'a pas les droits de la voir");
+            return response;
+        }
+
+        // Si l'utilisateur a les droits, inclure les détails de la tâche et définir hasTask à true
+        response.setHasTask(true);
+        response.setTaskId(task.getId());
+        response.setTaskName(task.getName());
+        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+        response.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+        response.setProcessInstanceId(task.getProcessInstanceId());
+        response.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        response.setCandidateGroup(getCandidateGroup(task));
+
+        // Ajouter les variables de traçabilité
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("decision", processVariables.getOrDefault("decision", ""));
+        variables.put("comment", processVariables.getOrDefault("comment", ""));
+        variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
+        variables.put("treater", processVariables.getOrDefault("treater", ""));
+        response.setTraceability(variables);
+
+        // Ajouter les propriétés de la tâche
+        Map<String, Boolean> taskProperties = getTaskProperties(task);
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
+
+        // Ajouter les prochaines étapes possibles
+        List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
+        response.setNextSteps(nextSteps);
+
+        response.setStatus("AGPM et détails de la tâche récupérés avec succès");
+
+        return response;
     }
 }

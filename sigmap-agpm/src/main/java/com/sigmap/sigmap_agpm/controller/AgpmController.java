@@ -13,10 +13,16 @@ import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponse;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
+import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
+import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +44,9 @@ public class AgpmController {
 
     private final AgpmService agpmService;
     private final FileCheckServices fileCheckServices;
+
+    @Autowired
+    private AgpmFlowableService flowableService;
 
     @Value("${max-file-size}")
     private long maxFileUploadSize;
@@ -62,7 +71,7 @@ public class AgpmController {
      * @return ResponseEntity with a Page of AgpmResponse DTOs and HTTP status 200 (OK)
      */
     @GetMapping
-    public ResponseEntity<Page<AgpmResponse>> getAllLatestAgpms(AgpmQuery query, Pageable pageable) {
+    public ResponseEntity<Page<AgpmResponse>> getAllLatestAgpms(AgpmQuery query, Pageable pageable) throws AgpmNotFound, AcNotFound {
         Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
         Page<Agpm> agpmPage = agpmService.findAll(spec, pageable);
         Page<AgpmResponse> agpmResponsePage = agpmPage.map(AgpmMapper.INSTANCE::map);
@@ -90,7 +99,7 @@ public class AgpmController {
      * @throws AgpmNotFound if the Agpm with the specified ID is not found
      */
     @GetMapping("/{agpmId}")
-    public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId) throws AgpmNotFound {
+    public ResponseEntity<AgpmResponse> getAgpmById(@PathVariable Integer agpmId) throws AgpmNotFound, AcNotFound {
         Agpm agpm = agpmService.findById(agpmId, null);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(agpm);
         return ResponseEntity.ok(agpmResponse);
@@ -156,5 +165,61 @@ public class AgpmController {
             throws AgpmNotFound, AgpmSoftDelete, AgpmInvalidStatusException {
         agpmService.delete(agpmId, agpmVer);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID with full details in AgpmResponseDto format.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of AgpmResponseDto
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    @GetMapping("/history/full/{agpmId}")
+    public ResponseEntity<Page<AgpmResponseDto>> getAgpmHistoryFull(@PathVariable Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        log.info("Received request to fetch full history for Agpm ID {}, page {}, size {}, sort {}",
+                agpmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<AgpmResponseDto> agpmPage = agpmService.findAllVersionsByIdFull(agpmId, pageable);
+        log.info("Returning {} versions for Agpm ID {} (page {} of {})",
+                agpmPage.getNumberOfElements(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+        return ResponseEntity.ok(agpmPage);
+    }
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID with minimal details in AgpmMinimalResponseDto format.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting parameters
+     * @return ResponseEntity containing a page of AgpmMinimalResponseDto
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    @GetMapping("/history/minimal/{agpmId}")
+    public ResponseEntity<Page<AgpmMinimalResponseDto>> getAgpmHistoryMinimal(@PathVariable Integer agpmId, Pageable pageable) throws AgpmNotFound {
+        log.info("Received request to fetch minimal history for Agpm ID {}, page {}, size {}, sort {}",
+                agpmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
+        Page<AgpmMinimalResponseDto> agpmPage = agpmService.findAllVersionsByIdMinimal(agpmId, pageable);
+        log.info("Returning {} minimal versions for Agpm ID {} (page {} of {})",
+                agpmPage.getNumberOfElements(), agpmId, agpmPage.getNumber(), agpmPage.getTotalPages());
+        return ResponseEntity.ok(agpmPage);
+    }
+    /**
+     * find page of Agpms with Ac Id*/
+    @GetMapping("/ac/{acId}")
+    public ResponseEntity<Page<AgpmResponseDtoSoft>> findAgpmsByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
+        Page<Agpm> agpms = agpmService.findAgpmsByAcId(acId,pageable);
+        Page<AgpmResponseDtoSoft> responses = agpms.map(AgpmMapper.INSTANCE::toDto);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/details/{agpmId}")
+    public ResponseEntity<TaskDetailsDTO> getAgpmWithTasks(@PathVariable Integer agpmId) {
+        try {
+            TaskDetailsDTO response = flowableService.getAgpmWithTasks(agpmId);
+            return ResponseEntity.ok(response);
+        } catch (AgpmNotFound | AcNotFound e) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
     }
 }

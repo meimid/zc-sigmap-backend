@@ -17,7 +17,8 @@ public class SocieteSpecifications {
                     criteriaBuilder.like(root.get("nni"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("categorieSoumissionnaireId"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%")
+                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
+                    criteriaBuilder.like(join.get("code"),"%" + search + "%")
 
             );
         };
@@ -62,5 +63,17 @@ public class SocieteSpecifications {
             }
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
+    }
+
+    public static Specification<Societe> hasPaysId(Integer paysId) {
+        return (root, query, cb) -> cb.equal(root.get("pays").get("id"), paysId);
+    }
+
+    public static Specification<Societe> hasTypeId(Integer typeId) {
+        return (root, query, cb) -> cb.equal(root.get("type").get("id"), typeId);
+    }
+
+    public static Specification<Societe> hasPaysIdOrTypeId(Integer refParamId) {
+        return hasPaysId(refParamId).or(hasTypeId(refParamId));
     }
 }

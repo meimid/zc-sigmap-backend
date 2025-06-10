@@ -1,11 +1,14 @@
 package com.sigmap.common.keycloakAdmin.service;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
+import com.sigmap.common.keycloakAdmin.dto.*;
+import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
+import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -40,6 +43,11 @@ public class KeycloakAdminService {
 
     @Value("${keycloak-admin.realm}")
     private String realm;
+
+    @Autowired
+    private AcRepository acRepository;
+    @Autowired
+    private ComRepository comRepository;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -96,6 +104,17 @@ public class KeycloakAdminService {
         dto.setCreatedTimestamp(userMap.get("createdTimestamp") != null ?
                 Long.parseLong(userMap.get("createdTimestamp").toString()) : null);
         dto.setEnabled((Boolean) userMap.getOrDefault("enabled", false));
+        Map<String, List<String>> attributes = (Map<String, List<String>>) userMap.get("attributes");
+        if (attributes != null) {
+            List<String> addressList = attributes.get("address");
+            dto.setAddress((addressList != null && !addressList.isEmpty()) ? addressList.get(0) : null);
+
+            List<String> mobileList = attributes.get("mobile");
+            dto.setMobile((mobileList != null && !mobileList.isEmpty()) ? mobileList.get(0) : null);
+
+            List<String> fixeList = attributes.get("fixe");
+            dto.setFixe((fixeList != null && !fixeList.isEmpty()) ? fixeList.get(0) : null);
+        }
         return dto;
     }
 
@@ -149,22 +168,42 @@ public class KeycloakAdminService {
         }
     }
 
-    private List<Ac> fetchAcsForUser(String userId) {
+    private List<UserAcDTO> fetchAcsForUser(String userId) {
         return userAcRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
-                .map(UserAc::getAc)
-                .collect(Collectors.toList());
+                .map(userAc -> {
+                    Ac ac = null;
+                    ac = acRepository.findById(userAc.getAcId()).get();
+                    UserAcDTO dto = new UserAcDTO();
+                    dto.setId(ac.getId());
+                    dto.setNom(ac.getNom());
+                    dto.setAncrage(ac.getAncrage());
+                    dto.setContact(ac.getContact());
+                    dto.setAcPilote(userAc.getAcPilote());
+                    dto.setCreatedAt(userAc.getCreatedAt());
+                    dto.setCreatedBy(userAc.getCreatedBy());
+                    return dto;
+                }).toList();
     }
 
-    private List<Com> fetchComsForUser(String userId) {
+
+    private List<UserComDTO> fetchComsForUser(String userId) {
         return userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
-                .map(UserCom::getCom)
-                .collect(Collectors.toList());
+                .map(userCom -> {
+                    Com com = null;
+                    com = comRepository.findById(userCom.getComId()).get();
+                    UserComDTO dto = new UserComDTO();
+                    dto.setId(com.getId());
+                    dto.setNom(com.getNom());
+                    dto.setCreatedAt(userCom.getCreatedAt());
+                    dto.setCreatedBy(userCom.getCreatedBy());
+                    return dto;
+                }).toList();
     }
 
 
 
 
-    public List<String> getAllRealmRoleNames() {
+    public List<RoleDTO> getAllRealmRolesWithDescriptions() {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
 
@@ -175,10 +214,22 @@ public class KeycloakAdminService {
         ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> roles = response.getBody();
 
+        String defaultRoleName = "default-roles-" + realm;
+        Set<String> technicalRoles = Set.of(defaultRoleName, "offline_access", "uma_authorization");
+
         return roles.stream()
-                .map(role -> (String) role.get("name"))
+                .filter(role -> !technicalRoles.contains(role.get("name")))
+                .map(role -> {
+                    String name = (String) role.get("name");
+                    String label = (String) role.get("description");
+                    if (label == null || label.isBlank()) {
+                        label = name; // fallback si pas de description
+                    }
+                    return new RoleDTO(name, label);
+                })
                 .collect(Collectors.toList());
     }
+
     public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users", keycloakBaseUrl, realm);
@@ -198,8 +249,8 @@ public class KeycloakAdminService {
             assignRolesToUser(userId, userDTO.getRoles());
         }
 
-        linkUserToEntities(userId, userDTO.getAcIds(), true);
-        linkUserToEntities(userId, userDTO.getComIds(), false);
+        linkUserToEntities(userId, userDTO.getAcIds(),userDTO.getAcPiloteId(), true);
+        linkUserToEntities(userId, userDTO.getComIds(), null,false);
 
         return getUserById(userId);
 
@@ -217,8 +268,8 @@ public class KeycloakAdminService {
             updateUserRolesSmart(userId, userDTO.getRoles());
         }
 
-        updateLinkedEntities(userId, userDTO.getAcIds(), true);
-        updateLinkedEntities(userId, userDTO.getComIds(), false);
+        updateLinkedEntities(userId, userDTO.getAcIds(),userDTO.getAcPiloteId(), true);
+        updateLinkedEntities(userId, userDTO.getComIds(), null, false);
 
         return getUserById(userId);
 
@@ -236,20 +287,31 @@ public class KeycloakAdminService {
         user.put("firstName", userDTO.getFirstName());
         user.put("lastName", userDTO.getLastName());
         user.put("email", userDTO.getEmail());
-        user.put("enabled", true);
-        Map<String, Object> credentials = Map.of(
-                "type", "password",
-                "value", userDTO.getPassword(),
-                "temporary", true
-        );
-        user.put("credentials", List.of(credentials));
+        user.put("enabled", userDTO.isEnable());
+
+        Map<String, List<String>> attributes = new HashMap<>();
+        if (userDTO.getAddress() != null) {
+            attributes.put("address", List.of(userDTO.getAddress()));
+        }
+        if (userDTO.getMobile() != null) {
+            attributes.put("mobile", List.of(userDTO.getMobile()));
+        }
+        if (userDTO.getFixe() != null) {
+            attributes.put("fixe", List.of(userDTO.getFixe()));
+        }
+
+        if (!attributes.isEmpty()) {
+            user.put("attributes", attributes);
+        }
+
         return user;
     }
+
 
     private String extractUserIdFromLocation(URI location) {
         return location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
     }
-    private void linkUserToEntities(String userId, List<Integer> ids, boolean isAc) {
+    private void linkUserToEntities(String userId, List<Integer> ids,Integer acPiloteId, boolean isAc) {
         if (ids == null || ids.isEmpty()) return;
 
         for (Integer id : ids) {
@@ -260,6 +322,9 @@ public class KeycloakAdminService {
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
                     userAc.setStatus(getDefaultStatus());
+                    if (id  == acPiloteId){
+                        userAc.setAcPilote(true);
+                    }
                     userAcRepository.save(userAc);
                 } else {
                     UserCom userCom = new UserCom();
@@ -275,7 +340,7 @@ public class KeycloakAdminService {
         }
     }
 
-    private void updateLinkedEntities(String userId, List<Integer> newIds, boolean isAc) throws AgpmDefaultStatus {
+    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus {
         if (newIds == null) return;
 
         Set<Integer> newIdSet = new HashSet<>(newIds);
@@ -292,6 +357,10 @@ public class KeycloakAdminService {
                     userAc.setUserId(userId);
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
+                    if (id  == acPiloteId){
+                        userAcRepository.removeAcPilote(id, userId);
+                        userAc.setAcPilote(true);
+                    }
                     userAc.setStatus(getDefaultStatus());
                     userAcRepository.save(userAc);
                 }
@@ -398,6 +467,51 @@ public class KeycloakAdminService {
                     new HttpEntity<>(rolesToAdd, headers),
                     Void.class
             );
+        }
+    }
+    public void setUserEnabled(String userId, boolean enabled) {
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> updatePayload = new HashMap<>();
+        updatePayload.put("enabled", enabled);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updatePayload, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Impossible de modifier l’état actif/inactif de l'utilisateur : " + userId);
+        }
+    }
+
+    public void deleteUser(String userId) {
+        List<UserAcDTO> acs = fetchAcsForUser(userId);
+        if (!acs.isEmpty()) {
+            // On prend le premier nom d'AC trouvé pour l'affichage du message
+            throw new UserHasAssociatedAc("", userId);
+        }
+
+        List<UserComDTO> coms = fetchComsForUser(userId);
+        if (!coms.isEmpty()) {
+            throw new UserHasAssociatedCom("", userId);
+        }
+
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.DELETE, entity, Void.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new RuntimeException("Échec de la suppression de l'utilisateur dans Keycloak : " + userId);
         }
     }
 

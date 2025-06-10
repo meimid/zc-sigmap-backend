@@ -2,13 +2,12 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
-import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 
 public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecificationExecutor<Paa>,
@@ -28,4 +27,14 @@ public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecif
     @Query(" SELECT p FROM Paa p WHERE p.isDeleted = false AND p.annee = :currentYear AND p.version = (" +
             "   SELECT MAX (p2.version) FROM Paa p2 WHERE p2.id = p.id AND p2.annee = :currentYear AND p2.isDeleted = false)")
     Optional<Paa> findByCurrentYear(@Param("currentYear") String currentYear);
+
+    /**
+     * Finds all Paa entities by ID with pagination.
+     *
+     * @param paaId   ID of the Paa entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Paa entities for the given ID
+     */
+    @Query("SELECT a FROM Paa a WHERE a.id = :paaId")
+    Page<Paa> findAllById(Integer paaId, Pageable pageable);
 }

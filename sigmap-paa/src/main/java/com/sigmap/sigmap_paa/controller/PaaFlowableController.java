@@ -47,7 +47,7 @@ public class PaaFlowableController {
      * @throws PaaNotFound if the Paa entity is not found
      */
     @PostMapping("/start/{id}")
-    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws PaaNotFound {
+    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws PaaNotFound, AcNotFound {
         log.info("Starting process instance for Paa ID: {}", id);
         ProcessStartResponseDTO response = paaFlowableService.startProcessInstance(id);
         return ResponseEntity.ok(response);
@@ -73,7 +73,7 @@ public class PaaFlowableController {
      * @throws PaaNotFound if the associated Paa entity is not found
      */
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId)  {
+    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws PaaNotFound, AcNotFound {
         log.info("Retrieving details for task ID: {}", taskId);
         TaskDetailsDTO response = paaFlowableService.getTaskDetails(taskId);
         return ResponseEntity.ok(response);

@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_agpm.exeptions;
 
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.docs.exeptions.DocNotFound;
@@ -45,6 +46,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequest ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AgpmNotAssociatedWithUserAcException.class)
+    public ResponseEntity<ErrorResponse> handleAgpmNotAssociatedWithUserAc(AgpmNotAssociatedWithUserAcException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -139,6 +148,24 @@ public class GlobalExceptionHandler {
                 String.join((CharSequence) ",", ex.getAgpmIds().stream().map(String::valueOf).collect(Collectors.toList())),
                 String.join((CharSequence) ",", ex.getAgpmVersions().stream().map(String::valueOf).collect(Collectors.toList())),
                 ex.getCurrentStatusId() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    // New Handler for NotFoundException
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
+        String message = messageSource.getMessage("general.notfound", new Object[] { ex.getMessage() }, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    // New Handler for SecurityException
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex) {
+        String message = messageSource.getMessage("security.unauthorized", new Object[] { ex.getMessage() }, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }

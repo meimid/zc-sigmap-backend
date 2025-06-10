@@ -17,7 +17,6 @@ import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
 import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
-import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -40,7 +39,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -476,5 +474,21 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ac.hasAssociatedPpm",new Object[] {ex.getId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcNomAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> AcNomAlreedyExistException(AcNomAlreadyExist ex) {
+        String message = messageSource.getMessage("ac.acNomAlreadyExist",new Object[] {ex.getNom()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AcAttributeRequire.class)
+    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AcAttributeRequire ex) {
+        String message = messageSource.getMessage("ac.attributeRequire",new Object[] {ex.getNom()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }

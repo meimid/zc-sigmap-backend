@@ -19,13 +19,15 @@ public class PpmRequest {
 
     private String nom;
 
-    private String annee;
-
     private Integer acId;
 
     private BigDecimal budgetEstime;
 
     private RefParam status;
+
+    private RefParam modePassation;
+
+    private String remarque;
 
     private List<RealisationRequest> realisations;
 }

@@ -105,8 +105,28 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac create(AcRequest request) throws ComNotFound {
+    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
+        if(request.getNom() == null) {
+            throw new AcAttributeRequire("","nom");
+        }
+         else if(request.getTutelId()==null){
+             throw new AcAttributeRequire("","tutel");
+        }
+         else if(request.getContact() == null) {
+             throw new AcAttributeRequire("","contact");
+        }
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
+
+        if(findOne(specification).isPresent()) {
+            throw new AcNomAlreadyExist("", request.getNom());
+        }
         Ac ac = AcMapper.INSTANCE.map(request);
+
+            RefParam tutel= refParamRepository.findById(request.getTutelId()).
+                    orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+            ac.setTutel(tutel);
+
+
         Ac savedAc = repository.save(ac);
 
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -117,7 +137,7 @@ public class AcServiceImpl implements AcService{
                     userAc.setAcId(savedAc.getId());
                     userAc.setIsDeleted(false);
                     RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                            .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+                            .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
                     userAc.setStatus(defaultStatus);
                     userAcRepository.save(userAc);
                 } catch (Exception e) {
@@ -133,13 +153,23 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, AgpmDefaultStatus {
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
         Ac ac = findById(id);
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
+
+        if(findOne(specification).isPresent()&& !findOne(specification).get().getId().equals(id)) {
+            throw new AcNomAlreadyExist("", request.getNom());
+        }
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
+        if(request.getTutelId() != null) {
+        RefParam tutel= refParamRepository.findById(request.getTutelId()).
+                orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+        ac.setTutel(tutel);
+        }
         Ac savedAc = repository.save(ac);
 
         // 1. Récupérer les anciens UserAc liés à ce AC
-        List<UserAc> existingUserAcs = userAcRepository.findAllByAcId(id);
+        List<UserAc> existingUserAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
 
         // 2. Construire la nouvelle liste à partir des userIds reçus
         List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
@@ -160,7 +190,7 @@ public class AcServiceImpl implements AcService{
                 userAc.setUserId(userId);
                 userAc.setAcId(id);
                 RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                        .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
+                        .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
                 userAc.setStatus(defaultStatus);
                 userAcRepository.save(userAc);
             }

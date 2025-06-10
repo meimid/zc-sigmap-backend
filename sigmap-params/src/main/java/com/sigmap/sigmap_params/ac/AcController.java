@@ -2,6 +2,7 @@ package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.AcHasAssociatedAgpm;
 import com.sigmap.common.ac.exception.AcHasAssociatedCom;
+import com.sigmap.common.ac.exception.UserAcDefaultStatus;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -13,8 +14,10 @@ import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import org.slf4j.Logger;
@@ -94,29 +97,51 @@ public class AcController {
         Ac param = acService.findById(id);
         AcResponse response = AcMapper.INSTANCE.map(param);
 
-        // Étape 1 : récupérer les userIds depuis UserAc (non supprimés)
-        List<String> userIds = userAcRepository.findAllByAcIdAndIsDeletedFalse(id)
-                .stream()
-                .map(UserAc::getUserId)
-                .toList();
+        // Récupérer tous les UserAc non supprimés
+        List<UserAc> userAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
 
-        // Étape 2 : récupérer les infos utilisateurs depuis Keycloak pour chaque userId
-        List<UserDTO> users = userIds.stream()
-                .map(userId -> {
-                    try {
-                        return keycloakAdminService.getUserById(userId);
-                    } catch (Exception e) {
-                        logger.warn("Impossible de récupérer les informations de l'utilisateur {} depuis Keycloak : {}", userId, e.getMessage());
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .toList();
+        // Mapper les UserAc avec infos Keycloak
+        List<AcMemberDTO> users = userAcs.stream().map(userAc -> {
+            try {
+                UserDTO keycloakUser = keycloakAdminService.getUserById(userAc.getUserId());
+
+                AcMemberDTO dto = new AcMemberDTO();
+                dto.setId(keycloakUser.getId());
+                dto.setFirstName(keycloakUser.getFirstName());
+                dto.setLastName(keycloakUser.getLastName());
+                dto.setEmail(keycloakUser.getEmail());
+                dto.setMobile(keycloakUser.getMobile());
+                dto.setAcPilote(userAc.getAcPilote());
+                dto.setCreatedAt(userAc.getCreatedAt());
+                String userNameAffectedBy = keycloakAdminService.getUserById(userAc.getCreatedBy()).getUsername();
+                dto.setCreatedBy(userNameAffectedBy);
+
+                return dto;
+            } catch (Exception e) {
+                logger.warn("Impossible de récupérer l'utilisateur {} depuis Keycloak : {}", userAc.getUserId(), e.getMessage());
+                return null;
+            }
+        }).filter(Objects::nonNull).toList();
 
         response.setUsers(users);
 
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/user/{userId}/acs")
+    public ResponseEntity<List<AcResponse>> getAcsByUserId(@PathVariable String userId) {
+        List<UserAc> userAcs = userAcRepository.findByUserIdAndIsDeletedFalse(userId);
+
+        List<AcResponse> acs = userAcs.stream()
+                .map(userAc -> {
+                    Ac ac = userAc.getAc();
+                    AcResponse response = AcMapper.INSTANCE.map(ac);
+                    return response;
+                })
+                .toList();
+
+        return ResponseEntity.ok(acs);
+    }
+
 
 
     /**
@@ -126,7 +151,7 @@ public class AcController {
      * @return the created ac
      */
     @PostMapping
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted {
+    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted, RefParamNotFound {
         Ac ac = acService.create(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
@@ -138,7 +163,7 @@ public class AcController {
      * @return the updated ac
      */
     @PutMapping("/{id}")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, AgpmDefaultStatus {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, UserAcDefaultStatus, RefParamNotFound {
         Ac ac = acService.update(id,request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);

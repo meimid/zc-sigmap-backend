@@ -1,7 +1,7 @@
 package com.sigmap.common.ref_params;
 
 import com.sigmap.common.ref_types.RefType;
-import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Specification for managing {@link RefParam}. */
@@ -14,7 +14,8 @@ public class RefParamSpecifications {
           criteriaBuilder.like(root.get("code"), "%" + search + "%"),
           criteriaBuilder.like(root.get("description"), "%" + search + "%"),
           criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-          criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
+          criteriaBuilder.like(root.get("codeColor"), "%" + search + "%"),
+          criteriaBuilder.like(join.get("systemType"), "%" + search + "%"));
     };
   }
 
@@ -64,5 +65,32 @@ public class RefParamSpecifications {
     return (root, query, criteriaBuilder) -> {
       return criteriaBuilder.like(root.get("codeColor"), "%" + codeColor + "%");
     };
+  }
+
+  /** systemType. */
+  public static Specification<RefParam> systemType(boolean deletedRefparam) {
+    return (root, query, criteriaBuilder) -> {
+      Join<RefParam, RefType> refTypeJoin = root.join("refType");
+      Predicate refTypeNotDeleted =
+          criteriaBuilder.or(
+              criteriaBuilder.isNull(refTypeJoin.get("isDeleted")),
+              criteriaBuilder.isFalse(refTypeJoin.get("isDeleted")));
+
+      Predicate refTypeNotSystemType =
+          criteriaBuilder.or(
+              criteriaBuilder.isNull(refTypeJoin.get("systemType")),
+              criteriaBuilder.isFalse(refTypeJoin.get("systemType")));
+      Predicate criteriaForAssociatedRefType =
+          criteriaBuilder.and(refTypeNotDeleted, refTypeNotSystemType);
+      Specification<RefParam> refParamDeletedFilter = deleted(deletedRefparam);
+      Predicate predicateForRefParamDeleted =
+          refParamDeletedFilter.toPredicate(root, query, criteriaBuilder);
+      return criteriaBuilder.and(criteriaForAssociatedRefType, predicateForRefParamDeleted);
+    };
+  }
+
+  public static Specification<RefParam> hasRefTypeId(Integer refTypeId) {
+    return (root, query, criteriaBuilder) ->
+        criteriaBuilder.equal(root.get("refType").get("id"), refTypeId);
   }
 }

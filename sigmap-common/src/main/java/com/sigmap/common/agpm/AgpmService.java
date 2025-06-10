@@ -9,11 +9,14 @@ package com.sigmap.common.agpm;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.request.AgpmRequest;
+import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
+import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -31,7 +34,7 @@ public interface AgpmService {
      * @param pageable The pagination and sorting information
      * @return A Page of Agpm entities matching the specification
      */
-    Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable);
+    Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AcNotFound, AgpmNotFound;
 
     /**
      * Retrieves a paginated list of deleted Agpm entities.
@@ -57,7 +60,7 @@ public interface AgpmService {
      * @return The Agpm entity if found
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound;
+    Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound;
 
     /**
      * Saves an Agpm entity to the database.
@@ -132,4 +135,30 @@ public interface AgpmService {
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
     Agpm updateStatus(Integer agpmId, Integer agpmVer, Integer statusId) throws AgpmNotFound;
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID, including only non-deleted documents,
+     * in AgpmResponseDto format with pagination.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of AgpmResponseDto representing all versions for the given ID
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    Page<AgpmResponseDto> findAllVersionsByIdFull(Integer agpmId, Pageable pageable) throws AgpmNotFound;
+
+    /**
+     * Retrieves all versions of an Agpm entity by its ID, including only id, version, ref, nom, and metadata,
+     * in AgpmMinimalResponseDto format with pagination.
+     *
+     * @param agpmId   ID of the Agpm entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of AgpmMinimalResponseDto representing all versions for the given ID
+     * @throws AgpmNotFound if no Agpm entities are found for the ID
+     */
+    Page<AgpmMinimalResponseDto> findAllVersionsByIdMinimal(Integer agpmId, Pageable pageable) throws AgpmNotFound;
+    /**
+     * find the list of agpms with Ac id
+     * */
+    Page<Agpm> findAgpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound;
 }

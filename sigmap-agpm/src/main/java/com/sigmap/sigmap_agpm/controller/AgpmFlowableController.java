@@ -43,23 +43,23 @@ public class AgpmFlowableController {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @PostMapping("/start/{id}")
-    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws AgpmNotFound {
+    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws AgpmNotFound, AcNotFound {
         log.info("Starting process instance for Agpm ID: {}", id);
         ProcessStartResponseDTO response = agpmFlowableService.startProcessInstance(id);
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Retrieves all active tasks for the tenant.
-     *
-     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
-     */
-    @GetMapping("/tasks")
-    public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {
-        log.info("Retrieving all current tasks");
-        TaskListResponseDTO response = agpmFlowableService.getCurrentTasks();
-        return ResponseEntity.ok(response);
-    }
+//    /**
+//     * Retrieves all active tasks for the tenant.
+//     *
+//     * @return ResponseEntity with TaskListResponseDTO and HTTP status 200 (OK)
+//     */
+//    @GetMapping("/tasks")
+//    public ResponseEntity<TaskListResponseDTO> getCurrentTasks() {
+//        log.info("Retrieving all current tasks");
+//        TaskListResponseDTO response = agpmFlowableService.getCurrentTasks();
+//        return ResponseEntity.ok(response);
+//    }
 
     /**
      * Retrieves details of a specific task.
@@ -69,7 +69,7 @@ public class AgpmFlowableController {
      * @throws AgpmNotFound if the associated Agpm entity is not found
      */
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws AgpmNotFound {
+    public ResponseEntity<TaskDetailsDTO> getTaskDetails(@PathVariable String taskId) throws AgpmNotFound, AcNotFound {
         log.info("Retrieving details for task ID: {}", taskId);
         TaskDetailsDTO response = agpmFlowableService.getTaskDetails(taskId);
         return ResponseEntity.ok(response);

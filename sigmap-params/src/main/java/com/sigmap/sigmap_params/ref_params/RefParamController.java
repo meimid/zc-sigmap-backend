@@ -50,7 +50,7 @@ public class RefParamController {
     /**
      * Return a page of ref params based on the given specification and pageable.
      *
-     * @param query the query to use
+     * @param query    the query to use
      * @param pageable the pageable to use
      * @return a page of ref params
      */
@@ -66,7 +66,7 @@ public class RefParamController {
     /**
      * Return a page of deleted ref params based on the given specification and pageable.
      *
-     * @param query the query to use
+     * @param query    the query to use
      * @param pageable the pageable to use
      * @return a page of deleted ref params
      */
@@ -98,7 +98,7 @@ public class RefParamController {
      * @return the created ref param
      */
     @PostMapping
-    public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request)throws RefTypeNotFound {
+    public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request) throws RefTypeNotFound {
 
         RefParam refParam = refParamService.create(request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
@@ -112,8 +112,8 @@ public class RefParamController {
      * @return the updated RefParam
      */
     @PutMapping("/{id}")
-    public ResponseEntity<RefParamResponse> update(@PathVariable Integer id,@RequestBody RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
-        RefParam refParam = refParamService.update(id,request);
+    public ResponseEntity<RefParamResponse> update(@PathVariable Integer id, @RequestBody RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
+        RefParam refParam = refParamService.update(id, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
@@ -125,10 +125,10 @@ public class RefParamController {
      * @return the deleted ref param
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id)throws RefParamHasAssociatedCom,
+    public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
-            RefParamHasAssociatedSocieteAddress {
+            RefParamHasAssociatedSocieteAddress, RefParamNotFound {
         refParamService.delete(id);
 
         RefParam deleted = refParamService.findDeletedById(id)
@@ -138,7 +138,7 @@ public class RefParamController {
     }
 
     @GetMapping("/type-societe")
-    public ResponseEntity<List<RefParamResponseDto>> findAllTypeSociete() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeSociete() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.TYPE_SOCIETE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -147,7 +147,7 @@ public class RefParamController {
     }
 
     @GetMapping("/categorie-soummisionaire")
-    public ResponseEntity<List<RefParamResponseDto>> findAllCategorieSoumissionaire() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllCategorieSoumissionaire() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.CATEGORIE_SOMISSIONAIRE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -156,7 +156,7 @@ public class RefParamController {
     }
 
     @GetMapping("/pays")
-    public ResponseEntity<List<RefParamResponseDto>> findAllPays() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllPays() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.PAYS);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -165,7 +165,7 @@ public class RefParamController {
     }
 
     @GetMapping("/type-comite")
-    public ResponseEntity<List<RefParamResponseDto>> findAllTypeComite() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeComite() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.TYPE_COMITE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -174,7 +174,7 @@ public class RefParamController {
     }
 
     @GetMapping("/type-address")
-    public ResponseEntity<List<RefParamResponseDto>> findAllTypeAddres() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeAddres() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.TYPE_ADDRESS);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -183,7 +183,7 @@ public class RefParamController {
     }
 
     @GetMapping("/status")
-    public ResponseEntity<List<RefParamResponseDto>> findAllStatus() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllStatus() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.STATUS);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -210,38 +210,43 @@ public class RefParamController {
     }
 
     @GetMapping("/type-societe/{id}")
-    public ResponseEntity<RefParamResponse> findByTypeSocieteAndById(@PathVariable Integer id) throws RefParamNotFound  {
-       RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.TYPE_SOCIETE);
+    public ResponseEntity<RefParamResponse> findByTypeSocieteAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.TYPE_SOCIETE);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/categorie-soummisionnaire/{id}")
-    public ResponseEntity<RefParamResponse> findByCategorieSoumissionnaireAndById(@PathVariable Integer id) throws RefParamNotFound  {
-        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.CATEGORIE_SOMISSIONAIRE);
+    public ResponseEntity<RefParamResponse> findByCategorieSoumissionnaireAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.CATEGORIE_SOMISSIONAIRE);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/pays/{id}")
-    public ResponseEntity<RefParamResponse> findByPaysAndById(@PathVariable Integer id) throws RefParamNotFound  {
-        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.PAYS);
+    public ResponseEntity<RefParamResponse> findByPaysAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.PAYS);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/type-comite/{id}")
-    public ResponseEntity<RefParamResponse> findByTypeComiteAndById(@PathVariable Integer id) throws RefParamNotFound  {
-        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.TYPE_COMITE);
+    public ResponseEntity<RefParamResponse> findByTypeComiteAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.TYPE_COMITE);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/type-address/{id}")
-    public ResponseEntity<RefParamResponse> findByTypeAddressAndById(@PathVariable Integer id) throws RefParamNotFound  {
-        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.TYPE_ADDRESS);
+    public ResponseEntity<RefParamResponse> findByTypeAddressAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.TYPE_ADDRESS);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/status/{id}")
-    public ResponseEntity<RefParamResponse> findByStatusAndById(@PathVariable Integer id) throws RefParamNotFound  {
-        RefParam param = refParamService.findByIdAndRefTypeId(id,Constants.STATUS);
+    public ResponseEntity<RefParamResponse> findByStatusAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, Constants.STATUS);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -261,50 +266,55 @@ public class RefParamController {
     }
 
     @PutMapping("/type-societe/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByTypeSocieteAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByTypeSocieteAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.TYPE_SOCIETE);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.TYPE_SOCIETE,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.TYPE_SOCIETE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @PutMapping("/categorie-soummisionnaire/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByCategorieSoumissionnaireAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByCategorieSoumissionnaireAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.CATEGORIE_SOMISSIONAIRE);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.CATEGORIE_SOMISSIONAIRE,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.CATEGORIE_SOMISSIONAIRE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @PutMapping("/pays/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByPaysAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByPaysAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.PAYS);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.PAYS,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.PAYS, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @PutMapping("/type-comite/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByTypeComiteAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByTypeComiteAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.TYPE_COMITE);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.TYPE_COMITE,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.TYPE_COMITE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @PutMapping("/type-address/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByTypeAddressAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByTypeAddressAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.TYPE_ADDRESS);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.TYPE_ADDRESS,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.TYPE_ADDRESS, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
+
     @PutMapping("/status/{id}")
-    public ResponseEntity<RefParamResponse> UpdateByStatusAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> UpdateByStatusAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.STATUS);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id,Constants.STATUS,request);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, Constants.STATUS, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -332,54 +342,60 @@ public class RefParamController {
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.TYPE_SOCIETE);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.TYPE_SOCIETE);
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/service")
-    public ResponseEntity<List<RefParamResponseDto>> findAllServices() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllServices() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.SERVICE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
     @GetMapping("/direction")
-    public ResponseEntity<List<RefParamResponseDto>> findAllDirections() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllDirections() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.DIRECTION);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
     @GetMapping("/source-financement")
-    public ResponseEntity<List<RefParamResponseDto>> findAllSourceFinancements() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllSourceFinancements() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.SOURCE_FINANCEMENT);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
     @GetMapping("/monais")
-    public ResponseEntity<List<RefParamResponseDto>> findAllMonais() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllMonais() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.MONAIS);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
     @GetMapping("/type-marcher")
-    public ResponseEntity<List<RefParamResponseDto>> findAllTypeMarchers() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllTypeMarchers() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.TYPE_MARCHER);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
     @GetMapping("/mode-selection")
-    public ResponseEntity<List<RefParamResponseDto>> findAllModeSelections() throws RefTypeNotFound  {
+    public ResponseEntity<List<RefParamResponseDto>> findAllModeSelections() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(Constants.MODE_SELECTION);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
@@ -393,55 +409,59 @@ public class RefParamController {
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.CATEGORIE_SOMISSIONAIRE);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.CATEGORIE_SOMISSIONAIRE);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/pays/{id}")
     public ResponseEntity<RefParamResponse> deletePaysAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.PAYS);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.PAYS);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/type-comite/{id}")
     public ResponseEntity<RefParamResponse> deleteByTypeComiteAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.TYPE_COMITE);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.TYPE_COMITE);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/type-address/{id}")
     public ResponseEntity<RefParamResponse> deleteByTypeAddressAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.TYPE_ADDRESS);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.TYPE_ADDRESS);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
         RefParamResponse response = RefParamMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @DeleteMapping("/status/{id}")
     public ResponseEntity<RefParamResponse> deleteByStatusAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id,Constants.STATUS);
+        refParamService.deleteByIdAndRefTypeId(id, Constants.STATUS);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
@@ -472,50 +492,10 @@ public class RefParamController {
     }
 
     @PostMapping("/type-societe")
-    public ResponseEntity<RefParamResponse> createUnderTypeSociete(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
+    public ResponseEntity<RefParamResponse> createUnderTypeSociete(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefTypeId(Constants.TYPE_SOCIETE);
-        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_SOCIETE,request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-    @PostMapping("/categorie-soummisionnaire")
-    public ResponseEntity<RefParamResponse> createUnderCategorieSoumissionnaireAndById(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.CATEGORIE_SOMISSIONAIRE);
-        RefParam refParam = refParamService.createUnderRefType(Constants.CATEGORIE_SOMISSIONAIRE,request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-    @PostMapping("/pays")
-    public ResponseEntity<RefParamResponse> createUnderPays(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.PAYS);
-        RefParam refParam = refParamService.createUnderRefType(Constants.PAYS,request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-    @PostMapping("/type-comite")
-    public ResponseEntity<RefParamResponse> createUnderTypeComite(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.TYPE_COMITE);
-        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_COMITE,request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-    @PostMapping("/type-address")
-    public ResponseEntity<RefParamResponse> createUnderTypeAddress(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.TYPE_ADDRESS);
-        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_ADDRESS,request);
-        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-    @PostMapping("/status")
-    public ResponseEntity<RefParamResponse> createUnderStatus(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
-        RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefTypeId(Constants.STATUS);
-        RefParam refParam = refParamService.createUnderRefType(Constants.STATUS,request);
+        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_SOCIETE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -529,6 +509,15 @@ public class RefParamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @PostMapping("/categorie-soummisionnaire")
+    public ResponseEntity<RefParamResponse> createUnderCategorieSoumissionnaireAndById(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.CATEGORIE_SOMISSIONAIRE);
+        RefParam refParam = refParamService.createUnderRefType(Constants.CATEGORIE_SOMISSIONAIRE, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
     @PostMapping("/type-dyna-field")
     public ResponseEntity<RefParamResponse> createUnderTypeDynaField(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto)throws RefTypeNotFound {
         RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
@@ -536,5 +525,57 @@ public class RefParamController {
         RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_FIELD_DAC,request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+    @PostMapping("/pays")
+    public ResponseEntity<RefParamResponse> createUnderPays(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.PAYS);
+        RefParam refParam = refParamService.createUnderRefType(Constants.PAYS, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/type-comite")
+    public ResponseEntity<RefParamResponse> createUnderTypeComite(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.TYPE_COMITE);
+        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_COMITE, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/type-address")
+    public ResponseEntity<RefParamResponse> createUnderTypeAddress(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.TYPE_ADDRESS);
+        RefParam refParam = refParamService.createUnderRefType(Constants.TYPE_ADDRESS, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/status")
+    public ResponseEntity<RefParamResponse> createUnderStatus(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+        RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
+        request.setRefTypeId(Constants.STATUS);
+        RefParam refParam = refParamService.createUnderRefType(Constants.STATUS, request);
+        RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/mode-passation")
+    public ResponseEntity<List<RefParamResponseDto>> findAllModePassation() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(Constants.MODE_PASSATION);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/tutel")
+    public ResponseEntity<List<RefParamResponseDto>> findAllTutel() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(Constants.TUTEL);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
     }
 }

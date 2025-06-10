@@ -1,15 +1,19 @@
 package com.sigmap.sigmap_paa.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +65,10 @@ public class PaaFlowableService {
 
     @Autowired
     private HistoryService historyService;
+
+    @Autowired
+    private CurrentUserService currentUserService;
+
 
     /**
      * Checks if the user has the specified role.
@@ -191,7 +199,7 @@ public class PaaFlowableService {
      * @throws AgpmNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws PaaNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws PaaNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
@@ -316,7 +324,7 @@ public class PaaFlowableService {
      * @throws PaaNotFound if the Agpm entity is not found
      */
     @Transactional
-    public ProcessStartResponseDTO startProcessInstance(Integer id) throws  PaaNotFound {
+    public ProcessStartResponseDTO startProcessInstance(Integer id) throws PaaNotFound, AcNotFound {
         return startProcessInstance(id, null, null);
     }
 
@@ -326,13 +334,62 @@ public class PaaFlowableService {
      * @return TaskListResponseDTO containing the list of tasks
      */
     public TaskListResponseDTO getCurrentTasks() {
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskTenantId(TENANT_ID)
-                .active()
-                .orderByTaskCreateTime().asc()
-                .list();
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
+            errorResponse.setStatus("Invalid or missing JWT authentication");
+            return errorResponse;
+        }
 
-        List<TaskDTO> taskList = tasks.stream().map(task -> {
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the current user");
+            return new TaskListResponseDTO();
+        }
+        log.info("ac ids " + userAcIds);
+
+        // Get user's candidate groups (not used for filtering but logged for context)
+        List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
+                .map(authority -> authority.getAuthority().replace("ROLE_", ""))
+                .collect(Collectors.toList());
+        log.info("User candidate groups: " + userCandidateGroups);
+
+        List<String> matchingProcessInstanceIds = new ArrayList<>();
+
+        // Filter process instances by acId
+        for (Integer acId : userAcIds) {
+            List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                    .variableValueEquals("acId", acId)
+                    .list();
+            log.info("ac id " + acId);
+            log.info("nbr instance " + instances.size());
+            matchingProcessInstanceIds.addAll(
+                    instances.stream()
+                            .map(ProcessInstance::getId)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        List<Task> filteredTasks = new ArrayList<>();
+        int chunkSize = 1000; // Same chunk size as in getUserTasks
+        for (int i = 0; i < matchingProcessInstanceIds.size(); i += chunkSize) {
+            List<String> chunk = matchingProcessInstanceIds.subList(i,
+                    Math.min(i + chunkSize, matchingProcessInstanceIds.size()));
+            filteredTasks.addAll(
+                    taskService.createTaskQuery()
+                            .taskTenantId(TENANT_ID)
+                            .processInstanceIdIn(List.of(chunk.toArray(new String[0])))
+                            .active()
+                            .orderByTaskCreateTime().desc() // Matching the desc order from getUserTasks
+                            .list()
+            );
+        }
+        log.info("filteredTasks size: " + filteredTasks.size());
+
+        List<TaskDTO> taskList = filteredTasks.stream().map(task -> {
             TaskDTO taskInfo = new TaskDTO();
             taskInfo.setTaskId(task.getId());
             taskInfo.setTaskName(task.getName());
@@ -340,21 +397,25 @@ public class PaaFlowableService {
             taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
             taskInfo.setProcessInstanceId(task.getProcessInstanceId());
             taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+            taskInfo.setCandidateGroup(getCandidateGroup(task));
 
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
             Integer id = (Integer) processVariables.getOrDefault("id", null);
             Integer version = (Integer) processVariables.getOrDefault("version", null);
 
             if (id != null && version != null) {
-                Optional<Paa> paaOptional = paaService.findById(id, version);
-                paaOptional.ifPresent(paa -> {
-                    taskInfo.setId(id);
-                    taskInfo.setVersion(version);
-                    taskInfo.setNom(paa.getNom());
-                    taskInfo.setRef(paa.getRef());
-                });
+                try {
+                    Optional<Paa> paaOptional = paaService.findById(id, version);
+                    paaOptional.ifPresent(paa -> {
+                        taskInfo.setId(id);
+                        taskInfo.setVersion(version);
+                        taskInfo.setNom(paa.getNom());
+                        taskInfo.setRef(paa.getRef());
+                    });
+                } catch (PaaNotFound | AcNotFound e) {
+                    log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+                }
             }
-
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -385,7 +446,7 @@ public class PaaFlowableService {
      * @return TaskDetailsDTO with the task details
      * @throws PaaNotFound if the associated Agpm entity is not found
      */
-    public TaskDetailsDTO getTaskDetails(String taskId) {
+    public TaskDetailsDTO getTaskDetails(String taskId) throws PaaNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
@@ -508,7 +569,12 @@ public class PaaFlowableService {
                                         nextStep.setValidationVariable(variableName);
                                         nextStep.setValidationValue(Boolean.parseBoolean(conditionValue));
                                         nextStep.setNextTaskName(nextStepName);
-                                        nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextStep.setActionLabel("Publier");
+                                            log.info("Next element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                                        } else {
+                                            nextStep.setActionLabel(nextStep.getValidationValue() ? "Validate" : "Reject");
+                                        }
                                         nextSteps.add(nextStep);
                                         log.info("Added next step for task [{}]: variable={}, value={}, nextTask={}, action={}",
                                                 task.getId(), variableName, conditionValue, nextStepName, nextStep.getActionLabel());
@@ -524,9 +590,14 @@ public class PaaFlowableService {
                             nextStep.setValidationVariable(null);
                             nextStep.setValidationValue(null);
                             nextStep.setNextTaskName(nextStepName);
-                            nextStep.setActionLabel("Passer pour validation");
+                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                nextStep.setActionLabel("Publier");
+                                log.info("Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
+                            } else {
+                                nextStep.setActionLabel("Passer pour validation");
+                            }
                             nextSteps.add(nextStep);
-                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, "Complete");
+                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, nextStep.getActionLabel());
                         }
                     }
                 } else {
@@ -705,32 +776,60 @@ public class PaaFlowableService {
      */
     public TaskListResponseDTO getUserTasks() {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!(authentication instanceof JwtAuthenticationToken)) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("Invalid or missing JWT authentication");
-            return errorResponse;
-        }
-
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the current user");
+            return new TaskListResponseDTO();
+        }
+        log.info("ac ids " + userAcIds);
+
+        // Get user's candidate groups
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
 
         if (userCandidateGroups.isEmpty()) {
-            TaskListResponseDTO errorResponse = new TaskListResponseDTO();
-            errorResponse.setStatus("User does not have any recognized roles");
-            return errorResponse;
+            log.warn("User does not have any recognized roles");
+            return new TaskListResponseDTO();
+        }
+        List<String> matchingProcessInstanceIds = new ArrayList<>();
+
+        for (Integer acId : userAcIds) {
+
+            List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                    .variableValueEquals("acId", acId)
+                    .list();
+            log.info("ac id " + acId);
+            log.info("nbr instance" + instances.size());
+            matchingProcessInstanceIds.addAll(
+                    instances.stream()
+                            .map(ProcessInstance::getId)
+                            .collect(Collectors.toList()));
         }
 
-        List<Task> tasks = taskService.createTaskQuery()
-                .taskTenantId(TENANT_ID)
-                .taskCandidateGroupIn(userCandidateGroups)
-                .active()
-                .orderByTaskCreateTime().asc()
-                .list();
 
-        List<TaskDTO> taskList = tasks.stream().map(task -> {
+        List<Task> filteredTasks = new ArrayList<>();
+        int chunkSize = 1000;
+        for (int i = 0; i < matchingProcessInstanceIds.size(); i += chunkSize) {
+            List<String> chunk = matchingProcessInstanceIds.subList(i,
+                    Math.min(i + chunkSize, matchingProcessInstanceIds.size()));
+            filteredTasks.addAll(
+                    taskService.createTaskQuery()
+                            .taskTenantId(TENANT_ID)
+                            .taskCandidateGroupIn(userCandidateGroups)
+                            .processInstanceIdIn(List.of(chunk.toArray(new String[0])))
+                            .active()
+                            .orderByTaskCreateTime().desc()
+                            .list()
+            );
+        }
+        log.info("filteredTasks " + filteredTasks);
+
+
+        List<TaskDTO> taskList = filteredTasks.stream().map(task -> {
             TaskDTO taskInfo = new TaskDTO();
             taskInfo.setTaskId(task.getId());
             taskInfo.setTaskName(task.getName());
@@ -745,13 +844,17 @@ public class PaaFlowableService {
             Integer version = (Integer) processVariables.getOrDefault("version", null);
 
             if (id != null && version != null) {
-                Optional<Paa> paaOptional = paaService.findById(id, version);
-                paaOptional.ifPresent(paa -> {
-                    taskInfo.setId(id);
-                    taskInfo.setVersion(version);
-                    taskInfo.setNom(paa.getNom());
-                    taskInfo.setRef(paa.getRef());
-                });
+                try {
+                    Optional<Paa> paaOptional = paaService.findById(id, version);
+                    paaOptional.ifPresent(paa -> {
+                        taskInfo.setId(id);
+                        taskInfo.setVersion(version);
+                        taskInfo.setNom(paa.getNom());
+                        taskInfo.setRef(paa.getRef());
+                    });
+                } catch (AcNotFound | PaaNotFound e) {
+                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+                }
             }
 
             Map<String, Object> variables = new HashMap<>();
@@ -822,5 +925,115 @@ public class PaaFlowableService {
         }
         log.info("No variable name matched in expression: {}", conditionExpression);
         return null;
+    }
+
+    /**
+     * Retrieves a Paa entity by its ID along with its associated task, if any.
+     * If a task exists and the user has permission to view it, includes the task details and sets hasTask to true.
+     * Otherwise, sets hasTask to false and omits task details.
+     *
+     * @param paaId The ID of the Paa entity
+     * @return TaskDetailsDTO containing the Paa details and task information (if applicable)
+     * @throws PaaNotFound if the Paa entity is not found
+     * @throws AcNotFound if no AC is found for the current user
+     */
+    @Transactional
+    public TaskDetailsDTO getPaaWithTasks(Integer paaId) throws PaaNotFound, AcNotFound {
+        log.info("Récupération du PAA avec ID: {} et sa tâche associée", paaId);
+
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken)) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("Invalid or missing JWT authentication");
+            return errorResponse;
+        }
+
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
+
+        // Récupérer le PAA avec la dernière version
+        Paa paa = paaService.findByIdPaa(paaId, null); // null pour la dernière version
+        if (paa == null) {
+            TaskDetailsDTO errorResponse = new TaskDetailsDTO();
+            errorResponse.setStatus("PAA non trouvé pour l'ID: " + paaId);
+            return errorResponse;
+        }
+
+        // Préparer l'objet de réponse
+        TaskDetailsDTO response = new TaskDetailsDTO();
+
+        // Mapper le PAA vers PaaResponseWithRealisations
+        if (paa.getDocs() != null) {
+            List<Docs> nonDeletedDocs = paa.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            paa.setDocs(nonDeletedDocs);
+        }
+        PaaResponseWithRealisations paaResponse = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
+        response.setPaa(paaResponse);
+
+        // Vérifier si le PAA a un processus actif
+        String processInstanceId = paa.getProcessInstanceId();
+        if (processInstanceId == null) {
+            response.setHasTask(false);
+            response.setStatus("PAA récupéré avec succès, aucune tâche associée");
+            return response;
+        }
+
+        // Récupérer la tâche active pour ce processInstanceId (une seule tâche est attendue)
+        Task task = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .taskTenantId(TENANT_ID)
+                .active()
+                .singleResult();
+
+        // S'il n'y a pas de tâche active
+        if (task == null) {
+            response.setHasTask(false);
+            response.setStatus("PAA récupéré avec succès, aucune tâche active associée");
+            return response;
+        }
+
+        // Vérifier si l'utilisateur a les droits de voir la tâche
+        boolean userCanViewTask = hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth);
+
+        if (!userCanViewTask) {
+            log.warn("L'utilisateur {} n'a pas les droits pour voir la tâche {} du PAA {}",
+                    jwtAuth.getName(), task.getId(), paaId);
+            response.setHasTask(false);
+            response.setStatus("PAA récupéré avec succès, une tâche existe mais l'utilisateur n'a pas les droits de la voir");
+            return response;
+        }
+
+        // Si l'utilisateur a les droits, inclure les détails de la tâche et définir hasTask à true
+        response.setHasTask(true);
+        response.setTaskId(task.getId());
+        response.setTaskName(task.getName());
+        response.setTaskDefinitionKey(task.getTaskDefinitionKey());
+        response.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+        response.setProcessInstanceId(task.getProcessInstanceId());
+        response.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        response.setCandidateGroup(getCandidateGroup(task));
+
+        // Ajouter les variables de traçabilité
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("decision", processVariables.getOrDefault("decision", ""));
+        variables.put("comment", processVariables.getOrDefault("comment", ""));
+        variables.put("dateComment", processVariables.getOrDefault("dateComment", ""));
+        variables.put("treater", processVariables.getOrDefault("treater", ""));
+        response.setTraceability(variables);
+
+        // Ajouter les propriétés de la tâche
+        Map<String, Boolean> taskProperties = getTaskProperties(task);
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
+
+        // Ajouter les prochaines étapes possibles
+        List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
+        response.setNextSteps(nextSteps);
+
+        response.setStatus("PAA et détails de la tâche récupérés avec succès");
+
+        return response;
     }
 }

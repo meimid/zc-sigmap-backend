@@ -81,6 +81,13 @@
             <artifactId>tika-core</artifactId>
             <version>2.9.2</version> <!-- Updated to latest version -->
         </dependency>
+        
+        <!-- Add Apache Commons Codec for hashing -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.16.1</version>
+        </dependency>
     </dependencies>
 
     <build>

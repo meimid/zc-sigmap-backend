@@ -42,7 +42,5 @@ public class RealisationBaseRequestDto {
         }
         return lots;
     }
-
-    // toDO: nejah
     private List<MultipartFile> realisationFiles;
 } 

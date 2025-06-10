@@ -1,5 +1,10 @@
 package com.sigmap.common.ppms;
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.exceptions.PaaIdNotFound;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -28,6 +33,7 @@ import java.util.Optional;
 public interface PpmService {
     List<Ppm> findAll();
 
+    Integer findLatestVersionById(Integer ppmId);
     /**
      * Return a page of Ppms based on the given specification and pageable.
      *
@@ -35,7 +41,7 @@ public interface PpmService {
      * @param pageable the pageable to use
      * @return a page of Ppms
      */
-    Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable);
+    Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) throws AcNotFound, PpmNotFound;
 
     /**
      * Return a page of deleted Ppms based on the given specification and pageable.
@@ -78,7 +84,7 @@ public interface PpmService {
      * @param ppmVer the second part of the composite ID (ppm_ver)
      * @return the Ppm entity with the given ID components
      */
-    Optional<Ppm> findById(Integer ppmId, Integer ppmVer);
+    Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound;
 
     /**
      * Find the latest version of a Ppm entity by its ID.
@@ -86,7 +92,7 @@ public interface PpmService {
      * @param ppmId The ID of the Ppm to find.
      * @return An Optional containing the latest version of the Ppm, or empty if not found.
      */
-    Optional<Ppm> findLatestById(Integer ppmId);
+    Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound;
 
     /**
      * Save a Ppm entity.
@@ -105,6 +111,23 @@ public interface PpmService {
     Ppm create(PpmRequest request);
 
     /**
+     * Create a new PPM with full support for relationships including documents.
+     * This method creates a PPM with its realisations, lots, and documents.
+     * <p>
+     * The method handles:
+     * - Creating a new PPM with the provided fields
+     * - Creating and associating document files for the PPM
+     * - Creating Realisations with their fields
+     * - Creating and associating document files for each Realisation
+     * - Creating Lots for each Realisation
+     * - Establishing all bidirectional relationships
+     *
+     * @param request the request containing PPM data, realisations, lots, and document files
+     * @return the created PPM with all relationships established
+     */
+    Ppm createWithRelationships(PpmWithLotsRequestDto request) throws AcNotFound;
+
+    /**
      * Update an existing Ppm.
      *
      * @param ppmId   the ID of the Ppm to update
@@ -117,6 +140,26 @@ public interface PpmService {
     Ppm update(Integer ppmId, Integer ppmVer, PpmRequest request);
 
     /**
+     * Update an existing PPM (always version 1) and all its relationships without versioning.
+     * This method updates a PPM along with its realisations, lots, and documents.
+     * <p>
+     * The method handles:
+     * - Updating the PPM with the provided fields
+     * - Processing document files for the PPM (adding new ones)
+     * - Managing document references (adding/removing existing docs)
+     * - Updating realisations with their fields
+     * - Processing document files for each realisation
+     * - Creating/updating lots for each realisation
+     * - Establishing all bidirectional relationships
+     *
+     * @param ppmId the ID of the PPM to update
+     * @param request the request containing updated PPM data, realisations, lots, and document files
+     * @return the updated PPM with all relationships established
+     * @throws RuntimeException if the PPM is not found or is deleted
+     */
+    Ppm updateGlobalWithoutVersionning(Integer ppmId, PpmWithLotsRequestDto request);
+
+    /**
      * Delete a Ppm by its composite ID components.
      *
      * @param ppmId the first part of the composite ID (ppm_id)
@@ -125,7 +168,7 @@ public interface PpmService {
     void delete(Integer ppmId, Integer ppmVer);
 
 
-    Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId);
+    Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId) throws PpmNotFound, AcNotFound;
 
     /**
      * Updates a PPM by creating a new version with the updated data.
@@ -207,4 +250,51 @@ public interface PpmService {
      * @throws RuntimeException if the PPM is not found or if all versions are deleted
      */
     Ppm updateWithVersioningWithLots(Integer ppmId, PpmWithLotsRequestDto request);
+
+    /**
+     * Update an existing PPM with all its relationships.
+     * This method updates a PPM along with its realisations, lots, and documents.
+     * <p>
+     * The method handles:
+     * - Updating the PPM with the provided fields
+     * - Processing document files for the PPM
+     * - Updating/adding/removing realisations with their fields
+     * - Processing document files for each realisation
+     * - Updating/adding/removing lots for each realisation
+     * - Establishing all bidirectional relationships
+     *
+     * @param ppmId the ID of the PPM to update
+     * @param ppmVer the version of the PPM to update
+     * @param request the request containing updated PPM data, realisations, lots, and document files
+     * @return the updated PPM with all relationships established
+     * @throws RuntimeException if the PPM is not found or is deleted
+     */
+    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request);
+
+    /**
+     * Find a PPM by its ID and optionally its version.
+     * If version is null, returns the latest version.
+     *
+     * @param ppmId the ID of the PPM
+     * @param ppmVer the version of the PPM (can be null to get latest version)
+     * @return Optional containing the PPM if found
+     */
+    Optional<Ppm> findByIdPpm(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound;
+
+    /**
+     * find the list of ppms with Ac id
+     * */
+    Page<Ppm> findPpmsByAcId( Integer acId, Pageable pageable) throws AcNotFound;
+
+    /**
+     * Retrieves all versions of an Ppm entity by its ID, including only non-deleted documents,
+     * in PpmResponseWithRealisations format with pagination.
+     *
+     * @param ppmId   ID of the Ppm entity
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Ppm representing all versions for the given ID
+     * @throws PpmIdNotFound if no Ppm entities are found for the ID
+     */
+    Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound;
+
 }
