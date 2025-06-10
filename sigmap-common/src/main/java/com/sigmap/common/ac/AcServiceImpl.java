@@ -106,17 +106,26 @@ public class AcServiceImpl implements AcService{
     @Override
     @Transactional
     public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
+        if(request.getNom() == null) {
+            throw new AcAttributeRequire("","nom");
+        }
+         else if(request.getTutelId()==null){
+             throw new AcAttributeRequire("","tutel");
+        }
+         else if(request.getContact() == null) {
+             throw new AcAttributeRequire("","contact");
+        }
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 
         if(findOne(specification).isPresent()) {
             throw new AcNomAlreadyExist("", request.getNom());
         }
         Ac ac = AcMapper.INSTANCE.map(request);
-        if(request.getTutelId() != null) {
+
             RefParam tutel= refParamRepository.findById(request.getTutelId()).
                     orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
             ac.setTutel(tutel);
-        }
+
 
         Ac savedAc = repository.save(ac);
 

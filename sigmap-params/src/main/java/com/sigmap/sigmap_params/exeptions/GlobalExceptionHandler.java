@@ -483,4 +483,12 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AcAttributeRequire.class)
+    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AcAttributeRequire ex) {
+        String message = messageSource.getMessage("ac.attributeRequire",new Object[] {ex.getNom()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 }
