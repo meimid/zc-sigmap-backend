@@ -21,6 +21,7 @@
     <userTask id="Activity_0m03i99" name="Validation (AC)" flowable:candidateGroups="VALIDATEUR_AC" flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
+        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true"></flowable:formProperty>
       </extensionElements>
     </userTask>
     <userTask id="Activity_1d2aib2" name="Rectification (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
@@ -32,6 +33,7 @@
     <userTask id="Task_1vmbdxo" name="(CPMP)Validation PPM" flowable:candidateGroups="CPMP" flowable:formFieldValidation="true">
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
+        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true"></flowable:formProperty>
       </extensionElements>
     </userTask>
     <exclusiveGateway id="ExclusiveGateway_1qgo4yf"></exclusiveGateway>
