@@ -226,6 +226,7 @@ public class DocumentCommuneService {
                     if(ppm.getDocs() == null) {
                         ppm.setDocs(new ArrayList<>());
                     }
+                    ppm.getDocs().add(document);
                 }
                 // Save the document (Docs entity)
                 docsRepository.save(document);
