@@ -18,8 +18,8 @@ import org.springframework.stereotype.Repository;
 public interface AgpmRepository extends JpaRepository<Agpm, CompositeId>, JpaSpecificationExecutor<Agpm>,
         CompositeSoftDeleteRepository<Agpm, Integer> {
 
-    @Query("SELECT MAX(p.id) FROM Agpm p")
-    Integer findMaxId();
+//    @Query("SELECT MAX(p.id) FROM Agpm p")
+//    Integer findMaxId();
 
     @Query("SELECT MAX(a.version) FROM Agpm a WHERE a.id = :id")
     Integer findMaxVersionById(@Param("id") Integer id);

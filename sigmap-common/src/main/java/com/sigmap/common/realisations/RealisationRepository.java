@@ -13,8 +13,8 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
         JpaSpecificationExecutor<Realisation>,
         CompositeSoftDeleteRepository<Realisation, Integer> {
 
-    @Query("SELECT COALESCE(MAX(r.id), 0) FROM Realisation r")
-    Integer findMaxId();
+//    @Query("SELECT COALESCE(MAX(r.id), 0) FROM Realisation r")
+//    Integer findMaxId();
 
     /**
      * Find the maximum version for a given realisation ID.
