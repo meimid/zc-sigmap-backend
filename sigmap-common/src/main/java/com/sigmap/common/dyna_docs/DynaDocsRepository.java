@@ -16,4 +16,7 @@ public interface DynaDocsRepository
           + " d.dynaDocsVer = (SELECT MAX(d2.dynaDocsVer) FROM DynaDocs d2 WHERE d2.dynaDocsId ="
           + " d.dynaDocsId AND d2.categorieId.id = :categorieId AND d2.status = 1)")
   List<DynaDocs> findAllActifForCategorie(@Param("categorieId") Integer categorieId);
+
+  @Query("SELECT d FROM DynaDocs d WHERE d.dynaDocsId = :dynaDocsId AND d.dynaDocsVer = :dynaDocsVer")
+  java.util.Optional<DynaDocs> findByIdDynaDocsIdAndDynaDocsVer(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
 }

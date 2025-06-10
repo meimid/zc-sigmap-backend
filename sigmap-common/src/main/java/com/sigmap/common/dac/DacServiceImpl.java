@@ -25,7 +25,7 @@ import static org.testcontainers.shaded.org.apache.commons.lang3.StringUtils.low
 @Slf4j
 @Service
 @AllArgsConstructor
-public class DacServiceImpl {
+public class DacServiceImpl implements DacService {
 
 
     private final DacDocsRepository dacDocsRepository;
@@ -35,7 +35,8 @@ public class DacServiceImpl {
     private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
 
 
-    public List<String> generateDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
+    @Override
+    public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
         log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
 
@@ -64,10 +65,10 @@ public class DacServiceImpl {
 
         List<String> generatedFilePaths = new ArrayList<>();
 
-        Integer docOreder =0;
+        int docOreder = 0;
         // Step 3: Process each document in order
         for (DynaDocs dynaDoc : dynaDocsList) {
-            docOreder=docOreder+1;
+            docOreder = docOreder + 1;
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}",
                     dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer(), templateFileName);
@@ -107,6 +108,40 @@ public class DacServiceImpl {
         return generatedFilePaths;
     }
 
+    @Override
+    public String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath) {
+        log.debug("Processing Dac ID: {}, Version: {}, DynaDocsId: {}, DynaDocsVer: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, dynaDocsId, dynaDocsVer, basePath, customDirPath);
+        validateParams(dacId, dacVersion, basePath, customDirPath);
+        DacId dacIdObj = new DacId(dacId, dacVersion);
+        Dac dac = dacRepository.findById(dacIdObj)
+                .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
+        if (dac.getPpm() == null) {
+            log.error("Dac must have a Ppm");
+            throw new IllegalArgumentException("Dac must have a Ppm");
+        }
+        DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer)
+                .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + dynaDocsId + ", Version: " + dynaDocsVer));
+        String templateFileName = dynaDoc.getTemplateFileName();
+        File templateFile = new File(basePath, templateFileName);
+        if (!templateFile.exists()) {
+            log.error("Template file not found: {}", templateFile.getAbsolutePath());
+            throw new IllegalArgumentException("Template file not found: " + templateFile.getAbsolutePath());
+        }
+        try (
+                FileInputStream fis = new FileInputStream(templateFile);
+                XWPFDocument document = new XWPFDocument(fis)) {
+            Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDocsId, dynaDocsVer);
+            processTableAndListBookmarks(document, dacId, dacVersion, dynaDocsId, dynaDocsVer);
+            replaceBookmarks(document, bookmarks);
+            String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, 1);
+            log.debug("Generated document: {}", outputFilePath);
+            return outputFilePath;
+        } catch (IOException e) {
+            log.error("Error processing document {}: {}", templateFileName, e.getMessage());
+            throw new RuntimeException("Error processing document: " + e.getMessage());
+        }
+    }
+
     private void validateParams(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
         if (dacId == null || dacVersion == null) {
             throw new IllegalArgumentException("Dac ID and version must not be null");
@@ -133,8 +168,8 @@ public class DacServiceImpl {
         // Process DacDocs entries, filtering by document and sorting by field order
         List<DacDocs> filteredDacDocs = dacDocsList.stream()
                 .filter(dacDoc ->
-                     dacDoc.getId().getDynaDocsId().equals(dynaDocsId)&&
-                            dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
+                        dacDoc.getId().getDynaDocsId().equals(dynaDocsId) &&
+                                dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
 
                 )
                 .sorted((d1, d2) -> {
@@ -198,6 +233,7 @@ public class DacServiceImpl {
             }
         }
     }
+
     /**
      * Checks if a bookmark exists in any paragraph in the document.
      */
@@ -217,6 +253,7 @@ public class DacServiceImpl {
         // Not found
         return false;
     }
+
     /**
      * Fallback: Write a value at a bookmark inside a table cell if not found in paragraphs.
      */
@@ -282,7 +319,7 @@ public class DacServiceImpl {
             String bookmarkName = dynaField.getName();
 
             //if (typeId == 2) { // List type
-            if (lowerCase(typeCode).equals("list") ) {
+            if (lowerCase(typeCode).equals("list")) {
                 // Fetch all values for this list field from the repository
                 List<String> values = dacDocsRepository.findListValuesForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                 // If there are values, insert a single-column table at the bookmark
@@ -292,7 +329,7 @@ public class DacServiceImpl {
             } //else if (typeId == 6) { // Table type
             else if (lowerCase(typeCode).equals("table")) {
 
-                log.debug("Table type : {} and code {} " ,typeCode,typeId);
+                log.debug("Table type : {} and code {} ", typeCode, typeId);
                 // Fetch all column definitions for this table field
                 List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
                 // Fetch all row data for this table field
@@ -304,6 +341,7 @@ public class DacServiceImpl {
             }
         }
     }
+
     /**
      * Inserts a single-column table at the location of the given bookmark, with each value in a new row.
      */
@@ -345,10 +383,10 @@ public class DacServiceImpl {
             if (paragraph.getCTP().getBookmarkStartList() != null) {
                 // Loop through all bookmarks in the paragraph
                 for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
-                    log.debug("Loop through all bookmarks in the paragraph {} " , bookmark.getName());
+                    log.debug("Loop through all bookmarks in the paragraph {} ", bookmark.getName());
                     // If the bookmark name matches
                     if (bookmarkName.equals(bookmark.getName())) {
-                        log.debug("in condition of bookmark name matches  {} " , bookmark.getName());
+                        log.debug("in condition of bookmark name matches  {} ", bookmark.getName());
                         // Get the XML cursor at the end of the paragraph
                         org.apache.xmlbeans.XmlCursor cursor = paragraph.getCTP().newCursor();
                         cursor.toParent(); // Move to the parent (the body)

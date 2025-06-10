@@ -10,4 +10,7 @@ public class DacRequest {
 
     //@NotNull(message = "DAC Version cannot be null")
     private Integer dacVer;
+
+    private Integer dynaDocsVer;
+    private Integer dynaDocsId;
 }
