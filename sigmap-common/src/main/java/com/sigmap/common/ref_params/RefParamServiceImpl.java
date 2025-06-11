@@ -27,6 +27,7 @@ import com.sigmap.common.ref_types.RefTypeService;
 import java.util.List;
 import java.util.Optional;
 import com.sigmap.common.ref_types.RefTypeSpecifications;
+import com.sigmap.common.ref_types.exceptions.RefTypeIdNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
@@ -152,10 +153,10 @@ public class RefParamServiceImpl implements RefParamService {
     @Override
     public RefParam create(RefParamRequest request) throws RefTypeNotFound {
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
-        if(request.getRefType()!=null) {
-            RefType refType = refTypeService.findByCode(request.getRefType());
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
             if(refType.getSystemType() == null || refType.getSystemType() | refType.getIsDeleted()) {
-                throw new RefTypeNotFound("",request.getRefType());
+                throw new RefTypeIdNotFound("",request.getRefTypeId());
             }
             refParam.setRefType(refType);
 
@@ -170,10 +171,10 @@ public class RefParamServiceImpl implements RefParamService {
             throw new RefParamNotFound("", List.of(id));
         }
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
-        if(request.getRefType()!=null) {
-            RefType refType = refTypeService.findByCode(request.getRefType());
+        if(request.getRefTypeId()!=null) {
+            RefType refType = refTypeService.findById(request.getRefTypeId());
             if(refType.getSystemType() == null ||refType.getSystemType()|refType.getIsDeleted()) {
-                throw new RefTypeNotFound("",request.getRefType());
+                throw new RefTypeIdNotFound("",request.getRefTypeId());
             }
             refParam.setRefType(refType);
         }
