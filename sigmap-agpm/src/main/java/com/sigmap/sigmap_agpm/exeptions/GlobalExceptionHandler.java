@@ -147,7 +147,7 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("agpm.invalid.status", new Object[] {
                 String.join((CharSequence) ",", ex.getAgpmIds().stream().map(String::valueOf).collect(Collectors.toList())),
                 String.join((CharSequence) ",", ex.getAgpmVersions().stream().map(String::valueOf).collect(Collectors.toList())),
-                ex.getCurrentStatusId() }, getLocal());
+                ex.getCurrentStatus() }, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }

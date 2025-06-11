@@ -10,9 +10,9 @@ import lombok.Data;
 
 @Data
 public class DynaDocsResponse {
-  private Integer dynaDocsId;
+  private Integer id;
 
-  private Integer dynaDocsVer;
+  private Integer version;
 
   private String name;
 

@@ -92,7 +92,7 @@ public class DynaDocsController {
         DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
         dynaFieldsQuery.setAll(true);
         dynaFieldsQuery.setDynaDocId(dynaDocsId);
-        dynaFieldsQuery.setDynaDocVer(dynaDocs.getDynaDocsVer());
+        dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
         List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
         List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
@@ -110,7 +110,7 @@ public class DynaDocsController {
       DynaFieldsQuery dynaFieldsQuery = new DynaFieldsQuery();
       dynaFieldsQuery.setAll(true);
       dynaFieldsQuery.setDynaDocId(dynaDocsId);
-      dynaFieldsQuery.setDynaDocVer(dynaDocs.getDynaDocsVer());
+      dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
       List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
       List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);

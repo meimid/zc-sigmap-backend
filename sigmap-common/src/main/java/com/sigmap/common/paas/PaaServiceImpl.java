@@ -457,13 +457,7 @@ public class PaaServiceImpl implements PaaService {
         Paa paa = PaaMapper.INSTANCE.toEntity(request);
         paa.setRealisations(new ArrayList<>());
 
-<<<<<<< HEAD
         paa.setStatus(ProcessStatus.BROUILLON);
-=======
-        RefParam defaultStatus = refParamRepository.findById(Constants.DRAFT_STATUS)
-                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
-        paa.setStatus(defaultStatus);
->>>>>>> 01349e57f9bf2130a49739e1e3c7d013df9cd72f
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
         paa.setAnnee(String.valueOf(LocalDate.now().getYear()));

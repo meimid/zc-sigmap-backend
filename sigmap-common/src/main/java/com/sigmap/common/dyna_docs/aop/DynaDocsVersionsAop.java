@@ -78,19 +78,19 @@ public class DynaDocsVersionsAop {
     DynaDocs dynaDoc =
         dynaDocsService.findLatestById(dynaDocId).orElseThrow(() -> new DynaDocNotFound(dynaDocId));
 
-    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getDynaDocsVer());
+    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getVersion());
 
-    Integer oldVersion = dynaDoc.getDynaDocsVer();
+    Integer oldVersion = dynaDoc.getVersion();
 
-    Integer newDynaDocsVer = dynaDoc.getDynaDocsVer() + 1;
+    Integer newDynaDocsVer = dynaDoc.getVersion() + 1;
 
     log.info("New version is {}", newDynaDocsVer);
 
     DynaDocs newDynaDoc = DynaDocsMapper.INSTANCE.mapWithoutId(dynaDoc);
-    newDynaDoc.setDynaDocsId(Integer.valueOf(dynaDocId));
-    newDynaDoc.setDynaDocsVer(Integer.valueOf(newDynaDocsVer));
+    newDynaDoc.setId(Integer.valueOf(dynaDocId));
+    newDynaDoc.setVersion(Integer.valueOf(newDynaDocsVer));
 
-    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getDynaDocsId(), newDynaDoc.getDynaDocsVer());
+    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getId(), newDynaDoc.getVersion());
 
     dynaDocsService.save(newDynaDoc);
 
@@ -135,21 +135,21 @@ public class DynaDocsVersionsAop {
             .findOne(spec)
             .orElseThrow(() -> new DynaDocNotFound(dynaFieldsRequest.getDynaDocsId()));
 
-    Integer dynaDocId = dynaDoc.getDynaDocsId();
+    Integer dynaDocId = dynaDoc.getId();
 
-    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getDynaDocsVer());
+    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getVersion());
 
-    Integer oldVersion = dynaDoc.getDynaDocsVer();
+    Integer oldVersion = dynaDoc.getVersion();
 
-    Integer newDynaDocsVer = dynaDoc.getDynaDocsVer() + 1;
+    Integer newDynaDocsVer = dynaDoc.getVersion() + 1;
 
     log.info("New version is {}", newDynaDocsVer);
 
     DynaDocs newDynaDoc = DynaDocsMapper.INSTANCE.mapWithoutId(dynaDoc);
-    newDynaDoc.setDynaDocsId(Integer.valueOf(dynaDocId));
-    newDynaDoc.setDynaDocsVer(Integer.valueOf(newDynaDocsVer));
+    newDynaDoc.setId(Integer.valueOf(dynaDocId));
+    newDynaDoc.setVersion(Integer.valueOf(newDynaDocsVer));
 
-    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getDynaDocsId(), newDynaDoc.getDynaDocsVer());
+    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getId(), newDynaDoc.getVersion());
 
     dynaDocsService.save(newDynaDoc);
 
@@ -208,21 +208,21 @@ public class DynaDocsVersionsAop {
             .findOne(spec)
             .orElseThrow(() -> new DynaDocNotFound(dynaFieldsRequest.getDynaDocsId()));
 
-    Integer dynaDocId = dynaDoc.getDynaDocsId();
+    Integer dynaDocId = dynaDoc.getId();
 
-    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getDynaDocsVer());
+    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getVersion());
 
-    Integer oldVersion = dynaDoc.getDynaDocsVer();
+    Integer oldVersion = dynaDoc.getVersion();
 
-    Integer newDynaDocsVer = dynaDoc.getDynaDocsVer() + 1;
+    Integer newDynaDocsVer = dynaDoc.getVersion() + 1;
 
     log.info("New version is {}", newDynaDocsVer);
 
     DynaDocs newDynaDoc = DynaDocsMapper.INSTANCE.mapWithoutId(dynaDoc);
-    newDynaDoc.setDynaDocsId(Integer.valueOf(dynaDocId));
-    newDynaDoc.setDynaDocsVer(Integer.valueOf(newDynaDocsVer));
+    newDynaDoc.setId(Integer.valueOf(dynaDocId));
+    newDynaDoc.setVersion(Integer.valueOf(newDynaDocsVer));
 
-    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getDynaDocsId(), newDynaDoc.getDynaDocsVer());
+    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getId(), newDynaDoc.getVersion());
 
     dynaDocsService.save(newDynaDoc);
 
@@ -287,21 +287,21 @@ public class DynaDocsVersionsAop {
             .findOne(spec)
             .orElseThrow(() -> new DynaDocNotFound(dynaField.getDynaDocsId()));
 
-    Integer dynaDocId = dynaDoc.getDynaDocsId();
+    Integer dynaDocId = dynaDoc.getId();
 
-    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getDynaDocsVer());
+    log.info("Found dynadoc with id {} and version {}", dynaDocId, dynaDoc.getVersion());
 
-    Integer oldVersion = dynaDoc.getDynaDocsVer();
+    Integer oldVersion = dynaDoc.getVersion();
 
-    Integer newDynaDocsVer = dynaDoc.getDynaDocsVer() + 1;
+    Integer newDynaDocsVer = dynaDoc.getVersion() + 1;
 
     log.info("New version is {}", newDynaDocsVer);
 
     DynaDocs newDynaDoc = DynaDocsMapper.INSTANCE.mapWithoutId(dynaDoc);
-    newDynaDoc.setDynaDocsId(Integer.valueOf(dynaDocId));
-    newDynaDoc.setDynaDocsVer(Integer.valueOf(newDynaDocsVer));
+    newDynaDoc.setId(Integer.valueOf(dynaDocId));
+    newDynaDoc.setVersion(Integer.valueOf(newDynaDocsVer));
 
-    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getDynaDocsId(), newDynaDoc.getDynaDocsVer());
+    log.info("Saving new dynadoc  {}  {}", newDynaDoc.getId(), newDynaDoc.getVersion());
 
     dynaDocsService.save(newDynaDoc);
 

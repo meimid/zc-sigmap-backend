@@ -13,18 +13,18 @@ import org.mapstruct.factory.Mappers;
 public interface DynaDocsMapper {
   DynaDocsMapper INSTANCE = Mappers.getMapper(DynaDocsMapper.class);
 
-  @Mapping(target = "dynaDocsId", ignore = true)
-  @Mapping(target = "dynaDocsVer", ignore = true)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "version", ignore = true)
   DynaDocs mapWithoutId(DynaDocs source);
 
-  @Mapping(target = "dynaDocsId", ignore = true)
-  @Mapping(target = "dynaDocsVer", ignore = true)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "version", ignore = true)
   @Mapping(target = "categorieId", ignore = true)
   DynaDocs map(DynaDocsRequest source);
 
   @Mapping(target = "categorieId", ignore = true)
-  @Mapping(target = "dynaDocsId", ignore = true)
-  @Mapping(target = "dynaDocsVer", ignore = true)
+  @Mapping(target = "id", ignore = true)
+  @Mapping(target = "version", ignore = true)
   void map(DynaDocsRequest source, @MappingTarget DynaDocs target);
 
   @Mapping(target = "categorie", source = "categorieId")
