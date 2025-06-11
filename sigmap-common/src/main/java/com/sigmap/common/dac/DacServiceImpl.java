@@ -5,6 +5,7 @@ import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
 
@@ -12,6 +13,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields_details.DynaFieldDetailsType;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import lombok.AllArgsConstructor;
@@ -313,13 +315,12 @@ public class DacServiceImpl implements DacService {
 
         for (DynaFields dynaField : dynaFieldsList) {
             // Get the type of the field (e.g., 2 for list, 6 for table)
-            int typeId = dynaField.getType_id().getId();
-            String typeCode = dynaField.getType_id().getCode();
+            DynaFieldType typeCode = dynaField.getType();
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
             //if (typeId == 2) { // List type
-            if (lowerCase(typeCode).equals("list")) {
+            if (DynaFieldType.LIST.equals(typeCode)) {
                 // Fetch all values for this list field from the repository
                 List<String> values = dacDocsRepository.findListValuesForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                 // If there are values, insert a single-column table at the bookmark
@@ -327,9 +328,9 @@ public class DacServiceImpl implements DacService {
                     insertSingleColumnTableAtBookmark(document, bookmarkName, values);
                 }
             } //else if (typeId == 6) { // Table type
-            else if (lowerCase(typeCode).equals("table")) {
+            else if (DynaFieldType.TABLE.equals(typeCode)) {
 
-                log.debug("Table type : {} and code {} ", typeCode, typeId);
+                log.debug("Table type : {} and code {} ", typeCode);
                 // Fetch all column definitions for this table field
                 List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
                 // Fetch all row data for this table field

@@ -4,9 +4,7 @@ import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.exceptions.DynaFieldNotFound;
 import com.sigmap.common.dyna_fields_details.mappers.DynaFieldsDetailsMapper;
 import com.sigmap.common.dyna_fields_details.request.DynaFieldsDetailsRequest;
-import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
-import com.sigmap.common.ref_params.RefParamSpecifications;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -80,12 +78,6 @@ public class DynaFieldsDetailsServiceImpl implements DynaFieldsDetailsService {
     dynaFieldsDetails.setDynaDocsVer(dynaField.getDynaDocsVer());
 
     dynaFieldsDetails.setDynaFields(dynaField);
-
-    Specification<RefParam> refSpec = RefParamSpecifications.id(request.getTypeId());
-
-    RefParam typeId = refParamService.findOne(refSpec).orElseThrow();
-
-    dynaFieldsDetails.setTypeId(typeId);
 
     return save(dynaFieldsDetails);
   }

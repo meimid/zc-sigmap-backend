@@ -32,10 +32,5 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
     @Query("SELECT EXISTS (SELECT d FROM DynaDocs d WHERE d.categorieId.id = :refParamId)")
     boolean hasAssociatedDynaDoc(@Param("refParamId") Integer refParamId);
 
-    @Query("SELECT EXISTS (SELECT f FROM DynaFields f WHERE f.type_id.id = :refParamId)")
-    boolean hasAssociatedDynaField(@Param("refParamId") Integer refParamId);
-
-    @Query("SELECT EXISTS (SELECT fd FROM DynaFieldsDetails fd WHERE fd.typeId.id = :refParamId)")
-    boolean hasAssociatedDynaFieldDetail(@Param("refParamId") Integer refParamId);
 
 }

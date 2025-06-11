@@ -3,8 +3,6 @@ package com.sigmap.common.dyna_fields;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.entity.ActiveStatus;
-import com.sigmap.common.entity.ProcessStatus;
-import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import java.util.HashSet;
 import java.util.Set;
@@ -51,9 +49,9 @@ public class DynaFields {
   @Column(name = "description")
   private String description;
 
-  @ManyToOne
-  @JoinColumn(name = "type_id")
-  private RefParam type_id;
+  @Column(name = "field_type")
+  @Enumerated(EnumType.STRING)
+  private DynaFieldType type;
 
   @Column(name = "source")
   private String source;

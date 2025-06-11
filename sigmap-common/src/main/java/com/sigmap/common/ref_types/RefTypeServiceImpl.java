@@ -80,7 +80,7 @@ public class RefTypeServiceImpl implements RefTypeService {
   }
   @Override
   public RefType findByCode(RefTypes code) throws RefTypeNotFound {
-    Specification<RefType> specification = RefTypeSpecifications.code(code)
+    Specification<RefType> specification = RefTypeSpecifications.code(code.name())
             .and(RefTypeSpecifications.deleted(false));
     return findOne(specification)
             .orElseThrow(() -> new RefTypeNotFound("",code));

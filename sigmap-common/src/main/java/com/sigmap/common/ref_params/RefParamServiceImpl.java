@@ -270,23 +270,13 @@ public class RefParamServiceImpl implements RefParamService {
             throw new HasAssociatedDynaDoc(id);
         }
 
-        boolean hasAssociatedDynaField = repository.hasAssociatedDynaField(id);
-        if (hasAssociatedDynaField) {
-            throw new HasAssociatedDynaField(id);
-        }
-
-        boolean hasAssociatedDynaFieldDetail = repository.hasAssociatedDynaFieldDetail(id);
-        if (hasAssociatedDynaFieldDetail) {
-            throw new HasAssociatedDynaFieldDetail(id);
-        }
-
         repository.softDelete(id);
     }
 
     @Override
     public List<RefParam> findByRefType(RefTypes refTypeCode) throws RefTypeNotFound {
         refTypeService.findByCode(refTypeCode);
-        Specification<RefType> refTypeSpec = RefTypeSpecifications.code(refTypeCode)
+        Specification<RefType> refTypeSpec = RefTypeSpecifications.code(refTypeCode.name())
                 .and(RefTypeSpecifications.systemType());
         refTypeService.findOne(refTypeSpec).orElseThrow(() -> new RefTypeNotFound("", refTypeCode));
 
@@ -300,7 +290,7 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam findByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound,RefTypeNotFound  {
-        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode).and(RefTypeSpecifications.systemType());
+        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode.name()).and(RefTypeSpecifications.systemType());
         refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeCode));
        Specification<RefParam> refParamSpecification= RefParamSpecifications.id(refPramId).and(RefParamSpecifications.systemType(false));
        findOne(refParamSpecification).orElseThrow(()-> new RefParamNotFound("", List.of(refPramId)));
@@ -319,7 +309,7 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam createUnderRefType(RefTypes refTypeCode, RefParamRequest request) throws RefTypeNotFound {
-        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode).and(RefTypeSpecifications.systemType());
+        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode.name()).and(RefTypeSpecifications.systemType());
         RefType refType= refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeCode));
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
