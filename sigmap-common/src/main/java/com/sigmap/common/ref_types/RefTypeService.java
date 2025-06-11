@@ -27,6 +27,9 @@ public interface RefTypeService {
    * @return a list of all RefTypes
    */
   List<RefType> findAll();
+
+  List<RefType> findAllWithSystemType(Specification<RefType> spec);
+  
   /**
    * Return a page of RefParams based on the given specification and pageable.
    *

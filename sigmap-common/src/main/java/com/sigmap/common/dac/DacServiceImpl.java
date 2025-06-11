@@ -71,7 +71,7 @@ public class DacServiceImpl implements DacService {
             docOreder = docOreder + 1;
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}",
-                    dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer(), templateFileName);
+                    dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
 
             File templateFile = new File(basePath, templateFileName);
             if (!templateFile.exists()) {
@@ -83,10 +83,10 @@ public class DacServiceImpl implements DacService {
                  XWPFDocument document = new XWPFDocument(fis)) {
 
                 // Create bookmark map with values from DacDocs, respecting field order
-                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
+                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
                 // Handle multi-value fields (table and list bookmarks)
-                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
+                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
                 // Replace bookmarks in the document
                 replaceBookmarks(document, bookmarks);
@@ -182,8 +182,8 @@ public class DacServiceImpl implements DacService {
                 .filter(dacDoc -> {
                     DynaFields field = dacDoc.getDynaField();
                     return field != null &&
-                            field.getDynaDocs().getDynaDocsId().equals(dynaDocsId) &&
-                            field.getDynaDocs().getDynaDocsVer().equals(dynaDocsVer);
+                            field.getDynaDocs().getId().equals(dynaDocsId) &&
+                            field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();

@@ -188,9 +188,7 @@ public class AcServiceImpl implements AcService{
                 UserAc userAc = new UserAc();
                 userAc.setUserId(userId);
                 userAc.setAcId(id);
-                RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                        .orElseThrow(() -> new UserAcDefaultStatus("Default status not found"));
-                userAc.setStatus(defaultStatus);
+                userAc.setStatus(ActiveStatus.ACTIF);
                 userAcRepository.save(userAc);
             }
         }
