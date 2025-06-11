@@ -1554,7 +1554,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+(existingPpm.getVersion()+1)+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
