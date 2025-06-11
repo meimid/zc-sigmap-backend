@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_fields_details.response;
 
+import com.sigmap.common.dyna_fields_details.DynaFieldDetailsType;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 
@@ -17,7 +18,7 @@ public class DynaFieldsDetailsResponse {
 
   private Integer columnPos;
 
-  private RefParam typeId;
+  private DynaFieldDetailsType type;
 
   private String source;
 

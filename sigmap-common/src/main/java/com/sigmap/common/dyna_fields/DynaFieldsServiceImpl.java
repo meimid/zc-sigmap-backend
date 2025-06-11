@@ -117,8 +117,6 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
     dynaFields.setDynaFieldsId(dynaFieldsSequenceGenerator.getNextId());
     dynaFields.setDynaDocs(dynaDocs);
 
-    RefParam typeId = refParamService.findById(request.getTypeId());
-    dynaFields.setType_id(typeId);
 
     dynaFields = dynaFieldsRepository.save(dynaFields);
 

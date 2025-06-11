@@ -3,6 +3,7 @@ package com.sigmap.common.dyna_fields.request;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.entity.ActiveStatus;
 import lombok.Data;
 
@@ -18,7 +19,7 @@ public class DynaFieldsRequest {
 
   private String description;
 
-  private Integer typeId;
+  private DynaFieldType type;
 
   private String source;
 
