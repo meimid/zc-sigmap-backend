@@ -16,7 +16,7 @@ public class AgpmResponseDto {
     private String nom;
     private String contenu;
     private String remarque;
-    private RefParamResponseDto status;
+    private String status;
     private AcResponseDto ac;
     private List<DocsResponseDTO> docs;
     private String processInstanceId;
