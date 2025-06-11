@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1749671959050-125
+-- changeset sigmap:1749671959050-125 runOnChange:true
 INSERT INTO ref_type (ref_code, description, system_type)
 SELECT 'TYPE_SOCIETE', 'Type de société', false
 WHERE NOT EXISTS (
