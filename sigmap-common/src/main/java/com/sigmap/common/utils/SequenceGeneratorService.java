@@ -18,7 +18,7 @@ public class SequenceGeneratorService {
      */
     public Integer getNextId(String sequenceName) {
         Long nextId = (Long) entityManager
-                .createNativeQuery("SELECT NEXTVAL('" + sequenceName + "')")
+                .createNativeQuery("SELECT NEXTVAL(" + sequenceName + ")")
                 .getSingleResult();
         return nextId.intValue();
     }
