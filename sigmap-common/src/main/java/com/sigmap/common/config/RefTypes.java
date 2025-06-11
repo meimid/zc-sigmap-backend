@@ -15,4 +15,5 @@ public enum RefTypes {
   MODE_PASSATION,
   TUTEL,
   CATEGORIE_DAC,
+  TYPE_FIELD_DAC
 }

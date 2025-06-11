@@ -1,6 +1,7 @@
 package com.sigmap.common.ref_types;
 
 
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeDeleted;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
@@ -81,6 +82,16 @@ public interface RefTypeService {
 
 
   RefType findById(Integer id) throws RefTypeNotFound;
+
+  /**
+   * Return a RefType by code.
+   *
+   * @param code the code of the RefType to return
+   * @return the RefType with the given code
+   */
+
+
+  RefType findByCode(RefTypes code) throws RefTypeNotFound;
 
   /**
    * Save a RefType.
