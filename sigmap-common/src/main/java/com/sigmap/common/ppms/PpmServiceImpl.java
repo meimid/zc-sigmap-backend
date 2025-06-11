@@ -1549,7 +1549,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+(existingPpm.getVersion()+1)+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
@@ -1689,7 +1689,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                         System.out.println("Processing " + withLotsDto.getRealisationFiles().size() +
                                                 " files for new realisation " + newRealisation.getId());
                                         //processAndSaveRelisationsDocuments(withLotsDto.getRealisationFiles(), newRealisation);
-                                            documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                            documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
                                         // Refresh the realisation to get the updated document list
                                         newRealisation = realisationRepository.findById(
                                                         new CompositeId(newRealisation.getId(), newRealisation.getVersion()))
@@ -2887,7 +2887,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 /*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
 */
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+ppm.getId()+"/"+ppm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+ppm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
@@ -3735,7 +3735,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
                                // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
-                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                             } catch (Exception e) {
                                 throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
@@ -4197,7 +4197,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
                         // Process all files at once using the new method
                        // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+"/"+existingPpm.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                         // After processing files, fetch the updated realisation with its documents

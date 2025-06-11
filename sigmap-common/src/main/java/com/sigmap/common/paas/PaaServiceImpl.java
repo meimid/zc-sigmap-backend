@@ -751,7 +751,7 @@ public class PaaServiceImpl implements PaaService {
 
                             // Process the uploaded files
                             //processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+"/"+existingPaa.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                             // After processing, get the new docs and merge with existing ones
@@ -830,7 +830,7 @@ public class PaaServiceImpl implements PaaService {
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
                             //processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
-                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+"/"+existingPaa.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         } catch (IOException e) {
                             throw new RuntimeException(e);
@@ -1097,7 +1097,7 @@ public class PaaServiceImpl implements PaaService {
                                             " files for Realisation ID: " + updatedRealisation.getId() +
                                             " version: " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+"/"+(existingPaa.getVersion()+1)+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Save the realisation again after adding documents
                                     updatedRealisation = realisationRepository.save(updatedRealisation);
@@ -1155,7 +1155,7 @@ public class PaaServiceImpl implements PaaService {
                                 try {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for existing Realisation ID: " + existingRealisation.getId() + " version: " + existingRealisation.getVersion());
                                    // processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),existingRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+"/"+(existingPaa.getVersion()+1)+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),existingRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     existingRealisation = realisationRepository.save(existingRealisation);
                                     System.out.println("Saved existing Realisation after processing files");
@@ -1323,7 +1323,7 @@ public class PaaServiceImpl implements PaaService {
                             try {
                                 System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for new Realisation ID: " + newRealisation.getId() + " version: " + newRealisation.getVersion());
                                 //processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
-                                documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+"/"+(existingPaa.getVersion()+1)+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                 // Save the new realisation again after adding documents
                                 newRealisation = realisationRepository.save(newRealisation);
@@ -2250,7 +2250,7 @@ public class PaaServiceImpl implements PaaService {
                 if (realisationRequest.getRealisationFiles() != null) {
                     try {
                        // processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+paa.getId()+"/"+paa.getVersion()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+paa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                     } catch (IOException e) {
                         throw new RuntimeException(e);
