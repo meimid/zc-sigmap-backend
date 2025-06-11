@@ -1164,7 +1164,6 @@ public class PaaServiceImpl implements PaaService {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for existing Realisation ID: " + existingRealisation.getId() + " version: " + existingRealisation.getVersion());
                                    // processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
                                     documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),existingRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
-
                                     existingRealisation = realisationRepository.save(existingRealisation);
                                     System.out.println("Saved existing Realisation after processing files");
                                     updateNeeded = true; // Force update needed
