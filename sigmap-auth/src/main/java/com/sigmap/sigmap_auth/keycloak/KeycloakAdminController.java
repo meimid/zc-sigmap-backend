@@ -36,7 +36,6 @@ public class KeycloakAdminController {
      * @return les informations de l’utilisateur créé
      */
     @PostMapping("/users")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) {
         UserDTO createdUser = keycloakAdminService.createUser(userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
@@ -48,7 +47,6 @@ public class KeycloakAdminController {
      * @return liste des utilisateurs
      */
     @GetMapping("/users")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public List<UserDTO> getUsers() {
         return keycloakAdminService.getAllUsers();
     }
@@ -78,7 +76,6 @@ public class KeycloakAdminController {
      * @return les informations mises à jour
      */
     @PutMapping("/users/{id}")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public ResponseEntity<UserDTO> updateUser(@PathVariable String id,
                                               @RequestBody UserResquestDTO userDTO) throws AgpmDefaultStatus {
         UserDTO updatedUser = keycloakAdminService.updateUser(id, userDTO);
@@ -93,7 +90,6 @@ public class KeycloakAdminController {
      * @return 200 OK si succès, 400 si validation échoue
      */
     @PostMapping("/{id}/reset-password")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public ResponseEntity<Void> updatePassword(@PathVariable String id,
                                                @RequestBody PasswordRequestDTO passwordDTO) {
         // Validation de la correspondance des mots de passe
@@ -124,7 +120,6 @@ public class KeycloakAdminController {
      * @return 204 No Content si succès, 404 si non trouvé
      */
     @DeleteMapping("/users/{userId}")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
         keycloakAdminService.deleteUser(userId);
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -138,7 +133,6 @@ public class KeycloakAdminController {
      * @return 200 OK si succès, 404 si utilisateur introuvable
      */
     @PutMapping("/users/{userId}/enable")
-    @Secured({ AuthoritiesConstants.SUPER_ADMIN, AuthoritiesConstants.ADMIN_CENTRAL, AuthoritiesConstants.ADMIN_AC })
     public ResponseEntity<Void> enableUser(@PathVariable String userId, @RequestParam boolean enabled) {
         try {
             keycloakAdminService.setUserEnabled(userId, enabled);
