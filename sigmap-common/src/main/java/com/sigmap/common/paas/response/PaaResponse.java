@@ -20,7 +20,7 @@ public class PaaResponse {
     //TODO:change it to AcResponse : Done
     private Ac ac;
     private BigDecimal budgetEstime;
-    private RefParam status;
+    private String status;
     private RefParam modePassation;
     private String remarque;
     private List<Realisation> realisations;

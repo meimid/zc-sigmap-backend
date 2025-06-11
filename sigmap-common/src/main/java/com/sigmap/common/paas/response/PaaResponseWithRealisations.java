@@ -25,7 +25,7 @@ public class PaaResponseWithRealisations {
     private String annee;
     private AcResponseDto ac;
     private BigDecimal budgetEstime;
-    private RefParamResponseDto status;
+    private String status;
     private RefParam modePassation;
     private String remarque;
     private List<DocsResponseDTO> docs;

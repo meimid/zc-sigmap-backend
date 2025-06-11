@@ -19,7 +19,7 @@ public class PpmResponse {
     private String annee;
     private Ac ac;
     private BigDecimal budgetEstime;
-    private RefParam status;
+    private String status;
     private RefParam modePassation;
     private String remarque;
     private List<DocsResponseDTO> docs;

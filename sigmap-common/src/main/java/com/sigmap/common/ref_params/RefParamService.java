@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
@@ -111,11 +112,11 @@ public interface RefParamService {
           RefParamHasAssociatedSociete,
           RefParamHasAssociatedSocieteAddress, RefParamNotFound;
 
-  List<RefParam> findByRefType( Integer refTpeId);
+  List<RefParam> findByRefType( RefTypes refTypeCode);
 
- RefParam findByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound;
-  RefParam UpdateRefParamByRefTypeId(Integer refParamId, Integer refTypeId,RefParamRequest request) throws RefParamNotFound;
-  void deleteByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound;
-  RefParam createUnderRefType(Integer refTpeId,RefParamRequest request) throws RefTypeNotFound;
+ RefParam findByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound;
+  RefParam UpdateRefParamByRefTypeId(Integer refParamId, RefTypes refTypeCode,RefParamRequest request) throws RefParamNotFound;
+  void deleteByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound;
+  RefParam createUnderRefType(RefTypes refTypeCode,RefParamRequest request) throws RefTypeNotFound;
 
 }

@@ -6,6 +6,7 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.*;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
@@ -340,7 +341,7 @@ public class KeycloakAdminService {
                     userAc.setUserId(userId);
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
-                    userAc.setStatus(getDefaultStatus());
+                    userAc.setStatus(ActiveStatus.ACTIF);
                     if (id  == acPiloteId){
                         userAc.setAcPilote(true);
                     }
@@ -350,7 +351,7 @@ public class KeycloakAdminService {
                     userCom.setUserId(userId);
                     userCom.setComId(id);
                     userCom.setIsDeleted(false);
-                    userCom.setStatus(getDefaultStatus());
+                    userCom.setStatus(ActiveStatus.ACTIF);
                     userComRepository.save(userCom);
                 }
             } catch (Exception e) {
@@ -380,7 +381,7 @@ public class KeycloakAdminService {
                         userAcRepository.removeAcPilote(id, userId);
                         userAc.setAcPilote(true);
                     }
-                    userAc.setStatus(getDefaultStatus());
+                    userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
                 }
             }
@@ -397,17 +398,14 @@ public class KeycloakAdminService {
                     userCom.setUserId(userId);
                     userCom.setComId(id);
                     userCom.setIsDeleted(false);
-                    userCom.setStatus(getDefaultStatus());
+                    userCom.setStatus(ActiveStatus.ACTIF);
                     userComRepository.save(userCom);
                 }
             }
         }
     }
 
-    private RefParam getDefaultStatus() throws AgpmDefaultStatus {
-        return refParamRepository.findById(Constants.ACTIF_STATUS)
-                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-    }
+
 
     public void updatePassword(String userId, String newPassword) {
         String token = tokenService.getAccessToken();

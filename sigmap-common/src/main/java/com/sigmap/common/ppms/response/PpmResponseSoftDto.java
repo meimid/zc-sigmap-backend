@@ -16,7 +16,7 @@ public class PpmResponseSoftDto {
     private String annee;
     private AcResponseDto ac;
     private BigDecimal budgetEstime;
-    private RefParamResponseDto status;
+    private String status;
     private RefParamResponseDto modePassation;
     private String remarque;
 }

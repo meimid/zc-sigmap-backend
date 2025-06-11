@@ -1,5 +1,6 @@
 package com.sigmap.common.ppms.request;
 
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sun.istack.NotNull;
@@ -23,7 +24,7 @@ public class PpmRequest {
 
     private BigDecimal budgetEstime;
 
-    private RefParam status;
+    private ProcessStatus status;
 
     private RefParam modePassation;
 

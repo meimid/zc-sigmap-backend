@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.repository.SoftDeleteRepository;
@@ -23,11 +24,13 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
         JpaSpecificationExecutor<RefParam>,
         SoftDeleteRepository<RefParam, Integer> {
 
-    @Query("SELECT r FROM RefParam r WHERE r.refType.id = :refTypeId and r.id = :refPramId ")
-   Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, Integer refTypeId) ;
+    @Query("SELECT r FROM RefParam r WHERE r.refType.refCode = :refType and r.id = :refPramId ")
+   Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, String refType) ;
 
 
 
+    @Query("SELECT EXISTS (SELECT d FROM DynaDocs d WHERE d.categorieId.id = :refParamId)")
+    boolean hasAssociatedDynaDoc(@Param("refParamId") Integer refParamId);
 
 
 }

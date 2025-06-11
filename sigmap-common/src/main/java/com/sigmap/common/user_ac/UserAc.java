@@ -2,6 +2,7 @@ package com.sigmap.common.user_ac;
 
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -34,9 +35,9 @@ public class UserAc extends BaseEntity {
     @Column(name = "ac_pilote")
     private Boolean acPilote = false;
 
-    @ManyToOne
-    @JoinColumn(name = "status_id", referencedColumnName = "ref_param_id")
-    private RefParam status;
+
+    @Enumerated(EnumType.STRING)
+    private ActiveStatus status;
 
 
 

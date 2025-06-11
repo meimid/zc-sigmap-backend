@@ -12,8 +12,8 @@ import java.util.Optional;
 
 public interface PaaRepository extends JpaRepository<Paa, CompositeId>,JpaSpecificationExecutor<Paa>,
         CompositeSoftDeleteRepository<Paa, Integer> {
-    @Query("SELECT MAX(p.id) FROM Paa p")
-    Integer findMaxId();
+//    @Query("SELECT MAX(p.id) FROM Paa p")
+//    Integer findMaxId();
 
     /**
      * Finds the maximum version for a PAA with the given ID
