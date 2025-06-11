@@ -3,6 +3,8 @@ package com.sigmap.sigmap_dac.exeptions;
 import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
+
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -91,6 +93,14 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> saveTempDocumentException(SaveTempDocument ex) {
     String message =
         messageSource.getMessage("dac.failed.saveTempFile", new Object[] {}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(PpmIdNotFound.class)
+  public ResponseEntity<ErrorResponse> ppmIdNotFoundExeption(PpmIdNotFound ex) {
+    String message = messageSource.getMessage( "ppm.notFound", new Object[] {ex.getPpmId(), ex.getPpmver()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }

@@ -1,6 +1,10 @@
 package com.sigmap.common.dac;
 
 
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dyna_docs.DynaDocs;
@@ -14,8 +18,16 @@ import java.util.stream.Collectors;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
+import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.springframework.stereotype.Service;
@@ -33,6 +45,8 @@ public class DacServiceImpl implements DacService {
     private final DacRepository dacRepository;
     private final DynaFieldsRepository dynaFieldsRepository;
     private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
+    private final PpmRepository ppmRepository;
+    private final RefParamRepository refParamRepository;
 
 
     @Override
@@ -430,5 +444,60 @@ public class DacServiceImpl implements DacService {
                 }
             }
         }
+    }
+
+
+    /**
+     * Merges a list of PDF input streams into a single PDF output stream using Apache PDFBox.
+     *
+     * @param inputStreams List of InputStreams of PDF files to merge.
+     * @return OutputStream containing the merged PDF.
+     * @throws IOException If an error occurs while merging PDFs.
+     */
+    public static ByteArrayOutputStream merge(List<InputStream> inputStreams) throws IOException {
+
+        ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+
+        PDFMergerUtility merger = new PDFMergerUtility();
+        merger.setDestinationStream(mergedOutputStream);
+
+        merger.addSources(inputStreams);
+
+        merger.mergeDocuments(null);
+
+        return mergedOutputStream;
+    }
+
+
+    @Override
+    public Dac save(Dac dac) {
+        return dacRepository.save(dac);
+    }
+
+    @Override
+    public Dac create(CreateDacRequest request) {
+        if (request.getDacVer() == null || request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null || request.getStatusId() == null) {
+            throw new IllegalArgumentException("All fields (dacVer, ppmId, ppmVer, categoryId, statusId) are required");
+        }
+        // Fetch related Ppm
+        CompositeId ppmKey = new CompositeId();
+        ppmKey.setId(request.getPpmId());
+        ppmKey.setVersion(request.getPpmVer());
+        Ppm ppm = ppmRepository.findById(ppmKey).orElseThrow(() -> new PpmIdNotFound( request.getPpmId(), request.getPpmVer()));
+
+        // Fetch related RefParam (category)
+        RefParam category = refParamRepository.findById(request.getCategoryId()).orElse(null);
+        if (category == null) {
+            throw new IllegalArgumentException("Category not found");
+        }
+        // Create DAC
+        Dac dac = new Dac();
+        dac.setDacVer(request.getDacVer());
+        dac.setPpm(ppm);
+        dac.setCategory(category);
+        dac.setStatusId(request.getStatusId());
+        Dac savedCdac = dacRepository.save(dac);
+
+        return savedCdac;
     }
 }
