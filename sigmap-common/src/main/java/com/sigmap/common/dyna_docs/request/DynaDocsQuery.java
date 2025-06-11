@@ -43,6 +43,10 @@ public class DynaDocsQuery {
       spec = spec.and(DynaDocsSpecifications.categoryId(categorieId));
     }
 
+    if (status != null) {
+      spec = spec.and(DynaDocsSpecifications.status(status));
+    }
+
     return spec;
   }
 }

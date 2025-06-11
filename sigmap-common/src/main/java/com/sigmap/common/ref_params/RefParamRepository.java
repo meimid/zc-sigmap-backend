@@ -25,7 +25,7 @@ public interface RefParamRepository  extends JpaRepository<RefParam, Integer>,
         SoftDeleteRepository<RefParam, Integer> {
 
     @Query("SELECT r FROM RefParam r WHERE r.refType.refCode = :refType and r.id = :refPramId ")
-   Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, RefTypes refType) ;
+   Optional <RefParam> findByIdAndRefType_Id(Integer refPramId, String refType) ;
 
 
 

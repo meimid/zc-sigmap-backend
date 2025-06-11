@@ -96,6 +96,6 @@ public class RefParamSpecifications {
   }
   public static Specification<RefParam> hasRefTypeCode(RefTypes refType) {
     return (root, query, criteriaBuilder) ->
-            criteriaBuilder.equal(root.get("refType").get("code"), refType);
+            criteriaBuilder.equal(root.get("refType").get("refCode"), refType.name());
   }
 }

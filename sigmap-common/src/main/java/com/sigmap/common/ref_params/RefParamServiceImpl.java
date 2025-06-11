@@ -294,7 +294,7 @@ public class RefParamServiceImpl implements RefParamService {
         refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeCode));
        Specification<RefParam> refParamSpecification= RefParamSpecifications.id(refPramId).and(RefParamSpecifications.systemType(false));
        findOne(refParamSpecification).orElseThrow(()-> new RefParamNotFound("", List.of(refPramId)));
-        return  repository.findByIdAndRefType_Id(refPramId, refTypeCode).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
+        return  repository.findByIdAndRefType_Id(refPramId, refTypeCode.name()).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
     }
 
     @Override

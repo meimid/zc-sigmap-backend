@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs;
 
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -15,10 +16,10 @@ public class DynaDocsSpecifications {
       Subquery<Integer> subquery = query.subquery(Integer.class);
       Root<DynaDocs> subRoot = subquery.from(DynaDocs.class);
       subquery
-          .select(cb.max(subRoot.get("dynaDocsVer")))
-          .where(cb.equal(subRoot.get("dynaDocsId"), root.get("dynaDocsId")));
+          .select(cb.max(subRoot.get("version")))
+          .where(cb.equal(subRoot.get("id"), root.get("id")));
 
-      return cb.equal(root.get("dynaDocsVer"), subquery);
+      return cb.equal(root.get("version"), subquery);
     };
   }
 
@@ -27,12 +28,12 @@ public class DynaDocsSpecifications {
       Subquery<Integer> subquery = query.subquery(Integer.class);
       Root<DynaDocs> subRoot = subquery.from(DynaDocs.class);
       subquery
-          .select(cb.max(subRoot.get("dynaDocsVer")))
-          .where(cb.equal(subRoot.get("dynaDocsId"), dynaDocsId));
+          .select(cb.max(subRoot.get("version")))
+          .where(cb.equal(subRoot.get("id"), dynaDocsId));
 
       return cb.and(
-          cb.equal(root.get("dynaDocsId"), dynaDocsId),
-          cb.equal(root.get("dynaDocsVer"), subquery));
+          cb.equal(root.get("id"), dynaDocsId),
+          cb.equal(root.get("version"), subquery));
     };
   }
 
@@ -67,6 +68,12 @@ public class DynaDocsSpecifications {
   public static Specification<DynaDocs> guideFileName(String guideFileName) {
     return (root, query, criteriaBuilder) -> {
       return criteriaBuilder.equal(root.get("guideFileName"), guideFileName);
+    };
+  }
+
+  public static Specification<DynaDocs> status(ActiveStatus status) {
+    return (root, query, criteriaBuilder) -> {
+      return criteriaBuilder.equal(root.get("status"), status);
     };
   }
 }
