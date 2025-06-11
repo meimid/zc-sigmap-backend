@@ -3,18 +3,28 @@ server:
   servlet:
     context-path: /params
 
+management: 
+  endpoints:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+
 spring:
   application:
     name: Sigmap PARAMS
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 
   jpa:
     show-sql: true
     properties:
-      hibernate:
         format_sql: true
         jdbc:
           time_zone: "UTC"
@@ -29,7 +39,7 @@ spring:
       resourceserver:
         jwt:
           principal-claim-name: preferred_username
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://sigmap-auth-insecure.zedneycreative.com/realms/sigmap-realm}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
 springdoc:
   default-support-form-data: true
@@ -44,8 +54,20 @@ springdoc:
     displayRequestDuration: true
 
 cors:
-  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000}
+  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000,http://localhost:4200}
 
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+
+
+keycloak-admin:
+  server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
+  realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}

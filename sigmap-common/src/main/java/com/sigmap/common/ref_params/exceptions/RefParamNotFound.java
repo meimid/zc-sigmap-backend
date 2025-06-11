@@ -1,20 +1,19 @@
 package com.sigmap.common.ref_params.exceptions;
 
-
 import lombok.Getter;
+import java.util.List;
 
 @Getter
 public class RefParamNotFound extends Exception {
-    private final Integer id;
-
-    public RefParamNotFound(Integer id, String message) {
+    private final List<Integer> id;
+    public RefParamNotFound( String message , List<Integer> id) {
         super(message);
         this.id = id;
     }
-
-    public RefParamNotFound(Integer id, String message, Throwable cause) {
+    public RefParamNotFound(String message, Throwable cause, List<Integer> id) {
         super(message, cause);
         this.id = id;
     }
+
 }
 

@@ -1,21 +1,35 @@
 server:
   port: ${PORT:8083}
   servlet:
-    context-path: /paa
+    context-path: /ppm
+
+management: 
+  endpoints:
+    health:
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
 
 spring:
   application:
     name: Sigmap PPM
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
-
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           time_zone: "UTC"
     hibernate:
@@ -29,7 +43,7 @@ spring:
       resourceserver:
         jwt:
           principal-claim-name: preferred_username
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://sigmap-auth-insecure.zedneycreative.com/realms/sigmap-realm}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
 springdoc:
   default-support-form-data: true
@@ -49,3 +63,34 @@ cors:
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+
+keycloak-admin:
+  server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
+  realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+
+# Flowable: use a dedicated database
+flowable:
+  use-default-data-source: false
+  database-schema-update: true
+  check-process-definitions: true
+  process-definition-location-prefix: classpath:/processes/
+  datasource:
+    url: ${FLOWABLE_DB_URL:jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
+    username: ${FLOWABLE_DB_USERNAME:root}
+    password: ${FLOWABLE_DB_PASSWORD:root}
+    driver-class-name: org.mariadb.jdbc.Driver
+tenant:
+  id: ${TENANT_ID:PPM}
+process:
+  definition:
+    location: ${PROCESS_DEFINITION_LOCATION:processes/}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}
+
+max-file-size: ${UPLOAD_MAX_FILE_SIZE:31457280}
+max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:31457280}

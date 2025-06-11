@@ -5,7 +5,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.2</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath /> <!-- lookup parent from repository -->
     </parent>
 
     <packaging>jar</packaging>
@@ -15,9 +15,15 @@
     <version>0.0.1</version>
 
     <dependencies>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <dependency>
@@ -130,6 +136,10 @@
             <scope>test</scope>
         </dependency>
 
+        <!--this
+        for jsonIgnoreProperties-->
+
+
     </dependencies>
 
     <build>
@@ -149,6 +159,7 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
                         </path>
 
                         <!-- additional annotation processor required as of Lombok 1.18.16 -->

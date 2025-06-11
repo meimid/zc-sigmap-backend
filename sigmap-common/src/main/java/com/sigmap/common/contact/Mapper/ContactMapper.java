@@ -1,0 +1,26 @@
+package com.sigmap.common.contact.Mapper;
+
+import com.sigmap.common.contact.Contact;
+import com.sigmap.common.contact.request.ContactRequest;
+import com.sigmap.common.contact.response.ContactResponse;
+import com.sigmap.common.contact.response.ContactResponseDto;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
+
+@Mapper
+public interface ContactMapper {
+    ContactMapper INSTANCE = Mappers.getMapper(ContactMapper.class);
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    ContactResponse map(Contact source);
+    Contact map(ContactRequest source);
+    void updateFromRequest(ContactRequest source, @MappingTarget Contact target);
+    ContactResponseDto mapToDto(Contact source);
+}

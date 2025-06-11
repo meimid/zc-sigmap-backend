@@ -40,3 +40,11 @@ uploads
 
 ### Properties ###
 **/application-*.yml
+
+
+### Temporary and backup files ###
+*~
+*.bak
+*.tmp
+*.swp
+*.swo

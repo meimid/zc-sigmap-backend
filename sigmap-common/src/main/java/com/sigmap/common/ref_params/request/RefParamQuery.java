@@ -24,6 +24,8 @@ public class RefParamQuery {
 
     private boolean deleted;
 
+    private String codeColor;
+
     
     /**
      * Creates a {@link Specification} from the properties of the current object.
@@ -62,6 +64,10 @@ public class RefParamQuery {
 
         if (description != null && !description.isBlank()) {
             spec = spec.and(RefParamSpecifications.description(description));
+        }
+
+        if(codeColor!= null && !codeColor.isBlank()){
+            spec=spec.and(RefParamSpecifications.codeColor(codeColor));
         }
 
         return spec;

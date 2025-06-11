@@ -2,6 +2,7 @@ package com.sigmap.common.ref_params.response;
 
 import com.sigmap.common.ref_types.RefType;
 
+import com.sigmap.common.ref_types.response.RefTypeResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.Data;
 
@@ -16,9 +17,10 @@ public class RefParamResponse {
 
     private String description;
 
-    private RefType refType;
+    private RefTypeResponseDto refType;
 
     private BaseEntityResponse metadata;
 
+    private final String codeColor;
 
 }

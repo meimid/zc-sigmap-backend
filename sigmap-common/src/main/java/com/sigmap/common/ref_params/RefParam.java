@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.SQLRestriction;
 
 // CREATE TABLE IF NOT EXISTS `ref_param`  (
 //   `ref_param_id` int NOT NULL AUTO_INCREMENT,
@@ -48,4 +49,7 @@ public class RefParam extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "ref_type_id")
   private RefType refType;
+
+  @Column(name = "code_color")
+  private String codeColor;
 }
