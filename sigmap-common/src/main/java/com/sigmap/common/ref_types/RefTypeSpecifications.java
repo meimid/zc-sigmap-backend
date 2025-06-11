@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.config.RefTypes;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -31,7 +32,7 @@ public class RefTypeSpecifications {
     }
 
     /** code. */
-    public static Specification<RefType> code(String code) {
+    public static Specification<RefType> code(RefTypes code) {
         return (root, query, criteriaBuilder) -> {
             return criteriaBuilder.equal(root.get("refCode"), code);
         };

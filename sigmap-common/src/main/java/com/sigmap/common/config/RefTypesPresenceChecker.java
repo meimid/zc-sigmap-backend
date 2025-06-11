@@ -25,7 +25,7 @@ public class RefTypesPresenceChecker implements ApplicationListener<ContextRefre
 
     for (RefTypes refType : RefTypes.values()) {
       log.info("Checking presence of ref type {}", refType.name());
-      Specification<RefType> spec = RefTypeSpecifications.code(refType.name());
+      Specification<RefType> spec = RefTypeSpecifications.code(refType);
 
       List<RefType> refTypeByCode = refTypeService.findAllWithSystemType(spec);
 

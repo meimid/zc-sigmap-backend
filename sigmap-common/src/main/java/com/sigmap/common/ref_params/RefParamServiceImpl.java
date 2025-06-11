@@ -9,6 +9,7 @@ import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireRepository;
 import com.sigmap.common.compte_bancaire.CompteBancaireSpecifications;
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.paas.PaaSpecifications;
@@ -151,10 +152,10 @@ public class RefParamServiceImpl implements RefParamService {
     @Override
     public RefParam create(RefParamRequest request) throws RefTypeNotFound {
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
-        if(request.getRefTypeId()!=null) {
-            RefType refType = refTypeService.findById(request.getRefTypeId());
+        if(request.getRefType()!=null) {
+            RefType refType = refTypeService.findByCode(request.getRefType());
             if(refType.getSystemType() == null || refType.getSystemType() | refType.getIsDeleted()) {
-                throw new RefTypeNotFound("",request.getRefTypeId());
+                throw new RefTypeNotFound("",request.getRefType());
             }
             refParam.setRefType(refType);
 
@@ -169,10 +170,10 @@ public class RefParamServiceImpl implements RefParamService {
             throw new RefParamNotFound("", List.of(id));
         }
         RefParamMapper.INSTANCE.updateFromRequest(request, refParam);
-        if(request.getRefTypeId()!=null) {
-            RefType refType = refTypeService.findById(request.getRefTypeId());
+        if(request.getRefType()!=null) {
+            RefType refType = refTypeService.findByCode(request.getRefType());
             if(refType.getSystemType() == null ||refType.getSystemType()|refType.getIsDeleted()) {
-                throw new RefTypeNotFound("",request.getRefTypeId());
+                throw new RefTypeNotFound("",request.getRefType());
             }
             refParam.setRefType(refType);
         }
@@ -283,14 +284,14 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public List<RefParam> findByRefType(Integer refTypeId) throws RefTypeNotFound {
-        refTypeService.findById(refTypeId);
-        Specification<RefType> refTypeSpec = RefTypeSpecifications.id(refTypeId)
+    public List<RefParam> findByRefType(RefTypes refTypeCode) throws RefTypeNotFound {
+        refTypeService.findByCode(refTypeCode);
+        Specification<RefType> refTypeSpec = RefTypeSpecifications.code(refTypeCode)
                 .and(RefTypeSpecifications.systemType());
-        refTypeService.findOne(refTypeSpec).orElseThrow(() -> new RefTypeNotFound("", refTypeId));
+        refTypeService.findOne(refTypeSpec).orElseThrow(() -> new RefTypeNotFound("", refTypeCode));
 
         Specification<RefParam> refParamSpec = Specification.where(
-                RefParamSpecifications.hasRefTypeId(refTypeId)
+                RefParamSpecifications.hasRefTypeCode(refTypeCode)
                         .and(RefParamSpecifications.deleted(false))
         );
 
@@ -298,28 +299,28 @@ public class RefParamServiceImpl implements RefParamService {
     }
 
     @Override
-    public RefParam findByIdAndRefTypeId(Integer refPramId, Integer refTypeId) throws RefParamNotFound,RefTypeNotFound  {
-        Specification<RefType> systemTypeSpec = RefTypeSpecifications.id(refTypeId).and(RefTypeSpecifications.systemType());
-        refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeId));
+    public RefParam findByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound,RefTypeNotFound  {
+        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode).and(RefTypeSpecifications.systemType());
+        refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeCode));
        Specification<RefParam> refParamSpecification= RefParamSpecifications.id(refPramId).and(RefParamSpecifications.systemType(false));
        findOne(refParamSpecification).orElseThrow(()-> new RefParamNotFound("", List.of(refPramId)));
-        return  repository.findByIdAndRefType_Id(refPramId, refTypeId).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
+        return  repository.findByIdAndRefType_Id(refPramId, refTypeCode).orElseThrow(() -> new RefParamNotFound("",List.of(refPramId)));
     }
 
     @Override
-    public RefParam UpdateRefParamByRefTypeId(Integer refParamId, Integer refTypeId,RefParamRequest request) throws RefParamNotFound {
-        return update(findByIdAndRefTypeId( refParamId, refTypeId).getId(),request);
+    public RefParam UpdateRefParamByRefTypeId(Integer refParamId, RefTypes refTypeCode,RefParamRequest request) throws RefParamNotFound {
+        return update(findByIdAndRefTypeId( refParamId, refTypeCode).getId(),request);
     }
 
     @Override
-    public void deleteByIdAndRefTypeId(Integer refParamId, Integer refTypeId) throws RefParamNotFound {
-        delete(findByIdAndRefTypeId( refParamId, refTypeId).getId());
+    public void deleteByIdAndRefTypeId(Integer refParamId, RefTypes refTypeCode) throws RefParamNotFound {
+        delete(findByIdAndRefTypeId( refParamId, refTypeCode).getId());
     }
 
     @Override
-    public RefParam createUnderRefType(Integer refTypeId, RefParamRequest request) throws RefTypeNotFound {
-        Specification<RefType> systemTypeSpec = RefTypeSpecifications.id(refTypeId).and(RefTypeSpecifications.systemType());
-        RefType refType= refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeId));
+    public RefParam createUnderRefType(RefTypes refTypeCode, RefParamRequest request) throws RefTypeNotFound {
+        Specification<RefType> systemTypeSpec = RefTypeSpecifications.code(refTypeCode).and(RefTypeSpecifications.systemType());
+        RefType refType= refTypeService.findOne(systemTypeSpec).orElseThrow(() -> new RefTypeNotFound("",refTypeCode));
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
         return save(refParam);

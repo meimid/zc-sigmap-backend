@@ -1,11 +1,14 @@
 package com.sigmap.common.ref_types;
 
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.ref_types.mapper.RefTypeMapper;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
+
+import java.sql.Ref;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,9 +76,15 @@ public class RefTypeServiceImpl implements RefTypeService {
     Specification<RefType> specification = RefTypeSpecifications.id(id)
             .and(RefTypeSpecifications.deleted(false));
     return findOne(specification)
-            .orElseThrow(() -> new RefTypeNotFound("",id));
+            .orElseThrow(() -> new RefTypeIdNotFound("",id));
   }
-
+  @Override
+  public RefType findByCode(RefTypes code) throws RefTypeNotFound {
+    Specification<RefType> specification = RefTypeSpecifications.code(code)
+            .and(RefTypeSpecifications.deleted(false));
+    return findOne(specification)
+            .orElseThrow(() -> new RefTypeNotFound("",code));
+  }
   @Override
   public RefType save(RefType refType) {
     return repository.save(refType);

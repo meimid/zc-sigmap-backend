@@ -1,5 +1,6 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -92,5 +93,9 @@ public class RefParamSpecifications {
   public static Specification<RefParam> hasRefTypeId(Integer refTypeId) {
     return (root, query, criteriaBuilder) ->
         criteriaBuilder.equal(root.get("refType").get("id"), refTypeId);
+  }
+  public static Specification<RefParam> hasRefTypeCode(RefTypes refType) {
+    return (root, query, criteriaBuilder) ->
+            criteriaBuilder.equal(root.get("refType").get("code"), refType);
   }
 }

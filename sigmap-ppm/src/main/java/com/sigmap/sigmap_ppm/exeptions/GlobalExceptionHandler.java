@@ -173,7 +173,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RefTypeNotFound.class)
     public ResponseEntity<ErrorResponse> refTypeNotFoundException(RefTypeNotFound ex) {
-        String message = messageSource.getMessage("reftype.notfound",new Object[] {ex.getId()} , getLocal());
+        String message = messageSource.getMessage("reftype.notfound",new Object[] {ex.getCode()} , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
