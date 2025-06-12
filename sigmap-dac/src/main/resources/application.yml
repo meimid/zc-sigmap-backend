@@ -88,3 +88,6 @@ templateDac:
   dac:
     inputDocPath: ${INPUT_DAC_PATH:E:\\word\\templates\\}
     outputDocPath: ${OUTPUT_DAC_PATH:E:\\word\\temp\\}
+
+documents:
+  convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}

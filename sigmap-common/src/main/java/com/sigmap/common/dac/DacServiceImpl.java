@@ -29,6 +29,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
+
+import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
 import org.springframework.stereotype.Service;
 
@@ -326,30 +328,26 @@ public class DacServiceImpl implements DacService {
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
         for (DynaFields dynaField : dynaFieldsList) {
-            // Get the type of the field (e.g., 2 for list, 6 for table)
-            int typeId = dynaField.getType_id().getId();
             String typeCode = dynaField.getType_id().getCode();
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
-            //if (typeId == 2) { // List type
-            if (lowerCase(typeCode).equals("list")) {
-                // Fetch all values for this list field from the repository
-                List<String> values = dacDocsRepository.findListValuesForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-                // If there are values, insert a single-column table at the bookmark
-                if (!values.isEmpty()) {
-                    insertSingleColumnTableAtBookmark(document, bookmarkName, values);
-                }
-            } //else if (typeId == 6) { // Table type
-            else if (lowerCase(typeCode).equals("table")) {
+            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
+            if (lowerCase(typeCode).equals("table")) {
+                // in liste case when there is only one column
+                if (columns.size() < 2) {
+                    // Treat as list (single column)
+                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+                    List<String> values = new ArrayList<>();
+                    String colName = columns.get(0).getColumnName();
+                    for (Map<String, String> row : rows) {
+                        values.add(row.getOrDefault(colName, ""));
+                    }
+                    insertSingleColumnTableAtBookmark(document, bookmarkName,columns, values);
 
-                log.debug("Table type : {} and code {} ", typeCode, typeId);
-                // Fetch all column definitions for this table field
-                List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
-                // Fetch all row data for this table field
-                List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-                // If there are columns and rows, insert a multi-column table at the bookmark
-                if (!columns.isEmpty() && !rows.isEmpty()) {
+                // in table case when there is more than one column
+                } else {
+                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     insertMultiColumnTableAtBookmark(document, bookmarkName, columns, rows);
                 }
             }
@@ -359,7 +357,7 @@ public class DacServiceImpl implements DacService {
     /**
      * Inserts a single-column table at the location of the given bookmark, with each value in a new row.
      */
-    private void insertSingleColumnTableAtBookmark(XWPFDocument document, String bookmarkName, List<String> values) {
+    private void insertSingleColumnTableAtBookmark(XWPFDocument document, String bookmarkName,List<DynaFieldsDetails> columns, List<String> values) {
         // Loop through all paragraphs in the document
         for (XWPFParagraph paragraph : document.getParagraphs()) {
             // Check if the paragraph contains bookmarks
@@ -368,18 +366,21 @@ public class DacServiceImpl implements DacService {
                 for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
                     // If the bookmark name matches
                     if (bookmarkName.equals(bookmark.getName())) {
+                        bookmark.setName("");
                         // Get the XML cursor at the end of the paragraph
-                        org.apache.xmlbeans.XmlCursor cursor = paragraph.getCTP().newCursor();
-                        cursor.toEndToken();
+                        XmlCursor cursor = paragraph.getCTP().newCursor();
                         // Insert a new table at the cursor position
                         XWPFTable table = document.insertNewTbl(cursor);
+                        if (table == null) {
+                            throw new RuntimeException("Failed to insert table: table is null. Check cursor position.");
+                        }
+                        // Create the header row and set the column names
                         // For each value, create a new row and set the cell text
                         for (String value : values) {
                             XWPFTableRow row = table.createRow();
                             row.getCell(0).setText(value);
                         }
-                        // Optionally, you could remove the original paragraph if needed
-                        // document.removeBodyElement(document.getPosOfParagraph(paragraph));
+                        table.removeRow(0);
                         return;
                     }
                 }
@@ -401,10 +402,9 @@ public class DacServiceImpl implements DacService {
                     // If the bookmark name matches
                     if (bookmarkName.equals(bookmark.getName())) {
                         log.debug("in condition of bookmark name matches  {} ", bookmark.getName());
+                        bookmark.setName("");
                         // Get the XML cursor at the end of the paragraph
-                        org.apache.xmlbeans.XmlCursor cursor = paragraph.getCTP().newCursor();
-                        cursor.toParent(); // Move to the parent (the body)
-                        cursor.toEndToken(); // Move to the end of the body
+                        XmlCursor cursor = paragraph.getCTP().newCursor();
                         // Insert a new table at the cursor position (should now be valid)
                         XWPFTable table = document.insertNewTbl(cursor);
                         if (table == null) {
@@ -439,6 +439,7 @@ public class DacServiceImpl implements DacService {
                                 cell.setText(rowData.getOrDefault(columns.get(i).getColumnName(), ""));
                             }
                         }
+                        table.removeRow(0);
                         return;
                     }
                 }

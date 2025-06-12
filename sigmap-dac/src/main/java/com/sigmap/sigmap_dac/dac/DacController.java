@@ -1,22 +1,12 @@
 package com.sigmap.sigmap_dac.dac;
 
-import com.github.dockerjava.zerodep.shaded.org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
-import com.sigmap.common.dac.exeption.TemplateFileNameNotFound;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
-import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.response.DacResponce;
-import com.sigmap.common.menu_item.mappers.MenuItemMapper;
-import com.sigmap.common.menu_item.response.MenuItemResponse;
-import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ppms.PpmRepository;
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.RefParamRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,7 +26,6 @@ import org.springframework.web.client.RestTemplate;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
@@ -55,18 +44,13 @@ public class DacController {
   @Value("${templateDac.dac.outputDocPath}")
   private String customDirPath;
 
-  @Autowired
-  private DacRepository dacRepository;
-  @Autowired
-  private PpmRepository ppmRepository;
-  @Autowired
-  private RefParamRepository refParamRepository;
+  @Value("${documents.convertUrl}")
+  private String convertUrl;
 
   public DacController(DacService dacService) {
     this.dacService = dacService;
   }
 
-  // create a new endpoint for creating a new dac
 
   @PostMapping("/create")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) {
@@ -74,34 +58,6 @@ public class DacController {
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);
   }
-  @PostMapping("/generate-doc")
-  public ResponseEntity<List<String>> replaceBookmarksAndGenerateListDOC( @RequestBody DacRequest request) {
-    if (request.getDacId() == null || request.getDacVer() == null) {
-      return ResponseEntity.badRequest()
-          .body(Collections.singletonList("Dac ID and version must not be null"));
-    }
-
-    try {
-      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks( request.getDacId(), request.getDacVer(), basePath, customDirPath);
-      return ResponseEntity.ok(generatedFiles);
-
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.badRequest().body(Collections.singletonList(e.getMessage()));
-    } catch (TemplateFileNameNotFound e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .body(
-              Collections.singletonList(
-                  "No active documents found for Dac ID: "
-                      + request.getDacId()
-                      + ", Version: "
-                      + request.getDacVer()));
-    } catch (Exception e) {
-      // log.error("Error generating documents: {}", e.getMessage());
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body(Collections.singletonList("Failed to generate documents: " + e.getMessage()));
-    }
-  }
-
   @PostMapping("/generate-specific-pdf")
   public ResponseEntity<byte[]> generatePdfWithGotenberg(@RequestBody DacRequest request) {
     try {
@@ -123,10 +79,9 @@ public class DacController {
       HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
       // 4. Send request to Gotenberg Api and get the response
-      String gotenbergUrl = "http://localhost:3000";
       RestTemplate restTemplate = new RestTemplate();
       ResponseEntity<byte[]> response = restTemplate.exchange(
-              gotenbergUrl + "/forms/libreoffice/convert",
+              convertUrl + "/forms/libreoffice/convert",
               HttpMethod.POST,
               requestEntity,
               byte[].class
@@ -135,7 +90,7 @@ public class DacController {
       // 5. Return the PDF as a download
       HttpHeaders responseHeaders = new HttpHeaders();
       responseHeaders.setContentType(MediaType.APPLICATION_PDF);
-      responseHeaders.setContentDispositionFormData("attachment", "filled-document.pdf");
+      responseHeaders.setContentDispositionFormData("attachment", "document.pdf");
 
       return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
 
@@ -153,7 +108,6 @@ public class DacController {
       log.info("Generated files .........: {}", generatedFiles);
 
       // . Convert each DOCX to PDF using Gotenberg
-      String gotenbergUrl = "http://localhost:3000";
       RestTemplate restTemplate = new RestTemplate();
       List<InputStream> pdfStreams = new ArrayList<>();
       for (String docxPath : generatedFiles) {
@@ -164,7 +118,7 @@ public class DacController {
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         ResponseEntity<byte[]> response = restTemplate.exchange(
-            gotenbergUrl + "/forms/libreoffice/convert",
+                convertUrl + "/forms/libreoffice/convert",
             HttpMethod.POST,
             requestEntity,
             byte[].class
