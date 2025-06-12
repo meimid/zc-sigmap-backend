@@ -1,5 +1,6 @@
 package com.sigmap.common.paas.exceptions;
 
+import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 import java.util.List;
 
@@ -7,12 +8,12 @@ import java.util.List;
 public class PaaInvalidStatusException extends Exception {
     private final List<Integer> paaIds;
     private final List<Integer> paaVersions;
-    private final Integer currentStatusId;
+    private final ProcessStatus currentStatus;
 
-    public PaaInvalidStatusException(String message, List<Integer> paaIds, List<Integer> paaVersions, Integer currentStatusId) {
+    public PaaInvalidStatusException(String message, List<Integer> paaIds, List<Integer> paaVersions, ProcessStatus currentStatus) {
         super(message);
         this.paaIds = paaIds;
         this.paaVersions = paaVersions;
-        this.currentStatusId = currentStatusId;
+        this.currentStatus = currentStatus;
     }
 }

@@ -1,6 +1,7 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -36,6 +37,6 @@ public class Dac extends BaseEntity {
   @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
   private RefParam category;
 
-  @Column(name = "status_id")
-  private Integer statusId;
+  @Enumerated(EnumType.STRING)
+  private ProcessStatus status;
 }

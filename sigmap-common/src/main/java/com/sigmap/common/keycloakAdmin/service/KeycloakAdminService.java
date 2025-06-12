@@ -6,6 +6,7 @@ import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.*;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
@@ -66,14 +67,24 @@ public class KeycloakAdminService {
         String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
         List<UserDTO> users = fetchUsersFromKeycloak(baseUrl, entity);
+        /*if (isSuperAdmin) {
+            return users;
+        }
 
+        if (isAdminAc) {
+            List<String> allowedUserIds = userAcRepository.findUserIdsByAdminAc(currentUserId);
+            return users.stream()
+                    .filter(u -> allowedUserIds.contains(u.getId()))
+                    .collect(Collectors.toList());
+        }
         if (users.isEmpty()) {
             return Collections.emptyList();
-        }
+        }*/
 
 
         return users;
     }
+
 
     private HttpHeaders createHeaders(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
@@ -128,7 +139,7 @@ public class KeycloakAdminService {
 
         UserDTO userDTO = mapToUserDTO(userMap);
 
-        userDTO.setRoles(fetchRolesForUser(userId, entity));
+        userDTO.setRoles(fetchRealmRolesForUserWithDescriptions(userId, entity));
         userDTO.setAcs(fetchAcsForUser(userId));
         userDTO.setComs(fetchComsForUser(userId));
 
@@ -150,23 +161,32 @@ public class KeycloakAdminService {
 
 
 
-    private List<String> fetchRolesForUser(String userId, HttpEntity<Void> entity) {
+    private List<String> fetchRealmRolesForUserWithDescriptions(String userId, HttpEntity<Void> entity) {
         String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId + "/role-mappings/realm";
         try {
             ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
             List<Map<String, Object>> roles = response.getBody();
             if (roles == null) return Collections.emptyList();
 
+            String defaultRoleName = "default-roles-" + realm;
+            Set<String> technicalRoles = Set.of(defaultRoleName, "offline_access", "uma_authorization");
+
             return roles.stream()
-                    .map(role -> (String) role.get("name"))
-                    .filter(Objects::nonNull)
+                    .filter(role -> !technicalRoles.contains(role.get("name")))
+                    .map(role -> {
+                        String name = (String) role.get("name");
+                        String description = (String) role.get("description");
+                        return (description == null || description.isBlank()) ? name : description;
+                    })
                     .collect(Collectors.toList());
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            logger.warn("Failed to fetch roles for user: " + userId, e);
+            logger.warn("Failed to fetch role descriptions for user: " + userId, e);
             return Collections.emptyList();
         }
     }
+
+
 
     private List<UserAcDTO> fetchAcsForUser(String userId) {
         return userAcRepository.findAllByUserIdAndIsDeletedFalse(userId).stream()
@@ -321,7 +341,7 @@ public class KeycloakAdminService {
                     userAc.setUserId(userId);
                     userAc.setAcId(id);
                     userAc.setIsDeleted(false);
-                    userAc.setStatus(getDefaultStatus());
+                    userAc.setStatus(ActiveStatus.ACTIF);
                     if (id  == acPiloteId){
                         userAc.setAcPilote(true);
                     }
@@ -331,7 +351,7 @@ public class KeycloakAdminService {
                     userCom.setUserId(userId);
                     userCom.setComId(id);
                     userCom.setIsDeleted(false);
-                    userCom.setStatus(getDefaultStatus());
+                    userCom.setStatus(ActiveStatus.ACTIF);
                     userComRepository.save(userCom);
                 }
             } catch (Exception e) {
@@ -361,7 +381,7 @@ public class KeycloakAdminService {
                         userAcRepository.removeAcPilote(id, userId);
                         userAc.setAcPilote(true);
                     }
-                    userAc.setStatus(getDefaultStatus());
+                    userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
                 }
             }
@@ -378,17 +398,14 @@ public class KeycloakAdminService {
                     userCom.setUserId(userId);
                     userCom.setComId(id);
                     userCom.setIsDeleted(false);
-                    userCom.setStatus(getDefaultStatus());
+                    userCom.setStatus(ActiveStatus.ACTIF);
                     userComRepository.save(userCom);
                 }
             }
         }
     }
 
-    private RefParam getDefaultStatus() throws AgpmDefaultStatus {
-        return refParamRepository.findById(Constants.ACTIF_STATUS)
-                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-    }
+
 
     public void updatePassword(String userId, String newPassword) {
         String token = tokenService.getAccessToken();
@@ -535,40 +552,6 @@ public class KeycloakAdminService {
         HttpEntity<List<Map<String, Object>>> assignEntity = new HttpEntity<>(rolesToAssign, headers);
         restTemplate.exchange(assignUrl, HttpMethod.POST, assignEntity, Void.class);
     }
-    /*public void updateUserAttribute(String userId, String attributeName, String attributeValue) {
-        String token = tokenService.getAccessToken();
-        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
 
-        // Get current user
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
-        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-        Map<String, Object> user = response.getBody();
-
-        if (user == null) {
-            throw new RuntimeException("Impossible de récupérer l'utilisateur avec l'ID : " + userId);
-        }
-
-        // Update attributes
-        Map<String, List<String>> attributes = (Map<String, List<String>>) user.get("attributes");
-        if (attributes == null) {
-            attributes = new HashMap<>();
-        }
-
-        if (attributeValue == null) {
-            attributes.remove(attributeName); // Supprime l'attribut
-        } else {
-            attributes.put(attributeName, List.of(attributeValue)); // Met à jour ou ajoute l'attribut
-        }
-
-        user.put("attributes", attributes);
-
-        // Send PUT update
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> updateEntity = new HttpEntity<>(user, headers);
-        restTemplate.exchange(url, HttpMethod.PUT, updateEntity, Void.class);
-    }*/
 
 }

@@ -91,7 +91,7 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
     Optional<DynaFields> dynaField =
         dynaFields.stream()
             .filter(item -> item.getDynaDocsId().equals(dynaDocsId))
-            .filter(item -> item.getDynaDocsVer().equals(dynaDocs.getDynaDocsVer()))
+            .filter(item -> item.getDynaDocsVer().equals(dynaDocs.getVersion()))
             .findFirst();
 
     return dynaField;
@@ -112,13 +112,11 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
             .findOne(spec)
             .orElseThrow(() -> new DynaDocNotFound(request.getDynaDocsId()));
 
-    dynaFields.setDynaDocsId(dynaDocs.getDynaDocsId());
-    dynaFields.setDynaDocsVer(dynaDocs.getDynaDocsVer());
+    dynaFields.setDynaDocsId(dynaDocs.getId());
+    dynaFields.setDynaDocsVer(dynaDocs.getVersion());
     dynaFields.setDynaFieldsId(dynaFieldsSequenceGenerator.getNextId());
     dynaFields.setDynaDocs(dynaDocs);
 
-    RefParam typeId = refParamService.findById(request.getTypeId());
-    dynaFields.setType_id(typeId);
 
     dynaFields = dynaFieldsRepository.save(dynaFields);
 
@@ -150,8 +148,8 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
     Specification<DynaFields> dynaFieldSpec =
         Specification.allOf(
             DynaFieldsSpecifications.dynaFieldId(dynaFieldId),
-            DynaFieldsSpecifications.dynaDocId(dynaDocs.getDynaDocsId()),
-            DynaFieldsSpecifications.dynaDocVer(dynaDocs.getDynaDocsVer()));
+            DynaFieldsSpecifications.dynaDocId(dynaDocs.getId()),
+            DynaFieldsSpecifications.dynaDocVer(dynaDocs.getVersion()));
 
     DynaFields dynaFields =
         dynaFieldsRepository

@@ -1,14 +1,11 @@
 package com.sigmap.common.dac;
 
-
-import com.sigmap.common.com.Com;
-import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.dac.request.CreateDacRequest;
-import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
 
@@ -19,7 +16,7 @@ import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.menu_item.exception.MenuItemNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -87,7 +84,7 @@ public class DacServiceImpl implements DacService {
             docOreder = docOreder + 1;
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}",
-                    dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer(), templateFileName);
+                    dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
 
             File templateFile = new File(basePath, templateFileName);
             if (!templateFile.exists()) {
@@ -99,10 +96,10 @@ public class DacServiceImpl implements DacService {
                  XWPFDocument document = new XWPFDocument(fis)) {
 
                 // Create bookmark map with values from DacDocs, respecting field order
-                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
+                Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
                 // Handle multi-value fields (table and list bookmarks)
-                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getDynaDocsId(), dynaDoc.getDynaDocsVer());
+                processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
                 // Replace bookmarks in the document
                 replaceBookmarks(document, bookmarks);
@@ -198,8 +195,8 @@ public class DacServiceImpl implements DacService {
                 .filter(dacDoc -> {
                     DynaFields field = dacDoc.getDynaField();
                     return field != null &&
-                            field.getDynaDocs().getDynaDocsId().equals(dynaDocsId) &&
-                            field.getDynaDocs().getDynaDocsVer().equals(dynaDocsVer);
+                            field.getDynaDocs().getId().equals(dynaDocsId) &&
+                            field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
@@ -328,12 +325,13 @@ public class DacServiceImpl implements DacService {
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
         for (DynaFields dynaField : dynaFieldsList) {
-            String typeCode = dynaField.getType_id().getCode();
+            DynaFieldType typeCode = dynaField.getType();
+
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
             List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
-            if (lowerCase(typeCode).equals("table")) {
+            if (DynaFieldType.TABLE.equals(typeCode)) {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
                     // Treat as list (single column)
@@ -496,7 +494,7 @@ public class DacServiceImpl implements DacService {
         dac.setDacVer(request.getDacVer());
         dac.setPpm(ppm);
         dac.setCategory(category);
-        dac.setStatusId(request.getStatusId());
+        dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
 
         return savedCdac;

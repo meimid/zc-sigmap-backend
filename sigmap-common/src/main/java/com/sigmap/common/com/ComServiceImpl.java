@@ -9,6 +9,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -119,9 +120,7 @@ public class ComServiceImpl implements ComService {
           userCom.setUserId(userId);
           userCom.setComId(savedCom.getId());
           userCom.setIsDeleted(false);
-          RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                  .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-          userCom.setStatus(defaultStatus);
+          userCom.setStatus(ActiveStatus.ACTIF);
           userComRepository.save(userCom);
         } catch (Exception e) {
           logger.warn("Impossible d'associer l'utilisateur {} à l'COM {} : {}", userId, savedCom.getId(), e.getMessage());
@@ -171,9 +170,7 @@ public class ComServiceImpl implements ComService {
         UserCom userCom = new UserCom();
         userCom.setUserId(userId);
         userCom.setComId(id);
-        RefParam defaultStatus = refParamRepository.findById(Constants.ACTIF_STATUS)
-                .orElseThrow(() -> new AgpmDefaultStatus("Default status not found"));
-        userCom.setStatus(defaultStatus);
+        userCom.setStatus(ActiveStatus.ACTIF);
         userComRepository.save(userCom);
       }
     }

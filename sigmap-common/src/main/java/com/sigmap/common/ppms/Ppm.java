@@ -2,10 +2,12 @@ package com.sigmap.common.ppms;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -48,9 +50,8 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
 
-    @ManyToOne
-    @JoinColumn(name = "status_id")
-    private RefParam status;
+    @Enumerated(EnumType.STRING)
+    private ProcessStatus status;
 
     @ManyToOne
     @JoinColumn(name = "mode_passation_id")
@@ -74,6 +75,17 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     )
     private List<Docs> docs;
 
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(
+            name = "ppm_com",
+            joinColumns = {
+                    @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
+                    @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
+            },
+            inverseJoinColumns = @JoinColumn(name = "com_id")
+    )
+    private List<Com> coms;
+
     @Override
     public Integer getId() {
         return this.id;
@@ -90,6 +102,13 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
             this.docs = new ArrayList<>();
         }
         return this.docs;
+    }
+
+    public List<Com> getComs() {
+        if (this.coms == null) {
+            this.coms = new ArrayList<>();
+        }
+        return this.coms;
     }
     private String processInstanceId;
 }

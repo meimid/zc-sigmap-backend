@@ -20,6 +20,7 @@ import lombok.EqualsAndHashCode;
 @Table(name = "ref_type")
 public class RefType extends BaseEntity {
   @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "ref_type_id")
   private Integer id;
 

@@ -3,30 +3,37 @@ package com.sigmap.common.dyna_docs;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.Optional;
+
+import com.sigmap.common.utils.SequenceGeneratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sigmap.common.config.Constants;
 
 @Service
 @Slf4j
 public class DynaDocsServiceImpl implements DynaDocsService {
-  private final DynaDocsSequenceGenerator dynaDocSequenceGenerator;
+
   private final DynaDocsRepository dynaDocsRepository;
   private final RefParamService refParamService;
+  private final SequenceGeneratorService sequenceGeneratorService;
+
 
   public DynaDocsServiceImpl(
-      DynaDocsSequenceGenerator dynaDocSequenceGenerator,
-      DynaDocsRepository dynaDocsRepository,
-      RefParamService refParamService) {
-    this.dynaDocSequenceGenerator = dynaDocSequenceGenerator;
+
+          DynaDocsRepository dynaDocsRepository,
+          RefParamService refParamService, SequenceGeneratorService sequenceGeneratorService) {
+      this.sequenceGeneratorService = sequenceGeneratorService;
+
     this.dynaDocsRepository = dynaDocsRepository;
     this.refParamService = refParamService;
   }
@@ -55,7 +62,7 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
   @Override
   public Optional<DynaDocs> findById(Integer dynaDocId, Integer dynaDocVer) throws DynaDocNotFound {
-    DynaDocId dynaDocID = new DynaDocId(dynaDocId, dynaDocVer);
+    CompositeId dynaDocID = new CompositeId(dynaDocId, dynaDocVer);
     return dynaDocsRepository.findById(dynaDocID);
   }
 
@@ -69,8 +76,8 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
 
-    dynaDocs.setDynaDocsId(dynaDocSequenceGenerator.getNextId());
-    dynaDocs.setDynaDocsVer(1);
+    dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
+    dynaDocs.setVersion(1);
 
     RefParam refParam = refParamService.findById(request.getCategorieId());
     dynaDocs.setCategorieId(refParam);

@@ -10,4 +10,5 @@ public class ValidationRequest {
     private Boolean validate;
     private String comment;
     private PpmWithLotsRequestDto ppm;
+    private Integer comId;
 }

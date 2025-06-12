@@ -12,6 +12,7 @@ import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -130,11 +131,11 @@ public interface AgpmService {
      *
      * @param agpmId   The ID of the Agpm entity to update
      * @param agpmVer  The version of the Agpm entity to update
-     * @param statusId The new status ID to set
+     * @param status The new status ID to set
      * @return The updated Agpm entity
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
-    Agpm updateStatus(Integer agpmId, Integer agpmVer, Integer statusId) throws AgpmNotFound;
+    Agpm updateStatus(Integer agpmId, Integer agpmVer, ProcessStatus status) throws AgpmNotFound;
 
     /**
      * Retrieves all versions of an Agpm entity by its ID, including only non-deleted documents,

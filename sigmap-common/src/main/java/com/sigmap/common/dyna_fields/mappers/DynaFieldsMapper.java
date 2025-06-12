@@ -33,7 +33,6 @@ public interface DynaFieldsMapper {
   Set<DynaFieldsDetails> detailsToSet(List<DynaFieldsDetails> source);
 
   @Mapping(target = "details", source = "dynaFieldsDetails")
-  @Mapping(target = "typeId", source = "type_id")
   DynaFieldsResponse map(DynaFields source);
 
   @Mapping(target = "sourceField", source = "source_field")

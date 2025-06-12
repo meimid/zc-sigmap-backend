@@ -44,9 +44,9 @@ public class DynaFieldsDetails {
   @Column(name = "column_pos")
   private Integer columnPos;
 
-  @ManyToOne
-  @JoinColumn(name = "type_id")
-  private RefParam typeId;
+  @Column(name = "field_type")
+  @Enumerated(EnumType.STRING)
+  private DynaFieldDetailsType fieldType;
 
   @Column(name = "source", length = 100)
   private String source;

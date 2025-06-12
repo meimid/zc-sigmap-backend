@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs;
-
+import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -13,7 +14,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Entity
 @Table(name = "dyna_docs")
-@IdClass(DynaDocId.class)
+@IdClass(CompositeId.class)
 public class DynaDocs {
 
   @Id
@@ -23,11 +24,11 @@ public class DynaDocs {
   //     sequenceName = "dyna_docs_id_seq",
   //     allocationSize = 1)
   @Column(name = "dyna_docs_id")
-  private Integer dynaDocsId;
+  private Integer id;
 
   @Id
   @Column(name = "dyna_docs_ver")
-  private Integer dynaDocsVer;
+  private Integer version;
 
   @Column(name = "name")
   private String name;
@@ -45,6 +46,6 @@ public class DynaDocs {
   @Column(name = "dyna_doc_order")
   private Integer dynaDocOrder;
 
-  @Column(name = "status")
-  private Integer status;
+  @Enumerated(EnumType.STRING)
+  private ActiveStatus status;
 }

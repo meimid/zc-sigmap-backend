@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs.request;
 
+import com.sigmap.common.entity.ActiveStatus;
 import lombok.Data;
 
 @Data
@@ -14,5 +15,5 @@ public class DynaDocsRequest {
 
   private Integer dynaDocOrder;
 
-  private Integer status = 1;
+  private ActiveStatus status = ActiveStatus.NON_ACTIF;
 }

@@ -10,11 +10,13 @@ import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -41,6 +43,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +79,7 @@ public class PpmServiceImpl implements PpmService {
     private final DocsService docsService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
 
     /**
@@ -90,7 +94,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository,CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService) {
+    public PpmServiceImpl(PpmRepository repository, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -104,6 +108,7 @@ public class PpmServiceImpl implements PpmService {
         this.acService = acService;
         this.currentUserService = currentUserService;
 
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     @Override
@@ -146,10 +151,6 @@ public class PpmServiceImpl implements PpmService {
         return repository.findOne(specification);
     }
 
-//    @Override
-//    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) {
-//        return repository.findById(new CompositeId(ppmId, ppmVer));
-//    }
 @Override
 public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
     log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
@@ -160,28 +161,26 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         throw new IllegalArgumentException("PPM ID cannot be null");
     }
 
-    // Step 2: Get user's AC IDs
+    // Step 2: Get user's AC IDs and comIds
     List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-    log.info(userAcIds+"ee");
-    if (userAcIds == null || userAcIds.isEmpty()) {
-        log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
-        throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+    List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+    log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
+
+    if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+        log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
+        throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
     }
 
-    if (userAcIds.isEmpty()) {
-        log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
-        throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
-    }
-    log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
-
-    // Step 3: Validate ACs
-    for (Integer acId : userAcIds) {
-        try {
-            log.debug("Validation de l'AC ID: {}", acId);
-            acService.findById(acId);
-        } catch (AcNotFound e) {
-            log.warn("AC non trouvé avec ID: {}", acId);
-            throw e;
+    // Step 3: Validate ACs if any exist
+    if (userAcIds != null && !userAcIds.isEmpty()) {
+        for (Integer acId : userAcIds) {
+            try {
+                log.debug("Validation de l'AC ID: {}", acId);
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
         }
     }
 
@@ -209,33 +208,123 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
     }
 
-    // Step 7: Validate AC association
+    // Step 7: Validate AC or com association
     Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-    log.debug("Validation de l'association AC: PPM AC ID={}, User ACs={}", ppmAcId, userAcIds);
-    if (ppmAcId == null || !userAcIds.contains(ppmAcId)) {
-        log.warn("PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppmAcId, userAcIds);
+    boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+    boolean hasMatchingCom = false;
+
+    // Check if any comId in ppm.coms matches user's comIds
+    if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
+        for (Com com : ppm.getComs()) {
+            if (com != null && userComIds.contains(com.getId())) {
+                hasMatchingCom = true;
+                log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
+                break;
+            }
+        }
+    }
+
+    if (!hasMatchingAc && !hasMatchingCom) {
+        log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
+                ppmId, ppmAcId, userAcIds, userComIds);
         throw new PpmNotAssociatedWithUserAcException(
-                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté",
+                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
                 List.of(ppmId.longValue()),
                 List.of(targetVersion)
         );
     }
+    log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-    // Step 8: Final validation before return
-    if (ppm.getAc() == null || !userAcIds.contains(ppm.getAc().getId())) {
-        log.warn("Validation finale échouée: PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppm.getAc() != null ? ppm.getAc().getId() : "null", userAcIds);
-        throw new PpmNotAssociatedWithUserAcException(
-                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
-                List.of(ppmId.longValue()),
-                List.of(targetVersion)
-        );
-    }
-
-    // Step 9: Prepare and return the response
+    // Step 8: Prepare and return the response
     Ppm responsePpm = createFilteredResponsePpm(ppm);
     log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
     return Optional.ofNullable(responsePpm);
 }
+//    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+//        log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
+//
+//        // Step 1: Validate input
+//        if (ppmId == null) {
+//            log.error("PPM ID est null");
+//            throw new IllegalArgumentException("PPM ID cannot be null");
+//        }
+//
+//        // Step 2: Get user's AC IDs
+//        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+//        log.info(userAcIds+"ee");
+//        if (userAcIds == null || userAcIds.isEmpty()) {
+//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
+//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+//        }
+//
+//        if (userAcIds.isEmpty()) {
+//            log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
+//            throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
+//        }
+//        log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
+//
+//        // Step 3: Validate ACs
+//        for (Integer acId : userAcIds) {
+//            try {
+//                log.debug("Validation de l'AC ID: {}", acId);
+//                acService.findById(acId);
+//            } catch (AcNotFound e) {
+//                log.warn("AC non trouvé avec ID: {}", acId);
+//                throw e;
+//            }
+//        }
+//
+//        // Step 4: Determine the version to use
+//        Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
+//        if (targetVersion == null) {
+//            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
+//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
+//        }
+//        log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
+//
+//        // Step 5: Retrieve the PPM
+//        Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
+//        if (ppmOpt.isEmpty()) {
+//            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
+//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
+//        }
+//
+//        Ppm ppm = ppmOpt.get();
+//        log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
+//
+//        // Step 6: Check if the PPM is deleted
+//        if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
+//            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
+//            throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
+//        }
+//
+//        // Step 7: Validate AC association
+//        Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
+//        log.debug("Validation de l'association AC: PPM AC ID={}, User ACs={}", ppmAcId, userAcIds);
+//        if (ppmAcId == null || !userAcIds.contains(ppmAcId)) {
+//            log.warn("PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppmAcId, userAcIds);
+//            throw new PpmNotAssociatedWithUserAcException(
+//                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté",
+//                    List.of(ppmId.longValue()),
+//                    List.of(targetVersion)
+//            );
+//        }
+//
+//        // Step 8: Final validation before return
+//        if (ppm.getAc() == null || !userAcIds.contains(ppm.getAc().getId())) {
+//            log.warn("Validation finale échouée: PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppm.getAc() != null ? ppm.getAc().getId() : "null", userAcIds);
+//            throw new PpmNotAssociatedWithUserAcException(
+//                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
+//                    List.of(ppmId.longValue()),
+//                    List.of(targetVersion)
+//            );
+//        }
+//
+//        // Step 9: Prepare and return the response
+//        Ppm responsePpm = createFilteredResponsePpm(ppm);
+//        log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
+//        return Optional.ofNullable(responsePpm);
+//    }
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -252,6 +341,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         filteredPpm.setId(ppm.getId());
         filteredPpm.setVersion(ppm.getVersion());
         filteredPpm.setAc(ppm.getAc());
+        filteredPpm.setStatus(ppm.getStatus());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
         filteredPpm.setUpdatedAt(ppm.getUpdatedAt());
@@ -425,7 +515,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
     public Ppm create(PpmRequest request) {
         Integer id = request.getId();
         if (id == null) {
-            Integer maxId = repository.findMaxId();
+//            Integer maxId = repository.findMaxId();
+            Integer maxId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
             id = (maxId != null) ? maxId + 1 : 1;
             request.setId(id);
         }
@@ -460,7 +551,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 // Generate ID if not provided
                 Integer realisationId = realisationRequest.getId();
                 if (realisationId == null) {
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
                     realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                 }
 
@@ -500,7 +592,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         // Generate ID if not provided
                         Integer lotId = lotRequest.getId();
                         if (lotId == null) {
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                         }
 
@@ -563,13 +656,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             newPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
 
 
-            // Update status if provided
-            if (request.getStatus() != null) {
-                newPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-            } else {
+
                 newPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
-            }
+
 
             if (request.getModePassation() != null) {
                 newPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
@@ -595,12 +684,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
             existingPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
             // Update status if provided
-            if (request.getStatus() != null) {
-                existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                        .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-            } else {
-                existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
-            }
+
+            existingPpm.setStatus(existingPpm.getStatus()); // Preserve existing status
+
 
             if (request.getModePassation() != null) {
                 existingPpm.setModePassation(refParamRepository.findById(request.getModePassation().getId())
@@ -632,9 +718,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Ppm ppm = ppmOptional.get();
 
         // Check if the PPM is in draft status
-        if (ppm.getStatus() == null || ppm.getStatus().getId() != Constants.DRAFT_STATUS) {
+        if (ppm.getStatus() == null || ppm.getStatus() != ProcessStatus.BROUILLON ) {
             throw new IllegalStateException("PPM can only be deleted in draft status. Current status ID: " +
-                    (ppm.getStatus() != null ? ppm.getStatus().getId() : "null"));
+                    (ppm.getStatus() != null ? ppm.getStatus() : "null"));
         }
 
         // Proceed with soft deletion
@@ -643,7 +729,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
 
     @Override
-    public Ppm updateStatus(Integer ppmId, Integer ppmVer, Integer statusId) throws PpmNotFound, AcNotFound {
+    public Ppm updateStatus(Integer ppmId, Integer ppmVer, ProcessStatus status) throws PpmNotFound, AcNotFound {
         Optional<Ppm> ppmOpt = findById(ppmId, ppmVer);
         if (ppmOpt.isEmpty()) {
             return null;
@@ -662,12 +748,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             request.setAcId(existingPpm.getAc().getId());
         }
 
-        // Fetch RefParam for the statusId
-        RefParam status = refParamRepository.findById(statusId)
-                .orElse(null);
-        if (status == null) {
-            return null;
-        }
+
         request.setStatus(status);
 
         try {
@@ -1217,12 +1298,12 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
         tempPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         tempPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
-        RefParam requestStatus = null;
-        if (request.getStatus() != null) {
-            requestStatus = refParamRepository.findById(request.getStatus().getId()).orElse(null);
+        RefParam requestModePassation = null;
+        if (request.getModePassation() != null) {
+            requestModePassation = refParamRepository.findById(request.getModePassation().getId()).orElse(null);
         }
-        tempPpm.setStatus(requestStatus != null ? requestStatus : existingPpm.getStatus());
-        tempPpm.setModePassation(requestStatus != null ? requestStatus : existingPpm.getModePassation());
+        tempPpm.setStatus(existingPpm.getStatus());
+        tempPpm.setModePassation(requestModePassation != null ? requestModePassation : existingPpm.getModePassation());
         tempPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
         Ac requestAc = null;
         if (request.getAcId() != null) {
@@ -1468,7 +1549,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                             " files for updated realisation " + updatedRealisation.getId() +
                                             ", version " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(withLotsDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Refresh the realisation to get the updated document list
                                     updatedRealisation = realisationRepository.findById(
@@ -1607,8 +1688,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                                     try {
                                         System.out.println("Processing " + withLotsDto.getRealisationFiles().size() +
                                                 " files for new realisation " + newRealisation.getId());
-                                        processAndSaveRelisationsDocuments(withLotsDto.getRealisationFiles(), newRealisation);
-
+                                        //processAndSaveRelisationsDocuments(withLotsDto.getRealisationFiles(), newRealisation);
+                                            documentCommuneService.processAndSaveDocuments(withLotsDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
                                         // Refresh the realisation to get the updated document list
                                         newRealisation = realisationRepository.findById(
                                                         new CompositeId(newRealisation.getId(), newRealisation.getVersion()))
@@ -2036,7 +2117,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot newLot = new Lot();
 
                             // Generate ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId =  sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer newLotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             newLot.setId(newLotId);
                             newLot.setVersion(1); // Initial version
@@ -2460,7 +2542,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 Objects.equals(ppm1.getNom(), ppm2.getNom()) &&
                 Objects.equals(ppm1.getAnnee(), ppm2.getAnnee()) &&
                 Objects.equals(ppm1.getBudgetEstime(), ppm2.getBudgetEstime()) &&
-                Objects.equals(getRefParamId(ppm1.getStatus()), getRefParamId(ppm2.getStatus())) &&
+                Objects.equals(ppm1.getStatus(), ppm2.getStatus()) &&
                 Objects.equals(getRefParamId(ppm1.getModePassation()), getRefParamId(ppm2.getModePassation())) &&
                 Objects.equals(ppm1.getRemarque(), ppm2.getRemarque()) &&
                 Objects.equals(getAcId(ppm1.getAc()), getAcId(ppm2.getAc()));
@@ -2629,7 +2711,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
     @Transactional
     @Override
     public Ppm createWithRelationships(PpmWithLotsRequestDto request) throws AcNotFound {
-        Integer ppmId = repository.findMaxId();
+//        Integer ppmId = repository.findMaxId();
+        Integer ppmId =  sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
         ppmId = (ppmId != null) ? ppmId + 1 : 1;
         Integer ppmVersion = 1;
 
@@ -2641,15 +2724,14 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         String currentYearStr = String.valueOf(LocalDate.now().getYear());
         ppm.setAnnee(currentYearStr);
 
-        RefParam defaultStatus = refParamRepository.findById(com.sigmap.common.config.Constants.DRAFT_STATUS)
-                .orElseThrow(() -> new PaaDefaultStatus("Default status not found"));
-        ppm.setStatus(defaultStatus);
+
+        ppm.setStatus(ProcessStatus.BROUILLON);
         if (request.getModePassation() != null && request.getModePassation().getId() != null) {
             RefParam modePassation = refParamRepository.findById(request.getModePassation().getId())
                     .orElseThrow(() -> new PaaDefaultStatus("Mode Passation not found with ID: " + request.getModePassation().getId()));
             ppm.setModePassation(modePassation);
         } else {
-            System.out.println("ModePassation is not provided in the request; proceeding with null value");
+            System.out.println("Mode Passation is not provided in the request; proceeding with null value");
             ppm.setModePassation(null);
         }
 
@@ -2761,7 +2843,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Map<String, Lot> newLotsMap = new HashMap<>();
 
         // Get the current max ID for Realisation once before the loop
-        Integer currentMaxRealisationId = realisationRepository.findMaxId();
+//        Integer currentMaxRealisationId = realisationRepository.findMaxId();
+        Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
         Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId + 1 : 1;
 
         if (realisationsToProcess != null && !realisationsToProcess.isEmpty()) {
@@ -2804,7 +2887,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 /*
                         processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
 */
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+ppm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         System.out.println("Processed realisation files successfully");
                     } catch (IOException e) {
@@ -2875,7 +2958,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             newLot.setIsDeleted(false); // Ensure it's not deleted
 
                             // Generate new ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                             newLot.setId(lotId);
 
@@ -3047,101 +3131,101 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
     private final Object folderCreationLock = new Object();
 
-    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-        List<Docs> docs = new ArrayList<>();
-
-        // Add a file counter to ensure unique filenames even with the same UUID
-        AtomicInteger fileCounter = new AtomicInteger(0);
-
-        if (files != null && !files.isEmpty()) {
-            // Create a completely unique folder name with timestamp to avoid conflicts
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            // Use parent folder path from Constants but avoid using "REALISATION" directly
-             String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
-//            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
-            String folderPath = String.format("%s/REL_%d/%d",
-                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion());
-
-            // Create the folder structure first, synchronizing to prevent conflicts
-            String folderId;
-            synchronized(folderCreationLock) {
-                try {
-                    // Get or create the folder first, outside the file processing loop
-                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
-//                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
-                } catch (Exception e) {
-//                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
-                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
-                }
-            }
-
-            // Now process each file using the already-created folder
-            for (MultipartFile file : files) {
-                UUID uuid = UUID.randomUUID();
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Tika tika = new Tika();
-                        String detectedMimeType = tika.detect(file.getInputStream());
-                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-
-                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-                        if (fileExtension.isEmpty()) {
-                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-                        }
-
-                        long fileSize = file.getSize();
-                        String formattedSize = documentCommuneService.formatSize(fileSize);
-
-                        String[] parts = originalFilename.split("\\.");
-                        String baseName = parts[0];
-                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-                        // Include timestamp and counter to ensure uniqueness
-                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
-                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
-                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-
-//                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
-//                                originalFilename, uniqueFileName, folderPath, folderId);
-
-                        // Upload directly to the already-created folder
-                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
-//                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
-
-                        Docs document = new Docs();
-                        document.setName(baseName);
-                        document.setAlfresco_id(alfrescoId);
-                        document.setPathFolder(folderPath);
-                        document.setFileSize(formattedSize);
-                        document.setContentType(detectedMimeType);
-                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-                        document.setAlfrescoName(uniqueFileName);
-
-                        // Ensure collections are initialized
-                        if (document.getRealisations() == null) {
-                            document.setRealisations(new ArrayList<>());
-                        }
-                        if (savedRealisation.getDocs() == null) {
-                            savedRealisation.setDocs(new ArrayList<>());
-                        }
-
-                        // Set up bidirectional relationship
-                        document.getRealisations().add(savedRealisation);
-                        savedRealisation.getDocs().add(document);
-
-                        // Save the document
-                        docsRepository.save(document);
-                        docs.add(document);
-                    } catch (Exception e) {
-//                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
-                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-                    }
-                }
-            }
-        }
-
-        // Update the realisation's docs
-        savedRealisation.setDocs(docs);
-    }
+//    void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
+//        List<Docs> docs = new ArrayList<>();
+//
+//        // Add a file counter to ensure unique filenames even with the same UUID
+//        AtomicInteger fileCounter = new AtomicInteger(0);
+//
+//        if (files != null && !files.isEmpty()) {
+//            // Create a completely unique folder name with timestamp to avoid conflicts
+//            String timestamp = String.valueOf(System.currentTimeMillis());
+//            // Use parent folder path from Constants but avoid using "REALISATION" directly
+//             String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
+////            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
+//            String folderPath = String.format("%s/REL_%d/%d",
+//                    baseFolder, savedRealisation.getId(), savedRealisation.getVersion());
+//
+//            // Create the folder structure first, synchronizing to prevent conflicts
+//            String folderId;
+//            synchronized(folderCreationLock) {
+//                try {
+//                    // Get or create the folder first, outside the file processing loop
+//                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
+////                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
+//                } catch (Exception e) {
+////                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
+//                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
+//                }
+//            }
+//
+//            // Now process each file using the already-created folder
+//            for (MultipartFile file : files) {
+//                UUID uuid = UUID.randomUUID();
+//                if (file != null && !file.isEmpty()) {
+//                    try {
+//                        Tika tika = new Tika();
+//                        String detectedMimeType = tika.detect(file.getInputStream());
+//                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
+//
+//                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+//                        if (fileExtension.isEmpty()) {
+//                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+//                        }
+//
+//                        long fileSize = file.getSize();
+//                        String formattedSize = documentCommuneService.formatSize(fileSize);
+//
+//                        String[] parts = originalFilename.split("\\.");
+//                        String baseName = parts[0];
+//                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+//                        // Include timestamp and counter to ensure uniqueness
+//                        String uniqueFileName = String.format("realisation_%s_%s_%d%s",
+//                                uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
+//                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
+//
+////                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}",
+////                                originalFilename, uniqueFileName, folderPath, folderId);
+//
+//                        // Upload directly to the already-created folder
+//                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
+////                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
+//
+//                        Docs document = new Docs();
+//                        document.setName(baseName);
+//                        document.setAlfresco_id(alfrescoId);
+//                        document.setPathFolder(folderPath);
+//                        document.setFileSize(formattedSize);
+//                        document.setContentType(detectedMimeType);
+//                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+//                        document.setAlfrescoName(uniqueFileName);
+//
+//                        // Ensure collections are initialized
+//                        if (document.getRealisations() == null) {
+//                            document.setRealisations(new ArrayList<>());
+//                        }
+//                        if (savedRealisation.getDocs() == null) {
+//                            savedRealisation.setDocs(new ArrayList<>());
+//                        }
+//
+//                        // Set up bidirectional relationship
+//                        document.getRealisations().add(savedRealisation);
+//                        savedRealisation.getDocs().add(document);
+//
+//                        // Save the document
+//                        docsRepository.save(document);
+//                        docs.add(document);
+//                    } catch (Exception e) {
+////                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+//                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+//                    }
+//                }
+//            }
+//        }
+//
+//        // Update the realisation's docs
+//        savedRealisation.setDocs(docs);
+//    }
 
     /*void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         System.out.println("============== DOCUMENT UPLOAD LOG START ==============");
@@ -3604,7 +3688,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -3621,7 +3706,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 } else {
                     // Create new realisation
                     realisation = new Realisation();
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                     realisation.setId(realisationId);
                     realisation.setVersion(1); // Always version 1 for new realisations
@@ -3649,7 +3735,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
                                // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
-                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                                documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                             } catch (Exception e) {
                                 throw new RuntimeException("Failed to process realisation document files: " + e.getMessage(), e);
@@ -3695,7 +3781,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-                                Integer maxLotId = lotRepository.findMaxId();
+//                                Integer maxLotId = lotRepository.findMaxId();
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
                             lot.setId(lotId);
@@ -3777,9 +3864,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
         }
         // Check if the PPM is in draft status
-        if (existingPpm.getStatus() == null || existingPpm.getStatus().getId() != Constants.DRAFT_STATUS) {
+        if (existingPpm.getStatus() == null || existingPpm.getStatus() != ProcessStatus.BROUILLON) {
             throw new InvalidPpmStatusException("PPM can only be updated in draft status. Current status ID: " +
-                    (existingPpm.getStatus() != null ? existingPpm.getStatus().getId() : "null"));
+                    (existingPpm.getStatus() != null ? existingPpm.getStatus() : "null"));
         }
         // Update PPM fields
 //        existingPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
@@ -3788,11 +3875,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
-        // Set status if provided
-        if (request.getStatus() != null) {
-            existingPpm.setStatus(refParamRepository.findById(request.getStatus().getId())
-                    .orElseThrow(() -> new RuntimeException("Status with ID " + request.getStatus().getId() + " not found")));
-        }
+        existingPpm.setStatus(existingPpm.getStatus());
 
         // Set Ac if provided
         if (request.getAcId() != null) {
@@ -4045,7 +4128,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                     realisation = new Realisation();
 
                     // Generate a new ID for the realisation
-                    Integer maxRealisationId = realisationRepository.findMaxId();
+//                    Integer maxRealisationId = realisationRepository.findMaxId();
+                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
 
                     // Always use version 1 for newly created realisations
@@ -4113,7 +4197,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
                         // Process all files at once using the new method
                        // processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_REALISATION);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                         // After processing files, fetch the updated realisation with its documents
@@ -4165,7 +4249,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                             newLot.setIsDeleted(false); // Ensure it's not deleted
 
                             // Generate new ID if not provided
-                            Integer maxLotId = lotRepository.findMaxId();
+//                            Integer maxLotId = lotRepository.findMaxId();
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                             Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                             newLot.setId(lotId);
 

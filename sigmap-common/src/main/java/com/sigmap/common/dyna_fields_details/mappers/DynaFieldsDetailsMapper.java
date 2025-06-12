@@ -19,7 +19,6 @@ public interface DynaFieldsDetailsMapper {
   @Mapping(target = "dynaDocsVer", ignore = true)
   DynaFieldsDetails mapWithoutId(DynaFieldsDetails source);
 
-  @Mapping(target = "typeId", ignore = true)
   @Mapping(target = "source_field", source = "sourceField")
   DynaFieldsDetails map(DynaFieldsDetailsRequest source);
 
