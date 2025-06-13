@@ -75,6 +75,7 @@ public interface AgpmMapper {
     @Mapping(target = "version", source = "version")
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
+    @Mapping(source = "status", target = "status")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

@@ -223,6 +223,43 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm responseAgpm = createFilteredResponseAgpm(agpm);
         return responseAgpm;
     }
+    @Override
+    public Agpm findByIdAndVer(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound, AgpmNotAssociatedWithUserAcException {
+        log.info("Recherche de l'AGPM avec ID: {}", agpmId);
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
+            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
+
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC non trouvé avec ID: {}", acId);
+                throw e;
+            }
+        }
+
+
+
+        Agpm agpm = repository.findById(new CompositeId(agpmId, agpmVer))
+                .orElseThrow(() -> new AgpmNotFound("Aucun AGPM trouvé pour l'ID et la version", List.of(agpmId), List.of(agpmVer)));
+
+        if (agpm.getAc() == null || !userAcIds.contains(agpm.getAc().getId())) {
+            log.warn("AGPM avec ID {} n'est pas associé à un AC de l'utilisateur", agpmId);
+            throw new AgpmNotAssociatedWithUserAcException(
+                    "L'AGPM avec l'ID " + agpmId + " n'est pas associé à un AC de l'utilisateur connecté",
+                    List.of(agpmId),
+                    List.of(agpmVer)
+            );
+        }
+
+        Agpm responseAgpm = createFilteredResponseAgpm(agpm);
+        return responseAgpm;
+    }
 
     /**
      * Retrieves a paginated list of deleted Agpm entities.

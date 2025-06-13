@@ -99,11 +99,11 @@ public class PaaServiceImpl implements PaaService {
         return repository.findByCurrentYear(currentYear).orElseThrow(() -> new PaaCurrentYearNotFound("", currentYear));
     }
 
-        @Override
-        public List<Paa> findAll() {
-            Specification<Paa> spec = PaaSpecifications.deleted(false);
-            return repository.findAll(spec);
-        }
+    @Override
+    public List<Paa> findAll() {
+        Specification<Paa> spec = PaaSpecifications.deleted(false);
+        return repository.findAll(spec);
+    }
 
 //    /**
 //     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
@@ -287,12 +287,21 @@ public class PaaServiceImpl implements PaaService {
         if (paa == null) {
             log.warn("PAA fourni est null");
             return null; // Should not occur given prior validation
-          }
+        }
 
         Paa filteredPaa = new Paa();
         filteredPaa.setId(paa.getId());
         filteredPaa.setVersion(paa.getVersion());
         filteredPaa.setAc(paa.getAc());
+        filteredPaa.setAnnee(paa.getAnnee());
+        filteredPaa.setRef(paa.getRef());
+        filteredPaa.setNom(paa.getNom());
+        filteredPaa.setBudgetEstime(paa.getBudgetEstime());
+        filteredPaa.setDocs(paa.getDocs());
+        filteredPaa.setModePassation(paa.getModePassation());
+        filteredPaa.setRemarque(paa.getRemarque());
+        filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
+        filteredPaa.setStatus(paa.getStatus());
         filteredPaa.setCreatedAt(paa.getCreatedAt());
         filteredPaa.setCreatedBy(paa.getCreatedBy());
         filteredPaa.setUpdatedAt(paa.getUpdatedAt());
@@ -403,6 +412,7 @@ public class PaaServiceImpl implements PaaService {
 
         return paasResponse;
     }
+
     @Override
     public Optional<Paa> findLatestById(Integer paaId) {
         // Find the maximum version for this PAA ID
@@ -647,8 +657,8 @@ public class PaaServiceImpl implements PaaService {
 
         if (request.getPaaFiles() != null) {
             try {
-               // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
-                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(),existingPaa,Constants.PATH_ENTREPOT_GED_PAA);
+                // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
+                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -751,7 +761,7 @@ public class PaaServiceImpl implements PaaService {
 
                             // Process the uploaded files
                             //processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
 
                             // After processing, get the new docs and merge with existing ones
@@ -807,7 +817,8 @@ public class PaaServiceImpl implements PaaService {
                 } else {
                     realisation = new Realisation();
 //                    Integer maxRealisationId = realisationRepository.findMaxId();
-                    Integer maxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
+                    Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+                    ;
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                     realisation.setId(realisationId);
                     realisation.setVersion(1);
@@ -830,7 +841,7 @@ public class PaaServiceImpl implements PaaService {
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
                             //processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
-                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                         } catch (IOException e) {
                             throw new RuntimeException(e);
@@ -1097,7 +1108,7 @@ public class PaaServiceImpl implements PaaService {
                                             " files for Realisation ID: " + updatedRealisation.getId() +
                                             " version: " + updatedRealisation.getVersion());
                                     //processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),updatedRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), updatedRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Save the realisation again after adding documents
                                     updatedRealisation = realisationRepository.save(updatedRealisation);
@@ -1105,7 +1116,8 @@ public class PaaServiceImpl implements PaaService {
                                 } catch (IOException e) {
                                     System.err.println("Error processing Realisation files: " + e.getMessage());
                                     throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
-                                }                            }
+                                }
+                            }
                             // Handle realisation document IDs if provided
                             // --- Merge docIds and uploaded files ---
                             if (realisationDto.getDocIds() != null) {
@@ -1137,7 +1149,7 @@ public class PaaServiceImpl implements PaaService {
                                     System.out.println("[DEBUG] Added docId from docIds: " + docId);
                                 }
 
-                                System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " +  allDocs.stream().map(Docs::getId).toList());
+                                System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " + allDocs.stream().map(Docs::getId).toList());
                                 updatedRealisation.setDocs(allDocs);
                                 updatedRealisation = realisationRepository.save(updatedRealisation);
                                 // --- Ensure bidirectional relationship and save docs ---
@@ -1154,8 +1166,8 @@ public class PaaServiceImpl implements PaaService {
                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                                 try {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for existing Realisation ID: " + existingRealisation.getId() + " version: " + existingRealisation.getVersion());
-                                   // processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),existingRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    // processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
+                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), existingRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
                                     existingRealisation = realisationRepository.save(existingRealisation);
                                     System.out.println("Saved existing Realisation after processing files");
                                     updateNeeded = true; // Force update needed
@@ -1322,7 +1334,7 @@ public class PaaServiceImpl implements PaaService {
                             try {
                                 System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for new Realisation ID: " + newRealisation.getId() + " version: " + newRealisation.getVersion());
                                 //processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
-                                documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(),newRealisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+existingPaa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                                documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), newRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                 // Save the new realisation again after adding documents
                                 newRealisation = realisationRepository.save(newRealisation);
@@ -1483,8 +1495,8 @@ public class PaaServiceImpl implements PaaService {
             if (request.getPaaFiles() != null) {
                 try {
                     System.out.println("Processing " + request.getPaaFiles().size() + " files for existing PAA version");
-                   // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
-                    documentCommuneService.processAndSaveDocuments(request.getPaaFiles(),existingPaa,Constants.PATH_ENTREPOT_GED_PAA);
+                    // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
+                    documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
 
                     existingPaa = repository.save(existingPaa);
                     System.out.println("Saved PAA after processing files: " + existingPaa.getId() + " version " + existingPaa.getVersion());
@@ -1821,7 +1833,6 @@ public class PaaServiceImpl implements PaaService {
         // Handle document IDs for realizations
 
 
-
         if (request.getRealisations() != null) {
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 if (realisationRequest.getDocIds() != null) {
@@ -1882,7 +1893,7 @@ public class PaaServiceImpl implements PaaService {
             try {
                 System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
                 //processAndSaveDocuments(request.getPaaFiles(), newPaa);
-                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(),newPaa,Constants.PATH_ENTREPOT_GED_PAA);
+                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), newPaa, Constants.PATH_ENTREPOT_GED_PAA);
 
                 // Save again after adding documents
                 newPaa = repository.save(newPaa);
@@ -1915,7 +1926,6 @@ public class PaaServiceImpl implements PaaService {
 
         return copyForReturn;
     }
-
 
 
     /**
@@ -2103,7 +2113,6 @@ public class PaaServiceImpl implements PaaService {
     }
 
 
-
     /**
      * Creates a PAA with its Realisations and Lots in a single operation.
      * This method handles creating the complete object hierarchy:
@@ -2140,12 +2149,12 @@ public class PaaServiceImpl implements PaaService {
         paa.setAnnee(currentYearStr);
         setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
-
+        log.info("a ce niveau ca va 1 ");
         paa.setStatus(ProcessStatus.BROUILLON);
-
+        log.info("a ce niveau ca va 2 ");
         List<UserAc> userAcs = currentUserService.getCurrentUserAc();
         if (userAcs == null || userAcs.isEmpty()) {
-            throw new AcNotFound("No AC IDs found for current user",List.of());
+            throw new AcNotFound("No AC IDs found for current user", List.of());
         }
 
         Integer requestAcId = request.getAcId();
@@ -2153,7 +2162,7 @@ public class PaaServiceImpl implements PaaService {
             boolean hasAcId = userAcs.stream()
                     .anyMatch(userAc -> userAc.getAcId().equals(requestAcId));
             if (!hasAcId) {
-                throw new AcNotFound("User does not have permission for AC ID: " ,List.of(requestAcId));
+                throw new AcNotFound("User does not have permission for AC ID: ", List.of(requestAcId));
             }
             paa.setAc(acService.findById(requestAcId));
         } else {
@@ -2174,7 +2183,7 @@ public class PaaServiceImpl implements PaaService {
         // Initialize collections
         paa.setRealisations(new ArrayList<>());
         paa.setDocs(new ArrayList<>());
-
+        log.info("a ce niveau ca va 3  ");
         if (paa.getAnnee() == null || !paa.getAnnee().equals(currentYearStr)) {
             throw new IllegalStateException("Annee field is not set to the current year (" + currentYearStr + "). Current value: " + paa.getAnnee());
         }
@@ -2202,7 +2211,7 @@ public class PaaServiceImpl implements PaaService {
         if (request.getPaaFiles() != null) {
             try {
                 //processAndSaveDocuments(request.getPaaFiles(), savedPaa);
-                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(),savedPaa,Constants.PATH_ENTREPOT_GED_PAA);
+                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), savedPaa, Constants.PATH_ENTREPOT_GED_PAA);
 
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -2214,14 +2223,15 @@ public class PaaServiceImpl implements PaaService {
             // Get the current max ID for Realisation once before the loop
             // This will be our starting point for generating new IDs
 //            Integer currentMaxRealisationId = realisationRepository.findMaxId();
-            Integer currentMaxRealisationId =  sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
+            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+            ;
             // Initialize next ID to use. If no realisations exist, start from 1.
             // Otherwise, start from maxId + 1.
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId + 1 : 1;
 
 
             List<Realisation> realisationsToSave = new ArrayList<>();
-
+            log.info("a ce niveau ca va 4  ");
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 Realisation realisation = new Realisation();
 
@@ -2248,20 +2258,20 @@ public class PaaServiceImpl implements PaaService {
                 System.out.println(realisationRequest.getRealisationFiles());
                 if (realisationRequest.getRealisationFiles() != null) {
                     try {
-                       // processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
-                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PAA+"/"+paa.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
+                        // processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
+                        documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + paa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
-
+                log.info("a ce niveau ca va  5");
                 if (realisation.getPaas() == null) {
                     realisation.setPaas(new ArrayList<>());
                 }
                 realisation.getPaas().add(savedPaa);
                 savedPaa.getRealisations().add(realisation);
-
+                log.info("a ce niveau ca va 6 ");
                 // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
                     Set<Lot> lots = new HashSet<>();
@@ -2284,13 +2294,14 @@ public class PaaServiceImpl implements PaaService {
                     }
                     realisation.setLots(lots);
                 }
-
+                log.info("a ce niveau ca va 7 ");
                 realisationsToSave.add(realisation);
             }
-
+            log.info("a ce niveau ca va 8  ");
             realisationRepository.saveAll(realisationsToSave);
+            log.info("a ce niveau ca va 9  ");
         }
-
+        log.info("a ce niveau ca va 10 ");
         return repository.save(savedPaa);
     }
 
@@ -2586,9 +2597,9 @@ public class PaaServiceImpl implements PaaService {
     public Paa updateStatus(Integer paaId, Integer paaVer, ProcessStatus status) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Paa paa = repository.findById(compositeId).orElseThrow(() -> new PaaNotFound("Paa not found", List.of(paaId), List.of(paaVer)));
-
+        log.info("status name " + status);
         paa.setStatus(status);
-
+        log.info("status name 2" + paa.getStatus());
         paa.setUpdatedAt(Calendar.getInstance());
         return repository.save(paa);
     }
@@ -2692,11 +2703,12 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaSoftDelete("Soft delete failed", 0, paaId, paaVer);
         }
     }
+
     @Override
     public Page<Paa> findPaasByAcId(Integer acId, Pageable pageable) throws AcNotFound {
         acService.findById(acId);
         Specification<Paa> paaSpec = Specification.where(
-                        PaaSpecifications.deleted(false)
+                PaaSpecifications.deleted(false)
                         .and(PaaSpecifications.isLatestVersion().and(PaaSpecifications.paaAc(acId)))
         );
         return repository.findAll(paaSpec, pageable);

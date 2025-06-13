@@ -62,6 +62,7 @@ public interface AgpmService {
      * @throws AgpmNotFound if the Agpm with the specified ID and version is not found
      */
     Agpm findById(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound;
+    Agpm findByIdAndVer(Integer agpmId, Integer agpmVer) throws AgpmNotFound, AcNotFound;
 
     /**
      * Saves an Agpm entity to the database.
