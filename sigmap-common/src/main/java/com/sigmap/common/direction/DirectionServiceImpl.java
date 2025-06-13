@@ -5,13 +5,12 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
-import com.sigmap.common.direction.exception.DirectionAlreadyExist;
-import com.sigmap.common.direction.exception.DirectionNotBelongToAc;
-import com.sigmap.common.direction.exception.DirectionNotFound;
-import com.sigmap.common.direction.exception.LibelleRequired;
+import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.direction.mappers.DirectionMapper;
 import com.sigmap.common.direction.request.DirectionRequest;
 import com.sigmap.common.direction.request.DirectionunderAcRequest;
+import com.sigmap.common.entity.BaseEntity;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -82,6 +81,7 @@ public class DirectionServiceImpl implements DirectionService {
     }
 
     @Override
+    @Transactional(rollbackOn = Exception.class)
     public Direction create(DirectionRequest request) throws AcNotFound {
         if(request.getLibelle() == null) {
             throw new LibelleRequired("");
@@ -93,6 +93,7 @@ public class DirectionServiceImpl implements DirectionService {
         Direction direction = DirectionMapper.INSTANCE.mapFromRequest(request);
         if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
             List<Integer> acIds = request.getAcIds();
+
 
             int size = getSizeList(acIds);
 
@@ -106,6 +107,13 @@ public class DirectionServiceImpl implements DirectionService {
                         .filter(acId -> !existingAcIds.contains(acId))
                         .toList();
                 throw new AcNotFound("", nonExistentAcIds);
+            }
+             List<Integer> deletedAcs = acs.stream().filter(BaseEntity::getIsDeleted).map(Ac::getId).toList();
+            if(!deletedAcs.isEmpty()) {
+                throw new AcNotFound("", deletedAcs);
+            }
+            for (Integer acId : acIds) {
+                    updateDirectionAssociation(acId, direction, true);
             }
             direction.setAcs(acs);
         }
@@ -142,7 +150,23 @@ public class DirectionServiceImpl implements DirectionService {
                         .toList();
                 throw new AcNotFound("", nonExistentAcIds);
             }
+            List<Integer> deletedAcs = acs.stream().filter(BaseEntity::getIsDeleted).map(Ac::getId).toList();
+            if(!deletedAcs.isEmpty()) {
+                throw new AcNotFound("", deletedAcs);
+            }
+            List<Integer> oldAcIds = direction.getAcs().stream().filter(ac->!ac.getIsDeleted()).map(Ac::getId).toList();
             direction.setAcs(acs);
+            for (Integer acId : acIds) {
+                if (!oldAcIds.contains(acId)) {
+                    updateDirectionAssociation(acId, direction, true);
+                }
+            }
+
+            for (Integer acId : oldAcIds) {
+                if (!acIds.contains(acId)) {
+                    updateDirectionAssociation(acId, direction, false);
+                }
+            }
         }
 
         return save(direction);
@@ -150,8 +174,8 @@ public class DirectionServiceImpl implements DirectionService {
 
     @Override
     public void delete(Integer id) {
+        findById(id);
         repository.softDelete(id);
-
     }
 
     @Override
@@ -167,6 +191,8 @@ public class DirectionServiceImpl implements DirectionService {
         Direction direction= DirectionMapper.INSTANCE.mapFromDirectionUnderAcRequest(request);
         direction.setAcs(new ArrayList<>());
         direction.getAcs().add(ac);
+        updateDirectionAssociation(acId, direction, true);
+
         return save(direction);
     }
 
@@ -186,7 +212,8 @@ public class DirectionServiceImpl implements DirectionService {
             throw new DirectionAlreadyExist("", request.getLibelle());
         }
         direction.setLibelle(request.getLibelle());
-        return direction;
+
+        return save(direction);
     }
 
     @Override
@@ -220,6 +247,23 @@ public class DirectionServiceImpl implements DirectionService {
         }
         return size;
     }
+    @Transactional
+    public void updateDirectionAssociation(Integer acId, Direction direction, boolean shouldBeAssociated) throws AcNotFound {
+        Ac ac = acService.findById(acId);
 
+        if(ac.getDirections()==null || ac.getDirections().isEmpty()) {
+            ac.setDirections(new ArrayList<>());
+        }
+        if (shouldBeAssociated) {
+            // Logic to add the direction to the Ac's list
+            if (!ac.getDirections().contains(direction)) {
+                ac.getDirections().add(direction);
+            }
+        } else {
+            // Logic to remove the direction from the Ac's list
+            ac.getDirections().remove(direction);
+        }
+
+    }
 
 }
