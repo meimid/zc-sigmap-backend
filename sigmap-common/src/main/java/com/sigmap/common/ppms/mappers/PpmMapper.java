@@ -21,6 +21,11 @@ public interface PpmMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "version", source = "version", defaultValue = "1")
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "budgetEstime", source = "budgetEstime")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "status", source = "status")
     PpmResponse map(Ppm source);

@@ -106,6 +106,21 @@ public class AgpmController {
     }
 
     /**
+     * Retrieves the latest version of an Agpm entity by its ID.
+     *
+     * @param agpmId The ID of the Agpm entity
+     * @return ResponseEntity with the AgpmResponse DTO and HTTP status 200 (OK)
+     * @throws AgpmNotFound if the Agpm with the specified ID is not found
+     */
+    @GetMapping("/{agpmId}/{agpmVer}")
+    public ResponseEntity<AgpmResponse> getAgpmByIdAndVer(@PathVariable Integer agpmId, @PathVariable Integer agpmVer) throws AgpmNotFound, AcNotFound {
+        Agpm agpm = agpmService.findByIdAndVer(agpmId,agpmVer);
+        AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(agpm);
+        return ResponseEntity.ok(agpmResponse);
+    }
+
+
+    /**
      * Creates a new Agpm entity.
      *
      * @param request The AgpmRequest DTO containing the data to create the Agpm

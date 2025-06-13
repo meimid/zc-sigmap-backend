@@ -342,6 +342,12 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         filteredPpm.setVersion(ppm.getVersion());
         filteredPpm.setAc(ppm.getAc());
         filteredPpm.setStatus(ppm.getStatus());
+        filteredPpm.setAnnee(ppm.getAnnee());
+        filteredPpm.setNom(ppm.getNom());
+        filteredPpm.setRef(ppm.getRef());
+        filteredPpm.setBudgetEstime(ppm.getBudgetEstime());
+        filteredPpm.setModePassation(ppm.getModePassation());
+        filteredPpm.setRemarque(ppm.getRemarque());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
         filteredPpm.setUpdatedAt(ppm.getUpdatedAt());
@@ -740,22 +746,10 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             return null;
         }
 
-        PpmRequest request = new PpmRequest();
-        request.setRef(existingPpm.getRef());
-        request.setNom(existingPpm.getNom());
-        request.setBudgetEstime(existingPpm.getBudgetEstime());
-        if (existingPpm.getAc() != null) {
-            request.setAcId(existingPpm.getAc().getId());
-        }
+log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " with status: " + status);
+        existingPpm.setStatus(status);
+        return repository.save(existingPpm);
 
-
-        request.setStatus(status);
-
-        try {
-            return update(ppmId, ppmVer, request);
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     /**
