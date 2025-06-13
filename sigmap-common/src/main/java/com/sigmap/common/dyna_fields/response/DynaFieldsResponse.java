@@ -1,6 +1,7 @@
 package com.sigmap.common.dyna_fields.response;
 
 import com.sigmap.common.dyna_fields.DynaFieldType;
+import com.sigmap.common.dyna_fields_details.DynaFieldDetailsType;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class DynaFieldsResponse {
 
     private Integer columnPos;
 
-    private RefParam typeId;
+    private DynaFieldDetailsType type;
 
     private String source;
 

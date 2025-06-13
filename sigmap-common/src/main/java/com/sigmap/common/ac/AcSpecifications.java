@@ -37,10 +37,14 @@ public class AcSpecifications {
 
   /** nom. */
   public static Specification<Ac> nom(String nom) {
-    return (root, query, criteriaBuilder) -> {
-      return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
-    };
+
+    return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
+            criteriaBuilder.lower(root.get("nom")),
+            nom.toLowerCase()
+    );
   }
+
+
 
   /** code. */
   public static Specification<Ac> contact(String contact) {

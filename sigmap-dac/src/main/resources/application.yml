@@ -13,7 +13,7 @@ spring:
       additional-paths: ../sigmap-common
 
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 
@@ -88,3 +88,6 @@ templateDac:
   dac:
     inputDocPath: ${INPUT_DAC_PATH:E:\\word\\templates\\}
     outputDocPath: ${OUTPUT_DAC_PATH:E:\\word\\temp\\}
+
+documents:
+  convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}

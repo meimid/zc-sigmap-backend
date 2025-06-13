@@ -107,13 +107,13 @@ public class AcServiceImpl implements AcService{
     @Override
     @Transactional
     public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
-        if(request.getNom() == null) {
+        if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-         else if(request.getTutelId()==null){
+         else if(request.getTutelId()==null ) {
              throw new AcAttributeRequire("","tutel");
         }
-         else if(request.getContact() == null) {
+         else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
@@ -153,6 +153,15 @@ public class AcServiceImpl implements AcService{
     @Override
     @Transactional
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
+        if(request.getNom() == null || request.getNom().isEmpty()) {
+            throw new AcAttributeRequire("","nom");
+        }
+        else if(request.getTutelId()==null){
+            throw new AcAttributeRequire("","tutel");
+        }
+        else if(request.getContact() == null || request.getContact().isEmpty()) {
+            throw new AcAttributeRequire("","contact");
+        }
         Ac ac = findById(id);
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 
