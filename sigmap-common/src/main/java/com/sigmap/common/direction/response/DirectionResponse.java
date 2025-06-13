@@ -1,6 +1,7 @@
 package com.sigmap.common.direction.response;
 
 import com.sigmap.common.ac.response.AcResponse;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,6 +17,6 @@ import java.util.List;
 public class DirectionResponse {
     private Integer id;
     private String libelle;
-    private List<AcResponse> acs;
+    private List<AcResponseDto> acs;
     private BaseEntityResponse metadata;
 }

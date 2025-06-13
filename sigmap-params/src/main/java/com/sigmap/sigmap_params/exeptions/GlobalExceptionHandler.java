@@ -8,10 +8,7 @@ import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
-import com.sigmap.common.direction.exception.DirectionAlreadyExist;
-import com.sigmap.common.direction.exception.DirectionNotBelongToAc;
-import com.sigmap.common.direction.exception.DirectionNotFound;
-import com.sigmap.common.direction.exception.LibelleRequired;
+import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -524,5 +521,13 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("direction.directionNotBelongToAc",new Object[] {ex.getId(),ex.getAcId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DirectionAssociatedWithTwoAcs.class)
+    public ResponseEntity<ErrorResponse> DirectionAssociatedWithTwoAcsException(DirectionAssociatedWithTwoAcs ex) {
+        String message = messageSource.getMessage("direction.associatedWithTwoAcs",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
