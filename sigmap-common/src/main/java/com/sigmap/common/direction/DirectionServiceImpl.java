@@ -224,9 +224,6 @@ public class DirectionServiceImpl implements DirectionService {
     }
 
 
-
-
-
     private static int getSizeList(List<Integer> listIds) throws AcNotFound, DuplicateAcIdsException {
         int size = listIds.size();
         List<Integer> duplicateIds = new ArrayList<>();
