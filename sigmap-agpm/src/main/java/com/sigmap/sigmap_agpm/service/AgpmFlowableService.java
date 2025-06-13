@@ -947,7 +947,7 @@ public class AgpmFlowableService {
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
         // Récupérer l'AGPM avec la dernière version
-        Agpm agpm = agpmService.findById(agpmId, null); // null pour la dernière version
+        Agpm agpm = agpmService.findById(agpmId, null);
         if (agpm == null) {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
             errorResponse.setStatus("AGPM non trouvé pour l'ID: " + agpmId);
