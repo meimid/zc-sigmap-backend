@@ -23,6 +23,7 @@ public class AgpmResponse {
     private String contenu;
     private String remarque;
     private String status;
+    private String annee;
     private AcResponseDto ac;
     private List<DocsResponseDTO> docs;
     private String processInstanceId;

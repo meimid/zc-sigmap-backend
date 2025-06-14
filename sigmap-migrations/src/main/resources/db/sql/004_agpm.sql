@@ -1,0 +1,2 @@
+-- changeset sigmap:1749671959050-4
+ALTER TABLE agpm ADD COLUMN annee VARCHAR(4) NULL;
