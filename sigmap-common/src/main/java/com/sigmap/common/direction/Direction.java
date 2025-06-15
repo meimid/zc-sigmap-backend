@@ -21,12 +21,13 @@ public class Direction extends BaseEntity {
     @Column(name = "direction_id")
     private Integer id;
     private String libelle;
-    @ManyToMany
+/*    @ManyToMany
     @JoinTable(
             name = "ac_direction",
             joinColumns = @JoinColumn(name = "direction_id", referencedColumnName = "direction_id"),
             inverseJoinColumns = @JoinColumn(name = "ac_id")
-    )
+    )*/
+    @ManyToMany(mappedBy = "directions")
     private List<Ac> acs;
 
 

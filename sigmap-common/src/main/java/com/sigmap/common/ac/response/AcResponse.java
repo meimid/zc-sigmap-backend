@@ -1,5 +1,6 @@
 package com.sigmap.common.ac.response;
 
+import com.sigmap.common.direction.response.DirectionResponseDto;
 import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.ref_params.RefParam;
@@ -23,5 +24,6 @@ public class AcResponse {
   //private List<UserDTO> users;
   private List<AcMemberDTO> users;
   private RefParamResponseDto tutel;
+  private List<DirectionResponseDto> directions;
   private BaseEntityResponse metadata;
 }
