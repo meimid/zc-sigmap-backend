@@ -1,0 +1,59 @@
+package com.sigmap.common.ModeDePassationSelection;
+
+import com.sigmap.common.com.Com;
+import com.sigmap.common.ref_params.RefParam;
+import jakarta.persistence.criteria.Join;
+import org.springframework.data.jpa.domain.Specification;
+
+public class ModeDePassationSelectionSpecifications{
+    /** search. */
+    public static Specification<Com> search(String search) {
+        return (root, query, criteriaBuilder) -> {
+Join<ModeDePassationSelection, RefParam> join = root.join("categorie");
+
+      return criteriaBuilder.or(
+        criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
+        criteriaBuilder.like(join.get("description"), "%" + search + "%"),
+        criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"),
+        criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
+        };
+        }
+
+/** id. */
+public static Specification<ModeDePassationSelection> id(Integer id) {
+    return (root, query, criteriaBuilder) -> {
+        return criteriaBuilder.equal(root.get("id"), id);
+    };
+}
+
+/** libelle. */
+public static Specification<ModeDePassationSelection> libelle(String libelle) {
+    return (root, query, criteriaBuilder) -> {
+        return criteriaBuilder.like(root.get("libelle"), "%" + libelle + "%");
+    };
+}
+
+
+
+
+
+
+
+
+
+/** deleted. */
+public static Specification<ModeDePassationSelection> deleted(boolean deleted) {
+    return (root, query, criteriaBuilder) -> {
+        if (!deleted) {
+            return criteriaBuilder.or(
+                    criteriaBuilder.isNull(root.get("isDeleted")),
+                    criteriaBuilder.isFalse(root.get("isDeleted")));
+        }
+        return criteriaBuilder.isTrue(root.get("isDeleted"));
+    };
+}
+
+public static Specification<ModeDePassationSelection> hascategorieId(Integer categorieId) {
+    return (root, query, cb) -> cb.equal(root.get("categorie").get("id"), categorieId);
+}
+}
