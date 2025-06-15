@@ -44,7 +44,7 @@ public class DacDocsDetails {
   @Column(name = "dyna_fields_id")
   private Integer dynaFieldsId;
 
-  @Column(name = "source_id", length = 100)
+  @Column(name = "source_id")
   private String sourceId;
 
   @Column(name = "field_value", length = 255)

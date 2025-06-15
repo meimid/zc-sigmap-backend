@@ -43,6 +43,9 @@ public class Agpm extends BaseEntity implements DocumentHolder {
     @Column(name = "contenu", columnDefinition = "LONGTEXT")
     private String contenu;
 
+    @Column(name = "annee", length = 4)
+    private String annee;
+
     @ManyToOne
     @JoinColumn(name = "ac_id")
     private Ac ac;

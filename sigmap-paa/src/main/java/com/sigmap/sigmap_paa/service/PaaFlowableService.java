@@ -264,12 +264,18 @@ public class PaaFlowableService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
+
+        Integer acId = paa.getAc() != null ? paa.getAc().getId() : null;
+        if (acId != null) {
+            variables.put("acId", acId);
+        }
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
         Optional<Paa> paaOptional = paaService.findById(id, version);
         if (paaOptional.isPresent()) {
             Paa updatedPaa = paaOptional.get();
+            log.info("Updated paa [{}] to [{}]", id, updatedPaa.getStatus());
            updatedPaa.setProcessInstanceId(processInstanceId);
             paaService.save(updatedPaa);
         }
@@ -311,6 +317,7 @@ public class PaaFlowableService {
         response.setProcessInstanceId(processInstance.getId());
         response.setProcessDefinitionId(processInstance.getProcessDefinitionId());
         response.setTaskId(initialTask.getId());
+        response.setAcId(acId);
         response.setStatus(String.format("Process %s started and task %s completed successfully", effectiveProcessKey, effectiveTaskKey));
 
         return response;

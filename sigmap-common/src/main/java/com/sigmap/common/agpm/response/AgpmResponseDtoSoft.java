@@ -14,6 +14,7 @@ public class AgpmResponseDtoSoft {
     private String contenu;
     private String remarque;
     private String status;
+    private String annee;
     private AcResponseDto ac;
     private String processInstanceId;
 }

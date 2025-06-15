@@ -88,6 +88,13 @@
             <artifactId>commons-codec</artifactId>
             <version>1.16.1</version>
         </dependency>
+
+        <!--merge multi pdf in one-->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.32</version>
+        </dependency>
     </dependencies>
 
     <build>

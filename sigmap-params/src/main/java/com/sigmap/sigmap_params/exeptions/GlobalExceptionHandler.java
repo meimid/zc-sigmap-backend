@@ -8,6 +8,7 @@ import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -490,5 +491,43 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ac.attributeRequire",new Object[] {ex.getNom()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DirectionNotFound.class)
+    public ResponseEntity<ErrorResponse> DirectionNotFoundException(DirectionNotFound ex) {
+        String message = messageSource.getMessage("direction.directionNotFound",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DirectionAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> DirectionAlreadyExistException(DirectionAlreadyExist ex) {
+        String message = messageSource.getMessage("direction.directionAlreadyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(LibelleRequired.class)
+    public ResponseEntity<ErrorResponse> LibelleRequiredException(LibelleRequired ex) {
+        String message = messageSource.getMessage("direction.libelleRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DirectionNotBelongToAc.class)
+    public ResponseEntity<ErrorResponse> DirectionNotBelongToAcException(DirectionNotBelongToAc ex) {
+        String message = messageSource.getMessage("direction.directionNotBelongToAc",new Object[] {ex.getId(),ex.getAcId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DirectionAssociatedWithTwoAcs.class)
+    public ResponseEntity<ErrorResponse> DirectionAssociatedWithTwoAcsException(DirectionAssociatedWithTwoAcs ex) {
+        String message = messageSource.getMessage("direction.associatedWithTwoAcs",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }

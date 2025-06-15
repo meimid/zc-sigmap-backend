@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.sigmap.common.dyna_fields.DynaFieldType;
+import com.sigmap.common.dyna_fields_details.DynaFieldDetailsType;
 import com.sigmap.common.entity.ActiveStatus;
 import lombok.Data;
 
@@ -37,7 +38,7 @@ public class DynaFieldsRequest {
 
     private Integer columnPos;
 
-    private Integer typeId;
+    private DynaFieldDetailsType type;
 
     private String source;
 
