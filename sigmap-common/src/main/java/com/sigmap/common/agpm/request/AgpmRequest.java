@@ -19,4 +19,5 @@ public class AgpmRequest {
     private String remarque;
     private List<MultipartFile> files;
     private Integer acId;
+    private String annee;
 }

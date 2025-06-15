@@ -41,6 +41,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(UserHaveNoAc.class)
+    public ResponseEntity<ErrorResponse> handleUserHaveNoAc(UserHaveNoAc ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BadRequest.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequest ex) {
