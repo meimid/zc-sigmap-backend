@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 public class AcRequest {
   private String nom;
-  private String ancrage;
+//  private String ancrage;
   private String contact;
   private List<String> userIds;
   private Integer tutelId;

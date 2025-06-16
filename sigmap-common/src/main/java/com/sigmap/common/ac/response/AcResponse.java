@@ -19,7 +19,7 @@ import lombok.*;
 public class AcResponse {
   private Integer id;
   private String nom;
-  private String ancrage;
+//  private String ancrage;
   private String contact;
   //private List<UserDTO> users;
   private List<AcMemberDTO> users;
