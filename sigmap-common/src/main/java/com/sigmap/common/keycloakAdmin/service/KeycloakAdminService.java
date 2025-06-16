@@ -265,6 +265,9 @@ public class KeycloakAdminService {
 
         String userId = extractUserIdFromLocation(location);
 
+        updatePassword(userId, userDTO.getPassword());
+
+
         if (!CollectionUtils.isEmpty(userDTO.getRoles())) {
             assignRolesToUser(userId, userDTO.getRoles());
         }
@@ -383,6 +386,13 @@ public class KeycloakAdminService {
                     }
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
+                }else {
+                    if (id  == acPiloteId){
+                        userAcRepository.removeAcPilote(id, userId);
+                        UserAc existingUserAc = userAcRepository.findFirstByAcIdAndUserIdAndIsDeletedFalse(id, userId);
+                        existingUserAc.setAcPilote(true);
+                        userAcRepository.save(existingUserAc);
+                    }
                 }
             }
         } else {
@@ -415,7 +425,7 @@ public class KeycloakAdminService {
 
         Map<String, Object> passwordPayload = new HashMap<>();
         passwordPayload.put("type", "password");
-        passwordPayload.put("temporary", true);
+        passwordPayload.put("temporary", false);
         passwordPayload.put("value", newPassword);
 
         String url = String.format("%s/admin/realms/%s/users/%s/reset-password", keycloakBaseUrl, realm, userId);
