@@ -18,8 +18,11 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.*;
 
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_com.exception.UserComNotFound;
+import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -45,6 +48,8 @@ public class ComServiceImpl implements ComService {
   private UserComRepository userComRepository;
   @Autowired
   private RefParamRepository refParamRepository;
+    @Autowired
+    private UserAcRepository userAcRepository;
 
   public ComServiceImpl(
       ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
@@ -128,6 +133,16 @@ public class ComServiceImpl implements ComService {
       }
     }
 
+    if(request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
+      UserCom userCom = new UserCom();
+      userCom.setUserId(request.getResponsableId());
+      userCom.setComId(savedCom.getId());
+      userCom.setIsDeleted(false);
+      userCom.setStatus(ActiveStatus.ACTIF);
+      userCom.setResponsable(true);
+      userComRepository.save(userCom);
+    }
+
     return savedCom;
   }
 
@@ -156,8 +171,12 @@ public class ComServiceImpl implements ComService {
     for (UserCom existing : existingUserComs) {
       logger.info("*************"+ existing);
       if (!newUserIds.contains(existing.getUserId())) {
+        if(existing.isResponsable()) {
+          throw new UserResponsibleForCom("",existing.getUserId(),existing.getComId());
+        }
         userComRepository.softDelete(existing.getComId(), existing.getUserId());
       }
+
     }
 
     // 4. Ajouter les nouveaux
@@ -173,6 +192,28 @@ public class ComServiceImpl implements ComService {
         userCom.setStatus(ActiveStatus.ACTIF);
         userComRepository.save(userCom);
       }
+    }
+    if(request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
+      existingUserComs.forEach(el -> el.setResponsable(false));
+     Optional<UserCom>  userCom= userComRepository.findByUserIdAndComId(request.getResponsableId(),id);
+      if(userCom.isPresent()&&!userCom.get().isResponsable()) {
+        userComRepository.saveAll(existingUserComs);
+        UserCom newResponsable=userCom.get();
+        newResponsable.setResponsable(true);
+        newResponsable.setStatus(ActiveStatus.ACTIF);
+        userComRepository.save(newResponsable);
+      }
+      else{
+        userComRepository.saveAll(existingUserComs);
+        UserCom newResponsable=new UserCom();
+        newResponsable.setUserId(request.getResponsableId());
+        newResponsable.setComId(id);
+        newResponsable.setStatus(ActiveStatus.ACTIF);
+        newResponsable.setResponsable(true);
+
+        userComRepository.save(newResponsable);
+      }
+
     }
     return  savedCom;
   }
@@ -203,4 +244,16 @@ public class ComServiceImpl implements ComService {
 
     repository.softDelete(id);
   }
+
+  @Override
+  @Transactional
+  public UserCom makeUserResponsable(String userId,Integer comId) {
+    UserCom userCom=userComRepository.findByUserIdAndComId(userId,comId).orElseThrow(() -> new UserComNotFound("", userId,comId));
+    List<UserCom> userComs=userComRepository.findAllByComIdAndIsDeletedFalse(comId);
+     userComs.forEach(el -> el.setResponsable(false));
+    userCom.setResponsable(true);
+    userComRepository.saveAll(userComs);
+    return userCom;
+  }
+
 }

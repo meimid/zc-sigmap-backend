@@ -23,7 +23,7 @@ public class Com extends BaseEntity {
   @Column(name = "decret_creation")
   private String decretCreation;
 
-  private String responsable;
+ // private String responsable;
   private Boolean special;
   private String ancrage;
   private String contact;
