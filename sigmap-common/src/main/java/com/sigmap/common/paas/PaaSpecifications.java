@@ -144,12 +144,12 @@ public class PaaSpecifications {
         };
     }
 
-    public static Specification<Paa> hasStatusId(Integer statusId) {
-        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    public static Specification<Paa> hasModePassationId(Integer id) {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("id"), id);
     }
 
-    public static Specification<Paa> statusNotDeleted() {
-        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    public static Specification<Paa> modePassationNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("isDeleted"), false);
     }
 
     public static Specification<Paa> isLatestVersion() {

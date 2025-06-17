@@ -39,9 +39,9 @@ public class AgpmQuery {
             spec = spec.and(AgpmSpecifications.contenu(contenu));
         }
 
-        if (statusId != null) {
+       /* if (statusId != null) {
             spec = spec.and(AgpmSpecifications.statusId(statusId));
-        }
+        }*/
 
         return spec;
     }

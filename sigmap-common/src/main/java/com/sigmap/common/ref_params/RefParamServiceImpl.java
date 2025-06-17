@@ -229,8 +229,8 @@ public class RefParamServiceImpl implements RefParamService {
 
         Specification<Ppm> ppmSpec = Specification.where(
                 PpmSpecifications.deleted(false)
-                        .and(PpmSpecifications.hasStatusId(id))
-                        .and(PpmSpecifications.statusNotDeleted())
+                        .and(PpmSpecifications.hasModePassationId(id))
+                        .and(PpmSpecifications.modePassationNotDeleted())
         );
         boolean hasAssociatedPpm = ppmRepository.count(ppmSpec) > 0;
         if (hasAssociatedPpm) {
@@ -239,14 +239,14 @@ public class RefParamServiceImpl implements RefParamService {
 
         Specification<Paa> paaSpec = Specification.where(
                 PaaSpecifications.deleted(false)
-                        .and(PaaSpecifications.hasStatusId(id))
-                        .and(PaaSpecifications.statusNotDeleted())
+                        .and(PaaSpecifications.hasModePassationId(id))
+                        .and(PaaSpecifications.modePassationNotDeleted())
         );
         boolean hasAssociatedPaa = paaRepository.count(paaSpec) > 0;
         if (hasAssociatedPaa) {
             throw new HasAssociatedPaa("", id);
         }
-
+/*
         Specification<Agpm> agpmSpec = Specification.where(
                 AgpmSpecifications.deleted(false)
                         .and(AgpmSpecifications.hasStatusId(id))
@@ -255,7 +255,7 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAssociatedAgpm = agpmRepository.count(agpmSpec) > 0;
         if (hasAssociatedAgpm) {
             throw new HasAssociatedAgpm("", id);
-        }
+        }*/
 
         Specification<Realisation> realisationSpec = Specification.where(
                 RealisationSpecifications.deleted(false)

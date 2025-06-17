@@ -119,14 +119,14 @@ public class PpmSpecifications {
     /**
      * Filter by statusId.
      */
-    public static Specification<Ppm> statusId(Integer statusId) {
+/*    public static Specification<Ppm> statusId(Integer statusId) {
         return (root, query, criteriaBuilder) -> {
             if (statusId == null) {
                 return criteriaBuilder.conjunction(); // Return all if null
             }
             return criteriaBuilder.equal(root.get("statusId"), statusId);
         };
-    }
+    }*/
 
     /**
      * Filter by deletion status.
@@ -156,12 +156,12 @@ public class PpmSpecifications {
         };
     }
 
-    public static Specification<Ppm> hasStatusId(Integer statusId) {
-        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    public static Specification<Ppm> hasModePassationId(Integer id) {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("id"), id);
     }
 
-    public static Specification<Ppm> statusNotDeleted() {
-        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    public static Specification<Ppm> modePassationNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("isDeleted"), false);
     }
 
     public static Specification<Ppm> isLatestVersion() {

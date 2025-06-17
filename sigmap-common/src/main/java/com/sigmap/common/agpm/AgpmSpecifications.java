@@ -70,14 +70,14 @@ public class AgpmSpecifications {
         };
     }
 
-    public static Specification<Agpm> statusId(Integer statusId) {
+/*    public static Specification<Agpm> statusId(Integer statusId) {
         return (root, query, criteriaBuilder) -> {
             if (statusId == null) {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.equal(root.get("statusId"), statusId);
         };
-    }
+    }*/
 
     public static Specification<Agpm> deleted(boolean deleted) {
         return (root, query, criteriaBuilder) -> {
