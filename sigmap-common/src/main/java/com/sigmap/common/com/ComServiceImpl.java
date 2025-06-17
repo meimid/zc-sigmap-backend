@@ -210,7 +210,6 @@ public class ComServiceImpl implements ComService {
         newResponsable.setComId(id);
         newResponsable.setStatus(ActiveStatus.ACTIF);
         newResponsable.setResponsable(true);
-
         userComRepository.save(newResponsable);
       }
 
