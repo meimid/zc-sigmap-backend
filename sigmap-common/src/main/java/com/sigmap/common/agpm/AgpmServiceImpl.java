@@ -711,6 +711,28 @@ public class AgpmServiceImpl implements AgpmService {
         newAgpm.setIsDeleted(existingAgpm.getIsDeleted());
         agpmMapper.updateAgpmFromRequest(request, newAgpm);
 
+        // Check and update acId if provided in request
+        Integer newAcId = request.getAcId();
+        if (newAcId != null) {
+            List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+            if (userAcIds.isEmpty() || !userAcIds.contains(newAcId)) {
+                throw new AgpmNotAssociatedWithUserAcException(
+                        "User is not associated with AC ID: " + newAcId,
+                        List.of(agpmId),
+                        List.of(nextVersion)
+                );
+            }
+            try {
+                newAgpm.setAc(acService.findById(newAcId));
+            } catch (AcNotFound e) {
+                throw new AgpmNotAssociatedWithUserAcException(
+                        "Invalid AC ID: " + newAcId,
+                        List.of(agpmId),
+                        List.of(nextVersion)
+                );
+            }
+        }
+
         List<Docs> existingDocs = newAgpm.getDocs() != null ? new ArrayList<>(newAgpm.getDocs()) : new ArrayList<>();
 
         if (!requestedDocs.isEmpty()) {
@@ -833,6 +855,28 @@ public class AgpmServiceImpl implements AgpmService {
             } else {
                 log.warn("Document with ID {} not found for soft deletion", docId);
                 throw new DocNotFound("Document not found for deletion", List.of(docId));
+            }
+        }
+
+        // Check and update acId if provided in request
+        Integer newAcId = request.getAcId();
+        if (newAcId != null) {
+            List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+            if (userAcIds.isEmpty() || !userAcIds.contains(newAcId)) {
+                throw new AgpmNotAssociatedWithUserAcException(
+                        "User is not associated with AC ID: " + newAcId,
+                        List.of(agpmId),
+                        List.of(latestVersion)
+                );
+            }
+            try {
+                agpm.setAc(acService.findById(newAcId));
+            } catch (AcNotFound e) {
+                throw new AgpmNotAssociatedWithUserAcException(
+                        "Invalid AC ID: " + newAcId,
+                        List.of(agpmId),
+                        List.of(latestVersion)
+                );
             }
         }
 
