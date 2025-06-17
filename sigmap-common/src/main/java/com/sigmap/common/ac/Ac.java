@@ -26,7 +26,7 @@ public class Ac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "tutel_id")
   private RefParam tutel;
-  @ManyToMany (cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+  @ManyToMany (cascade = {CascadeType.PERSIST, CascadeType.MERGE},fetch = FetchType.EAGER)
   @JoinTable(
           name = "ac_direction",
           joinColumns = @JoinColumn(name = "ac_id", referencedColumnName = "ac_id"),
