@@ -7,6 +7,7 @@ import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.user_com.UserCom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -95,4 +96,6 @@ public interface ComService {
      * @param id the id of the Com to delete
      */
     void delete(Integer id) throws ComHasAssociatedAc;
+
+    public UserCom makeUserResponsable (String userId,Integer ComId);
 }

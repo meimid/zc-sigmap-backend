@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserComRepository extends JpaRepository<UserCom, UserComId>,
@@ -30,6 +31,13 @@ public interface UserComRepository extends JpaRepository<UserCom, UserComId>,
 
     @Query("SELECT uc.com.id FROM UserCom uc WHERE uc.userId = :userId AND uc.isDeleted = false")
     List<Integer> findComIdsByUserIdAndIsDeletedFalse(@Param("userId") String userId);
+
+    @Query("SELECT uc FROM UserCom uc WHERE uc.userId = :userId AND uc.com.id = :comId AND uc.isDeleted = false")
+    Optional<UserCom> findByUserIdAndComId(@Param("userId") String userId, @Param("comId") Integer comId);
+
+
+    @Query("SELECT uc FROM UserCom uc WHERE uc.comId = :comId AND uc.isDeleted = false AND uc.responsable = true")
+    UserCom findResponsableByComId(@Param("comId") Integer comId);
 
 
 
