@@ -20,8 +20,12 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.RealisationRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
@@ -29,9 +33,10 @@ import org.apache.poi.xwpf.usermodel.*;
 
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
-import static org.testcontainers.shaded.org.apache.commons.lang3.StringUtils.lowerCase;
 
 @Slf4j
 @Service
@@ -46,6 +51,7 @@ public class DacServiceImpl implements DacService {
     private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
     private final PpmRepository ppmRepository;
     private final RefParamRepository refParamRepository;
+    private final RealisationRepository realisationRepository;
 
 
     @Override
@@ -474,9 +480,9 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
-    public Dac create(CreateDacRequest request) {
-        if (request.getDacVer() == null || request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null || request.getStatusId() == null) {
-            throw new IllegalArgumentException("All fields (dacVer, ppmId, ppmVer, categoryId, statusId) are required");
+    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
+        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null ) {
+            throw new IllegalArgumentException("All fields (ppmId, ppmVer, categoryId) are required");
         }
         // Fetch related Ppm
         CompositeId ppmKey = new CompositeId();
@@ -484,19 +490,56 @@ public class DacServiceImpl implements DacService {
         ppmKey.setVersion(request.getPpmVer());
         Ppm ppm = ppmRepository.findById(ppmKey).orElseThrow(() -> new PpmIdNotFound( request.getPpmId(), request.getPpmVer()));
 
+        // Fetch related Realisation
+        CompositeId realisationKey = new CompositeId();
+        realisationKey.setId(request.getRealisationId());
+        realisationKey.setVersion(request.getRealisationVer());
+        Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
+
         // Fetch related RefParam (category)
-        RefParam category = refParamRepository.findById(request.getCategoryId()).orElse(null);
+        RefParam category = refParamRepository.findById(request.getCategoryId()).orElseThrow(() -> new RefParamNotFound("",List.of(request.getCategoryId())));
         if (category == null) {
             throw new IllegalArgumentException("Category not found");
         }
         // Create DAC
         Dac dac = new Dac();
-        dac.setDacVer(request.getDacVer());
+        dac.setDacVer(1);
         dac.setPpm(ppm);
+        dac.setRealisation(realisation);
         dac.setCategory(category);
         dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
 
         return savedCdac;
     }
+
+    @Override
+    public List <Dac> findAll() {
+        Specification<Dac> spec = DacSpecifications.searchByDeleted(false);
+        return dacRepository.findAll(spec);
+    }
+
+    @Override
+    public Page<Dac> findAll(Specification<Dac> spec, Pageable pageable) {
+        Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
+        return dacRepository.findAll(specification, pageable);
+    }
+
+    @Override
+    public Page<Realisation> findRealisationsWithoutDac(Pageable pageable) {
+        log.debug("Récupération des réalisations non liées à des DAC");
+        
+        // Récupérer les clés primaires des réalisations qui sont liées à des DAC
+        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
+        log.debug("Réalisations liées à des DAC: {}", realisationKeysWithDac);
+        
+        // Si la liste est vide, récupérer toutes les réalisations
+        if (realisationKeysWithDac.isEmpty()) {
+            return realisationRepository.findByCompositeIdNotInAndNotDeleted(Collections.emptyList(), pageable);
+        }
+        
+        // Récupérer les réalisations qui ne sont pas dans la liste
+        return realisationRepository.findByCompositeIdNotInAndNotDeleted(realisationKeysWithDac, pageable);
+    }
+
 }

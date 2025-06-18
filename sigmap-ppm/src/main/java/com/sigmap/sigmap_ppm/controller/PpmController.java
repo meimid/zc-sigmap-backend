@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_ppm.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.Ppm;
@@ -84,6 +85,15 @@ public class PpmController {
         Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/publie")
+    public ResponseEntity<Page<PpmResponseDto>> getAllPublishedPpms(Pageable pageable) {
+
+        Page<Ppm> ppms = ppmService.findAllByStatus(ProcessStatus.PUBLIE, pageable);
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(responses);
+
     }
 
     /**

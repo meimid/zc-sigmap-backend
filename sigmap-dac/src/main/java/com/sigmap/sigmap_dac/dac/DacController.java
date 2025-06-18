@@ -4,20 +4,31 @@ import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
+import com.sigmap.common.menu_item.MenuItem;
+import com.sigmap.common.menu_item.mappers.MenuItemMapper;
+import com.sigmap.common.menu_item.request.MenuItemQuery;
+import com.sigmap.common.menu_item.response.MenuItemResponse;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -26,7 +37,9 @@ import org.springframework.web.client.RestTemplate;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,8 +65,24 @@ public class DacController {
   }
 
 
+  @GetMapping
+  public ResponseEntity<Page<DacResponce>> findAll(DacQuery query, Pageable pageable) {
+    log.debug("API for get All dac .... ");
+    Page<Dac> dac = dacService.findAll(query.toSpecification(), pageable);
+    Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
+  @GetMapping("/realisations-sans-dac")
+  public ResponseEntity<Page<RealisationResponse>> findRealisationsWithoutDac(Pageable pageable) {
+    log.debug("API pour récupérer les réalisations non liées à des DAC");
+    Page<Realisation> realisations = dacService.findRealisationsWithoutDac(pageable);
+    Page<RealisationResponse> realisationsResponse = realisations.map(RealisationMapper.INSTANCE::map);
+    return ResponseEntity.ok(realisationsResponse);
+  }
+
   @PostMapping("/create")
-  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) {
+  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);

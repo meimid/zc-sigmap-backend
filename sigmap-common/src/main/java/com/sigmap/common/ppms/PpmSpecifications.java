@@ -3,6 +3,7 @@ package com.sigmap.common.ppms;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -47,10 +48,10 @@ public class PpmSpecifications {
     /**
      * Filter by status.
      */
-    public static Specification<Ppm> status(RefParam status) {
+    public static Specification<Ppm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
             if (status == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
+                return null; // Return all if null
             }
             return criteriaBuilder.equal(root.get("status"), status);
         };

@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms.request;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ref_params.RefParam;
@@ -17,7 +18,7 @@ public class PpmQuery {
     private String nom;
     private String annee;
     private BigDecimal budgetEstime;
-    private RefParam status;
+    private ProcessStatus status;
     private RefParam modePassation;
     private String remarque;
     private boolean deleted;
@@ -34,7 +35,7 @@ public class PpmQuery {
      * <li>{@link PpmSpecifications#nom(String)} if the nom property is not null or blank.</li>
      * <li>{@link PpmSpecifications#annee(String)} if the annee property is not null or blank.</li>
      * <li>{@link PpmSpecifications#budgetEstime(BigDecimal)} if the budgetEstime property is not null.</li>
-     * <li>{@link PpmSpecifications#status(RefParam)} if the status property is not null.</li>
+     * <li>{@link PpmSpecifications#status(ProcessStatus)} if the status property is not null.</li>
      * <li>{@link PpmSpecifications#deleted(boolean)} if the deleted property is true.</li>
      * </ul>
      * <p>

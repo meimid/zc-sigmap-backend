@@ -5,6 +5,7 @@ import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
 
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -101,6 +102,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(PpmIdNotFound.class)
   public ResponseEntity<ErrorResponse> ppmIdNotFoundExeption(PpmIdNotFound ex) {
     String message = messageSource.getMessage( "ppm.notFound", new Object[] {ex.getPpmId(), ex.getPpmver()}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(RealisationNotFoundException.class)
+  public ResponseEntity<ErrorResponse> realisationNotFoundException(RealisationNotFoundException ex) {
+    String message = messageSource.getMessage("realisation.notfound",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }

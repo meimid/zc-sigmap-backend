@@ -3,6 +3,7 @@ package com.sigmap.common.dac;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,6 +33,13 @@ public class Dac extends BaseEntity {
     @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
   })
   private Ppm ppm;
+
+  @ManyToOne
+  @JoinColumns({
+          @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
+          @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
+  })
+  private Realisation realisation;
 
   @ManyToOne
   @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
