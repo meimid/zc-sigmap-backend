@@ -12,6 +12,7 @@ public class AcQuery {
     private String nom;
     private String ancrage;
     private String contact;
+    private String email;
     private boolean deleted;
 
 
@@ -51,6 +52,9 @@ public class AcQuery {
 
         if (contact != null && !contact.isBlank()) {
             spec = spec.and(AcSpecifications.contact(contact));
+        }
+        if (email != null && !email.isBlank()) {
+            spec = spec.and(AcSpecifications.email(email));
         }
 
         return spec;

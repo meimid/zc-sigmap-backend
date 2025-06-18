@@ -19,11 +19,12 @@ import lombok.*;
 public class AcResponse {
   private Integer id;
   private String nom;
-//  private String ancrage;
+  private String ancrage;
   private String contact;
   //private List<UserDTO> users;
   private List<AcMemberDTO> users;
   private RefParamResponseDto tutel;
   private List<DirectionResponseDto> directions;
+  private String email;
   private BaseEntityResponse metadata;
 }

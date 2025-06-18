@@ -15,6 +15,7 @@ public class AcSpecifications {
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
           criteriaBuilder.like(root.get("contact"), "%" + search + "%") ,
+          criteriaBuilder.like(root.get("email"), "%" + search + "%") ,
           criteriaBuilder.like(join.get("description"), "%" + search + "%"),
           criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
           criteriaBuilder.like(join.get("code"),"%" + search + "%"));
@@ -50,6 +51,13 @@ public class AcSpecifications {
   public static Specification<Ac> contact(String contact) {
     return (root, query, criteriaBuilder) -> {
       return criteriaBuilder.like(root.get("contact"), "%" + contact + "%");
+    };
+  }
+
+  /** email. */
+  public static Specification<Ac> email(String email) {
+    return (root, query, criteriaBuilder) -> {
+      return criteriaBuilder.like(root.get("email"), "%" + email + "%");
     };
   }
 
