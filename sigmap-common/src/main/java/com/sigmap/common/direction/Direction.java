@@ -27,8 +27,9 @@ public class Direction extends BaseEntity {
             joinColumns = @JoinColumn(name = "direction_id", referencedColumnName = "direction_id"),
             inverseJoinColumns = @JoinColumn(name = "ac_id")
     )*/
-    @ManyToMany(mappedBy = "directions")
-    private List<Ac> acs;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ac_id")
+    private Ac ac;
 
 
 }

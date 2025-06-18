@@ -80,97 +80,6 @@ public class DirectionServiceImpl implements DirectionService {
         return repository.save(direction);
     }
 
-    @Override
-    @Transactional(rollbackOn = Exception.class)
-    public Direction create(DirectionRequest request) throws AcNotFound {
-        if(request.getLibelle() == null) {
-            throw new LibelleRequired("");
-        }
-        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle()));
-        if(findOne(specification).isPresent()) {
-            throw new DirectionAlreadyExist("", request.getLibelle());
-        }
-        Direction direction = DirectionMapper.INSTANCE.mapFromRequest(request);
-        if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            List<Integer> acIds = request.getAcIds();
-
-
-            int size = getSizeList(acIds);
-
-            // Check if all Ac IDs exist
-            var acs = acRepository.findAllById(acIds);
-            if (acs.size() != size) {
-                List<Integer> existingAcIds = acs.stream()
-                        .map(Ac::getId)
-                        .toList();
-                List<Integer> nonExistentAcIds = acIds.stream()
-                        .filter(acId -> !existingAcIds.contains(acId))
-                        .toList();
-                throw new AcNotFound("", nonExistentAcIds);
-            }
-             List<Integer> deletedAcs = acs.stream().filter(BaseEntity::getIsDeleted).map(Ac::getId).toList();
-            if(!deletedAcs.isEmpty()) {
-                throw new AcNotFound("", deletedAcs);
-            }
-            for (Integer acId : acIds) {
-                    updateDirectionAssociation(acId, direction, true);
-            }
-            direction.setAcs(acs);
-        }
-        else {
-            direction.setAcs(new ArrayList<>());
-        }
-            return save(direction);
-    }
-
-    @Override
-    public Direction update(Integer id, DirectionRequest request) throws DirectionNotFound, AcNotFound {
-        if(request.getLibelle() == null) {
-            throw new LibelleRequired("");
-        }
-        Direction direction = findById(id);
-        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle()));
-        if(findOne(specification).isPresent()&&!findOne(specification).get().getId().equals(id)) {
-            throw new DirectionAlreadyExist("", request.getLibelle());
-        }
-        DirectionMapper.INSTANCE.updateFromRequest(request,direction);
-        if (request.getAcIds() != null && !request.getAcIds().isEmpty()) {
-            List<Integer> acIds = request.getAcIds();
-
-            int size = getSizeList(acIds);
-
-            // Check if all Ac IDs exist
-            var acs = acRepository.findAllById(acIds);
-            if (acs.size() != size) {
-                List<Integer> existingAcIds = acs.stream()
-                        .map(Ac::getId)
-                        .toList();
-                List<Integer> nonExistentAcIds = acIds.stream()
-                        .filter(acId -> !existingAcIds.contains(acId))
-                        .toList();
-                throw new AcNotFound("", nonExistentAcIds);
-            }
-            List<Integer> deletedAcs = acs.stream().filter(BaseEntity::getIsDeleted).map(Ac::getId).toList();
-            if(!deletedAcs.isEmpty()) {
-                throw new AcNotFound("", deletedAcs);
-            }
-            List<Integer> oldAcIds = direction.getAcs().stream().filter(ac->!ac.getIsDeleted()).map(Ac::getId).toList();
-            direction.setAcs(acs);
-            for (Integer acId : acIds) {
-                if (!oldAcIds.contains(acId)) {
-                    updateDirectionAssociation(acId, direction, true);
-                }
-            }
-
-            for (Integer acId : oldAcIds) {
-                if (!acIds.contains(acId)) {
-                    updateDirectionAssociation(acId, direction, false);
-                }
-            }
-        }
-
-        return save(direction);
-    }
 
     @Override
     public void delete(Integer id) {
@@ -179,40 +88,36 @@ public class DirectionServiceImpl implements DirectionService {
     }
 
     @Override
-    public Direction createUnderAc(Integer acId, DirectionunderAcRequest request) throws AcNotFound {
+    public Direction createUnderAc(Integer acId, DirectionRequest request) throws AcNotFound {
         if(request.getLibelle() == null | request.getLibelle().isEmpty()) {
             throw new LibelleRequired("");
         }
-        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle()));
+        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle())).and(DirectionSpecifications.hasAcWithId(acId));
         if(findOne(specification).isPresent()) {
             throw new DirectionAlreadyExist("", request.getLibelle());
         }
         Ac ac=acService.findById(acId);
-        Direction direction= DirectionMapper.INSTANCE.mapFromDirectionUnderAcRequest(request);
-        direction.setAcs(new ArrayList<>());
-        direction.getAcs().add(ac);
-        updateDirectionAssociation(acId, direction, true);
+        Direction direction= DirectionMapper.INSTANCE.mapFromRequest(request);
+        direction.setAc(ac);
+        //ac.getDirections().add(direction);
+      //  updateDirectionAssociation(acId, direction, true);
 
         return save(direction);
     }
 
     @Override
-    public Direction updateUnderAc(Integer acId, Integer id, DirectionunderAcRequest request) throws DirectionNotFound, AcNotFound {
+    public Direction updateUnderAc(Integer acId, Integer id, DirectionRequest request) throws DirectionNotFound, AcNotFound {
         if(request.getLibelle() == null | request.getLibelle().isEmpty()) {
             throw new LibelleRequired("");
         }
-       Ac ac= acService.findById(acId);
-        Direction direction = findById(id);
-
-        if(!direction.getAcs().contains(ac)) {
-            throw new DirectionNotBelongToAc("",id,acId);
-        }
-        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle()));
-        if(findOne(specification).isPresent()&&!findOne(specification).get().getId().equals(id)) {
+        Specification<Direction> specification = DirectionSpecifications.deleted(false).and(DirectionSpecifications.libelle(request.getLibelle())).and(DirectionSpecifications.hasAcWithId(acId));
+        if(findOne(specification).isPresent()) {
             throw new DirectionAlreadyExist("", request.getLibelle());
         }
+       Ac ac= acService.findById(acId);
+        Direction direction = findById(id);
+        direction.setAc(ac);
         direction.setLibelle(request.getLibelle());
-
         return save(direction);
     }
 
@@ -248,9 +153,9 @@ public class DirectionServiceImpl implements DirectionService {
     public void updateDirectionAssociation(Integer acId, Direction direction, boolean shouldBeAssociated) throws AcNotFound {
         Ac ac = acService.findById(acId);
 
-        if(ac.getDirections()==null || ac.getDirections().isEmpty()) {
+       /* if(ac.getDirections()==null || ac.getDirections().isEmpty()) {
             ac.setDirections(new ArrayList<>());
-        }
+        }*/
         if (shouldBeAssociated) {
             // Logic to add the direction to the Ac's list
             if (!ac.getDirections().contains(direction)) {

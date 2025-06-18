@@ -75,29 +75,15 @@ public interface DirectionService {
     Direction save(Direction Direction);
 
     /**
-     * Create a Direction.
-     *
-     * @param request the request to create the Direction from
-     * @return the created Direction
-     */
-    Direction create(DirectionRequest request) throws AcNotFound;
-    /**
-     * update Direction.
-     *
-     * @param request the request to update the Direction from
-     * @return the updated Direction
-     */
-    Direction update(Integer id,DirectionRequest request) throws DirectionNotFound, AcNotFound;
-    /**
      * Delete a Direction.
      *
      * @param id the id of the Direction to delete
      */
     void delete(Integer id) ;
 
-    public Direction createUnderAc(Integer acId, DirectionunderAcRequest request) throws AcNotFound;
+    public Direction createUnderAc(Integer acId, DirectionRequest request) throws AcNotFound;
 
-    public Direction updateUnderAc(Integer acId,Integer id, DirectionunderAcRequest request) throws DirectionNotFound, AcNotFound;
+    public Direction updateUnderAc(Integer acId,Integer id, DirectionRequest request) throws DirectionNotFound, AcNotFound;
 
     Page<Direction> findAllunderAc(Integer acId, Pageable pageable) throws AcNotFound;
 }

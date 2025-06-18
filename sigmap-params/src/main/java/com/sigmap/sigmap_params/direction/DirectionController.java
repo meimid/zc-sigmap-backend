@@ -71,30 +71,6 @@ public class DirectionController {
     }
 
     /**
-     * Create a new Direction.
-     *
-     * @param request the request to create the Direction from
-     * @return the created Direction
-     */
-    @PostMapping
-    public ResponseEntity<DirectionResponse> create(@RequestBody DirectionRequest request) throws AcNotFound {
-        Direction Direction = directionService.create(request);
-        DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
-        return ResponseEntity.ok(response);
-    }
-    /**
-     * Update  Direction.
-     *
-     * @param request the request to update the Direction from
-     * @return the updated Direction
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<DirectionResponse> update(@PathVariable Integer id,@RequestBody DirectionRequest request) throws DirectionNotFound, AcNotFound {
-        Direction Direction = directionService.update(id,request);
-        DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
-        return ResponseEntity.ok(response);
-    }
-    /**
      * Delete a Direction based on the given id.
      *
      * @param id the id of the Direction to delete
@@ -112,7 +88,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PostMapping("/ac/{acId}")
-    public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
+    public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.createUnderAc(acId,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -120,7 +96,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PutMapping("/ac/{acId}/{id}")
-    public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
+    public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.updateUnderAc(acId,id,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

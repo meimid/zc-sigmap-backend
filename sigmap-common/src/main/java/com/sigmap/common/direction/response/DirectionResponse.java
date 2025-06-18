@@ -17,6 +17,6 @@ import java.util.List;
 public class DirectionResponse {
     private Integer id;
     private String libelle;
-    private List<AcResponseDto> acs;
+    private AcResponseDto ac;
     private BaseEntityResponse metadata;
 }

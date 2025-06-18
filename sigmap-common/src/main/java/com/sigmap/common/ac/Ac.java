@@ -6,7 +6,8 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -26,11 +27,6 @@ public class Ac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "tutel_id")
   private RefParam tutel;
-  @ManyToMany (cascade = {CascadeType.PERSIST, CascadeType.MERGE},fetch = FetchType.EAGER)
-  @JoinTable(
-          name = "ac_direction",
-          joinColumns = @JoinColumn(name = "ac_id", referencedColumnName = "ac_id"),
-          inverseJoinColumns = @JoinColumn(name = "direction_id")
-  )
-  List<Direction> directions;
+  @OneToMany(mappedBy = "ac", cascade = CascadeType.ALL)
+  Set<Direction> directions= new HashSet<>();;
 }
