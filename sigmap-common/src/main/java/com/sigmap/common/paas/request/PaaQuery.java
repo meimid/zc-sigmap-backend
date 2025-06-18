@@ -1,5 +1,6 @@
 package com.sigmap.common.paas.request;
 
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.PaaService;
@@ -19,7 +20,7 @@ public class PaaQuery {
     private String nom;
     private String annee;
     private BigDecimal budgetEstime;
-    private RefParam status;
+    private ProcessStatus status;
     private RefParam modePassation;
     private String remarque;
     private boolean deleted;
@@ -36,7 +37,7 @@ public class PaaQuery {
      * <li>{@link PaaSpecifications#nom(String)} if the nom property is not null or blank.</li>
      * <li>{@link PaaSpecifications#annee(String)} if the annee property is not null or blank.</li>
      * <li>{@link PaaSpecifications#budgetEstime(BigDecimal)} if the budgetEstime property is not null.</li>
-     * <li>{@link PaaSpecifications#status(RefParam)} if the status property is not null.</li>
+     * <li>{@link PaaSpecifications#status(ProcessStatus)} if the status property is not null.</li>
      * <li>{@link PaaSpecifications#deleted(boolean)} if the deleted property is true.</li>
      * </ul>
      * <p>

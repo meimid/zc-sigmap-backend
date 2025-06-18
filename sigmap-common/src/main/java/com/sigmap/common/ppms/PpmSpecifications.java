@@ -3,6 +3,7 @@ package com.sigmap.common.ppms;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -24,7 +25,9 @@ public class PpmSpecifications {
             return criteriaBuilder.or(
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("ref")), "%" + search.toLowerCase() + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + search.toLowerCase() + "%") // Assumes Ac has 'nom'
+                    criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + search.toLowerCase() + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), "%" + search.toLowerCase() + "%")
+                    // Assumes Ac has 'nom'
             );
         };
     }
@@ -47,11 +50,8 @@ public class PpmSpecifications {
     /**
      * Filter by status.
      */
-    public static Specification<Ppm> status(RefParam status) {
+    public static Specification<Ppm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
-            if (status == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
-            }
             return criteriaBuilder.equal(root.get("status"), status);
         };
     }
@@ -116,17 +116,6 @@ public class PpmSpecifications {
         };
     }
 
-    /**
-     * Filter by statusId.
-     */
-/*    public static Specification<Ppm> statusId(Integer statusId) {
-        return (root, query, criteriaBuilder) -> {
-            if (statusId == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
-            }
-            return criteriaBuilder.equal(root.get("statusId"), statusId);
-        };
-    }*/
 
     /**
      * Filter by deletion status.

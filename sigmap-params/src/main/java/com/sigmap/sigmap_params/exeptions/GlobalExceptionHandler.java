@@ -547,4 +547,11 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedAc.class)
+    public ResponseEntity<ErrorResponse> refParamHasAssociatedAcException(RefParamHasAssociatedAc ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedAc",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 }
