@@ -25,7 +25,9 @@ public class PpmSpecifications {
             return criteriaBuilder.or(
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("ref")), "%" + search.toLowerCase() + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + search.toLowerCase() + "%") // Assumes Ac has 'nom'
+                    criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + search.toLowerCase() + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), "%" + search.toLowerCase() + "%")
+                    // Assumes Ac has 'nom'
             );
         };
     }
@@ -118,18 +120,6 @@ public class PpmSpecifications {
     }
 
     /**
-     * Filter by statusId.
-     */
-    public static Specification<Ppm> statusId(Integer statusId) {
-        return (root, query, criteriaBuilder) -> {
-            if (statusId == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
-            }
-            return criteriaBuilder.equal(root.get("statusId"), statusId);
-        };
-    }
-
-    /**
      * Filter by deletion status.
      */
     public static Specification<Ppm> deleted(boolean deleted) {
@@ -157,12 +147,12 @@ public class PpmSpecifications {
         };
     }
 
-    public static Specification<Ppm> hasStatusId(Integer statusId) {
-        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    public static Specification<Ppm> hasModePassationId(Integer id) {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("id"), id);
     }
 
-    public static Specification<Ppm> statusNotDeleted() {
-        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    public static Specification<Ppm> modePassationNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("isDeleted"), false);
     }
 
     public static Specification<Ppm> isLatestVersion() {

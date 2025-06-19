@@ -3,6 +3,7 @@ package com.sigmap.common.paas;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -24,6 +25,7 @@ public class PaaSpecifications {
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("ref"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("status"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("nom"), "%" + search + "%") // Assumes Ac has 'nom'
             );
         };
@@ -107,11 +109,8 @@ public class PaaSpecifications {
     /**
      * Filter by status.
      */
-    public static Specification<Paa> status(RefParam status) {
+    public static Specification<Paa> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
-            if (status == null) {
-                return criteriaBuilder.conjunction(); // Return all if null
-            }
             return criteriaBuilder.equal(root.get("status"), status);
         };
     }
@@ -144,12 +143,12 @@ public class PaaSpecifications {
         };
     }
 
-    public static Specification<Paa> hasStatusId(Integer statusId) {
-        return (root, query, cb) -> cb.equal(root.get("status").get("id"), statusId);
+    public static Specification<Paa> hasModePassationId(Integer id) {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("id"), id);
     }
 
-    public static Specification<Paa> statusNotDeleted() {
-        return (root, query, cb) -> cb.equal(root.get("status").get("isDeleted"), false);
+    public static Specification<Paa> modePassationNotDeleted() {
+        return (root, query, cb) -> cb.equal(root.get("modePassation").get("isDeleted"), false);
     }
 
     public static Specification<Paa> isLatestVersion() {

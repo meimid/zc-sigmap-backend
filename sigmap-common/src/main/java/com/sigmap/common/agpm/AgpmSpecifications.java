@@ -2,6 +2,7 @@ package com.sigmap.common.agpm;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -17,6 +18,7 @@ public class AgpmSpecifications {
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("ref"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("status"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("nom"), "%" + search + "%")
             );
         };
@@ -70,12 +72,10 @@ public class AgpmSpecifications {
         };
     }
 
-    public static Specification<Agpm> statusId(Integer statusId) {
+    public static Specification<Agpm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
-            if (statusId == null) {
-                return criteriaBuilder.conjunction();
-            }
-            return criteriaBuilder.equal(root.get("statusId"), statusId);
+
+            return criteriaBuilder.equal(root.get("status"), status);
         };
     }
 
