@@ -3,6 +3,7 @@ package com.sigmap.common.agpm.request;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -13,7 +14,7 @@ public class AgpmQuery {
     private String ref;
     private String nom;
     private String contenu;
-    private Integer statusId;
+    private ProcessStatus status;
     private boolean deleted;
 
     public Specification<Agpm> toSpecification() {
@@ -39,8 +40,8 @@ public class AgpmQuery {
             spec = spec.and(AgpmSpecifications.contenu(contenu));
         }
 
-        if (statusId != null) {
-            spec = spec.and(AgpmSpecifications.statusId(statusId));
+       if (status != null) {
+            spec = spec.and(AgpmSpecifications.status(status));
         }
 
         return spec;

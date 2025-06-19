@@ -7,7 +7,6 @@ import com.sigmap.common.direction.exception.DirectionNotFound;
 import com.sigmap.common.direction.mappers.DirectionMapper;
 import com.sigmap.common.direction.request.DirectionQuery;
 import com.sigmap.common.direction.request.DirectionRequest;
-import com.sigmap.common.direction.request.DirectionunderAcRequest;
 import com.sigmap.common.direction.response.DirectionResponse;
 import com.sigmap.common.direction.response.DirectionResponseDto;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +15,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @Slf4j
@@ -60,12 +61,12 @@ public class DirectionController {
     /**
      * Return a Direction based on the given id.
      *
-     * @param id the id of the Direction to return
+     * @param directionId the id of the Direction to return
      * @return the Direction
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<DirectionResponse> findById(@PathVariable Integer id) throws DirectionNotFound {
-        Direction param = directionService.findById(id);
+    @GetMapping("/{directionId}/{acId}")
+    public ResponseEntity<DirectionResponse> findByIds(@PathVariable Integer directionId,@PathVariable Integer acId) throws DirectionNotFound {
+        Direction param = directionService.findByIds(directionId,acId);
         DirectionResponse response = DirectionMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -73,14 +74,14 @@ public class DirectionController {
     /**
      * Delete a Direction based on the given id.
      *
-     * @param id the id of the Direction to delete
+     * @param directionId the id of the Direction to delete
      * @return the deleted Direction
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer id) {
-        directionService.delete(id);
+    @DeleteMapping("/{directionId}/{acId}")
+    public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer directionId,@PathVariable Integer acId) throws AcNotFound {
+        directionService.delete(directionId, acId);
 
-        Direction deleted = directionService.findDeletedById(id)
+        Direction deleted = directionService.findDeletedByIds(directionId,acId)
                 .orElseThrow();
         DirectionResponse response = DirectionMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
@@ -102,12 +103,22 @@ public class DirectionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    //get all under Ac
+    //get all under Ac Page
     @GetMapping("/ac/{acId}")
-    public ResponseEntity<Page<DirectionResponseDto>> findAllUnderAc(
+    public ResponseEntity<Page<DirectionResponseDto>> findAllPageableUnderAc(
             @PathVariable Integer acId, Pageable pageable) throws AcNotFound {
-        Page <Direction> params = directionService.findAllunderAc(acId, pageable);
+        Page <Direction> params = directionService.findAllPageableUnderAc(acId, pageable);
         Page<DirectionResponseDto> acResponses = params.map(DirectionMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(acResponses);
+    }
+    //get all under Ac Page
+    @GetMapping("/ac-list/{acId}")
+    public ResponseEntity<List<DirectionResponseDto>> findAllListUnderAc(
+            @PathVariable Integer acId) throws AcNotFound {
+        List <Direction> params = directionService.findAllListUnderAc(acId);
+        List<DirectionResponseDto> acResponses = params.stream()
+                .map(DirectionMapper.INSTANCE::mapToDto)
+                .toList();
         return ResponseEntity.ok(acResponses);
     }
 }

@@ -37,6 +37,8 @@ public class UserCom extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ActiveStatus status;
 
+    private boolean responsable;
+
 
 
 }

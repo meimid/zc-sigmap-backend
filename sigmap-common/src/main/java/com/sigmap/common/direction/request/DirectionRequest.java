@@ -14,5 +14,5 @@ import java.util.List;
 @NoArgsConstructor
 public class DirectionRequest {
     private String libelle;
-    Integer acId;
+
 }
