@@ -1,5 +1,6 @@
 package com.sigmap.common.com.request;
 
+import jakarta.persistence.Column;
 import lombok.*;
 
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
 public class ComRequest {
   private String nom;
   private String decretCreation;
-  private String responsable;
+ // private boolean responsable;
   private Boolean special;
   private String ancrage;
   private String contact;
@@ -19,5 +20,6 @@ public class ComRequest {
   private Integer comTypeId;
   // private List<Integer> acIds;
    private List<String> userIds;
+  private String responsableId;
 
 }

@@ -1,5 +1,8 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmSpecifications;
@@ -55,6 +58,7 @@ public class RefParamServiceImpl implements RefParamService {
     private final PaaRepository paaRepository;
     private final SocieteAddressRepository societeAddressRepository;
     private final ComRepository comRepository;
+    private final AcRepository acRepository;
 
     /**
      * Constructor.
@@ -72,7 +76,9 @@ public class RefParamServiceImpl implements RefParamService {
                                PpmRepository ppmRepository,
                                PaaRepository paaRepository,
                                SocieteAddressRepository societeAddressRepository,
-                               ComRepository comRepository) {
+                               ComRepository comRepository,
+                               AcRepository acRepository
+                               ) {
         this.repository = repository;
         this.refTypeService = refTypeService;
         this.agpmRepository = agpmRepository;
@@ -83,6 +89,7 @@ public class RefParamServiceImpl implements RefParamService {
         this.paaRepository = paaRepository;
         this.societeAddressRepository = societeAddressRepository;
         this.comRepository = comRepository;
+        this.acRepository = acRepository;
     }
 
 
@@ -191,6 +198,12 @@ public class RefParamServiceImpl implements RefParamService {
             HasAssociatedAgpm, HasAssociatedRefRealisation, RefParamNotFound {
 
          findById(id);
+         Specification<Ac> acSpec=Specification.where(AcSpecifications.hasTutleId(id).and(AcSpecifications.deleted(false)));
+         boolean hasAAssociatedAc=acRepository.count(acSpec)>0;
+        if (hasAAssociatedAc) {
+            throw new RefParamHasAssociatedAc("", id);
+        }
+
         Specification<Com> comSpec = Specification.where(
                 ComSpecifications.deleted(false)
                         .and(ComSpecifications.hasComTypeId(id))
@@ -229,8 +242,8 @@ public class RefParamServiceImpl implements RefParamService {
 
         Specification<Ppm> ppmSpec = Specification.where(
                 PpmSpecifications.deleted(false)
-                        .and(PpmSpecifications.hasStatusId(id))
-                        .and(PpmSpecifications.statusNotDeleted())
+                        .and(PpmSpecifications.hasModePassationId(id))
+                        .and(PpmSpecifications.modePassationNotDeleted())
         );
         boolean hasAssociatedPpm = ppmRepository.count(ppmSpec) > 0;
         if (hasAssociatedPpm) {
@@ -239,14 +252,14 @@ public class RefParamServiceImpl implements RefParamService {
 
         Specification<Paa> paaSpec = Specification.where(
                 PaaSpecifications.deleted(false)
-                        .and(PaaSpecifications.hasStatusId(id))
-                        .and(PaaSpecifications.statusNotDeleted())
+                        .and(PaaSpecifications.hasModePassationId(id))
+                        .and(PaaSpecifications.modePassationNotDeleted())
         );
         boolean hasAssociatedPaa = paaRepository.count(paaSpec) > 0;
         if (hasAssociatedPaa) {
             throw new HasAssociatedPaa("", id);
         }
-
+/*
         Specification<Agpm> agpmSpec = Specification.where(
                 AgpmSpecifications.deleted(false)
                         .and(AgpmSpecifications.hasStatusId(id))
@@ -255,7 +268,7 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAssociatedAgpm = agpmRepository.count(agpmSpec) > 0;
         if (hasAssociatedAgpm) {
             throw new HasAssociatedAgpm("", id);
-        }
+        }*/
 
         Specification<Realisation> realisationSpec = Specification.where(
                 RealisationSpecifications.deleted(false)

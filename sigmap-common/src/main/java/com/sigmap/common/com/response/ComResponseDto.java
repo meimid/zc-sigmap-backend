@@ -8,10 +8,12 @@ public class ComResponseDto {
   private Integer id;
   private String nom;
   private String decretCreation;
-  private String responsable;
+  //private String responsable;
   private Boolean special;
   private String ancrage;
   private String contact;
   private String adresse;
   private RefParamResponseDto comType;
+  private String responsableId;
+
 }
