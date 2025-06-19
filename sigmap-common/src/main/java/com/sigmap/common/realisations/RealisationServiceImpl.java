@@ -50,8 +50,6 @@ public class RealisationServiceImpl implements RealisationService {
 
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
-    private final DocsService docsService;
-    private final AcService acService;
 
     private final DocsRepository docsRepository;
     private final SequenceGeneratorService sequenceGeneratorService;
@@ -66,8 +64,6 @@ public class RealisationServiceImpl implements RealisationService {
         this.refParamRepository = refParamRepository;
         this.alfrescoService = alfrescoService;
         this.documentCommuneService = documentCommuneService;
-        this.docsService = docsService;
-        this.acService = acService;
         this.docsRepository = docsRepository;
         this.sequenceGeneratorService = sequenceGeneratorService;
     }
