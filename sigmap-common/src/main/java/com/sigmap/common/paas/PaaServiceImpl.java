@@ -2563,4 +2563,166 @@ log.info("acs without paa IDs: {}", acIdsWithoutPaa);
 
         return acRepository.findAllById(acIdsWithoutPaa);
     }
+    @Override
+    @Transactional
+    public Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException {
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+        log.info("Creating PAA for year: {}", currentYear);
+
+        // Step 1: Validate the AC in the request
+        Integer requestAcId = request.getAcId();
+        if (requestAcId == null) {
+            throw new IllegalArgumentException("AC ID is required to create a PAA.");
+        }
+
+        // Step 2: Verify that the user is associated with the requested AC
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the connected user");
+            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+        }
+        if (!userAcIds.contains(requestAcId)) {
+            log.warn("User does not have permission for AC ID: {}", requestAcId);
+            throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
+        }
+
+        // Step 3: Verify that the AC exists
+        Ac ac = acService.findById(requestAcId);
+
+        // Step 4: Restrict creation to one PAA per AC per year
+        Specification<Paa> spec = PaaSpecifications.annee(currentYear)
+                .and(PaaSpecifications.paaAc(requestAcId))
+                .and(PaaSpecifications.deleted(false));
+        List<Paa> existingPaas = repository.findAll(spec);
+        if (!existingPaas.isEmpty()) {
+            Paa existingPaa = existingPaas.get(0);
+            throw new PaaCreationLimitExceededException(
+                    "A PAA already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
+                    existingPaa.getId(),
+                    existingPaa.getVersion(),
+                    1
+            );
+        }
+
+        // Step 5: Generate new PAA ID and set version
+        Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
+        Integer paaVersion = 1;
+
+        // Step 6: Create and populate PAA entity
+        Paa paa = new Paa();
+        paa.setId(paaId);
+        paa.setVersion(paaVersion);
+        paa.setNom(request.getNom());
+        paa.setModePassation(request.getModePassation());
+        paa.setRemarque(request.getRemarque());
+        paa.setAnnee(currentYear);
+        setRef(paa);
+        paa.setBudgetEstime(request.getBudgetEstime());
+        paa.setStatus(ProcessStatus.BROUILLON);
+        paa.setAc(ac);
+        paa.setRealisations(new ArrayList<>());
+        paa.setDocs(new ArrayList<>());
+
+        // Step 7: Validate annee
+        if (!currentYear.equals(paa.getAnnee())) {
+            throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + paa.getAnnee());
+        }
+        log.info("Annee validation passed: {}", paa.getAnnee());
+
+        // Step 8: Save PAA initially
+        Paa savedPaa = repository.save(paa);
+
+        // Step 9: Handle documents for PAA
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = new ArrayList<>();
+            for (Integer docId : request.getDocIds()) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                if (doc.getPaas() == null) {
+                    doc.setPaas(new ArrayList<>());
+                }
+                doc.getPaas().add(savedPaa);
+                docs.add(doc);
+                docsRepository.save(doc);
+            }
+            savedPaa.setDocs(docs);
+        }
+
+        if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
+            documentCommuneService.processAndSaveDocuments(
+                    request.getPaaFiles(),
+                    savedPaa,
+                    Constants.PATH_ENTREPOT_GED_PAA
+            );
+        }
+
+        // Step 10: Process realisations if provided
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+
+            List<Realisation> realisationsToSave = new ArrayList<>();
+            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+                Realisation realisation = new Realisation();
+                realisation.setId(nextRealisationId++);
+                realisation.setVersion(1);
+                realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                realisation.setService(realisationRequest.getService());
+                realisation.setDirection(realisationRequest.getDirection());
+                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setMonais(realisationRequest.getMonais());
+                realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                realisation.setIsPublished(realisationRequest.getIsPublished());
+                realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                realisation.setSort(realisationRequest.getSort());
+
+                // Handle realisation files
+                if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
+                    documentCommuneService.processAndSaveDocuments(
+                            realisationRequest.getRealisationFiles(),
+                            realisation,
+                            Constants.PATH_ENTREPOT_GED_PAA + "/" + paa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
+                    );
+                }
+
+                // Set bidirectional relationship with PAA
+                if (realisation.getPaas() == null) {
+                    realisation.setPaas(new ArrayList<>());
+                }
+                realisation.getPaas().add(savedPaa);
+                savedPaa.getRealisations().add(realisation);
+
+                // Handle Lots
+                if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
+                    Set<Lot> lots = new HashSet<>();
+                    for (LotResponse lotRequest : realisationRequest.getLots()) {
+                        Lot lot = new Lot();
+                        Integer lotId = lotRequest.getId();
+                        if (lotId == null) {
+                            lotId = nextLotId++;
+                        }
+                        lot.setId(lotId);
+                        lot.setVersion(1);
+                        lot.setDescription(lotRequest.getDescription());
+                        lot = lotRepository.save(lot);
+                        lots.add(lot);
+                    }
+                    realisation.setLots(lots);
+                }
+
+                realisationsToSave.add(realisation);
+            }
+            realisationRepository.saveAll(realisationsToSave);
+        }
+
+        return repository.save(savedPaa);
+    }
 }
