@@ -113,4 +113,12 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(DacWithRealisation.class)
+  public ResponseEntity<ErrorResponse> dacWithRealisationException(DacWithRealisation ex) {
+    String message = messageSource.getMessage("realisation.associated",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
 }

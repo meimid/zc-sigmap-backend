@@ -2,6 +2,7 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.dac_docs.DacDocs;
 import java.util.List;
+import java.util.Optional;
 
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.repository.SoftDeleteRepository;
@@ -26,4 +27,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
    */
   @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL and d.isDeleted = false")
   List<Object[]> findRealisationKeysWithDac();
+
+  @Query("SELECT d FROM Dac d WHERE d.realisation.id = :id and d.realisation.version = :version and d.isDeleted = false")
+  Optional<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
 }

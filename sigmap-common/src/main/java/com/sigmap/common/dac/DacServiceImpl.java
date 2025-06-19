@@ -1,5 +1,6 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
@@ -494,6 +495,13 @@ public class DacServiceImpl implements DacService {
         CompositeId realisationKey = new CompositeId();
         realisationKey.setId(request.getRealisationId());
         realisationKey.setVersion(request.getRealisationVer());
+
+        // Check if a DAC already exists for this Realisation
+        Optional<Dac> existingDac = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
+        if (existingDac.isPresent()) {
+            throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+        }
+
         Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
 
         // Fetch related RefParam (category)
