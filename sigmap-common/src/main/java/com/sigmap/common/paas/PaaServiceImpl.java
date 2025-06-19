@@ -2526,4 +2526,41 @@ public class PaaServiceImpl implements PaaService {
 
         return paasList;
     }
+
+    public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+        }
+
+          log.info("user ac"+userAcIds);
+
+        for (Integer acId : userAcIds) {
+            acService.findById(acId);
+        }
+
+        Specification<Paa> spec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("annee"), currentYear);
+        List<Paa> paas = repository.findAll(spec);
+
+        Set<Integer> acIdsWithPaa = paas.stream()
+                .filter(paa -> paa.getAc() != null)
+                .map(paa -> paa.getAc().getId())
+                .collect(Collectors.toSet());
+      log.info("acs with paa IDs: {}", acIdsWithPaa);
+
+        List<Integer> acIdsWithoutPaa = userAcIds.stream()
+                .filter(acId -> !acIdsWithPaa.contains(acId))
+                .collect(Collectors.toList());
+
+log.info("acs without paa IDs: {}", acIdsWithoutPaa);
+
+        if (acIdsWithoutPaa.isEmpty()) {
+            throw new AllAcsHavePaaException("Vous ne pouvez pas actuellement créer un nouveau PAA !  Toutes les AC dont vous appartenez ont des PAA en cours.");
+        }
+
+        return acRepository.findAllById(acIdsWithoutPaa);
+    }
 }

@@ -187,6 +187,8 @@ public interface PaaService {
 
     List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound;
 
+    List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
+
 
 
 }
