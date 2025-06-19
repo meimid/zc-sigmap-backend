@@ -2407,86 +2407,6 @@ public class PaaServiceImpl implements PaaService {
     // Add a synchronization object
     private final Object folderCreationLock = new Object();
 
-    /*private void processAndSaveDocuments(List<MultipartFile> files, Paa savedPaa) throws IOException {
-        UUID uuid = UUID.randomUUID();
-        // Add a file counter to ensure unique filenames even with the same UUID
-        AtomicInteger fileCounter = new AtomicInteger(0);
-
-        if (files != null && !files.isEmpty()) {
-            // Create a unique folder path with timestamp to prevent any possible conflict
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            // Use parent folder path from Constants but add our unique structure
-            String baseFolder = Constants.PATH_ENTREPOT_GED_PAA.replace("/SIGMAP-DEV/ARCHIVE/PAA/", "/SIGMAP-DEV/ARCHIVE/PAA_DOCS/");
-            String folderPath = String.format("%s/PAA_%d/%d_%s", baseFolder, savedPaa.getId(), savedPaa.getVersion(), timestamp);
-
-            // Create the folder structure first, synchronizing to prevent conflicts
-            String folderId;
-            synchronized (folderCreationLock) {
-                try {
-                    // Get or create the folder first, outside the file processing loop
-                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
-                    log.info("Created/Retrieved PAA folder: Path={}, ID={}", folderPath, folderId);
-                } catch (Exception e) {
-                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
-                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
-                }
-            }
-
-            // Now process each file using the already-created folder
-            for (MultipartFile file : files) {
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Tika tika = new Tika();
-                        String detectedMimeType = tika.detect(file.getInputStream());
-                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-
-                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-                        if (fileExtension.isEmpty()) {
-                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-                        }
-
-                        long fileSize = file.getSize();
-                        String formattedSize = documentCommuneService.formatSize(fileSize);
-
-                        String[] parts = originalFilename.split("\\.");
-                        String baseName = parts[0];
-                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-                        // Include timestamp and counter to ensure uniqueness
-                        String uniqueFileName = String.format("paa_%s_%s_%d%s", uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
-                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-
-                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}", originalFilename, uniqueFileName, folderPath, folderId);
-
-                        // Upload directly to the already-created folder
-                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
-                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
-
-                        Docs document = new Docs();
-                        document.setName(baseName);
-                        document.setAlfresco_id(alfrescoId);
-                        document.setPathFolder(folderPath);
-                        document.setFileSize(formattedSize);
-                        document.setContentType(detectedMimeType);
-                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-                        document.setAlfrescoName(uniqueFileName);
-                        if (document.getPaas() == null) {
-                            document.setPaas(new ArrayList<>());
-                        }
-                        if (savedPaa.getDocs() == null) {
-                            savedPaa.setDocs(new ArrayList<>());
-                        }
-                        document.getPaas().add(savedPaa);
-                        savedPaa.getDocs().add(document);
-
-                        docsRepository.save(document);
-                    } catch (Exception e) {
-                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
-                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-                    }
-                }
-            }
-        }
-    }*/
 
     public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound {
         Integer latestVersion = findLatestVersionById(paaId).orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of(paaVer)));
@@ -2501,98 +2421,6 @@ public class PaaServiceImpl implements PaaService {
     }
 
 
-   /* void processAndSaveRelisationsDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-        List<Docs> docs = new ArrayList<>();
-        UUID uuid = UUID.randomUUID();
-        // Add a file counter to ensure unique filenames even with the same UUID
-        AtomicInteger fileCounter = new AtomicInteger(0);
-
-        if (files != null && !files.isEmpty()) {
-            // Create a completely unique folder name with timestamp to avoid conflicts
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            // Use parent folder path from Constants but avoid using "REALISATION" directly
-            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
-//            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION;
-            String folderPath = String.format("%s/REL_%d/%d_%s", baseFolder, savedRealisation.getId(), savedRealisation.getVersion(), timestamp);
-
-            // Create the folder structure first, synchronizing to prevent conflicts
-            String folderId;
-            synchronized (folderCreationLock) {
-                try {
-                    // Get or create the folder first, outside the file processing loop
-                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
-                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
-                } catch (Exception e) {
-                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
-                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
-                }
-            }
-
-            // Now process each file using the already-created folder
-            for (MultipartFile file : files) {
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Tika tika = new Tika();
-                        String detectedMimeType = tika.detect(file.getInputStream());
-                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-
-                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-                        if (fileExtension.isEmpty()) {
-                            fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
-                        }
-
-                        long fileSize = file.getSize();
-                        String formattedSize = documentCommuneService.formatSize(fileSize);
-
-                        String[] parts = originalFilename.split("\\.");
-                        String baseName = parts[0];
-                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-                        // Include timestamp and counter to ensure uniqueness
-                        String uniqueFileName = String.format("realisation_%s_%s_%d%s", uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
-                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-
-                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}", originalFilename, uniqueFileName, folderPath, folderId);
-
-                        // Upload directly to the already-created folder
-                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
-                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
-
-                        Docs document = new Docs();
-                        document.setName(baseName);
-                        document.setAlfresco_id(alfrescoId);
-                        document.setPathFolder(folderPath);
-                        document.setFileSize(formattedSize);
-                        document.setContentType(detectedMimeType);
-                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-                        document.setAlfrescoName(uniqueFileName);
-
-                        // Ensure collections are initialized
-                        if (document.getRealisations() == null) {
-                            document.setRealisations(new ArrayList<>());
-                        }
-                        if (savedRealisation.getDocs() == null) {
-                            savedRealisation.setDocs(new ArrayList<>());
-                        }
-
-                        // Set up bidirectional relationship
-                        document.getRealisations().add(savedRealisation);
-                        savedRealisation.getDocs().add(document);
-
-                        // Save the document
-                        docsRepository.save(document);
-                        docs.add(document);
-                    } catch (Exception e) {
-                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
-                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-                    }
-                }
-            }
-        }
-
-        // Update the realisation's docs
-        savedRealisation.setDocs(docs);
-    }*/
-
     @Transactional
     public Paa updateStatus(Integer paaId, Integer paaVer, ProcessStatus status) throws PaaNotFound {
         CompositeId compositeId = new CompositeId(paaId, paaVer);
@@ -2603,91 +2431,6 @@ public class PaaServiceImpl implements PaaService {
         paa.setUpdatedAt(Calendar.getInstance());
         return repository.save(paa);
     }
-
-
-   /* void processAndSaveRelisationsDocumentsForUpdate(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
-        List<Docs> docs = new ArrayList<>();
-        UUID uuid = UUID.randomUUID();
-        AtomicInteger fileCounter = new AtomicInteger(0);
-
-        if (files != null && !files.isEmpty()) {
-            // Create a unique folder path with timestamp to avoid conflicts
-            String timestamp = String.valueOf(System.currentTimeMillis());
-            String baseFolder = Constants.PATH_ENTREPOT_GED_REALISATION.replace("/SIGMAP-DEV/ARCHIVE/REALISATION/", "/SIGMAP-DEV/ARCHIVE/REAL_DOCS/");
-            String folderPath = String.format("%s/REL_%d/%d_%s", baseFolder, savedRealisation.getId(), savedRealisation.getVersion(), timestamp);
-
-            // Create a new folder for this upload operation
-            String folderId;
-            synchronized (folderCreationLock) {
-                try {
-                    folderId = alfrescoService.getOrCreateFolderByPath(folderPath);
-                    log.info("Created/Retrieved Realisation folder: Path={}, ID={}", folderPath, folderId);
-                } catch (Exception e) {
-                    log.error("Failed to create folder: Path={}, Error={}", folderPath, e.getMessage());
-                    throw new IOException("Failed to create folder: " + e.getMessage(), e);
-                }
-            }
-
-            // Process each file
-            for (MultipartFile file : files) {
-                if (file != null && !file.isEmpty()) {
-                    try {
-                        Tika tika = new Tika();
-                        String detectedMimeType = tika.detect(file.getInputStream());
-                        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "document";
-
-                        String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
-
-                        long fileSize = file.getSize();
-                        String formattedSize = documentCommuneService.formatSize(fileSize);
-
-                        String[] parts = originalFilename.split("\\.");
-                        String baseName = parts[0];
-                        String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
-                        String uniqueFileName = String.format("realisation_%s_%s_%d%s", uuid.toString(), timestamp, fileCounter.incrementAndGet(), extension);
-                        MultipartFile renamedFile = new RenamedMultipartFile(file, uniqueFileName);
-
-                        log.info("Uploading file: OriginalName={}, UniqueName={}, FolderPath={}, FolderID={}", originalFilename, uniqueFileName, folderPath, folderId);
-
-                        // Upload with retry logic
-                        String alfrescoId = alfrescoService.uploadToExistingFolder(renamedFile, folderId);
-                        log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}", alfrescoId, uniqueFileName);
-
-                        Docs document = new Docs();
-                        document.setName(baseName);
-                        document.setAlfresco_id(alfrescoId);
-                        document.setPathFolder(folderPath);
-                        document.setFileSize(formattedSize);
-                        document.setContentType(detectedMimeType);
-                        document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
-                        document.setAlfrescoName(uniqueFileName);
-
-                        // Ensure collections are initialized
-                        if (document.getRealisations() == null) {
-                            document.setRealisations(new ArrayList<>());
-                        }
-                        if (savedRealisation.getDocs() == null) {
-                            savedRealisation.setDocs(new ArrayList<>());
-                        }
-
-                        // Set up bidirectional relationship
-                        document.getRealisations().add(savedRealisation);
-                        savedRealisation.getDocs().add(document);
-
-                        // Save the document
-                        docsRepository.save(document);
-                        docs.add(document);
-                    } catch (Exception e) {
-                        log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
-                        throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
-                    }
-                }
-            }
-        }
-
-        // Update the realisation's docs
-        savedRealisation.setDocs(docs);
-    }*/
 
     @Transactional
     @Override
@@ -2744,4 +2487,43 @@ public class PaaServiceImpl implements PaaService {
         paa.setRef(ref);
     }
 
+    @Override
+    public List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
+        log.info("Retrieving current year's PAAs for connected user");
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the connected user");
+            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+        }
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC not found with ID: {}", acId);
+                throw e;
+            }
+        }
+
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+
+        List<Paa> paasList = new ArrayList<>();
+        for (Integer acId : userAcIds) {
+            Specification<Paa> spec = PaaSpecifications.annee(currentYear)
+                    .and(PaaSpecifications.paaAc(acId))
+                    .and(PaaSpecifications.deleted(false))
+                    .and(PaaSpecifications.isLatestVersion());
+            Optional<Paa> paaOpt = repository.findOne(spec);
+            paaOpt.ifPresent(paasList::add);
+        }
+
+        if (paasList.isEmpty()) {
+            log.warn("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            throw new PaaNotFound("No PAAs found for the current year and user ACs: " + userAcIds,
+                    Collections.emptyList(), Collections.emptyList());
+        }
+
+        return paasList;
+    }
 }

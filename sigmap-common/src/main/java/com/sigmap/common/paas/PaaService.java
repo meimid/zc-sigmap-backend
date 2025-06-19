@@ -1,5 +1,6 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
@@ -184,6 +185,7 @@ public interface PaaService {
      */
     Page<Paa> findAllVersionsById(Integer paaId, Pageable pageable) throws PaaIdNotFound;
 
+    List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound;
 
 
 

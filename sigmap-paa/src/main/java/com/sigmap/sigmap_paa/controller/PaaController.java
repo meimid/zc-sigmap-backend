@@ -1,6 +1,9 @@
 package com.sigmap.sigmap_paa.controller;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -91,6 +94,15 @@ public class PaaController {
         Paa paas = paaService.getPaaOfCurrentYear();
         PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paas);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/current-year/user")
+    public ResponseEntity<List<PaaResponseWithRealisations>> getCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
+        List<Paa> paas = paaService.findCurrentYearPaasByUser();
+        List<PaaResponseWithRealisations> responses = paas.stream()
+                .map(PaaDetailedMapper.INSTANCE::mapDetailed)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 
     /**
