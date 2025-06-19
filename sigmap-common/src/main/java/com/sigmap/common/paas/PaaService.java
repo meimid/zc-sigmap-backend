@@ -6,10 +6,12 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -188,6 +190,7 @@ public interface PaaService {
     List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound;
 
     List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
+    Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;
 
 
 
