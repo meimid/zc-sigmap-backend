@@ -20,11 +20,5 @@ public interface DacService {
     List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String basePath, String customDirPath) ;
 
     String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath);
-    
-    /**
-     * Récupère les réalisations qui ne sont pas liées à des DAC
-     * @param pageable paramètres de pagination
-     * @return page de réalisations non liées à des DAC
-     */
-    Page<Realisation> findRealisationsWithoutDac(Pageable pageable);
+
 }

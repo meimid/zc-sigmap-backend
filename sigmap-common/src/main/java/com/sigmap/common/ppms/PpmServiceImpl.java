@@ -3,15 +3,13 @@ package com.sigmap.common.ppms;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
-import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
@@ -20,10 +18,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
-import com.sigmap.common.lots.request.LotRequest;
 import com.sigmap.common.lots.response.LotResponse;
-import com.sigmap.common.paas.Paa;
-import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.ppms.exception.InvalidPpmStatusException;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -35,19 +30,16 @@ import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
-import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
-import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,12 +48,9 @@ import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.FilenameUtils;
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.Year;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 @Slf4j
 @Service
@@ -73,13 +62,13 @@ public class PpmServiceImpl implements PpmService {
     private final DocsRepository docsRepository;
     private final RealisationService realisationService;
     private final LotRepository lotRepository;
-
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
     private final DocsService docsService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final DacRepository dacRepository;
 
 
     /**
@@ -94,7 +83,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService) {
+    public PpmServiceImpl(PpmRepository repository, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -107,8 +96,8 @@ public class PpmServiceImpl implements PpmService {
         this.docsService = docsService;
         this.acService = acService;
         this.currentUserService = currentUserService;
-
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.dacRepository = dacRepository;
     }
 
     @Override
@@ -4558,6 +4547,25 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         }
         String ref = "PPM_" + ppm.getAnnee() + "_" + ppm.getId();
         ppm.setRef(ref);
+    }
+
+    @Override
+    public Page<Realisation> getRealisationsWithoutDac(Integer ppmId, Integer ppmVer, Pageable pageable) {
+        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
+        // Get all realisations for the given PPM and version, not in DAC
+        List<Realisation> allRealisationsForPpm = realisationRepository.findAll().stream()
+                .filter(r -> r.getPpms() != null && r.getPpms().stream().anyMatch(ppm ->
+                        ppm.getId().equals(ppmId) && ppm.getVersion().equals(ppmVer)))
+                .filter(r -> realisationKeysWithDac.stream().noneMatch(key ->
+                        key[0] != null && key[1] != null &&
+                                r.getId().equals(key[0]) && r.getVersion().equals(key[1])
+                ))
+                .collect(Collectors.toList());
+        // Convert the list to a Page
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), allRealisationsForPpm.size());
+        List<Realisation> pageContent = allRealisationsForPpm.subList(start, end);
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, allRealisationsForPpm.size());
     }
 
 }

@@ -9,6 +9,7 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.realisations.Realisation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -297,5 +298,14 @@ public interface PpmService {
      * @throws PpmIdNotFound if no Ppm entities are found for the ID
      */
     Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound;
+    /**
+     * Récupère les réalisations qui ne sont pas liées à des DAC by ppmId et ppmVer
+     *
+     * @param ppmId    id du ppm
+     * @param ppmVer   version du ppm
+     * @param pageable paramètres de pagination
+     * @return page de réalisations non liées à des DAC
+     */
+    Page<Realisation> getRealisationsWithoutDac(Integer ppmId, Integer ppmVer, Pageable pageable);
 
 }

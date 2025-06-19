@@ -28,15 +28,13 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
      */
     @Query("SELECT MAX(r.version) FROM Realisation r WHERE r.id = :id AND r.isDeleted = false")
     Integer findMaxVersionById(@Param("id") Integer id);
-    
-    /**
-     * Récupère les réalisations qui ne sont pas dans la liste de clés primaires données et qui ne sont pas supprimées
-     * @param realisationKeys liste des clés primaires (id, version) à exclure
-     * @param pageable paramètres de pagination
-     * @return page de réalisations
-     */
-    @Query("SELECT r FROM Realisation r WHERE (r.id, r.version) NOT IN :realisationKeys AND r.isDeleted = false")
-    Page<Realisation> findByCompositeIdNotInAndNotDeleted(@Param("realisationKeys") List<Object[]> realisationKeys, Pageable pageable);
+
+    @Query("SELECT r FROM Realisation r JOIN r.ppms ppm " +
+            "WHERE ppm.id = :ppmId AND ppm.version = :ppmVer " +
+            "AND NOT EXISTS (SELECT 1 FROM Dac d WHERE d.realisation.id = r.id AND d.realisation.version = r.version)")
+    Page<Realisation> findRealisationsWithoutDacByPpm(@Param("ppmId") Integer ppmId,
+                                                      @Param("ppmVer") Integer ppmVer,
+                                                      Pageable pageable);
 }
 
 //public interface RealisationRepository extends JpaRepository<Realisation, RealisationId>,

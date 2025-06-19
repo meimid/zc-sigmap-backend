@@ -73,14 +73,6 @@ public class DacController {
     return ResponseEntity.ok(dacResponse);
   }
 
-  @GetMapping("/realisations-sans-dac")
-  public ResponseEntity<Page<RealisationResponse>> findRealisationsWithoutDac(Pageable pageable) {
-    log.debug("API pour récupérer les réalisations non liées à des DAC");
-    Page<Realisation> realisations = dacService.findRealisationsWithoutDac(pageable);
-    Page<RealisationResponse> realisationsResponse = realisations.map(RealisationMapper.INSTANCE::map);
-    return ResponseEntity.ok(realisationsResponse);
-  }
-
   @PostMapping("/create")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
     Dac saved = dacService.create(request);

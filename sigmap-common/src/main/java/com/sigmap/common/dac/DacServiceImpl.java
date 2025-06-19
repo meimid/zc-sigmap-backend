@@ -525,21 +525,4 @@ public class DacServiceImpl implements DacService {
         return dacRepository.findAll(specification, pageable);
     }
 
-    @Override
-    public Page<Realisation> findRealisationsWithoutDac(Pageable pageable) {
-        log.debug("Récupération des réalisations non liées à des DAC");
-        
-        // Récupérer les clés primaires des réalisations qui sont liées à des DAC
-        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
-        log.debug("Réalisations liées à des DAC: {}", realisationKeysWithDac);
-        
-        // Si la liste est vide, récupérer toutes les réalisations
-        if (realisationKeysWithDac.isEmpty()) {
-            return realisationRepository.findByCompositeIdNotInAndNotDeleted(Collections.emptyList(), pageable);
-        }
-        
-        // Récupérer les réalisations qui ne sont pas dans la liste
-        return realisationRepository.findByCompositeIdNotInAndNotDeleted(realisationKeysWithDac, pageable);
-    }
-
 }
