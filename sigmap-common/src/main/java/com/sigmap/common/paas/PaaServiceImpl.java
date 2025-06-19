@@ -1031,7 +1031,7 @@ public class PaaServiceImpl implements PaaService {
 
         // Only use request values when they're not null, otherwise keep existing values
 
-//        tempPaa.setRef(request.getRef() != null ? request.getRef() : existingPaa.getRef());
+        tempPaa.setRef(existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
         tempPaa.setProcessInstanceId(existingPaa.getProcessInstanceId());
@@ -1549,7 +1549,7 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setVersion(paaVer + 1);
 
         // Copy properties from temp PAA
-//        newPaa.setRef(tempPaa.getRef());
+        newPaa.setRef(tempPaa.getRef());
         newPaa.setNom(tempPaa.getNom());
         newPaa.setAnnee(tempPaa.getAnnee());
         newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
