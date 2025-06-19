@@ -1,5 +1,5 @@
 package com.sigmap.common.direction;
-import com.sigmap.common.ac.Ac;
+
 import com.sigmap.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;

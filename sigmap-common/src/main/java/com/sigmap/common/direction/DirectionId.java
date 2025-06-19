@@ -1,7 +1,5 @@
 package com.sigmap.common.direction;
 
-import com.sigmap.common.entity.CompositeId;
-import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

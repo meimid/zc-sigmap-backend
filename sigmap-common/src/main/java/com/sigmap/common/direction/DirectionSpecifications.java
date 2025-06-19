@@ -1,7 +1,6 @@
 package com.sigmap.common.direction;
 
-import com.sigmap.common.ac.Ac;
-import jakarta.persistence.criteria.Join;
+
 import org.springframework.data.jpa.domain.Specification;
 public class DirectionSpecifications {
     public static Specification<Direction> search(String search) {
