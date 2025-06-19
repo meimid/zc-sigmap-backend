@@ -154,4 +154,11 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AllAcsHavePaaException.class)
+    public ResponseEntity<ErrorResponse> handleAllAcsHavePaaException(AllAcsHavePaaException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 }
