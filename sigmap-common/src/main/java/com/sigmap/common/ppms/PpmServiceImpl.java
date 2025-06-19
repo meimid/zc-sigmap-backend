@@ -4560,13 +4560,4 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         ppm.setRef(ref);
     }
 
-    @Override
-    public Page<Ppm> findAllByStatus(ProcessStatus status, Pageable pageable) {
-        if (status == null) {
-            throw new IllegalArgumentException("Status cannot be null");
-        }
-        Specification<Ppm> spec = Specification.where(PpmSpecifications.status(status))
-                .and(PpmSpecifications.deleted(false));
-        return repository.findAll(spec, pageable);
-    }
 }

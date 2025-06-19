@@ -87,14 +87,6 @@ public class PpmController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/publie")
-    public ResponseEntity<Page<PpmResponseDto>> getAllPublishedPpms(Pageable pageable) {
-
-        Page<Ppm> ppms = ppmService.findAllByStatus(ProcessStatus.PUBLIE, pageable);
-        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
-        return ResponseEntity.ok(responses);
-
-    }
 
     /**
      * Return a page of deleted ppms based on the given specification and pageable.

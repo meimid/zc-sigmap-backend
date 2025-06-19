@@ -298,12 +298,4 @@ public interface PpmService {
      */
     Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound;
 
-    /**
-     * Find PPMs by status
-     *
-     * @param status the status to filter by
-     * @return List of PPMs with the specified status
-     */
-    Page<Ppm> findAllByStatus(ProcessStatus status, Pageable pageable);
-
 }
