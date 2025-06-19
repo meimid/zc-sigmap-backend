@@ -34,6 +34,7 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.transaction.Transactional;
@@ -2525,5 +2526,54 @@ public class PaaServiceImpl implements PaaService {
         }
 
         return paasList;
+    }
+
+    public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+        log.info("Checking ACs without PAA for current year: {}", currentYear);
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the connected user");
+            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+        }
+        log.info("User AC IDs: {}", userAcIds);
+
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (AcNotFound e) {
+                log.warn("AC not found with ID: {}", acId);
+                throw e;
+            }
+        }
+
+        Specification<Paa> spec = (root, query, criteriaBuilder) -> {
+            Predicate yearPredicate = criteriaBuilder.equal(root.get("annee"), currentYear);
+            Predicate notDeletedPredicate = criteriaBuilder.isFalse(root.get("isDeleted"));
+            return criteriaBuilder.and(yearPredicate, notDeletedPredicate);
+        };
+        List<Paa> paas = repository.findAll(spec);
+        log.info("Found {} PAAs for year {} (non-deleted)", paas.size(), currentYear);
+
+        Set<Integer> acIdsWithPaa = paas.stream()
+                .filter(paa -> paa.getAc() != null)
+                .map(paa -> paa.getAc().getId())
+                .collect(Collectors.toSet());
+        log.info("ACs with non-deleted PAA IDs: {}", acIdsWithPaa);
+
+        List<Integer> acIdsWithoutPaa = userAcIds.stream()
+                .filter(acId -> !acIdsWithPaa.contains(acId))
+                .collect(Collectors.toList());
+        log.info("ACs without non-deleted PAA IDs: {}", acIdsWithoutPaa);
+
+        if (acIdsWithoutPaa.isEmpty()) {
+            log.info("All ACs for user have non-deleted PAAs for year {}", currentYear);
+            throw new AllAcsHavePaaException("Vous ne pouvez pas actuellement créer un nouveau PAA ! Toutes les AC dont vous êtes membre ont des PAA non supprimés en cours pour l'année " + currentYear + ".");
+        }
+
+        List<Ac> acsWithoutPaa = acRepository.findAllById(acIdsWithoutPaa);
+        log.info("Found {} ACs without non-deleted PAA for user", acsWithoutPaa.size());
+        return acsWithoutPaa;
     }
 }

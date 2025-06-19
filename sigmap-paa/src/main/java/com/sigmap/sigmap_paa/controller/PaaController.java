@@ -105,6 +105,15 @@ public class PaaController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/current-year/user/acs_without_paa")
+    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<Ac> acsWithoutPaa = paaService.getAcsWithoutPaaForCurrentYear();
+        List<AcResponseDto> response = acsWithoutPaa.stream()
+                .map(AcMapper.INSTANCE::mapToDto)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * Return a page of deleted paas based on the given specification and pageable.
      *
