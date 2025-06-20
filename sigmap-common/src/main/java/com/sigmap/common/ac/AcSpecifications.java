@@ -1,6 +1,5 @@
 package com.sigmap.common.ac;
 
-import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
@@ -71,5 +70,9 @@ public class AcSpecifications {
       }
       return criteriaBuilder.isTrue(root.get("isDeleted"));
     };
+  }
+
+  public static Specification<Ac> hasTutleId(Integer id) {
+    return (root, query, cb) -> cb.equal(root.get("tutel").get("id"), id);
   }
 }

@@ -111,12 +111,12 @@ public class AcServiceImpl implements AcService{
          else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }
-        else if(request.getEmail() == null || request.getEmail().isEmpty()) {
+     /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
-        }
-        else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
+        }*/
+      /*  else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
             throw new AcAttributeRequiredAndValid("", "email");
-        }
+        }*/
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 
         if(findOne(specification).isPresent()) {
@@ -162,12 +162,12 @@ public class AcServiceImpl implements AcService{
         else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
         }
-        else if(request.getEmail() == null || request.getEmail().isEmpty()) {
+  /*      else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }
         else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
             throw new AcAttributeRequiredAndValid("", "email");
-        }
+        }*/
         Ac ac = findById(id);
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 

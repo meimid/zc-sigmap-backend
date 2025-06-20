@@ -1,8 +1,8 @@
 package com.sigmap.common.direction;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.response.BaseEntityResponse;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -28,6 +28,7 @@ public class Direction extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "ac_id")
     )*/
     @ManyToMany(mappedBy = "directions")
+    @JsonIgnoreProperties
     private List<Ac> acs;
 
 

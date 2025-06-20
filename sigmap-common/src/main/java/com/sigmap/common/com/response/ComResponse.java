@@ -16,7 +16,7 @@ public class ComResponse {
   private Integer id;
   private String nom;
   private String decretCreation;
-  private String responsable;
+  //private String responsable;
   private Boolean special;
   private String ancrage;
   private String contact;
@@ -25,5 +25,7 @@ public class ComResponse {
   private List<AcResponseDto> acs;
   //private List<UserDTO> users;
   private List<ComMemberDTO> users;
+  private String responsableId;
+
   private BaseEntityResponse metadata;
 }

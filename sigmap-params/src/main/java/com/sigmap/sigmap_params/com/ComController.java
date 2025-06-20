@@ -19,6 +19,8 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_com.mappers.UserComMpapper;
+import com.sigmap.common.user_com.response.UserComResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -173,6 +175,21 @@ public class ComController {
         Com deleted = comService.findDeletedById(id)
                 .orElseThrow();
         ComResponse response = ComMapper.INSTANCE.map(deleted);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * make a user responsible in user com table
+     *
+     * @param userId the id of the User
+     * @param comId the id of the Com
+     *
+     * @return the responsible User come
+     */
+    @PutMapping("/{userId}/{comId}")
+    public ResponseEntity<UserComResponse> makeUserResponsable(@PathVariable String userId,@PathVariable Integer comId) throws ComHasAssociatedAc {
+       UserCom userCom= comService.makeUserResponsable(userId,comId);
+        UserComResponse response = UserComMpapper.INSTANCE.map(userCom);
         return ResponseEntity.ok(response);
     }
 }

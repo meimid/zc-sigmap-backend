@@ -32,6 +32,8 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
+import com.sigmap.common.user_com.exception.UserComNotFound;
+import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -537,5 +539,27 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ac.requiredAndValid",new Object[] {ex.getNom()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UserComNotFound.class)
+    public ResponseEntity<ErrorResponse> UserComNotFoundException(UserComNotFound ex) {
+        String message = messageSource.getMessage("com.userComNotFound",new Object[] {ex.getUserId(),ex.getComId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(UserResponsibleForCom.class)
+    public ResponseEntity<ErrorResponse> UserResponsibleException(UserResponsibleForCom ex) {
+        String message = messageSource.getMessage("com.userResponsibleException",new Object[] {ex.getUserId(),ex.getComId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RefParamHasAssociatedAc.class)
+    public ResponseEntity<ErrorResponse> refParamHasAssociatedAcException(RefParamHasAssociatedAc ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedAc",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
