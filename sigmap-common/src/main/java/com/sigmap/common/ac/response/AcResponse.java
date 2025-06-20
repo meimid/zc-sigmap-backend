@@ -25,5 +25,6 @@ public class AcResponse {
   private List<AcMemberDTO> users;
   private RefParamResponseDto tutel;
   private List<DirectionResponseDto> directions;
+  private String email;
   private BaseEntityResponse metadata;
 }

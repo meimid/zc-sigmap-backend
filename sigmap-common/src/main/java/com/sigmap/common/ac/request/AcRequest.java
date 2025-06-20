@@ -14,4 +14,6 @@ public class AcRequest {
   private String contact;
   private List<String> userIds;
   private Integer tutelId;
+  private String email;
+
 }

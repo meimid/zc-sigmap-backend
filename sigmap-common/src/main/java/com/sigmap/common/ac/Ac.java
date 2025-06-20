@@ -33,4 +33,5 @@ public class Ac extends BaseEntity {
           inverseJoinColumns = @JoinColumn(name = "direction_id")
   )
   List<Direction> directions;
+  private String email;
 }
