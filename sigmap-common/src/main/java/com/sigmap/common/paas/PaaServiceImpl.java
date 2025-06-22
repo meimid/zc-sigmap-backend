@@ -2059,6 +2059,7 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("monais:").append(realisation.getMonais() != null ? realisation.getMonais() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
                 sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+                sb.append("budgetEstime:").append(realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : "").append(",");
 
                 if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                     // Sort lots by ID
@@ -2310,6 +2311,10 @@ public class PaaServiceImpl implements PaaService {
     private boolean realisationNeedsUpdate(Realisation existingRealisation, RealisationRequestForPaa dto) {
         // Check if any field is different
         if (dto.getRealisationEnvisagees() != null && !dto.getRealisationEnvisagees().equals(existingRealisation.getRealisationEnvisagees())) {
+            return true;
+        }
+
+        if (dto.getBudgetEstime() != null && !dto.getBudgetEstime().equals(existingRealisation.getBudgetEstime())) {
             return true;
         }
 
