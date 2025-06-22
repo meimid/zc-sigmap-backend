@@ -50,6 +50,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1626,6 +1627,15 @@ public class PaaServiceImpl implements PaaService {
             // Now set all realisations on the PAA at once
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
+            if (newPaa.getRealisations() != null) {
+                BigDecimal totalBudget = newPaa.getRealisations().stream()
+                        .map(com.sigmap.common.realisations.Realisation::getBudgetEstime)
+                        .filter(java.util.Objects::nonNull)
+
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                newPaa.setBudgetEstime(totalBudget);
+                System.out.println("Updated PAA budgetEstime with sum of realisations: " + totalBudget);
+            }
         } else if (existingPaa.getRealisations() != null) {
             List<Realisation> confirmedRealisations = new ArrayList<>();
             System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
