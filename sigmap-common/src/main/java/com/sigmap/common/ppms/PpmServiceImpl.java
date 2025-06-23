@@ -73,7 +73,6 @@ public class PpmServiceImpl implements PpmService {
     private final DocsRepository docsRepository;
     private final RealisationService realisationService;
     private final LotRepository lotRepository;
-
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
     private final DocsService docsService;

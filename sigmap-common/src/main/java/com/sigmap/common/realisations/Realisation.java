@@ -17,6 +17,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -128,7 +129,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             }
     )
     @JsonManagedReference
-    private Set<Lot> lots;
+    private Set<Lot> lots = new LinkedHashSet<>();;
 
     @ManyToMany
     @JoinTable(
