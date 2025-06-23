@@ -421,14 +421,14 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     }
 
     @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
-    public ResponseEntity<PaaResponse> deleteTest(
+    public ResponseEntity<PaaResponseWithRealisations> deleteTest(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
 
         paaService.deleteTest(paaId, paaVer);
         Paa deleted = paaService.findDeletedById(paaId, paaVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
-        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        PaaResponseWithRealisations response = PaaMapper.INSTANCE.toDtoWithRelations(deleted);
         return ResponseEntity.ok(response);
     }
 
