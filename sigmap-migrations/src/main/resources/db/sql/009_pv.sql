@@ -3,9 +3,9 @@
 
 -- changeset sigmap:1749671959050-11
 
-CREATE SEQUENCE pv_membre_present_seq INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775806 START WITH 1;
+CREATE SEQUENCE pv_membre_present_seq INCREMENT BY 1 START WITH 1 NOCACHE NOCYCLE;
 
-CREATE TABLE process_verbal (
+CREATE TABLE process_verbal IF NOT EXISTS (
                                 ppm_id INT NOT NULL,
                                 ppm_ver INT NOT NULL,
                                 process_verbal_id VARCHAR(255) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE process_verbal (
 );
 
 -- changeset sigmap:1749671959050-12
-CREATE TABLE pv_docs (
+CREATE TABLE pv_docs IF NOT EXISTS (
                          ppm_id INT NOT NULL,
                          ppm_ver INT NOT NULL,
                          process_verbal_id VARCHAR(255) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE pv_docs (
 );
 
 -- changeset sigmap:1749671959050-13
-CREATE TABLE pv_membre_present (
+CREATE TABLE pv_membre_present IF NOT EXISTS (
                                    ppm_id INT NOT NULL,
                                    ppm_ver INT NOT NULL,
                                    process_verbal_id VARCHAR(255) NOT NULL,
