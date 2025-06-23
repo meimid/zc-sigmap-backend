@@ -1,8 +1,18 @@
 package com.sigmap.sigmap_ppm.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.mappers.PaaDetailedMapper;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
+import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -37,6 +47,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
 import java.util.*;
 import java.lang.reflect.Method;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1143,6 +1155,50 @@ public class PpmController {
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
+
+
+    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
+    public ResponseEntity<PpmResponseDto> createPpmPerAc(
+            @ModelAttribute("request") PpmWithLotsRequestDto request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, IOException {
+        logger.info("Creating PAA per AC with relationships using PaaRequestGlobal");
+
+        // Process lots from JSON string if provided
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        Ppm ppm = ppmService.createPpmPerAc(request);
+
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/current_year/user")
+    public ResponseEntity<List<PpmResponseDto>> getCurrentYearPaasByUser() throws AcNotFound, PpmNotFound {
+        List<Ppm> ppms = ppmService.findCurrentYearPpmsByUser();
+        List<PpmResponseDto> responses = ppms.stream()
+                .map(PpmMapper.INSTANCE::mapToDto)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/current_year/user/acs_without_paa")
+    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<Ac> acsWithoutPaa = ppmService.getAcsWithoutPpmForCurrentYear();
+        List<AcResponseDto> response = acsWithoutPaa.stream()
+                .map(AcMapper.INSTANCE::mapToDto)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
 
     /**
      * Get a detailed PPM by its ID, including all its realisations.
