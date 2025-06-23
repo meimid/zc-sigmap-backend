@@ -8,6 +8,7 @@ import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -17,7 +18,9 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "ppm")
@@ -85,6 +88,9 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
             inverseJoinColumns = @JoinColumn(name = "com_id")
     )
     private List<Com> coms;
+
+    @OneToMany(mappedBy = "ppm")
+    private Set<ProcessVerbal> processVerbalSet=new HashSet<>();
 
     @Override
     public Integer getId() {
