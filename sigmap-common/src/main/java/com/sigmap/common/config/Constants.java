@@ -50,6 +50,8 @@ public class Constants {
   public static final String REALISATION_ID_SEQ = "realisation_id_seq";
   public static final String LOT_ID_SEQ = "lot_id_seq";
   public static final String DYNA_DOCS_SEQ = "dyna_docs_id_seq";
+  public static final String EMAIL_REGEX = "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,3}";
+
 
   private Constants() {}
 }

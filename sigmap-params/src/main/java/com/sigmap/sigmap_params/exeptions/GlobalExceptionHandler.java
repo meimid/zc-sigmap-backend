@@ -533,6 +533,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AcAttributeRequiredAndValid.class)
+    public ResponseEntity<ErrorResponse> AcAttributeRequiredAndValidException(AcAttributeRequiredAndValid ex) {
+        String message = messageSource.getMessage("ac.requiredAndValid",new Object[] {ex.getNom()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(UserComNotFound.class)
     public ResponseEntity<ErrorResponse> UserComNotFoundException(UserComNotFound ex) {

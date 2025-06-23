@@ -1,11 +1,9 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
@@ -13,10 +11,8 @@ import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
-import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_ac.UserAc;
-import com.sigmap.common.user_ac.UserAcId;
 import com.sigmap.common.user_ac.UserAcRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -28,7 +24,6 @@ import org.springframework.stereotype.Service;
 
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class AcServiceImpl implements AcService{
@@ -116,6 +111,12 @@ public class AcServiceImpl implements AcService{
          else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }
+     /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AcAttributeRequire("","email");
+        }*/
+      /*  else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
+            throw new AcAttributeRequiredAndValid("", "email");
+        }*/
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 
         if(findOne(specification).isPresent()) {
@@ -161,6 +162,12 @@ public class AcServiceImpl implements AcService{
         else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
         }
+  /*      else if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AcAttributeRequire("","email");
+        }
+        else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
+            throw new AcAttributeRequiredAndValid("", "email");
+        }*/
         Ac ac = findById(id);
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.nom(request.getNom()));
 
