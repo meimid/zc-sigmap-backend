@@ -5,7 +5,7 @@
 
 CREATE SEQUENCE pv_membre_present_seq INCREMENT BY 1 START WITH 1 NOCACHE NOCYCLE;
 
-CREATE TABLE process_verbal IF NOT EXISTS (
+CREATE TABLE IF NOT EXISTS process_verbal (
                                 ppm_id INT NOT NULL,
                                 ppm_ver INT NOT NULL,
                                 process_verbal_id VARCHAR(255) NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE process_verbal IF NOT EXISTS (
 );
 
 -- changeset sigmap:1749671959050-12
-CREATE TABLE pv_docs IF NOT EXISTS (
+CREATE TABLE IF NOT EXISTS pv_docs (
                          ppm_id INT NOT NULL,
                          ppm_ver INT NOT NULL,
                          process_verbal_id VARCHAR(255) NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE pv_docs IF NOT EXISTS (
 );
 
 -- changeset sigmap:1749671959050-13
-CREATE TABLE pv_membre_present IF NOT EXISTS (
+CREATE TABLE IF NOT EXISTS  pv_membre_present (
                                    ppm_id INT NOT NULL,
                                    ppm_ver INT NOT NULL,
                                    process_verbal_id VARCHAR(255) NOT NULL,
