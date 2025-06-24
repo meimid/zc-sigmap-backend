@@ -10,6 +10,7 @@ import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
+import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -250,5 +251,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAllAcsHavePpmException(AllAcsHavePpmException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ProcessVerbalNotFound.class)
+    public ResponseEntity<ErrorResponse> ProcessVerbalNotFoundException(ProcessVerbalNotFound ex) {
+        String message = messageSource.getMessage("ppm.ProcessVerbalNotFound",new Object[] {ex.getPpmId(),ex.getPpmId(),ex.getProcessVerbalId()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }

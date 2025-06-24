@@ -9,6 +9,8 @@ import com.sigmap.common.ref_params.RefParam;
 import lombok.*;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -40,8 +42,7 @@ public class ProcessVerbal extends BaseEntity {
     private Ppm ppm;
 
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<PvMembrePresent> membres;
-
+    private Set<PvMembrePresent> membres=new HashSet<>();
 
     @Column(name = "date_debut_reunion")
     private LocalDateTime dateDebutReunion;
