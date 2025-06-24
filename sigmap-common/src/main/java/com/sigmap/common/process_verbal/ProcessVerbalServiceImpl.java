@@ -13,7 +13,6 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
 import com.sigmap.common.pv_membre_present.PvMembrePresent;
-import com.sigmap.common.pv_membre_present.PvMembrePresentRepository;
 import com.sigmap.common.pv_membre_present.request.PvMembrePresentRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
