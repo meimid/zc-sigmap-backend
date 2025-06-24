@@ -36,17 +36,15 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     private final PpmService ppmService;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final RefParamService refParamService;
-    private final PvMembrePresentRepository pvMembrePresentRepository;
     private final UserComRepository userComRepository;
     private final DocumentCommuneService documentCommuneService;
     private final KeycloakAdminService keycloakAdminService;
 
-    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, PvMembrePresentRepository pvMembrePresentRepository, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService) {
+    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
         this.ppmService = ppmService;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.refParamService = refParamService;
-        this.pvMembrePresentRepository = pvMembrePresentRepository;
         this.userComRepository = userComRepository;
         this.documentCommuneService = documentCommuneService;
         this.keycloakAdminService = keycloakAdminService;
