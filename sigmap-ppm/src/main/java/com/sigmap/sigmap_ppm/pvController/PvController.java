@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JRException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,8 +21,9 @@ import java.io.IOException;
 
 public class PvController {
 
-    @Value("${jasper.jrxmlPath}")
-    private String jrxmlPath;
+
+    @Value("classpath:pv")
+    private Resource jrxmlPath;
 
     @Value("${jasper.jasperPath}")
     private String jasperPath;
@@ -38,9 +40,10 @@ public class PvController {
     public void generateReportComparatifPaie( @RequestBody PvRequestDTO request,
                                               HttpServletResponse response) throws IOException, JRException {
 
+        log.info("---------------- {}", jrxmlPath.getFile().getAbsolutePath());
         log.debug("request generateReportCtrl with {} {} {}  ",request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId());
 
-        byte [] reportBytes = pvJasperService.generateProcesVerbalRep(request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId(), jrxmlPath, jasperPath);
+        byte [] reportBytes = pvJasperService.generateProcesVerbalRep(request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId(), jrxmlPath.getFile().getAbsolutePath()+"/", jasperPath);
         // Set the response headers
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "inline; filename=report.pdf");
