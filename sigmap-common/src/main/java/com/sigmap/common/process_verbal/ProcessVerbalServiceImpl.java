@@ -106,7 +106,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                newMember.setNom(membrePresent.getNom());
                newMember.setPrenom(membrePresent.getPrenom());
                newMember.setPresent(membrePresent.isPresent());
-               RefParam fonction = refParamService.findById(request.getFuncationId());
+               RefParam fonction = refParamService.findById(membrePresent.getFonctionId());
                newMember.setFonctionId(fonction);
                processVerbal.getMembres().add(newMember);
                if(membrePresent.getUserId()!=null) {
@@ -125,6 +125,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                 .collect(Collectors.toMap(PvMembrePresentRequest::getUserId, Function.identity()));
 
         for (UserCom user : usersToSave) {
+            Integer fonctionId;
             UserDTO userDTO = keycloakAdminService.getUserById(user.getUserId());
             PvMembrePresent newMember = new PvMembrePresent();
             newMember.setPpmId(request.getPpmId());
@@ -137,7 +138,12 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                 newMember.setUserId(user.getUserId());
             }
             newMember.setPresent(processVerbal.getMembres().contains(newMember));
-            RefParam fonction = refParamService.findById(request.getFuncationId());
+          if(user.isResponsable()){
+                fonctionId=1;
+            }else{
+              fonctionId=2;
+            }
+            RefParam fonction = refParamService.findById(fonctionId);
             newMember.setFonctionId(fonction);
             PvMembrePresentRequest attendanceData = requestMemberStatusMap.get(user.getUserId());
             boolean wasPresent = (attendanceData != null && attendanceData.isPresent());

@@ -1,5 +1,6 @@
 package com.sigmap.common.process_verbal;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -8,6 +9,8 @@ import com.sigmap.common.pv_membre_present.PvMembrePresent;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.*;
 import jakarta.persistence.*;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +48,7 @@ public class ProcessVerbal extends BaseEntity {
     private Set<PvMembrePresent> membres=new HashSet<>();
 
     @Column(name = "date_debut_reunion")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime dateDebutReunion;
 
     @Column(name = "observation")
