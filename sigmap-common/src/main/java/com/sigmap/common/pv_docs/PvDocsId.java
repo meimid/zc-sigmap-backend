@@ -9,13 +9,11 @@ import java.util.Objects;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PvDocsId implements Serializable {
-    // These field names must match the field names in the PvDocs entity
     private Integer ppmId;
     private Integer ppmVersion;
     private String processVerbalId;
-    private Integer docId; // Changed from 'id' to match the field name in PvDocs entity
+    private Integer docId;
 
-    // equals() and hashCode() are mandatory for ID classes
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

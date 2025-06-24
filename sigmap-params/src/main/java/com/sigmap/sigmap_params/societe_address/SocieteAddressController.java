@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,6 +37,7 @@ public class SocieteAddressController {
      * @return a page of SocieteAddress
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteAddressResponse>> findAll(
             SocieteAddressQuery query, Pageable pageable) {
         Page<SocieteAddress> params = societeAddressService.findAll(query.toSpecification(), pageable);
@@ -51,6 +53,7 @@ public class SocieteAddressController {
      * @return a page of deleted SocieteAddress
      */
     @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteAddressResponse>> findAllDeleted(
             SocieteAddressQuery query, Pageable pageable) {
         Page<SocieteAddress> params = societeAddressService.findAllDeleted(query.toSpecification(), pageable);
@@ -65,6 +68,7 @@ public class SocieteAddressController {
      * @return the SocieteAddress
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteAddressResponse> findById(@PathVariable Integer id) throws SocieteAdresseNotFound {
         SocieteAddress param = societeAddressService.findById(id);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(param);
@@ -78,6 +82,7 @@ public class SocieteAddressController {
      * @return the created SocieteAddress
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteAddressResponse> create(@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
         SocieteAddress SocieteAddress = societeAddressService.create(request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
@@ -90,6 +95,7 @@ public class SocieteAddressController {
      * @return the updated SocieteAddress
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer id,@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound {
         SocieteAddress SocieteAddress = societeAddressService.update(id,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
@@ -102,6 +108,7 @@ public class SocieteAddressController {
      * @return the deleted SocieteAddress
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteAddressResponse> deleteById(@PathVariable Integer id) {
         societeAddressService.delete(id);
         SocieteAddress deleted = societeAddressService.findDeletedById(id)

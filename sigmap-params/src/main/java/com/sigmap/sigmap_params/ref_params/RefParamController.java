@@ -18,6 +18,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -99,6 +100,7 @@ public class RefParamController {
      * @return the created ref param
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> create(@RequestBody RefParamRequest request) throws RefTypeNotFound {
 
         RefParam refParam = refParamService.create(request);
@@ -113,6 +115,7 @@ public class RefParamController {
      * @return the updated RefParam
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> update(@PathVariable Integer id, @RequestBody RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
         RefParam refParam = refParamService.update(id, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
@@ -126,6 +129,7 @@ public class RefParamController {
      * @return the deleted ref param
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deleteById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -239,6 +243,7 @@ public class RefParamController {
     }
 
     @PutMapping("/type-societe/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByTypeSocieteAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_SOCIETE);
@@ -248,6 +253,7 @@ public class RefParamController {
     }
 
     @PutMapping("/categorie-soummisionnaire/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByCategorieSoumissionnaireAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.CATEGORIE_SOMISSIONAIRE);
@@ -257,6 +263,7 @@ public class RefParamController {
     }
 
     @PutMapping("/pays/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByPaysAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.PAYS);
@@ -266,6 +273,7 @@ public class RefParamController {
     }
 
     @PutMapping("/type-comite/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByTypeComiteAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_COMITE);
@@ -275,6 +283,7 @@ public class RefParamController {
     }
 
     @PutMapping("/type-address/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByTypeAddressAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_ADDRESS);
@@ -285,6 +294,7 @@ public class RefParamController {
 
 
     @PutMapping("/dac-category/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> UpdateByDacCategoryAndById(@PathVariable Integer id,@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound  {
         RefParamRequest request=RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.CATEGORIE_DAC);
@@ -294,6 +304,7 @@ public class RefParamController {
     }
 
     @DeleteMapping("/type-societe/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deleteByTypeSocieteAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -361,6 +372,7 @@ public class RefParamController {
 
 
     @DeleteMapping("/categorie-soummisionnaire/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deleteByCategorieSoumissionnaireAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -374,6 +386,7 @@ public class RefParamController {
     }
 
     @DeleteMapping("/pays/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deletePaysAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -387,6 +400,7 @@ public class RefParamController {
     }
 
     @DeleteMapping("/type-comite/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deleteByTypeComiteAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -400,6 +414,7 @@ public class RefParamController {
     }
 
     @DeleteMapping("/type-address/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> deleteByTypeAddressAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
@@ -415,7 +430,7 @@ public class RefParamController {
 
 
     @DeleteMapping("/dac-category/{id}")
-    public ResponseEntity<RefParamResponse> deleteByDacCategoryAndById(@PathVariable Integer id) 
+    public ResponseEntity<RefParamResponse> deleteByDacCategoryAndById(@PathVariable Integer id)
         throws HasAssociatedDynaDoc, RefParamNotFound {
         refParamService.deleteByIdAndRefTypeId(id,RefTypes.CATEGORIE_DAC);
 
@@ -426,6 +441,7 @@ public class RefParamController {
     }
 
     @PostMapping("/type-societe")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> createUnderTypeSociete(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_SOCIETE);
@@ -444,6 +460,7 @@ public class RefParamController {
     }
 
     @PostMapping("/categorie-soummisionnaire")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> createUnderCategorieSoumissionnaireAndById(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.CATEGORIE_SOMISSIONAIRE);
@@ -453,6 +470,7 @@ public class RefParamController {
     }
 
     @PostMapping("/pays")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> createUnderPays(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.PAYS);
@@ -462,6 +480,7 @@ public class RefParamController {
     }
 
     @PostMapping("/type-comite")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> createUnderTypeComite(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_COMITE);
@@ -471,6 +490,7 @@ public class RefParamController {
     }
 
     @PostMapping("/type-address")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<RefParamResponse> createUnderTypeAddress(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
         request.setRefType(RefTypes.TYPE_ADDRESS);

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -37,6 +38,7 @@ public class CompteBancaireController {
      * @return a page of CompteBancaire
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<CompteBancaireResponse>> findAll(
             CompteBancaireQuery query, Pageable pageable) {
         Page<CompteBancaire> params = compteBancaireService.findAll(query.toSpecification(), pageable);
@@ -52,6 +54,7 @@ public class CompteBancaireController {
      * @return a page of deleted CompteBancaire
      */
     @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<CompteBancaireResponse>> findAllDeleted(
             CompteBancaireQuery query, Pageable pageable) {
         Page<CompteBancaire> params = compteBancaireService.findAllDeleted(query.toSpecification(), pageable);
@@ -66,6 +69,7 @@ public class CompteBancaireController {
      * @return the CompteBancaire
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<CompteBancaireResponse> findById(@PathVariable Integer id) throws CompteBancaireNotFound {
         CompteBancaire param = compteBancaireService.findById(id);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(param);
@@ -79,6 +83,7 @@ public class CompteBancaireController {
      * @return the created CompteBancaire
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<CompteBancaireResponse> create(@RequestBody CompteBancaireRequest request)throws RefParamNotFound, SocieteNotFound {
         CompteBancaire CompteBancaire = compteBancaireService.create(request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
@@ -91,6 +96,7 @@ public class CompteBancaireController {
      * @return the updated CompteBancaire
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
         CompteBancaire CompteBancaire = compteBancaireService.update(id,request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
@@ -103,6 +109,7 @@ public class CompteBancaireController {
      * @return the deleted CompteBancaire
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<CompteBancaireResponse> deleteById(@PathVariable Integer id) {
         compteBancaireService.delete(id);
 
