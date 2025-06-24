@@ -12,6 +12,7 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import jakarta.transaction.Transactional;
@@ -182,29 +183,34 @@ public class AcServiceImpl implements AcService{
         }
         Ac savedAc = repository.save(ac);
 
-        // 1. Récupérer les anciens UserAc liés à ce AC
-        List<UserAc> existingUserAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
+        // Seulement si SUPER_ADMIN ou ADMIN_CENTRAL
+        boolean hasRightToAffectUsers = Authentication.hasRole("SUPER_ADMIN") || Authentication.hasRole("ADMIN_CENTRAL");
+        if (hasRightToAffectUsers) {
 
-        // 2. Construire la nouvelle liste à partir des userIds reçus
-        List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
+            // 1. Récupérer les anciens UserAc liés à ce AC
+            List<UserAc> existingUserAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
 
-        // 3. Supprimer ceux qui n'existent plus
-        for (UserAc existing : existingUserAcs) {
-            if (!newUserIds.contains(existing.getUserId())) {
-                userAcRepository.softDelete(existing.getAcId(), existing.getUserId());
+            // 2. Construire la nouvelle liste à partir des userIds reçus
+            List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
+
+            // 3. Supprimer ceux qui n'existent plus
+            for (UserAc existing : existingUserAcs) {
+                if (!newUserIds.contains(existing.getUserId())) {
+                    userAcRepository.softDelete(existing.getAcId(), existing.getUserId());
+                }
             }
-        }
 
-        // 4. Ajouter les nouveaux
-        for (String userId : newUserIds) {
-            boolean exists = existingUserAcs.stream()
-                    .anyMatch(e -> e.getUserId().equals(userId));
-            if (!exists) {
-                UserAc userAc = new UserAc();
-                userAc.setUserId(userId);
-                userAc.setAcId(id);
-                userAc.setStatus(ActiveStatus.ACTIF);
-                userAcRepository.save(userAc);
+            // 4. Ajouter les nouveaux
+            for (String userId : newUserIds) {
+                boolean exists = existingUserAcs.stream()
+                        .anyMatch(e -> e.getUserId().equals(userId));
+                if (!exists) {
+                    UserAc userAc = new UserAc();
+                    userAc.setUserId(userId);
+                    userAc.setAcId(id);
+                    userAc.setStatus(ActiveStatus.ACTIF);
+                    userAcRepository.save(userAc);
+                }
             }
         }
 

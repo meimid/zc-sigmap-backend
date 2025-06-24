@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -77,6 +78,7 @@ public class DirectionController {
      * @return the created Direction
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> create(@RequestBody DirectionRequest request) throws AcNotFound {
         Direction Direction = directionService.create(request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
@@ -89,6 +91,7 @@ public class DirectionController {
      * @return the updated Direction
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> update(@PathVariable Integer id,@RequestBody DirectionRequest request) throws DirectionNotFound, AcNotFound {
         Direction Direction = directionService.update(id,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
@@ -101,6 +104,7 @@ public class DirectionController {
      * @return the deleted Direction
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer id) {
         directionService.delete(id);
 
@@ -112,6 +116,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PostMapping("/ac/{acId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
         Direction direction = directionService.createUnderAc(acId,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
@@ -120,6 +125,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PutMapping("/ac/{acId}/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
         Direction direction = directionService.updateUnderAc(acId,id,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
