@@ -54,4 +54,6 @@ public interface ProcessVerbalRepository extends JpaRepository<ProcessVerbal, Pr
             Integer ppmVersion,
             String processVerbalId
     );
+
+    ProcessVerbal findByPpmIdAndPpmVersionAndProcessVerbalId(Integer ppmId, Integer ppmVersion, String processVerbalId);
 }

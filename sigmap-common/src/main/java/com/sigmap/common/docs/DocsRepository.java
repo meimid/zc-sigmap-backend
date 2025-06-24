@@ -33,4 +33,7 @@ public interface DocsRepository extends JpaRepository<Docs, Integer> , JpaSpecif
     List<Docs> findDocsByRealisationIdAndRealisationVersion(@Param("realisationId") Integer realisationId, @Param("realisationVersion") Integer realisationVersion);
     @Query("SELECT d FROM Docs d JOIN d.ppms p WHERE p.id = :ppmId AND p.version = :ppmVersion and d.isDeleted=false and p.isDeleted=false")
     List<Docs> findDocsByPpmIdAndPpmVersion(@Param("ppmId") Integer ppmId, @Param("ppmVersion") Integer ppmVersion);
+
+    @Query("SELECT d.name FROM Docs d WHERE d.isDeleted = false")
+    List<String> findAllDocumentNames();
 }
