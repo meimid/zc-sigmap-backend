@@ -11,6 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -29,6 +30,11 @@ public class ProcessVerbalRequest {
     private ProcessStatus status;
     private List<PvDocRequest> documents;
     private Integer ComId;
+    private List<Integer> existingMemberIds = new ArrayList<>();
+    private List<Integer> existingDocIds = new ArrayList<>();
+    private String processVerbalId;
+
+
 
 
 }

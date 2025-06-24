@@ -4,6 +4,10 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.Foncation;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ppms.Ppm;
@@ -12,6 +16,8 @@ import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
+import com.sigmap.common.pv_docs.PvDocs;
+import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.pv_membre_present.PvMembrePresent;
 import com.sigmap.common.pv_membre_present.request.PvMembrePresentRequest;
 import com.sigmap.common.ref_params.RefParam;
@@ -20,8 +26,10 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -38,8 +46,9 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     private final UserComRepository userComRepository;
     private final DocumentCommuneService documentCommuneService;
     private final KeycloakAdminService keycloakAdminService;
+    private final DocsRepository docsRepository;
 
-    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService) {
+    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService, DocsRepository docsRepository) {
         this.repository = repository;
         this.ppmService = ppmService;
         this.sequenceGeneratorService = sequenceGeneratorService;
@@ -47,6 +56,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         this.userComRepository = userComRepository;
         this.documentCommuneService = documentCommuneService;
         this.keycloakAdminService = keycloakAdminService;
+        this.docsRepository = docsRepository;
     }
 
     @Override
@@ -56,75 +66,77 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
 
     @Override
     public ProcessVerbal create(ProcessVerbalRequest request) throws PpmNotFound, AcNotFound, ComNotFound, RefParamNotFound, IOException {
-        RefParam typeId=refParamService.findById(request.getTypeId());
-        Ppm ppm=ppmService.findByIdPpm(request.getPpmId(),request.getPpmVersion()).orElseThrow(()->new PpmIdNotFound("",request.getPpmId()));
+        RefParam typeId = refParamService.findById(request.getTypeId());
+        Ppm ppm = ppmService.findByIdPpm(request.getPpmId(), request.getPpmVersion()).orElseThrow(() -> new PpmIdNotFound("", request.getPpmId()));
         UUID uuid = UUID.randomUUID();
-        if(request.getMembers()==null || request.getMembers().isEmpty()) {
+        if (request.getMembers() == null || request.getMembers().isEmpty()) {
             request.setMembers(new ArrayList<>());
         }
-        ProcessVerbal processVerbal=new ProcessVerbal();
+        ProcessVerbal processVerbal = new ProcessVerbal();
         processVerbal.setMembres(new HashSet<>());
-        log.info("memberr"+processVerbal.getMembres().size());
-        log.info("memberr"+processVerbal.getMembres());
-        String processVerbalId= "ppm"+"/"+ppm.getId()+"/"+ppm.getVersion()+"/"+uuid;
-        List<UserCom> usersCom= userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
+        log.info("memberr" + processVerbal.getMembres().size());
+        log.info("memberr" + processVerbal.getMembres());
+        String processVerbalId = "ppm" + "/" + ppm.getId() + "/" + ppm.getVersion() + "/" + uuid;
+        List<UserCom> usersCom = userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
         processVerbal.setProcessVerbalId(processVerbalId);
         processVerbal.setPpmId(ppm.getId());
         processVerbal.setPpmVersion(ppm.getVersion());
-        if(request.getDocuments()!=null){
-            documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(),ppm,Constants.PATH_ENTREPOT_GED_PPM,ppm.getId(),ppm.getVersion(),processVerbalId);
+        if (request.getDocuments() != null) {
+            documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), ppm, Constants.PATH_ENTREPOT_GED_PPM, ppm.getId(), ppm.getVersion(), processVerbalId);
         }
 
         processVerbal.setObservation(request.getObservation());
         processVerbal.setDecision(request.isDecision());
         processVerbal.setTypeId(typeId);
-        if(request.getStatus()!=null) {
+        if (request.getStatus() != null) {
             processVerbal.setStatus(request.getStatus());
 
         }
-        if(request.getDateDebutReunion()!=null){
+        if (request.getDateDebutReunion() != null) {
             processVerbal.setDateDebutReunion(request.getDateDebutReunion());
-        }
-        else {
+        } else {
             processVerbal.setDateDebutReunion(LocalDateTime.now());
         }
         processVerbal.setPpm(ppm);
-        processVerbal= repository.save(processVerbal);
-        createAndSetMembersFromUsers(request,processVerbalId,usersCom);
-       Set<PvMembrePresent> pvMembrePresent=processVerbal.getMembres();
+        processVerbal = repository.save(processVerbal);
+        createAndSetMembersFromUsers(request, processVerbalId, usersCom);
+        Set<PvMembrePresent> pvMembrePresent = processVerbal.getMembres();
 
-       // add the invited user to member set
-       if(pvMembrePresent.size()!=request.getMembers().size()) {
-           Set<PvMembrePresentRequest> invitedMemebers=request.getMembers().stream().filter(el->!usersCom.contains(el)).collect(Collectors.toSet());
-           for(PvMembrePresentRequest membrePresent:invitedMemebers) {
-               PvMembrePresent newMember = new PvMembrePresent();
-               newMember.setPpmId(ppm.getId());
-               newMember.setPpmVersion(ppm.getVersion());
-               newMember.setProcessVerbalId(processVerbalId);
-               newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
-               newMember.setNom(membrePresent.getNom());
-               newMember.setPrenom(membrePresent.getPrenom());
-               newMember.setPresent(membrePresent.isPresent());
-               RefParam fonction = refParamService.findById(membrePresent.getFonctionId());
-               newMember.setFonctionId(fonction);
-               processVerbal.getMembres().add(newMember);
-               if(membrePresent.getUserId()!=null) {
-                   newMember.setUserId(membrePresent.getUserId());
-               }
-           }
-       }
+        // add the invited user to member set
+        if (pvMembrePresent.size() != request.getMembers().size()) {
+            Set<PvMembrePresentRequest> invitedMemebers = request.getMembers().stream().filter(el -> !usersCom.contains(el)).collect(Collectors.toSet());
+            for (PvMembrePresentRequest membrePresent : invitedMemebers) {
+                PvMembrePresent newMember = new PvMembrePresent();
+                newMember.setPpmId(ppm.getId());
+                newMember.setPpmVersion(ppm.getVersion());
+                newMember.setProcessVerbalId(processVerbalId);
+                newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+                newMember.setNom(membrePresent.getNom());
+                newMember.setPrenom(membrePresent.getPrenom());
+                newMember.setPresent(membrePresent.isPresent());
+                //RefParam fonction = refParamService.findById(membrePresent.getFonctionId());
+                //newMember.setFonctionId(fonction);
+                if (membrePresent.getUserId() != null) {
+                    newMember.setUserId(membrePresent.getUserId());
+                }
+                newMember.setFoncation(Foncation.INVITE);
+                processVerbal.getMembres().add(newMember);
+
+
+            }
+        }
         repository.save(processVerbal);
         return processVerbal;
     }
 
-    public void createAndSetMembersFromUsers(ProcessVerbalRequest request,String processVerbalId, List<UserCom> usersToSave) throws RefParamNotFound {
-        ProcessVerbal processVerbal=repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(request.getPpmId(),request.getPpmVersion(),processVerbalId).orElseThrow(()-> new ProcessVerbalNotFound("",request.getPpmId(),request.getPpmVersion(),processVerbalId));
+    public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String processVerbalId, List<UserCom> usersToSave) throws RefParamNotFound {
+        ProcessVerbal processVerbal = repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(request.getPpmId(), request.getPpmVersion(), processVerbalId).orElseThrow(() -> new ProcessVerbalNotFound("", request.getPpmId(), request.getPpmVersion(), processVerbalId));
         Map<String, PvMembrePresentRequest> requestMemberStatusMap = request.getMembers().stream()
                 .filter(member -> member.getUserId() != null)
                 .collect(Collectors.toMap(PvMembrePresentRequest::getUserId, Function.identity()));
 
         for (UserCom user : usersToSave) {
-            Integer fonctionId;
+            //Integer fonctionId;
             UserDTO userDTO = keycloakAdminService.getUserById(user.getUserId());
             PvMembrePresent newMember = new PvMembrePresent();
             newMember.setPpmId(request.getPpmId());
@@ -133,17 +145,19 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
             newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
             newMember.setNom(userDTO.getFirstName());
             newMember.setPrenom(userDTO.getLastName());
-            if(user.getUserId()!=null){
+            if (user.getUserId() != null) {
                 newMember.setUserId(user.getUserId());
             }
             newMember.setPresent(processVerbal.getMembres().contains(newMember));
-          if(user.isResponsable()){
-                fonctionId=1;
-            }else{
-              fonctionId=2;
+            if (user.isResponsable()) {
+                //fonctionId = 1;
+                newMember.setFoncation(Foncation.RESPONSABLE);
+            } else {
+                //fonctionId = 2;
+                newMember.setFoncation(Foncation.MEMEBRE);
             }
-            RefParam fonction = refParamService.findById(fonctionId);
-            newMember.setFonctionId(fonction);
+            //RefParam fonction = refParamService.findById(fonctionId);
+           // newMember.setFonctionId(fonction);
             PvMembrePresentRequest attendanceData = requestMemberStatusMap.get(user.getUserId());
             boolean wasPresent = (attendanceData != null && attendanceData.isPresent());
             newMember.setPresent(wasPresent);
@@ -151,6 +165,5 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         }
         repository.save(processVerbal);
     }
-
 
 }

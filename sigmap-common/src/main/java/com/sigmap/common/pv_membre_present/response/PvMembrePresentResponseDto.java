@@ -1,7 +1,10 @@
 package com.sigmap.common.pv_membre_present.response;
 
+import com.sigmap.common.entity.Foncation;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Data;
 
 @Data
@@ -12,4 +15,5 @@ public class PvMembrePresentResponseDto {
     private boolean present;
     private RefParamResponseDto fonctionId;
     private String userId;
+    private Foncation foncation;
 }
