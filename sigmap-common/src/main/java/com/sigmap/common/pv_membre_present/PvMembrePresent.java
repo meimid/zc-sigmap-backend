@@ -1,5 +1,6 @@
 package com.sigmap.common.pv_membre_present;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.Foncation;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.*;
@@ -56,4 +57,8 @@ public class PvMembrePresent  extends BaseEntity {
 
     @Column(name = "user_id")
     private String userId;
+
+    @Column(name = "fonction")
+    @Enumerated(EnumType.STRING)
+    private Foncation foncation;
 }
