@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal.response;
 
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
+import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.pv_docs.response.PvDocsResponseDto;
 import com.sigmap.common.pv_membre_present.response.PvMembrePresentResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
@@ -20,7 +21,7 @@ import java.util.Set;
 @NoArgsConstructor
 public class ProcessVerbalResponse {
     private String processVerbalId;
-    private PpmBaseRequestDto ppm;
+    private PpmResponseDto ppm;
     private Set<PvMembrePresentResponseDto> membres;
     private LocalDateTime dateDebutReunion;
     private String observation;

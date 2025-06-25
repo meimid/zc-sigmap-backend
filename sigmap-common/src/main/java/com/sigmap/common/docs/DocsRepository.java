@@ -1,8 +1,10 @@
 package com.sigmap.common.docs;
 
 import com.sigmap.common.repository.SoftDeleteRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,4 +38,16 @@ public interface DocsRepository extends JpaRepository<Docs, Integer> , JpaSpecif
 
     @Query("SELECT d.name FROM Docs d WHERE d.isDeleted = false")
     List<String> findAllDocumentNames();
+    @Modifying
+    @Transactional
+    @Query("UPDATE Docs d SET d.isDeleted = true, d.deletedAt = CURRENT_TIMESTAMP, d.deletedBy = :#{principal.subject} WHERE d.id IN :docIds")
+    void softDeleteAllById(@Param("docIds") List<Integer> docIds);
+    @Modifying
+    @Transactional
+    @Query("UPDATE Docs d SET d.isDeleted = true, d.deletedAt = CURRENT_TIMESTAMP, d.deletedBy = :#{principal.subject} " +
+            "WHERE d.id IN (SELECT pd.docId FROM PvDocs pd WHERE pd.ppmId = :ppmId AND pd.ppmVersion = :ppmVersion AND pd.processVerbalId = :processVerbalId)")
+    void softDeleteByPpmIdAndPpmVersionAndProcessVerbalId(
+            @Param("ppmId") Integer ppmId,
+            @Param("ppmVersion") Integer ppmVersion,
+            @Param("processVerbalId") String processVerbalId);
 }
