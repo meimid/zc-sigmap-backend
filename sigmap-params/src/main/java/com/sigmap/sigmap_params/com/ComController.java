@@ -193,4 +193,20 @@ public class ComController {
         UserComResponse response = UserComMpapper.INSTANCE.map(userCom);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/type/cpmp")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC')")
+    public ResponseEntity<List<ComResponse>> getComsWithTypeCPMP() throws RefParamNotFound {
+        List<Com> coms = comService.getComsWithTypeCPMP();
+        List<ComResponse> responses = coms.stream().map(ComMapper.INSTANCE::map).toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type/cncmp")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN','CPMP')")
+    public ResponseEntity<List<ComResponse>> getComsWithTypeCNCMP() throws RefParamNotFound {
+        List<Com> coms = comService.getComsWithTypeCNCMP();
+        List<ComResponse> responses = coms.stream().map(ComMapper.INSTANCE::map).toList();
+        return ResponseEntity.ok(responses);
+    }
 }
