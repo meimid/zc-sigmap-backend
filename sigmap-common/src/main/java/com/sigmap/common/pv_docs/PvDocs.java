@@ -44,8 +44,6 @@ public class PvDocs {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id", insertable = false, updatable = false)
     private Docs doc;
-
-    @Column(name = "pv", nullable = false)
     private boolean pv;
 
 }

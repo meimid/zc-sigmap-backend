@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_proces_verbal_ppm_2" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="5c54ddf1-29a8-42ed-9c79-d081f6e19a5a">
+	<subDataset name="membreList" uuid="3c75cc48-5ea6-4dc6-925c-e882b1f3e520">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+		<queryString>
+			<![CDATA[]]>
+		</queryString>
+		<field name="nom" class="java.lang.String"/>
+		<field name="fonction" class="java.lang.String"/>
+	</subDataset>
+	<subDataset name="docNames" uuid="f0bfae6a-99a0-4bd7-ba8d-1a8cd5b005c5">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+		<queryString>
+			<![CDATA[]]>
+		</queryString>
+		<field name="docName" class="java.lang.String"/>
+	</subDataset>
+	<parameter name="docNames" class="net.sf.jasperreports.engine.data.JRBeanCollectionDataSource"/>
+	<queryString>
+		<![CDATA[]]>
+	</queryString>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="10" height="15" uuid="d24fafaa-bf90-40f6-b1ee-d4ba7c110ed4"/>
+				<text><![CDATA[-]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="15" y="0" width="540" height="15" uuid="d4a225ef-3d3d-48df-ab00-89e72451da99"/>
+				<textFieldExpression><![CDATA[$F{docName}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>
