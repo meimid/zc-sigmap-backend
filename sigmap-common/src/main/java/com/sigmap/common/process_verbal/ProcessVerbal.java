@@ -1,5 +1,6 @@
 package com.sigmap.common.process_verbal;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -12,13 +13,14 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = true)
+//@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "process_verbal")
 @IdClass(ProcessVerbalId.class)
@@ -41,6 +43,7 @@ public class ProcessVerbal extends BaseEntity {
             @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id", insertable = false, updatable = false),
             @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver", insertable = false, updatable = false)
     })
+    @JsonBackReference
     private Ppm ppm;
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
     //@OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -63,13 +66,21 @@ public class ProcessVerbal extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ProcessStatus status;
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
-   /* @OneToMany(
-            mappedBy = "processVerbal",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )*/
     private Set<PvDocs> documents =new HashSet<>();
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ProcessVerbal that = (ProcessVerbal) o;
+        return Objects.equals(ppmId, that.ppmId) &&
+                Objects.equals(ppmVersion, that.ppmVersion) &&
+                Objects.equals(processVerbalId, that.processVerbalId);
+    }
 
+    @Override
+    public int hashCode() {
+        return Objects.hash(ppmId, ppmVersion, processVerbalId);
+    }
 }
 

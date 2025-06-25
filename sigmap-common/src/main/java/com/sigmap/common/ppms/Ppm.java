@@ -1,6 +1,7 @@
 package com.sigmap.common.ppms;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.docs.Docs;
@@ -89,8 +90,9 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     )
     private List<Com> coms;
 
-    @OneToMany(mappedBy = "ppm")
-    private Set<ProcessVerbal> processVerbalSet=new HashSet<>();
+    @OneToMany(mappedBy = "ppm", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private Set<ProcessVerbal> processVerbalSet = new HashSet<>();
 
     @Override
     public Integer getId() {

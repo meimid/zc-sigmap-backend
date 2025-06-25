@@ -209,9 +209,7 @@ public class PpmFlowableController {
 @GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}")
 public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppmId,@PathVariable Integer ppmVer) throws PpmNotFound {
     ProcessVerbal processVerbal=processVerbalService.findByIds(ppmId,ppmVer);
-    log.info("ProcessVerbal found: {}", processVerbal.toString());
     ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
-   // ProcessVerbalResponse  response =fromEntityToResponse(processVerbal);
     return ResponseEntity.ok(response);
 
 
