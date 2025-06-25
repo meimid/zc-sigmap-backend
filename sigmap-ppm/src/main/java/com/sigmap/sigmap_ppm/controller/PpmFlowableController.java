@@ -4,17 +4,24 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.ProcessVerbalService;
 import com.sigmap.common.process_verbal.mappers.ProcessVerbalMapper;
+import com.sigmap.common.process_verbal.request.ProcessVerBalFindRequest;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
 import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
+import com.sigmap.common.pv_docs.response.PvDocsResponseDto;
+import com.sigmap.common.pv_membre_present.response.PvMembrePresentResponseDto;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.mappers.RefParamMapper;
+import com.sigmap.common.response.BaseEntityResponse;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.ProcessStartResponseDTO;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDTO;
@@ -22,6 +29,7 @@ import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskListResponseDTO;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,19 +37,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Ppm entities.
  */
 @RestController
 @RequestMapping("/api/ppms/flowable")
+@Slf4j
 public class PpmFlowableController {
 
-    private final Logger log = LoggerFactory.getLogger(PpmFlowableController.class);
 
     @Autowired
     private PpmFlowableService ppmFlowableService;
@@ -199,6 +205,101 @@ public class PpmFlowableController {
         ProcessVerbal processVerbal= processVerbalService.create(request);
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
+    }
+@GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}")
+public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppmId,@PathVariable Integer ppmVer) throws PpmNotFound {
+    ProcessVerbal processVerbal=processVerbalService.findByIds(ppmId,ppmVer);
+    log.info("ProcessVerbal found: {}", processVerbal.toString());
+    ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+   // ProcessVerbalResponse  response =fromEntityToResponse(processVerbal);
+    return ResponseEntity.ok(response);
+
+
+}
+   /* @PutMapping(
+            consumes = {"multipart/form-data"},
+            value = "/pv")
+    public ResponseEntity<ProcessVerbalResponse> updatePv(
+            @ModelAttribute("request")
+            // @RequestBody
+            ProcessVerbalRequest request
+    ) throws PpmNotFound, AcNotFound, IOException, ComNotFound, RefParamNotFound, DocNotFound {
+        ProcessVerbal processVerbal= processVerbalService.update(request);
+        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+        return ResponseEntity.ok(response);
+    }*/
+
+    public static ProcessVerbalResponse fromEntityToResponse(ProcessVerbal entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        ProcessVerbalResponse dto = new ProcessVerbalResponse();
+
+        // 1. Map direct fields
+        dto.setProcessVerbalId(entity.getProcessVerbalId());
+        dto.setDateDebutReunion(entity.getDateDebutReunion());
+        dto.setObservation(entity.getObservation());
+        dto.setDecision(entity.isDecision());
+        dto.setStatus(entity.getStatus());
+
+        // 2. Delegate mapping of nested objects to their respective static mappers
+        dto.setPpm(PpmMapper.INSTANCE.mapToDto(entity.getPpm()));
+        dto.setTypeId(RefParamMapper.INSTANCE.mapToDto(entity.getTypeId()));
+        //  dto.setMetadata(BaseEntityMapper.toDto(entity));
+
+        // 3. Delegate mapping of collections by calling other static mappers
+        BaseEntityResponse metaDto = new BaseEntityResponse();
+        metaDto.setCreatedAt(entity.getCreatedAt());
+        metaDto.setCreatedBy(entity.getCreatedBy());
+        metaDto.setUpdatedAt(entity.getUpdatedAt());
+        metaDto.setUpdatedBy(entity.getUpdatedBy());
+        dto.setMetadata(metaDto);
+
+        // 5. Manually map the 'membres' collection
+        // 5. Manually map the 'membres' collection (FIXED)
+       /* if (entity.getMembres() != null) {
+            dto.setMembres(entity.getMembres().stream()
+                    .filter(Objects::nonNull)
+                    .map(membreEntity -> {
+                        PvMembrePresentResponseDto membreDto = new PvMembrePresentResponseDto();
+                        membreDto.setPvMembrePresentId(membreEntity.getPvMembrePresentId());
+                        membreDto.setNom(membreEntity.getNom());
+                        membreDto.setPrenom(membreEntity.getPrenom());
+                        membreDto.setPresent(membreEntity.isPresent());
+                        membreDto.setUserId(membreEntity.getUserId());
+                        membreDto.setFoncation(membreEntity.getFoncation());
+
+                        // Manually map the nested fonctionId (RefParam -> RefParamResponseDto)
+                     *//*   if (membreEntity.getFonctionId() != null) {
+                            RefParamResponseDto fonctionDto = new RefParamResponseDto();
+                            fonctionDto.setId(membreEntity.getFonctionId().getId());
+                            membreDto.setFonctionId(fonctionDto);
+                        }*//*
+                        return membreDto;
+                    })
+                    .collect(Collectors.toSet()));
+        }
+*/
+        /*if (entity.getDocuments() != null) {
+            dto.setDocuments(entity.getDocuments().stream()
+                    .filter(Objects::nonNull)
+                    .map(docEntity -> {
+                        PvDocsResponseDto docDto = new PvDocsResponseDto();
+                        docDto.setPv(docEntity.isPv());
+
+                        if (docEntity.getDoc() != null) {
+                            DocsResponseDTO nestedDocDto = new DocsResponseDTO();
+                            nestedDocDto.setId(docEntity.getDoc().getId());
+                            nestedDocDto.setName(docEntity.getDoc().getName());
+                            docDto.setDoc(nestedDocDto);
+                        }
+                        return docDto;
+                    })
+                    .collect(Collectors.toSet()));
+        }*/
+
+        return dto;
     }
 
 }

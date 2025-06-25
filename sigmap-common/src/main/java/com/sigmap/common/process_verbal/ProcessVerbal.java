@@ -22,6 +22,7 @@ import java.util.Set;
 @Entity
 @Table(name = "process_verbal")
 @IdClass(ProcessVerbalId.class)
+@ToString(onlyExplicitlyIncluded = true)
 public class ProcessVerbal extends BaseEntity {
     @Id
     @Column(name = "ppm_id")
@@ -41,8 +42,8 @@ public class ProcessVerbal extends BaseEntity {
             @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver", insertable = false, updatable = false)
     })
     private Ppm ppm;
-
-    @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
+    //@OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PvMembrePresent> membres=new HashSet<>();
 
     @Column(name = "date_debut_reunion")
@@ -61,12 +62,13 @@ public class ProcessVerbal extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private ProcessStatus status;
-    @OneToMany(
+    @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
+   /* @OneToMany(
             mappedBy = "processVerbal",
             cascade = CascadeType.ALL,
             orphanRemoval = true
-    )
-    private Set<PvDocs> documents;
+    )*/
+    private Set<PvDocs> documents =new HashSet<>();
 
 
 }
