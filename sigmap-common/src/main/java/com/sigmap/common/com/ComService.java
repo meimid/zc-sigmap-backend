@@ -98,4 +98,8 @@ public interface ComService {
     void delete(Integer id) throws ComHasAssociatedAc;
 
     public UserCom makeUserResponsable (String userId,Integer ComId);
+
+    List<Com> getComsWithTypeCPMP() throws RefParamNotFound;
+
+    List<Com> getComsWithTypeCNCMP() throws RefParamNotFound;
 }

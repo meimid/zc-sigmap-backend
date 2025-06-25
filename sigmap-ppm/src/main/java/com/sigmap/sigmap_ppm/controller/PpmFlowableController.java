@@ -8,7 +8,13 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal.ProcessVerbal;
+import com.sigmap.common.process_verbal.ProcessVerbalService;
+import com.sigmap.common.process_verbal.mappers.ProcessVerbalMapper;
+import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
+import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.ProcessStartResponseDTO;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDTO;
@@ -35,10 +41,18 @@ import java.util.Set;
 @RequestMapping("/api/ppms/flowable")
 public class PpmFlowableController {
 
+    private final Logger log = LoggerFactory.getLogger(PpmFlowableController.class);
+
     @Autowired
     private PpmFlowableService ppmFlowableService;
+    private final ProcessVerbalService processVerbalService;
 
-    private final Logger log = LoggerFactory.getLogger(PpmFlowableController.class);
+
+
+
+    public PpmFlowableController(ProcessVerbalService processVerbalService) {
+        this.processVerbalService = processVerbalService;
+    }
 
     /**
      * Starts a Flowable process instance for a Ppm entity using its ID.
@@ -173,4 +187,18 @@ public class PpmFlowableController {
         TaskListResponseDTO response = ppmFlowableService.getUserTasks();
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping(
+            consumes = {"multipart/form-data"},
+            value = "/pv")
+    public ResponseEntity<ProcessVerbalResponse> createPv(
+            @ModelAttribute("request")
+           // @RequestBody
+            ProcessVerbalRequest request
+    ) throws PpmNotFound, AcNotFound, IOException, ComNotFound, RefParamNotFound {
+        ProcessVerbal processVerbal= processVerbalService.create(request);
+        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+        return ResponseEntity.ok(response);
+    }
+
 }
