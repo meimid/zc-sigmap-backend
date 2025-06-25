@@ -8,10 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JRException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -37,13 +34,16 @@ public class PvController {
 
 
     @GetMapping("/proce-verbale")
-    public void generateReportComparatifPaie( @RequestBody PvRequestDTO request,
+    public void generateReportComparatifPaie(
+            @RequestParam(name = "ppmId", required = false) Integer ppmId,
+            @RequestParam(name = "ppmVersion", required = false) Integer ppmVersion,
+            @RequestParam(name = "processVerbalId", required = false) String processVerbalId,
                                               HttpServletResponse response) throws IOException, JRException {
 
-        log.info("---------------- {}", jrxmlPath.getFile().getAbsolutePath());
-        log.debug("request generateReportCtrl with {} {} {}  ",request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId());
+        log.debug("---------------- {}", jrxmlPath.getFile().getAbsolutePath());
+        log.debug("request generateReportCtrl with {} {} {}  ",ppmId,ppmVersion,processVerbalId);
 
-        byte [] reportBytes = pvJasperService.generateProcesVerbalRep(request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId(), jrxmlPath.getFile().getAbsolutePath()+"/", jasperPath);
+        byte [] reportBytes = pvJasperService.generateProcesVerbalRep(ppmId,ppmVersion,processVerbalId, jrxmlPath.getFile().getAbsolutePath()+"/", jasperPath);
         // Set the response headers
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition", "inline; filename=report.pdf");
