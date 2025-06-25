@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class MembreCommision {
     private Integer ppmId;
     private Integer ppmVersion;
-    private Integer processVerbalId;
+    private String processVerbalId;
     private Integer pvMembrePresentId;
     private String nom;
     private String prenom;
