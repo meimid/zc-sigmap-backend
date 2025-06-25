@@ -34,7 +34,8 @@ public class PvJasperService {
     private final ProcessVerbalRepository processVerbalRepository;
     private final PvMembrePresentRepository pvMembrePresentRepository;
     private final PvService pvService;
-    public byte[] generateProcesVerbalRep(Integer ppmId, Integer ppmVersion, String processVerbalId, String jrxmlPath, String jasperPath) throws JRException {
+
+    public byte[] generateProcesVerbalRep(Integer ppmId, Integer ppmVersion, String processVerbalId, Map<String, InputStream> jrxmlFiles, String jasperPath) throws JRException {
 
         List<MembreCommisionDTO> membreCommisionsDTOList = pvMembrePresentRepository.getAllMembreCommision(ppmId, ppmVersion, processVerbalId);
         log.debug("total records {} " , membreCommisionsDTOList.size());
@@ -68,6 +69,7 @@ public class PvJasperService {
             String acNom = pvService.getAcName(ppmId, ppmVersion);
             // set the report name
             String templatePath = "proces_verbal_ppm";
+            InputStream templateStream = jrxmlFiles.get(templatePath + ".jrxml");
 
             String processVerbalNum = "PROCÈS-VERBAL N° " + processVerbalIdStr;
             String date = "Date : " + dateDebutReunionStr + " Heure : " + heureDebutReunionStr;
@@ -93,13 +95,17 @@ public class PvJasperService {
 
             //sub report 1
 
-            compileAndSaveJasperSubReport(jrxmlPath+"sub_proces_verbal_ppm.jrxml",jasperPath+"sub_proces_verbal_ppm.jasper");
+
+
+            // compileAndSaveJasperSubReport(jrxmlPath+"sub_proces_verbal_ppm.jrxml",jasperPath+"sub_proces_verbal_ppm.jasper");
+            compileAndSaveJasperSubReport(jrxmlFiles.get("sub_proces_verbal_ppm.jrxml"),jasperPath+"sub_proces_verbal_ppm.jasper");
 
             parametres.put("SUBREPORT_1_PATH", jasperPath+"sub_proces_verbal_ppm.jasper");
 
             //sub report 2
 
-            compileAndSaveJasperSubReport(jrxmlPath+"sub_proces_verbal_ppm_3.jrxml",jasperPath+"sub_proces_verbal_ppm_3.jasper");
+            // compileAndSaveJasperSubReport(jrxmlPath+"sub_proces_verbal_ppm_3.jrxml",jasperPath+"sub_proces_verbal_ppm_3.jasper");
+             compileAndSaveJasperSubReport(jrxmlFiles.get( "sub_proces_verbal_ppm_3.jrxml"),jasperPath+"sub_proces_verbal_ppm_3.jasper");
              parametres.put("SUBREPORT_3_PATH", jasperPath+"sub_proces_verbal_ppm_3.jasper");
 
             List<MembreCommision> membre = pvService.membreCommision(ppmId, ppmVersion, processVerbalId);
@@ -112,33 +118,34 @@ public class PvJasperService {
 
             parametres.put("membreList3", source);
 
-            return generateReport(templatePath, parametres, source);
+            return generateReport(templateStream, parametres, source);
 
         } else {
             throw new IllegalArgumentException("No records found");
         }
     }
 
-    private void compileAndSaveJasperSubReport(String jrxmlPath, String jasperPath) {
-        try (FileInputStream fis = new FileInputStream(new File(jrxmlPath))) {
-            JasperReport report = JasperCompileManager.compileReport(fis);
+    private void compileAndSaveJasperSubReport(InputStream jrxmlFile, String jasperPath) {
+        // try (FileInputStream fis = new FileInputStream(new File(jrxmlPath))) {
+        try {
+            JasperReport report = JasperCompileManager.compileReport(jrxmlFile);
             JRSaver.saveObject(report, jasperPath);
-            log.debug("Compiled and saved JasperReport: {} -> {}", jrxmlPath, jasperPath);
+            // log.debug("Compiled and saved JasperReport: {} -> {}", jrxmlPath, jasperPath);
         } catch (Exception e) {
-            log.error("Failed to compile or save JasperReport: {} -> {}", jrxmlPath, jasperPath, e);
-            throw new RuntimeException("Failed to compile or save JasperReport: " + jrxmlPath, e);
+            log.error("Failed to compile or save JasperReport:  -> {}",  jasperPath, e);
+            throw new RuntimeException("Failed to compile or save JasperReport: " + jasperPath, e);
         }
     }
 
 
-    public byte[] generateReport(String templatePath, Map<String, Object> parameters, JRBeanCollectionDataSource dataSource) throws JRException {
+    public byte[] generateReport(InputStream template, Map<String, Object> parameters, JRBeanCollectionDataSource dataSource) throws JRException {
         log.debug("Generating report ......");
         // Check templatePath
-        InputStream jasperStream = this.getClass().getResourceAsStream("/pv/" + templatePath + ".jrxml");
-        log.debug("Finding templatePath ......");
+        // InputStream jasperStream = this.getClass().getResourceAsStream("/pv/" + templatePath + ".jrxml");
+        // log.debug("Finding templatePath ......");
 
-        try (jasperStream) {
-            JasperReport jasperReport = compileReport(jasperStream);
+        try  {
+            JasperReport jasperReport = compileReport(template);
             log.debug("Compile report jasperStream ......");
 
             JasperPrint jasperPrint = JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource());
@@ -149,7 +156,7 @@ public class PvJasperService {
             exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
             exporter.exportReport();
             return out.toByteArray();
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.error("Error loading JRXML file: {}", e.getMessage());
             throw new JRException("Error loading JRXML file", e);
         }
