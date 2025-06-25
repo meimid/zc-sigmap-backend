@@ -92,6 +92,7 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
 
     @OneToMany(mappedBy = "ppm", cascade = CascadeType.ALL)
     @JsonManagedReference
+    @EqualsAndHashCode.Exclude
     private Set<ProcessVerbal> processVerbalSet = new HashSet<>();
 
     @Override

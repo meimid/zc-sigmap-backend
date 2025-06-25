@@ -20,7 +20,7 @@ import java.util.Set;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-//@EqualsAndHashCode(callSuper = true)
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "process_verbal")
 @IdClass(ProcessVerbalId.class)
@@ -47,6 +47,7 @@ public class ProcessVerbal extends BaseEntity {
     private Ppm ppm;
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
     //@OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @EqualsAndHashCode.Exclude
     private Set<PvMembrePresent> membres=new HashSet<>();
 
     @Column(name = "date_debut_reunion")
@@ -66,9 +67,10 @@ public class ProcessVerbal extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ProcessStatus status;
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
+    @EqualsAndHashCode.Exclude
     private Set<PvDocs> documents =new HashSet<>();
 
-    @Override
+   /* @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -81,6 +83,6 @@ public class ProcessVerbal extends BaseEntity {
     @Override
     public int hashCode() {
         return Objects.hash(ppmId, ppmVersion, processVerbalId);
-    }
+    }*/
 }
 
