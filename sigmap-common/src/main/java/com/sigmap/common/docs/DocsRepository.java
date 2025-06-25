@@ -50,4 +50,5 @@ public interface DocsRepository extends JpaRepository<Docs, Integer> , JpaSpecif
             @Param("ppmId") Integer ppmId,
             @Param("ppmVersion") Integer ppmVersion,
             @Param("processVerbalId") String processVerbalId);
+
 }
