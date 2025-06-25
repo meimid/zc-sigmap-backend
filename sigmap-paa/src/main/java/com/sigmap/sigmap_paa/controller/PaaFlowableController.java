@@ -9,10 +9,7 @@ import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
-import com.sigmap.sigmap_paa.service.dto.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_paa.service.dto.response.TaskDTO;
-import com.sigmap.sigmap_paa.service.dto.response.TaskDetailsDTO;
-import com.sigmap.sigmap_paa.service.dto.response.TaskListResponseDTO;
+import com.sigmap.sigmap_paa.service.dto.response.*;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,5 +214,10 @@ private void processRealisationLotsFromJson(PaaRequestGlobal request, String lot
         log.info("Retrieving tasks for current user");
         TaskListResponseDTO response = paaFlowableService.getUserTasks();
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/task-history/{procInstId}")
+    public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
+        return paaFlowableService.loadHistoricTasks(procInstId);
     }
 }
