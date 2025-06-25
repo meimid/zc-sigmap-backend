@@ -212,92 +212,18 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
     return ResponseEntity.ok(response);
 
-
 }
-   /* @PutMapping(
+    @PutMapping(
             consumes = {"multipart/form-data"},
             value = "/pv")
     public ResponseEntity<ProcessVerbalResponse> updatePv(
             @ModelAttribute("request")
             // @RequestBody
             ProcessVerbalRequest request
-    ) throws PpmNotFound, AcNotFound, IOException, ComNotFound, RefParamNotFound, DocNotFound {
+    ) throws  IOException, RefParamNotFound, DocNotFound {
         ProcessVerbal processVerbal= processVerbalService.update(request);
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
-    }*/
-
-    public static ProcessVerbalResponse fromEntityToResponse(ProcessVerbal entity) {
-        if (entity == null) {
-            return null;
-        }
-
-        ProcessVerbalResponse dto = new ProcessVerbalResponse();
-
-        // 1. Map direct fields
-        dto.setProcessVerbalId(entity.getProcessVerbalId());
-        dto.setDateDebutReunion(entity.getDateDebutReunion());
-        dto.setObservation(entity.getObservation());
-        dto.setDecision(entity.isDecision());
-        dto.setStatus(entity.getStatus());
-
-        // 2. Delegate mapping of nested objects to their respective static mappers
-        dto.setPpm(PpmMapper.INSTANCE.mapToDto(entity.getPpm()));
-        dto.setTypeId(RefParamMapper.INSTANCE.mapToDto(entity.getTypeId()));
-        //  dto.setMetadata(BaseEntityMapper.toDto(entity));
-
-        // 3. Delegate mapping of collections by calling other static mappers
-        BaseEntityResponse metaDto = new BaseEntityResponse();
-        metaDto.setCreatedAt(entity.getCreatedAt());
-        metaDto.setCreatedBy(entity.getCreatedBy());
-        metaDto.setUpdatedAt(entity.getUpdatedAt());
-        metaDto.setUpdatedBy(entity.getUpdatedBy());
-        dto.setMetadata(metaDto);
-
-        // 5. Manually map the 'membres' collection
-        // 5. Manually map the 'membres' collection (FIXED)
-       /* if (entity.getMembres() != null) {
-            dto.setMembres(entity.getMembres().stream()
-                    .filter(Objects::nonNull)
-                    .map(membreEntity -> {
-                        PvMembrePresentResponseDto membreDto = new PvMembrePresentResponseDto();
-                        membreDto.setPvMembrePresentId(membreEntity.getPvMembrePresentId());
-                        membreDto.setNom(membreEntity.getNom());
-                        membreDto.setPrenom(membreEntity.getPrenom());
-                        membreDto.setPresent(membreEntity.isPresent());
-                        membreDto.setUserId(membreEntity.getUserId());
-                        membreDto.setFoncation(membreEntity.getFoncation());
-
-                        // Manually map the nested fonctionId (RefParam -> RefParamResponseDto)
-                     *//*   if (membreEntity.getFonctionId() != null) {
-                            RefParamResponseDto fonctionDto = new RefParamResponseDto();
-                            fonctionDto.setId(membreEntity.getFonctionId().getId());
-                            membreDto.setFonctionId(fonctionDto);
-                        }*//*
-                        return membreDto;
-                    })
-                    .collect(Collectors.toSet()));
-        }
-*/
-        /*if (entity.getDocuments() != null) {
-            dto.setDocuments(entity.getDocuments().stream()
-                    .filter(Objects::nonNull)
-                    .map(docEntity -> {
-                        PvDocsResponseDto docDto = new PvDocsResponseDto();
-                        docDto.setPv(docEntity.isPv());
-
-                        if (docEntity.getDoc() != null) {
-                            DocsResponseDTO nestedDocDto = new DocsResponseDTO();
-                            nestedDocDto.setId(docEntity.getDoc().getId());
-                            nestedDocDto.setName(docEntity.getDoc().getName());
-                            docDto.setDoc(nestedDocDto);
-                        }
-                        return docDto;
-                    })
-                    .collect(Collectors.toSet()));
-        }*/
-
-        return dto;
     }
 
 }

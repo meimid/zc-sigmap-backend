@@ -1,5 +1,6 @@
 package com.sigmap.common.pv_docs;
 
+import com.sigmap.common.process_verbal.ProcessVerbal;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,14 +17,14 @@ public interface PvDocsRepository extends JpaRepository<PvDocs, PvDocsId> {
     List<String> findDocumentNamesByPpmAndProcessVerbal(@Param("ppmId") Integer ppmId,
                                                         @Param("ppmVersion") Integer ppmVersion,
                                                         @Param("processVerbalId") String processVerbalId);
-    List<PvDocs> findByPpmIdAndPpmVersionAndProcessVerbalId(Integer ppmId, Integer ppmVer, String processVerbalId);
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM PvDocs d WHERE d.ppmId = :ppmId AND d.ppmVersion = :ppmVersion AND d.processVerbalId = :processVerbalId")
-    void deleteByPpmIdAndPpmVersionAndProcessVerbalId(
-            @Param("ppmId") Integer ppmId,
-            @Param("ppmVersion") Integer ppmVersion,
-            @Param("processVerbalId") String processVerbalId);
 
+
+    @Query("SELECT pd.docId FROM PvDocs pd WHERE pd.processVerbal = :processVerbal")
+    List<Integer> findDocIdsByProcessVerbal(@Param("processVerbal") ProcessVerbal processVerbal);
+
+    // Efficiently deletes link records by a list of document IDs
+    @Modifying
+    @Query("DELETE FROM PvDocs pd WHERE pd.docId IN :docIds")
+    void deleteByDocIdIn(@Param("docIds") List<Integer> docIds);
 }
 
