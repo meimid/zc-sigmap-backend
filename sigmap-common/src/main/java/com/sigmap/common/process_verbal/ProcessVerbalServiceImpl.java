@@ -187,9 +187,20 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     @Override
     @Transactional
     public ProcessVerbal findByIds(Integer ppmId, Integer ppmVer) {
-        return repository.findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
+        ProcessVerbal response= repository.findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
                         ppmId, ppmVer)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
+        Set<PvMembrePresent> membres = response.getMembres().stream()
+                .filter(el -> !el.getIsDeleted())
+                .collect(Collectors.toSet());
+
+        Set<PvDocs> docs = response.getDocuments().stream()
+                .filter(el -> !el.getDoc().getIsDeleted())
+                .collect(Collectors.toSet());
+
+        response.setMembres(membres);
+        response.setDocuments(docs);
+        return response;
     }
 
 
@@ -220,16 +231,38 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         log.info("Successfully updated ProcessVerbal with ID: {}", pvToUpdate.getProcessVerbalId());
 
         // Re-fetch to ensure the returned object is the exact representation from the DB
-        return repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
+        ProcessVerbal response=repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
                 .orElseThrow(() -> new ProcessVerbalNotFound("Could not re-fetch updated Process Verbal.", pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId()));
-    }
+
+        Set<PvMembrePresent> membres = response.getMembres().stream()
+                .filter(el -> !el.getIsDeleted())
+                .collect(Collectors.toSet());
+
+        Set<PvDocs> docs = response.getDocuments().stream()
+                .filter(el -> !el.getDoc().getIsDeleted())
+                .collect(Collectors.toSet());
+
+        response.setMembres(membres);
+        response.setDocuments(docs);
+        return  response;
+        }
 
     @Override
     public ProcessVerbal findByIdsAndTaskIdAndProcessInstanceId(Integer ppmId, Integer ppmVer, String taskId, String processInstanceId) {
-        return repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
+        ProcessVerbal response= repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
                         ppmId, ppmVer,taskId, processInstanceId)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
+        Set<PvMembrePresent> membres = response.getMembres().stream()
+                .filter(el -> !el.getIsDeleted())
+                .collect(Collectors.toSet());
 
+        Set<PvDocs> docs = response.getDocuments().stream()
+                .filter(el -> !el.getDoc().getIsDeleted())
+                .collect(Collectors.toSet());
+
+        response.setMembres(membres);
+        response.setDocuments(docs);
+        return response;
     }
 
 
