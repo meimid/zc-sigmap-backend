@@ -1066,6 +1066,11 @@ public class PpmFlowableService {
         response.setIsPublishable(taskProperties.get("isPublishable"));
         response.setCommissionRequired(taskProperties.get("commissionRequired"));
 
+        Optional<Integer> ComId = Optional.ofNullable((Integer) runtimeService.getVariable(processInstanceId, "comId"));
+        if (ComId.isPresent()) {
+            response.setComId(ComId.get());
+        }
+
         // Ajouter les prochaines étapes possibles
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         response.setNextSteps(nextSteps);

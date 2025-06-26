@@ -960,6 +960,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         Ppm newPpm = createAndSaveNewPpmVersion(ppmId, ppmVer, tempPpm, updatedRealisations, updatedDocs, existingPpm);
 
         newPpm.setRef(existingPpm.getRef());
+        newPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
 
         // Process new files if present (for PpmWithLotsRequestDto)
