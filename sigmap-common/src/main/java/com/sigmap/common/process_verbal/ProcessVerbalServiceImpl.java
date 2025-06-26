@@ -92,6 +92,12 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         processVerbal.setProcessVerbalId(processVerbalId);
         processVerbal.setPpmId(ppm.getId());
         processVerbal.setPpmVersion(ppm.getVersion());
+        if (request.getTaskId() != null) {
+            processVerbal.setTaskId(request.getTaskId());
+        }
+        if(request.getProcessInstanceId() != null) {
+            processVerbal.setProcessInstanceId(request.getProcessInstanceId());
+        }
         if (request.getDocuments() != null) {
             documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), ppm, Constants.PATH_ENTREPOT_GED_PPM, ppm.getId(), ppm.getVersion(), processVerbalId);
         }
@@ -181,7 +187,6 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     @Override
     @Transactional
     public ProcessVerbal findByIds(Integer ppmId, Integer ppmVer) {
-        log.info("------- in serviceImpl");
         return repository.findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
                         ppmId, ppmVer)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
@@ -217,6 +222,14 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         // Re-fetch to ensure the returned object is the exact representation from the DB
         return repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
                 .orElseThrow(() -> new ProcessVerbalNotFound("Could not re-fetch updated Process Verbal.", pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId()));
+    }
+
+    @Override
+    public ProcessVerbal findByIdsAndTaskIdAndProcessInstanceId(Integer ppmId, Integer ppmVer, String taskId, String processInstanceId) {
+        return repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
+                        ppmId, ppmVer,taskId, processInstanceId)
+                .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
+
     }
 
 

@@ -17,4 +17,6 @@ public interface ProcessVerbalService {
      ProcessVerbal create(ProcessVerbalRequest request) throws PpmNotFound, AcNotFound, ComNotFound, RefParamNotFound, IOException;
     ProcessVerbal findByIds(Integer ppmId,Integer ppmVer) ;
     ProcessVerbal update(ProcessVerbalRequest request) throws ProcessVerbalNotFound, DocNotFound, RefParamNotFound, IOException;
+    ProcessVerbal findByIdsAndTaskIdAndProcessInstanceId(Integer ppmId,Integer ppmVer,String taskId,String processInstanceId) ;
+
 }

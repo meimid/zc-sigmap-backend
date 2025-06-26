@@ -8,20 +8,15 @@ import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.exception.PpmNotFound;
-import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.ProcessVerbalService;
 import com.sigmap.common.process_verbal.mappers.ProcessVerbalMapper;
-import com.sigmap.common.process_verbal.request.ProcessVerBalFindRequest;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
 import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
-import com.sigmap.common.pv_docs.response.PvDocsResponseDto;
-import com.sigmap.common.pv_membre_present.response.PvMembrePresentResponseDto;
+
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.ref_params.mappers.RefParamMapper;
-import com.sigmap.common.response.BaseEntityResponse;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.ProcessStartResponseDTO;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDTO;
@@ -222,6 +217,16 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
             ProcessVerbalRequest request
     ) throws  IOException, RefParamNotFound, DocNotFound {
         ProcessVerbal processVerbal= processVerbalService.update(request);
+        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}/{taskId}/{processInstanceId}")
+    public ResponseEntity<ProcessVerbalResponse> findByIdsAndTaskIdAndProcessInstanceId(@PathVariable Integer ppmId,
+                                                           @PathVariable Integer ppmVer,
+                                                           @PathVariable String taskId,
+                                                           @PathVariable String processInstanceId)   {
+        ProcessVerbal processVerbal=processVerbalService.findByIdsAndTaskIdAndProcessInstanceId(ppmId,ppmVer,taskId,processInstanceId);
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
