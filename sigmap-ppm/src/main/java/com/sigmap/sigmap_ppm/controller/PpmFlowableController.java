@@ -221,7 +221,7 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}/{taskId}/{processInstanceId}")
+    @GetMapping("/pv/find_by-ids_task_process/{ppmId}/{ppmVer}/{taskId}/{processInstanceId}")
     public ResponseEntity<ProcessVerbalResponse> findByIdsAndTaskIdAndProcessInstanceId(@PathVariable Integer ppmId,
                                                            @PathVariable Integer ppmVer,
                                                            @PathVariable String taskId,
