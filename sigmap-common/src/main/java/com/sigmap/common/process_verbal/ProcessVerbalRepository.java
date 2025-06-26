@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -56,4 +57,9 @@ public interface ProcessVerbalRepository extends JpaRepository<ProcessVerbal, Pr
     );
 
     ProcessVerbal findByPpmIdAndPpmVersionAndProcessVerbalId(Integer ppmId, Integer ppmVersion, String processVerbalId);
+
+    Optional  <ProcessVerbal> findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
+            Integer ppmId,
+            Integer ppmVersion
+    );
 }

@@ -28,13 +28,13 @@ public class GlobalExceptionHandler {
     return LocaleContextHolder.getLocale();
   }
 
-  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-    ErrorResponse error =
-        new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred");
-    return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-  }
+  // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  // @ExceptionHandler(Exception.class)
+  // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+  //   ErrorResponse error =
+  //       new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred");
+  //   return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+  // }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(BadRequest.class)

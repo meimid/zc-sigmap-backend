@@ -4,7 +4,7 @@ public interface MembreCommisionDTO {
 
     public Integer getPpmId();
     public Integer getPpmVersion();
-    public Integer getProcessVerbalId();
+    public String getProcessVerbalId();
     public Integer getPvMembrePresentId();
     public String getNom();
     public String getPrenom();

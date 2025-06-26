@@ -1,56 +1,77 @@
 package com.sigmap.sigmap_ppm.pvController;
 
 import com.sigmap.common.process_verbal.pv.PvJasperService;
-import com.sigmap.common.process_verbal.pv.dto.PvRequestDTO;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
+
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.JRException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.io.IOException;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/pv/ppms")
 @Slf4j
-
 public class PvController {
 
+  @Value("${jasper.jasperPath}")
+  private String jasperPath;
 
-    @Value("classpath:pv")
-    private Resource jrxmlPath;
+  private final PvJasperService pvJasperService;
 
-    @Value("${jasper.jasperPath}")
-    private String jasperPath;
+  public PvController(PvJasperService pvJasperService) {
+    this.pvJasperService = pvJasperService;
+  }
 
-    private final PvJasperService pvJasperService;
+  @GetMapping("/proce-verbale")
+  public ResponseEntity<byte[]> generateReportComparatifPaie(
+      @RequestParam(name = "ppmId", required = false) Integer ppmId,
+      @RequestParam(name = "ppmVersion", required = false) Integer ppmVersion,
+      @RequestParam(name = "processVerbalId", required = false) String processVerbalId)
+      throws IOException, JRException {
 
-    public PvController(PvJasperService pvJasperService) {
-        this.pvJasperService = pvJasperService;
+    // log.debug("---------------- {}", jrxmlPath.getFile().getPath());
+    log.debug("request generateReportCtrl with {} {} {}  ", ppmId, ppmVersion, processVerbalId);
+
+
+    PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+    Resource[] resources = resolver.getResources("classpath:pv/*.jrxml");
+
+    Map<String, InputStream> jasperReports = new HashMap<>();
+
+    for (Resource resource : resources) {
+      jasperReports.put(resource.getFilename(), resource.getInputStream());
     }
 
+    log.info("jasperReports {}", jasperReports);
 
+    byte[] reportBytes =
+        pvJasperService.generateProcesVerbalRep(
+            ppmId,
+            ppmVersion,
+            processVerbalId,
+            // jrxmlPath.getFile().getPath() + "/",
+            jasperReports,
+            jasperPath);
 
-    @GetMapping("/proce-verbale")
-    public void generateReportComparatifPaie( @RequestBody PvRequestDTO request,
-                                              HttpServletResponse response) throws IOException, JRException {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_PDF);
+    headers.setContentDispositionFormData("attachment", "report.pdf");
 
-        log.info("---------------- {}", jrxmlPath.getFile().getAbsolutePath());
-        log.debug("request generateReportCtrl with {} {} {}  ",request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId());
+    return ResponseEntity.ok().headers(headers).body(reportBytes);
 
-        byte [] reportBytes = pvJasperService.generateProcesVerbalRep(request.getPpmId(),request.getPpmVersion(),request.getProcessVerbalId(), jrxmlPath.getFile().getAbsolutePath()+"/", jasperPath);
-        // Set the response headers
-        response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "inline; filename=report.pdf");
-        // Write the report bytes to the response output stream
-        response.getOutputStream().write(reportBytes);
-        response.getOutputStream().flush();
-    }
-
-
+    // Set the response headers
+    // response.setContentType("application/pdf");
+    // response.setHeader("Content-Disposition", "inline; filename=report.pdf");
+    // // Write the report bytes to the response output stream
+    // response.getOutputStream().write(reportBytes);
+    // response.getOutputStream().flush();
+  }
 }
