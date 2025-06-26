@@ -118,18 +118,17 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws AgpmNotFound if no Agpm entities are found for the user's ACs
      * @throws AgpmNotAssociatedWithUserAcException if an Agpm is not associated with the user's ACs
      */
-    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AgpmNotAssociatedWithUserAcException, AcNotFound, AgpmNotFound {
+    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AcNotFound {
         log.info("Recherche de tous les AGPM avec spécification: {}", spec);
 
-        // Récupérer les IDs des AC de l'utilisateur connecté
+        // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-            throw new UserHaveNoAc("Aucun ID AC trouvé pour l'utilisateur connecté");
+            log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
+            return Page.empty(pageable); // Return empty page instead of throwing UserHaveNoAc
         }
 
-
-        // Vérifier l'existence des AC
+        // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
@@ -139,9 +138,7 @@ public class AgpmServiceImpl implements AgpmService {
             }
         }
 
-        Specification<Agpm> acFilterSpec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
-
+        // Specification for latest version
         Specification<Agpm> latestVersionSpec = (root, query, criteriaBuilder) -> {
             Subquery<Integer> subquery = query.subquery(Integer.class);
             Root<Agpm> subRoot = subquery.from(Agpm.class);
@@ -150,26 +147,29 @@ public class AgpmServiceImpl implements AgpmService {
             return criteriaBuilder.equal(root.get("version"), subquery);
         };
 
+        // Apply AC filter
+        Specification<Agpm> acFilterSpec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+
+        // Combine specifications
         Specification<Agpm> combinedSpec = spec != null
                 ? spec.and(acFilterSpec).and(latestVersionSpec)
                 : acFilterSpec.and(latestVersionSpec);
 
+        // Query AGPMs
         Page<Agpm> allAgpms = repository.findAll(combinedSpec, pageable);
 
         if (allAgpms.isEmpty()) {
-            log.warn("Aucun AGPM trouvé pour les AC de l'utilisateur: {}", userAcIds);
-            throw new AgpmNotFound("Aucun AGPM trouvé pour les AC de l'utilisateur: " + userAcIds,
-                    Collections.emptyList(), Collections.emptyList());
+            log.info("Aucun AGPM trouvé pour les AC de l'utilisateur: {}", userAcIds);
+            return Page.empty(pageable); // Return empty page instead of throwing AgpmNotFound
         }
 
-        // Transformer les AGPM pour inclure uniquement les documents non supprimés
-        Page<Agpm> AgpmsResponse = allAgpms.map(this::createFilteredResponseAgpm);
+        // Transform AGPMs to include only non-deleted Docs
+        Page<Agpm> agpmsResponse = allAgpms.map(this::createFilteredResponseAgpm);
+        log.info("Récupération de {} AGPM pour les AC de l'utilisateur {}", agpmsResponse.getContent().size(), userAcIds);
 
-        log.info("Récupération de {} AGPM pour les AC de l'utilisateur {}", AgpmsResponse.getContent().size(), userAcIds);
-
-        return AgpmsResponse;
+        return agpmsResponse;
     }
-
     /**
      * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response,
      * and the Agpm must be associated with one of the ACs of the current user.
