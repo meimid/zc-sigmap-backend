@@ -7,6 +7,7 @@ import com.sigmap.common.pv_docs.response.PvDocsResponseDto;
 import com.sigmap.common.pv_membre_present.response.PvMembrePresentResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,6 +30,8 @@ public class ProcessVerbalResponse {
     private RefParamResponseDto typeId;
     private ProcessStatus status;
     private Set<PvDocsResponseDto> documents;
+    private String taskId;
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 
 }

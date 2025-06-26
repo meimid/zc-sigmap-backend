@@ -69,6 +69,10 @@ public class ProcessVerbal extends BaseEntity {
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL)
     @EqualsAndHashCode.Exclude
     private Set<PvDocs> documents =new HashSet<>();
+    @Column(name = "task_id")
+    private String taskId;
+    @Column(name = "process_instance_id")
+    private String processInstanceId;
 
    /* @Override
     public boolean equals(Object o) {
