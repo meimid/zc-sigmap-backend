@@ -13,6 +13,7 @@ import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.ProcessVerbalService;
 import com.sigmap.common.process_verbal.mappers.ProcessVerbalMapper;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
+import com.sigmap.common.process_verbal.request.PvRequest;
 import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
@@ -227,6 +228,19 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
                                                            @PathVariable String taskId,
                                                            @PathVariable String processInstanceId)   {
         ProcessVerbal processVerbal=processVerbalService.findByIdsAndTaskIdAndProcessInstanceId(ppmId,ppmVer,taskId,processInstanceId);
+        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping(
+            consumes = {"multipart/form-data"},
+            value = "/pv/add_pv")
+    public ResponseEntity<ProcessVerbalResponse> addNewPv(
+            @ModelAttribute("request")
+            // @RequestBody
+            PvRequest request
+    ) throws  IOException, RefParamNotFound, DocNotFound {
+        ProcessVerbal processVerbal= processVerbalService.addNewPv(request);
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
