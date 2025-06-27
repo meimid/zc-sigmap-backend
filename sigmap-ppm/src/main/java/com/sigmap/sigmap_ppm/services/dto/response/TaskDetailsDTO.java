@@ -26,9 +26,10 @@ public class TaskDetailsDTO {
     // Status information
     private String status;
 
-    private boolean updatable;
-    private boolean isPublishable;
+    private Boolean isUpdatable;
+    private Boolean isPublishable;
     private boolean commissionRequired;
+    private Integer comId;
     private Boolean hasTask;
     // Next steps information
     private List<NextStepDTO> nextSteps;

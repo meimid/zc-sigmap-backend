@@ -1,8 +1,10 @@
 package com.sigmap.common.docs;
 
 import com.sigmap.common.repository.SoftDeleteRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -33,4 +35,20 @@ public interface DocsRepository extends JpaRepository<Docs, Integer> , JpaSpecif
     List<Docs> findDocsByRealisationIdAndRealisationVersion(@Param("realisationId") Integer realisationId, @Param("realisationVersion") Integer realisationVersion);
     @Query("SELECT d FROM Docs d JOIN d.ppms p WHERE p.id = :ppmId AND p.version = :ppmVersion and d.isDeleted=false and p.isDeleted=false")
     List<Docs> findDocsByPpmIdAndPpmVersion(@Param("ppmId") Integer ppmId, @Param("ppmVersion") Integer ppmVersion);
+
+    @Query("SELECT d.name FROM Docs d WHERE d.isDeleted = false")
+    List<String> findAllDocumentNames();
+    @Modifying
+    @Transactional
+    @Query("UPDATE Docs d SET d.isDeleted = true, d.deletedAt = CURRENT_TIMESTAMP, d.deletedBy = :#{principal.subject} WHERE d.id IN :docIds")
+    void softDeleteAllById(@Param("docIds") List<Integer> docIds);
+    @Modifying
+    @Transactional
+    @Query("UPDATE Docs d SET d.isDeleted = true, d.deletedAt = CURRENT_TIMESTAMP, d.deletedBy = :#{principal.subject} " +
+            "WHERE d.id IN (SELECT pd.docId FROM PvDocs pd WHERE pd.ppmId = :ppmId AND pd.ppmVersion = :ppmVersion AND pd.processVerbalId = :processVerbalId)")
+    void softDeleteByPpmIdAndPpmVersionAndProcessVerbalId(
+            @Param("ppmId") Integer ppmId,
+            @Param("ppmVersion") Integer ppmVersion,
+            @Param("processVerbalId") String processVerbalId);
+
 }

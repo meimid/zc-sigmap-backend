@@ -6,12 +6,11 @@ import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.common.security.AuthoritiesConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,6 +35,7 @@ public class KeycloakAdminController {
      * @return les informations de l’utilisateur créé
      */
     @PostMapping("/users")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) {
         UserDTO createdUser = keycloakAdminService.createUser(userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
@@ -47,6 +47,7 @@ public class KeycloakAdminController {
      * @return liste des utilisateurs
      */
     @GetMapping("/users")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public List<UserDTO> getUsers() {
         return keycloakAdminService.getAllUsers();
     }
@@ -76,6 +77,7 @@ public class KeycloakAdminController {
      * @return les informations mises à jour
      */
     @PutMapping("/users/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<UserDTO> updateUser(@PathVariable String id,
                                               @RequestBody UserResquestDTO userDTO) throws AgpmDefaultStatus {
         UserDTO updatedUser = keycloakAdminService.updateUser(id, userDTO);
@@ -90,6 +92,7 @@ public class KeycloakAdminController {
      * @return 200 OK si succès, 400 si validation échoue
      */
     @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Void> updatePassword(@PathVariable String id,
                                                @RequestBody PasswordRequestDTO passwordDTO) {
         // Validation de la correspondance des mots de passe
@@ -109,6 +112,7 @@ public class KeycloakAdminController {
      * @return liste des noms de rôles
      */
     @GetMapping("/roles")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public List<RoleDTO> getAllRealmRoles() {
         return keycloakAdminService.getAllRealmRolesWithDescriptions();
     }
@@ -120,6 +124,7 @@ public class KeycloakAdminController {
      * @return 204 No Content si succès, 404 si non trouvé
      */
     @DeleteMapping("/users/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable String userId) {
         keycloakAdminService.deleteUser(userId);
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -133,6 +138,7 @@ public class KeycloakAdminController {
      * @return 200 OK si succès, 404 si utilisateur introuvable
      */
     @PutMapping("/users/{userId}/enable")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Void> enableUser(@PathVariable String userId, @RequestParam boolean enabled) {
         try {
             keycloakAdminService.setUserEnabled(userId, enabled);

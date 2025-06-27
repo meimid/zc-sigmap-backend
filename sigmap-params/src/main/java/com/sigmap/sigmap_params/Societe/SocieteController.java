@@ -45,6 +45,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -76,6 +77,7 @@ public class SocieteController {
      * @return a page of Societe
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteResponse>> findAll(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAll(query.toSpecification(), pageable);
@@ -91,6 +93,7 @@ public class SocieteController {
      * @return a page of deleted Societe
      */
     @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteResponse>> findAllDeleted(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllDeleted(query.toSpecification(), pageable);
@@ -105,6 +108,7 @@ public class SocieteController {
      * @return the Societe
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteResponse> findById(@PathVariable Integer id) throws SocieteNotFound {
         Societe param = societeService.findById(id);
         SocieteResponse response = SocieteMapper.INSTANCE.map(param);
@@ -118,6 +122,7 @@ public class SocieteController {
      * @return the created Societe
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequest request) throws RefParamNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
@@ -130,6 +135,7 @@ public class SocieteController {
      * @return the updated Societe
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
@@ -142,6 +148,7 @@ public class SocieteController {
      * @return the deleted Societe
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id)  {
         societeService.delete(id);
 
@@ -169,6 +176,7 @@ public class SocieteController {
      * @return a page of SocieteContact
      */
     @GetMapping("/{societeId}/contact")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteContactResponseDto>> findAll(@PathVariable Integer societeId,
                                                          SocieteContactQuery query, Pageable pageable) {
         Page<SocieteContact> params = societeContactService.findAll(societeId,query.toSpecification(), pageable);
@@ -178,6 +186,7 @@ public class SocieteController {
 
 
     @GetMapping("/{societeId}/contact/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<ContactResponse>> findAllDeleted(@PathVariable Integer societeId, SocieteContactQuery query, Pageable pageable) throws SocieteNotFound {
 
         Page<Contact> params = societeContactService.findAllDeleted(societeId,query.toSpecification(), pageable);
@@ -187,6 +196,7 @@ public class SocieteController {
 
     // a verifier fi url wella kifech taccedi li contact avec id x
     @GetMapping("/{societeId}/contact/{contactId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteContactResponse> findById(@PathVariable Integer societeId, @PathVariable Integer contactId) throws SocieteContactNotFound {
         SocieteContact param = societeContactService.findByIds(societeId,contactId);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(param);
@@ -195,6 +205,7 @@ public class SocieteController {
 
 
     @PostMapping("/{societeId}/contact/{contactId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteContactResponse> create(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteNotFound, SocieteContactAlreadyExist {
         SocieteContact societeContact = societeContactService.create(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
@@ -202,6 +213,7 @@ public class SocieteController {
     }
 
     @PutMapping("/{societeId}/contact/{contactId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteContactResponse> update(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody SocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
         SocieteContact societeContact = societeContactService.update(societeId,contactId,request);
         SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
@@ -210,6 +222,7 @@ public class SocieteController {
     }
 
     @DeleteMapping("/{idSociete}/contact/{idContact}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteContactResponse> deleteById(@PathVariable Integer idSociete,@PathVariable Integer idContact)throws ContactNotFound, SocieteContactNotFound {
         societeContactService.delete(idSociete,idContact);
         SocieteContact deleted = societeContactService.findDeletedByIds(idSociete,idContact)
@@ -220,6 +233,7 @@ public class SocieteController {
     }
 // create Contact with Socicete Id
 @PostMapping("/{societeId}/contact")
+@PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
 public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Integer societeId,@RequestBody ContactAndSocieteContactRequest request) throws RuntimeException, SocieteNotFound {
     SocieteContact societeContact = societeContactService.createContactAndSocieteContact(societeId,request);
     SocieteContactResponse response = SociteContactMapper.INSTANCE.map(societeContact);
@@ -228,6 +242,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     // create Adress with Socicete Id
     @PostMapping("/{societeId}/societe_address")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteAddressResponse> createAdress(@PathVariable Integer societeId, @RequestBody SocieteAdressUnderSocieteRequest request) throws RuntimeException, SocieteNotFound,RefParamNotFound {
         SocieteAddress SocieteAddress = societeAddressService.createUnderSociete(societeId,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
@@ -236,6 +251,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     // create CompteBancaire with Socicete Id
     @PostMapping("/{societeId}/compte_bancaire")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<CompteBancaireResponse> createCompteBancaire(@PathVariable Integer societeId, @RequestBody CompteBancaireUnderSocieteRequest request) throws RuntimeException, SocieteNotFound,RefParamNotFound {
         CompteBancaire compteBancaire = compteBancaireService.createUnderSociete(societeId,request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(compteBancaire);
@@ -244,6 +260,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     // get list of compte bancaire under societe
     @GetMapping("/{societeId}/compte_bancaire")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<CompteBancaireResponseDto>> findCompteBancaireListBySocieteId(@PathVariable Integer societeId,Pageable pageable) throws SocieteNotFound {
         Page<CompteBancaire> params=compteBancaireService.findCompteBancaireListBySocieteId(societeId,pageable);
         Page<CompteBancaireResponseDto> compteBancaireResponses = params.map(CompteBancaireMapper.INSTANCE::mapToDtoResponse);
@@ -254,6 +271,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     // get list of contact under societe
     @GetMapping("/{societeId}/contact_list")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<ContactResponseDto>> findContactsBySocieteId(@PathVariable Integer societeId, Pageable pageable) throws SocieteNotFound {
         Page<Contact> params = contactService.findContactsBySocieteId(societeId, pageable);
         Page<ContactResponseDto> contactResponses = params.map(ContactMapper.INSTANCE::mapToDto);
@@ -262,6 +280,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     //get list of societe adress by societe by societe id
     @GetMapping("/{societeId}/societe_address")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<SocieteAdressResponseDto>> findSocieteAdressySocieteId(@PathVariable Integer societeId, Pageable pageable) throws SocieteNotFound {
         Page<SocieteAddress> params = societeAddressService.findSocieteAddressBySocieteId(societeId, pageable);
         Page<SocieteAdressResponseDto> SocieteAdressResponset = params.map(SocieteAddressMapper.INSTANCE::mapToDto);
@@ -269,6 +288,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
     }
 
     @PutMapping("/{societeId}/contact/{contactId}/societe-contact")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<SocieteContactResponseDto> updateContactAndSocieteContact(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody ContactAndSocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
         SocieteContact param = societeContactService.updateContactAndSocieteContact(societeId,contactId,request);
         SocieteContactResponseDto response = SociteContactMapper.INSTANCE.mapToDto(param);

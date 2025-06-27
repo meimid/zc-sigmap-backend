@@ -187,7 +187,7 @@ public interface PaaService {
      */
     Page<Paa> findAllVersionsById(Integer paaId, Pageable pageable) throws PaaIdNotFound;
 
-    List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound;
+    Page<Paa> findCurrentYearPaasByUser(Pageable pageable);
 
     List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
     Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;

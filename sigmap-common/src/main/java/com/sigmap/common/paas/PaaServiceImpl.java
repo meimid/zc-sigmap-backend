@@ -106,71 +106,65 @@ public class PaaServiceImpl implements PaaService {
         Specification<Paa> spec = PaaSpecifications.deleted(false);
         return repository.findAll(spec);
     }
+    @Override
+    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) {
+        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
 
-//    /**
-//     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
-//     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
-//     *
-//     * @param spec     Specification to filter Paa entities
-//     * @param pageable Pagination and sorting configuration
-//     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
-//     * @throws PaaNotFound if no Paa entities are found for the user's ACs
-//     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
-//     */
-//    @Override
-//    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
-//        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
-//
-//        // Récupérer les IDs des AC de l'utilisateur connecté
-//        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
-//        if (userAcIdsLong.isEmpty()) {
-//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
-//        }
-//        Set<Integer> userAcIds = userAcIdsLong.stream()
-//                .map(Long::intValue)
-//                .collect(Collectors.toSet());
-//
-//        // Vérifier l'existence des AC
-//        for (Integer acId : userAcIds) {
-//            try {
-//                acService.findById(acId);
-//            } catch (AcNotFound e) {
-//                log.warn("AC non trouvé avec ID: {}", acId);
-//                throw e;
-//            }
-//        }
-//
-//        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
-//                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
-//
-//        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
-//            Subquery<Integer> subquery = query.subquery(Integer.class);
-//            Root<Paa> subRoot = subquery.from(Paa.class);
-//            subquery.select(criteriaBuilder.max(subRoot.get("version")))
-//                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
-//            return criteriaBuilder.equal(root.get("version"), subquery);
-//        };
-//
-//        Specification<Paa> combinedSpec = spec != null
-//                ? spec.and(acFilterSpec).and(latestVersionSpec)
-//                : acFilterSpec.and(latestVersionSpec);
-//
-//        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
-//
-//        if (allPaas.isEmpty()) {
-//            log.warn("Aucun PAA trouvé pour les AC de l'utilisateur: {}", userAcIds);
-//            throw new PaaNotFound("Aucun PAA trouvé pour les AC de l'utilisateur: " + userAcIds,
-//                    Collections.emptyList(), Collections.emptyList());
-//        }
-//
-//        // Transformer les PAAs pour inclure uniquement les documents non supprimés
-//        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
-//
-//        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
-//
-//        return paasResponse;
-//    }
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
+            return Page.empty(pageable);
+        }
+
+        // Validate ACs
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (Exception e) {
+                log.info("AC non trouvé avec ID: {}", acId);
+                return Page.empty(pageable);
+            }
+        }
+
+        // Base specification: non-deleted and latest version
+        Specification<Paa> deletedSpec = (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("isDeleted"));
+        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Paa> subRoot = subquery.from(Paa.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
+            return criteriaBuilder.equal(root.get("version"), subquery);
+        };
+        Specification<Paa> baseSpec = deletedSpec.and(latestVersionSpec);
+        if (spec != null) {
+            baseSpec = baseSpec.and(spec);
+        }
+
+        // Check if any non-deleted PAAs exist
+        Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
+        if (allPaasWithoutAcFilter.isEmpty()) {
+            log.info("Aucun PAA non supprimé trouvé dans la base de données");
+            return Page.empty(pageable);
+        }
+
+        // Apply AC filter
+        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+        Specification<Paa> combinedSpec = baseSpec.and(acFilterSpec);
+        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
+
+        if (allPaas.isEmpty()) {
+            log.info("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
+            return Page.empty(pageable);
+        }
+
+        // Map the results to filter Docs
+        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
+        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
+
+        return paasResponse;
+    }
 
     public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
@@ -334,96 +328,6 @@ public class PaaServiceImpl implements PaaService {
         return filteredPaa;
     }
 
-    /**
-     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
-     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
-     *
-     * @param spec     Specification to filter Paa entities
-     * @param pageable Pagination and sorting configuration
-     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
-     * @throws PaaNotFound                         if no Paa entities are found for the user's ACs
-     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
-     * @throws AcNotFound                          if no AC is found for the current user
-     */
-    @Override
-    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
-        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
-
-        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
-        }
-
-        for (Integer acId : userAcIds) {
-            try {
-                acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
-            }
-        }
-
-        // First, check if any non-deleted Paa entities exist at all (without AC filter)
-        Specification<Paa> deletedSpec = (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("isDeleted"));
-        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
-            Subquery<Integer> subquery = query.subquery(Integer.class);
-            Root<Paa> subRoot = subquery.from(Paa.class);
-            subquery.select(criteriaBuilder.max(subRoot.get("version")))
-                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
-            return criteriaBuilder.equal(root.get("version"), subquery);
-        };
-        Specification<Paa> baseSpec = deletedSpec.and(latestVersionSpec);
-        if (spec != null) {
-            baseSpec = baseSpec.and(spec);
-        }
-
-        Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
-        if (allPaasWithoutAcFilter.isEmpty()) {
-            log.warn("Aucun PAA non supprimé trouvé dans la base de données");
-            throw new PaaNotFound("Aucun PAA non supprimé trouvé dans la base de données", Collections.emptyList(), Collections.emptyList());
-        }
-
-        // Now apply AC filter
-        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
-
-        Specification<Paa> combinedSpec = baseSpec.and(acFilterSpec);
-        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
-
-        if (allPaas.isEmpty()) {
-            // Since we know Paa entities exist (from the earlier check), the emptiness must be due to AC association
-            log.warn("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
-            throw new PaaNotAssociatedWithUserAcException(
-                    "Aucun PAA associé aux ACs de l'utilisateur: " + userAcIds,
-                    Collections.emptyList(),
-                    Collections.emptyList()
-            );
-        }
-
-        // Double-check AC association for each Paa (for consistency with findById)
-        List<Integer> invalidPaaIds = new ArrayList<>();
-        List<Integer> invalidVersions = new ArrayList<>();
-        for (Paa paa : allPaas.getContent()) {
-            if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
-                invalidPaaIds.add(paa.getId());
-                invalidVersions.add(paa.getVersion());
-            }
-        }
-        if (!invalidPaaIds.isEmpty()) {
-            log.warn("Certains PAAs ne sont pas associés aux ACs de l'utilisateur: IDs={}, Versions={}", invalidPaaIds, invalidVersions);
-            throw new PaaNotAssociatedWithUserAcException(
-                    "Certains PAAs ne sont pas associés aux ACs de l'utilisateur",
-                    invalidPaaIds.stream().map(Integer::longValue).collect(Collectors.toList()),
-                    invalidVersions
-            );
-        }
-
-        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
-        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
-
-        return paasResponse;
-    }
 
     @Override
     public Optional<Paa> findLatestById(Integer paaId) {
@@ -970,377 +874,6 @@ public class PaaServiceImpl implements PaaService {
         copyForResponse.setBudgetEstime(budgetEstime);
         return copyForResponse;
     }
-//    @Override
-//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
-//        System.out.println("calling the method");
-//        CompositeId compositeId = new CompositeId(paaId, paaVer);
-//        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
-//
-//        if (existingPaaOpt.isEmpty()) {
-//            throw new PaaNotFound(
-//                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",
-//                    List.of(paaId), List.of(paaVer));
-//        }
-//
-//        Paa existingPaa = existingPaaOpt.get();
-//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
-//            throw new PaaNotFound(
-//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
-//                    List.of(paaId), List.of(paaVer));
-//        }
-//
-//        // Check if PAA is in DRAFT status and has null processInstanceId
-//        restrictUpdatePaa(existingPaa);
-//
-////        existingPaa.setRef(request.getRef());
-//        existingPaa.setNom(request.getNom());
-//        existingPaa.setAnnee(existingPaa.getAnnee());
-//        existingPaa.setBudgetEstime(request.getBudgetEstime());
-//        existingPaa.setModePassation(request.getModePassation());
-//        existingPaa.setRemarque(request.getRemarque());
-//        if (request.getAcId() != null) {
-//            Ac ac = acRepository.findById(request.getAcId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
-//            existingPaa.setAc(ac);
-//        }
-//
-//        if (request.getDocIds() != null) {
-//            Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
-//            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
-//                    existingPaa.getDocs().stream()
-//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                            .map(Docs::getId)
-//                            .collect(Collectors.toSet()) : new HashSet<>();
-//
-//            if (!requestedDocIds.equals(activeExistingDocIds)) {
-//                System.out.println("Document changes detected for PAA update ID: " + paaId);
-//                Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
-//                newDocIds.removeAll(activeExistingDocIds);
-//                if (!newDocIds.isEmpty()) {
-//                    System.out.println("  - New documents added: " + newDocIds);
-//                }
-//                Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
-//                removedDocIds.removeAll(requestedDocIds);
-//                if (!removedDocIds.isEmpty()) {
-//                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
-//                }
-//            }
-//
-//            List<Docs> updatedDocs = new ArrayList<>();
-//            if (existingPaa.getDocs() != null) {
-//                for (Docs existingDoc : existingPaa.getDocs()) {
-//                    if (requestedDocIds.contains(existingDoc.getId())) {
-//                        existingDoc.setIsDeleted(false);
-//                        docsRepository.save(existingDoc);
-//                        updatedDocs.add(existingDoc);
-//                        requestedDocIds.remove(existingDoc.getId());
-//                    } else {
-//                        existingDoc.setIsDeleted(true);
-//                        docsRepository.save(existingDoc);
-//                        updatedDocs.add(existingDoc);
-//                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
-//                    }
-//                }
-//            }
-//
-//            for (Integer docId : requestedDocIds) {
-//                Docs doc = docsRepository.findById(docId)
-//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-//                if (doc.getPaas() == null) {
-//                    doc.setPaas(new ArrayList<>());
-//                }
-//                if (!doc.getPaas().contains(existingPaa)) {
-//                    doc.getPaas().add(existingPaa);
-//                }
-//                doc.setIsDeleted(false);
-//                docsRepository.save(doc);
-//                updatedDocs.add(doc);
-//                System.out.println("Added new document with ID " + doc.getId() + " to PAA");
-//            }
-//            existingPaa.setDocs(updatedDocs);
-//        } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
-//            List<Docs> existingDocs = existingPaa.getDocs();
-//            for (Docs doc : existingDocs) {
-//                if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-//                    doc.setIsDeleted(true);
-//                    docsRepository.save(doc);
-//                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
-//                }
-//            }
-//        }
-//
-//        if (request.getPaaFiles() != null) {
-//            try {
-//                // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
-//                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
-//
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//
-//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
-//            List<Realisation> realisations = new ArrayList<>();
-//            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
-//                Realisation realisation;
-//                if (realisationRequest.getId() != null) {
-//                    Integer versionToUse = realisationRequest.getVersion();
-//                    if (versionToUse == null) {
-//                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationRequest.getId());
-//                        if (maxVersion != null) {
-//                            versionToUse = maxVersion;
-//                        } else {
-//                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationRequest.getId());
-//                        }
-//                    }
-//                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
-//                    realisation = realisationRepository.findById(realisationId)
-//                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
-//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-//                    realisation.setService(realisationRequest.getService());
-//                    realisation.setDirection(realisationRequest.getDirection());
-//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                    realisation.setMonais(realisationRequest.getMonais());
-//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-//                    realisation.setModeSelection(realisationRequest.getModeSelection());
-//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-//                    realisation.setIsPublished(realisationRequest.getIsPublished());
-//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
-//                    realisation.setSort(realisationRequest.getSort());
-//
-//                    if (realisationRequest.getDocIds() != null) {
-//                        Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
-//                        Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ?
-//                                realisation.getDocs().stream()
-//                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                                        .map(Docs::getId)
-//                                        .collect(Collectors.toSet()) : new HashSet<>();
-//                        if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
-//                            System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
-//                        }
-//                        List<Docs> updatedRealisationDocs = new ArrayList<>();
-//                        if (realisation.getDocs() != null) {
-//                            for (Docs existingDoc : realisation.getDocs()) {
-//                                if (requestedRealisationDocIds.contains(existingDoc.getId())) {
-//                                    existingDoc.setIsDeleted(false);
-//                                    docsRepository.save(existingDoc);
-//                                    updatedRealisationDocs.add(existingDoc);
-//                                    requestedRealisationDocIds.remove(existingDoc.getId());
-//                                } else {
-//                                    existingDoc.setIsDeleted(true);
-//                                    docsRepository.save(existingDoc);
-//                                    updatedRealisationDocs.add(existingDoc);
-//                                    System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
-//                                }
-//                            }
-//                        }
-//                        for (Integer docId : requestedRealisationDocIds) {
-//                            Docs doc = docsRepository.findById(docId)
-//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-//                            if (doc.getRealisations() == null) {
-//                                doc.setRealisations(new ArrayList<>());
-//                            }
-//                            if (!doc.getRealisations().contains(realisation)) {
-//                                doc.getRealisations().add(realisation);
-//                            }
-//                            doc.setIsDeleted(false);
-//                            docsRepository.save(doc);
-//                            updatedRealisationDocs.add(doc);
-//                            System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
-//                        }
-//                        realisation.setDocs(updatedRealisationDocs);
-//                    } else if (realisation.getDocs() != null && !realisation.getDocs().isEmpty()) {
-//                        List<Docs> realisationDocs = realisation.getDocs();
-//                        for (Docs doc : realisationDocs) {
-//                            if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-//                                doc.setIsDeleted(true);
-//                                docsRepository.save(doc);
-//                                System.out.println("Marked realisation document with ID " + doc.getId() + " as deleted (no docIds provided)");
-//                            }
-//                        }
-//                    }
-//
-//                    // Process uploaded files AFTER setting the docIds documents
-//                    if (realisationRequest.getRealisationFiles() != null) {
-//                        try {
-//                            // Get current docs list to preserve it
-//                            List<Docs> currentDocs = realisation.getDocs();
-//                            if (currentDocs == null) {
-//                                currentDocs = new ArrayList<>();
-//                            }
-//
-//                            // Process the uploaded files
-//                            //processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
-//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-//
-//
-//                            // After processing, get the new docs and merge with existing ones
-//                            List<Docs> newDocs = realisation.getDocs();
-//                            if (newDocs != null) {
-//                                // Create a set to track existing doc IDs to avoid duplicates
-//                                Set<Integer> existingDocIds = currentDocs.stream()
-//                                        .map(Docs::getId)
-//                                        .collect(Collectors.toSet());
-//
-//                                // Add only new documents that weren't already in the list
-//                                for (Docs newDoc : newDocs) {
-//                                    if (!existingDocIds.contains(newDoc.getId())) {
-//                                        currentDocs.add(newDoc);
-//                                    }
-//                                }
-//
-//                                // Set the combined list back
-//                                realisation.setDocs(currentDocs);
-//                            }
-//                        } catch (IOException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//                    }
-//
-//                    if (realisation.getPaas() == null) {
-//                        realisation.setPaas(new ArrayList<>());
-//                    }
-//                    if (!realisation.getPaas().contains(existingPaa)) {
-//                        realisation.getPaas().add(existingPaa);
-//                    }
-//
-//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-//                        Set<Lot> lots = new HashSet<>();
-//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
-//                            Lot lot = new Lot();
-//                            Integer lotId = lotRequest.getId();
-//                            if (lotId == null) {
-////                                Integer maxLotId = lotRepository.findMaxId();
-//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
-//                            }
-//                            lot.setId(lotId);
-//                            lot.setVersion(1);
-//                            lot.setDescription(lotRequest.getDescription());
-//                            lot = lotRepository.save(lot);
-//                            lots.add(lot);
-//                        }
-//                        realisation.setLots(lots);
-//                    }
-//
-//                    realisation = realisationRepository.save(realisation);
-//                } else {
-//                    realisation = new Realisation();
-////                    Integer maxRealisationId = realisationRepository.findMaxId();
-//                    Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-//                    ;
-//                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
-//                    realisation.setId(realisationId);
-//                    realisation.setVersion(1);
-//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-//                    realisation.setService(realisationRequest.getService());
-//                    realisation.setDirection(realisationRequest.getDirection());
-//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                    realisation.setMonais(realisationRequest.getMonais());
-//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-//                    realisation.setModeSelection(realisationRequest.getModeSelection());
-//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-//                    realisation.setIsPublished(realisationRequest.getIsPublished());
-//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
-//                    realisation.setSort(realisationRequest.getSort());
-//
-//                    if (realisationRequest.getRealisationFiles() != null) {
-//                        try {
-//                            //processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
-//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-//
-//                        } catch (IOException e) {
-//                            throw new RuntimeException(e);
-//                        }
-//                    }
-//
-//                    List<Paa> paaList = new ArrayList<>();
-//                    paaList.add(existingPaa);
-//                    realisation.setPaas(paaList);
-//
-//                    if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
-//                        List<Docs> docs = new ArrayList<>();
-//                        for (Integer docId : realisationRequest.getDocIds()) {
-//                            Docs doc = docsRepository.findById(docId)
-//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-//                            if (doc.getRealisations() == null) {
-//                                doc.setRealisations(new ArrayList<>());
-//                            }
-//                            if (!doc.getRealisations().contains(realisation)) {
-//                                doc.getRealisations().add(realisation);
-//                            }
-//                            doc.setIsDeleted(false);
-//                            docsRepository.save(doc);
-//                            docs.add(doc);
-//                        }
-//                        realisation.setDocs(docs);
-//                    }
-//
-//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-//                        Set<Lot> lots = new HashSet<>();
-//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
-//                            Lot lot = new Lot();
-//                            Integer lotId = lotRequest.getId();
-//                            if (lotId == null) {
-////                                Integer maxLotId = lotRepository.findMaxId();
-//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
-//                            }
-//                            lot.setId(lotId);
-//                            lot.setVersion(1);
-//                            lot.setDescription(lotRequest.getDescription());
-//                            lot = lotRepository.save(lot);
-//                            lots.add(lot);
-//                        }
-//                        realisation.setLots(lots);
-//                    }
-//
-//                    realisation = realisationRepository.save(realisation);
-//                }
-//                realisations.add(realisation);
-//            }
-//            existingPaa.setRealisations(realisations);
-//        } else {
-//            existingPaa.getRealisations().clear();
-//        }
-//
-//        Paa savedPaa = repository.save(existingPaa);
-//        Paa copyForResponse = new Paa();
-//        BeanUtils.copyProperties(savedPaa, copyForResponse);
-//        if (savedPaa.getDocs() != null) {
-//            copyForResponse.setDocs(
-//                    savedPaa.getDocs().stream()
-//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                            .collect(Collectors.toList())
-//            );
-//        }
-//        if (copyForResponse.getRealisations() != null) {
-//            copyForResponse.getRealisations().forEach(realisation -> {
-//                if (realisation.getDocs() != null) {
-//                    realisation.setDocs(
-//                            realisation.getDocs().stream()
-//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                                    .collect(Collectors.toList())
-//                    );
-//                }
-//            });
-//        }
-//        // budget Estime logic
-//        BigDecimal budgetEstime=savedPaa.getRealisations().stream().map(Realisation::getBudgetEstime).reduce(BigDecimal.ZERO, BigDecimal::add);
-//        savedPaa.setBudgetEstime(budgetEstime);
-//        repository.save(savedPaa);
-//        copyForResponse.setBudgetEstime(budgetEstime);
-//        return copyForResponse;
-//    }
-//
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
@@ -2840,45 +2373,46 @@ public class PaaServiceImpl implements PaaService {
         String ref = "PAA_" + paa.getAnnee() + "_" + paa.getId();
         paa.setRef(ref);
     }
-
     @Override
-    public List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
-        log.info("Retrieving current year's PAAs for connected user");
+    public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
+        log.info("Retrieving current year's PAAs for connected user with pageable: {}", pageable);
 
+        // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+            log.info("No AC IDs found for the connected user");
+            return Page.empty(pageable);
         }
 
+        // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
+        // Get current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
 
-        List<Paa> paasList = new ArrayList<>();
-        for (Integer acId : userAcIds) {
-            Specification<Paa> spec = PaaSpecifications.annee(currentYear)
-                    .and(PaaSpecifications.paaAc(acId))
-                    .and(PaaSpecifications.deleted(false))
-                    .and(PaaSpecifications.isLatestVersion());
-            Optional<Paa> paaOpt = repository.findOne(spec);
-            paaOpt.ifPresent(paasList::add);
+        // Build specification
+        Specification<Paa> spec = Specification.where(PaaSpecifications.annee(currentYear))
+                .and(PaaSpecifications.paaAc(userAcIds))
+                .and(PaaSpecifications.deleted(false))
+                .and(PaaSpecifications.isLatestVersion());
+
+        // Query PAAs with pagination
+        Page<Paa> paasPage = repository.findAll(spec, pageable);
+
+        if (paasPage.isEmpty()) {
+            log.info("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            return Page.empty(pageable);
         }
 
-        if (paasList.isEmpty()) {
-            log.warn("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
-            throw new PaaNotFound("No PAAs found for the current year and user ACs: " + userAcIds,
-                    Collections.emptyList(), Collections.emptyList());
-        }
-
-        return paasList;
+        log.info("Retrieved {} PAAs for the current year {} and user ACs {}", paasPage.getContent().size(), currentYear, userAcIds);
+        return paasPage;
     }
 
     public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {

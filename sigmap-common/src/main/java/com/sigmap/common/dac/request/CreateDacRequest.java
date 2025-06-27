@@ -11,9 +11,9 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CreateDacRequest {
 
-    private Integer dacVer;
     private Integer ppmId;
     private Integer ppmVer;
+    private Integer realisationId;
+    private Integer realisationVer;
     private Integer categoryId;
-    private Integer statusId;
 }

@@ -5,9 +5,12 @@ import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
+import com.sigmap.common.paas.exceptions.AllAcsHavePaaException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
+import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -24,7 +27,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -54,6 +59,18 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
+
+    @ExceptionHandler(PpmCreationLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handlePpmCreationLimitExceededException(PpmCreationLimitExceededException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", 400);
+        response.put("message", ex.getMessage());
+        response.put("id", ex.getId());
+        response.put("version", ex.getVersion());
+        response.put("limit", ex.getLimit());
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RealisationAlreadyExistsException.class)
@@ -147,13 +164,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred");
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    // @ExceptionHandler(Exception.class)
+    // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    //     ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+    //             "An unexpected error occurred");
+    //     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    // }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BadRequest.class)
@@ -227,5 +244,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUserNotAssociatedWithComException(UserNotAssociatedWithComException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AllAcsHavePpmException.class)
+    public ResponseEntity<ErrorResponse> handleAllAcsHavePpmException(AllAcsHavePpmException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ProcessVerbalNotFound.class)
+    public ResponseEntity<ErrorResponse> ProcessVerbalNotFoundException(ProcessVerbalNotFound ex) {
+        String message = messageSource.getMessage("ppm.ProcessVerbalNotFound",new Object[] {ex.getPpmId(),ex.getPpmId(),ex.getProcessVerbalId()},getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }

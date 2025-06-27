@@ -99,11 +99,9 @@ public class PaaController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<List<PaaResponseWithRealisations>> getCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
-        List<Paa> paas = paaService.findCurrentYearPaasByUser();
-        List<PaaResponseWithRealisations> responses = paas.stream()
-                .map(PaaDetailedMapper.INSTANCE::mapDetailed)
-                .toList();
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getCurrentYearPaasByUser(Pageable pageable) {
+        Page<Paa> paas = paaService.findCurrentYearPaasByUser(pageable);
+        Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
         return ResponseEntity.ok(responses);
     }
 

@@ -158,9 +158,9 @@ public class PpmFlowableService {
             log.error("Error retrieving properties for task [{}]: {}", task.getId(), e.getMessage(), e);
         }
 
+        log.info("Returning task properties for task [{}]: {}", task.getId(), properties); // Add this log
         return properties;
     }
-
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws PpmNotFound, AcNotFound {
         // Validate authentication
@@ -448,8 +448,8 @@ public class PpmFlowableService {
         response.setTraceability(variables);
 
         Map<String, Boolean> taskProperties = getTaskProperties(task);
-        response.setUpdatable(taskProperties.get("isUpdatable"));
-        response.setPublishable(taskProperties.get("isPublishable"));
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
         response.setCommissionRequired(taskProperties.get("commissionRequired"));
 
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
@@ -1062,9 +1062,14 @@ public class PpmFlowableService {
 
         // Ajouter les propriétés de la tâche
         Map<String, Boolean> taskProperties = getTaskProperties(task);
-        response.setUpdatable(taskProperties.get("isUpdatable"));
-        response.setPublishable(taskProperties.get("isPublishable"));
-        response.setCommissionRequired(taskProperties.get("isCommissionRequired"));
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
+        response.setCommissionRequired(taskProperties.get("commissionRequired"));
+
+        Optional<Integer> ComId = Optional.ofNullable((Integer) runtimeService.getVariable(processInstanceId, "comId"));
+        if (ComId.isPresent()) {
+            response.setComId(ComId.get());
+        }
 
         // Ajouter les prochaines étapes possibles
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);

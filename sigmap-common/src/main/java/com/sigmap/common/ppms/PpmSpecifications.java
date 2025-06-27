@@ -11,6 +11,7 @@ import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class PpmSpecifications {
     /**
@@ -32,6 +33,9 @@ public class PpmSpecifications {
         };
     }
 
+    public static Specification<Ppm> ppmAc(List<Integer> acIds) {
+        return (root, query, cb) -> cb.in(root.get("ac").get("id")).value(acIds);
+    }
     /**
      * Filter by ppm_id and ppm_ver.
      */
@@ -52,6 +56,9 @@ public class PpmSpecifications {
      */
     public static Specification<Ppm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return null; // Return all if null
+            }
             return criteriaBuilder.equal(root.get("status"), status);
         };
     }
@@ -115,7 +122,6 @@ public class PpmSpecifications {
             return criteriaBuilder.equal(root.get("budgetEstime"), budgetEstime);
         };
     }
-
 
     /**
      * Filter by deletion status.
