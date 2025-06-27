@@ -99,7 +99,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
             processVerbal.setProcessInstanceId(request.getProcessInstanceId());
         }
         if (request.getDocuments() != null) {
-            documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), ppm, Constants.PATH_ENTREPOT_GED_PPM, ppm.getId(), ppm.getVersion(), processVerbalId);
+            documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), Constants.PATH_ENTREPOT_GED_PPM, processVerbal);
         }
 
         processVerbal.setObservation(request.getObservation());
@@ -138,11 +138,10 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                 }
                 newMember.setFoncation(Foncation.INVITE);
                 processVerbal.getMembres().add(newMember);
-
-
             }
         }
         repository.save(processVerbal);
+
         return processVerbal;
     }
 
@@ -364,8 +363,8 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         if (request.getDocuments() != null && !request.getDocuments().isEmpty()) {
 
             if (!request.getDocuments().isEmpty()) {
-                documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), pvToUpdate.getPpm(),
-                        Constants.PATH_ENTREPOT_GED_PPM, pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId());
+                documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(),
+                        Constants.PATH_ENTREPOT_GED_PPM, pvToUpdate);
             }
         }
     }

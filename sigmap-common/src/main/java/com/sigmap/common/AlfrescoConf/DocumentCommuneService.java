@@ -283,10 +283,9 @@ public class DocumentCommuneService {
         return document;
 
     }
-    public <T extends DocumentHolder> void processAndSaveDocumentsForPv(List<PvDocRequest> docRequests, T entity, String path, Integer id, Integer ver, String processVerbalId ) throws IOException {
+    public void processAndSaveDocumentsForPv(List<PvDocRequest> docRequests, String path, ProcessVerbal processVerbal) throws IOException {
 
-        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
-        String baseFolderPath = String.format(path  +"/"+ entity.getId()+Constants.PATH_ENTREPOT_GED_PV);
+        String baseFolderPath = String.format(path  +"/"+ processVerbal.getPpmId()+"/"+processVerbal.getPpmVersion()+Constants.PATH_ENTREPOT_GED_PV);
 
         for (PvDocRequest docRequest : docRequests) {
             MultipartFile file = docRequest.getDocument();
@@ -296,20 +295,21 @@ public class DocumentCommuneService {
                 continue; // Skip to the next file
             }
             try {
-                Docs document = mapperDocument(file,entityTypeName,baseFolderPath);
-                    Ppm ppm= (Ppm) entity;
-                    if(ppm.getDocs() == null) {
-                        ppm.setDocs(new ArrayList<>());
-                    }
-                    ppm.getDocs().add(document);
+                if(processVerbal.getDocuments() == null) {
+                    processVerbal.setDocuments(new HashSet<>());
+                }
+                Docs document = mapperDocument(file,"ppm_pv",baseFolderPath);
                 Docs doc= docsRepository.save(document);
                 PvDocs pvDocs= new PvDocs();
                 pvDocs.setDocId(doc.getId());
                 pvDocs.setPv(isPv);
-                pvDocs.setProcessVerbalId(processVerbalId);
-                pvDocs.setPpmId(id);
-                pvDocs.setPpmVersion(ver);
+                pvDocs.setProcessVerbalId(processVerbal.getProcessVerbalId());
+                pvDocs.setPpmId(processVerbal.getPpmId());
+                pvDocs.setPpmVersion(processVerbal.getPpmVersion());
+                pvDocs.setDoc(document);
                 pvDocsRepository.save(pvDocs);
+                processVerbal.getDocuments().add(pvDocs);
+
 
 
             } catch (Exception e) {
