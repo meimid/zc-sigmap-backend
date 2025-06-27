@@ -107,23 +107,23 @@ public class PaaServiceImpl implements PaaService {
         return repository.findAll(spec);
     }
     @Override
-    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotFound, AcNotFound {
+    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) {
         log.info("Recherche de tous les PAAs avec spécification: {}", spec);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
             log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
-            return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+            return Page.empty(pageable);
         }
 
         // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC non trouvé avec ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
@@ -144,8 +144,8 @@ public class PaaServiceImpl implements PaaService {
         // Check if any non-deleted PAAs exist
         Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
         if (allPaasWithoutAcFilter.isEmpty()) {
-            log.warn("Aucun PAA non supprimé trouvé dans la base de données");
-            throw new PaaNotFound("Aucun PAA non supprimé trouvé dans la base de données", Collections.emptyList(), Collections.emptyList());
+            log.info("Aucun PAA non supprimé trouvé dans la base de données");
+            return Page.empty(pageable);
         }
 
         // Apply AC filter
@@ -156,7 +156,7 @@ public class PaaServiceImpl implements PaaService {
 
         if (allPaas.isEmpty()) {
             log.info("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
-            return Page.empty(pageable); // Return empty page instead of throwing
+            return Page.empty(pageable);
         }
 
         // Map the results to filter Docs
@@ -2373,48 +2373,46 @@ public class PaaServiceImpl implements PaaService {
         String ref = "PAA_" + paa.getAnnee() + "_" + paa.getId();
         paa.setRef(ref);
     }
-
     @Override
-    public List<Paa> findCurrentYearPaasByUser() throws AcNotFound {
-        log.info("Retrieving current year's PAAs for connected user");
+    public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
+        log.info("Retrieving current year's PAAs for connected user with pageable: {}", pageable);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
             log.info("No AC IDs found for the connected user");
-            return new ArrayList<>(); // Return empty list instead of throwing AcNotFound
+            return Page.empty(pageable);
         }
 
         // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
         // Get current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
 
-        // Collect PAAs for each AC
-        List<Paa> paasList = new ArrayList<>();
-        for (Integer acId : userAcIds) {
-            Specification<Paa> spec = PaaSpecifications.annee(currentYear)
-                    .and(PaaSpecifications.paaAc(acId))
-                    .and(PaaSpecifications.deleted(false))
-                    .and(PaaSpecifications.isLatestVersion());
-            Optional<Paa> paaOpt = repository.findOne(spec);
-            paaOpt.ifPresent(paasList::add);
-        }
+        // Build specification
+        Specification<Paa> spec = Specification.where(PaaSpecifications.annee(currentYear))
+                .and(PaaSpecifications.paaAc(userAcIds))
+                .and(PaaSpecifications.deleted(false))
+                .and(PaaSpecifications.isLatestVersion());
 
-        if (paasList.isEmpty()) {
+        // Query PAAs with pagination
+        Page<Paa> paasPage = repository.findAll(spec, pageable);
+
+        if (paasPage.isEmpty()) {
             log.info("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
-            return new ArrayList<>(); // Return empty list instead of throwing PaaNotFound
+            return Page.empty(pageable);
         }
 
-        return paasList;
+        log.info("Retrieved {} PAAs for the current year {} and user ACs {}", paasPage.getContent().size(), currentYear, userAcIds);
+        return paasPage;
     }
 
     public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
