@@ -302,7 +302,7 @@ public interface PpmService {
     Page<Ppm> findAllVersionsById(Integer ppmId, Pageable pageable) throws PpmIdNotFound;
 
      Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException;
-     List<Ppm> findCurrentYearPpmsByUser() throws AcNotFound, PpmNotFound ;
+     Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable);
      List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
 
     }

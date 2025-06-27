@@ -118,23 +118,31 @@ public class AgpmServiceImpl implements AgpmService {
      * @throws AgpmNotFound if no Agpm entities are found for the user's ACs
      * @throws AgpmNotAssociatedWithUserAcException if an Agpm is not associated with the user's ACs
      */
-    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AcNotFound {
+    /**
+     * Retrieves a paginated list of non-deleted Agpm entities, returning only the latest version for each ID
+     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
+     *
+     * @param spec     Specification to filter Agpm entities
+     * @param pageable Pagination and sorting configuration
+     * @return Page of Agpm entities with the latest version per ID and only non-deleted Docs
+     */
+    public Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) {
         log.info("Recherche de tous les AGPM avec spécification: {}", spec);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
             log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
-            return Page.empty(pageable); // Return empty page instead of throwing UserHaveNoAc
+            return Page.empty(pageable);
         }
 
         // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC non trouvé avec ID: {}", acId);
+                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
             }
         }
 
@@ -161,7 +169,7 @@ public class AgpmServiceImpl implements AgpmService {
 
         if (allAgpms.isEmpty()) {
             log.info("Aucun AGPM trouvé pour les AC de l'utilisateur: {}", userAcIds);
-            return Page.empty(pageable); // Return empty page instead of throwing AgpmNotFound
+            return Page.empty(pageable);
         }
 
         // Transform AGPMs to include only non-deleted Docs
