@@ -38,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -135,13 +136,13 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred");
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    // @ExceptionHandler(Exception.class)
+    // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    //     ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+    //             "An unexpected error occurred");
+    //     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    // }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(CompteBancaireNotFound.class)
@@ -533,6 +534,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AcAttributeRequiredAndValid.class)
+    public ResponseEntity<ErrorResponse> AcAttributeRequiredAndValidException(AcAttributeRequiredAndValid ex) {
+        String message = messageSource.getMessage("ac.requiredAndValid",new Object[] {ex.getNom()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(UserComNotFound.class)
     public ResponseEntity<ErrorResponse> UserComNotFoundException(UserComNotFound ex) {
@@ -554,4 +563,17 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(AuthorizationDeniedException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), "Accès refusé (autorisation manquante)");
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+    @ExceptionHandler(AcAccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ResponseEntity<ErrorResponse> handleAcAccessDenied(AcAccessDeniedException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
 }

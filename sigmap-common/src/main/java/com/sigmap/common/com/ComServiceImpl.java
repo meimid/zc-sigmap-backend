@@ -255,4 +255,28 @@ public class ComServiceImpl implements ComService {
     return userCom;
   }
 
+  @Override
+  public List<Com> getComsWithTypeCPMP() throws RefParamNotFound {
+    logger.info("Retrieving Com entities with comType CPMP");
+    RefParam cpmpType = refParamRepository.findByCode("CPMP")
+            .orElseThrow(() -> new RefParamNotFound("CPMP type not found", List.of(Integer.valueOf("CPMP"))));
+    Specification<Com> spec = Specification.where(ComSpecifications.hasComTypeId(cpmpType.getId()))
+            .and(ComSpecifications.deleted(false));
+    List<Com> coms = repository.findAll(spec);
+    logger.info("Found {} Com entities with comType CPMP", coms.size());
+    return coms;
+  }
+
+  @Override
+  public List<Com> getComsWithTypeCNCMP() throws RefParamNotFound {
+    logger.info("Retrieving Com entities with comType CNCMP");
+    RefParam cncmpType = refParamRepository.findByCode("CNCMP")
+            .orElseThrow(() -> new RefParamNotFound("CNCMP type not found", List.of(Integer.valueOf("CNCMP"))));
+    Specification<Com> spec = Specification.where(ComSpecifications.hasComTypeId(cncmpType.getId()))
+            .and(ComSpecifications.deleted(false));
+    List<Com> coms = repository.findAll(spec);
+    logger.info("Found {} Com entities with comType CNCMP", coms.size());
+    return coms;
+  }
+
 }

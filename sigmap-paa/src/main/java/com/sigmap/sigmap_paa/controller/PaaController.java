@@ -1,6 +1,9 @@
 package com.sigmap.sigmap_paa.controller;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -20,6 +23,7 @@ import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
 import com.sigmap.sigmap_paa.service.dto.response.TaskDetailsDTO;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +39,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -86,10 +91,26 @@ public class PaaController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/current-year")
+    @GetMapping("/current_year")
     public ResponseEntity<PaaResponseWithRealisations> getPaaOfCurrentYear() {
         Paa paas = paaService.getPaaOfCurrentYear();
         PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paas);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/current_year/user")
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getCurrentYearPaasByUser(Pageable pageable) {
+        Page<Paa> paas = paaService.findCurrentYearPaasByUser(pageable);
+        Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/current_year/user/acs_without_paa")
+    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<Ac> acsWithoutPaa = paaService.getAcsWithoutPaaForCurrentYear();
+        List<AcResponseDto> response = acsWithoutPaa.stream()
+                .map(AcMapper.INSTANCE::mapToDto)
+                .toList();
         return ResponseEntity.ok(response);
     }
 
@@ -178,6 +199,30 @@ public class PaaController {
         Paa paa = paaService.createWithRelationships(request);
 
         // Use the detailed mapper that includes specialized DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
+    public ResponseEntity<PaaResponseWithRealisations> createPaaPerAc(
+            @ModelAttribute("request") PaaRequestGlobal request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, IOException {
+        logger.info("Creating PAA per AC with relationships using PaaRequestGlobal");
+
+        // Process lots from JSON string if provided
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        Paa paa = paaService.createPaaPerAc(request);
+
         PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -374,14 +419,14 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     }
 
     @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
-    public ResponseEntity<PaaResponse> deleteTest(
+    public ResponseEntity<PaaResponseWithRealisations> deleteTest(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
 
         paaService.deleteTest(paaId, paaVer);
         Paa deleted = paaService.findDeletedById(paaId, paaVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
-        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        PaaResponseWithRealisations response = PaaMapper.INSTANCE.toDtoWithRelations(deleted);
         return ResponseEntity.ok(response);
     }
 

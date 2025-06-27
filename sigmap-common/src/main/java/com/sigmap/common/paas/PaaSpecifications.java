@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -11,6 +12,7 @@ import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class PaaSpecifications {
     /**
@@ -29,6 +31,10 @@ public class PaaSpecifications {
                     criteriaBuilder.like(join.get("nom"), "%" + search + "%") // Assumes Ac has 'nom'
             );
         };
+    }
+
+    public static Specification<Paa> paaAc(List<Integer> acIds) {
+        return (root, query, cb) -> cb.in(root.get("ac").get("id")).value(acIds);
     }
 
     /**

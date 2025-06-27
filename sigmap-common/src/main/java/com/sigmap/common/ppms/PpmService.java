@@ -1,9 +1,11 @@
 package com.sigmap.common.ppms;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
+import com.sigmap.common.ppms.exception.PpmCreationLimitExceededException;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -14,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -308,4 +311,8 @@ public interface PpmService {
      */
     Page<Realisation> getRealisationsWithoutDac(Integer ppmId, Integer ppmVer, Pageable pageable);
 
-}
+     Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException;
+     Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable);
+     List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
+
+    }

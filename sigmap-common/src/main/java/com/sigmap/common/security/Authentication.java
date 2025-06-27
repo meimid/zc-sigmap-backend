@@ -1,12 +1,12 @@
 package com.sigmap.common.security;
 
 
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Utility class related to authentication.
@@ -26,94 +26,22 @@ public class Authentication {
                 .map(Jwt.class::cast)
                 .map(Jwt::getSubject);
     }
-
-    public static Optional<Long> getCurrentUserAC() {
-
+    public static Optional<String> getCurrentUserName() {
         return Optional.ofNullable(SecurityContextHolder.getContext())
-
                 .map(SecurityContext::getAuthentication)
-
                 .filter(org.springframework.security.core.Authentication::isAuthenticated)
-
                 .map(org.springframework.security.core.Authentication::getPrincipal)
-
-                .filter(Jwt.class::isInstance)
-
                 .map(Jwt.class::cast)
-
-                .map(jwt -> jwt.getClaim("ac"))
-
-                .filter(Objects::nonNull)
-
-                .map(claim -> {
-
-                    if (claim instanceof Number) {
-
-                        return ((Number) claim).longValue();
-
-                    } else if (claim instanceof String) {
-
-                        try {
-
-                            return Long.parseLong((String) claim);
-
-                        } catch (NumberFormatException e) {
-
-                            return null;
-
-                        }
-
-                    }
-
-                    return null;
-
-                });
-
+                .map(jwt -> jwt.getClaimAsString("preferred_username")); // ou "name"
     }
-
-    public static Optional<Long> getCurrentUserCom() {
-
+    public static boolean hasRole(String role) {
         return Optional.ofNullable(SecurityContextHolder.getContext())
-
                 .map(SecurityContext::getAuthentication)
-
-                .filter(org.springframework.security.core.Authentication::isAuthenticated)
-
-                .map(org.springframework.security.core.Authentication::getPrincipal)
-
-                .filter(Jwt.class::isInstance)
-
-                .map(Jwt.class::cast)
-
-                .map(jwt -> jwt.getClaim("com"))
-
-                .filter(Objects::nonNull)
-
-                .map(claim -> {
-
-                    if (claim instanceof Number) {
-
-                        return ((Number) claim).longValue();
-
-                    } else if (claim instanceof String) {
-
-                        try {
-
-                            return Long.parseLong((String) claim);
-
-                        } catch (NumberFormatException e) {
-
-                            return null;
-
-                        }
-
-                    }
-
-                    return null;
-
-                });
-
+                .map(auth -> auth.getAuthorities().stream()
+                        .map(grantedAuthority -> ((GrantedAuthority) grantedAuthority).getAuthority().replace("ROLE_", ""))
+                        .anyMatch(r -> r.equals(role))
+                )
+                .orElse(false);
     }
-
 
 }

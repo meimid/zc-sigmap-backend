@@ -1,14 +1,17 @@
 package com.sigmap.common.paas;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -184,6 +187,10 @@ public interface PaaService {
      */
     Page<Paa> findAllVersionsById(Integer paaId, Pageable pageable) throws PaaIdNotFound;
 
+    Page<Paa> findCurrentYearPaasByUser(Pageable pageable);
+
+    List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
+    Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;
 
 
 

@@ -34,13 +34,13 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred");
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    // @ExceptionHandler(Exception.class)
+    // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+    //     ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+    //             "An unexpected error occurred");
+    //     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    // }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BadRequest.class)
@@ -153,5 +153,12 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("security.unauthorized", new Object[] { ex.getMessage() }, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AllAcsHavePaaException.class)
+    public ResponseEntity<ErrorResponse> handleAllAcsHavePaaException(AllAcsHavePaaException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
