@@ -1182,11 +1182,9 @@ public class PpmController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<List<PpmResponseDto>> getCurrentYearPaasByUser() throws AcNotFound, PpmNotFound {
-        List<Ppm> ppms = ppmService.findCurrentYearPpmsByUser();
-        List<PpmResponseDto> responses = ppms.stream()
-                .map(PpmMapper.INSTANCE::mapToDto)
-                .toList();
+    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPaasByUser(Pageable pageable) {
+        Page<Ppm> ppms = ppmService.findCurrentYearPpmsByUser(pageable);
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
     }
 
