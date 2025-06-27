@@ -1,9 +1,12 @@
 package com.sigmap.common.process_verbal;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.Foncation;
@@ -15,6 +18,7 @@ import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
 import com.sigmap.common.process_verbal.request.ProcessVerbalRequest;
+import com.sigmap.common.process_verbal.request.PvRequest;
 import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
@@ -32,8 +36,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tika.Tika;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -55,8 +61,9 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     private final DocsRepository docsRepository;
     private final PvMembrePresentRepository pvMembrePresentRepository;
     private final PvDocsRepository pvDocsRepository;
+    private final AlfrescoService alfrescoService;
 
-    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService, DocsRepository docsRepository, PvMembrePresentRepository pvMembrePresentRepository, PvDocsRepository pvDocsRepository) {
+    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService, DocsRepository docsRepository, PvMembrePresentRepository pvMembrePresentRepository, PvDocsRepository pvDocsRepository, AlfrescoService alfrescoService) {
         this.repository = repository;
         this.ppmService = ppmService;
         this.sequenceGeneratorService = sequenceGeneratorService;
@@ -68,6 +75,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         this.pvMembrePresentRepository = pvMembrePresentRepository;
 
         this.pvDocsRepository = pvDocsRepository;
+        this.alfrescoService = alfrescoService;
     }
 
     @Override
@@ -95,7 +103,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         if (request.getTaskId() != null) {
             processVerbal.setTaskId(request.getTaskId());
         }
-        if(request.getProcessInstanceId() != null) {
+        if (request.getProcessInstanceId() != null) {
             processVerbal.setProcessInstanceId(request.getProcessInstanceId());
         }
         if (request.getDocuments() != null) {
@@ -186,7 +194,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     @Override
     @Transactional
     public ProcessVerbal findByIds(Integer ppmId, Integer ppmVer) {
-        ProcessVerbal response= repository.findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
+        ProcessVerbal response = repository.findTopByPpmIdAndPpmVersionAndIsDeletedFalseOrderByCreatedAtDesc(
                         ppmId, ppmVer)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
         Set<PvMembrePresent> membres = response.getMembres().stream()
@@ -230,7 +238,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         log.info("Successfully updated ProcessVerbal with ID: {}", pvToUpdate.getProcessVerbalId());
 
         // Re-fetch to ensure the returned object is the exact representation from the DB
-        ProcessVerbal response=repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
+        ProcessVerbal response = repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
                 .orElseThrow(() -> new ProcessVerbalNotFound("Could not re-fetch updated Process Verbal.", pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId()));
 
         Set<PvMembrePresent> membres = response.getMembres().stream()
@@ -243,13 +251,13 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
 
         response.setMembres(membres);
         response.setDocuments(docs);
-        return  response;
-        }
+        return response;
+    }
 
     @Override
     public ProcessVerbal findByIdsAndTaskIdAndProcessInstanceId(Integer ppmId, Integer ppmVer, String taskId, String processInstanceId) {
-        ProcessVerbal response= repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
-                        ppmId, ppmVer,taskId, processInstanceId)
+        ProcessVerbal response = repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
+                        ppmId, ppmVer, taskId, processInstanceId)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
         Set<PvMembrePresent> membres = response.getMembres().stream()
                 .filter(el -> !el.getIsDeleted())
@@ -264,11 +272,98 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         return response;
     }
 
+    @Override
+    @Transactional // Ensures all database operations in this method are atomic
+    public ProcessVerbal addNewPv(PvRequest request) throws ProcessVerbalNotFound, IOException {
+
+        // Fetch the existing ProcessVerbal. This will throw ProcessVerbalNotFound if not found.
+        ProcessVerbal processVerbal = findByIdsAndTaskIdAndProcessInstanceId(
+                request.getPpmId(),
+                request.getPpmVersion(),
+                request.getTaskId(),
+                request.getProcessInstanceId()
+        );
+
+        // No need for a null check on processVerbal if the find... method throws an exception.
+
+        if (request.getDocument() != null) {
+            String baseFolderPath = String.format(Constants.PATH_ENTREPOT_GED_PPM + "/" + processVerbal.getPpmId() + "/" + processVerbal.getPpmVersion() + Constants.PATH_ENTREPOT_GED_PV);
+
+            try {
+                // Initialize the set if it's null
+                if (processVerbal.getDocuments() == null) {
+                    processVerbal.setDocuments(new HashSet<>());
+                }
+                UUID uuid = UUID.randomUUID();
+                Tika tika = new Tika();
+                String detectedMimeType = tika.detect(request.getDocument().getInputStream());
+                String originalFilename = request.getDocument().getOriginalFilename() != null ? request.getDocument().getOriginalFilename() : "document";
+
+                String fileExtension = documentCommuneService.detectExtensionFromMimeType(detectedMimeType);
+                if (fileExtension.isEmpty()) {
+                    // Fallback to original filename extension if MIME type detection fails
+                    fileExtension = documentCommuneService.detectExtensionFromMimeType(originalFilename);
+                }
+                String[] parts = originalFilename.split("\\.");
+                String baseName = parts[0];
+                String extension = parts.length > 1 ? "." + parts[parts.length - 1] : "";
+                String uniqueFileName = "ppm_pv" + "_" + uuid + "_" + extension;
+                MultipartFile renamedFile = new RenamedMultipartFile(request.getDocument(), uniqueFileName);
+                long fileSize = request.getDocument().getSize();
+                String formattedSize = documentCommuneService.formatSize(fileSize);
+
+                String alfrescoId = alfrescoService.uploadDocument(renamedFile, baseFolderPath);
+                log.info("Uploaded document to Alfresco: AlfrescoID={}, FileName={}, Path={}", alfrescoId, uniqueFileName, baseFolderPath);
+
+                //2-remplissage mte3 document with data
+                Docs document = new Docs();
+                document.setName(baseName);
+                document.setAlfresco_id(alfrescoId);
+                document.setPathFolder(baseFolderPath);
+                document.setFileSize(formattedSize);
+                document.setContentType(detectedMimeType);
+                document.setFileExtension(fileExtension.isEmpty() ? extension.replace(".", "") : fileExtension);
+                document.setAlfrescoName(uniqueFileName);
+                // Call the injected service instance, not a static method
+                Docs pv = documentCommuneService.mapperDocument(request.getDocument(), "ppm_pv", baseFolderPath);
+                // Save the main document entity first
+                Docs savedDoc = docsRepository.save(document);
+
+                // Create the linking entity
+                PvDocs pvDocs = new PvDocs();
+                pvDocs.setDocId(savedDoc.getId());
+                pvDocs.setPv(true);
+                pvDocs.setProcessVerbalId(processVerbal.getProcessVerbalId());
+                pvDocs.setPpmId(processVerbal.getPpmId());
+                pvDocs.setPpmVersion(processVerbal.getPpmVersion());
+                pvDocs.setDoc(savedDoc); // Associate the saved document
+
+                // Add the new document link to the collection
+                processVerbal.getDocuments().add(pvDocs);
+
+                // Save the parent entity to persist the new relationship
+                ProcessVerbal updatedProcessVerbal = repository.save(processVerbal);
+
+                // Return the updated object
+                return updatedProcessVerbal;
+
+            } catch (Exception e) {
+                // Log the error for debugging
+                // logger.error("Failed to process or upload document", e);
+                // Re-throw as IOException or a more specific custom exception for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+
+        // If there was no document in the request, return the original object
+        return processVerbal;
+    }
+
 
     /**
      * Handles the logic for deleting, updating, and adding members associated with a ProcessVerbal.
      */
-    private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws RefParamNotFound {
+/*    private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws RefParamNotFound {
         // Fetch the current state of members from the database ONCE.
         List<PvMembrePresent> currentMembers = pvMembrePresentRepository.findByPpmIdAndPpmVersionAndProcessVerbalId(
                 pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId());
@@ -334,9 +429,11 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         }
     }
 
+    */
+
     /**
      * Handles the logic for deleting and adding documents associated with a ProcessVerbal.
-     */
+     *//*
     private void synchronizeDocuments(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws IOException, DocNotFound {
         // Fetch the IDs of documents currently linked to the ProcessVerbal.
         List<Integer> currentDocIds = pvDocsRepository.findDocIdsByProcessVerbal(pvToUpdate);
@@ -368,4 +465,108 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
             }
         }
     }
+*/
+    private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws RefParamNotFound {
+        // Fetch the current state of members from the database ONCE.
+        List<PvMembrePresent> currentMembers = pvMembrePresentRepository.findByPpmIdAndPpmVersionAndProcessVerbalId(
+                pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId());
+
+        // For efficient lookup, put current members into a Map by their ID.
+        Map<Integer, PvMembrePresent> currentMembersMap = currentMembers.stream()
+                .collect(Collectors.toMap(PvMembrePresent::getPvMembrePresentId, member -> member));
+        List<Integer> memberIdsToKeep = request.getMembers() != null ? request.getMembers().stream().filter((el) -> el.getPvMembrePresentId() != null).map(el -> el.getPvMembrePresentId()).collect(Collectors.toList()) : Collections.emptyList();
+
+        // === 3a. Handle Member Deletion ===
+        List<PvMembrePresent> membersToDelete = new ArrayList<>();
+        for (PvMembrePresent member : currentMembers) {
+            if (!memberIdsToKeep.contains(member.getPvMembrePresentId())) {
+                membersToDelete.add(member);
+            }
+        }
+
+        if (!membersToDelete.isEmpty()) {
+            log.info("Soft-deleting {} members.", membersToDelete.size());
+            pvMembrePresentRepository.softDeleteAll(membersToDelete);
+        }
+
+        // === 3b. Handle Member Updates and Additions ===
+        if (request.getMembers() != null && !request.getMembers().isEmpty()) {
+            Set<String> existingUserIds = currentMembers.stream()
+                    .map(PvMembrePresent::getUserId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            for (PvMembrePresentRequest memberRequest : request.getMembers()) {
+                if (memberRequest.getPvMembrePresentId() != null) {
+                    // UPDATE existing member
+                    PvMembrePresent memberToUpdate = currentMembersMap.get(memberRequest.getPvMembrePresentId());
+                    if (memberToUpdate != null) {
+                        log.debug("Updating member with ID: {}", memberToUpdate.getPvMembrePresentId());
+                        memberToUpdate.setPresent(memberRequest.isPresent());
+                        // Update any other fields from the request here
+                        pvMembrePresentRepository.save(memberToUpdate);
+                    }
+                } else {
+                    // ADD new member, checking for duplicates by userId
+                    boolean alreadyExists = memberRequest.getUserId() != null && existingUserIds.contains(memberRequest.getUserId());
+                    if (!alreadyExists) {
+                        log.debug("Adding new member with name: {} {}", memberRequest.getPrenom(), memberRequest.getNom());
+                        PvMembrePresent newMember = new PvMembrePresent();
+                        newMember.setPpmId(pvToUpdate.getPpmId());
+                        newMember.setPpmVersion(pvToUpdate.getPpmVersion());
+                        newMember.setProcessVerbalId(pvToUpdate.getProcessVerbalId());
+                        newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+                        newMember.setNom(memberRequest.getNom());
+                        newMember.setPrenom(memberRequest.getPrenom());
+                        newMember.setPresent(memberRequest.isPresent());
+                        newMember.setUserId(memberRequest.getUserId());
+                        newMember.setFoncation(Foncation.INVITE); // Or get from request if needed
+
+                        pvMembrePresentRepository.save(newMember);
+                    } else {
+                        log.warn("Skipping add for member with userId: {}. Already exists.", memberRequest.getUserId());
+                    }
+                }
+            }
+        }
+    }
+
+
+    /**
+     * Handles the logic for deleting and adding documents associated with a ProcessVerbal.
+     */
+
+    private void synchronizeDocuments(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws IOException, DocNotFound {
+        // Fetch the IDs of documents currently linked to the ProcessVerbal.
+        List<Integer> currentDocIds = pvDocsRepository.findDocIdsByProcessVerbal(pvToUpdate);
+
+        List<Integer> docIdsToKeep = request.getDocuments() != null ? request.getDocuments().stream().filter(((el) -> el.getDocId() != null)).map((el) -> el.getDocId()).collect(Collectors.toList()) : Collections.emptyList();
+
+        // === 4a. Handle Document Deletion ===
+        List<Integer> docIdsToDelete = currentDocIds.stream()
+                .filter(id -> !docIdsToKeep.contains(id))
+                .collect(Collectors.toList());
+
+        if (!docIdsToDelete.isEmpty()) {
+            log.info("Found {} documents to remove.", docIdsToDelete.size());
+
+            // Step 1: Soft-delete the actual documents in the 'docs' table
+            docsRepository.softDeleteAllById(docIdsToDelete); // Assumes custom method `softDeleteAllById(List<Integer> ids)`
+            log.info("Soft-deleted Docs with IDs: {}", docIdsToDelete);
+
+            // Step 2: Hard-delete the link records from the 'pv_docs' join table
+            pvDocsRepository.deleteByDocIdIn(docIdsToDelete); // Assumes custom method `deleteByDocIdIn(List<Integer> docIds)`
+            log.info("Hard-deleted PvDocs links for Doc IDs: {}", docIdsToDelete);
+        }
+
+        // === 4b. Handle Adding New Documents ===
+        if (request.getDocuments() != null && !request.getDocuments().isEmpty()) {
+
+            if (!request.getDocuments().isEmpty()) {
+                documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(),
+                        Constants.PATH_ENTREPOT_GED_PPM, pvToUpdate);
+            }
+        }
+    }
 }
+

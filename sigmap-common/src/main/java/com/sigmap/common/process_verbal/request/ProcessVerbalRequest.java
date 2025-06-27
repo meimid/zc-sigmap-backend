@@ -30,8 +30,8 @@ public class ProcessVerbalRequest {
     private ProcessStatus status;
     private List<PvDocRequest> documents;
     private Integer ComId;
-    private List<Integer> existingMemberIds = new ArrayList<>();
-    private List<Integer> existingDocIds = new ArrayList<>();
+/*    private List<Integer> existingMemberIds = new ArrayList<>();
+    private List<Integer> existingDocIds = new ArrayList<>();*/
     private String taskId;
     private String processInstanceId;
     private String processVerbalId;

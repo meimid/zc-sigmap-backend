@@ -247,7 +247,7 @@ public class DocumentCommuneService {
         }
 
     }
-    private Docs mapperDocument (MultipartFile file , String entityTypeName , String baseFolderPath ) throws Exception {
+    public Docs mapperDocument(MultipartFile file, String entityTypeName, String baseFolderPath) throws Exception {
         //1-extract file data
 
         UUID uuid = UUID.randomUUID();
@@ -321,5 +321,4 @@ public class DocumentCommuneService {
 
     }
 }
-
 
