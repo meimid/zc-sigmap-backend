@@ -9,5 +9,6 @@ public interface DacDocsService {
   public DacDocs updateDacDocs( DacDocsRequest request);
   public Optional<DacDocs> findById(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId);
   public List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
+  public List<DacDocs> findOneById(Integer dacId, Integer dacVer);
 
 }

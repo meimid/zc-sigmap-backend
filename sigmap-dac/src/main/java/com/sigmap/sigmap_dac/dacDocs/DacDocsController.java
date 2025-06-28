@@ -5,6 +5,7 @@ import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,21 +24,11 @@ public class DacDocsController {
         this.dacDocsService = dacDocsService;
     }
 
-    @GetMapping("/dac/{dacId}/{dacVer}")
-    public ResponseEntity<List<DacDocsResponse>> getDacDocsByDac(
-            @PathVariable Integer dacId,
-            @PathVariable Integer dacVer) {
-        List<DacDocs> dacDocsList = dacDocsService.findByDacIdAndDacVer(dacId, dacVer);
-        List<DacDocsResponse> responses = dacDocsList.stream()
-                .map(DacDocsMapper.INSTANCE::toResponse)
-                .toList();
-        return ResponseEntity.ok(responses);
-    }
 
     @PostMapping
-    public ResponseEntity<DacDocsResponse> createDacDocs(@RequestBody DacDocsRequest request) {
+    public ResponseEntity<DacDocsResponseFullEntities> createDacDocs(@RequestBody DacDocsRequest request) {
         DacDocs dacDocs = dacDocsService.createDacDocs(request);
-        DacDocsResponse response = DacDocsMapper.INSTANCE.toResponse(dacDocs);
+        DacDocsResponseFullEntities response = DacDocsMapper.INSTANCE.entityToResponseMap(dacDocs);
         return ResponseEntity.ok(response);
     }
 
