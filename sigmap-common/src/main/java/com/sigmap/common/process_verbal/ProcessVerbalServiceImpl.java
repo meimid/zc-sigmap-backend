@@ -4,6 +4,8 @@ import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
@@ -46,6 +48,9 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.hibernate.cache.spi.support.SimpleTimestamper.next;
+
 @Slf4j
 @Service
 public class ProcessVerbalServiceImpl implements ProcessVerbalService {
@@ -62,8 +67,9 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     private final PvMembrePresentRepository pvMembrePresentRepository;
     private final PvDocsRepository pvDocsRepository;
     private final AlfrescoService alfrescoService;
+    private final UserComRepository comRepository;
 
-    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService, DocsRepository docsRepository, PvMembrePresentRepository pvMembrePresentRepository, PvDocsRepository pvDocsRepository, AlfrescoService alfrescoService) {
+    public ProcessVerbalServiceImpl(ProcessVerbalRepository repository, PpmService ppmService, SequenceGeneratorService sequenceGeneratorService, RefParamService refParamService, UserComRepository userComRepository, DocumentCommuneService documentCommuneService, KeycloakAdminService keycloakAdminService, DocsRepository docsRepository, PvMembrePresentRepository pvMembrePresentRepository, PvDocsRepository pvDocsRepository, AlfrescoService alfrescoService, UserComRepository comRepository) {
         this.repository = repository;
         this.ppmService = ppmService;
         this.sequenceGeneratorService = sequenceGeneratorService;
@@ -76,6 +82,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
 
         this.pvDocsRepository = pvDocsRepository;
         this.alfrescoService = alfrescoService;
+        this.comRepository = comRepository;
     }
 
     @Override
@@ -131,21 +138,20 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         if (pvMembrePresent.size() != request.getMembers().size()) {
             Set<PvMembrePresentRequest> invitedMemebers = request.getMembers().stream().filter(el -> !usersCom.contains(el)).collect(Collectors.toSet());
             for (PvMembrePresentRequest membrePresent : invitedMemebers) {
-                PvMembrePresent newMember = new PvMembrePresent();
-                newMember.setPpmId(ppm.getId());
-                newMember.setPpmVersion(ppm.getVersion());
-                newMember.setProcessVerbalId(processVerbalId);
-                newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
-                newMember.setNom(membrePresent.getNom());
-                newMember.setPrenom(membrePresent.getPrenom());
-                newMember.setPresent(membrePresent.isPresent());
-                //RefParam fonction = refParamService.findById(membrePresent.getFonctionId());
-                //newMember.setFonctionId(fonction);
-                if (membrePresent.getUserId() != null) {
-                    newMember.setUserId(membrePresent.getUserId());
+                if(membrePresent.getUserId()!=null){
+                   next();
+                }else {
+                    PvMembrePresent newMember = new PvMembrePresent();
+                    newMember.setPpmId(ppm.getId());
+                    newMember.setPpmVersion(ppm.getVersion());
+                    newMember.setProcessVerbalId(processVerbalId);
+                    newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+                    newMember.setNom(membrePresent.getNom());
+                    newMember.setPrenom(membrePresent.getPrenom());
+                    newMember.setPresent(membrePresent.isPresent());
+                    newMember.setFoncation(Foncation.INVITE);
+                    processVerbal.getMembres().add(newMember);
                 }
-                newMember.setFoncation(Foncation.INVITE);
-                processVerbal.getMembres().add(newMember);
             }
         }
         repository.save(processVerbal);
@@ -154,6 +160,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
     }
 
 
+/*
     public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String processVerbalId, List<UserCom> usersToSave) throws RefParamNotFound {
         ProcessVerbal processVerbal = repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(request.getPpmId(), request.getPpmVersion(), processVerbalId).orElseThrow(() -> new ProcessVerbalNotFound("", request.getPpmId(), request.getPpmVersion(), processVerbalId));
         Map<String, PvMembrePresentRequest> requestMemberStatusMap = request.getMembers().stream()
@@ -190,6 +197,42 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         }
         repository.save(processVerbal);
     }
+*/
+public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String processVerbalId, List<UserCom> usersToSave) throws RefParamNotFound {
+    ProcessVerbal processVerbal = repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(
+                    request.getPpmId(), request.getPpmVersion(), processVerbalId)
+            .orElseThrow(() -> new ProcessVerbalNotFound("", request.getPpmId(), request.getPpmVersion(), processVerbalId));
+    Map<String, PvMembrePresentRequest> memberRequestMap = request.getMembers().stream()
+            .filter(member -> member.getUserId() != null)
+            .collect(Collectors.toMap(PvMembrePresentRequest::getUserId, Function.identity()));
+
+    for (UserCom user : usersToSave) {
+        UserDTO userDTO = keycloakAdminService.getUserById(user.getUserId());
+
+        PvMembrePresent newMember = new PvMembrePresent();
+        newMember.setPpmId(request.getPpmId());
+        newMember.setPpmVersion(request.getPpmVersion());
+        newMember.setProcessVerbalId(processVerbalId);
+        newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+        newMember.setNom(userDTO.getFirstName());
+        newMember.setPrenom(userDTO.getLastName());
+        newMember.setUserId(user.getUserId());
+        PvMembrePresentRequest memberDataFromRequest = memberRequestMap.get(user.getUserId());
+        boolean wasPresent = (memberDataFromRequest != null && memberDataFromRequest.isPresent());
+        newMember.setPresent(wasPresent);
+        if (user.isResponsable()) {
+            newMember.setFoncation(Foncation.RESPONSABLE);
+        } else {
+            newMember.setFoncation(Foncation.MEMEBRE);
+        }
+
+        // 5. Add the fully constructed member to the list.
+        processVerbal.getMembres().add(newMember);
+    }
+
+    // 6. Save the parent object, which will cascade the save to the new members.
+    repository.save(processVerbal);
+}
 
     @Override
     @Transactional
@@ -241,17 +284,17 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         ProcessVerbal response = repository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedFalse(pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
                 .orElseThrow(() -> new ProcessVerbalNotFound("Could not re-fetch updated Process Verbal.", pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId()));
 
-        Set<PvMembrePresent> membres = response.getMembres().stream()
+        Set<PvMembrePresent> membres = pvMembrePresentRepository.findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedIsFalse(request.getPpmId(), request.getPpmVersion(),request.getProcessVerbalId()).stream()
                 .filter(el -> !el.getIsDeleted())
                 .collect(Collectors.toSet());
 
-        Set<PvDocs> docs = response.getDocuments().stream()
+        Set<PvDocs> docs = pvToUpdate.getDocuments().stream()
                 .filter(el -> !el.getDoc().getIsDeleted())
                 .collect(Collectors.toSet());
 
-        response.setMembres(membres);
-        response.setDocuments(docs);
-        return response;
+        pvToUpdate.setMembres(membres);
+        pvToUpdate.setDocuments(docs);
+        return pvToUpdate;
     }
 
     @Override
@@ -466,7 +509,9 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         }
     }
 */
-    private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws RefParamNotFound {
+  /* private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate)  {
+       List<UserCom> usersCom=userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
+
         // Fetch the current state of members from the database ONCE.
         List<PvMembrePresent> currentMembers = pvMembrePresentRepository.findByPpmIdAndPpmVersionAndProcessVerbalId(
                 pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId());
@@ -497,46 +542,144 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                     .collect(Collectors.toSet());
 
             for (PvMembrePresentRequest memberRequest : request.getMembers()) {
-                if (memberRequest.getPvMembrePresentId() != null) {
-                    // UPDATE existing member
-                    PvMembrePresent memberToUpdate = currentMembersMap.get(memberRequest.getPvMembrePresentId());
-                    if (memberToUpdate != null) {
-                        log.debug("Updating member with ID: {}", memberToUpdate.getPvMembrePresentId());
-                        memberToUpdate.setPresent(memberRequest.isPresent());
-                        // Update any other fields from the request here
-                        pvMembrePresentRepository.save(memberToUpdate);
-                    }
+                if (!usersCom.contains(memberRequest.getUserId())) {
+                    next();
                 } else {
-                    // ADD new member, checking for duplicates by userId
-                    boolean alreadyExists = memberRequest.getUserId() != null && existingUserIds.contains(memberRequest.getUserId());
-                    if (!alreadyExists) {
-                        log.debug("Adding new member with name: {} {}", memberRequest.getPrenom(), memberRequest.getNom());
-                        PvMembrePresent newMember = new PvMembrePresent();
-                        newMember.setPpmId(pvToUpdate.getPpmId());
-                        newMember.setPpmVersion(pvToUpdate.getPpmVersion());
-                        newMember.setProcessVerbalId(pvToUpdate.getProcessVerbalId());
-                        newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
-                        newMember.setNom(memberRequest.getNom());
-                        newMember.setPrenom(memberRequest.getPrenom());
-                        newMember.setPresent(memberRequest.isPresent());
-                        newMember.setUserId(memberRequest.getUserId());
-                        newMember.setFoncation(Foncation.INVITE); // Or get from request if needed
 
-                        pvMembrePresentRepository.save(newMember);
+                    if (memberRequest.getPvMembrePresentId() != null) {
+                        // UPDATE existing member
+                        PvMembrePresent memberToUpdate = currentMembersMap.get(memberRequest.getPvMembrePresentId());
+                        if (memberToUpdate != null) {
+                            log.debug("Updating member with ID: {}", memberToUpdate.getPvMembrePresentId());
+                            memberToUpdate.setPresent(memberRequest.isPresent());
+                            // Update any other fields from the request here
+                            pvMembrePresentRepository.save(memberToUpdate);
+                        }
                     } else {
-                        log.warn("Skipping add for member with userId: {}. Already exists.", memberRequest.getUserId());
+                        // ADD new member, checking for duplicates by userId
+                        boolean alreadyExists = memberRequest.getUserId() != null && existingUserIds.contains(memberRequest.getUserId());
+                        if (!alreadyExists) {
+                            log.debug("Adding new member with name: {} {}", memberRequest.getPrenom(), memberRequest.getNom());
+                            PvMembrePresent newMember = new PvMembrePresent();
+                            newMember.setPpmId(pvToUpdate.getPpmId());
+                            newMember.setPpmVersion(pvToUpdate.getPpmVersion());
+                            newMember.setProcessVerbalId(pvToUpdate.getProcessVerbalId());
+                            newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+                            newMember.setNom(memberRequest.getNom());
+                            newMember.setPrenom(memberRequest.getPrenom());
+                            newMember.setPresent(memberRequest.isPresent());
+                            newMember.setUserId(memberRequest.getUserId());
+                            newMember.setFoncation(Foncation.INVITE); // Or get from request if needed
+
+                            pvMembrePresentRepository.save(newMember);
+                        } else {
+                            log.warn("Skipping add for member with userId: {}. Already exists.", memberRequest.getUserId());
+                        }
                     }
                 }
             }
         }
     }
+*/
+
+    private void synchronizeMembers(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) {
+        log.info("Starting member synchronization for ProcessVerbal ID: {}", pvToUpdate.getProcessVerbalId());
+
+        // === 1. PREPARATION ===
+
+        // Get all valid users for the commission for validation.
+        Set<String> validCommissionUserIds = userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId())
+                .stream()
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+
+        // Get the current members from the database for comparison.
+        Map<Integer, PvMembrePresent> currentMembersMap = pvMembrePresentRepository
+                .findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedIsFalse(
+                        pvToUpdate.getPpmId(), pvToUpdate.getPpmVersion(), pvToUpdate.getProcessVerbalId())
+                .stream()
+                .collect(Collectors.toMap(PvMembrePresent::getPvMembrePresentId, Function.identity()));
+
+        // Get userIds of members already in the meeting to prevent adding duplicates.
+        Set<String> existingMemberUserIds = currentMembersMap.values().stream()
+                .map(PvMembrePresent::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<PvMembrePresent> membersToSave = new ArrayList<>();
+        List<PvMembrePresentRequest> membersInRequest = request.getMembers() != null ? request.getMembers() : Collections.emptyList();
+        Set<Integer> memberIdsToKeep = new HashSet<>();
 
 
+        // === 2. PROCESS MEMBERS FROM THE REQUEST (ADD & UPDATE) ===
+
+        for (PvMembrePresentRequest memberRequest : membersInRequest) {
+            if (memberRequest.getPvMembrePresentId() != null) {
+                // --- A) UPDATE an existing member ---
+                PvMembrePresent memberToUpdate = currentMembersMap.get(memberRequest.getPvMembrePresentId());
+                if (memberToUpdate != null) {
+                    memberToUpdate.setPresent(memberRequest.isPresent());
+                    membersToSave.add(memberToUpdate);
+                    memberIdsToKeep.add(memberToUpdate.getPvMembrePresentId());
+                }
+            } else {
+                // --- B) ADD a new member ---
+                // Check if user is already in the meeting to avoid duplicates
+                if (memberRequest.getUserId() != null && existingMemberUserIds.contains(memberRequest.getUserId())) {
+                    log.warn("Skipping add for existing user ID: {}", memberRequest.getUserId());
+                    continue;
+                }
+
+                PvMembrePresent newMember = new PvMembrePresent();
+                newMember.setPpmId(pvToUpdate.getPpmId());
+                newMember.setPpmVersion(pvToUpdate.getPpmVersion());
+                newMember.setProcessVerbalId(pvToUpdate.getProcessVerbalId());
+                newMember.setPvMembrePresentId(sequenceGeneratorService.getNextId(Constants.PV_MEMEBER_PRESENT));
+                newMember.setNom(memberRequest.getNom());
+                newMember.setPrenom(memberRequest.getPrenom());
+                newMember.setPresent(memberRequest.isPresent());
+                newMember.setUserId(memberRequest.getUserId());
+
+                // Check if the new member is a Commission Member or an Invited Guest
+                if (memberRequest.getUserId() != null && validCommissionUserIds.contains(memberRequest.getUserId())) {
+                    log.info("Adding new Commission Member with UserID: {}", memberRequest.getUserId());
+                    newMember.setFoncation(Foncation.MEMEBRE); // Or get from request
+                }
+                else if(memberRequest.getUserId() == null){
+                    log.info("Adding new Invited Guest: {} {}", memberRequest.getPrenom(), memberRequest.getNom());
+                    newMember.setFoncation(Foncation.INVITE);
+                }else {
+                    continue;
+                }
+                membersToSave.add(newMember);
+            }
+        }
+
+        // === 3. PROCESS DELETIONS ===
+        List<PvMembrePresent> membersToDelete = new ArrayList<>();
+        for (PvMembrePresent currentMember : currentMembersMap.values()) {
+            if (!memberIdsToKeep.contains(currentMember.getPvMembrePresentId())) {
+                membersToDelete.add(currentMember);
+            }
+        }
+
+        // === 4. EXECUTE DATABASE CHANGES ===
+        if (!membersToDelete.isEmpty()) {
+            log.info("Soft-deleting {} members.", membersToDelete.size());
+            // Make sure your softDeleteAll method works correctly (see previous answers).
+            pvMembrePresentRepository.softDeleteAll(membersToDelete);
+        }
+
+        if (!membersToSave.isEmpty()) {
+            log.info("Saving {} members (adds/updates).", membersToSave.size());
+            pvMembrePresentRepository.saveAll(membersToSave);
+        }
+    }
     /**
      * Handles the logic for deleting and adding documents associated with a ProcessVerbal.
      */
 
-    private void synchronizeDocuments(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws IOException, DocNotFound {
+/*    private void synchronizeDocuments(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws IOException, DocNotFound {
         // Fetch the IDs of documents currently linked to the ProcessVerbal.
         List<Integer> currentDocIds = pvDocsRepository.findDocIdsByProcessVerbal(pvToUpdate);
 
@@ -567,6 +710,80 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
                         Constants.PATH_ENTREPOT_GED_PPM, pvToUpdate);
             }
         }
+    }*/
+
+    private void synchronizeDocuments(ProcessVerbalRequest request, ProcessVerbal pvToUpdate) throws IOException, DocNotFound {
+
+        // === Preparation ===
+
+        // A list of document requests from the incoming call.
+        List<PvDocRequest> docRequests = request.getDocuments() != null ? request.getDocuments() : Collections.emptyList();
+
+        // Create a map of requests for existing documents for easy lookup of the new 'pv' value.
+        // Key: docId, Value: PvDocRequest
+        Map<Integer, PvDocRequest> updateRequestsMap = docRequests.stream()
+                .filter(req -> req.getDocId() != null)
+                .collect(Collectors.toMap(PvDocRequest::getDocId, Function.identity()));
+
+        // Get the IDs of documents that should remain linked.
+        List<Integer> docIdsToKeep = new ArrayList<>(updateRequestsMap.keySet());
+
+        // Get the IDs of documents currently linked in the database.
+        List<Integer> currentDocIds = pvDocsRepository.findDocIdsByProcessVerbal(pvToUpdate);
+
+
+        // === 1. Handle Document Deletion ===
+        // (This part of your logic was correct and is preserved)
+        List<Integer> docIdsToDelete = currentDocIds.stream()
+                .filter(id -> !docIdsToKeep.contains(id))
+                .collect(Collectors.toList());
+
+        if (!docIdsToDelete.isEmpty()) {
+            log.info("Found {} documents to remove.", docIdsToDelete.size());
+            // Step 1: Soft-delete the actual documents in the 'docs' table
+            docsRepository.softDeleteAllById(docIdsToDelete);
+            log.info("Soft-deleted Docs with IDs: {}", docIdsToDelete);
+            // Step 2: Hard-delete the link records from the 'pv_docs' join table
+            pvDocsRepository.deleteByDocIdIn(docIdsToDelete);
+            log.info("Hard-deleted PvDocs links for Doc IDs: {}", docIdsToDelete);
+        }
+
+
+        // === 2. NEW: Handle Document Updates ===
+        // This is the missing piece you identified.
+        if (!docIdsToKeep.isEmpty()) {
+            // Fetch the actual PvDocs link entities that we need to update.
+            List<PvDocs> linksToUpdate = pvDocsRepository.findAllByProcessVerbalAndDocIdIn(pvToUpdate, docIdsToKeep);
+
+            boolean hasChanges = false;
+            for (PvDocs pvDocLink : linksToUpdate) {
+                // Find the matching request for this link.
+                PvDocRequest docRequest = updateRequestsMap.get(pvDocLink.getDoc().getId());
+                if (docRequest != null) {
+                    // Check if the 'pv' flag has changed and update it.
+                    if (pvDocLink.isPv() != docRequest.isPv()) {
+                        log.info("Updating 'pv' flag for Doc ID: {} to: {}", pvDocLink.getDoc().getId(), docRequest.isPv());
+                        pvDocLink.setPv(docRequest.isPv());
+                        hasChanges = true;
+                    }
+                }
+            }
+
+            // Only save to the database if there were actual changes.
+            if (hasChanges) {
+                pvDocsRepository.saveAll(linksToUpdate);
+            }
+        }
+
+
+        // === 3. Handle Adding New Documents ===
+        // (This part of your logic was correct and is preserved)
+        // It is handled by your existing external service.
+        if (!docRequests.isEmpty()) {
+            documentCommuneService.processAndSaveDocumentsForPv(docRequests,
+                    Constants.PATH_ENTREPOT_GED_PPM, pvToUpdate);
+        }
     }
+
 }
 

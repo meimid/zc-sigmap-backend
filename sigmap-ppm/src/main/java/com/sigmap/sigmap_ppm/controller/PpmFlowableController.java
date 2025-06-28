@@ -216,7 +216,7 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
             @ModelAttribute("request")
             // @RequestBody
             ProcessVerbalRequest request
-    ) throws  IOException, RefParamNotFound, DocNotFound {
+    ) throws IOException, RefParamNotFound, DocNotFound{
         ProcessVerbal processVerbal= processVerbalService.update(request);
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
