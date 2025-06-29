@@ -249,7 +249,7 @@ public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String pr
 
     @Override
     public ProcessVerbal findByIdsAndTaskIdAndProcessInstanceId(Integer ppmId, Integer ppmVer, String taskId, String processInstanceId) {
-        ProcessVerbal response = repository.findTopByPpmIdAndPpmVersionAndAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
+        ProcessVerbal response = repository.findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(
                         ppmId, ppmVer, taskId, processInstanceId)
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", ppmId, ppmVer, ""));
         Set<PvMembrePresent> membres = response.getMembres().stream()

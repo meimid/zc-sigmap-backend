@@ -19,10 +19,7 @@ import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
-import com.sigmap.sigmap_ppm.services.dto.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_ppm.services.dto.response.TaskDTO;
-import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
-import com.sigmap.sigmap_ppm.services.dto.response.TaskListResponseDTO;
+import com.sigmap.sigmap_ppm.services.dto.response.*;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -244,5 +241,8 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
         ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
-
+    @GetMapping("/task-history/{procInstId}")
+    public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
+        return ppmFlowableService.loadHistoricTasks(procInstId);
+    }
 }
