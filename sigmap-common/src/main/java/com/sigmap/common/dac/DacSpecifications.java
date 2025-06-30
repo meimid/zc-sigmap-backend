@@ -26,13 +26,14 @@ public class DacSpecifications {
     /**
      * Filter by dacId
      */
-    public static Specification<Dac> id(Integer dacId) {
+    public static Specification<Dac> id(Integer dacId, Integer dacVer) {
         return (root, query, criteriaBuilder) -> {
-            if (dacId == null) {
+            if (dacId == null && dacVer == null) {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.and(
-                    criteriaBuilder.equal(root.get("dacId"), dacId)
+                    criteriaBuilder.equal(root.get("dacId"), dacId),
+                    criteriaBuilder.equal(root.get("dacVer"), dacVer)
             );
         };
     }
