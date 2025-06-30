@@ -34,7 +34,10 @@ public class PvController {
   public ResponseEntity<byte[]> generateReportComparatifPaie(
       @RequestParam(name = "ppmId", required = false) Integer ppmId,
       @RequestParam(name = "ppmVersion", required = false) Integer ppmVersion,
-      @RequestParam(name = "processVerbalId", required = false) String processVerbalId)
+      @RequestParam(name = "processVerbalId", required = false) String processVerbalId,
+      @RequestParam(name = "taskId", required = false) String taskId,
+      @RequestParam(name = "processInstanceId", required = false) String processInstanceId
+      )
       throws IOException, JRException {
 
     // log.debug("---------------- {}", jrxmlPath.getFile().getPath());
@@ -57,6 +60,8 @@ public class PvController {
             ppmId,
             ppmVersion,
             processVerbalId,
+            taskId,
+            processInstanceId,
             // jrxmlPath.getFile().getPath() + "/",
             jasperReports,
             jasperPath);
