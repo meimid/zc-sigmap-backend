@@ -1,11 +1,16 @@
 package com.sigmap.common.dac_docs.mappers;
 
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
+import com.sigmap.common.dyna_docs.DynaDocs;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import org.mapstruct.Mapper;
@@ -53,4 +58,33 @@ public interface DacDocsMapper {
     List<DacDocsDetailsRequest> mapDetails(List<DacDocsRequest.DacDocsDetail> source);
 
     Set<DacDocsDetails> detailsToSet(List<DacDocsDetails> source);
+
+    // costum responce
+    @Mapping(target = "dacId", source = "dacId")
+    @Mapping(target = "dacVer", source = "dacVer")
+    DacResponseDTO toDacResponse(Dac dac);
+
+    @Mapping(target = "id", source = "dynaField.dynaDocs.id")
+    @Mapping(target = "version", source = "dynaField.dynaDocs.version")
+    @Mapping(target = "name", source = "dynaField.dynaDocs.name")
+    @Mapping(target = "templateFileName", source = "dynaField.dynaDocs.templateFileName")
+    @Mapping(target = "guideFileName", source = "dynaField.dynaDocs.guideFileName")
+    @Mapping(target = "categorieId", source = "dynaField.dynaDocs.categorieId")
+    @Mapping(target = "dynaDocOrder", source = "dynaField.dynaDocs.dynaDocOrder")
+    @Mapping(target = "status", source = "dynaField.dynaDocs.status")
+    DynaDocsResponseDTO toDynaDocsResponse(DacDocs dacDocs);
+
+    @Mapping(target = "dynaFieldsId", source = "dynaField.dynaFieldsId")
+    @Mapping(target = "dynaDocsId", source = "dynaField.dynaDocsId")
+    @Mapping(target = "dynaDocsVer", source = "dynaField.dynaDocsVer")
+    @Mapping(target = "name", source = "dynaField.name")
+    @Mapping(target = "ref", source = "dynaField.ref")
+    @Mapping(target = "label", source = "dynaField.label")
+    @Mapping(target = "description", source = "dynaField.description")
+    @Mapping(target = "type", source = "dynaField.type")
+    @Mapping(target = "source", source = "dynaField.source")
+    @Mapping(target = "sourceField", source = "dynaField.sourceField")
+    @Mapping(target = "dynaFieldsOrder", source = "dynaField.dynaFieldsOrder")
+    @Mapping(target = "status", source = "dynaField.status")
+    DynaFieldsDTO toDynaFieldResponse(DacDocs dacDocs);
 } 

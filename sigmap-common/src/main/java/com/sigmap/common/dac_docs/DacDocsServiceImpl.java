@@ -4,6 +4,8 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
@@ -12,14 +14,14 @@ import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -175,6 +177,48 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Override
     public Optional<DacDocs> findById(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId) {
         return dacDocsRepository.findDacDocsBYPKs(dacId, dacVer, dynaDocsId, dynaDocsVer, dynaFieldsId);
+    }
+
+    @Override
+    public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
+        List<DacDocs> dacDocsList = dacDocsRepository.findDacByID(dacId, dacVer);
+        if (dacDocsList.isEmpty()) {
+            return null;
+        }
+
+        // Group by DynaDocs
+        Map<DynaDocs, List<DacDocs>> groupedByDynaDocs = dacDocsList.stream()
+                .collect(Collectors.groupingBy(dacDocs -> dacDocs.getDynaField().getDynaDocs()));
+
+        // Create DacResponseDTO
+        DacResponseDTO dacResponse = new DacResponseDTO();
+        dacResponse.setDacId(dacId);
+        dacResponse.setDacVer(dacVer);
+
+        // Map to DynaDocsResponseDTO
+        List<DynaDocsResponseDTO> dynaDocsResponses = groupedByDynaDocs.entrySet().stream()
+                .map(entry -> {
+                    DynaDocs dynaDocs = entry.getKey();
+                    List<DacDocs> docs = entry.getValue();
+                    DynaDocsResponseDTO dynaDocsResponse = dacDocsMapper.toDynaDocsResponse(docs.get(0)); // Use first for common fields
+                    List<DynaFieldsDTO> dynaFields = docs.stream()
+                            .map(dacDocsMapper::toDynaFieldResponse)
+                            .map(field -> {
+                                field.setDynaFieldsDetails(
+                                        dacDocsMapper.dynaFieldsDetailsToDTO(
+                                                new HashSet<>(docs.get(0).getDynaField().getDynaFieldsDetails())
+                                        )
+                                );
+                                return field;
+                            })
+                            .collect(Collectors.toList());
+                    dynaDocsResponse.setDynaFields(dynaFields);
+                    return dynaDocsResponse;
+                })
+                .collect(Collectors.toList());
+
+        dacResponse.setDynaDocs(dynaDocsResponses);
+        return dacResponse;
     }
 
     @Override

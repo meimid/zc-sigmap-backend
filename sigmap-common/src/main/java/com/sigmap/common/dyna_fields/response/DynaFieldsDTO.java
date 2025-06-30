@@ -14,31 +14,17 @@ import java.util.Set;
 @Data
 public class DynaFieldsDTO {
     private Integer dynaFieldsId;
-
     private Integer dynaDocsId;
-
     private Integer dynaDocsVer;
-
     private String name;
-
     private String ref;
-
     private String label;
-
     private String description;
-
     private DynaFieldType type;
-
     private String source;
-
     private String sourceField;
-
     private Integer dynaFieldsOrder;
-
     private ActiveStatus status;
-
-
     private DynaDocs dynaDocs;
-
     private Set<DynaFieldsDetailsDTO> dynaFieldsDetails;
 }

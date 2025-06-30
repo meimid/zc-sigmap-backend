@@ -12,6 +12,7 @@ import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemQuery;
@@ -82,7 +83,7 @@ public class DacController {
     return ResponseEntity.ok(dacResponse);
   }
 
-  @GetMapping("/{dacId}/{dacVer}")
+  /*@GetMapping("/{dacId}/{dacVer}")
   public ResponseEntity<List<DacDocsResponseFullEntities>> getDacDocs(
           @PathVariable Integer dacId,
           @PathVariable Integer dacVer) {
@@ -93,7 +94,20 @@ public class DacController {
     } else {
       return ResponseEntity.notFound().build();
     }
+  }*/
+
+  @GetMapping("/{dacId}/{dacVer}")
+  public ResponseEntity<DacResponseDTO> getDacDocs(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    DacResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+    if (response != null) {
+      return ResponseEntity.ok(response);
+    } else {
+      return ResponseEntity.notFound().build();
+    }
   }
+
 
   @PostMapping("/create")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {

@@ -1,6 +1,8 @@
 package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -10,5 +12,6 @@ public interface DacDocsService {
   public Optional<DacDocs> findById(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId);
   public List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
   public List<DacDocs> findOneById(Integer dacId, Integer dacVer);
+  public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
 
 }
