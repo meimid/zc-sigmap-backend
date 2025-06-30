@@ -42,7 +42,7 @@ public class PvJasperService {
         if (!membreCommisionsDTOList.isEmpty()) {
 
             // Fetch ProcessVerbal entity to get observation
-            var processVerbal = processVerbalRepository.findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(ppmId, ppmVersion,processInstanceId,taskId).get();
+            var processVerbal = processVerbalRepository.findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(ppmId, ppmVersion,taskId,processInstanceId).get();
             String observation = processVerbal != null ? processVerbal.getObservation() : null;
 
             // Fetch ProcessVerbal entity to get dateDebutReunion and heureDebutReunion
