@@ -32,6 +32,7 @@ public interface ProcessVerbalMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "documents",source = "documents")
     ProcessVerbalResponse map(ProcessVerbal source);
 
     /*Set<PvDocsResponseDto> mapDocuments(Set<PvDocs> source);

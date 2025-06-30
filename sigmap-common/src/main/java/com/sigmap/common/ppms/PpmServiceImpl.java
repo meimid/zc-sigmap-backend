@@ -368,23 +368,23 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
     }
 
     @Override
-    public Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) throws PpmNotAssociatedWithUserAcException, AcNotFound, PpmNotFound {
+    public Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) {
         log.info("Recherche de tous les PPMs avec spécification: {}", spec);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
+            log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
+            return Page.empty(pageable);
         }
 
         // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC non trouvé avec ID: {}", acId);
+                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
             }
         }
 
@@ -405,8 +405,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         // Check if any non-deleted PPMs exist
         Page<Ppm> allPpmsWithoutAcFilter = repository.findAll(baseSpec, pageable);
         if (allPpmsWithoutAcFilter.isEmpty()) {
-            log.warn("Aucun PPM non supprimé trouvé dans la base de données");
-            throw new PpmNotFound("Aucun PPM non supprimé trouvé dans la base de données", Collections.emptyList(), Collections.emptyList());
+            log.info("Aucun PPM non supprimé trouvé dans la base de données");
+            return Page.empty(pageable); // Return empty page instead of throwing PpmNotFound
         }
 
         // Apply AC filter
@@ -415,30 +415,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
         Page<Ppm> allPpms = repository.findAll(combinedSpec, pageable);
 
         if (allPpms.isEmpty()) {
-            log.warn("Aucun PPM associé aux ACs de l'utilisateur: {}", userAcIds);
-            throw new PpmNotAssociatedWithUserAcException(
-                    "Aucun PPM associé aux ACs de l'utilisateur: " + userAcIds,
-                    Collections.emptyList(),
-                    Collections.emptyList()
-            );
-        }
-
-        // Double-check AC association for each PPM
-        List<Integer> invalidPpmIds = new ArrayList<>();
-        List<Integer> invalidVersions = new ArrayList<>();
-        for (Ppm ppm : allPpms.getContent()) {
-            if (ppm.getAc() == null || !userAcIds.contains(ppm.getAc().getId())) {
-                invalidPpmIds.add(ppm.getId());
-                invalidVersions.add(ppm.getVersion());
-            }
-        }
-        if (!invalidPpmIds.isEmpty()) {
-            log.warn("Certains PPMs ne sont pas associés aux ACs de l'utilisateur: IDs={}, Versions={}", invalidPpmIds, invalidVersions);
-            throw new PpmNotAssociatedWithUserAcException(
-                    "Certains PPMs ne sont pas associés aux ACs de l'utilisateur",
-                    invalidPpmIds.stream().map(Integer::longValue).collect(Collectors.toList()),
-                    invalidVersions
-            );
+            log.info("Aucun PPM associé aux ACs de l'utilisateur: {}", userAcIds);
+            return Page.empty(pageable);
         }
 
         // Map the results to filter Docs
@@ -447,68 +425,6 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 
         return ppmResponse;
     }
-//    @Override
-//    public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
-//        log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
-//
-//        // Get user's AC IDs
-//        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
-//        if (userAcIdsLong.isEmpty()) {
-//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
-//        }
-//        Set<Integer> userAcIds = userAcIdsLong.stream().map(Long::intValue).collect(Collectors.toSet());
-//        log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
-//
-//        // Validate ACs
-//        for (Integer acId : userAcIds) {
-//            try {
-//                acService.findById(acId);
-//            } catch (AcNotFound e) {
-//                log.warn("AC non trouvé avec ID: {}", acId);
-//                throw e;
-//            }
-//        }
-//
-//        // Find the latest version
-//        Integer latestVersion = repository.findMaxVersionById(ppmId);
-//        if (latestVersion == null) {
-//            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
-//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), Collections.emptyList());
-//        }
-//        log.debug("Dernière version du PPM ID {}: {}", ppmId, latestVersion);
-//
-//        // Retrieve the PPM
-//        Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, latestVersion));
-//        if (ppmOpt.isEmpty()) {
-//            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, latestVersion);
-//            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(latestVersion));
-//        }
-//
-//        Ppm ppm = ppmOpt.get();
-//        log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
-//
-//        // Check if the PPM is deleted
-//        if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
-//            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
-//            throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(latestVersion));
-//        }
-//
-//        // Validate AC association
-//        Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-//        if (ppmAcId == null || !userAcIds.contains(ppmAcId)) {
-//            log.warn("PPM avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}", ppmId, ppmAcId, userAcIds);
-//            throw new PpmNotAssociatedWithUserAcException(
-//                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC de l'utilisateur connecté",
-//                    List.of(ppmId.longValue()),
-//                    List.of(latestVersion)
-//            );
-//        }
-//
-//        Ppm responsePpm = createFilteredResponsePpm(ppm);
-//        log.info("Dernière version du PPM avec ID {} récupérée avec succès pour l'utilisateur", ppmId);
-//        return Optional.ofNullable(responsePpm);
-//    }
 
     @Override
     public Ppm save(Ppm ppm) {
@@ -960,6 +876,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         Ppm newPpm = createAndSaveNewPpmVersion(ppmId, ppmVer, tempPpm, updatedRealisations, updatedDocs, existingPpm);
 
         newPpm.setRef(existingPpm.getRef());
+        newPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
 
         // Process new files if present (for PpmWithLotsRequestDto)
@@ -4735,43 +4652,45 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
     }
 
     @Override
-    public List<Ppm> findCurrentYearPpmsByUser() throws AcNotFound, PpmNotFound {
-        log.info("Retrieving current year's PPMs for connected user");
+    public Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable) {
+        log.info("Retrieving current year's PPMs for connected user with pageable: {}", pageable);
 
+        // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+            log.info("No AC IDs found for the connected user");
+            return Page.empty(pageable);
         }
 
+        // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC not found with ID: {}", acId);
+                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
             }
         }
 
+        // Get current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
 
-        List<Ppm> ppmsList = new ArrayList<>();
-        for (Integer acId : userAcIds) {
-            Specification<Ppm> spec = PpmSpecifications.annee(currentYear)
-                    .and(PpmSpecifications.ppmAc(acId))
-                    .and(PpmSpecifications.deleted(false))
-                    .and(PpmSpecifications.isLatestVersion());
-            Optional<Ppm> ppmOpt = repository.findOne(spec);
-            ppmOpt.ifPresent(ppmsList::add);
+        // Build specification
+        Specification<Ppm> spec = Specification.where(PpmSpecifications.annee(currentYear))
+                .and(PpmSpecifications.ppmAc(userAcIds))
+                .and(PpmSpecifications.deleted(false))
+                .and(PpmSpecifications.isLatestVersion());
+
+        // Query PPMs with pagination
+        Page<Ppm> ppmsPage = repository.findAll(spec, pageable);
+
+        if (ppmsPage.isEmpty()) {
+            log.info("No PPMs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            return Page.empty(pageable);
         }
 
-        if (ppmsList.isEmpty()) {
-            log.warn("No PPMs found for the current year {} and user ACs: {}", currentYear, userAcIds);
-            throw new PpmNotFound("No PPMs found for the current year and user ACs: " + userAcIds,
-                    Collections.emptyList(), Collections.emptyList());
-        }
-
-        return ppmsList;
+        log.info("Retrieved {} PPMs for the current year {} and user ACs {}", ppmsPage.getContent().size(), currentYear, userAcIds);
+        return ppmsPage;
     }
 
     @Override

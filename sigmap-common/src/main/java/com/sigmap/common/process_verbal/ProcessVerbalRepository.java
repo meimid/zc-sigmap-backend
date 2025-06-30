@@ -62,4 +62,8 @@ public interface ProcessVerbalRepository extends JpaRepository<ProcessVerbal, Pr
             Integer ppmId,
             Integer ppmVersion
     );
+    Optional<ProcessVerbal> findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(Integer ppmId,
+                                                                                                         Integer ppmVersion,
+                                                                                                         String taskId,
+                                                                                                         String processInstanceId);
 }

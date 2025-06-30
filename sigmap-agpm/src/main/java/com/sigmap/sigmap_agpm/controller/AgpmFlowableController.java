@@ -9,10 +9,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
-import com.sigmap.sigmap_agpm.service.dto.response.ProcessStartResponseDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskDetailsDTO;
-import com.sigmap.sigmap_agpm.service.dto.response.TaskListResponseDTO;
+import com.sigmap.sigmap_agpm.service.dto.response.*;
 import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Agpm entities.
@@ -105,5 +103,9 @@ public class AgpmFlowableController {
         log.info("Retrieving tasks for current user");
         TaskListResponseDTO response = agpmFlowableService.getUserTasks();
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/task-history/{procInstId}")
+    public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
+        return agpmFlowableService.loadHistoricTasks(procInstId);
     }
 }

@@ -26,6 +26,14 @@ public class Authentication {
                 .map(Jwt.class::cast)
                 .map(Jwt::getSubject);
     }
+    public static Optional<String> getCurrentUserName() {
+        return Optional.ofNullable(SecurityContextHolder.getContext())
+                .map(SecurityContext::getAuthentication)
+                .filter(org.springframework.security.core.Authentication::isAuthenticated)
+                .map(org.springframework.security.core.Authentication::getPrincipal)
+                .map(Jwt.class::cast)
+                .map(jwt -> jwt.getClaimAsString("preferred_username")); // ou "name"
+    }
     public static boolean hasRole(String role) {
         return Optional.ofNullable(SecurityContextHolder.getContext())
                 .map(SecurityContext::getAuthentication)

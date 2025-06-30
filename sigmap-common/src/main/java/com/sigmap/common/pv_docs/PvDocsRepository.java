@@ -26,5 +26,7 @@ public interface PvDocsRepository extends JpaRepository<PvDocs, PvDocsId> {
     @Modifying
     @Query("DELETE FROM PvDocs pd WHERE pd.docId IN :docIds")
     void deleteByDocIdIn(@Param("docIds") List<Integer> docIds);
+    List<PvDocs> findAllByProcessVerbalAndDocIdIn(ProcessVerbal processVerbal, List<Integer> docIds);
+
 }
 
