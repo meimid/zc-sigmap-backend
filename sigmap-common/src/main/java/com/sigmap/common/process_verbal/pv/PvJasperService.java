@@ -35,14 +35,14 @@ public class PvJasperService {
     private final PvMembrePresentRepository pvMembrePresentRepository;
     private final PvService pvService;
 
-    public byte[] generateProcesVerbalRep(Integer ppmId, Integer ppmVersion, String processVerbalId, Map<String, InputStream> jrxmlFiles, String jasperPath) throws JRException {
+    public byte[] generateProcesVerbalRep(Integer ppmId, Integer ppmVersion, String processVerbalId,String taskId,String processInstanceId,Map<String, InputStream> jrxmlFiles, String jasperPath) throws JRException {
 
         List<MembreCommisionDTO> membreCommisionsDTOList = pvMembrePresentRepository.getAllMembreCommision(ppmId, ppmVersion, processVerbalId);
         log.debug("total records {} " , membreCommisionsDTOList.size());
         if (!membreCommisionsDTOList.isEmpty()) {
 
             // Fetch ProcessVerbal entity to get observation
-            var processVerbal = processVerbalRepository.findByPpmIdAndPpmVersionAndProcessVerbalId(ppmId, ppmVersion, processVerbalId);
+            var processVerbal = processVerbalRepository.findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(ppmId, ppmVersion,processInstanceId,taskId).get();
             String observation = processVerbal != null ? processVerbal.getObservation() : null;
 
             // Fetch ProcessVerbal entity to get dateDebutReunion and heureDebutReunion
