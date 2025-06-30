@@ -8,6 +8,11 @@ import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
+import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsService;
+import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemQuery;
@@ -17,6 +22,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -47,9 +53,11 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/dac")
 @Slf4j
+@Tag(name = "DAC", description = "Dossier d'Appel a Condidature")
 public class DacController {
 
   private final DacService dacService;
+  private final DacDocsService dacDocsService;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
@@ -60,8 +68,10 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService) {
+  public DacController(DacService dacService, DacDocsService dacDocsService) {
     this.dacService = dacService;
+    this.dacDocsService = dacDocsService;
+
   }
 
 
@@ -72,6 +82,32 @@ public class DacController {
     Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
     return ResponseEntity.ok(dacResponse);
   }
+
+  /*@GetMapping("/{dacId}/{dacVer}")
+  public ResponseEntity<List<DacDocsResponseFullEntities>> getDacDocs(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    List<DacDocs> dacDocs = dacDocsService.findOneById(dacId, dacVer);
+    if (dacDocs!=null) {
+      List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocs);
+      return ResponseEntity.ok(response);
+    } else {
+      return ResponseEntity.notFound().build();
+    }
+  }*/
+
+  @GetMapping("/{dacId}/{dacVer}")
+  public ResponseEntity<DacResponseDTO> getDacDocs(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    DacResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+    if (response != null) {
+      return ResponseEntity.ok(response);
+    } else {
+      return ResponseEntity.notFound().build();
+    }
+  }
+
 
   @PostMapping("/create")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {

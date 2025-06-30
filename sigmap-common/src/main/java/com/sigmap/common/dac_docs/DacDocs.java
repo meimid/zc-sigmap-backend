@@ -1,18 +1,17 @@
 package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dyna_fields.DynaFields;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinColumns;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -64,4 +63,7 @@ public class DacDocs {
         updatable = false)
   })
   private DynaFields dynaField;
+
+  @OneToMany(mappedBy = "dac")
+  private Set<DacDocsDetails> dacDocsDetails = new HashSet<>();
 }

@@ -20,14 +20,32 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT d FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer")
   List<DacDocs> findByDacIdAndDacVer(
       @Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);
-      
+
+
+  @Query("SELECT d FROM Dac d WHERE d.dacId = :dacId AND d.dacVer = " +
+          "(SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = :dacId) AND d.isDeleted = false")
+  Dac findDacWithLatestVersionByDacId(@Param("dacId") Integer dacId);
+
+  @Query("SELECT d FROM Dac d WHERE d.dacId = :dacId AND d.dacVer = :dacVer")
+  Optional<Dac> findDacByDacIdAndDacVer(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);
+
+
   /**
    * Récupère les clés composites keys (id, version) des réalisations qui sont liées à des DAC
    * @return liste des clés primaires des réalisations liées à des DAC
    */
+
+ // @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL and d.isDeleted = false")
+ // List<Object[]> findRealisationKeysWithDac();
+
+  //@Query("SELECT d FROM Dac d WHERE d.realisation.id = :id and d.realisation.version = :version and d.isDeleted = false")
+  //Optional<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
+
+
   @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL and d.isDeleted = false")
   List<Object[]> findRealisationKeysWithDac();
 
   @Query("SELECT d FROM Dac d WHERE d.realisation.id = :id and d.realisation.version = :version and d.isDeleted = false")
   Optional<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
+
 }
