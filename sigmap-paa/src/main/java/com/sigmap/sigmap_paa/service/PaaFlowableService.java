@@ -756,7 +756,10 @@ public class PaaFlowableService {
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
         taskService.setAssignee(taskId, Authentication.getCurrentUserId().get());
-        taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+        String comment = request.getComment();
+        if (comment != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), comment);
+        }
         taskService.complete(taskId);
 
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {

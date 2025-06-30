@@ -29,7 +29,7 @@ public class ProcessVerbalRequest {
     private Integer typeId;
     private ProcessStatus status;
     private List<PvDocRequest> documents;
-    private Integer ComId;
+    private Integer comId;
 /*    private List<Integer> existingMemberIds = new ArrayList<>();
     private List<Integer> existingDocIds = new ArrayList<>();*/
     private String taskId;

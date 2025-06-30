@@ -743,9 +743,11 @@ public class AgpmFlowableService {
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
         taskService.setAssignee(taskId, Authentication.getCurrentUserId().get());
-        taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+        String comment = request.getComment();
+        if (comment != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), comment);
+        }
         taskService.complete(taskId);
-
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
             newStatus = ProcessStatus.PUBLIE;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);

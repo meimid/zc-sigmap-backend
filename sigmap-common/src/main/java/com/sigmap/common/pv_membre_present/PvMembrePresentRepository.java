@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface PvMembrePresentRepository extends JpaRepository<PvMembrePresent, PvMembrePresentId> {
@@ -26,14 +27,7 @@ public interface PvMembrePresentRepository extends JpaRepository<PvMembrePresent
     @Transactional
     @Query("UPDATE PvMembrePresent p SET p.isDeleted = true, p.deletedAt = CURRENT_TIMESTAMP, p.deletedBy = :#{principal.subject} WHERE p IN :members")
     void softDeleteAll(@Param("members") List<PvMembrePresent> members);
-    @Modifying
-    @Transactional
-    @Query("UPDATE PvMembrePresent m SET m.isDeleted = true, m.deletedAt = CURRENT_TIMESTAMP, m.deletedBy = :#{principal.subject} " +
-            "WHERE m.ppmId = :ppmId AND m.ppmVersion = :ppmVersion AND m.processVerbalId = :processVerbalId")
-    void softDeleteByPpmIdAndPpmVersionAndProcessVerbalId(
-            @Param("ppmId") Integer ppmId,
-            @Param("ppmVersion") Integer ppmVersion,
-            @Param("processVerbalId") String processVerbalId);
+    List< PvMembrePresent> findByPpmIdAndPpmVersionAndProcessVerbalIdAndIsDeletedIsFalse(Integer ppmId, Integer ppmVersion, String processVerbalId);
 
 
 
