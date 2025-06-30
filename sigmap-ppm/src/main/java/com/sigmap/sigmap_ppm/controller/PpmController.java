@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcResponseDto;
+
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.paas.Paa;
@@ -26,6 +27,7 @@ import com.sigmap.common.ppms.response.PpmResponse;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.ppms.response.PpmResponseSoftDto;
 import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
+import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -98,6 +100,7 @@ public class PpmController {
         return ResponseEntity.ok(responses);
     }
 
+
     /**
      * Return a page of deleted ppms based on the given specification and pageable.
      *
@@ -128,6 +131,15 @@ public class PpmController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{ppmId}/{ppmVer}/realisations-without-dac")
+    public ResponseEntity<Page<Realisation>> getPpmRealisationsWithoutDac(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer,
+            Pageable pageable) {
+        Page<Realisation> realisations = ppmService.getRealisationsWithoutDac(ppmId, ppmVer, pageable);
+        return ResponseEntity.ok(realisations);
     }
 
     /**

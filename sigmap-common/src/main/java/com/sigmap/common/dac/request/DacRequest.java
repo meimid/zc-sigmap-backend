@@ -1,6 +1,5 @@
 package com.sigmap.common.dac.request;
 
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
