@@ -23,8 +23,8 @@ public class DacQuery {
     public Specification<Dac> toSpecification() {
         Specification<Dac> spec = Specification.where(DacSpecifications.searchByDeleted(deleted));
 
-        if (dacId != null) {
-            spec = spec.and(DacSpecifications.id(dacId));
+        if (dacId != null && dacVer != null) {
+            spec = spec.and(DacSpecifications.id(dacId, dacVer));
         }
 
         if (dacVer != null) {

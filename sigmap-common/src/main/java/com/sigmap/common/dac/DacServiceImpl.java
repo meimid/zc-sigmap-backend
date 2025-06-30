@@ -1,5 +1,7 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
@@ -532,5 +534,18 @@ public class DacServiceImpl implements DacService {
         Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
         return dacRepository.findAll(specification, pageable);
     }
+
+    @Override
+    public Optional<Dac> findOne(Specification<Dac> specification) {
+        return dacRepository.findOne(specification);
+    }
+
+    @Override
+    public Optional<Dac> findById(Integer dacId, Integer dacVer) {
+        Specification<Dac> specification = DacSpecifications.id(dacId, dacVer)
+                .and(DacSpecifications.searchByDeleted(false));
+        return findOne(specification);
+    }
+
 
 }

@@ -10,11 +10,14 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface DacService {
 
     List<Dac> findAll();
     Page<Dac> findAll(Specification<Dac> spec, Pageable pageable);
+    Optional<Dac> findById(Integer dacId, Integer dacVer);
+    public Optional<Dac> findOne(Specification<Dac> specification);
     Dac save(Dac dac);
     Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException;
     List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String basePath, String customDirPath) ;

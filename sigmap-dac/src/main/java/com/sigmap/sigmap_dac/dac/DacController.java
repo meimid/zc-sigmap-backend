@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -83,20 +84,17 @@ public class DacController {
     return ResponseEntity.ok(dacResponse);
   }
 
-  /*@GetMapping("/{dacId}/{dacVer}")
-  public ResponseEntity<List<DacDocsResponseFullEntities>> getDacDocs(
-          @PathVariable Integer dacId,
-          @PathVariable Integer dacVer) {
-    List<DacDocs> dacDocs = dacDocsService.findOneById(dacId, dacVer);
-    if (dacDocs!=null) {
-      List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocs);
-      return ResponseEntity.ok(response);
-    } else {
-      return ResponseEntity.notFound().build();
-    }
-  }*/
-
   @GetMapping("/{dacId}/{dacVer}")
+  public ResponseEntity<Optional<DacResponce>> findById(@PathVariable Integer dacId,
+                                                        @PathVariable Integer dacVer) {
+    log.debug("API for get All dac .... ");
+    Optional<Dac> dac = dacService.findById(dacId, dacVer);
+    Optional<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
+
+  @GetMapping("/docs/{dacId}/{dacVer}")
   public ResponseEntity<DacResponseDTO> getDacDocs(
           @PathVariable Integer dacId,
           @PathVariable Integer dacVer) {
