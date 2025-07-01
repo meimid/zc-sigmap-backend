@@ -31,6 +31,7 @@ import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -134,12 +135,13 @@ public class PpmController {
     }
 
     @GetMapping("/{ppmId}/{ppmVer}/realisations-without-dac")
-    public ResponseEntity<Page<Realisation>> getPpmRealisationsWithoutDac(
+    public ResponseEntity<Page<RealisationResponseDTO>> getPpmRealisationsWithoutDac(
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             Pageable pageable) {
         Page<Realisation> realisations = ppmService.getRealisationsWithoutDac(ppmId, ppmVer, pageable);
-        return ResponseEntity.ok(realisations);
+        Page<RealisationResponseDTO> responses = realisations.map(RealisationMapper.INSTANCE::mapWithDTO);
+        return ResponseEntity.ok(responses);
     }
 
     /**
