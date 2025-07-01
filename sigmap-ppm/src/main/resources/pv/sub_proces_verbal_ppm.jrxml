@@ -52,7 +52,7 @@
 		<band splitType="Stretch"/>
 	</background>
 	<detail>
-		<band height="87" splitType="Stretch">
+		<band height="81" splitType="Stretch">
 			<staticText>
 				<reportElement x="-11" y="-5" width="555" height="16" forecolor="#307B8C" uuid="f6592e6b-d4ac-4b13-9f8e-bb54298aadd5">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -63,7 +63,7 @@
 				<text><![CDATA[2. Composition de la commission]]></text>
 			</staticText>
 			<componentElement>
-				<reportElement x="-10" y="11" width="540" height="70" uuid="b460f294-b1e9-4229-a37d-f8b60a1655e5">
+				<reportElement x="-10" y="11" width="540" height="60" uuid="b460f294-b1e9-4229-a37d-f8b60a1655e5">
 					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.VerticalRowLayout"/>
 					<property name="com.jaspersoft.studio.table.style.table_header" value="Table_TH"/>
 					<property name="com.jaspersoft.studio.table.style.column_header" value="Table_CH"/>

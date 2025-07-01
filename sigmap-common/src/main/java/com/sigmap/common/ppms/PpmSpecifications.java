@@ -56,6 +56,9 @@ public class PpmSpecifications {
      */
     public static Specification<Ppm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return null; // Return all if null
+            }
             return criteriaBuilder.equal(root.get("status"), status);
         };
     }
@@ -119,7 +122,6 @@ public class PpmSpecifications {
             return criteriaBuilder.equal(root.get("budgetEstime"), budgetEstime);
         };
     }
-
 
     /**
      * Filter by deletion status.

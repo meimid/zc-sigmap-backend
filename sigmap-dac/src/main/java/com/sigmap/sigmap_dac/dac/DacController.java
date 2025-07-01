@@ -4,20 +4,37 @@ import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
+import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsService;
+import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.menu_item.MenuItem;
+import com.sigmap.common.menu_item.mappers.MenuItemMapper;
+import com.sigmap.common.menu_item.request.MenuItemQuery;
+import com.sigmap.common.menu_item.response.MenuItemResponse;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -26,7 +43,10 @@ import org.springframework.web.client.RestTemplate;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,9 +54,11 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/dac")
 @Slf4j
+@Tag(name = "DAC", description = "Dossier d'Appel a Condidature")
 public class DacController {
 
   private final DacService dacService;
+  private final DacDocsService dacDocsService;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
@@ -47,13 +69,46 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService) {
+  public DacController(DacService dacService, DacDocsService dacDocsService) {
     this.dacService = dacService;
+    this.dacDocsService = dacDocsService;
+
+  }
+
+
+  @GetMapping
+  public ResponseEntity<Page<DacResponce>> findAll(DacQuery query, Pageable pageable) {
+    log.debug("API for get All dac .... ");
+    Page<Dac> dac = dacService.findAll(query.toSpecification(), pageable);
+    Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
+  @GetMapping("/{dacId}/{dacVer}")
+  public ResponseEntity<Optional<DacResponce>> findById(@PathVariable Integer dacId,
+                                                        @PathVariable Integer dacVer) {
+    log.debug("API for get All dac .... ");
+    Optional<Dac> dac = dacService.findById(dacId, dacVer);
+    Optional<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
+
+  @GetMapping("/docs/{dacId}/{dacVer}")
+  public ResponseEntity<DacResponseDTO> getDacDocs(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    DacResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+    if (response != null) {
+      return ResponseEntity.ok(response);
+    } else {
+      return ResponseEntity.notFound().build();
+    }
   }
 
 
   @PostMapping("/create")
-  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) {
+  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);

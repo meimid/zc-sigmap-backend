@@ -15,4 +15,9 @@ public class RealisationNotFoundException extends Exception {
         this.version = version;
     }
 
+    public RealisationNotFoundException( Integer id, Integer version ) {
+        this.id = id;
+        this.version = version;
+    }
+
 }
