@@ -34,4 +34,21 @@ public interface DynaDocsRepository
                   + " d.version = (SELECT MAX(d2.version) FROM DynaDocs d2 WHERE d2.id ="
                   + " d.id AND d2.id = :id AND d2.status = 'ACTIF')")
   Optional<DynaDocs> findLastDynaDocsVersionById(@Param("id") Integer dynaDocsId);
+
+
+  @Query("""
+    SELECT d FROM DynaDocs d
+    WHERE d.status = 'ACTIF'
+      AND d.categorieId.id = :categorieId
+      AND d.version = (
+        SELECT MAX(d2.version)
+        FROM DynaDocs d2
+        WHERE d2.id = d.id
+          AND d2.categorieId.id = :categorieId
+          AND d2.status = 'ACTIF'
+      )
+""")
+  List<DynaDocs> findAllLastVersionByCategorieId(@Param("categorieId") Integer categorieId);
+
+
 }

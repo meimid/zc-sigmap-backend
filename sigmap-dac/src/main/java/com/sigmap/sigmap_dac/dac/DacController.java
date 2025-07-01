@@ -98,7 +98,7 @@ public class DacController {
   public ResponseEntity<DacResponseDTO> getDacDocs(
           @PathVariable Integer dacId,
           @PathVariable Integer dacVer) {
-    DacResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+    DacResponseDTO response = dacService.findByDacIdAndVer(dacId, dacVer);
     if (response != null) {
       return ResponseEntity.ok(response);
     } else {

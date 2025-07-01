@@ -6,8 +6,11 @@ import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
@@ -16,8 +19,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
+import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -41,6 +47,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
+import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -55,6 +64,9 @@ public class DacServiceImpl implements DacService {
     private final PpmRepository ppmRepository;
     private final RefParamRepository refParamRepository;
     private final RealisationRepository realisationRepository;
+    private final DynaDocsMapper dynaDocsMapper;
+    private final DynaFieldsMapper dynaFieldsMapper;
+    private final DacDocsMapper dacDocsMapper;
 
 
     @Override
@@ -545,6 +557,42 @@ public class DacServiceImpl implements DacService {
         Specification<Dac> specification = DacSpecifications.id(dacId, dacVer)
                 .and(DacSpecifications.searchByDeleted(false));
         return findOne(specification);
+    }
+
+
+    @Override
+    public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
+        Optional<Dac> dacOpt = dacRepository.findById(new DacId(dacId, dacVer));
+        if (dacOpt.isEmpty()) {
+            throw new RuntimeException("Dac not found with id: " + dacId + " and version: " + dacVer);
+        }
+        Dac dac = dacOpt.get();
+
+        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllLastVersionByCategorieId(dac.getCategory().getId());
+        if (dynaDocsList.isEmpty()) {
+            return null;
+        }
+
+        DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
+
+        List<DynaDocsResponseDTO> dynaDocsResponses = dynaDocsList.stream()
+                .map(dynaDocs -> {
+                    DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
+                    List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
+                    List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
+                            .map(field -> {
+                                DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
+                                fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
+                                return fieldDTO;
+                            })
+                            .collect(Collectors.toList());
+                    dynaDocsDTO.setDynaFields(dynaFieldsDTOs);
+                    return dynaDocsDTO;
+                })
+                .collect(Collectors.toList());
+
+        dacResponse.setDynaDocs(dynaDocsResponses);
+        return dacResponse;
     }
 
 

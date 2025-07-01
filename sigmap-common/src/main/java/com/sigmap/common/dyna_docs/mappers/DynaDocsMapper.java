@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs.mappers;
 
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.dyna_docs.response.DynaDocsResponse;
@@ -29,4 +30,14 @@ public interface DynaDocsMapper {
 
   @Mapping(target = "categorie", source = "categorieId")
   DynaDocsResponse map(DynaDocs source);
+
+  @Mapping(target = "id", source = "id")
+  @Mapping(target = "version", source = "version")
+  @Mapping(target = "name", source = "name")
+  @Mapping(target = "templateFileName", source = "templateFileName")
+  @Mapping(target = "guideFileName", source = "guideFileName")
+  @Mapping(target = "categorieId", source = "categorieId")
+  @Mapping(target = "dynaDocOrder", source = "dynaDocOrder")
+  @Mapping(target = "status", source = "status")
+  DynaDocsResponseDTO toDynaDocsResponse(DynaDocs dynaDocs);
 }

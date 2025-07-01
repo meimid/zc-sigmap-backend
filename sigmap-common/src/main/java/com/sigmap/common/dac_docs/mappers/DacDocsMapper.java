@@ -62,6 +62,9 @@ public interface DacDocsMapper {
     // costum responce
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
+    @Mapping(target = "ppm", source = "ppm")
+    @Mapping(target = "category", source = "category")
+    @Mapping(target = "realisation", source = "realisation")
     DacResponseDTO toDacResponse(Dac dac);
 
     @Mapping(target = "id", source = "dynaField.dynaDocs.id")
@@ -87,4 +90,18 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaFieldsOrder", source = "dynaField.dynaFieldsOrder")
     @Mapping(target = "status", source = "dynaField.status")
     DynaFieldsDTO toDynaFieldResponse(DacDocs dacDocs);
+
+    @Mapping(target = "dynaFieldsId", source = "dynaFieldsId")
+    @Mapping(target = "dynaDocsId", source = "dynaDocsId")
+    @Mapping(target = "dynaDocsVer", source = "dynaDocsVer")
+    @Mapping(target = "name", source = "name")
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "label", source = "label")
+    @Mapping(target = "description", source = "description")
+    @Mapping(target = "type", source = "type")
+    @Mapping(target = "source", source = "source")
+    @Mapping(target = "sourceField", source = "sourceField")
+    @Mapping(target = "dynaFieldsOrder", source = "dynaFieldsOrder")
+    @Mapping(target = "status", source = "status")
+    DynaFieldsDTO toDynaFieldsDTO(com.sigmap.common.dyna_fields.DynaFields dynaFields);
 } 
