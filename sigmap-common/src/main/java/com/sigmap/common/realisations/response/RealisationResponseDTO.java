@@ -2,6 +2,7 @@ package com.sigmap.common.realisations.response;
 
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.lots.response.LotResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
@@ -31,7 +32,7 @@ public class RealisationResponseDTO {
     private Boolean publishedAt;
     private Integer sort;
     private List<DocsResponseDTO> docs;
-    private Set<LotResponse> lots;
+    private Set<LotResponseDTO> lots;
 
 
 } 
