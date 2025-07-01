@@ -2,11 +2,14 @@ package com.sigmap.common.dyna_fields.mappers;
 
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.request.DynaFieldsRequest;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.request.DynaFieldsDetailsRequest;
 import java.util.List;
 import java.util.Set;
+
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -40,4 +43,20 @@ public interface DynaFieldsMapper {
   DynaFieldsResponse.Detail map(DynaFieldsDetails source);
 
   List<DynaFieldsResponse> map(List<DynaFields> source);
+
+  @Mapping(target = "dynaFieldsId", source = "dynaFieldsId")
+  @Mapping(target = "dynaDocsId", source = "dynaDocsId")
+  @Mapping(target = "dynaDocsVer", source = "dynaDocsVer")
+  @Mapping(target = "name", source = "name")
+  @Mapping(target = "ref", source = "ref")
+  @Mapping(target = "label", source = "label")
+  @Mapping(target = "description", source = "description")
+  @Mapping(target = "type", source = "type")
+  @Mapping(target = "source", source = "source")
+  @Mapping(target = "sourceField", source = "sourceField")
+  @Mapping(target = "dynaFieldsOrder", source = "dynaFieldsOrder")
+  @Mapping(target = "status", source = "status")
+  DynaFieldsDTO toDynaFieldsDTO(DynaFields dynaFields);
+
+  Set<DynaFieldsDetailsDTO> dynaFieldsDetailsToDTO (Set<DynaFieldsDetails> dynaFieldsDetails);
 }
