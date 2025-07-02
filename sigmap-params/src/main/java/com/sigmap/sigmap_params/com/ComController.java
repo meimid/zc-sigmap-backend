@@ -27,8 +27,11 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static org.hibernate.cache.spi.support.SimpleTimestamper.next;
 
 @RestController
 @RequestMapping("/api/com")
@@ -112,6 +115,7 @@ public class ComController {
         }).filter(Objects::nonNull).toList();
 
         response.setUsers(users);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     @GetMapping("/user/{userId}/coms")
@@ -146,6 +150,7 @@ public class ComController {
     public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws  AcNotFound, RefParamNotFound {
         Com com = comService.create(request);
         ComResponse response = ComMapper.INSTANCE.map(com);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     /**
@@ -159,6 +164,7 @@ public class ComController {
     public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus {
         Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     /**
@@ -191,6 +197,7 @@ public class ComController {
     public ResponseEntity<UserComResponse> makeUserResponsable(@PathVariable String userId,@PathVariable Integer comId) throws ComHasAssociatedAc {
        UserCom userCom= comService.makeUserResponsable(userId,comId);
         UserComResponse response = UserComMpapper.INSTANCE.map(userCom);
+        response.getCom().setResponsableId(userId);
         return ResponseEntity.ok(response);
     }
 
@@ -208,5 +215,39 @@ public class ComController {
         List<Com> coms = comService.getComsWithTypeCNCMP();
         List<ComResponse> responses = coms.stream().map(ComMapper.INSTANCE::map).toList();
         return ResponseEntity.ok(responses);
+    }
+
+
+    public void comResponsable(ComResponse response) {
+        // 1. Get the list of links from the join table
+        List<UserCom> membersLinks = userComRepository.findAllByComIdAndIsDeletedFalse(response.getId());
+
+        if (membersLinks.isEmpty()) {
+            response.setUsers(new ArrayList<>());
+            next();
+        }
+
+        List<ComMemberDTO> members = UserComMpapper.INSTANCE.mapUsersToDto(membersLinks);
+        for (ComMemberDTO member : members) {
+            UserDTO keycloakUser = keycloakAdminService.getUserById(member.getId());
+
+            if (keycloakUser != null) {
+                member.setFirstName(keycloakUser.getFirstName());
+                member.setLastName(keycloakUser.getLastName());
+                member.setEmail(keycloakUser.getEmail());
+                member.setMobile(keycloakUser.getMobile());
+            }
+        }
+        String responsibleUserId = userComRepository.findResponsableByComId(response.getId()).getUserId();
+        response.setResponsableId(responsibleUserId);
+        for (ComMemberDTO member : members) {
+            if (member.getId().equals(responsibleUserId)) {
+                member.setResponsable(true);
+            } else {
+                member.setResponsable(false);
+            }
+        }
+        response.setUsers(members);
+
     }
 }

@@ -1,11 +1,15 @@
 package com.sigmap.common.user_com.mappers;
 
+import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.response.UserComResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
+
+import java.util.List;
+
 @Mapper
 public interface UserComMpapper {
     UserComMpapper INSTANCE = Mappers.getMapper(UserComMpapper.class);
@@ -17,4 +21,7 @@ public interface UserComMpapper {
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     UserComResponse map(UserCom source);
+    @Mapping(source = "userId", target = "id")
+    ComMemberDTO mapUserToDto(UserCom source);
+    List<ComMemberDTO> mapUsersToDto(List<UserCom> source);
 }
