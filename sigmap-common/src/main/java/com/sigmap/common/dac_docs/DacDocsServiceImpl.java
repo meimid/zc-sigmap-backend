@@ -46,13 +46,12 @@ public class DacDocsServiceImpl implements DacDocsService{
 
         // 1- get the DynaDocs with last version
         Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
-        log.debug("existingDynaDocs............. : {}", existingDynaDocs);
+
         // 2- test if the existingDynaDocs is empty
         if (existingDynaDocs.isEmpty()) {
             throw new RuntimeException("DynaDocs not found with id: " + request.getDynaDocsId());
         }
 
-        log.debug("existingDynaDocs............. : {}", existingDynaDocs.get());
         // 3- get the DynaFields with last dynaDocs version for the given id
         List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndVer(existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
         if (existingDynaFields.isEmpty()) {
@@ -82,12 +81,24 @@ public class DacDocsServiceImpl implements DacDocsService{
         id.setDacVer(existingDac.getDacVer());
         id.setDynaDocsId(existingDynaDocs.get().getId());
         id.setDynaDocsVer(existingDynaDocs.get().getVersion());
-        id.setDynaFieldsId(existingDynaFields.get(0).getDynaFieldsId());
+
+        // Find the matching DynaFields by dynaFieldsId
+        DynaFields matchedDynaField = existingDynaFields.stream()
+                .filter(field -> field.getDynaFieldsId().equals(request.getDynaFieldsId()))
+                .findFirst()
+                .map(field -> {
+                    id.setDynaFieldsId(field.getDynaFieldsId());
+                    return field;
+                })
+                .orElse(null);
+        if (matchedDynaField == null) {
+            throw new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId());
+        }
         entity.setId(id);
 
         // Set relationships
         entity.setDac(existingDac);
-        entity.setDynaField(existingDynaFields.get(0));
+        entity.setDynaField(matchedDynaField);
 
         entity = dacDocsRepository.save(entity);
 
@@ -224,5 +235,15 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Override
     public List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer) {
         return dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
+    }
+
+    @Override
+    @Transactional
+    public List<DacDocs> createDacDocsBatch(List<DacDocsRequest> requests) {
+        List<DacDocs> result = new ArrayList<>();
+        for (DacDocsRequest req : requests) {
+            result.add(createDacDocs(req));
+        }
+        return result;
     }
 }

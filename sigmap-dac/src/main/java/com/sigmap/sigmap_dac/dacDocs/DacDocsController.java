@@ -9,7 +9,6 @@ import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Optional;
 import java.util.List;
 
@@ -29,6 +28,13 @@ public class DacDocsController {
     public ResponseEntity<DacDocsResponseFullEntities> createDacDocs(@RequestBody DacDocsRequest request) {
         DacDocs dacDocs = dacDocsService.createDacDocs(request);
         DacDocsResponseFullEntities response = DacDocsMapper.INSTANCE.entityToResponseMap(dacDocs);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatch(@RequestBody List<DacDocsRequest> requests) {
+        List<DacDocs> dacDocsList = dacDocsService.createDacDocsBatch(requests);
+        List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
     }
 

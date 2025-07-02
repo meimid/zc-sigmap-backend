@@ -18,7 +18,7 @@ public interface DynaFieldsDetailsRepository
 
 
   @Query("SELECT dfd FROM DynaFieldsDetails dfd WHERE dfd.dynaDocsId = :dynaDocsId AND dfd.dynaDocsVer = :dynaDocsVer" +
-      " AND dfd.dynaFieldsId = :dynaFieldsId ORDER BY dfd.columnPos ASC")
+      " AND dfd.dynaFieldsId = :dynaFieldsId ")
   Optional<DynaFieldsDetails> findAllDynaFieldsDetails(@Param("dynaDocsId")Integer dynaDocsId,
                                                        @Param("dynaDocsVer")Integer dynaDocsVer,
                                                        @Param("dynaFieldsId")Integer dynaFieldsId);
