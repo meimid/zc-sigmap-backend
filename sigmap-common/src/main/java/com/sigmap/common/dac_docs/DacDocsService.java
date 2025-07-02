@@ -13,5 +13,5 @@ public interface DacDocsService {
   public List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
   public List<DacDocs> findOneById(Integer dacId, Integer dacVer);
   public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
-
+  public List<DacDocs> createDacDocsBatch(List<DacDocsRequest> requests);
 }

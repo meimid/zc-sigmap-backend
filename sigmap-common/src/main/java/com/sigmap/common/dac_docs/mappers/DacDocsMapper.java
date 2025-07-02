@@ -46,10 +46,21 @@ public interface DacDocsMapper {
 
     @Mapping(target = "dacId", source = "id.dacId")
     @Mapping(target = "dacVer", source = "id.dacVer")
+
+    @Mapping(target = "dynaFieldsId", source = "id.dynaFieldsId")
+    @Mapping(target = "dynaDocsId", source = "id.dynaDocsId")
+    @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
+    @Mapping(target = "sourceId", source = "sourceId")
+    @Mapping(target = "fieldValue", source = "fieldValue")
     List<DacDocsResponseFullEntities> entityToResponse (List<DacDocs> entity);
 
     @Mapping(target = "dacId", source = "id.dacId")
     @Mapping(target = "dacVer", source = "id.dacVer")
+    @Mapping(target = "dynaFieldsId", source = "id.dynaFieldsId")
+    @Mapping(target = "dynaDocsId", source = "id.dynaDocsId")
+    @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
+    @Mapping(target = "sourceId", source = "sourceId")
+    @Mapping(target = "fieldValue", source = "fieldValue")
     DacDocsResponseFullEntities entityToResponseMap (DacDocs entity);
 
      Set<DynaFieldsDetailsDTO> dynaFieldsDetailsToDTO (Set<DynaFieldsDetails> dynaFieldsDetails);
