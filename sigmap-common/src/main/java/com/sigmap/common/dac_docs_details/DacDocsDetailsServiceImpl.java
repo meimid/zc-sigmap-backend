@@ -85,31 +85,32 @@ public class DacDocsDetailsServiceImpl implements DacDocsDetailsService {
     dacDocsDetails.setDynaDocsVer(dacDocs.getId().getDynaDocsVer());
     dacDocsDetails.setDynaFieldsId(dacDocs.getId().getDynaFieldsId());
 
-    // check if dynaFieldsDetails exists
-    Optional<DynaFieldsDetails> findAllDynaFieldsDetails = dynaFieldsDetailsRepository.findAllDynaFieldsDetails(dacDocs.getId().getDynaDocsId(), dacDocs.getId().getDynaDocsVer(), dacDocs.getId().getDynaFieldsId());
-
-    //then set the dyna_fields_details_id
-    findAllDynaFieldsDetails.ifPresent(dynaFieldsDetails -> dacDocsDetails.setDynaFieldsDetailsId(dynaFieldsDetails.getDynaFieldsDetailsId()));
 
     // Set the other request fields
     dacDocsDetails.setRowId(request.getRowId());
     dacDocsDetails.setSourceId(request.getSourceId());
     dacDocsDetails.setFieldValue(request.getFieldValue());
+    dacDocsDetails.setDynaFieldsDetailsId(request.getDynaFieldsDetailsId());
 
     // Set the parent reference
     dacDocsDetails.setDac(dacDocs);
-    
-    return dacDocsDetailsRepository.save(dacDocsDetails);
+    DacDocsDetails savedDacDocsDetails = dacDocsDetailsRepository.save(dacDocsDetails);
+    log.debug("DacDocsDetails created: ............. {}", savedDacDocsDetails);
+    return savedDacDocsDetails ;
   }
 
   @Override
+  @Transactional
   public List<DacDocsDetails> createAll(DacDocs dynaField, List<DacDocsDetailsRequest> request) throws DynaFieldNotFound {
-    List<DacDocsDetails> dacDocsDetails = new ArrayList<>();
-
-    for (DacDocsDetailsRequest req : request) {
-      dacDocsDetails.add(create(dynaField, req));
+    if (dynaField.getId() == null) {
+      throw new IllegalArgumentException("Parent DacDocs must be persisted before adding details.");
     }
-
+    List<DacDocsDetails> dacDocsDetails = new ArrayList<>();
+    for (DacDocsDetailsRequest req : request) {
+      DacDocsDetails detail = create(dynaField, req);
+      log.debug("Saved DacDocsDetails: ............... {}", detail);
+      dacDocsDetails.add(detail);
+    }
     return dacDocsDetails;
   }
 
