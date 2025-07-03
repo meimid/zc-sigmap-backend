@@ -104,7 +104,7 @@ public class DacDocsServiceImpl implements DacDocsService{
 
         // test if there are any details and if the field type is list or table
         log.debug("Dac Docs created with ID: {}", entity.getId());
-        if (existingDynaFields.get(0).getType() == DynaFieldType.LIST || existingDynaFields.get(0).getType() == DynaFieldType.TABLE)
+        if (matchedDynaField.getType() == DynaFieldType.LIST || matchedDynaField.getType() == DynaFieldType.TABLE)
         {
 
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {

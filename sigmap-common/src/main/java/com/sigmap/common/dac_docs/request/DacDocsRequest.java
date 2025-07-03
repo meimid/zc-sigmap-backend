@@ -18,6 +18,7 @@ public class DacDocsRequest {
 
     @Data
     public static class DacDocsDetail {
+        private Integer dynaFieldsDetailsId;
         private String sourceId;
         private String fieldValue;
         private Integer rowId;
