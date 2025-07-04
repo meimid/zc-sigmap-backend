@@ -4,10 +4,13 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsSpecification;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
@@ -15,9 +18,12 @@ import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -39,6 +45,8 @@ public class DacDocsServiceImpl implements DacDocsService{
     DynaDocsRepository dynaDocsRepository;
     @Autowired
     DacDocsDetailsService dacDocsDetailsService;
+    @Autowired
+    DacDocsDetailsRepository dacDocsDetailsRepository;
 
     @Override
     @Transactional
@@ -191,45 +199,62 @@ public class DacDocsServiceImpl implements DacDocsService{
     }
 
     @Override
-    public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
-        List<DacDocs> dacDocsList = dacDocsRepository.findDacByID(dacId, dacVer);
-        if (dacDocsList.isEmpty()) {
+    public DacDocResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
+        List<DacDocsDetails> details = dacDocsDetailsRepository.findAll(
+                Specification.where(DacDocsDetailsSpecification.byDacId(dacId))
+                        .and(DacDocsDetailsSpecification.byDacVer(dacVer))
+        );
+        if (details.isEmpty()) {
             return null;
         }
 
-        // Group by DynaDocs
-        Map<DynaDocs, List<DacDocs>> groupedByDynaDocs = dacDocsList.stream()
-                .collect(Collectors.groupingBy(dacDocs -> dacDocs.getDynaField().getDynaDocs()));
+        List<DacDocDetailsDTO> detailsDTOs = details.stream()
+                .map(detail -> {
+                    DacDocDetailsDTO dto = new DacDocDetailsDTO();
+                    dto.setDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
+                    dto.setRowId(detail.getRowId());
+                    dto.setSourceId(detail.getSourceId());
+                    dto.setFieldValue(detail.getFieldValue());
 
-        // Create DacResponseDTO
-        DacResponseDTO dacResponse = new DacResponseDTO();
-        dacResponse.setDacId(dacId);
-        dacResponse.setDacVer(dacVer);
+                    // Build DynaDocsResponseDTO list
+                    List<DynaDocsResponseDTO> dynaDocsDTOs = new ArrayList<>();
+                    DacDocs dacDocs = detail.getDac();
+                    if (dacDocs != null && dacDocs.getDynaField() != null) {
+                        DynaDocs dynaDocs = dacDocs.getDynaField().getDynaDocs();
+                        if (dynaDocs != null) {
+                            DynaDocsResponseDTO dynaDocsResponseDTO = dacDocsMapper.toDynaDocsResponse(dacDocs);
 
-        // Map to DynaDocsResponseDTO
-        List<DynaDocsResponseDTO> dynaDocsResponses = groupedByDynaDocs.entrySet().stream()
-                .map(entry -> {
-                    DynaDocs dynaDocs = entry.getKey();
-                    List<DacDocs> docs = entry.getValue();
-                    DynaDocsResponseDTO dynaDocsResponse = dacDocsMapper.toDynaDocsResponse(docs.get(0)); // Use first for common fields
-                    List<DynaFieldsDTO> dynaFields = docs.stream()
-                            .map(dacDocsMapper::toDynaFieldResponse)
-                            .map(field -> {
-                                field.setDynaFieldsDetails(
-                                        dacDocsMapper.dynaFieldsDetailsToDTO(
-                                                new HashSet<>(docs.get(0).getDynaField().getDynaFieldsDetails())
-                                        )
-                                );
-                                return field;
-                            })
-                            .collect(Collectors.toList());
-                    dynaDocsResponse.setDynaFields(dynaFields);
-                    return dynaDocsResponse;
-                })
-                .collect(Collectors.toList());
+                            // Fetch all DynaFields for this DynaDocs
+                            List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(
+                                dynaDocs.getId(), dynaDocs.getVersion()
+                            );
+                            List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
+                                    .map(field -> {
+                                        DynaFieldsDTO dynaFieldsDTO = dacDocsMapper.toDynaFieldsDTO(field);
+                                        Set<DynaFieldsDetails> dynaFieldsDetailsSet = field.getDynaFieldsDetails();
+                                        if (dynaFieldsDetailsSet != null) {
+                                            Set<DynaFieldsDetailsDTO> dynaFieldsDetailsDTOs = dacDocsMapper.dynaFieldsDetailsToDTO(dynaFieldsDetailsSet);
+                                            dynaFieldsDTO.setDynaFieldsDetails(dynaFieldsDetailsDTOs);
+                                        } else {
+                                            dynaFieldsDTO.setDynaFieldsDetails(Collections.emptySet());
+                                        }
+                                        return dynaFieldsDTO;
+                                    }
+                            ).collect(Collectors.toList());
+                            dynaDocsResponseDTO.setDynaFields(dynaFieldsDTOs);
+                            dynaDocsDTOs.add(dynaDocsResponseDTO);
+                        }
+                    }
+                    dto.setDynaDocs(dynaDocsDTOs);
+                    return dto;
+        }).collect(Collectors.toList());
 
-        dacResponse.setDynaDocs(dynaDocsResponses);
-        return dacResponse;
+        DacDocResponseDTO response = new DacDocResponseDTO();
+        response.setDacId(dacId);
+        response.setDacVer(dacVer);
+        response.setDacDocDetails(detailsDTOs);
+
+        return response;
     }
 
     @Override

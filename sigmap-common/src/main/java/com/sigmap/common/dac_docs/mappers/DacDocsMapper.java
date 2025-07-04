@@ -10,6 +10,7 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
 import com.sigmap.common.dyna_docs.DynaDocs;
+import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
@@ -114,5 +115,7 @@ public interface DacDocsMapper {
     @Mapping(target = "sourceField", source = "sourceField")
     @Mapping(target = "dynaFieldsOrder", source = "dynaFieldsOrder")
     @Mapping(target = "status", source = "status")
-    DynaFieldsDTO toDynaFieldsDTO(com.sigmap.common.dyna_fields.DynaFields dynaFields);
+    DynaFieldsDTO toDynaFieldsDTO(DynaFields dynaFields);
+
+
 } 

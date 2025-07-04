@@ -6,6 +6,7 @@ import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +49,18 @@ public class DacDocsController {
         Optional<DacDocs> dacDocs = dacDocsService.findById(dacId, dacVer, dynaDocsId, dynaDocsVer, dynaFieldsId);
         if (dacDocs.isPresent()) {
             DacDocsResponse response = DacDocsMapper.INSTANCE.toResponse(dacDocs.get());
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{dacId}/{dacVer}")
+    public ResponseEntity<DacDocResponseDTO> getDacDocsByDacIdAndVer(
+            @PathVariable Integer dacId,
+            @PathVariable Integer dacVer) {
+        DacDocResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+        if (response != null) {
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.notFound().build();
