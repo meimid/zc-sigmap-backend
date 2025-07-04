@@ -12,8 +12,10 @@ import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
 import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
+import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -23,10 +25,7 @@ import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
-import com.sigmap.common.ppms.response.PpmResponse;
-import com.sigmap.common.ppms.response.PpmResponseDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
+import com.sigmap.common.ppms.response.*;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
@@ -44,6 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -1276,5 +1276,14 @@ public class PpmController {
             errorResponse.setStatus(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
+    }
+
+    @GetMapping("/website")
+    public ResponseEntity<Page<PpmWebsiteResponse>> findAllForWebsite(PpmQuery query, Pageable pageable)  {
+        Specification<Ppm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
+        Page<Ppm> ppmPage = ppmService.findAllForWebsite(spec,pageable);
+        // Page<PpmWebsiteResponse> ppmResponsePage = ppmPage.map(PpmMapper.INSTANCE::toWebsiteResponse);
+        Page<PpmWebsiteResponse> paaResponsePage = ppmPage.map(PpmWebsiteResponse::new);
+        return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
 }

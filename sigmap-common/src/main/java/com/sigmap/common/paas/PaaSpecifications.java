@@ -170,4 +170,45 @@ public class PaaSpecifications {
     public static Specification<Paa> paaAc(Integer acId) {
         return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
     }
+
+
+    public static Specification<Paa> isPublished() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "PUBLIE");
+    }
+
+    /**
+     * Creates a Specification to find entities that are not marked as deleted.
+     *
+     * @return A Specification for non-deleted entities.
+     */
+    public static Specification<Paa> isNotDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("isDeleted"), false);
+    }
+
+    /**
+     * Creates a Specification to filter by the associated 'ac' entity's ID.
+     *
+     * @param acId The ID of the 'ac' entity to filter by.
+     * @return A Specification for the given acId.
+     */
+    public static Specification<Paa> withAcId(Integer acId) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("ac").get("id"), acId);
+    }
+
+    /**
+     * Creates a Specification to filter by the year of the 'updatedAt' field.
+     *
+     * @param year The year to filter by.
+     * @return A Specification for the given year.
+     */
+    public static Specification<Paa> withYear(Integer year) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(
+                        criteriaBuilder.function("YEAR", Integer.class, root.get("updatedAt")),
+                        year
+                );
+    }
 }

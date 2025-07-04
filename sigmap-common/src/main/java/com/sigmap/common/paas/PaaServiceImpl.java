@@ -7,6 +7,8 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -2627,4 +2629,15 @@ public class PaaServiceImpl implements PaaService {
 
         return repository.save(savedPaa);
     }
+
+    @Override
+    public Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) {
+        Specification<Paa> finalSpec = Specification.where(spec)
+                .and(PaaSpecifications.isLatestVersion())
+                .and(PaaSpecifications.isPublished())
+                .and(PaaSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec, pageable);
+    }
+
+
 }

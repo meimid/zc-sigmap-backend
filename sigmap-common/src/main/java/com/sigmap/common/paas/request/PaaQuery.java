@@ -1,5 +1,6 @@
 package com.sigmap.common.paas.request;
 
+import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
@@ -24,6 +25,8 @@ public class PaaQuery {
     private RefParam modePassation;
     private String remarque;
     private boolean deleted;
+    private Integer acId;
+    private Integer year;
 
     /**
      * Creates a {@link Specification} from the properties of the current object.
@@ -77,7 +80,13 @@ public class PaaQuery {
         if (status != null) {
             spec = spec.and(PaaSpecifications.status(status));
         }
-
+        if (acId != null) {
+            spec = spec.and(PaaSpecifications.withAcId(acId));
+        }
+        if (year != null) {
+            // Corrected to call a dedicated 'withYear' specification
+            spec = spec.and(PaaSpecifications.withYear(year));
+        }
         return spec;
     }
 }

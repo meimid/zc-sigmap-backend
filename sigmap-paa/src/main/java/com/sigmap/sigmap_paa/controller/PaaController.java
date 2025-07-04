@@ -4,6 +4,10 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcResponseDto;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.mappers.AgpmMapper;
+import com.sigmap.common.agpm.request.AgpmQuery;
+import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -12,10 +16,7 @@ import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
-import com.sigmap.common.paas.response.PaaResponse;
-import com.sigmap.common.paas.response.PaaResponseDto;
-import com.sigmap.common.paas.response.PaaResponseDtoWithMetdata;
-import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.paas.response.*;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.CustomCollectionEditor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -639,5 +641,15 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             errorResponse.setStatus(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
+    }
+
+    @GetMapping("/website")
+    public ResponseEntity<Page<PaaWebsiteResponse>> findAllForWebsite(PaaQuery query, Pageable pageable)  {
+        Specification<Paa> spec = (query != null) ? query.toSpecification() : Specification.where(null);
+        Page<Paa> paaPage = paaService.findAllForWebsite(spec,pageable);
+       // Page<PaaWebsiteResponse> paaResponsePage = paaPage.map(PaaMapper.INSTANCE::toWebsiteResponse);
+        Page<PaaWebsiteResponse> paaResponsePage = paaPage.map(PaaWebsiteResponse::new);
+
+        return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
 }

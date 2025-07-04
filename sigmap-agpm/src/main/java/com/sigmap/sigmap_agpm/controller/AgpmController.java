@@ -13,10 +13,7 @@ import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
-import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
-import com.sigmap.common.agpm.response.AgpmResponse;
-import com.sigmap.common.agpm.response.AgpmResponseDto;
-import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
+import com.sigmap.common.agpm.response.*;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
 import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
@@ -236,5 +233,15 @@ public class AgpmController {
             errorResponse.setStatus(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
+    }
+
+    @GetMapping("/website")
+    public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(AgpmQuery query, Pageable pageable)  {
+        Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
+        Page<Agpm> agpmPage = agpmService.findAllForWebsite(spec,pageable);
+        //Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmMapper.INSTANCE::toWebsiteResponse);
+        Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmWebsiteResponse::new);
+
+        return new ResponseEntity<>(agpmResponsePage, HttpStatus.OK);
     }
 }

@@ -19,6 +19,8 @@ import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
@@ -4750,6 +4752,15 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         List<Ac> acsWithoutPpm = acRepository.findAllById(acIdsWithoutPpm);
         log.info("Found {} ACs without non-deleted PPM for user", acsWithoutPpm.size());
         return acsWithoutPpm;
+    }
+
+    @Override
+    public Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) {
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(PpmSpecifications.isPublished())
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec, pageable);
     }
 
 
