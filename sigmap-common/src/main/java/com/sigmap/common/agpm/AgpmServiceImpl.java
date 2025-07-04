@@ -48,6 +48,7 @@ import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import jakarta.persistence.criteria.Predicate;
 
 /**
  * Service implementation for managing Agpm entities.
@@ -1062,6 +1063,8 @@ public class AgpmServiceImpl implements AgpmService {
 
     }
 
+
+
     /**
      * Generates and sets a reference string for the Agpm entity.
      * Format: AGPM_<YEAR>_<ID>
@@ -1075,5 +1078,14 @@ public class AgpmServiceImpl implements AgpmService {
         int year = Calendar.getInstance().get(Calendar.YEAR);
         String ref = "AGPM_" + year + "_" + agpm.getId();
         agpm.setRef(ref);
+    }
+
+    @Override
+    public Page<Agpm> findAllForWebsite(Specification<Agpm> spec, Pageable pageable) {
+        Specification<Agpm> finalSpec = Specification.where(spec)
+                .and(AgpmSpecifications.isLatestVersion())
+                .and(AgpmSpecifications.isPublished())
+                .and(AgpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec, pageable);
     }
 }
