@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.response;
 
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class PpmWebsiteResponse {
     private String title;
     private String publicationDate;
     private Integer year;
+    private Integer nombreActivite;
     private List<String> docs;
 
     public PpmWebsiteResponse(Ppm ppm) {
@@ -67,6 +69,13 @@ public class PpmWebsiteResponse {
             this.docs = sourceDocs.stream()
                     .map(Docs::getAlfresco_id) // Assumes getAlfresco_id() method
                     .collect(Collectors.toList());
+        }
+
+        List<Realisation> sourceRealisations = ppm.getRealisations();
+        if (sourceRealisations == null) {
+            this.nombreActivite = 0;
+        } else {
+            this.nombreActivite = sourceRealisations.size();
         }
     }
 }

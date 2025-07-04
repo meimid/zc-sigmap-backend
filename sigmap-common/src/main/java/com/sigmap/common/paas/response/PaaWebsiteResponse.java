@@ -2,6 +2,7 @@ package com.sigmap.common.paas.response;
 
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.paas.Paa;
+import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +25,7 @@ public class PaaWebsiteResponse {
     private String title;
     private String publicationDate;
     private Integer year;
+    private Integer nombreActivite;
     private List<String> docs;
 
     public PaaWebsiteResponse(Paa paa) {
@@ -68,5 +70,12 @@ public class PaaWebsiteResponse {
                     .map(Docs::getAlfresco_id) // Assumes getAlfresco_id() method
                     .collect(Collectors.toList());
         }
+        List<Realisation> sourceRealisations = paa.getRealisations();
+        if (sourceRealisations == null) {
+            this.nombreActivite = 0;
+        } else {
+            this.nombreActivite = sourceRealisations.size();
+        }
     }
+
 }
