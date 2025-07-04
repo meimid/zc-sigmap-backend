@@ -1278,12 +1278,5 @@ public class PpmController {
         }
     }
 
-    @GetMapping("/website")
-    public ResponseEntity<Page<PpmWebsiteResponse>> findAllForWebsite(PpmQuery query, Pageable pageable)  {
-        Specification<Ppm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Ppm> ppmPage = ppmService.findAllForWebsite(spec,pageable);
-        // Page<PpmWebsiteResponse> ppmResponsePage = ppmPage.map(PpmMapper.INSTANCE::toWebsiteResponse);
-        Page<PpmWebsiteResponse> paaResponsePage = ppmPage.map(PpmWebsiteResponse::new);
-        return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
-    }
+
 }

@@ -235,13 +235,5 @@ public class AgpmController {
         }
     }
 
-    @GetMapping("/website")
-    public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(AgpmQuery query, Pageable pageable)  {
-        Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Agpm> agpmPage = agpmService.findAllForWebsite(spec,pageable);
-        //Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmMapper.INSTANCE::toWebsiteResponse);
-        Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmWebsiteResponse::new);
 
-        return new ResponseEntity<>(agpmResponsePage, HttpStatus.OK);
-    }
 }

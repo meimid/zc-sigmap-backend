@@ -643,13 +643,5 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         }
     }
 
-    @GetMapping("/website")
-    public ResponseEntity<Page<PaaWebsiteResponse>> findAllForWebsite(PaaQuery query, Pageable pageable)  {
-        Specification<Paa> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Paa> paaPage = paaService.findAllForWebsite(spec,pageable);
-       // Page<PaaWebsiteResponse> paaResponsePage = paaPage.map(PaaMapper.INSTANCE::toWebsiteResponse);
-        Page<PaaWebsiteResponse> paaResponsePage = paaPage.map(PaaWebsiteResponse::new);
 
-        return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
-    }
 }
