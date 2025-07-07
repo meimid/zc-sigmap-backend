@@ -13,6 +13,6 @@ public interface DacDocsService {
   public Optional<DacDocs> findById(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId);
   public List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
   public List<DacDocs> findOneById(Integer dacId, Integer dacVer);
-  public DacDocResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
+  List<DacDocResponseDTO> findByDacIdAndVer(Integer dacId, Integer dacVer);
   public List<DacDocs> createDacDocsBatch(List<DacDocsRequest> requests);
 }

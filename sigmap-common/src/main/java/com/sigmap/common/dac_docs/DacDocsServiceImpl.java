@@ -199,62 +199,56 @@ public class DacDocsServiceImpl implements DacDocsService{
     }
 
     @Override
-    public DacDocResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
-        List<DacDocsDetails> details = dacDocsDetailsRepository.findAll(
+    public List<DacDocResponseDTO> findByDacIdAndVer(Integer dacId, Integer dacVer) {
+        List<DacDocs> dacDocsList = dacDocsRepository.findAll(
+                Specification.where(DacDocsSpecifications.byDacId(dacId))
+                        .and(DacDocsSpecifications.byDacVer(dacVer))
+        );
+
+        // Fetch all details for these dacDocs
+        List<DacDocsDetails> allDetails = dacDocsDetailsRepository.findAll(
                 Specification.where(DacDocsDetailsSpecification.byDacId(dacId))
                         .and(DacDocsDetailsSpecification.byDacVer(dacVer))
         );
-        if (details.isEmpty()) {
-            return null;
+
+        // Group details by dac_docs identity (dynaDocsId, dynaDocsVer, dynaFieldsId)
+        Map<String, List<DacDocsDetails>> detailsByDoc = allDetails.stream().collect(
+                Collectors.groupingBy(d ->
+                         d.getDac().getId().getDynaDocsId() + ":" +
+                         d.getDac().getId().getDynaDocsVer() + ":" +
+                         d.getDac().getId().getDynaFieldsId()
+                )
+        );
+
+        List<DacDocResponseDTO> responseList = new ArrayList<>();
+        for (DacDocs dacDoc : dacDocsList) {
+            DacDocResponseDTO response = new DacDocResponseDTO();
+            response.setDacId(dacDoc.getId().getDacId());
+            response.setDacVer(dacDoc.getId().getDacVer());
+            response.setDynaDocId(dacDoc.getId().getDynaDocsId());
+            response.setDynaDocVersion(dacDoc.getId().getDynaDocsVer());
+            response.setDynaFieldId(dacDoc.getId().getDynaFieldsId());
+            response.setSourceId(dacDoc.getSourceId());
+            response.setFieldValue(dacDoc.getFieldValue());
+
+            String key = dacDoc.getId().getDynaDocsId() + ":" + dacDoc.getId().getDynaDocsVer() + ":" + dacDoc.getId().getDynaFieldsId();
+            List<DacDocsDetails> details = detailsByDoc.getOrDefault(key, Collections.emptyList());
+            List<DacDocDetailsDTO> detailsDTOs = details.stream().map(detail -> {
+                DacDocDetailsDTO dto = new DacDocDetailsDTO();
+                dto.setDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
+                dto.setRowId(detail.getRowId());
+                dto.setSourceId(detail.getSourceId());
+                dto.setFieldValue(detail.getFieldValue());
+                // These are redundant at the detail level, but can be set if needed
+                dto.setDynaDocId(dacDoc.getId().getDynaDocsId());
+                dto.setDynaDocVersion(dacDoc.getId().getDynaDocsVer());
+                dto.setDynaFieldId(dacDoc.getId().getDynaFieldsId());
+                return dto;
+            }).collect(Collectors.toList());
+            response.setDacDocDetails(detailsDTOs);
+            responseList.add(response);
         }
-
-        List<DacDocDetailsDTO> detailsDTOs = details.stream()
-                .map(detail -> {
-                    DacDocDetailsDTO dto = new DacDocDetailsDTO();
-                    dto.setDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
-                    dto.setRowId(detail.getRowId());
-                    dto.setSourceId(detail.getSourceId());
-                    dto.setFieldValue(detail.getFieldValue());
-
-                    // Build DynaDocsResponseDTO list
-                    List<DynaDocsResponseDTO> dynaDocsDTOs = new ArrayList<>();
-                    DacDocs dacDocs = detail.getDac();
-                    if (dacDocs != null && dacDocs.getDynaField() != null) {
-                        DynaDocs dynaDocs = dacDocs.getDynaField().getDynaDocs();
-                        if (dynaDocs != null) {
-                            DynaDocsResponseDTO dynaDocsResponseDTO = dacDocsMapper.toDynaDocsResponse(dacDocs);
-
-                            // Fetch all DynaFields for this DynaDocs
-                            List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(
-                                dynaDocs.getId(), dynaDocs.getVersion()
-                            );
-                            List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
-                                    .map(field -> {
-                                        DynaFieldsDTO dynaFieldsDTO = dacDocsMapper.toDynaFieldsDTO(field);
-                                        Set<DynaFieldsDetails> dynaFieldsDetailsSet = field.getDynaFieldsDetails();
-                                        if (dynaFieldsDetailsSet != null) {
-                                            Set<DynaFieldsDetailsDTO> dynaFieldsDetailsDTOs = dacDocsMapper.dynaFieldsDetailsToDTO(dynaFieldsDetailsSet);
-                                            dynaFieldsDTO.setDynaFieldsDetails(dynaFieldsDetailsDTOs);
-                                        } else {
-                                            dynaFieldsDTO.setDynaFieldsDetails(Collections.emptySet());
-                                        }
-                                        return dynaFieldsDTO;
-                                    }
-                            ).collect(Collectors.toList());
-                            dynaDocsResponseDTO.setDynaFields(dynaFieldsDTOs);
-                            dynaDocsDTOs.add(dynaDocsResponseDTO);
-                        }
-                    }
-                    dto.setDynaDocs(dynaDocsDTOs);
-                    return dto;
-        }).collect(Collectors.toList());
-
-        DacDocResponseDTO response = new DacDocResponseDTO();
-        response.setDacId(dacId);
-        response.setDacVer(dacVer);
-        response.setDacDocDetails(detailsDTOs);
-
-        return response;
+        return responseList;
     }
 
     @Override

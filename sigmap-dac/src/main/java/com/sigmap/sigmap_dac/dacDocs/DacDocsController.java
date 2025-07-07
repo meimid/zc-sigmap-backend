@@ -56,10 +56,10 @@ public class DacDocsController {
     }
 
     @GetMapping("/{dacId}/{dacVer}")
-    public ResponseEntity<DacDocResponseDTO> getDacDocsByDacIdAndVer(
+    public ResponseEntity<List<DacDocResponseDTO>> getDacDocsByDacIdAndVer(
             @PathVariable Integer dacId,
             @PathVariable Integer dacVer) {
-        DacDocResponseDTO response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+        List<DacDocResponseDTO> response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
         if (response != null) {
             return ResponseEntity.ok(response);
         } else {
