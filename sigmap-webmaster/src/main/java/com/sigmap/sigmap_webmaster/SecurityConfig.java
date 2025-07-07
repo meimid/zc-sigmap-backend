@@ -52,10 +52,11 @@ public class SecurityConfig {
                         "/api/docs",
                         "/api/docs/*",
                         "/api/docs-ui.html",
-                        "/v3/api-docs/**")
+                        "/v3/api-docs/**",
+                        "/web/api/**")
                 .permitAll()
                 .anyRequest()
-                .authenticated())
+                .permitAll())
         .sessionManagement(
             management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(
