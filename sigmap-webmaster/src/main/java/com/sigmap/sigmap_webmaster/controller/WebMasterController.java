@@ -16,6 +16,7 @@ import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
+import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,11 +35,13 @@ public class WebMasterController {
     private final PpmService ppmService;
     private final PaaService paaService;
     private final AgpmService agpmService;
+    private final WebMasterService webMasterService;
 
-    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService) {
+    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterService webMasterService) {
         this.ppmService = ppmService;
         this.paaService = paaService;
         this.agpmService = agpmService;
+        this.webMasterService = webMasterService;
     }
 
     @GetMapping("/ppm")
@@ -52,8 +55,8 @@ public class WebMasterController {
 
     @GetMapping("/ppm/{ppmId}/{ppmVer}")
     public ResponseEntity<PpmWebsiteResponse> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId,
-                                                                              @PathVariable Integer ppmVer) throws PpmNotFound, AcNotFound {
-        Ppm ppm = ppmService.findById(ppmId, ppmVer).get();
+                                                                              @PathVariable Integer ppmVer) throws PpmNotFound {
+        Ppm ppm = webMasterService.getPpmByIdAndVersion(ppmId, ppmVer);
         PpmWebsiteResponse response = new PpmWebsiteResponse(ppm);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -69,7 +72,7 @@ public class WebMasterController {
     @GetMapping("/paa/{paaId}/{paaVer}")
     public ResponseEntity<PaaWebsiteResponse> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
                                                                                 @PathVariable Integer paaVer) throws PaaNotFound {
-        Paa paa = paaService.findByIdPaa(paaId, paaVer);
+        Paa paa = webMasterService.getPaaByIdAndVersion(paaId, paaVer);
         PaaWebsiteResponse response = new PaaWebsiteResponse(paa);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -87,7 +90,7 @@ public class WebMasterController {
     @GetMapping("/agpm/{agpmId}/{agpmVer}")
     public ResponseEntity<AgpmWebsiteResponse> findAgpmForWebsiteByIdAndVersion(@PathVariable Integer agpmId,
                                                                                 @PathVariable Integer agpmVer) throws AgpmNotFound, AcNotFound {
-        Agpm agpm = agpmService.findByIdAndVer(agpmId, agpmVer);
+        Agpm agpm = webMasterService.getAgpmByIdAndVersion(agpmId, agpmVer);
         AgpmWebsiteResponse response = new AgpmWebsiteResponse(agpm);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
