@@ -2,6 +2,7 @@ package com.sigmap.common.ppms.request;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ref_params.RefParam;
@@ -22,6 +23,8 @@ public class PpmQuery {
     private RefParam modePassation;
     private String remarque;
     private boolean deleted;
+    private Integer acId;
+    private Integer year;
 
     /**
      * Creates a {@link Specification} from the properties of the current object.
@@ -74,7 +77,15 @@ public class PpmQuery {
         if (status != null) {
             spec = spec.and(PpmSpecifications.status(status));
         }
+        if (acId != null) {
+            spec = spec.and(PpmSpecifications.withAcId(acId));
+        }
+        if (year != null) {
+            // Corrected to call a dedicated 'withYear' specification
+            spec = spec.and(PpmSpecifications.withYear(year));
 
+            return spec;
+        }
         return spec;
     }
 }

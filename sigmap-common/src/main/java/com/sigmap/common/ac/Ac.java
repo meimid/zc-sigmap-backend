@@ -35,4 +35,5 @@ public class Ac extends BaseEntity {
   )
   @JoinColumn(name = "ac_id")
   Set<Direction> directions= new HashSet<>();
+  private String email;
 }

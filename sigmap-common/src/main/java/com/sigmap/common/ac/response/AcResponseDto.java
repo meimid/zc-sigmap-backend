@@ -9,4 +9,6 @@ public class AcResponseDto {
     private String nom;
     private String ancrage;
     private String contact;
+    private String email;
+
 }

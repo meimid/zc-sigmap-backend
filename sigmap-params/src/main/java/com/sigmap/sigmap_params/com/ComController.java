@@ -1,11 +1,9 @@
 package com.sigmap.sigmap_params.com;
 
-import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
-import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -16,7 +14,6 @@ import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.mappers.UserComMpapper;
@@ -25,16 +22,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Page;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static org.hibernate.cache.spi.support.SimpleTimestamper.next;
 
 @RestController
 @RequestMapping("/api/com")
@@ -59,6 +56,7 @@ public class ComController {
      * @return a page of com
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP')")
     public ResponseEntity<Page<ComResponse>> findAll(
             ComQuery query, Pageable pageable) {
         Page<Com> params = comService.findAll(query.toSpecification(), pageable);
@@ -74,6 +72,7 @@ public class ComController {
      * @return a page of deleted Com
      */
     @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<ComResponse>> findAllDeleted(
             ComQuery query, Pageable pageable) {
         Page<Com> params = comService.findAllDeleted(query.toSpecification(), pageable);
@@ -88,6 +87,7 @@ public class ComController {
      * @return the Com
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ComResponse> findById(@PathVariable Integer id) throws ComNotFound {
         Com param = comService.findById(id);
         ComResponse response = ComMapper.INSTANCE.map(param);
@@ -115,6 +115,7 @@ public class ComController {
         }).filter(Objects::nonNull).toList();
 
         response.setUsers(users);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     @GetMapping("/user/{userId}/coms")
@@ -145,9 +146,11 @@ public class ComController {
      * @return the created Com
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws  AcNotFound, RefParamNotFound {
         Com com = comService.create(request);
         ComResponse response = ComMapper.INSTANCE.map(com);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     /**
@@ -157,9 +160,11 @@ public class ComController {
      * @return the updated com
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus {
         Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
+        comResponsable(response);
         return ResponseEntity.ok(response);
     }
     /**
@@ -169,6 +174,7 @@ public class ComController {
      * @return the deleted Com
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ComResponse> deleteById(@PathVariable Integer id) throws ComHasAssociatedAc {
         comService.delete(id);
 
@@ -187,9 +193,61 @@ public class ComController {
      * @return the responsible User come
      */
     @PutMapping("/{userId}/{comId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<UserComResponse> makeUserResponsable(@PathVariable String userId,@PathVariable Integer comId) throws ComHasAssociatedAc {
        UserCom userCom= comService.makeUserResponsable(userId,comId);
         UserComResponse response = UserComMpapper.INSTANCE.map(userCom);
+        response.getCom().setResponsableId(userId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/type/cpmp")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC')")
+    public ResponseEntity<List<ComResponse>> getComsWithTypeCPMP() throws RefParamNotFound {
+        List<Com> coms = comService.getComsWithTypeCPMP();
+        List<ComResponse> responses = coms.stream().map(ComMapper.INSTANCE::map).toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type/cncmp")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN','CPMP')")
+    public ResponseEntity<List<ComResponse>> getComsWithTypeCNCMP() throws RefParamNotFound {
+        List<Com> coms = comService.getComsWithTypeCNCMP();
+        List<ComResponse> responses = coms.stream().map(ComMapper.INSTANCE::map).toList();
+        return ResponseEntity.ok(responses);
+    }
+
+
+    public void comResponsable(ComResponse response) {
+        // 1. Get the list of links from the join table
+        List<UserCom> membersLinks = userComRepository.findAllByComIdAndIsDeletedFalse(response.getId());
+
+        if (membersLinks.isEmpty()) {
+            response.setUsers(new ArrayList<>());
+            next();
+        }
+
+        List<ComMemberDTO> members = UserComMpapper.INSTANCE.mapUsersToDto(membersLinks);
+        for (ComMemberDTO member : members) {
+            UserDTO keycloakUser = keycloakAdminService.getUserById(member.getId());
+
+            if (keycloakUser != null) {
+                member.setFirstName(keycloakUser.getFirstName());
+                member.setLastName(keycloakUser.getLastName());
+                member.setEmail(keycloakUser.getEmail());
+                member.setMobile(keycloakUser.getMobile());
+            }
+        }
+        String responsibleUserId = userComRepository.findResponsableByComId(response.getId()).getUserId();
+        response.setResponsableId(responsibleUserId);
+        for (ComMemberDTO member : members) {
+            if (member.getId().equals(responsibleUserId)) {
+                member.setResponsable(true);
+            } else {
+                member.setResponsable(false);
+            }
+        }
+        response.setUsers(members);
+
     }
 }

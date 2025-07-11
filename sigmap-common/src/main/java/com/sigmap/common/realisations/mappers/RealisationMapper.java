@@ -3,6 +3,7 @@ package com.sigmap.common.realisations.mappers;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -64,4 +65,6 @@ public interface RealisationMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "version", ignore = true)
     Realisation updateRealisationFromRequest(RealisationRequest request, @MappingTarget Realisation realisation);
+
+    RealisationResponseDTO mapWithDTO(Realisation realisation);
 }

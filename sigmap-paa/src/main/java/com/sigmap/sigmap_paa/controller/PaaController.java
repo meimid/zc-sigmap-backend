@@ -4,6 +4,10 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcResponseDto;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.mappers.AgpmMapper;
+import com.sigmap.common.agpm.request.AgpmQuery;
+import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.*;
@@ -12,10 +16,7 @@ import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
-import com.sigmap.common.paas.response.PaaResponse;
-import com.sigmap.common.paas.response.PaaResponseDto;
-import com.sigmap.common.paas.response.PaaResponseDtoWithMetdata;
-import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.paas.response.*;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.CustomCollectionEditor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -99,11 +101,9 @@ public class PaaController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<List<PaaResponseWithRealisations>> getCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
-        List<Paa> paas = paaService.findCurrentYearPaasByUser();
-        List<PaaResponseWithRealisations> responses = paas.stream()
-                .map(PaaDetailedMapper.INSTANCE::mapDetailed)
-                .toList();
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getCurrentYearPaasByUser(Pageable pageable) {
+        Page<Paa> paas = paaService.findCurrentYearPaasByUser(pageable);
+        Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
         return ResponseEntity.ok(responses);
     }
 
@@ -421,14 +421,14 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     }
 
     @DeleteMapping("/{paaId}/{paaVer}/deletefronttest")
-    public ResponseEntity<PaaResponse> deleteTest(
+    public ResponseEntity<PaaResponseWithRealisations> deleteTest(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound, PaaInvalidStatusException, PaaSoftDelete {
 
         paaService.deleteTest(paaId, paaVer);
         Paa deleted = paaService.findDeletedById(paaId, paaVer)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Deleted Paa not found"));
-        PaaResponse response = PaaMapper.INSTANCE.map(deleted);
+        PaaResponseWithRealisations response = PaaMapper.INSTANCE.toDtoWithRelations(deleted);
         return ResponseEntity.ok(response);
     }
 
@@ -642,4 +642,6 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
     }
+
+
 }

@@ -14,8 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 
@@ -89,6 +89,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PostMapping("/ac/{acId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.createUnderAc(acId,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
@@ -97,6 +98,7 @@ public class DirectionController {
 
     // create under Ac with acId
     @PutMapping("/ac/{acId}/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.updateUnderAc(acId,id,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);

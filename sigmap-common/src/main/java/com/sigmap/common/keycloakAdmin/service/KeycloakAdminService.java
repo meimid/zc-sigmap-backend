@@ -5,14 +5,12 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
-import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.*;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
-import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
-import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
@@ -67,20 +65,6 @@ public class KeycloakAdminService {
         String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
         List<UserDTO> users = fetchUsersFromKeycloak(baseUrl, entity);
-        /*if (isSuperAdmin) {
-            return users;
-        }
-
-        if (isAdminAc) {
-            List<String> allowedUserIds = userAcRepository.findUserIdsByAdminAc(currentUserId);
-            return users.stream()
-                    .filter(u -> allowedUserIds.contains(u.getId()))
-                    .collect(Collectors.toList());
-        }
-        if (users.isEmpty()) {
-            return Collections.emptyList();
-        }*/
-
 
         return users;
     }
@@ -224,6 +208,12 @@ public class KeycloakAdminService {
 
 
     public List<RoleDTO> getAllRealmRolesWithDescriptions() {
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        Set<String> allowedAdminAcRoles = Set.of("REDACTEUR_AC", "PUB_AC", "VALIDATEUR_AC");
+
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
 
@@ -239,16 +229,24 @@ public class KeycloakAdminService {
 
         return roles.stream()
                 .filter(role -> !technicalRoles.contains(role.get("name")))
+                .filter(role -> {
+                    String roleName = (String) role.get("name");
+                    if (isAdminAcOnly) {
+                        return allowedAdminAcRoles.contains(roleName);
+                    }
+                    return true;
+                })
                 .map(role -> {
                     String name = (String) role.get("name");
                     String label = (String) role.get("description");
                     if (label == null || label.isBlank()) {
-                        label = name; // fallback si pas de description
+                        label = name;
                     }
                     return new RoleDTO(name, label);
                 })
                 .collect(Collectors.toList());
     }
+
 
     public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();

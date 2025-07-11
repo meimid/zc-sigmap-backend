@@ -7,7 +7,9 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -15,6 +17,7 @@ import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +27,7 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.task.Comment;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +35,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -54,6 +59,9 @@ public class PaaFlowableService {
 
     @Autowired
     private RuntimeService runtimeService;
+
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
 
     @Autowired
     private TaskService taskService;
@@ -747,6 +755,11 @@ public class PaaFlowableService {
                 taskId, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
+        taskService.setAssignee(taskId, Authentication.getCurrentUserId().get());
+        String comment = request.getComment();
+        if (comment != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), comment);
+        }
         taskService.complete(taskId);
 
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
@@ -1043,5 +1056,29 @@ public class PaaFlowableService {
         response.setStatus("PAA et détails de la tâche récupérés avec succès");
 
         return response;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<HistoricTaskDto> loadHistoricTasks(String processInstId) {
+        return historyService
+                .createHistoricTaskInstanceQuery()
+                .processInstanceId(processInstId)
+                .finished()
+                .list()
+                .stream()
+                .map(task -> {
+                    List<Comment> comments = taskService.getTaskComments(task.getId());
+                    return new HistoricTaskDto(task, comments);
+                })
+                .map(h -> {
+                    if (h.getAssignee() != null) {
+                        UserDTO user = keycloakAdminService.getUserById(h.getAssignee());
+                        if (user != null) {
+                            h.setConcern(user.getFirstName().concat(" ").concat(user.getLastName()));
+                        }
+                    }
+                    return h;
+                })
+                .collect(Collectors.toList());
     }
 }

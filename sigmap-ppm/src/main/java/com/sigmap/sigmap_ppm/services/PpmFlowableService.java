@@ -7,7 +7,9 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.*;
@@ -19,10 +21,12 @@ import com.sigmap.sigmap_ppm.services.dto.response.*;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.task.Comment;
 import org.flowable.task.api.Task;
 import org.flowable.identitylink.api.IdentityLink;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +35,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -58,6 +63,11 @@ public class PpmFlowableService {
 
     @Autowired
     private TaskService taskService;
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
+
+    @Autowired
+    private HistoryService historyService;
 
     @Autowired
     private RepositoryService repositoryService;
@@ -158,9 +168,9 @@ public class PpmFlowableService {
             log.error("Error retrieving properties for task [{}]: {}", task.getId(), e.getMessage(), e);
         }
 
+        log.info("Returning task properties for task [{}]: {}", task.getId(), properties); // Add this log
         return properties;
     }
-
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws PpmNotFound, AcNotFound {
         // Validate authentication
@@ -448,8 +458,8 @@ public class PpmFlowableService {
         response.setTraceability(variables);
 
         Map<String, Boolean> taskProperties = getTaskProperties(task);
-        response.setUpdatable(taskProperties.get("isUpdatable"));
-        response.setPublishable(taskProperties.get("isPublishable"));
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
         response.setCommissionRequired(taskProperties.get("commissionRequired"));
 
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
@@ -668,7 +678,11 @@ public class PpmFlowableService {
         // Save the updated Ppm to persist the coms relationship
         ppmService.save(latestPpm);
         log.info("Saved PPM with coms: {} for ppmId: {}, version: {}", latestPpm.getComs(), latestPpm.getId(), latestPpm.getVersion());
-
+        taskService.setAssignee(taskId, com.sigmap.common.security.Authentication.getCurrentUserId().get());
+        String comment = request.getComment();
+        if (comment != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), comment);
+        }
         // Complete task
         taskService.complete(taskId);
 
@@ -1062,9 +1076,14 @@ public class PpmFlowableService {
 
         // Ajouter les propriétés de la tâche
         Map<String, Boolean> taskProperties = getTaskProperties(task);
-        response.setUpdatable(taskProperties.get("isUpdatable"));
-        response.setPublishable(taskProperties.get("isPublishable"));
-        response.setCommissionRequired(taskProperties.get("isCommissionRequired"));
+        response.setIsUpdatable(taskProperties.get("isUpdatable"));
+        response.setIsPublishable(taskProperties.get("isPublishable"));
+        response.setCommissionRequired(taskProperties.get("commissionRequired"));
+
+        Optional<Integer> ComId = Optional.ofNullable((Integer) runtimeService.getVariable(processInstanceId, "comId"));
+        if (ComId.isPresent()) {
+            response.setComId(ComId.get());
+        }
 
         // Ajouter les prochaines étapes possibles
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
@@ -1131,5 +1150,29 @@ public class PpmFlowableService {
             }
             log.info("User validated for commission ID: {}", comId);
         }
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<HistoricTaskDto> loadHistoricTasks(String processInstId) {
+        return historyService
+                .createHistoricTaskInstanceQuery()
+                .processInstanceId(processInstId)
+                .finished()
+                .list()
+                .stream()
+                .map(task -> {
+                    List<Comment> comments = taskService.getTaskComments(task.getId());
+                    return new HistoricTaskDto(task, comments);
+                })
+                .map(h -> {
+                    if (h.getAssignee() != null) {
+                        UserDTO user = keycloakAdminService.getUserById(h.getAssignee());
+                        if (user != null) {
+                            h.setConcern(user.getFirstName().concat(" ").concat(user.getLastName()));
+                        }
+                    }
+                    return h;
+                })
+                .collect(Collectors.toList());
     }
 }

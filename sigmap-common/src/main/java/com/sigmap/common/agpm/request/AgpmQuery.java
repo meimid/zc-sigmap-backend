@@ -16,6 +16,8 @@ public class AgpmQuery {
     private String contenu;
     private ProcessStatus status;
     private boolean deleted;
+    private Integer acId;
+    private Integer year;
 
     public Specification<Agpm> toSpecification() {
         Specification<Agpm> spec = Specification.where(AgpmSpecifications.deleted(deleted));
@@ -42,6 +44,13 @@ public class AgpmQuery {
 
        if (status != null) {
             spec = spec.and(AgpmSpecifications.status(status));
+        }
+        if (acId != null) {
+            spec = spec.and(AgpmSpecifications.withAcId(acId));
+        }
+        if (year != null) {
+            // Corrected to call a dedicated 'withYear' specification
+            spec = spec.and(AgpmSpecifications.withYear(year));
         }
 
         return spec;

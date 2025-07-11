@@ -15,7 +15,10 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.task.Comment;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.flowable.variable.api.persistence.entity.VariableInstance;
@@ -37,6 +41,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -73,6 +78,8 @@ public class AgpmFlowableService {
 
     @Autowired
     private AgpmService agpmService;
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
 
     @Autowired
     private RepositoryService repositoryService;
@@ -321,7 +328,7 @@ public class AgpmFlowableService {
                     effectiveTaskKey, taskCandidateGroupsStr, assignedUser, userGroupsStr));
             return errorResponse;
         }
-
+        taskService.setAssignee(initialTask.getId(), Authentication.getCurrentUserId().get());
         taskService.complete(initialTask.getId());
 
         ProcessStartResponseDTO response = new ProcessStartResponseDTO();
@@ -735,8 +742,12 @@ public class AgpmFlowableService {
                 taskId, validate, request.getComment(), LocalDateTime.now(), jwtAuth.getName());
 
         runtimeService.setVariables(task.getProcessInstanceId(), variables);
+        taskService.setAssignee(taskId, Authentication.getCurrentUserId().get());
+        String comment = request.getComment();
+        if (comment != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), comment);
+        }
         taskService.complete(taskId);
-
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
             newStatus = ProcessStatus.PUBLIE;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
@@ -1032,4 +1043,28 @@ public class AgpmFlowableService {
 
         return response;
     }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<HistoricTaskDto> loadHistoricTasks(String processInstId) {
+        return historyService
+                .createHistoricTaskInstanceQuery()
+                .processInstanceId(processInstId)
+                .finished()
+                .list()
+                .stream()
+                .map(task -> {
+                    List<Comment> comments = taskService.getTaskComments(task.getId());
+                    return new HistoricTaskDto(task, comments);
+                })
+                .map(h -> {
+                    if (h.getAssignee() != null) {
+                        UserDTO user = keycloakAdminService.getUserById(h.getAssignee());
+                        if (user != null) {
+                            h.setConcern(user.getFirstName().concat(" ").concat(user.getLastName()));
+                        }
+                    }
+                    return h;
+                })
+                .collect(Collectors.toList());
+    }
+
 }

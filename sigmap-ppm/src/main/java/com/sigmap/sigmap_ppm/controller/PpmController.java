@@ -1,8 +1,21 @@
 package com.sigmap.sigmap_ppm.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcResponseDto;
+
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.exceptions.PaaAlreadyExistsException;
+import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.paas.mappers.PaaDetailedMapper;
+import com.sigmap.common.paas.request.PaaQuery;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
+import com.sigmap.common.paas.response.PaaResponseWithRealisations;
+import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -12,13 +25,12 @@ import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
-import com.sigmap.common.ppms.response.PpmResponse;
-import com.sigmap.common.ppms.response.PpmResponseDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
+import com.sigmap.common.ppms.response.*;
+import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +43,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
 import java.util.*;
 import java.lang.reflect.Method;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -86,6 +101,7 @@ public class PpmController {
         return ResponseEntity.ok(responses);
     }
 
+
     /**
      * Return a page of deleted ppms based on the given specification and pageable.
      *
@@ -116,6 +132,16 @@ public class PpmController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{ppmId}/{ppmVer}/realisations-without-dac")
+    public ResponseEntity<Page<RealisationResponseDTO>> getPpmRealisationsWithoutDac(
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVer,
+            Pageable pageable) {
+        Page<Realisation> realisations = ppmService.getRealisationsWithoutDac(ppmId, ppmVer, pageable);
+        Page<RealisationResponseDTO> responses = realisations.map(RealisationMapper.INSTANCE::mapWithDTO);
+        return ResponseEntity.ok(responses);
     }
 
     /**
@@ -1144,6 +1170,48 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
 
+
+    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
+    public ResponseEntity<PpmResponseDto> createPpmPerAc(
+            @ModelAttribute("request") PpmWithLotsRequestDto request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, IOException {
+        logger.info("Creating PAA per AC with relationships using PaaRequestGlobal");
+
+        // Process lots from JSON string if provided
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        Ppm ppm = ppmService.createPpmPerAc(request);
+
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/current_year/user")
+    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPaasByUser(Pageable pageable) {
+        Page<Ppm> ppms = ppmService.findCurrentYearPpmsByUser(pageable);
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/current_year/user/acs_without_paa")
+    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<Ac> acsWithoutPaa = ppmService.getAcsWithoutPpmForCurrentYear();
+        List<AcResponseDto> response = acsWithoutPaa.stream()
+                .map(AcMapper.INSTANCE::mapToDto)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
+
     /**
      * Get a detailed PPM by its ID, including all its realisations.
      * This endpoint returns the latest version of the PPM.
@@ -1209,4 +1277,6 @@ public class PpmController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
     }
+
+
 }

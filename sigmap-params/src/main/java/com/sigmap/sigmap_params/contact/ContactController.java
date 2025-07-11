@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +39,7 @@ public class ContactController {
      * @return a page of Contact
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<ContactResponse>> findAll(
             ContactQuery query, Pageable pageable) {
         Page<Contact> params = contactService.findAll(query.toSpecification(), pageable);
@@ -53,6 +55,7 @@ public class ContactController {
      * @return a page of deleted Contact
      */
     @GetMapping("/deleted")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<Page<ContactResponse>> findAllDeleted(
             ContactQuery query, Pageable pageable) {
         Page<Contact> params = contactService.findAllDeleted(query.toSpecification(), pageable);
@@ -67,6 +70,7 @@ public class ContactController {
      * @return the Contact
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ContactResponse> findById(@PathVariable Integer id) throws ContactNotFound {
         Contact param = contactService.findById(id);
         ContactResponse response = ContactMapper.INSTANCE.map(param);
@@ -80,6 +84,7 @@ public class ContactController {
      * @return the created Contact
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ContactResponse> create(@RequestBody ContactRequest request) {
         Contact Contact = contactService.create(request);
         ContactResponse response = ContactMapper.INSTANCE.map(Contact);
@@ -92,6 +97,7 @@ public class ContactController {
      * @return the updated Contact
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ContactResponse> update(@PathVariable Integer id,@RequestBody ContactRequest request)throws ContactNotFound {
         Contact contact = contactService.update(id,request);
         ContactResponse response = ContactMapper.INSTANCE.map(contact);
@@ -104,6 +110,7 @@ public class ContactController {
      * @return the deleted Contact
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ContactResponse> deleteById(@PathVariable Integer id)throws ContactNotFound , SocieteContactNotFound {
         contactService.delete(id);
 

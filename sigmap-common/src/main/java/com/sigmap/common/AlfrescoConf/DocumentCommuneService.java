@@ -1,11 +1,16 @@
 package com.sigmap.common.AlfrescoConf;
 
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.process_verbal.ProcessVerbal;
+import com.sigmap.common.pv_docs.PvDocs;
+import com.sigmap.common.pv_docs.PvDocsRepository;
+import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
 
@@ -26,6 +32,8 @@ public class DocumentCommuneService {
     @Autowired
     private AlfrescoService alfrescoService;
     private final DocsRepository docsRepository;
+    @Autowired
+    private PvDocsRepository pvDocsRepository;
 
     /**
      * Detects the file extension based on the MIME type provided.
@@ -239,7 +247,7 @@ public class DocumentCommuneService {
         }
 
     }
-    private Docs mapperDocument (MultipartFile file , String entityTypeName , String baseFolderPath ) throws Exception {
+    public Docs mapperDocument(MultipartFile file, String entityTypeName, String baseFolderPath) throws Exception {
         //1-extract file data
 
         UUID uuid = UUID.randomUUID();
@@ -275,6 +283,42 @@ public class DocumentCommuneService {
         return document;
 
     }
-}
+    public void processAndSaveDocumentsForPv(List<PvDocRequest> docRequests, String path, ProcessVerbal processVerbal) throws IOException {
 
+        String baseFolderPath = String.format(path  +"/"+ processVerbal.getPpmId()+"/"+processVerbal.getPpmVersion()+Constants.PATH_ENTREPOT_GED_PV);
+
+        for (PvDocRequest docRequest : docRequests) {
+            MultipartFile file = docRequest.getDocument();
+            boolean isPv = docRequest.isPv();
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue; // Skip to the next file
+            }
+            try {
+                if(processVerbal.getDocuments() == null) {
+                    processVerbal.setDocuments(new HashSet<>());
+                }
+                Docs document = mapperDocument(file,"ppm_pv",baseFolderPath);
+                Docs doc= docsRepository.save(document);
+                PvDocs pvDocs= new PvDocs();
+                pvDocs.setDocId(doc.getId());
+                pvDocs.setPv(isPv);
+                pvDocs.setProcessVerbalId(processVerbal.getProcessVerbalId());
+                pvDocs.setPpmId(processVerbal.getPpmId());
+                pvDocs.setPpmVersion(processVerbal.getPpmVersion());
+                pvDocs.setDoc(document);
+                pvDocsRepository.save(pvDocs);
+                processVerbal.getDocuments().add(pvDocs);
+
+
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                // Re-throw as IOException for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+
+    }
+}
 

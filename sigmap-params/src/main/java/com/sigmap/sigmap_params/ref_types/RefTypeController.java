@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,6 +30,7 @@ public class RefTypeController {
   }
 
   @GetMapping
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<List<RefType>> findAll() {
     List<RefType> params = refTypeService.findAll();
     return ResponseEntity.ok(params);
@@ -36,12 +38,14 @@ public class RefTypeController {
 
 
   @GetMapping("/{id}")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<RefType> findById(@PathVariable Integer id) throws RefTypeNotFound {
     RefType params = refTypeService.findById(id);
     return ResponseEntity.ok(params);
   }
 
   @PostMapping
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<RefType> create(@RequestBody RefTypeRequest request) throws RefTypePositiveIdAndNotEmpty {
 
     System.out.println("Ref Type Request " + request);
@@ -50,6 +54,7 @@ public class RefTypeController {
   }
 //new code
   @GetMapping("/deleted")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<Page<RefTypeResponse>> findAllDeleted(
           RefTypeQuery query, Pageable pageable) {
     Page<RefType> params = refTypeService.findAllDeleted(query.toSpecification(), pageable);
@@ -58,6 +63,7 @@ public class RefTypeController {
   }
 
   @PutMapping
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<RefTypeResponse> update(@RequestBody RefTypeRequest request) throws RefTypeNotFound {
     RefType refType = refTypeService.update(request);
     RefTypeResponse response = RefTypeMapper.INSTANCE.map(refType);
@@ -65,6 +71,7 @@ public class RefTypeController {
   }
 
   @DeleteMapping("/{id}")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<RefTypeResponse> deleteById(@PathVariable Integer id) throws HasAssociatedRefParams {
     refTypeService.delete(id);
 

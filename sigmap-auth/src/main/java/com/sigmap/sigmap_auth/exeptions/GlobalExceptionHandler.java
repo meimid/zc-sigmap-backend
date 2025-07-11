@@ -8,6 +8,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -25,13 +26,13 @@ public class GlobalExceptionHandler {
     return LocaleContextHolder.getLocale();
   }
 
-  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-    ErrorResponse error =
-        new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred");
-    return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-  }
+  // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  // @ExceptionHandler(Exception.class)
+  // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+  //   ErrorResponse error =
+  //       new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred");
+  //   return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+  // }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(BadRequest.class)
@@ -52,5 +53,11 @@ public class GlobalExceptionHandler {
     String message = messageSource.getMessage("user.hasAssociatedCom",new Object[] {ex.getNom()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
     return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+  }
+  @ExceptionHandler(AuthorizationDeniedException.class)
+  @ResponseStatus(HttpStatus.FORBIDDEN)
+  public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(AuthorizationDeniedException ex) {
+    ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), "Accès refusé (autorisation manquante)");
+    return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
   }
 }

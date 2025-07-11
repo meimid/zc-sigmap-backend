@@ -7,6 +7,8 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -50,6 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -105,71 +108,65 @@ public class PaaServiceImpl implements PaaService {
         Specification<Paa> spec = PaaSpecifications.deleted(false);
         return repository.findAll(spec);
     }
+    @Override
+    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) {
+        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
 
-//    /**
-//     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
-//     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
-//     *
-//     * @param spec     Specification to filter Paa entities
-//     * @param pageable Pagination and sorting configuration
-//     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
-//     * @throws PaaNotFound if no Paa entities are found for the user's ACs
-//     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
-//     */
-//    @Override
-//    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
-//        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
-//
-//        // Récupérer les IDs des AC de l'utilisateur connecté
-//        List<Long> userAcIdsLong = currentUserService.getCurrentUserAcIds();
-//        if (userAcIdsLong.isEmpty()) {
-//            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-//            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
-//        }
-//        Set<Integer> userAcIds = userAcIdsLong.stream()
-//                .map(Long::intValue)
-//                .collect(Collectors.toSet());
-//
-//        // Vérifier l'existence des AC
-//        for (Integer acId : userAcIds) {
-//            try {
-//                acService.findById(acId);
-//            } catch (AcNotFound e) {
-//                log.warn("AC non trouvé avec ID: {}", acId);
-//                throw e;
-//            }
-//        }
-//
-//        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
-//                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
-//
-//        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
-//            Subquery<Integer> subquery = query.subquery(Integer.class);
-//            Root<Paa> subRoot = subquery.from(Paa.class);
-//            subquery.select(criteriaBuilder.max(subRoot.get("version")))
-//                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
-//            return criteriaBuilder.equal(root.get("version"), subquery);
-//        };
-//
-//        Specification<Paa> combinedSpec = spec != null
-//                ? spec.and(acFilterSpec).and(latestVersionSpec)
-//                : acFilterSpec.and(latestVersionSpec);
-//
-//        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
-//
-//        if (allPaas.isEmpty()) {
-//            log.warn("Aucun PAA trouvé pour les AC de l'utilisateur: {}", userAcIds);
-//            throw new PaaNotFound("Aucun PAA trouvé pour les AC de l'utilisateur: " + userAcIds,
-//                    Collections.emptyList(), Collections.emptyList());
-//        }
-//
-//        // Transformer les PAAs pour inclure uniquement les documents non supprimés
-//        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
-//
-//        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
-//
-//        return paasResponse;
-//    }
+        // Get user's AC IDs
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
+            return Page.empty(pageable);
+        }
+
+        // Validate ACs
+        for (Integer acId : userAcIds) {
+            try {
+                acService.findById(acId);
+            } catch (Exception e) {
+                log.info("AC non trouvé avec ID: {}", acId);
+                return Page.empty(pageable);
+            }
+        }
+
+        // Base specification: non-deleted and latest version
+        Specification<Paa> deletedSpec = (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("isDeleted"));
+        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Paa> subRoot = subquery.from(Paa.class);
+            subquery.select(criteriaBuilder.max(subRoot.get("version")))
+                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
+            return criteriaBuilder.equal(root.get("version"), subquery);
+        };
+        Specification<Paa> baseSpec = deletedSpec.and(latestVersionSpec);
+        if (spec != null) {
+            baseSpec = baseSpec.and(spec);
+        }
+
+        // Check if any non-deleted PAAs exist
+        Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
+        if (allPaasWithoutAcFilter.isEmpty()) {
+            log.info("Aucun PAA non supprimé trouvé dans la base de données");
+            return Page.empty(pageable);
+        }
+
+        // Apply AC filter
+        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
+                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
+        Specification<Paa> combinedSpec = baseSpec.and(acFilterSpec);
+        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
+
+        if (allPaas.isEmpty()) {
+            log.info("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
+            return Page.empty(pageable);
+        }
+
+        // Map the results to filter Docs
+        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
+        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
+
+        return paasResponse;
+    }
 
     public Page<Paa> findAllDeleted(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> deletedSpec = PaaSpecifications.deleted(true);
@@ -205,21 +202,28 @@ public class PaaServiceImpl implements PaaService {
      * @throws AcNotFound                          if no AC is found for the current user
      * @throws PaaNotAssociatedWithUserAcException if the Paa is not associated with the user's ACs
      */
+    /**
+     * Retrieves a Paa entity by its ID and specific version. Only non-deleted Docs are included in the response,
+     * and the Paa must be associated with one of the ACs of the current user.
+     *
+     * @param paaId  ID of the Paa entity
+     * @param paaVer Version of the Paa entity to retrieve
+     * @return Optional containing the Paa entity with the specified ID and version, or empty if not found
+     * @throws PaaNotFound                         if no Paa entity is found for the ID and version
+     * @throws AcNotFound                          if no AC is found for the current user
+     * @throws PaaNotAssociatedWithUserAcException if the Paa is not associated with the user's ACs
+     */
     @Override
     public Optional<Paa> findById(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound, PaaNotAssociatedWithUserAcException {
-        log.info("Recherche du PAA avec ID: {}", paaId);
+        log.info("Recherche du PAA avec ID: {} et version: {}", paaId, paaVer);
 
         // Step 1: Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds == null || userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIdsLong: {}", userAcIds);
+            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté. userAcIds: {}", userAcIds);
             throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
         }
 
-        if (userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC valide après conversion pour l'utilisateur connecté");
-            throw new AcNotFound("Aucun ID AC valide après conversion", Collections.emptyList());
-        }
         log.debug("ACs de l'utilisateur connecté: {}", userAcIds);
 
         // Step 2: Validate ACs
@@ -233,57 +237,60 @@ public class PaaServiceImpl implements PaaService {
             }
         }
 
-        // Step 3: Find the latest version
-        Integer latestVersion = repository.findMaxVersionById(paaId);
-        if (latestVersion == null) {
-            log.warn("Aucun PAA trouvé pour l'ID: {}", paaId);
-            throw new PaaNotFound("Aucun PAA trouvé pour l'ID", List.of(paaId), paaVer != null ? List.of(paaVer) : Collections.emptyList());
+        // Step 3: Validate input parameters
+        if (paaId == null || paaVer == null) {
+            log.warn("Paramètres invalides: paaId={}, paaVer={}", paaId, paaVer);
+            throw new PaaNotFound("ID ou version du PAA non fourni",
+                    paaId != null ? List.of(paaId) : Collections.emptyList(),
+                    paaVer != null ? List.of(paaVer) : Collections.emptyList());
         }
-        log.debug("Dernière version du PAA ID {}: {}", paaId, latestVersion);
 
-        // Step 4: Retrieve the PAA
-        Optional<Paa> paaOpt = repository.findById(new CompositeId(paaId, latestVersion));
+        // Step 4: Retrieve the PAA for the specified ID and version
+        Optional<Paa> paaOpt = repository.findById(new CompositeId(paaId, paaVer));
         if (paaOpt.isEmpty()) {
-            log.warn("Aucun PAA trouvé pour l'ID: {} et la version: {}", paaId, latestVersion);
-            throw new PaaNotFound("Aucun PAA trouvé pour l'ID et la version", List.of(paaId), List.of(latestVersion));
+            log.warn("Aucun PAA trouvé pour l'ID: {} et la version: {}", paaId, paaVer);
+            throw new PaaNotFound("Aucun PAA trouvé pour l'ID et la version",
+                    List.of(paaId), List.of(paaVer));
         }
         Paa paa = paaOpt.get();
-        log.debug("PAA récupéré: ID={}, Version={}, AC={}", paa.getId(), paa.getVersion(), paa.getAc() != null ? paa.getAc().getId() : "null");
+        log.debug("PAA récupéré: ID={}, Version={}, AC={}",
+                paa.getId(), paa.getVersion(), paa.getAc() != null ? paa.getAc().getId() : "null");
 
-        // Step 5: Check if the PAA is deleted (if applicable)
+        // Step 5: Check if the PAA is deleted
         if (Boolean.TRUE.equals(paa.getIsDeleted())) {
-            log.warn("PAA avec ID {} est marqué comme supprimé", paaId);
-            throw new PaaNotFound("PAA est supprimé", List.of(paaId), List.of(latestVersion));
+            log.warn("PAA avec ID {} et version {} est marqué comme supprimé", paaId, paaVer);
+            throw new PaaNotFound("PAA est supprimé", List.of(paaId), List.of(paaVer));
         }
 
         // Step 6: Validate AC association
         Integer paaAcId = paa.getAc() != null ? paa.getAc().getId() : null;
         log.debug("Validation de l'association AC: PAA AC ID={}, User ACs={}", paaAcId, userAcIds);
         if (paaAcId == null || !userAcIds.contains(paaAcId)) {
-            log.warn("PAA avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}", paaId, paaAcId, userAcIds);
+            log.warn("PAA avec ID {} et version {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}",
+                    paaId, paaVer, paaAcId, userAcIds);
             throw new PaaNotAssociatedWithUserAcException(
-                    "Le PAA avec l'ID " + paaId + " n'est pas associé à un AC de l'utilisateur connecté",
+                    "Le PAA avec l'ID " + paaId + " et version " + paaVer + " n'est pas associé à un AC de l'utilisateur connecté",
                     List.of(paaId.longValue()),
-                    List.of(latestVersion)
+                    List.of(paaVer)
             );
         }
 
         // Step 7: Final validation before return
         if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
-            log.warn("Validation finale échouée: PAA avec ID {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}", paaId, paa.getAc() != null ? paa.getAc().getId() : "null", userAcIds);
+            log.warn("Validation finale échouée: PAA avec ID {} et version {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}",
+                    paaId, paaVer, paa.getAc() != null ? paa.getAc().getId() : "null", userAcIds);
             throw new PaaNotAssociatedWithUserAcException(
-                    "Le PAA avec l'ID " + paaId + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
+                    "Le PAA avec l'ID " + paaId + " et version " + paaVer + " n'est pas associé à un AC de l'utilisateur connecté (validation finale)",
                     List.of(paaId.longValue()),
-                    List.of(latestVersion)
+                    List.of(paaVer)
             );
         }
 
         // Step 8: Prepare and return the response
         Paa responsePaa = createFilteredResponsePaa(paa);
-        log.info("PAA avec ID {} récupéré avec succès pour l'utilisateur", paaId);
+        log.info("PAA avec ID {} et version {} récupéré avec succès pour l'utilisateur", paaId, paaVer);
         return Optional.ofNullable(responsePaa);
     }
-
     private Paa createFilteredResponsePaa(Paa paa) {
         if (paa == null) {
             log.warn("PAA fourni est null");
@@ -323,96 +330,6 @@ public class PaaServiceImpl implements PaaService {
         return filteredPaa;
     }
 
-    /**
-     * Retrieves a paginated list of non-deleted Paa entities, returning only the latest version for each ID
-     * based on the given specification, filtered by the ACs of the current user. Only non-deleted Docs are included.
-     *
-     * @param spec     Specification to filter Paa entities
-     * @param pageable Pagination and sorting configuration
-     * @return Page of Paa entities with the latest version per ID and only non-deleted Docs
-     * @throws PaaNotFound                         if no Paa entities are found for the user's ACs
-     * @throws PaaNotAssociatedWithUserAcException if a Paa is not associated with the user's ACs
-     * @throws AcNotFound                          if no AC is found for the current user
-     */
-    @Override
-    public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) throws PaaNotAssociatedWithUserAcException, AcNotFound, PaaNotFound {
-        log.info("Recherche de tous les PAAs avec spécification: {}", spec);
-
-        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.warn("Aucun ID AC trouvé pour l'utilisateur connecté");
-            throw new AcNotFound("Aucun ID AC trouvé pour l'utilisateur connecté", Collections.emptyList());
-        }
-
-        for (Integer acId : userAcIds) {
-            try {
-                acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
-            }
-        }
-
-        // First, check if any non-deleted Paa entities exist at all (without AC filter)
-        Specification<Paa> deletedSpec = (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("isDeleted"));
-        Specification<Paa> latestVersionSpec = (root, query, criteriaBuilder) -> {
-            Subquery<Integer> subquery = query.subquery(Integer.class);
-            Root<Paa> subRoot = subquery.from(Paa.class);
-            subquery.select(criteriaBuilder.max(subRoot.get("version")))
-                    .where(criteriaBuilder.equal(subRoot.get("id"), root.get("id")));
-            return criteriaBuilder.equal(root.get("version"), subquery);
-        };
-        Specification<Paa> baseSpec = deletedSpec.and(latestVersionSpec);
-        if (spec != null) {
-            baseSpec = baseSpec.and(spec);
-        }
-
-        Page<Paa> allPaasWithoutAcFilter = repository.findAll(baseSpec, pageable);
-        if (allPaasWithoutAcFilter.isEmpty()) {
-            log.warn("Aucun PAA non supprimé trouvé dans la base de données");
-            throw new PaaNotFound("Aucun PAA non supprimé trouvé dans la base de données", Collections.emptyList(), Collections.emptyList());
-        }
-
-        // Now apply AC filter
-        Specification<Paa> acFilterSpec = (root, query, criteriaBuilder) ->
-                criteriaBuilder.in(root.get("ac").get("id")).value(userAcIds);
-
-        Specification<Paa> combinedSpec = baseSpec.and(acFilterSpec);
-        Page<Paa> allPaas = repository.findAll(combinedSpec, pageable);
-
-        if (allPaas.isEmpty()) {
-            // Since we know Paa entities exist (from the earlier check), the emptiness must be due to AC association
-            log.warn("Aucun PAA associé aux ACs de l'utilisateur: {}", userAcIds);
-            throw new PaaNotAssociatedWithUserAcException(
-                    "Aucun PAA associé aux ACs de l'utilisateur: " + userAcIds,
-                    Collections.emptyList(),
-                    Collections.emptyList()
-            );
-        }
-
-        // Double-check AC association for each Paa (for consistency with findById)
-        List<Integer> invalidPaaIds = new ArrayList<>();
-        List<Integer> invalidVersions = new ArrayList<>();
-        for (Paa paa : allPaas.getContent()) {
-            if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
-                invalidPaaIds.add(paa.getId());
-                invalidVersions.add(paa.getVersion());
-            }
-        }
-        if (!invalidPaaIds.isEmpty()) {
-            log.warn("Certains PAAs ne sont pas associés aux ACs de l'utilisateur: IDs={}, Versions={}", invalidPaaIds, invalidVersions);
-            throw new PaaNotAssociatedWithUserAcException(
-                    "Certains PAAs ne sont pas associés aux ACs de l'utilisateur",
-                    invalidPaaIds.stream().map(Integer::longValue).collect(Collectors.toList()),
-                    invalidVersions
-            );
-        }
-
-        Page<Paa> paasResponse = allPaas.map(this::createFilteredResponsePaa);
-        log.info("Récupération de {} PAAs pour les AC de l'utilisateur {}", paasResponse.getContent().size(), userAcIds);
-
-        return paasResponse;
-    }
 
     @Override
     public Optional<Paa> findLatestById(Integer paaId) {
@@ -556,8 +473,6 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaInvalidStateException(message.toString(), List.of(paa.getId()), List.of(paa.getVersion()));
         }
     }
-
-    @Override
     public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
         System.out.println("calling the method");
         CompositeId compositeId = new CompositeId(paaId, paaVer);
@@ -579,7 +494,6 @@ public class PaaServiceImpl implements PaaService {
         // Check if PAA is in DRAFT status and has null processInstanceId
         restrictUpdatePaa(existingPaa);
 
-//        existingPaa.setRef(request.getRef());
         existingPaa.setNom(request.getNom());
         existingPaa.setAnnee(existingPaa.getAnnee());
         existingPaa.setBudgetEstime(request.getBudgetEstime());
@@ -658,9 +572,7 @@ public class PaaServiceImpl implements PaaService {
 
         if (request.getPaaFiles() != null) {
             try {
-                // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
                 documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
-
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -754,37 +666,89 @@ public class PaaServiceImpl implements PaaService {
                     // Process uploaded files AFTER setting the docIds documents
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
-                            // Get current docs list to preserve it
                             List<Docs> currentDocs = realisation.getDocs();
                             if (currentDocs == null) {
                                 currentDocs = new ArrayList<>();
                             }
-
-                            // Process the uploaded files
-                            //processAndSaveRelisationsDocumentsForUpdate(realisationRequest.getRealisationFiles(), realisation);
                             documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-
-
-                            // After processing, get the new docs and merge with existing ones
                             List<Docs> newDocs = realisation.getDocs();
                             if (newDocs != null) {
-                                // Create a set to track existing doc IDs to avoid duplicates
                                 Set<Integer> existingDocIds = currentDocs.stream()
                                         .map(Docs::getId)
                                         .collect(Collectors.toSet());
-
-                                // Add only new documents that weren't already in the list
                                 for (Docs newDoc : newDocs) {
                                     if (!existingDocIds.contains(newDoc.getId())) {
                                         currentDocs.add(newDoc);
                                     }
                                 }
-
-                                // Set the combined list back
                                 realisation.setDocs(currentDocs);
                             }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
+                        }
+                    }
+
+                    // Handle lots
+                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                        Set<Lot> lots = new HashSet<>();
+                        Set<Integer> requestedLotIds = realisationRequest.getLots().stream()
+                                .filter(lotRequest -> lotRequest.getId() != null)
+                                .map(LotResponse::getId)
+                                .collect(Collectors.toSet());
+                        Set<Integer> existingLotIds = realisation.getLots() != null ?
+                                realisation.getLots().stream()
+                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                        .map(Lot::getId)
+                                        .collect(Collectors.toSet()) : new HashSet<>();
+
+                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+                            Lot lot;
+                            Integer lotId = lotRequest.getId();
+                            if (lotId != null) {
+                                // Update existing lot
+                                lot = lotRepository.findById(new CompositeId(lotId, 1)) // Assuming version 1 for simplicity
+                                        .orElse(new Lot());
+                                if (lot.getId() == null) {
+                                    lot.setId(lotId);
+                                    lot.setVersion(1);
+                                }
+                            } else {
+                                // Create new lot
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+                                lot = new Lot();
+                                lot.setId(lotId);
+                                lot.setVersion(1);
+                            }
+                            lot.setDescription(lotRequest.getDescription());
+                            lot.setIsDeleted(false);
+                            lot = lotRepository.save(lot);
+                            lots.add(lot);
+                        }
+
+                        // Mark existing lots not in request as deleted
+                        if (realisation.getLots() != null) {
+                            for (Lot existingLot : realisation.getLots()) {
+                                if (!requestedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                    existingLot.setIsDeleted(true);
+                                    lotRepository.save(existingLot);
+                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request)");
+                                }
+                            }
+                        }
+                        realisation.setLots(lots);
+                    } else {
+                        // If lots are null or empty, mark all existing lots as deleted
+                        System.out.println("No lots provided for Realisation ID: " + realisation.getId());
+                        if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+                            for (Lot existingLot : realisation.getLots()) {
+                                if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                    existingLot.setIsDeleted(true);
+                                    lotRepository.save(existingLot);
+                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request)");
+                                }
+                            }
+                            realisation.setLots(new HashSet<>());
                         }
                     }
 
@@ -795,31 +759,10 @@ public class PaaServiceImpl implements PaaService {
                         realisation.getPaas().add(existingPaa);
                     }
 
-                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                        Set<Lot> lots = new HashSet<>();
-                        for (LotResponse lotRequest : realisationRequest.getLots()) {
-                            Lot lot = new Lot();
-                            Integer lotId = lotRequest.getId();
-                            if (lotId == null) {
-//                                Integer maxLotId = lotRepository.findMaxId();
-                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
-                            }
-                            lot.setId(lotId);
-                            lot.setVersion(1);
-                            lot.setDescription(lotRequest.getDescription());
-                            lot = lotRepository.save(lot);
-                            lots.add(lot);
-                        }
-                        realisation.setLots(lots);
-                    }
-
                     realisation = realisationRepository.save(realisation);
                 } else {
                     realisation = new Realisation();
-//                    Integer maxRealisationId = realisationRepository.findMaxId();
                     Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-                    ;
                     Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
                     realisation.setId(realisationId);
                     realisation.setVersion(1);
@@ -841,9 +784,7 @@ public class PaaServiceImpl implements PaaService {
 
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
-                            //processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
                             documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -877,7 +818,6 @@ public class PaaServiceImpl implements PaaService {
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
                             if (lotId == null) {
-//                                Integer maxLotId = lotRepository.findMaxId();
                                 Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                             }
@@ -918,11 +858,24 @@ public class PaaServiceImpl implements PaaService {
                                     .collect(Collectors.toList())
                     );
                 }
+                if (realisation.getLots() != null) {
+                    realisation.setLots(
+                            realisation.getLots().stream()
+                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                    .collect(Collectors.toSet())
+                    );
+                }
             });
         }
+        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
+                .map(Realisation::getBudgetEstime)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedPaa.setBudgetEstime(budgetEstime);
+        repository.save(savedPaa);
+        copyForResponse.setBudgetEstime(budgetEstime);
         return copyForResponse;
     }
-
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
@@ -976,7 +929,6 @@ public class PaaServiceImpl implements PaaService {
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
 
-
         // Check for new lots without IDs to force versioning
         boolean hasNewLotsWithoutIds = false;
         if (request.getRealisations() != null) {
@@ -986,7 +938,8 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
         }
-// Check if files are present - if so, we'll always create a new version
+
+        // Check if files are present - if so, we'll always create a new version
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
             System.out.println("Files detected in request - will create new version regardless of other changes");
@@ -1031,7 +984,6 @@ public class PaaServiceImpl implements PaaService {
         Paa tempPaa = new Paa();
 
         // Only use request values when they're not null, otherwise keep existing values
-
         tempPaa.setRef(existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
@@ -1108,7 +1060,6 @@ public class PaaServiceImpl implements PaaService {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
                                             " files for Realisation ID: " + updatedRealisation.getId() +
                                             " version: " + updatedRealisation.getVersion());
-                                    //processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), updatedRealisation);
                                     documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), updatedRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                     // Save the realisation again after adding documents
@@ -1119,10 +1070,9 @@ public class PaaServiceImpl implements PaaService {
                                     throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
                                 }
                             }
+
                             // Handle realisation document IDs if provided
-                            // --- Merge docIds and uploaded files ---
                             if (realisationDto.getDocIds() != null) {
-                                // Start with docs from uploaded files (if any)
                                 List<Docs> allDocs = new ArrayList<>();
                                 if (updatedRealisation.getDocs() != null) {
                                     allDocs.addAll(updatedRealisation.getDocs());
@@ -1131,7 +1081,6 @@ public class PaaServiceImpl implements PaaService {
                                 Set<Integer> alreadyAddedDocIds = allDocs.stream().map(Docs::getId).collect(Collectors.toSet());
                                 System.out.println("[DEBUG] DocIds from request for realisation " + updatedRealisation.getId() + ": " + realisationDto.getDocIds());
                                 for (Integer docId : realisationDto.getDocIds()) {
-
                                     if (alreadyAddedDocIds.contains(docId)) {
                                         System.out.println("[DEBUG] Skipping already added docId: " + docId);
                                         continue;
@@ -1141,24 +1090,17 @@ public class PaaServiceImpl implements PaaService {
                                             .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
 
                                     doc.setIsDeleted(false);
-
-                                    // Don't attempt to set realisation on doc here to avoid circular references
-
                                     docsRepository.save(doc);
                                     allDocs.add(doc);
-
                                     System.out.println("[DEBUG] Added docId from docIds: " + docId);
                                 }
 
                                 System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " + allDocs.stream().map(Docs::getId).toList());
                                 updatedRealisation.setDocs(allDocs);
                                 updatedRealisation = realisationRepository.save(updatedRealisation);
-                                // --- Ensure bidirectional relationship and save docs ---
-                                final Realisation realToCheck = updatedRealisation;
                             }
-                            // Update the realisation's docs
-                            updatedRealisations.add(updatedRealisation);
 
+                            updatedRealisations.add(updatedRealisation);
                             realisationsChanged = true;
                         } else {
                             System.out.println("Using existing Realisation without changes");
@@ -1167,7 +1109,6 @@ public class PaaServiceImpl implements PaaService {
                             if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                                 try {
                                     System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for existing Realisation ID: " + existingRealisation.getId() + " version: " + existingRealisation.getVersion());
-                                    // processAndSaveRelisationsDocumentsForUpdate(realisationDto.getRealisationFiles(), existingRealisation);
                                     documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), existingRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
                                     existingRealisation = realisationRepository.save(existingRealisation);
                                     System.out.println("Saved existing Realisation after processing files");
@@ -1185,6 +1126,7 @@ public class PaaServiceImpl implements PaaService {
                                 }
                             }
 
+                            // Handle lots for existing Realisation
                             if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
                                 System.out.println("Processing " + realisationDto.getLots().size() + " lots in DTO");
 
@@ -1192,8 +1134,17 @@ public class PaaServiceImpl implements PaaService {
                                 Set<Integer> processedLotIds = new HashSet<>();
                                 boolean lotChanges = false;
 
-                                Set<Integer> existingLotIds = existingRealisation.getLots() != null ? existingRealisation.getLots().stream().map(Lot::getId).collect(Collectors.toSet()) : new HashSet<>();
-                                Map<Integer, String> existingLotDescriptions = existingRealisation.getLots() != null ? existingRealisation.getLots().stream().collect(Collectors.toMap(Lot::getId, lot -> lot.getDescription() != null ? lot.getDescription() : "", (a, b) -> a)) : new HashMap<>();
+                                Set<Integer> existingLotIds = existingRealisation.getLots() != null
+                                        ? existingRealisation.getLots().stream()
+                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                        .map(Lot::getId)
+                                        .collect(Collectors.toSet())
+                                        : new HashSet<>();
+                                Map<Integer, String> existingLotDescriptions = existingRealisation.getLots() != null
+                                        ? existingRealisation.getLots().stream()
+                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                        .collect(Collectors.toMap(Lot::getId, lot -> lot.getDescription() != null ? lot.getDescription() : "", (a, b) -> a))
+                                        : new HashMap<>();
 
                                 for (LotResponse lotDto : realisationDto.getLots()) {
                                     if (lotDto.getId() == null) {
@@ -1212,7 +1163,7 @@ public class PaaServiceImpl implements PaaService {
                                         if (existingRealisation.getLots() != null) {
                                             for (Lot existingLot : existingRealisation.getLots()) {
                                                 String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
-                                                if (existingDesc.equals(lotHash)) {
+                                                if (existingDesc.equals(lotHash) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                                     System.out.println("Found matching existing lot with description: " + lotHash);
                                                     updatedLots.add(existingLot);
                                                     processedLotIds.add(existingLot.getId());
@@ -1228,9 +1179,6 @@ public class PaaServiceImpl implements PaaService {
                                         Lot newLot = new Lot();
                                         newLot.setDescription(lotDto.getDescription());
                                         newLot.setVersion(1); // First version
-
-                                        // Generate new ID if not provided
-//                                        Integer maxLotId = lotRepository.findMaxId();
                                         Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                         Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
                                         newLot.setId(lotId);
@@ -1241,7 +1189,6 @@ public class PaaServiceImpl implements PaaService {
                                         newLotsMap.put(lotHash, savedLot);
                                         System.out.println("Created new Lot with ID: " + savedLot.getId());
                                         lotChanges = true;
-
 
                                     } else {
                                         if (processedLotIds.contains(lotDto.getId())) {
@@ -1283,8 +1230,29 @@ public class PaaServiceImpl implements PaaService {
                                     }
                                 }
 
-                                Set<Integer> requestLotIds = realisationDto.getLots().stream().filter(lotDto -> lotDto.getId() != null).map(LotResponse::getId).collect(Collectors.toSet());
-                                requestLotIds.addAll(processedLotIds.stream().filter(id -> !existingLotIds.contains(id)).collect(Collectors.toSet()));
+                                // Mark existing lots as deleted if they are not in the request
+                                if (existingRealisation.getLots() != null) {
+                                    for (Lot existingLot : existingRealisation.getLots()) {
+                                        if (!processedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                            Lot newLotVersion = new Lot();
+                                            newLotVersion.setId(existingLot.getId());
+                                            newLotVersion.setVersion(existingLot.getVersion() + 1);
+                                            newLotVersion.setDescription(existingLot.getDescription());
+                                            newLotVersion.setIsDeleted(true);
+                                            lotRepository.save(newLotVersion);
+                                            System.out.println("Marked lot " + existingLot.getId() + " as deleted in new version");
+                                            lotChanges = true;
+                                        }
+                                    }
+                                }
+
+                                Set<Integer> requestLotIds = realisationDto.getLots().stream()
+                                        .filter(lotDto -> lotDto.getId() != null)
+                                        .map(LotResponse::getId)
+                                        .collect(Collectors.toSet());
+                                requestLotIds.addAll(processedLotIds.stream()
+                                        .filter(id -> !existingLotIds.contains(id))
+                                        .collect(Collectors.toSet()));
 
                                 if (!requestLotIds.equals(existingLotIds)) {
                                     lotChanges = true;
@@ -1301,7 +1269,32 @@ public class PaaServiceImpl implements PaaService {
                                     updatedRealisations.add(existingRealisation);
                                 }
                             } else {
-                                updatedRealisations.add(existingRealisation);
+                                // Case where lots are null or empty in the request
+                                System.out.println("No lots provided in DTO for Realisation ID: " + realisationDto.getId());
+                                if (existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
+                                    // Mark all existing lots as deleted
+                                    Set<Lot> updatedLots = new HashSet<>();
+                                    for (Lot existingLot : existingRealisation.getLots()) {
+                                        if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                            Lot newLotVersion = new Lot();
+                                            newLotVersion.setId(existingLot.getId());
+                                            newLotVersion.setVersion(existingLot.getVersion() + 1);
+                                            newLotVersion.setDescription(existingLot.getDescription());
+                                            newLotVersion.setIsDeleted(true);
+                                            lotRepository.save(newLotVersion);
+                                            System.out.println("Marked lot " + existingLot.getId() + " as deleted in new version");
+                                        }
+                                    }
+                                    existingRealisation.setLots(updatedLots);
+                                    Realisation savedRealisation = realisationRepository.save(existingRealisation);
+                                    updatedRealisations.add(savedRealisation);
+                                    realisationsChanged = true;
+                                    System.out.println("All lots removed from Realisation, updated Realisation saved");
+                                } else {
+                                    // No lots in request and no existing lots
+                                    System.out.println("No lots in request and no existing lots, using existing Realisation");
+                                    updatedRealisations.add(existingRealisation);
+                                }
                             }
                         }
                     } else {
@@ -1334,7 +1327,6 @@ public class PaaServiceImpl implements PaaService {
                         if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                             try {
                                 System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for new Realisation ID: " + newRealisation.getId() + " version: " + newRealisation.getVersion());
-                                //processAndSaveRelisationsDocuments(realisationDto.getRealisationFiles(), newRealisation);
                                 documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), newRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
 
                                 // Save the new realisation again after adding documents
@@ -1362,10 +1354,8 @@ public class PaaServiceImpl implements PaaService {
                     System.out.println("Realisation count changed: " + existingPaa.getRealisations().size() + " -> " + updatedRealisations.size());
                     realisationsChanged = true;
                 } else {
-                    // Create a map of existing realisation IDs to their versions
                     Map<Integer, Integer> existingRealisationVersions = existingPaa.getRealisations().stream().collect(Collectors.toMap(Realisation::getId, Realisation::getVersion, (a, b) -> a));
 
-                    // Check if any realisation versions have changed
                     for (Realisation updatedRealisation : updatedRealisations) {
                         Integer existingVersion = existingRealisationVersions.get(updatedRealisation.getId());
                         if (existingVersion == null || !existingVersion.equals(updatedRealisation.getVersion())) {
@@ -1376,14 +1366,12 @@ public class PaaServiceImpl implements PaaService {
                     }
                 }
             } else if (existingPaa.getRealisations() == null || existingPaa.getRealisations().isEmpty()) {
-                // If existing PAA had no realisations but now we have some
                 if (!updatedRealisations.isEmpty()) {
                     System.out.println("Adding realisations to previously empty PAA");
                     realisationsChanged = true;
                 }
             }
         } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
-            // No realisations in request but there were some before - this is a change
             System.out.println("Realisations removed from PAA");
             realisationsChanged = true;
         }
@@ -1391,16 +1379,12 @@ public class PaaServiceImpl implements PaaService {
         // Process document IDs - improved document handling
         if (request.getDocIds() != null) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
-
-            // Get only the active (non-deleted) existing document IDs
             Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ? existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
 
-            // Compare requested doc IDs with active doc IDs
             System.out.println("Comparing document IDs:");
             System.out.println("  - Existing active docs: " + activeExistingDocIds);
             System.out.println("  - Requested docs: " + requestDocIds);
 
-            // If the sets don't match exactly, we need to mark it as changed
             if (!requestDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document ID sets are different - marking as changed");
                 documentsChanged = true;
@@ -1408,13 +1392,9 @@ public class PaaServiceImpl implements PaaService {
                 System.out.println("Document ID sets match - no document changes detected");
             }
 
-            // Prepare documents for the new version
             updatedDocs = new ArrayList<>();
-
-            // Process existing documents first
             if (existingPaa.getDocs() != null) {
                 for (Docs existingDoc : existingPaa.getDocs()) {
-                    // Get a fresh copy of the document to avoid stale data
                     Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (docToProcess == null) {
                         System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
@@ -1422,15 +1402,11 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     if (requestDocIds.contains(docToProcess.getId())) {
-                        // This document is in the request, make sure it's not deleted
                         docToProcess.setIsDeleted(false);
                         docToProcess = docsRepository.save(docToProcess);
                         updatedDocs.add(docToProcess);
-
-                        // Remove from requestDocIds to track what we've processed
                         requestDocIds.remove(docToProcess.getId());
                     } else {
-                        // This document is not in the request, mark as deleted
                         docToProcess.setIsDeleted(true);
                         docToProcess = docsRepository.save(docToProcess);
                         updatedDocs.add(docToProcess);
@@ -1439,25 +1415,19 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
 
-            // Now process any new documents in the request
             for (Integer docId : requestDocIds) {
                 Docs doc = docsRepository.findById(docId).orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-
-                // Ensure it's active
                 doc.setIsDeleted(false);
                 doc = docsRepository.save(doc);
                 updatedDocs.add(doc);
                 System.out.println("Added new document with ID " + doc.getId() + " for new version");
             }
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
-            // No document IDs provided, but existing docs exist - mark all as deleted
             updatedDocs = new ArrayList<>();
             for (Docs existingDoc : existingPaa.getDocs()) {
-                // Get a fresh copy of the document
                 Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                 if (docToProcess == null) continue;
 
-                // Mark as deleted
                 docToProcess.setIsDeleted(true);
                 docToProcess = docsRepository.save(docToProcess);
                 updatedDocs.add(docToProcess);
@@ -1465,48 +1435,39 @@ public class PaaServiceImpl implements PaaService {
             }
             documentsChanged = true;
         } else {
-            // No docs in request or existing PAA
             updatedDocs = new ArrayList<>();
         }
 
         // Determine if we need to create a new PAA version
         boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
 
-        // Log detailed versioning decision information
         System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
         System.out.println("  - Direct field changes: " + hasDirectChanges);
         System.out.println("  - Realisations changed: " + realisationsChanged);
         System.out.println("  - Documents changed: " + documentsChanged);
         System.out.println("  - Files uploaded: " + (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
 
-        // Force version increment if files are uploaded - this ensures files alone trigger a new version
         if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
             System.out.println("Files are present - forcing creation of new version");
             shouldCreateNewVersion = true;
         }
 
-        // Forcing version increment if any of the update criteria are met
         if (shouldCreateNewVersion) {
             System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
             storePreviousRequestHash(paaId, paaVer, requestHash);
         } else {
             System.out.println("No changes detected, returning existing PAA version: " + paaVer);
 
-            // Even if no changes detected, still process uploaded files if any - this is the fix
             if (request.getPaaFiles() != null) {
                 try {
                     System.out.println("Processing " + request.getPaaFiles().size() + " files for existing PAA version");
-                    // processAndSaveDocuments(request.getPaaFiles(), existingPaa);
                     documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
-
                     existingPaa = repository.save(existingPaa);
                     System.out.println("Saved PAA after processing files: " + existingPaa.getId() + " version " + existingPaa.getVersion());
-                    // Force creation of new version if files are uploaded
                     if (!request.getPaaFiles().isEmpty()) {
                         System.out.println("Files were uploaded - forcing creation of new version");
                         shouldCreateNewVersion = true;
                         storePreviousRequestHash(paaId, paaVer, requestHash);
-                        // No need to continue with this block since we'll be creating a new version
                     }
                 } catch (IOException e) {
                     System.err.println("Error processing PAA files for existing version: " + e.getMessage());
@@ -1514,25 +1475,19 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
 
-            // Only return existing PAA if we're still not creating a new version
             if (!shouldCreateNewVersion) {
-                // Create a filtered copy for response when no changes
                 Paa copyForResponse = new Paa();
                 BeanUtils.copyProperties(existingPaa, copyForResponse);
 
-                // Filter out deleted documents for the response
                 if (existingPaa.getDocs() != null) {
                     copyForResponse.setDocs(existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                 }
 
-                // Also filter realisation documents
                 if (copyForResponse.getRealisations() != null) {
                     copyForResponse.getRealisations().forEach(realisation -> {
                         if (realisation.getDocs() != null) {
                             realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                         }
-
-                        // Also filter lots in realisations
                         if (realisation.getLots() != null) {
                             realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toSet()));
                         }
@@ -1549,7 +1504,6 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setId(paaId);
         newPaa.setVersion(paaVer + 1);
 
-        // Copy properties from temp PAA
         newPaa.setRef(tempPaa.getRef());
         newPaa.setNom(tempPaa.getNom());
         newPaa.setAnnee(tempPaa.getAnnee());
@@ -1558,11 +1512,9 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setStatus(tempPaa.getStatus());
         newPaa.setAc(tempPaa.getAc());
 
-        // Initialize empty collections
         newPaa.setRealisations(new ArrayList<>());
         newPaa.setDocs(new ArrayList<>());
 
-        // Save the new PAA entity
         newPaa = repository.save(newPaa);
         System.out.println("Saved new PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
 
@@ -1570,21 +1522,16 @@ public class PaaServiceImpl implements PaaService {
         if (!updatedRealisations.isEmpty()) {
             System.out.println("Setting up relationships with " + updatedRealisations.size() + " realisations");
             List<Realisation> confirmedRealisations = new ArrayList<>();
-
-            // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaa = newPaa;
 
             for (Realisation realisation : updatedRealisations) {
                 try {
-                    // Verify the realisation still exists in the database
                     Realisation confirmedRealisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion())).orElse(null);
-
                     if (confirmedRealisation == null) {
                         System.err.println("Warning: Realisation " + realisation.getId() + " version " + realisation.getVersion() + " not found in database. Skipping relationship setup.");
                         continue;
                     }
 
-                    // Check if this realisation is already associated with this PAA version
                     boolean alreadyAssociated = false;
                     if (confirmedRealisation.getPaas() != null) {
                         alreadyAssociated = confirmedRealisation.getPaas().stream().anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
@@ -1596,46 +1543,42 @@ public class PaaServiceImpl implements PaaService {
                         continue;
                     }
 
-                    // Similar to PpmServiceImpl approach: Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedRealisation.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedRealisation.setPaas(paaList);
                     }
 
-                    // Add the PAA to the realisation if not already present
                     if (!paaList.contains(finalNewPaa)) {
                         paaList.add(finalNewPaa);
                     }
 
-                    // Save the realisation with updated relationship
-                    try {
-                        confirmedRealisation = realisationRepository.save(confirmedRealisation);
-                        System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() + " version " + confirmedRealisation.getVersion() + " with new PAA");
-                        confirmedRealisations.add(confirmedRealisation);
-                    } catch (Exception e) {
-                        System.err.println("Error saving realisation relationship: " + e.getMessage());
-                        // If we encounter an error, try to continue with other realisations
-                    }
+                    confirmedRealisation = realisationRepository.save(confirmedRealisation);
+                    System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() + " version " + confirmedRealisation.getVersion() + " with new PAA");
+                    confirmedRealisations.add(confirmedRealisation);
                 } catch (Exception e) {
                     System.err.println("Error associating Realisation with PAA: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
 
-            // Now set all realisations on the PAA at once
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
+            if (newPaa.getRealisations() != null) {
+                BigDecimal totalBudget = newPaa.getRealisations().stream()
+                        .map(com.sigmap.common.realisations.Realisation::getBudgetEstime)
+                        .filter(Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                newPaa.setBudgetEstime(totalBudget);
+                System.out.println("Updated PAA budgetEstime with sum of realisations: " + totalBudget);
+            }
         } else if (existingPaa.getRealisations() != null) {
             List<Realisation> confirmedRealisations = new ArrayList<>();
             System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
-
-            // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaa = newPaa;
 
             for (Realisation existingRealization : existingPaa.getRealisations()) {
                 try {
-                    // Find the latest version of this realisation
                     Integer latestVersion = realisationRepository.findMaxVersionById(existingRealization.getId());
                     if (latestVersion == null) {
                         System.err.println("Warning: No versions found for Realisation ID " + existingRealization.getId());
@@ -1643,13 +1586,11 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     Realisation latestRealisation = realisationRepository.findById(new CompositeId(existingRealization.getId(), latestVersion)).orElse(null);
-
                     if (latestRealisation == null) {
                         System.err.println("Warning: Latest Realisation " + existingRealization.getId() + " version " + latestVersion + " not found in database. Skipping.");
                         continue;
                     }
 
-                    // Check if this realisation is already associated with this PAA version
                     boolean alreadyAssociated = false;
                     if (latestRealisation.getPaas() != null) {
                         alreadyAssociated = latestRealisation.getPaas().stream().anyMatch(p -> p.getId().equals(finalNewPaa.getId()) && p.getVersion().equals(finalNewPaa.getVersion()));
@@ -1661,68 +1602,53 @@ public class PaaServiceImpl implements PaaService {
                         continue;
                     }
 
-                    // Update the inverse side of the relationship first
                     List<Paa> paaList = latestRealisation.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         latestRealisation.setPaas(paaList);
                     }
 
-                    // Add the PAA to the realisation if not already present
                     if (!paaList.contains(finalNewPaa)) {
                         paaList.add(finalNewPaa);
                     }
 
-                    // Save the realisation with updated relationship
-                    try {
-                        latestRealisation = realisationRepository.save(latestRealisation);
-                        System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() + " version " + latestRealisation.getVersion() + " with new PAA");
-                        confirmedRealisations.add(latestRealisation);
-                    } catch (Exception e) {
-                        System.err.println("Error saving relationship with latest realisation: " + e.getMessage());
-                        // If we encounter an error, try to continue with other realisations
-                    }
+                    latestRealisation = realisationRepository.save(latestRealisation);
+                    System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() + " version " + latestRealisation.getVersion() + " with new PAA");
+                    confirmedRealisations.add(latestRealisation);
                 } catch (Exception e) {
                     System.err.println("Error handling Realisation relationship: " + e.getMessage());
                     e.printStackTrace();
                 }
             }
 
-            // Now set all realisations on the PAA at once
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
         }
 
-        // Handle documents - copy all documents to the new PAA and update their associations
+        // Handle documents
         if (!updatedDocs.isEmpty()) {
             List<Docs> confirmedDocs = new ArrayList<>();
-            // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaaForDocs = newPaa;
 
             for (Docs doc : updatedDocs) {
                 try {
-                    // Verify doc still exists
                     Docs confirmedDoc = docsRepository.findById(doc.getId()).orElse(null);
                     if (confirmedDoc == null) {
                         System.err.println("Warning: Document " + doc.getId() + " not found in database. Skipping.");
                         continue;
                     }
 
-                    // Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedDoc.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedDoc.setPaas(paaList);
                     }
 
-                    // Check if PAA already exists in the doc's relationships
                     boolean alreadyAssociated = paaList.stream().anyMatch(p -> p.getId().equals(finalNewPaaForDocs.getId()) && p.getVersion().equals(finalNewPaaForDocs.getVersion()));
-
                     if (!alreadyAssociated) {
                         paaList.add(finalNewPaaForDocs);
                     }
 
-                    // Save document with relationship
                     confirmedDoc = docsRepository.save(confirmedDoc);
                     confirmedDocs.add(confirmedDoc);
                 } catch (Exception e) {
@@ -1730,39 +1656,31 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
 
-            // Now set the documents on the PAA
             newPaa.setDocs(confirmedDocs);
             System.out.println("Copied " + confirmedDocs.size() + " documents to new PAA version with correct delete status");
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
-            // Copy all existing documents to new PAA
             List<Docs> confirmedDocs = new ArrayList<>();
-            // Create a final reference to newPaa for use in lambdas
             final Paa finalNewPaaForExistingDocs = newPaa;
 
             for (Docs existingDoc : existingPaa.getDocs()) {
                 try {
-                    // Verify doc still exists
                     Docs confirmedDoc = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (confirmedDoc == null) {
                         System.err.println("Warning: Document " + existingDoc.getId() + " not found in database. Skipping.");
                         continue;
                     }
 
-                    // Update the inverse side of the relationship first
                     List<Paa> paaList = confirmedDoc.getPaas();
                     if (paaList == null) {
                         paaList = new ArrayList<>();
                         confirmedDoc.setPaas(paaList);
                     }
 
-                    // Check if PAA already exists in the doc's relationships
                     boolean alreadyAssociated = paaList.stream().anyMatch(p -> p.getId().equals(finalNewPaaForExistingDocs.getId()) && p.getVersion().equals(finalNewPaaForExistingDocs.getVersion()));
-
                     if (!alreadyAssociated) {
                         paaList.add(finalNewPaaForExistingDocs);
                     }
 
-                    // Save document with relationship
                     confirmedDoc = docsRepository.save(confirmedDoc);
                     confirmedDocs.add(confirmedDoc);
                 } catch (Exception e) {
@@ -1770,7 +1688,6 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
 
-            // Now set the documents on the PAA
             newPaa.setDocs(confirmedDocs);
             System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
         }
@@ -1779,29 +1696,20 @@ public class PaaServiceImpl implements PaaService {
         newPaa = repository.save(newPaa);
         System.out.println("Final save of PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
 
-        // Clear the existing relationships between this PAA ID and the selected realisations to prevent duplicates
-        // This approach prevents duplicate key violations in the join table
+        // Clear existing relationships to prevent duplicates
         try {
-            // Create a final reference to newPaa for use in lambda expressions
             final Paa finalNewPaa = newPaa;
-
-            // Get the list of realisation IDs we're associating
             List<Integer> realisationIds = finalNewPaa.getRealisations().stream().map(Realisation::getId).collect(Collectors.toList());
 
-            // Only attempt to clean up if we have realisations to associate
             if (!realisationIds.isEmpty()) {
-
                 System.out.println("Refreshing PAA-Realisation relationships to prevent primary key conflicts");
-
-                // Detach existing realisations from any other version of this PAA to avoid conflicts
                 for (Realisation realisation : finalNewPaa.getRealisations()) {
-                    // Filter out other versions of the current PAA from each realisation's PAAs
                     if (realisation.getPaas() != null) {
-                        List<Paa> filteredPaas = realisation.getPaas().stream().filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion()))).collect(Collectors.toList());
+                        List<Paa> filteredPaas = realisation.getPaas().stream()
+                                .filter(p -> !(p.getId().equals(finalNewPaa.getId()) && !p.getVersion().equals(finalNewPaa.getVersion())))
+                                .collect(Collectors.toList());
                         realisation.setPaas(filteredPaas);
                         realisationRepository.save(realisation);
-
-                        // Add the new PAA version back to ensure the relationship exists
                         if (!realisation.getPaas().contains(finalNewPaa)) {
                             realisation.getPaas().add(finalNewPaa);
                             realisationRepository.save(realisation);
@@ -1809,31 +1717,23 @@ public class PaaServiceImpl implements PaaService {
                     }
                 }
 
-                // Clear the in-memory collection and rebuild it
                 List<Realisation> tempRealisations = new ArrayList<>(finalNewPaa.getRealisations());
                 finalNewPaa.getRealisations().clear();
-                // Save with empty collection to remove all relationships
                 newPaa = repository.save(finalNewPaa);
-
-                // Create a new final reference after reassignment
                 final Paa updatedNewPaa = newPaa;
 
-                // Add back the relationships one by one
                 for (Realisation realisation : tempRealisations) {
                     updatedNewPaa.getRealisations().add(realisation);
                 }
-                // Save again with the rebuilt relationships
                 newPaa = repository.save(updatedNewPaa);
                 System.out.println("Successfully refreshed PAA-Realisation relationships");
             }
         } catch (Exception e) {
             System.err.println("Warning: Error handling relationship refresh: " + e.getMessage());
             e.printStackTrace();
-            // Continue execution - we'll let Hibernate try to handle it
         }
+
         // Handle document IDs for realizations
-
-
         if (request.getRealisations() != null) {
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 if (realisationRequest.getDocIds() != null) {
@@ -1842,26 +1742,17 @@ public class PaaServiceImpl implements PaaService {
                             .findFirst().orElse(null);
 
                     if (realisation != null) {
-                        // Get existing (possibly uploaded) doc IDs
                         Set<Integer> existingDocIds = realisation.getDocs() != null
                                 ? realisation.getDocs().stream().map(Docs::getId).collect(Collectors.toSet())
                                 : new HashSet<>();
-
-                        // Get docIds from request
                         Set<Integer> requestedDocIds = new HashSet<>(realisationRequest.getDocIds());
-
-                        // Merge both sets
                         requestedDocIds.addAll(existingDocIds);
 
                         List<Docs> finalDocList = new ArrayList<>();
-
                         for (Integer docId : requestedDocIds) {
                             Docs doc = docsRepository.findById(docId).orElse(null);
                             if (doc != null) {
-                                // Prevent circular linking if already handled on the Realisation side
-
-                                boolean bidirectionalHandledElsewhere = true; // or make this a config flag
-
+                                boolean bidirectionalHandledElsewhere = true;
                                 if (!bidirectionalHandledElsewhere) {
                                     if (doc.getRealisations() == null) doc.setRealisations(new ArrayList<>());
                                     boolean found = doc.getRealisations().stream()
@@ -1872,31 +1763,25 @@ public class PaaServiceImpl implements PaaService {
                                     }
                                 }
 
-                                // Still update isDeleted and save
                                 doc.setIsDeleted(false);
                                 doc = docsRepository.save(doc);
-
                                 finalDocList.add(doc);
                             }
                         }
 
                         realisation.setDocs(finalDocList);
                         realisationRepository.save(realisation);
-
                         System.out.println("[DEBUG-FINAL] Realisation " + realisation.getId() + " final docs: " + finalDocList.stream().map(Docs::getId).toList());
                     }
                 }
             }
         }
 
-        // Handle PAA files if provided - this was missing
+        // Handle PAA files if provided
         if (request.getPaaFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
-                //processAndSaveDocuments(request.getPaaFiles(), newPaa);
                 documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), newPaa, Constants.PATH_ENTREPOT_GED_PAA);
-
-                // Save again after adding documents
                 newPaa = repository.save(newPaa);
                 System.out.println("Saved PAA after processing files: " + newPaa.getId() + " version " + newPaa.getVersion());
             } catch (IOException e) {
@@ -1911,14 +1796,11 @@ public class PaaServiceImpl implements PaaService {
         BeanUtils.copyProperties(newPaa, copyForReturn);
         copyForReturn.setDocs(newPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
 
-        // Also filter realisation documents
         if (copyForReturn.getRealisations() != null) {
             copyForReturn.getRealisations().forEach(realisation -> {
                 if (realisation.getDocs() != null) {
                     realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                 }
-
-                // Also filter lots in realisations
                 if (realisation.getLots() != null) {
                     realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toSet()));
                 }
@@ -1927,7 +1809,6 @@ public class PaaServiceImpl implements PaaService {
 
         return copyForReturn;
     }
-
 
     /**
      * Updates a PAA with versioning by automatically finding and using the latest version.
@@ -2059,6 +1940,7 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("monais:").append(realisation.getMonais() != null ? realisation.getMonais() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
                 sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+                sb.append("budgetEstime:").append(realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : "").append(",");
 
                 if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                     // Sort lots by ID
@@ -2303,6 +2185,8 @@ public class PaaServiceImpl implements PaaService {
             log.info("a ce niveau ca va 9  ");
         }
         log.info("a ce niveau ca va 10 ");
+        BigDecimal budgetEstime=savedPaa.getRealisations().stream().map(Realisation::getBudgetEstime).reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedPaa.setBudgetEstime(budgetEstime);
         return repository.save(savedPaa);
     }
 
@@ -2310,6 +2194,10 @@ public class PaaServiceImpl implements PaaService {
     private boolean realisationNeedsUpdate(Realisation existingRealisation, RealisationRequestForPaa dto) {
         // Check if any field is different
         if (dto.getRealisationEnvisagees() != null && !dto.getRealisationEnvisagees().equals(existingRealisation.getRealisationEnvisagees())) {
+            return true;
+        }
+
+        if (dto.getBudgetEstime() != null && !dto.getBudgetEstime().equals(existingRealisation.getBudgetEstime())) {
             return true;
         }
 
@@ -2487,45 +2375,46 @@ public class PaaServiceImpl implements PaaService {
         String ref = "PAA_" + paa.getAnnee() + "_" + paa.getId();
         paa.setRef(ref);
     }
-
     @Override
-    public List<Paa> findCurrentYearPaasByUser() throws AcNotFound, PaaNotFound {
-        log.info("Retrieving current year's PAAs for connected user");
+    public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
+        log.info("Retrieving current year's PAAs for connected user with pageable: {}", pageable);
 
+        // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+            log.info("No AC IDs found for the connected user");
+            return Page.empty(pageable);
         }
 
+        // Validate ACs
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            } catch (Exception e) {
+                log.info("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
+        // Get current year
         String currentYear = String.valueOf(LocalDate.now().getYear());
 
-        List<Paa> paasList = new ArrayList<>();
-        for (Integer acId : userAcIds) {
-            Specification<Paa> spec = PaaSpecifications.annee(currentYear)
-                    .and(PaaSpecifications.paaAc(acId))
-                    .and(PaaSpecifications.deleted(false))
-                    .and(PaaSpecifications.isLatestVersion());
-            Optional<Paa> paaOpt = repository.findOne(spec);
-            paaOpt.ifPresent(paasList::add);
+        // Build specification
+        Specification<Paa> spec = Specification.where(PaaSpecifications.annee(currentYear))
+                .and(PaaSpecifications.paaAc(userAcIds))
+                .and(PaaSpecifications.deleted(false))
+                .and(PaaSpecifications.isLatestVersion());
+
+        // Query PAAs with pagination
+        Page<Paa> paasPage = repository.findAll(spec, pageable);
+
+        if (paasPage.isEmpty()) {
+            log.info("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            return Page.empty(pageable);
         }
 
-        if (paasList.isEmpty()) {
-            log.warn("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
-            throw new PaaNotFound("No PAAs found for the current year and user ACs: " + userAcIds,
-                    Collections.emptyList(), Collections.emptyList());
-        }
-
-        return paasList;
+        log.info("Retrieved {} PAAs for the current year {} and user ACs {}", paasPage.getContent().size(), currentYear, userAcIds);
+        return paasPage;
     }
 
     public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
@@ -2735,7 +2624,20 @@ public class PaaServiceImpl implements PaaService {
             }
             realisationRepository.saveAll(realisationsToSave);
         }
+        BigDecimal budgetEstime=savedPaa.getRealisations().stream().map(Realisation::getBudgetEstime).reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedPaa.setBudgetEstime(budgetEstime);
 
         return repository.save(savedPaa);
     }
+
+    @Override
+    public Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) {
+        Specification<Paa> finalSpec = Specification.where(spec)
+                .and(PaaSpecifications.isLatestVersion())
+                .and(PaaSpecifications.isPublished())
+                .and(PaaSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec, pageable);
+    }
+
+
 }

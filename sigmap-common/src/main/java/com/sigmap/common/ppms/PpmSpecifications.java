@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -11,6 +12,7 @@ import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class PpmSpecifications {
     /**
@@ -32,6 +34,9 @@ public class PpmSpecifications {
         };
     }
 
+    public static Specification<Ppm> ppmAc(List<Integer> acIds) {
+        return (root, query, cb) -> cb.in(root.get("ac").get("id")).value(acIds);
+    }
     /**
      * Filter by ppm_id and ppm_ver.
      */
@@ -52,6 +57,9 @@ public class PpmSpecifications {
      */
     public static Specification<Ppm> status(ProcessStatus status) {
         return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return null; // Return all if null
+            }
             return criteriaBuilder.equal(root.get("status"), status);
         };
     }
@@ -116,7 +124,6 @@ public class PpmSpecifications {
         };
     }
 
-
     /**
      * Filter by deletion status.
      */
@@ -165,5 +172,45 @@ public class PpmSpecifications {
     }
     public static Specification<Ppm> ppmAc(Integer acId) {
         return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
+    }
+
+    public static Specification<Ppm> isPublished() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "PUBLIE");
+    }
+
+    /**
+     * Creates a Specification to find entities that are not marked as deleted.
+     *
+     * @return A Specification for non-deleted entities.
+     */
+    public static Specification<Ppm> isNotDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("isDeleted"), false);
+    }
+
+    /**
+     * Creates a Specification to filter by the associated 'ac' entity's ID.
+     *
+     * @param acId The ID of the 'ac' entity to filter by.
+     * @return A Specification for the given acId.
+     */
+    public static Specification<Ppm> withAcId(Integer acId) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("ac").get("id"), acId);
+    }
+
+    /**
+     * Creates a Specification to filter by the year of the 'updatedAt' field.
+     *
+     * @param year The year to filter by.
+     * @return A Specification for the given year.
+     */
+    public static Specification<Ppm> withYear(Integer year) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(
+                        criteriaBuilder.function("YEAR", Integer.class, root.get("updatedAt")),
+                        year
+                );
     }
 }

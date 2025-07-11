@@ -1,10 +1,16 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
+import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
@@ -13,15 +19,22 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
+import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.RealisationRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
@@ -29,9 +42,13 @@ import org.apache.poi.xwpf.usermodel.*;
 
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import static org.testcontainers.shaded.org.apache.commons.lang3.StringUtils.lowerCase;
+import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
+import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 
 @Slf4j
 @Service
@@ -46,6 +63,10 @@ public class DacServiceImpl implements DacService {
     private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
     private final PpmRepository ppmRepository;
     private final RefParamRepository refParamRepository;
+    private final RealisationRepository realisationRepository;
+    private final DynaDocsMapper dynaDocsMapper;
+    private final DynaFieldsMapper dynaFieldsMapper;
+    private final DacDocsMapper dacDocsMapper;
 
 
     @Override
@@ -474,9 +495,9 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
-    public Dac create(CreateDacRequest request) {
-        if (request.getDacVer() == null || request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null || request.getStatusId() == null) {
-            throw new IllegalArgumentException("All fields (dacVer, ppmId, ppmVer, categoryId, statusId) are required");
+    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
+        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null ) {
+            throw new IllegalArgumentException("All fields (ppmId, ppmVer, categoryId) are required");
         }
         // Fetch related Ppm
         CompositeId ppmKey = new CompositeId();
@@ -484,19 +505,95 @@ public class DacServiceImpl implements DacService {
         ppmKey.setVersion(request.getPpmVer());
         Ppm ppm = ppmRepository.findById(ppmKey).orElseThrow(() -> new PpmIdNotFound( request.getPpmId(), request.getPpmVer()));
 
+        // Fetch related Realisation
+        CompositeId realisationKey = new CompositeId();
+        realisationKey.setId(request.getRealisationId());
+        realisationKey.setVersion(request.getRealisationVer());
+
+        // Check if a DAC already exists for this Realisation
+        Optional<Dac> existingDac = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
+        if (existingDac.isPresent()) {
+            throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+        }
+
+        Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
+
         // Fetch related RefParam (category)
-        RefParam category = refParamRepository.findById(request.getCategoryId()).orElse(null);
+        RefParam category = refParamRepository.findById(request.getCategoryId()).orElseThrow(() -> new RefParamNotFound("",List.of(request.getCategoryId())));
         if (category == null) {
             throw new IllegalArgumentException("Category not found");
         }
         // Create DAC
         Dac dac = new Dac();
-        dac.setDacVer(request.getDacVer());
+        dac.setDacVer(1);
         dac.setPpm(ppm);
+        dac.setRealisation(realisation);
         dac.setCategory(category);
         dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
 
         return savedCdac;
     }
+
+    @Override
+    public List <Dac> findAll() {
+        Specification<Dac> spec = DacSpecifications.searchByDeleted(false);
+        return dacRepository.findAll(spec);
+    }
+
+    @Override
+    public Page<Dac> findAll(Specification<Dac> spec, Pageable pageable) {
+        Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
+        return dacRepository.findAll(specification, pageable);
+    }
+
+    @Override
+    public Optional<Dac> findOne(Specification<Dac> specification) {
+        return dacRepository.findOne(specification);
+    }
+
+    @Override
+    public Optional<Dac> findById(Integer dacId, Integer dacVer) {
+        Specification<Dac> specification = DacSpecifications.id(dacId, dacVer)
+                .and(DacSpecifications.searchByDeleted(false));
+        return findOne(specification);
+    }
+
+
+    @Override
+    public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
+        Optional<Dac> dacOpt = dacRepository.findById(new DacId(dacId, dacVer));
+        if (dacOpt.isEmpty()) {
+            throw new RuntimeException("Dac not found with id: " + dacId + " and version: " + dacVer);
+        }
+        Dac dac = dacOpt.get();
+
+        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllLastVersionByCategorieId(dac.getCategory().getId());
+        if (dynaDocsList.isEmpty()) {
+            return null;
+        }
+
+        DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
+
+        List<DynaDocsResponseDTO> dynaDocsResponses = dynaDocsList.stream()
+                .map(dynaDocs -> {
+                    DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
+                    List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
+                    List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
+                            .map(field -> {
+                                DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
+                                fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
+                                return fieldDTO;
+                            })
+                            .collect(Collectors.toList());
+                    dynaDocsDTO.setDynaFields(dynaFieldsDTOs);
+                    return dynaDocsDTO;
+                })
+                .collect(Collectors.toList());
+
+        dacResponse.setDynaDocs(dynaDocsResponses);
+        return dacResponse;
+    }
+
+
 }

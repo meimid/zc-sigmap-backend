@@ -27,5 +27,6 @@ public class AcResponse {
   private RefParamResponseDto tutel;
   @JsonIgnoreProperties
   private List<DirectionResponseDto> directions;
+  private String email;
   private BaseEntityResponse metadata;
 }
