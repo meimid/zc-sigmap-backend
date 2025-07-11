@@ -64,7 +64,7 @@ public class DirectionController {
      * @param directionId the id of the Direction to return
      * @return the Direction
      */
-    @GetMapping("/direction/{directionId}/ac/{acId}")
+    @GetMapping("/{directionId}/ac/{acId}")
     public ResponseEntity<DirectionResponse> findByIds(@PathVariable Integer directionId,@PathVariable Integer acId) throws DirectionNotFound {
         Direction param = directionService.findByIds(directionId,acId);
         DirectionResponse response = DirectionMapper.INSTANCE.map(param);
@@ -77,7 +77,7 @@ public class DirectionController {
      * @param directionId the id of the Direction to delete
      * @return the deleted Direction
      */
-    @DeleteMapping("/direction/{directionId}/ac/{acId}")
+    @DeleteMapping("/{directionId}/ac/{acId}")
     public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer directionId,@PathVariable Integer acId) throws AcNotFound {
         directionService.delete(directionId, acId);
 
@@ -97,7 +97,7 @@ public class DirectionController {
     }
 
     // create under Ac with acId
-    @PutMapping("/ac/{acId}/direction/{id}")
+    @PutMapping("/{id}/ac/{acId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.updateUnderAc(acId,id,request);
