@@ -1,6 +1,11 @@
 package com.sigmap.sigmap_webmaster.controller;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.request.AcQuery;
+import com.sigmap.common.ac.response.AcWebsiteResponse;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
@@ -27,6 +32,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api")
 @Slf4j
@@ -34,11 +41,13 @@ public class WebMasterController {
     private final PpmService ppmService;
     private final PaaService paaService;
     private final AgpmService agpmService;
+    private final AcService acService;
 
-    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService) {
+    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService) {
         this.ppmService = ppmService;
         this.paaService = paaService;
         this.agpmService = agpmService;
+        this.acService = acService;
     }
 
     @GetMapping("/ppm")
@@ -90,5 +99,11 @@ public class WebMasterController {
         Agpm agpm = agpmService.findByIdAndVer(agpmId, agpmVer);
         AgpmWebsiteResponse response = new AgpmWebsiteResponse(agpm);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+    @GetMapping("/ac")
+    public ResponseEntity <List<AcWebsiteResponse>> findAllAcsForWebsite()  {
+        List<Ac> acs = acService.findAll();
+        List<AcWebsiteResponse> responses= AcMapper.INSTANCE.mapToWebsiteResponse(acs);
+        return ResponseEntity.ok(responses);
     }
 }
