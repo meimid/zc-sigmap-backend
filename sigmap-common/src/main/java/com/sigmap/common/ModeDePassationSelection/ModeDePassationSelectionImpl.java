@@ -131,6 +131,7 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
 
     @Override
     public void delete(Integer id) throws ModeDePassationSelectionNotFound {
+        findById(id);
         repository.softDelete(id);
 
     }
