@@ -1,8 +1,11 @@
 package com.sigmap.common.ModeDePassationSelection.response;
 
-import lombok.Data;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class ModeDePassationSelectionResponseDto {
     private Integer id;
     private String libelle;

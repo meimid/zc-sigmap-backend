@@ -7,9 +7,9 @@ import org.springframework.data.jpa.domain.Specification;
 
 public class ModeDePassationSelectionSpecifications{
     /** search. */
-    public static Specification<Com> search(String search) {
+    public static Specification<ModeDePassationSelection> search(String search) {
         return (root, query, criteriaBuilder) -> {
-Join<ModeDePassationSelection, RefParam> join = root.join("categorie");
+Join<ModeDePassationSelection, RefParam> join = root.join("categories");
 
       return criteriaBuilder.or(
         criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
@@ -54,6 +54,6 @@ public static Specification<ModeDePassationSelection> deleted(boolean deleted) {
 }
 
 public static Specification<ModeDePassationSelection> hascategorieId(Integer categorieId) {
-    return (root, query, cb) -> cb.equal(root.get("categorie").get("id"), categorieId);
+    return (root, query, cb) -> cb.equal(root.get("categories").get("id"), categorieId);
 }
 }
