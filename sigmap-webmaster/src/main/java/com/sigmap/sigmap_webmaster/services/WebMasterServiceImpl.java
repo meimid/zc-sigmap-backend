@@ -1,6 +1,5 @@
 package com.sigmap.sigmap_webmaster.services;
 
-import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmService;
@@ -20,7 +19,6 @@ import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.Realisation;
-import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,24 +26,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class WebMasterServiceImpl implements WebMasterService {
-    private final AgpmService agpmService;
-   private final PaaService paaService;
-   private final PpmService ppmService;
+
     private final PpmRepository ppmRepository;
     private final PaaRepository paaRepository;
     private final AgpmRepository agpmRepository;
 
-    public WebMasterServiceImpl(AgpmService agpmService, PaaService paaService, PpmService ppmService, PpmRepository ppmRepository, PaaRepository paaRepository, AgpmRepository agpmRepository) {
-        this.agpmService = agpmService;
-        this.paaService = paaService;
-        this.ppmService = ppmService;
+    public WebMasterServiceImpl( PpmRepository ppmRepository, PaaRepository paaRepository, AgpmRepository agpmRepository) {
+
         this.ppmRepository = ppmRepository;
         this.paaRepository = paaRepository;
         this.agpmRepository = agpmRepository;
@@ -56,18 +49,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         Integer ppmVer=ppmRepository.findMaxVersionById(ppmId);
         Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false)).and(PpmSpecifications.isPublished());
         Ppm ppm = ppmRepository.findOne(spec).orElseThrow(()-> new PpmIdNotFound("",ppmId));
-        if (ppm == null) {
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(ppmVer));
-        }else{
-            List<Realisation> allRealisations = ppm.getRealisations();
 
+            List<Realisation> allRealisations = ppm.getRealisations();
             List<Realisation> pageContent = allRealisations.stream()
                     .skip(pageable.getOffset())
                     .limit(pageable.getPageSize())
                     .collect(Collectors.toList());
 
             return new PageImpl<>(pageContent, pageable, allRealisations.size());
-        }
+
     }
 
 
@@ -76,17 +66,12 @@ public class WebMasterServiceImpl implements WebMasterService {
         Integer paaVer=paaRepository.findMaxVersionById(paaId);
         Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer)).and(PaaSpecifications.deleted(false)).and(PaaSpecifications.isPublished());
         Paa paa = paaRepository.findOne(spec).orElseThrow(()-> new PaaIdNotFound("",paaId));
-        if (paa == null) {
-            throw new PaaNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(paaId), List.of(paaVer));
-        }else{
             List<Realisation> allRealisations = paa.getRealisations();
-
             List<Realisation> pageContent = allRealisations.stream()
                     .skip(pageable.getOffset())
                     .limit(pageable.getPageSize())
                     .collect(Collectors.toList());
-
-            return new PageImpl<>(pageContent, pageable, allRealisations.size());        }
+            return new PageImpl<>(pageContent, pageable, allRealisations.size());
 
     }
 
@@ -95,13 +80,8 @@ public class WebMasterServiceImpl implements WebMasterService {
     public Agpm getAgpmById (Integer agpmId) throws AgpmNotFound {
         Integer agpmVer=agpmRepository.findMaxVersionById(agpmId);
         Specification<Agpm> spec = AgpmSpecifications.id(new CompositeId(agpmId, agpmVer)).and(AgpmSpecifications.deleted(false)).and(AgpmSpecifications.isPublished());
-        Agpm agpmOpt = agpmRepository.findOne(spec).orElseThrow(()->new AgpmNotFound("",List.of(agpmId),null));
-        if (agpmOpt == null) {
-            throw new AgpmNotFound("Aucun AGPM trouvé pour l'ID et la version", List.of(agpmId), List.of(agpmVer));
-        }else{
+        Agpm agpmOpt = agpmRepository.findOne(spec).orElseThrow(()->new AgpmNotFound("",List.of(agpmId),List.of(agpmVer)));
             return agpmOpt;
-        }
-
     }
 
 
