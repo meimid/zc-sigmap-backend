@@ -291,7 +291,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                     continue;
                 }
 
-                Set<LotResponse> lots = new HashSet<>();
+                List<LotResponse> lots = new ArrayList<>();
 
                 // Process lots for this realisation
                 for (Map<String, Object> lotData : entry.getValue()) {
@@ -322,6 +322,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                 // Set the processed lots on the realisation
                 realisation.setLots(lots);
                 logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+                log.info(lots.toString());
             }
         } catch (Exception e) {
             logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);

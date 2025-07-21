@@ -49,6 +49,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 
 import java.io.IOException;
@@ -690,7 +691,7 @@ public class PaaServiceImpl implements PaaService {
 
                     // Handle lots
                     if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                        Set<Lot> lots = new HashSet<>();
+                        List<Lot> lots = new ArrayList<>();
                         Set<Integer> requestedLotIds = realisationRequest.getLots().stream()
                                 .filter(lotRequest -> lotRequest.getId() != null)
                                 .map(LotResponse::getId)
@@ -748,7 +749,7 @@ public class PaaServiceImpl implements PaaService {
                                     System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request)");
                                 }
                             }
-                            realisation.setLots(new HashSet<>());
+                            realisation.setLots(new ArrayList<>());
                         }
                     }
 
@@ -813,7 +814,7 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                        Set<Lot> lots = new HashSet<>();
+                        List<Lot> lots = new ArrayList<>();
                         for (LotResponse lotRequest : realisationRequest.getLots()) {
                             Lot lot = new Lot();
                             Integer lotId = lotRequest.getId();
@@ -862,7 +863,7 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setLots(
                             realisation.getLots().stream()
                                     .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                                    .collect(Collectors.toSet())
+                                    .collect(Collectors.toList())
                     );
                 }
             });
@@ -971,7 +972,7 @@ public class PaaServiceImpl implements PaaService {
 
                         // Also filter lots in realisations
                         if (realisation.getLots() != null) {
-                            realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toSet()));
+                            realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                         }
                     });
                 }
@@ -1130,7 +1131,7 @@ public class PaaServiceImpl implements PaaService {
                             if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
                                 System.out.println("Processing " + realisationDto.getLots().size() + " lots in DTO");
 
-                                Set<Lot> updatedLots = new HashSet<>();
+                                List<Lot> updatedLots = new ArrayList<>();
                                 Set<Integer> processedLotIds = new HashSet<>();
                                 boolean lotChanges = false;
 
@@ -1273,7 +1274,7 @@ public class PaaServiceImpl implements PaaService {
                                 System.out.println("No lots provided in DTO for Realisation ID: " + realisationDto.getId());
                                 if (existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
                                     // Mark all existing lots as deleted
-                                    Set<Lot> updatedLots = new HashSet<>();
+                                    List<Lot> updatedLots = new ArrayList<>();
                                     for (Lot existingLot : existingRealisation.getLots()) {
                                         if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                             Lot newLotVersion = new Lot();
@@ -1318,7 +1319,7 @@ public class PaaServiceImpl implements PaaService {
                         newRealisationRequest.setDocIds(realisationDto.getDocIds());
 
                         if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
-                            newRealisationRequest.setLots((Set<LotResponse>) realisationDto.getLots());
+                            newRealisationRequest.setLots((List<LotResponse>) realisationDto.getLots());
                         }
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
@@ -1489,7 +1490,7 @@ public class PaaServiceImpl implements PaaService {
                             realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                         }
                         if (realisation.getLots() != null) {
-                            realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toSet()));
+                            realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                         }
                     });
                 }
@@ -1802,7 +1803,7 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                 }
                 if (realisation.getLots() != null) {
-                    realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toSet()));
+                    realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                 }
             });
         }
@@ -2157,7 +2158,7 @@ public class PaaServiceImpl implements PaaService {
                 log.info("a ce niveau ca va 6 ");
                 // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                    Set<Lot> lots = new HashSet<>();
+                    List<Lot> lots = new ArrayList<>();
 //                    Integer currentMaxLotId = lotRepository.findMaxId();
                     Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                     Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
@@ -2562,6 +2563,10 @@ public class PaaServiceImpl implements PaaService {
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+            // Initialize lot ID counter once for all realisations
+            Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+            Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
+            log.info("Starting lot ID sequence at: {}", nextLotId);
 
             List<Realisation> realisationsToSave = new ArrayList<>();
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
@@ -2602,29 +2607,52 @@ public class PaaServiceImpl implements PaaService {
 
                 // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
-                    Set<Lot> lots = new HashSet<>();
+                    log.info("Processing {} lots for realisation ID: {}", realisationRequest.getLots().size(), realisation.getId());
+                    List<Lot> lots = new ArrayList<>();
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
+                        log.info("Processing lot with description: {}", lotRequest.getDescription());
+                        if (lotRequest.getDescription() == null || lotRequest.getDescription().isEmpty()) {
+                            log.warn("Skipping lot with null or empty description for realisation ID: {}", realisation.getId());
+                            continue;
+                        }
                         Lot lot = new Lot();
                         Integer lotId = lotRequest.getId();
                         if (lotId == null) {
                             lotId = nextLotId++;
+                            log.info("Assigned new lot ID: {}", lotId);
+                        }
+                        // Check if lot ID already exists
+                        CompositeId compositeId = new CompositeId(lotId, 1);
+                        if (lotRepository.existsById(compositeId)) {
+                            log.error("Lot ID {} already exists in the database", lotId);
+                            throw new IllegalStateException("Generated lot ID " + lotId + " already exists");
                         }
                         lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lotRequest.getDescription());
-                        lot = lotRepository.save(lot);
-                        lots.add(lot);
+                        try {
+                            lot = lotRepository.save(lot);
+                            log.info("Saved lot with ID: {}, Description: {}", lot.getId(), lot.getDescription());
+                            lots.add(lot);
+                        } catch (Exception e) {
+                            log.error("Failed to save lot with ID: {}, Description: {}. Error: {}", lotId, lotRequest.getDescription(), e.getMessage());
+                            throw new RuntimeException("Failed to save lot: " + e.getMessage(), e);
+                        }
                     }
                     realisation.setLots(lots);
+                    log.info("Assigned {} lots to realisation ID: {}", lots.size(), realisation.getId());
+                } else {
+                    log.info("No lots provided for realisation ID: {}", realisation.getId());
+                    realisation.setLots(new ArrayList<>());
                 }
 
                 realisationsToSave.add(realisation);
             }
             realisationRepository.saveAll(realisationsToSave);
         }
-        BigDecimal budgetEstime=savedPaa.getRealisations().stream().map(Realisation::getBudgetEstime).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
+                .map(Realisation::getBudgetEstime)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         savedPaa.setBudgetEstime(budgetEstime);
 
         return repository.save(savedPaa);
