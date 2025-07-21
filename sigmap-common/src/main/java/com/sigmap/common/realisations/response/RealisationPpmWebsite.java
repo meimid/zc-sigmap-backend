@@ -7,45 +7,53 @@ import java.time.format.DateTimeFormatter;
 
 @Data
 public class RealisationPpmWebsite {
+    // Fields updated to match the PpmProject interface
     private Integer id;
-    private String expenseObject;
-    private String budgetAllocation;
+    private String envisionedDeliverables;
+    private String fundingSource;
     private String contractType;
-    private String selectionMode;
     private String launchDate;
     private String awardDate;
+    private String startDate;
+    private String completionDate;
 
     /**
      * Constructs and maps a Realisation entity to this DTO.
      * @param realisation The source Realisation entity.
      */
     public RealisationPpmWebsite(Realisation realisation) {
-        // --- Direct & Simple Mappings ---
         this.id = realisation.getId();
-        this.expenseObject = realisation.getRealisationEnvisagees();
+        this.envisionedDeliverables = realisation.getRealisationEnvisagees();
 
-        // --- Mappings from related RefParam entities (assuming getNom() exists) ---
         if (realisation.getSourceFinancement() != null) {
-            this.budgetAllocation = realisation.getSourceFinancement().getCode();
+            this.fundingSource = realisation.getSourceFinancement().getCode();
         }
-
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
         }
 
-        if (realisation.getModeSelection() != null) {
-            this.selectionMode = realisation.getModeSelection().getCode();
-        }
+        // --- Date and Time Mappings ---
+        // Since the source is LocalDate, it has no time. A default time "00:00" will be used.
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        // --- Date Mappings (formatting LocalDate to String "dd/MM/yyyy") ---
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
+        // Launch Date (from datePrevLps)
         if (realisation.getDatePrevLps() != null) {
-            this.launchDate = realisation.getDatePrevLps().format(formatter);
+            this.launchDate = realisation.getDatePrevLps().format(dateFormatter);
         }
 
+        // Award Date (from datePrevAc)
         if (realisation.getDatePrevAc() != null) {
-            this.awardDate = realisation.getDatePrevAc().format(formatter);
+            this.awardDate = realisation.getDatePrevAc().format(dateFormatter);
+        }
+
+        // Start Date (from datePrevDp, assumed to be 'date prévisionnelle de démarrage')
+        if (realisation.getDatePrevDp() != null) {
+            this.startDate = realisation.getDatePrevDp().format(dateFormatter);
+        }
+
+        // Completion Date (from datePrevAp, assumed to be 'date prévisionnelle d'achèvement')
+        if (realisation.getDatePrevAp() != null) {
+            this.completionDate = realisation.getDatePrevAp().format(dateFormatter);
         }
     }
 }

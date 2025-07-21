@@ -13,11 +13,18 @@ import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -34,26 +41,39 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     @Override
-    public Ppm getPpmByIdAndVersion(Integer ppmId, Integer ppmVer) throws PpmNotFound {
+    public Page<Realisation> getPpmByIdAndVersion(Integer ppmId, Integer ppmVer, Pageable pageable) throws PpmNotFound {
         Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false));
-        Ppm ppmOpt = ppmRepository.findOne(spec).get();
-        if (ppmOpt == null) {
+        Ppm ppm = ppmRepository.findOne(spec).get();
+        if (ppm == null) {
             throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(ppmVer));
         }else{
-            return ppmOpt;
+            List<Realisation> allRealisations = ppm.getRealisations();
+
+            List<Realisation> pageContent = allRealisations.stream()
+                    .skip(pageable.getOffset())
+                    .limit(pageable.getPageSize())
+                    .collect(Collectors.toList());
+
+            return new PageImpl<>(pageContent, pageable, allRealisations.size());
         }
     }
 
 
     @Override
-    public Paa getPaaByIdAndVersion(Integer paaId, Integer paaVer) throws PaaNotFound {
+    public Page<Realisation> getPaaByIdAndVersion(Integer paaId, Integer paaVer,Pageable pageable) throws PaaNotFound {
         Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer)).and(PaaSpecifications.deleted(false));
-        Paa paaOpt = paaRepository.findOne(spec).get();
-        if (paaOpt == null) {
+        Paa paa = paaRepository.findOne(spec).get();
+        if (paa == null) {
             throw new PaaNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(paaId), List.of(paaVer));
         }else{
-            return paaOpt;
-        }
+            List<Realisation> allRealisations = paa.getRealisations();
+
+            List<Realisation> pageContent = allRealisations.stream()
+                    .skip(pageable.getOffset())
+                    .limit(pageable.getPageSize())
+                    .collect(Collectors.toList());
+
+            return new PageImpl<>(pageContent, pageable, allRealisations.size());        }
 
     }
 
