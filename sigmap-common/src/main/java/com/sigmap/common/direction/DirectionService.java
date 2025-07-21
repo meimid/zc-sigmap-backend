@@ -1,11 +1,8 @@
 package com.sigmap.common.direction;
 
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.direction.exception.DirectionNotFound;
 import com.sigmap.common.direction.request.DirectionRequest;
-import com.sigmap.common.direction.request.DirectionunderAcRequest;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.Pageable;
@@ -45,10 +42,10 @@ public interface DirectionService {
     /**
      * Return the deleted Direction with the given id.
      *
-     * @param id the id of the Direction to return
+     * @param directionid the id of the Direction to return
      * @return the Direction with the given id
      */
-    Optional<Direction> findDeletedById(Integer id);
+    Optional<Direction> findDeletedByIds(Integer directionid,Integer acId) ;
 
     /**
      * Return the Direction with the given specification.
@@ -61,10 +58,10 @@ public interface DirectionService {
     /**
      * Return the Direction with the given id.
      *
-     * @param id the id of the Direction to return
+     * @param directionId the id of the Direction to return
      * @return the Direction with the given id
      */
-    Direction findById(Integer id) throws DirectionNotFound;
+    Direction findByIds(Integer directionId,Integer acId) throws DirectionNotFound;
 
     /**
      * Save a Direction.
@@ -75,29 +72,18 @@ public interface DirectionService {
     Direction save(Direction Direction);
 
     /**
-     * Create a Direction.
-     *
-     * @param request the request to create the Direction from
-     * @return the created Direction
-     */
-    Direction create(DirectionRequest request) throws AcNotFound;
-    /**
-     * update Direction.
-     *
-     * @param request the request to update the Direction from
-     * @return the updated Direction
-     */
-    Direction update(Integer id,DirectionRequest request) throws DirectionNotFound, AcNotFound;
-    /**
      * Delete a Direction.
      *
-     * @param id the id of the Direction to delete
+     * @param directionId the id of the Direction to delete
+     * @param acId the id of the ac to delete the direction
+     *
      */
-    void delete(Integer id) ;
+    void delete(Integer directionId, Integer acId);
 
-    public Direction createUnderAc(Integer acId, DirectionunderAcRequest request) throws AcNotFound;
+     Direction createUnderAc(Integer acId, DirectionRequest request) throws AcNotFound;
 
-    public Direction updateUnderAc(Integer acId,Integer id, DirectionunderAcRequest request) throws DirectionNotFound, AcNotFound;
+     Direction updateUnderAc(Integer acId,Integer id, DirectionRequest request) throws DirectionNotFound, AcNotFound;
 
-    Page<Direction> findAllunderAc(Integer acId, Pageable pageable) throws AcNotFound;
+    Page<Direction> findAllPageableUnderAc(Integer acId, Pageable pageable) throws AcNotFound;
+    List<Direction> findAllListUnderAc(Integer acId) throws AcNotFound;
 }

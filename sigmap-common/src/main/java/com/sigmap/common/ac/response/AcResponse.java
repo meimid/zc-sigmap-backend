@@ -1,5 +1,6 @@
 package com.sigmap.common.ac.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.sigmap.common.direction.response.DirectionResponseDto;
 import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -24,6 +25,7 @@ public class AcResponse {
   //private List<UserDTO> users;
   private List<AcMemberDTO> users;
   private RefParamResponseDto tutel;
+  @JsonIgnoreProperties
   private List<DirectionResponseDto> directions;
   private String email;
   private BaseEntityResponse metadata;
