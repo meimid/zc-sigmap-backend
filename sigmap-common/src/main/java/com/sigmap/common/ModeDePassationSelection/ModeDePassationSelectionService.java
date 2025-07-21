@@ -3,8 +3,7 @@ package com.sigmap.common.ModeDePassationSelection;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ModeDePassationSelection.request.ModeDePassationSelectionRequest;
-import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.com.exception.DuplicateComIdsException;
+
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ModeDePassationSelectionService {
-    List<ModeDePassationSelection> findByCategorieId(Integer categorieId) throws RefParamNotFound;
+    List<ModeDePassationSelection> findBytypeMarcherId(Integer typeMarcherId) throws RefParamNotFound;
     List<ModeDePassationSelection> findAll();
 
     /**

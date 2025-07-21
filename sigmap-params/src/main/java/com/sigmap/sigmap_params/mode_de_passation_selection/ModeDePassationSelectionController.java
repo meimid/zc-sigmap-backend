@@ -44,14 +44,14 @@ public class ModeDePassationSelectionController {
     /**
      * Return list of mode de passation selection by cateigorie id .
      *
-     * @param categorieId the query to use
+     * @param typeMarcherId the query to use
 
      * @return a list of of mode de passation selection
      */
-    @GetMapping("/categorie/{categorieId}")
-    public ResponseEntity<List<ModeDePassationSelectionResponseDto>> findAllByCategorieId(
-            @PathVariable Integer categorieId) throws RefParamNotFound {
-        List<ModeDePassationSelection> params=service.findByCategorieId(categorieId);
+    @GetMapping("/type_marcher/{typeMarcherId}")
+    public ResponseEntity<List<ModeDePassationSelectionResponseDto>> findAllBytypeMarcherId(
+            @PathVariable Integer typeMarcherId) throws RefParamNotFound {
+        List<ModeDePassationSelection> params=service.findBytypeMarcherId(typeMarcherId);
         List<ModeDePassationSelectionResponseDto> response = params.stream()
                 .map(ModeDePassationSelectionMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());

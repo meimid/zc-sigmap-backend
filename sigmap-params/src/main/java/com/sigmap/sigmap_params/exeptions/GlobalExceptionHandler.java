@@ -1,8 +1,9 @@
 package com.sigmap.sigmap_params.exeptions;
 
-import com.sigmap.common.ModeDePassationSelection.exception.DuplicateCategorieIdsException;
+import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcherIdsException;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.ComDeleted;
@@ -588,9 +589,9 @@ public class GlobalExceptionHandler {
 
     }
     @ResponseStatus(HttpStatus.CONFLICT)
-    @ExceptionHandler(DuplicateCategorieIdsException.class)
-    public ResponseEntity<ErrorResponse> DuplicateCategorieIdsException(DuplicateCategorieIdsException ex) {
-        String message = messageSource.getMessage("duplicate.categorie",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+    @ExceptionHandler(DuplicateTypeMarcherIdsException.class)
+    public ResponseEntity<ErrorResponse> DuplicateCategorieIdsException(DuplicateTypeMarcherIdsException ex) {
+        String message = messageSource.getMessage("duplicate.typeMarcher",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
@@ -599,6 +600,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ModeDePassationSelectionAlredyExist.class)
     public ResponseEntity<ErrorResponse> ModeDePassationSelectionAlredyExistException(ModeDePassationSelectionAlredyExist ex) {
         String message = messageSource.getMessage("ModeDePassationSelection.alredyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RequiredValue.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleException(RequiredValue ex) {
+        String message = messageSource.getMessage("ModeDePassationSelection.requiredlibelle",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

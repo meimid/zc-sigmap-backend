@@ -4,9 +4,9 @@ import lombok.Getter;
 
 import java.util.List;
 @Getter
-public class DuplicateCategorieIdsException extends RuntimeException{
+public class DuplicateTypeMarcherIdsException extends RuntimeException{
     private final List<Integer> id;
-    public DuplicateCategorieIdsException(String message, List<Integer> id) {
+    public DuplicateTypeMarcherIdsException(String message, List<Integer> id) {
         super(message);
         this.id = id;
     }

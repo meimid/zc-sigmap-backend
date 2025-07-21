@@ -2,6 +2,7 @@ package com.sigmap.common.ModeDePassationSelection.request;
 
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -10,5 +11,5 @@ import java.util.List;
 @NoArgsConstructor
 public class ModeDePassationSelectionRequest {
     private String libelle;
-    private List <Integer> cotegorieIds;
+    private List <Integer> typeMarchersIds=new ArrayList<>();
 }

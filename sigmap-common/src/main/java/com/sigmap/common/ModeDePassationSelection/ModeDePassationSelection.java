@@ -22,9 +22,9 @@ public class ModeDePassationSelection extends BaseEntity {
     private String libelle;
     @ManyToMany(fetch = FetchType.LAZY) // Using LAZY fetch is generally recommended for collections
     @JoinTable(
-            name = "mode_passation_categorie",
+            name = "mode_passation_type_marcher",
             joinColumns = @JoinColumn(name = "mode_de_passation_selection_id"),
-            inverseJoinColumns = @JoinColumn(name = "categorie_id")
+            inverseJoinColumns = @JoinColumn(name = "type_marcher_id")
     )
     private List<RefParam> typeMarchers;
 
