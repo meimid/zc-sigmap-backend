@@ -96,10 +96,10 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
         ModeDePassationSelection modeDePassationSelection = ModeDePassationSelectionMapper.INSTANCE.mapFromRequest(request);
         for(Integer i : request.getCotegorieIds()) {
             RefParam categorie = refParamService.findById(i);
-            if(modeDePassationSelection.getCategories() == null) {
-                modeDePassationSelection.setCategories(new ArrayList<>());
+            if(modeDePassationSelection.getTypeMarchers() == null) {
+                modeDePassationSelection.setTypeMarchers(new ArrayList<>());
             }
-            modeDePassationSelection.getCategories().add(categorie);
+            modeDePassationSelection.getTypeMarchers().add(categorie);
         }
         return save(modeDePassationSelection);
     }
@@ -113,17 +113,17 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
         if(request.getLibelle() != null) {
             modeDePassationSelection.setLibelle(request.getLibelle());
         }
-        List<Integer> oldModePassationIds=modeDePassationSelection.getCategories().stream().map(c -> c.getId()).collect(Collectors.toList());
+        List<Integer> oldModePassationIds=modeDePassationSelection.getTypeMarchers().stream().map(c -> c.getId()).collect(Collectors.toList());
         for(Integer i : request.getCotegorieIds()) {
             if(!oldModePassationIds.contains(i)) {
             RefParam categorie = refParamService.findById(i);
-            modeDePassationSelection.getCategories().add(categorie);
+            modeDePassationSelection.getTypeMarchers().add(categorie);
             }
         }
         for(Integer i :oldModePassationIds) {
             if( !request.getCotegorieIds().contains(i)) {
                     RefParam categorie = refParamService.findById(i);
-                    modeDePassationSelection.getCategories().remove(categorie);
+                    modeDePassationSelection.getTypeMarchers().remove(categorie);
             }
         }
         return save(modeDePassationSelection);

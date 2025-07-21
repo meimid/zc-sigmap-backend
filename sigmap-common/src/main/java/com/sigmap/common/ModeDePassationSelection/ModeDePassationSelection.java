@@ -26,6 +26,6 @@ public class ModeDePassationSelection extends BaseEntity {
             joinColumns = @JoinColumn(name = "mode_de_passation_selection_id"),
             inverseJoinColumns = @JoinColumn(name = "categorie_id")
     )
-    private List<RefParam> categories;
+    private List<RefParam> typeMarchers;
 
 }

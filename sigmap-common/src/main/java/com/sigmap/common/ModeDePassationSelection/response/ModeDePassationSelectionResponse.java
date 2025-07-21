@@ -14,7 +14,7 @@ import java.util.List;
 public class ModeDePassationSelectionResponse {
     private Integer id;
     private String libelle;
-    private List<RefParamResponseDto> categories;
+    private List<RefParamResponseDto> typeMarchers;
     private BaseEntityResponse metadata;
 
 
