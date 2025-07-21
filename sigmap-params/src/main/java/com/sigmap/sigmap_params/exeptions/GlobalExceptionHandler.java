@@ -501,7 +501,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(DirectionNotFound.class)
     public ResponseEntity<ErrorResponse> DirectionNotFoundException(DirectionNotFound ex) {
-        String message = messageSource.getMessage("direction.directionNotFound",new Object[] {ex.getId()}, getLocal());
+        String message = messageSource.getMessage("direction.directionNotFound",new Object[] {ex.getDirectionId(),ex.getAcId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
