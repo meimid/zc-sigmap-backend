@@ -1,9 +1,7 @@
 package com.sigmap.sigmap_auth.exeptions;
 
-import com.sigmap.common.ac.exception.AcHasAssociatedPpm;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
-import lombok.RequiredArgsConstructor;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
 import org.springframework.context.MessageSource;

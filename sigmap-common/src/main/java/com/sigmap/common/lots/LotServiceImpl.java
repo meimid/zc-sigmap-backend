@@ -16,10 +16,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+
+import java.util.*;
 
 @Service
 public class LotServiceImpl implements LotService {
@@ -111,7 +109,7 @@ public class LotServiceImpl implements LotService {
                         .orElseThrow(() -> new RealisationNotFoundException("",realisationId.getId(),realisationId.getVersion()));
 
                 if (realisation.getLots() == null) {
-                    realisation.setLots(new HashSet<>());
+                    realisation.setLots(new ArrayList<>());
                 }
 
                 realisation.getLots().add(savedLot);

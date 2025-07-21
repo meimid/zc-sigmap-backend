@@ -151,7 +151,7 @@ public class PpmFlowableController {
                 RealisationBaseRequestDto realisation = request.getRealisations().get(realisationIndex);
                 log.info("Found realisation: {}", realisation);
 
-                Set<LotResponse> lots = new HashSet<>();
+                List<LotResponse> lots = new ArrayList<>();
                 for (Map<String, Object> lotData : entry.getValue()) {
                     LotResponse lot = new LotResponse();
                     if (lotData.containsKey("id")) {
