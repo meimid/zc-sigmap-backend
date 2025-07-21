@@ -201,7 +201,7 @@ public class PpmController {
                         // Create a test lot if lots is empty
                         if (realisation.getLots() == null || realisation.getLots().isEmpty()) {
                             logger.info("Creating a test lot for realisation 0");
-                            Set<LotResponse> testLots = new HashSet<>();
+                            List<LotResponse> testLots = new ArrayList<>();
                             LotResponse testLot = new LotResponse();
                             testLot.setDescription("Test Lot - Manually Added");
                             testLots.add(testLot);
@@ -604,7 +604,7 @@ public class PpmController {
                 copiedRealisation.setRealisationFiles(originalRealisation.getRealisationFiles());
 
                 // Initialize lots collection even if there are no lots yet
-                copiedRealisation.setLots(new HashSet<>());
+                copiedRealisation.setLots(new ArrayList<>());
 
                 modifiedRealisations.add(copiedRealisation);
             }
@@ -625,7 +625,7 @@ public class PpmController {
 
                     // Get the target realisation from our copied collection
                     RealisationWithLotsRequestDto realisation = modifiedRealisations.get(realisationIndex);
-                    Set<LotResponse> lots = realisation.getLots(); // Already initialized
+                    List<LotResponse> lots = realisation.getLots(); // Already initialized
 
                     // Process lots for this realisation
                     for (Map<String, Object> lotData : entry.getValue()) {
@@ -934,9 +934,9 @@ public class PpmController {
             com.sigmap.common.lots.Lot savedLot = (com.sigmap.common.lots.Lot)saveMethod.invoke(lotRepository, newLot);
 
             // Associate with existing realisation
-            java.util.Set<com.sigmap.common.lots.Lot> realisationLots = realisation.getLots();
+            java.util.List<com.sigmap.common.lots.Lot> realisationLots = realisation.getLots();
             if (realisationLots == null) {
-                realisationLots = new java.util.HashSet<>();
+                realisationLots = new java.util.ArrayList<>();
             }
             realisationLots.add(savedLot);
             realisation.setLots(realisationLots);
@@ -1012,7 +1012,7 @@ public class PpmController {
 
                         // Initialize lots collection if needed
                         if (realisation.getLots() == null) {
-                            realisation.setLots(new HashSet<>());
+                            realisation.setLots(new ArrayList<>());
                         }
 
                         // Convert each lot data to a LotResponse object and add to the realisation
@@ -1118,7 +1118,7 @@ public class PpmController {
                         // Create a test lot if lots is empty
                         if (realisation.getLots() == null || realisation.getLots().isEmpty()) {
                             logger.info("Creating a test lot for realisation 0");
-                            Set<LotResponse> testLots = new HashSet<>();
+                            List<LotResponse> testLots = new ArrayList<>();
                             LotResponse testLot = new LotResponse();
                             testLot.setDescription("Test Lot - Manually Added");
                             testLots.add(testLot);

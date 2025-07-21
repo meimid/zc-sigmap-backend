@@ -70,7 +70,7 @@ public interface PaaDetailedMapper {
     /**
      * Helper method to map a set of Lot entities to LotPaaResponse DTOs
      */
-    default List<LotPaaResponse> mapLots(Set<Lot> lots) {
+    default List<LotPaaResponse> mapLots(List<Lot> lots) {
         if (lots == null) {
             return null;
         }

@@ -21,7 +21,7 @@ public class RealisationWithLotsRequestDto extends RealisationBaseRequestDto {
      * Set of Lot responses associated with this Realisation.
      * This field overrides the one in the parent class to ensure it's not ignored during JSON processing.
      */
-    private Set<LotResponse> lots;
+    private List<LotResponse> lots;
 
     /**
      * List of files to be uploaded for this Realisation.
