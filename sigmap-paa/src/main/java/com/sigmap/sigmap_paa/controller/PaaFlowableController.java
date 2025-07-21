@@ -16,12 +16,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Paa entities.
@@ -180,7 +178,7 @@ private void processRealisationLotsFromJson(PaaRequestGlobal request, String lot
             RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
             System.out.println("Found realisation: " + realisation);
 
-            Set<LotResponse> lots = new HashSet<>();
+            List<LotResponse> lots = new ArrayList<>();
             for (Map<String, Object> lotData : entry.getValue()) {
                 LotResponse lot = new LotResponse();
                 if (lotData.containsKey("id")) {

@@ -36,6 +36,6 @@ public class RealisationRequest {
     private List<CompositeId> paaIds;
     private Set<CompositeId> lotIds;
     private List<Integer> docIds;
-    private Set<LotResponse> lots;
+    private List<LotResponse> lots;
 
 }

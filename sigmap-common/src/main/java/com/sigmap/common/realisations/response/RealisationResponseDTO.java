@@ -32,7 +32,7 @@ public class RealisationResponseDTO {
     private Boolean publishedAt;
     private Integer sort;
     private List<DocsResponseDTO> docs;
-    private Set<LotResponseDTO> lots;
+    private List<LotResponseDTO> lots;
 
 
 } 

@@ -129,7 +129,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             }
     )
     @JsonManagedReference
-    private Set<Lot> lots = new LinkedHashSet<>();;
+    private List<Lot> lots ;
 
     @ManyToMany
     @JoinTable(

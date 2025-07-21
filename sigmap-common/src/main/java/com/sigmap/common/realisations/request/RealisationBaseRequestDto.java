@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,12 +34,12 @@ public class RealisationBaseRequestDto {
     private List<Integer> docIds;
     
     // Remove JsonIgnore to allow lots to be deserialized directly
-    private Set<LotResponse> lots = new HashSet<>();
+    private List<LotResponse> lots;
     
     // Default getter for lots - ensures the collection is initialized
-    public Set<LotResponse> getLots() {
+    public List<LotResponse> getLots() {
         if (lots == null) {
-            lots = new HashSet<>();
+            lots = new ArrayList<>();
         }
         return lots;
     }
