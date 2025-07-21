@@ -66,10 +66,10 @@ public class WebMasterController {
         return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
 
-    @GetMapping("/ppm/{ppmId}/{ppmVer}")
-    public ResponseEntity<Page<RealisationPpmWebsite>> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId,
-                                                                                       @PathVariable Integer ppmVer,Pageable pageable) throws PpmNotFound {
-        Page<Realisation> realisations = webMasterService.getPpmByIdAndVersion(ppmId, ppmVer,pageable);
+    @GetMapping("/ppm/{ppmId}")
+    public ResponseEntity<Page<RealisationPpmWebsite>> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
+                                                                                       ,Pageable pageable) throws PpmNotFound, AcNotFound {
+        Page<Realisation> realisations = webMasterService.getPpmById(ppmId, pageable);
         Page<RealisationPpmWebsite >response = realisations.map(RealisationPpmWebsite::new);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -82,10 +82,10 @@ public class WebMasterController {
 
         return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
-    @GetMapping("/paa/{paaId}/{paaVer}")
+    @GetMapping("/paa/{paaId}")
     public ResponseEntity<Page<RealisationPaaWebSite>> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
-                                                                                      @PathVariable Integer paaVer,Pageable pageable) throws PaaNotFound {
-        Page<Realisation> realisations = webMasterService.getPaaByIdAndVersion(paaId, paaVer,pageable);
+                                                                                      Pageable pageable) throws PaaNotFound {
+        Page<Realisation> realisations = webMasterService.getPaaById(paaId,pageable);
         Page<RealisationPaaWebSite> response =  realisations.map(RealisationPaaWebSite::new);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
@@ -100,10 +100,9 @@ public class WebMasterController {
         return new ResponseEntity<>(agpmResponsePage, HttpStatus.OK);
     }
 
-    @GetMapping("/agpm/{agpmId}/{agpmVer}")
-    public ResponseEntity<AgpmWebsiteResponse> findAgpmForWebsiteByIdAndVersion(@PathVariable Integer agpmId,
-                                                                                @PathVariable Integer agpmVer) throws AgpmNotFound, AcNotFound {
-        Agpm agpm = webMasterService.getAgpmByIdAndVersion(agpmId, agpmVer);
+    @GetMapping("/agpm/{agpmId}")
+    public ResponseEntity<AgpmWebsiteResponse> findAgpmForWebsiteByIdAndVersion(@PathVariable Integer agpmId) throws AgpmNotFound, AcNotFound {
+        Agpm agpm = webMasterService.getAgpmById(agpmId);
         AgpmWebsiteResponse response = new AgpmWebsiteResponse(agpm);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

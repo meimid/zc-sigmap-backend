@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_webmaster.services;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -11,8 +12,7 @@ import java.util.List;
 
 public interface WebMasterService {
 
-    public Page<Realisation> getPpmByIdAndVersion(Integer ppmId, Integer ppmVer,Pageable pageable) throws PpmNotFound;
-    // New signature in your service interface/class
-    Page<Realisation> getPaaByIdAndVersion(Integer paaId, Integer paaVer, Pageable pageable)throws PaaNotFound;
-    public Agpm getAgpmByIdAndVersion (Integer agpmId, Integer agpmVer) throws AgpmNotFound;
+    public Page<Realisation> getPpmById(Integer ppmId, Pageable pageable) throws PpmNotFound, AcNotFound;
+    Page<Realisation> getPaaById(Integer paaId,  Pageable pageable)throws PaaNotFound;
+    public Agpm getAgpmById (Integer agpmId) throws AgpmNotFound, AcNotFound;
 }
