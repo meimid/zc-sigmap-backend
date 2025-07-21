@@ -54,7 +54,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     @Override
     public Page<Realisation> getPpmById(Integer ppmId, Pageable pageable) throws PpmNotFound {
         Integer ppmVer=ppmRepository.findMaxVersionById(ppmId);
-        Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false));
+        Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false)).and(PpmSpecifications.isPublished());
         Ppm ppm = ppmRepository.findOne(spec).orElseThrow(()-> new PpmIdNotFound("",ppmId));
         if (ppm == null) {
             throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(ppmVer));
@@ -74,7 +74,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     @Override
     public Page<Realisation> getPaaById(Integer paaId,Pageable pageable) throws PaaNotFound {
         Integer paaVer=paaRepository.findMaxVersionById(paaId);
-        Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer)).and(PaaSpecifications.deleted(false));
+        Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer)).and(PaaSpecifications.deleted(false)).and(PaaSpecifications.isPublished());
         Paa paa = paaRepository.findOne(spec).orElseThrow(()-> new PaaIdNotFound("",paaId));
         if (paa == null) {
             throw new PaaNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(paaId), List.of(paaVer));
@@ -94,7 +94,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     @Override
     public Agpm getAgpmById (Integer agpmId) throws AgpmNotFound {
         Integer agpmVer=agpmRepository.findMaxVersionById(agpmId);
-        Specification<Agpm> spec = AgpmSpecifications.id(new CompositeId(agpmId, agpmVer)).and(AgpmSpecifications.deleted(false));
+        Specification<Agpm> spec = AgpmSpecifications.id(new CompositeId(agpmId, agpmVer)).and(AgpmSpecifications.deleted(false)).and(AgpmSpecifications.isPublished());
         Agpm agpmOpt = agpmRepository.findOne(spec).orElseThrow(()->new AgpmNotFound("",List.of(agpmId),null));
         if (agpmOpt == null) {
             throw new AgpmNotFound("Aucun AGPM trouvé pour l'ID et la version", List.of(agpmId), List.of(agpmVer));
