@@ -524,4 +524,12 @@ public class RefParamController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+    @GetMapping("/Imputation_budgetaire")
+    public ResponseEntity<List<RefParamResponseDto>> findImputationBudgetaire() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(RefTypes.IMPLUMENTATION_BUDGETAIRE);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 }
