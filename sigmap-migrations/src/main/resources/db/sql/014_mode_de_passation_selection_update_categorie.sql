@@ -30,7 +30,13 @@ ALTER TABLE mode_passation_type_marcher ADD CONSTRAINT FK_MPTM_TO_MODE_PASSATION
 ALTER TABLE mode_passation_type_marcher ADD CONSTRAINT FK_MPTM_TO_REF_PARAM
     FOREIGN KEY (type_marcher_id) REFERENCES ref_param (ref_param_id);
 
-
 -- changeset sigmap:1749671959050-33
+-- comment: Step 6/7 - CRITICAL DATA MIGRATION.
+INSERT INTO mode_passation_type_marcher (mode_passation_id, type_marcher_id)
+SELECT mode_passation_id, categorie_id
+FROM mode_de_passation
+WHERE categorie_id IS NOT NULL;
+
+-- changeset sigmap:1749671959050-34
 -- comment: Step 6/6 - Final cleanup. Drop the now-redundant 'categorie_id' column after its data has been migrated.
 ALTER TABLE mode_passation DROP COLUMN IF EXISTS categorie_id;
