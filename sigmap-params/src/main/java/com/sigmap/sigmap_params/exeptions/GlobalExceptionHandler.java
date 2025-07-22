@@ -1,5 +1,9 @@
 package com.sigmap.sigmap_params.exeptions;
 
+import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcherIdsException;
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.ComDeleted;
@@ -585,6 +589,37 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ModeDePassationSelectionNotFound.class)
+    public ResponseEntity<ErrorResponse> ModeDePassationSelectionNotFoundException(ModeDePassationSelectionNotFound ex) {
+        String message = messageSource.getMessage("ModeDePassationSelectionNotFound.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateTypeMarcherIdsException.class)
+    public ResponseEntity<ErrorResponse> DuplicateCategorieIdsException(DuplicateTypeMarcherIdsException ex) {
+        String message = messageSource.getMessage("duplicate.typeMarcher",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ModeDePassationSelectionAlredyExist.class)
+    public ResponseEntity<ErrorResponse> ModeDePassationSelectionAlredyExistException(ModeDePassationSelectionAlredyExist ex) {
+        String message = messageSource.getMessage("ModeDePassationSelection.alredyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RequiredValue.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleException(RequiredValue ex) {
+        String message = messageSource.getMessage("ModeDePassationSelection.requiredlibelle",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(MonnaieNotFound.class)
     public ResponseEntity<ErrorResponse> MonnaieCodeAlreadyExistException(MonnaieNotFound ex) {
