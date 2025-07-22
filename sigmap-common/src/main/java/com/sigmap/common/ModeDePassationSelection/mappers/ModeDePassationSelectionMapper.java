@@ -1,6 +1,7 @@
 package com.sigmap.common.ModeDePassationSelection.mappers;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.ModeDePassationSelection.request.ModeDePassationSelectionRequest;
 import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponse;
 import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponseDto;
 import org.mapstruct.Mapper;
@@ -20,4 +21,5 @@ public interface ModeDePassationSelectionMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     ModeDePassationSelectionResponse map(ModeDePassationSelection modeDePassaionSelection);
     ModeDePassationSelectionResponseDto mapToDto(ModeDePassationSelection modeDePassaionSelection) ;
+    ModeDePassationSelection mapFromRequest(ModeDePassationSelectionRequest request);
 }
