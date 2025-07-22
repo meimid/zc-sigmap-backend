@@ -1,15 +1,14 @@
 package com.sigmap.common.ModeDePassationSelection;
 
-import com.sigmap.common.com.Com;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 public class ModeDePassationSelectionSpecifications{
     /** search. */
-    public static Specification<Com> search(String search) {
+    public static Specification<ModeDePassationSelection> search(String search) {
         return (root, query, criteriaBuilder) -> {
-Join<ModeDePassationSelection, RefParam> join = root.join("categorie");
+Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
 
       return criteriaBuilder.or(
         criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
@@ -29,15 +28,9 @@ public static Specification<ModeDePassationSelection> id(Integer id) {
 /** libelle. */
 public static Specification<ModeDePassationSelection> libelle(String libelle) {
     return (root, query, criteriaBuilder) -> {
-        return criteriaBuilder.like(root.get("libelle"), "%" + libelle + "%");
+        return criteriaBuilder.like(root.get("libelle"),libelle.toLowerCase());
     };
 }
-
-
-
-
-
-
 
 
 
@@ -53,7 +46,7 @@ public static Specification<ModeDePassationSelection> deleted(boolean deleted) {
     };
 }
 
-public static Specification<ModeDePassationSelection> hascategorieId(Integer categorieId) {
-    return (root, query, cb) -> cb.equal(root.get("categorie").get("id"), categorieId);
+public static Specification<ModeDePassationSelection> hastypeMarcherId(Integer typeMarcherId) {
+    return (root, query, cb) -> cb.equal(root.get("typeMarchers").get("id"), typeMarcherId);
 }
 }
