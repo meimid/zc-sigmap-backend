@@ -12,18 +12,18 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "mode_de_passation_selection")
+@Table(name = "mode_passation")
 public class ModeDePassationSelection extends BaseEntity {
     @Id
 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "mode_de_passation_selection_id")
+    @Column(name = "mode_passation_id")
     private Integer id;
     private String libelle;
-    @ManyToMany(fetch = FetchType.LAZY) // Using LAZY fetch is generally recommended for collections
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "mode_passation_type_marcher",
-            joinColumns = @JoinColumn(name = "mode_de_passation_selection_id"),
+            joinColumns = @JoinColumn(name = "mode_passation_id"),
             inverseJoinColumns = @JoinColumn(name = "type_marcher_id")
     )
     private List<RefParam> typeMarchers;

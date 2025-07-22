@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/mode_de_passation_selection")
+@RequestMapping("/api/mode_passation")
 public class ModeDePassationSelectionController {
     private final ModeDePassationSelectionService service;
 
