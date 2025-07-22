@@ -22,6 +22,8 @@ import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
 import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
+import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -579,6 +581,13 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(MonnaieCodeAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> MonnaieCodeAlreadyExistException(MonnaieCodeAlreadyExist ex) {
+        String message = messageSource.getMessage("monnaie.codeAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(ModeDePassationSelectionNotFound.class)
@@ -610,5 +619,12 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ModeDePassationSelection.requiredlibelle",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MonnaieNotFound.class)
+    public ResponseEntity<ErrorResponse> MonnaieCodeAlreadyExistException(MonnaieNotFound ex) {
+        String message = messageSource.getMessage("monnaie.notfound",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }
