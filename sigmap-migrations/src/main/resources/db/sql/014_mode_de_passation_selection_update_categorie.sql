@@ -34,7 +34,7 @@ ALTER TABLE mode_passation_type_marcher ADD CONSTRAINT FK_MPTM_TO_REF_PARAM
 -- comment: Step 6/7 - CRITICAL DATA MIGRATION.
 INSERT INTO mode_passation_type_marcher (mode_passation_id, type_marcher_id)
 SELECT mode_passation_id, categorie_id
-FROM mode_de_passation
+FROM mode_passation
 WHERE categorie_id IS NOT NULL;
 
 -- changeset sigmap:1749671959050-34
