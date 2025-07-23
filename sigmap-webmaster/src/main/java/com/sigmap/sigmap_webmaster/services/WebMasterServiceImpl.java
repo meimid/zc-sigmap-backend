@@ -55,24 +55,14 @@ public class WebMasterServiceImpl implements WebMasterService {
         Integer ppmVer=ppmRepository.findMaxVersionById(ppmId);
         Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false)).and(PpmSpecifications.isPublished());
         Ppm ppm = ppmRepository.findOne(spec).orElseThrow(()-> new PpmIdNotFound("",ppmId));
-
         PpmWebsiteResponse ppmResponse = new PpmWebsiteResponse(ppm);
-
         List<RealisationPpmWebsite> allRealisationsDto = ppm.getRealisations().stream()
-                .map(RealisationPpmWebsite::new).collect(Collectors.toList());
-
-
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allRealisationsDto.size());
-        List<RealisationPpmWebsite> pageContent = allRealisationsDto.subList(start, end);
-
-        Page<RealisationPpmWebsite> realisationPage = new PageImpl<>(pageContent, pageable, allRealisationsDto.size());
-
+                .map(RealisationPpmWebsite::new).skip(pageable.getOffset())
+                .limit(pageable.getPageSize()).collect(Collectors.toList());
+        Page<RealisationPpmWebsite> realisationPage = new PageImpl<>(allRealisationsDto, pageable, allRealisationsDto.size());
         PpmDetailsWebsite ppmDetailsWebsite = new PpmDetailsWebsite();
         ppmDetailsWebsite.setPpm(ppmResponse);
-
         ppmDetailsWebsite.setRealisations(realisationPage);
-
         return ppmDetailsWebsite;
     }
 
@@ -86,13 +76,9 @@ public class WebMasterServiceImpl implements WebMasterService {
         Paa paa = paaRepository.findOne(spec).orElseThrow(()-> new PaaIdNotFound("",paaId));
         PaaWebsiteResponse paaResponse = new PaaWebsiteResponse(paa);
         List<RealisationPaaWebSite> allRealisationsDto = paa.getRealisations().stream()
-                .map(RealisationPaaWebSite::new).collect(Collectors.toList());
-
-
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allRealisationsDto.size());
-        List<RealisationPaaWebSite> pageContent = allRealisationsDto.subList(start, end);
-        Page<RealisationPaaWebSite> realisationPage = new PageImpl<>(pageContent, pageable, allRealisationsDto.size());
+                .map(RealisationPaaWebSite::new).skip(pageable.getOffset())
+                .limit(pageable.getPageSize()).collect(Collectors.toList());
+        Page<RealisationPaaWebSite> realisationPage = new PageImpl<>(allRealisationsDto, pageable, allRealisationsDto.size());
         PaaDetailsWebsite paaDetailsWebsite = new PaaDetailsWebsite();
         paaDetailsWebsite.setPaa(paaResponse);
         paaDetailsWebsite.setRealisations(realisationPage);
