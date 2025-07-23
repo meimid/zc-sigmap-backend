@@ -22,6 +22,7 @@ CREATE TABLE adresse (
                          CONSTRAINT PK_ADRESSE PRIMARY KEY (adresse_id)
 );
 
+
 -- changeset sigmap:1749671959050-37
 ALTER TABLE ac ADD COLUMN is_tutel BOOLEAN DEFAULT FALSE NOT NULL;
 
@@ -41,3 +42,6 @@ ALTER TABLE ac ADD CONSTRAINT FK_AC_TO_ADRESSE
 -- changeset sigmap:1749671959050-42
 ALTER TABLE ac ADD CONSTRAINT FK_AC_TO_COM
     FOREIGN KEY (com_id) REFERENCES com (com_id);
+
+-- changeset sigmap:1749671959050-43
+UPDATE ac SET tutel_id = NULL;
