@@ -14,11 +14,13 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaQuery;
+import com.sigmap.common.paas.response.PaaDetailsWebsite;
 import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmQuery;
+import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.response.RealisationPaaWebSite;
@@ -67,10 +69,11 @@ public class WebMasterController {
     }
 
     @GetMapping("/ppm/{ppmId}")
-    public ResponseEntity<Page<RealisationPpmWebsite>> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
-                                                                                       ,Pageable pageable) throws PpmNotFound, AcNotFound {
-        Page<Realisation> realisations = webMasterService.getPpmById(ppmId, pageable);
-        Page<RealisationPpmWebsite >response = realisations.map(RealisationPpmWebsite::new);
+    public ResponseEntity<PpmDetailsWebsite> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
+                                                                                       , Pageable pageable)
+            throws PpmNotFound, AcNotFound {
+        PpmDetailsWebsite response= webMasterService.getPpmById(ppmId, pageable);
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     @GetMapping("/paa")
@@ -83,10 +86,9 @@ public class WebMasterController {
         return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
     @GetMapping("/paa/{paaId}")
-    public ResponseEntity<Page<RealisationPaaWebSite>> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
-                                                                                      Pageable pageable) throws PaaNotFound {
-        Page<Realisation> realisations = webMasterService.getPaaById(paaId,pageable);
-        Page<RealisationPaaWebSite> response =  realisations.map(RealisationPaaWebSite::new);
+    public ResponseEntity<PaaDetailsWebsite> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
+                                                                             Pageable pageable) throws PaaNotFound {
+        PaaDetailsWebsite response = webMasterService.getPaaById(paaId,pageable);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
