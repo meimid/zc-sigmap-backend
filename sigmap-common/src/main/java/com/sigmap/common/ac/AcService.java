@@ -80,7 +80,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound;
+    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound;
 
     /**
      * update Ac.

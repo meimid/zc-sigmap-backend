@@ -1,15 +1,17 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.adresse.AdressService;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
@@ -40,14 +42,19 @@ public class AcServiceImpl implements AcService{
 
     private final RefParamRepository refParamRepository;
 
+    private final AdressService adressService;
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository) {
+    private final ComService comService;
+
+
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService) {
         this.repository = repository;
         this.comRepository = comRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.userAcRepository = userAcRepository;
         this.refParamRepository = refParamRepository;
-
+        this.adressService = adressService;
+        this.comService = comService;
     }
 
 
@@ -102,7 +109,7 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
+    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
@@ -124,11 +131,19 @@ public class AcServiceImpl implements AcService{
             throw new AcNomAlreadyExist("", request.getNom());
         }
         Ac ac = AcMapper.INSTANCE.map(request);
-
-            RefParam tutel= refParamRepository.findById(request.getTutelId()).
-                    orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+        if(request.getTutelId()!=null ) {
+            Ac tutel= findById(request.getTutelId());
             ac.setTutel(tutel);
+        }
 
+        if(request.getAdresse()!=null) {
+           Adresse adresse=adressService.create(request.getAdresse());
+           ac.setAdresse(adresse);
+        }
+        if(request.getComId()!=null) {
+            Com com=comService.findById(request.getComId());
+            ac.setCom(com);
+        }
 
         Ac savedAc = repository.save(ac);
 
@@ -176,10 +191,18 @@ public class AcServiceImpl implements AcService{
             throw new AcNomAlreadyExist("", request.getNom());
         }
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
-        if(request.getTutelId() != null) {
-        RefParam tutel= refParamRepository.findById(request.getTutelId()).
-                orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
-        ac.setTutel(tutel);
+        if(request.getTutelId()!=null ) {
+            Ac tutel= findById(request.getTutelId());
+            ac.setTutel(tutel);
+        }
+
+        if(request.getAdresse()!=null&& Objects.equals(ac.getAdresse().getId(), request.getAdresse().getId())) {
+            Adresse adresse=adressService.update(request.getAdresse());
+            ac.setAdresse(adresse);
+        }
+        if(request.getComId()!=null) {
+            Com com=comService.findById(request.getComId());
+            ac.setCom(com);
         }
         Ac savedAc = repository.save(ac);
 
