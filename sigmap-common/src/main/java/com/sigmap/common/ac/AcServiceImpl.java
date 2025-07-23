@@ -113,9 +113,9 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-         else if(request.getTutelId()==null ) {
+       /*  else if(request.getTutelId()==null ) {
              throw new AcAttributeRequire("","tutel");
-        }
+        }*/
          else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }
@@ -279,5 +279,11 @@ public class AcServiceImpl implements AcService{
         }
 
         repository.softDelete(id);
+    }
+
+    @Override
+    public List<Ac> findAllTutel(Specification<Ac> ac) {
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.isItTutel(true));
+        return repository.findAll(specification);
     }
 }

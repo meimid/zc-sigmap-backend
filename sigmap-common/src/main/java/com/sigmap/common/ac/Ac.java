@@ -40,7 +40,7 @@ public class Ac extends BaseEntity {
   private String email;
   private String logo;
   @Column(name = "is_tutel")
-  private boolean isTutel;
+  private boolean istTutel;
   @ManyToOne
   @JoinColumn(name = "com_id")
   private Com com;

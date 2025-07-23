@@ -31,7 +31,7 @@ public class AcResponse {
   private List<DirectionResponseDto> directions;
   private String email;
   private String logo;
-  private boolean isTutel;
+  private boolean istTutel;
   private ComResponseDto com;
   private AdresseResponseDto adresse;
   private BaseEntityResponse metadata;

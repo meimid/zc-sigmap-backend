@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Controller to manage ac.
@@ -230,5 +232,33 @@ public class AcController {
                 .orElseThrow();
         AcResponse response = AcMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Return a list of ac based on the given specifica tion and pageable.
+     *
+     * @param query the query to use
+     * @param list the pageable to use
+     * @return a page of ac
+     */
+    @GetMapping("/is_tutel")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    public ResponseEntity<List<AcResponseDto>> findAll(AcQuery query) {
+
+        Specification<Ac> spec = query.toSpecification();
+
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            List<Integer> allowedAcIds = currentUserService.getCurrentUserAcIds();
+            spec = spec.and((root, query1, cb) -> root.get("id").in(allowedAcIds));
+        }
+
+        List<Ac> acs = acService.findAllTutel(spec);
+        List<AcResponseDto> acResponses = acs.stream().map(AcMapper.INSTANCE::mapToDto).collect(Collectors.toList());
+
+        return ResponseEntity.ok(acResponses);
     }
 }

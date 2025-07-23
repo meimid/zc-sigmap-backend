@@ -75,4 +75,16 @@ public class AcSpecifications {
   public static Specification<Ac> hasTutleId(Integer id) {
     return (root, query, cb) -> cb.equal(root.get("tutel").get("id"), id);
   }
+
+  /** isItTutel. */
+  public static Specification<Ac> isItTutel(boolean istTutel) {
+    return (root, query, criteriaBuilder) -> {
+      if (!istTutel) {
+        return criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("istTutel")),
+                criteriaBuilder.isFalse(root.get("istTutel")));
+      }
+      return criteriaBuilder.isTrue(root.get("istTutel"));
+    };
+  }
 }

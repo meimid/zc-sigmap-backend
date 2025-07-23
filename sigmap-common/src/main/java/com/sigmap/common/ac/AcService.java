@@ -96,4 +96,6 @@ public interface AcService {
      * @param id the id of the Ac to delete
      */
     void delete(Integer id) throws AcHasAssociatedAgpm;
+
+    List<Ac> findAllTutel(Specification<Ac> ac);
 }

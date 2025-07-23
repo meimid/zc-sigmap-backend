@@ -17,7 +17,7 @@ public class AcRequest {
   private Integer tutelId;
   private String email;
   private String logo;
-  private boolean isTutel;
+  private boolean istTutel;
   private Integer comId;
   private AdresseRequest adresse;
 }
