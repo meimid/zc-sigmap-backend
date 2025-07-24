@@ -1,5 +1,6 @@
 package com.sigmap.common.ac;
 
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
@@ -8,16 +9,24 @@ public class AcSpecifications {
   public static Specification<Ac> search(String search) {
 
     return (root, query, criteriaBuilder) -> {
-      Join<Ac, RefParam> join = root.join("tutelId");
+      Join<Ac, RefParam> joinPays = root.join("pays");
+      Join<Ac, Adresse>joinAdresses = joinPays.join("adresse");
 
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
           criteriaBuilder.like(root.get("contact"), "%" + search + "%") ,
           criteriaBuilder.like(root.get("email"), "%" + search + "%") ,
-          criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-          criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
-          criteriaBuilder.like(join.get("code"),"%" + search + "%"));
+          criteriaBuilder.like(joinPays.get("description"), "%" + search + "%"),
+          criteriaBuilder.like(joinPays.get("codeColor"),"%" + search + "%"),
+          criteriaBuilder.like(joinPays.get("code"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("tel1"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("tel2"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("fax"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("adresse"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("compAdresse"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("ville"),"%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("codePostal"),"%" + search + "%"));
     };
   }
 
