@@ -80,7 +80,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound;
+    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound;
 
     /**
      * update Ac.
@@ -96,4 +96,6 @@ public interface AcService {
      * @param id the id of the Ac to delete
      */
     void delete(Integer id) throws AcHasAssociatedAgpm;
+
+    List<Ac> findAllTutel(Specification<Ac> ac);
 }

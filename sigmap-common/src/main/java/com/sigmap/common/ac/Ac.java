@@ -1,6 +1,8 @@
 package com.sigmap.common.ac;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.direction.Direction;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
@@ -27,7 +29,7 @@ public class Ac extends BaseEntity {
   private String contact;
   @ManyToOne
   @JoinColumn(name = "tutel_id")
-  private RefParam tutel;
+  private Ac tutel;
   @JsonIgnoreProperties
   @OneToMany(
           cascade = CascadeType.ALL,
@@ -36,4 +38,16 @@ public class Ac extends BaseEntity {
   @JoinColumn(name = "ac_id")
   Set<Direction> directions= new HashSet<>();
   private String email;
+  private String logo;
+  @Column(name = "is_tutel")
+  private boolean istTutel;
+  @ManyToOne
+  @JoinColumn(name = "com_id")
+  private Com com;
+  @OneToOne
+  @JoinColumn(name = "adresse_id")
+  private Adresse adresse;
+
+
+
 }
