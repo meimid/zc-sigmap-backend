@@ -1,21 +1,32 @@
 package com.sigmap.common.com;
 
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
+import com.sigmap.common.adresse.AdressService;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+
+import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
@@ -23,11 +34,13 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -50,12 +63,21 @@ public class ComServiceImpl implements ComService {
   private RefParamRepository refParamRepository;
     @Autowired
     private UserAcRepository userAcRepository;
-
+  private final AdressService adressService;
+  private final AcService acService;
+  private final DocumentCommuneService documentCommuneService;
+  private final DocsRepository docsRepository;
+@Autowired
+  EntityManager entityManager;
   public ComServiceImpl(
-      ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
+          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
     this.repository = repository;
     this.refParamService = refParamService;
     this.acRepository = acRepository;
+      this.adressService = adressService;
+      this.acService = acService;
+      this.documentCommuneService = documentCommuneService;
+      this.docsRepository = docsRepository;
   }
 
   @Override
@@ -97,7 +119,10 @@ public class ComServiceImpl implements ComService {
   public Com findById(Integer id) throws ComNotFound {
     Specification<Com> specification =
         ComSpecifications.id(id).and(ComSpecifications.deleted(false));
-    return findOne(specification).orElseThrow(() -> new ComNotFound("", List.of(id)));
+    Com  com= findOne(specification).orElseThrow(() -> new ComNotFound("", List.of(id)));
+    List<Docs> docs=com.getDocs().stream().filter(doc->!doc.getIsDeleted()).collect(Collectors.toList());
+    com.setDocs(docs);
+    return com;
   }
 
   @Override
@@ -107,7 +132,7 @@ public class ComServiceImpl implements ComService {
 
   @Override
   public Com create(ComRequest request)
-      throws RefParamNotFound, AcNotFound, DuplicateAcIdsException {
+          throws RefParamNotFound, AcNotFound, DuplicateAcIdsException, ComNotFound, IOException {
     RefParam comType = refParamService.findById(request.getComTypeId());
     Com com = ComMapper.INSTANCE.map(request);
 
@@ -116,7 +141,23 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
-    Com savedCom = repository.save(com);
+    if(request.getTutelId()!=null ) {
+      Ac tutel= acService.findById(request.getTutelId());
+      com.setTutel(tutel);
+    }
+
+    if(request.getTheAdresse()!=null) {
+      Adresse adresse=adressService.create(request.getTheAdresse());
+      com.setTheAdresse(adresse);
+    }
+
+    Com savedCom = save(com);
+
+    if (request.getFiles() != null) {
+      documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), savedCom, Constants.PATH_ENTREPOT_GED_COM);
+      log.info("*****************************************{}",com.getDocs().size());
+      save(savedCom);
+    }
 
     if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
       for (String userId : request.getUserIds()) {
@@ -149,7 +190,7 @@ public class ComServiceImpl implements ComService {
   @Override
   @Transactional
   public Com update(Integer id, ComRequest request)
-          throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, AgpmDefaultStatus {
+          throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, AgpmDefaultStatus, DocNotFound, IOException {
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
     RefParam comType = refParamService.findById(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);
@@ -159,7 +200,51 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
-    Com savedCom = repository.save(com);
+    if(request.getAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
+      Adresse theAdress=adressService.update(request.getTheAdresse());
+      com.setTheAdresse(theAdress);
+    }
+
+    List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
+    List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
+    List<Docs> requestedDocs = docsRepository.findByIdIn(requestedDocIds);
+    List<Integer> existingDocIds = com.getDocs() != null
+            ? com.getDocs().stream().map(Docs::getId).toList()
+            : new ArrayList<>();
+    if (!requestedDocs.isEmpty()) {
+      existingDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
+      existingDocs.addAll(requestedDocs);
+      com.setDocs(existingDocs);
+    }
+
+    if (requestedDocIds.size() != requestedDocs.size()) {
+      List<Integer> foundDocIds = requestedDocs.stream().map(Docs::getId).toList();
+      List<Integer> missingDocIds = requestedDocIds.stream()
+              .filter(docId -> !foundDocIds.contains(docId))
+              .collect(Collectors.toList());
+      throw new DocNotFound("Documents not found", missingDocIds);
+    }
+    List<Integer> docIdsToDelete = existingDocIds.stream()
+            .filter(docId -> !requestedDocIds.contains(docId))
+            .toList();
+
+    for (Integer docId : docIdsToDelete) {
+      Optional<Docs> docToDelete = docsRepository.findById(docId);
+      if (docToDelete.isPresent()) {
+        docsRepository.softDeleteDoc(docToDelete.get().getId());
+
+        log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
+
+      } else {
+        log.warn("Document with ID {} not found for soft deletion", docId);
+        throw new DocNotFound("Document not found for deletion", List.of(docId));
+      }
+    }
+    log.debug("Requested document IDs: {}", requestedDocIds);
+    if (request.getFiles() != null) {
+      documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), com, Constants.PATH_ENTREPOT_GED_COM);
+    }
+
 
     // 1. Récupérer les anciens UserCom liés à ce COM
     List<UserCom> existingUserComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
@@ -214,7 +299,14 @@ public class ComServiceImpl implements ComService {
       }
 
     }
-    return  savedCom;
+    repository.save(com);
+
+    entityManager.flush();
+    entityManager.clear();
+    Com updatedCom = findById(id);
+    List<Docs> docs=updatedCom.getDocs().stream().filter(doc->!doc.getIsDeleted()).collect(Collectors.toList());
+    updatedCom.setDocs(docs);
+    return  updatedCom;
   }
 
   private static int getSizeList(List<Integer> listIds) throws AcNotFound, DuplicateAcIdsException {
