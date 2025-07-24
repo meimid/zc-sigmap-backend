@@ -8,7 +8,6 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
-import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -190,7 +189,7 @@ public class ComServiceImpl implements ComService {
   @Override
   @Transactional
   public Com update(Integer id, ComRequest request)
-          throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, AgpmDefaultStatus, DocNotFound, IOException {
+          throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
     RefParam comType = refParamService.findById(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);

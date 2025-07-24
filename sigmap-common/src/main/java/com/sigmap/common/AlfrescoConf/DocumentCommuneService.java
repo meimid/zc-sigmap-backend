@@ -360,7 +360,6 @@ public class DocumentCommuneService {
                 throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
             }
         }
-        log.info("///////////////////////////////////{}",entity.getDocs().size());
     }
 }
 
