@@ -52,6 +52,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.lang.reflect.Method;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -238,7 +239,7 @@ public class PpmController {
                         // If lots exist, log details of each lot
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (LotResponse lot : realisation.getLots()) {
-                                logger.info("  - Lot: id={}, description='{}'", lot.getId(), lot.getDescription());
+                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(), lot.getDescription(),lot.getBudget());
                             }
                         }
                     }
@@ -517,18 +518,15 @@ public class PpmController {
      * @param request the request to update with the parsed lots
      * @param lotsJson the JSON string containing lots data
      */
-
     private void processRealisationLotsFromJson(PpmWithLotsRequestDto request, String lotsJson) {
         try {
             logger.info("Starting to process realisationLotsJson: '{}'", lotsJson);
 
-            // Check if it's just whitespace or empty braces
             if (lotsJson.trim().isEmpty() || lotsJson.trim().equals("{}")) {
                 logger.warn("realisationsLotsJson is empty or just contains '{}'");
                 return;
             }
 
-            // Check if realisationsWithLots is initialized
             if (request.getRealisationsWithLots() == null || request.getRealisationsWithLots().isEmpty()) {
                 logger.error("RealisationsWithLots list is null or empty - cannot process lots");
                 return;
@@ -537,29 +535,23 @@ public class PpmController {
             logger.info("RealisationsWithLots size before processing: {}", request.getRealisationsWithLots().size());
 
             ObjectMapper objectMapper = new ObjectMapper();
-            // Try to log the raw parsed structure first
             try {
                 Map<String, Object> rawParsed = objectMapper.readValue(lotsJson, new TypeReference<Map<String, Object>>() {});
                 logger.info("Raw parsed JSON structure: {}", rawParsed);
 
-                // Check if we have any realisation index keys
                 if (rawParsed.isEmpty()) {
                     logger.warn("Parsed JSON is empty - no lots to process");
                     return;
                 }
 
-                // Check sample values to debug type issues
                 for (Map.Entry<String, Object> entry : rawParsed.entrySet()) {
                     logger.info("Key '{}' has value of type: {}",
-                        entry.getKey(), entry.getValue() != null ? entry.getValue().getClass().getName() : "null");
+                            entry.getKey(), entry.getValue() != null ? entry.getValue().getClass().getName() : "null");
                 }
             } catch (Exception e) {
                 logger.error("Failed to parse raw JSON structure: {}", e.getMessage());
-                // Continue with normal parsing to see if it works
             }
 
-            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
-            // Where the keys are realisation indices
             Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() {});
 
@@ -570,19 +562,15 @@ public class PpmController {
                 return;
             }
 
-            // Log each key-value entry in lotsMap
             for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
                 logger.info("lotsMap key: '{}', value size: {}", entry.getKey(), entry.getValue().size());
             }
 
-            // Create a modified copy of the request with lots
-            // This ensures that the lots don't get lost during processing
             List<RealisationWithLotsRequestDto> modifiedRealisations = new ArrayList<>();
             for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                 RealisationWithLotsRequestDto originalRealisation = request.getRealisationsWithLots().get(i);
                 RealisationWithLotsRequestDto copiedRealisation = new RealisationWithLotsRequestDto();
 
-                // Copy all properties from original to copy
                 copiedRealisation.setId(originalRealisation.getId());
                 copiedRealisation.setVersion(originalRealisation.getVersion());
                 copiedRealisation.setRealisationEnvisagees(originalRealisation.getRealisationEnvisagees());
@@ -603,37 +591,31 @@ public class PpmController {
                 copiedRealisation.setDocIds(originalRealisation.getDocIds());
                 copiedRealisation.setRealisationFiles(originalRealisation.getRealisationFiles());
 
-                // Initialize lots collection even if there are no lots yet
                 copiedRealisation.setLots(new ArrayList<>());
 
                 modifiedRealisations.add(copiedRealisation);
             }
 
-            // Process each realisation's lots
             for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
                 try {
                     int realisationIndex = Integer.parseInt(entry.getKey());
 
                     logger.info("Processing lots for realisation index: {} (entries: {})",
-                        realisationIndex, entry.getValue().size());
+                            realisationIndex, entry.getValue().size());
 
-                    // Skip if index is out of bounds
                     if (realisationIndex >= modifiedRealisations.size()) {
                         logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
                         continue;
                     }
 
-                    // Get the target realisation from our copied collection
                     RealisationWithLotsRequestDto realisation = modifiedRealisations.get(realisationIndex);
-                    List<LotResponse> lots = realisation.getLots(); // Already initialized
+                    List<LotResponse> lots = realisation.getLots();
 
-                    // Process lots for this realisation
                     for (Map<String, Object> lotData : entry.getValue()) {
                         LotResponse lot = new LotResponse();
 
                         logger.info("Processing lot data: {}", lotData);
 
-                        // Safely handle ID - can be null, which is fine for new lots
                         Object idValue = lotData.get("id");
                         if (idValue != null) {
                             if (idValue instanceof Number) {
@@ -643,17 +625,14 @@ public class PpmController {
                                     lot.setId(Integer.parseInt((String) idValue));
                                 } catch (NumberFormatException e) {
                                     logger.warn("Invalid lot ID format: {}", idValue);
-                                    // Leave ID as null
                                 }
                             } else {
                                 logger.warn("Unexpected lot ID type: {}", idValue.getClass().getName());
-                                // Leave ID as null
                             }
                         } else {
                             logger.info("Lot ID is null (new lot)");
                         }
 
-                        // Safely handle version - can be null for new lots
                         Object versionValue = lotData.get("version");
                         if (versionValue != null) {
                             if (versionValue instanceof Number) {
@@ -663,30 +642,46 @@ public class PpmController {
                                     lot.setVersion(Integer.parseInt((String) versionValue));
                                 } catch (NumberFormatException e) {
                                     logger.warn("Invalid lot version format: {}", versionValue);
-                                    // Leave version as null
                                 }
                             } else {
                                 logger.warn("Unexpected lot version type: {}", versionValue.getClass().getName());
-                                // Leave version as null
                             }
                         }
 
-                        // Handle description - required field
                         Object descriptionValue = lotData.get("description");
                         if (descriptionValue != null) {
                             lot.setDescription(descriptionValue.toString());
                         } else {
                             logger.warn("Lot is missing required description field");
-                            lot.setDescription(""); // Set empty string instead of null
+                            lot.setDescription("");
+                        }
+
+                        // Map the budget field
+                        Object budgetValue = lotData.get("budget");
+                        if (budgetValue != null) {
+                            try {
+                                if (budgetValue instanceof Number) {
+                                    lot.setBudget(new BigDecimal(budgetValue.toString()));
+                                } else if (budgetValue instanceof String) {
+                                    lot.setBudget(new BigDecimal((String) budgetValue));
+                                } else {
+                                    logger.warn("Unexpected budget type: {}, setting budget to null", budgetValue.getClass().getName());
+                                    lot.setBudget(null);
+                                }
+                            } catch (NumberFormatException e) {
+                                logger.warn("Invalid budget format: {}, setting budget to null", budgetValue);
+                                lot.setBudget(null);
+                            }
+                        } else {
+                            logger.info("Lot budget is null");
+                            lot.setBudget(null);
                         }
 
                         lots.add(lot);
-                        logger.info("Added lot: id={}, description='{}'",
-                            lot.getId(), lot.getDescription());
+                        logger.info("Added lot: id={}, description='{}', budget={}",
+                                lot.getId(), lot.getDescription(), lot.getBudget());
                     }
 
-                    // Set the processed lots on the realisation (shouldn't be necessary since we're modifying the collection directly)
-                    // realisation.setLots(lots);
                     logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
                 } catch (NumberFormatException e) {
                     logger.error("Invalid realisation index format: {}", entry.getKey(), e);
@@ -695,15 +690,12 @@ public class PpmController {
                 }
             }
 
-            // Replace the realisations in the request with our modified copies
-            // This is the key step - we're updating the request with our new copies that have the lots properly set
             request.setRealisationsWithLots(modifiedRealisations);
 
-            // Log the state of all realisations after processing
             for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                 RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(i);
                 logger.info("Final state: Realisation[{}] has {} lots",
-                    i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
+                        i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
             }
 
         } catch (Exception e) {
@@ -711,6 +703,200 @@ public class PpmController {
             throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
         }
     }
+
+//    private void processRealisationLotsFromJson(PpmWithLotsRequestDto request, String lotsJson) {
+//        try {
+//            logger.info("Starting to process realisationLotsJson: '{}'", lotsJson);
+//
+//            // Check if it's just whitespace or empty braces
+//            if (lotsJson.trim().isEmpty() || lotsJson.trim().equals("{}")) {
+//                logger.warn("realisationsLotsJson is empty or just contains '{}'");
+//                return;
+//            }
+//
+//            // Check if realisationsWithLots is initialized
+//            if (request.getRealisationsWithLots() == null || request.getRealisationsWithLots().isEmpty()) {
+//                logger.error("RealisationsWithLots list is null or empty - cannot process lots");
+//                return;
+//            }
+//
+//            logger.info("RealisationsWithLots size before processing: {}", request.getRealisationsWithLots().size());
+//
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            // Try to log the raw parsed structure first
+//            try {
+//                Map<String, Object> rawParsed = objectMapper.readValue(lotsJson, new TypeReference<Map<String, Object>>() {});
+//                logger.info("Raw parsed JSON structure: {}", rawParsed);
+//
+//                // Check if we have any realisation index keys
+//                if (rawParsed.isEmpty()) {
+//                    logger.warn("Parsed JSON is empty - no lots to process");
+//                    return;
+//                }
+//
+//                // Check sample values to debug type issues
+//                for (Map.Entry<String, Object> entry : rawParsed.entrySet()) {
+//                    logger.info("Key '{}' has value of type: {}",
+//                        entry.getKey(), entry.getValue() != null ? entry.getValue().getClass().getName() : "null");
+//                }
+//            } catch (Exception e) {
+//                logger.error("Failed to parse raw JSON structure: {}", e.getMessage());
+//                // Continue with normal parsing to see if it works
+//            }
+//
+//            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
+//            // Where the keys are realisation indices
+//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
+//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+//
+//            logger.info("Parsed lotsMap size: {}", lotsMap.size());
+//
+//            if (lotsMap.isEmpty()) {
+//                logger.warn("Parsed lotsMap is empty - no lots to process");
+//                return;
+//            }
+//
+//            // Log each key-value entry in lotsMap
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+//                logger.info("lotsMap key: '{}', value size: {}", entry.getKey(), entry.getValue().size());
+//            }
+//
+//            // Create a modified copy of the request with lots
+//            // This ensures that the lots don't get lost during processing
+//            List<RealisationWithLotsRequestDto> modifiedRealisations = new ArrayList<>();
+//            for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
+//                RealisationWithLotsRequestDto originalRealisation = request.getRealisationsWithLots().get(i);
+//                RealisationWithLotsRequestDto copiedRealisation = new RealisationWithLotsRequestDto();
+//
+//                // Copy all properties from original to copy
+//                copiedRealisation.setId(originalRealisation.getId());
+//                copiedRealisation.setVersion(originalRealisation.getVersion());
+//                copiedRealisation.setRealisationEnvisagees(originalRealisation.getRealisationEnvisagees());
+//                copiedRealisation.setService(originalRealisation.getService());
+//                copiedRealisation.setDirection(originalRealisation.getDirection());
+//                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
+//                copiedRealisation.setMonais(originalRealisation.getMonais());
+//                copiedRealisation.setTypeMarcher(originalRealisation.getTypeMarcher());
+//                copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
+//                copiedRealisation.setDatePrevLps(originalRealisation.getDatePrevLps());
+//                copiedRealisation.setDatePrevAc(originalRealisation.getDatePrevAc());
+//                copiedRealisation.setDatePrevDp(originalRealisation.getDatePrevDp());
+//                copiedRealisation.setDatePrevAp(originalRealisation.getDatePrevAp());
+//                copiedRealisation.setBudgetEstime(originalRealisation.getBudgetEstime());
+//                copiedRealisation.setIsPublished(originalRealisation.getIsPublished());
+//                copiedRealisation.setPublishedAt(originalRealisation.getPublishedAt());
+//                copiedRealisation.setSort(originalRealisation.getSort());
+//                copiedRealisation.setDocIds(originalRealisation.getDocIds());
+//                copiedRealisation.setRealisationFiles(originalRealisation.getRealisationFiles());
+//
+//                // Initialize lots collection even if there are no lots yet
+//                copiedRealisation.setLots(new ArrayList<>());
+//
+//                modifiedRealisations.add(copiedRealisation);
+//            }
+//
+//            // Process each realisation's lots
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+//                try {
+//                    int realisationIndex = Integer.parseInt(entry.getKey());
+//
+//                    logger.info("Processing lots for realisation index: {} (entries: {})",
+//                        realisationIndex, entry.getValue().size());
+//
+//                    // Skip if index is out of bounds
+//                    if (realisationIndex >= modifiedRealisations.size()) {
+//                        logger.warn("Skipping lots for realisation index {} as it's out of bounds", realisationIndex);
+//                        continue;
+//                    }
+//
+//                    // Get the target realisation from our copied collection
+//                    RealisationWithLotsRequestDto realisation = modifiedRealisations.get(realisationIndex);
+//                    List<LotResponse> lots = realisation.getLots(); // Already initialized
+//
+//                    // Process lots for this realisation
+//                    for (Map<String, Object> lotData : entry.getValue()) {
+//                        LotResponse lot = new LotResponse();
+//
+//                        logger.info("Processing lot data: {}", lotData);
+//
+//                        // Safely handle ID - can be null, which is fine for new lots
+//                        Object idValue = lotData.get("id");
+//                        if (idValue != null) {
+//                            if (idValue instanceof Number) {
+//                                lot.setId(((Number) idValue).intValue());
+//                            } else if (idValue instanceof String) {
+//                                try {
+//                                    lot.setId(Integer.parseInt((String) idValue));
+//                                } catch (NumberFormatException e) {
+//                                    logger.warn("Invalid lot ID format: {}", idValue);
+//                                    // Leave ID as null
+//                                }
+//                            } else {
+//                                logger.warn("Unexpected lot ID type: {}", idValue.getClass().getName());
+//                                // Leave ID as null
+//                            }
+//                        } else {
+//                            logger.info("Lot ID is null (new lot)");
+//                        }
+//
+//                        // Safely handle version - can be null for new lots
+//                        Object versionValue = lotData.get("version");
+//                        if (versionValue != null) {
+//                            if (versionValue instanceof Number) {
+//                                lot.setVersion(((Number) versionValue).intValue());
+//                            } else if (versionValue instanceof String) {
+//                                try {
+//                                    lot.setVersion(Integer.parseInt((String) versionValue));
+//                                } catch (NumberFormatException e) {
+//                                    logger.warn("Invalid lot version format: {}", versionValue);
+//                                    // Leave version as null
+//                                }
+//                            } else {
+//                                logger.warn("Unexpected lot version type: {}", versionValue.getClass().getName());
+//                                // Leave version as null
+//                            }
+//                        }
+//
+//                        // Handle description - required field
+//                        Object descriptionValue = lotData.get("description");
+//                        if (descriptionValue != null) {
+//                            lot.setDescription(descriptionValue.toString());
+//                        } else {
+//                            logger.warn("Lot is missing required description field");
+//                            lot.setDescription(""); // Set empty string instead of null
+//                        }
+//
+//                        lots.add(lot);
+//                        logger.info("Added lot: id={}, description='{}'",
+//                            lot.getId(), lot.getDescription());
+//                    }
+//
+//                    // Set the processed lots on the realisation (shouldn't be necessary since we're modifying the collection directly)
+//                    // realisation.setLots(lots);
+//                    logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+//                } catch (NumberFormatException e) {
+//                    logger.error("Invalid realisation index format: {}", entry.getKey(), e);
+//                } catch (Exception e) {
+//                    logger.error("Error processing lots for realisation: {}", e.getMessage(), e);
+//                }
+//            }
+//
+//            // Replace the realisations in the request with our modified copies
+//            // This is the key step - we're updating the request with our new copies that have the lots properly set
+//            request.setRealisationsWithLots(modifiedRealisations);
+//
+//            // Log the state of all realisations after processing
+//            for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
+//                RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(i);
+//                logger.info("Final state: Realisation[{}] has {} lots",
+//                    i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
+//            }
+//
+//        } catch (Exception e) {
+//            logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);
+//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
+//        }
+//    }
 
 //    /**
 //     * Update a PPM by creating a new version with updated data.
@@ -988,38 +1174,29 @@ public class PpmController {
         try {
             ObjectMapper mapper = new ObjectMapper();
 
-            // Parse the JSON string into a Map where keys are realisation indices (as strings)
-            // and values are arrays of lot objects
             Map<String, List<Map<String, Object>>> lotsMap =
                     mapper.readValue(realisationsLotsJson, new TypeReference<Map<String, List<Map<String, Object>>>>() {});
 
-            // Ensure we have realisationsWithLots in the request
             if (request.getRealisationsWithLots() == null) {
                 logger.info("No realisationsWithLots in request, creating empty list");
                 request.setRealisationsWithLots(new ArrayList<>());
             }
 
-            // Process each realisation index and its lots
             for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
                 try {
-                    // Convert the key to an integer index
                     int realisationIndex = Integer.parseInt(entry.getKey());
                     List<Map<String, Object>> lotsData = entry.getValue();
 
-                    // Check if the realisation at this index exists
                     if (realisationIndex >= 0 && realisationIndex < request.getRealisationsWithLots().size()) {
                         RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(realisationIndex);
 
-                        // Initialize lots collection if needed
                         if (realisation.getLots() == null) {
                             realisation.setLots(new ArrayList<>());
                         }
 
-                        // Convert each lot data to a LotResponse object and add to the realisation
                         for (Map<String, Object> lotData : lotsData) {
                             LotResponse lot = new LotResponse();
 
-                            // Set properties from the map
                             if (lotData.containsKey("id") && lotData.get("id") != null) {
                                 if (lotData.get("id") instanceof Integer) {
                                     lot.setId((Integer) lotData.get("id"));
@@ -1048,9 +1225,30 @@ public class PpmController {
                                 lot.setDescription(lotData.get("description") != null ? lotData.get("description").toString() : null);
                             }
 
-                            // Add the lot to the realisation
+                            // Map the budget field
+                            if (lotData.containsKey("budget") && lotData.get("budget") != null) {
+                                try {
+                                    Object budgetValue = lotData.get("budget");
+                                    if (budgetValue instanceof Number) {
+                                        lot.setBudget(new BigDecimal(budgetValue.toString()));
+                                    } else if (budgetValue instanceof String) {
+                                        lot.setBudget(new BigDecimal((String) budgetValue));
+                                    } else {
+                                        logger.warn("Unexpected budget type: {}, setting budget to null", budgetValue.getClass().getName());
+                                        lot.setBudget(null);
+                                    }
+                                } catch (NumberFormatException e) {
+                                    logger.warn("Invalid budget format: {}, setting budget to null", lotData.get("budget"));
+                                    lot.setBudget(null);
+                                }
+                            } else {
+                                logger.info("Lot budget is null or not provided");
+                                lot.setBudget(null);
+                            }
+
                             realisation.getLots().add(lot);
-                            logger.info("Added lot to realisation index {}: {}", realisationIndex, lot);
+                            logger.info("Added lot to realisation index {}: id={}, description='{}', budget={}",
+                                    realisationIndex, lot.getId(), lot.getDescription(), lot.getBudget());
                         }
                     } else {
                         logger.warn("Realisation index {} out of bounds (size: {})",
@@ -1068,7 +1266,6 @@ public class PpmController {
             throw new RuntimeException("Failed to process lots JSON: " + e.getMessage(), e);
         }
     }
-
     /**
      * Update an existing PPM with full support for relationships including documents.
      * This method allows updating a PPM along with its realisations, lots, and document data.
@@ -1155,7 +1352,7 @@ public class PpmController {
                         // If lots exist, log details of each lot
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (LotResponse lot : realisation.getLots()) {
-                                logger.info("  - Lot: id={}, description='{}'", lot.getId(), lot.getDescription());
+                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(), lot.getDescription(),lot.getBudget());
                             }
                         }
                     }

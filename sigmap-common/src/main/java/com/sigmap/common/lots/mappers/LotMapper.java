@@ -15,6 +15,7 @@ public interface LotMapper {
 //    @Mapping(target = "id", source = "id")
 //    @Mapping(target = "version", source = "version")
 //    @Mapping(target = "description", source = "description")
+    @Mapping(target = "budget", source = "budget")
     @Mapping(target = "realisations",ignore = true)
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -27,6 +28,7 @@ public interface LotMapper {
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version")
     @Mapping(target = "description", source = "description")
+    @Mapping(target = "budget", source = "budget")
     @Mapping(target = "realisations", ignore = true)
     Lot toEntity(LotRequest lotRequest);
 }
