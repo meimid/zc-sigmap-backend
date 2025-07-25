@@ -172,9 +172,9 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-        else if(request.getTutelId()==null){
+        /*else if(request.getTutelId()==null){
             throw new AcAttributeRequire("","tutel");
-        }
+        }*/
         else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
         }
