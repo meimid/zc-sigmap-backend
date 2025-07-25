@@ -8,6 +8,7 @@ import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.ProcessVerbalService;
@@ -126,7 +127,7 @@ public class PpmFlowableController {
         return ResponseEntity.ok(response);
     }
 
-    private void processRealisationLotsFromJson(PpmWithLotsRequestDto request, String lotsJson) {
+    private void processRealisationLotsFromJson(PpmBaseRequestDto request, String lotsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             log.info("Processing lots JSON: {}", lotsJson);
