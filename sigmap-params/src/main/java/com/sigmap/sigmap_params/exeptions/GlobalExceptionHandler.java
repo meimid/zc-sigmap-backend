@@ -5,6 +5,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelec
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
@@ -627,4 +628,13 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AdresseNotFound.class)
+    public ResponseEntity<ErrorResponse> AdresseNotFoundException(AdresseNotFound ex) {
+        String message = messageSource.getMessage("adresse.notfound",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
 }

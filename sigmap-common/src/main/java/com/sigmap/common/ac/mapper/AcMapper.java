@@ -24,7 +24,12 @@ public interface AcMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AcResponse map(Ac source);
     AcResponseDto mapToDto(Ac source);
+
+
     Ac map(AcRequest source);
+
+
+
     void updateAcFromRequest(AcRequest source, @MappingTarget Ac target);
     List<AcWebsiteResponse> mapToWebsiteResponse(List<Ac> source);
 
