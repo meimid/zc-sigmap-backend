@@ -262,11 +262,11 @@ public class AcController {
     }
 
     @GetMapping("/com/{comId}")
-    public ResponseEntity<List<AcResponseDto>> getAcsByComId(@PathVariable Integer comId) {
+    public ResponseEntity<List<AcResponseDto>> getAcsByComId(@PathVariable Integer comId) throws ComNotFound {
         List<Ac> acs = acService.findAllByComId(comId);
 
         List<AcResponseDto> response = acs.stream()
-                .map(AcMapper.INSTANCE::mapToDto) // Using the mapper for conversion
+                .map(AcMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);

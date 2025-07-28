@@ -317,8 +317,8 @@ public class AcServiceImpl implements AcService{
     }
 
     @Override
-    public List<Ac> findAllByComId(Integer comId) {
-        comService.delete(comId);
+    public List<Ac> findAllByComId(Integer comId) throws ComNotFound {
+        comService.findById(comId);
         Specification<Ac> spec = AcSpecifications.findByComId(comId).and(AcSpecifications.deleted(false));
         return repository.findAll(spec);
     }

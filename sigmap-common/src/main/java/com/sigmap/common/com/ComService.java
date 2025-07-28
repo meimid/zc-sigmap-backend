@@ -97,7 +97,7 @@ public interface ComService {
      *
      * @param id the id of the Com to delete
      */
-    void delete(Integer id) throws ComHasAssociatedAc;
+    void delete(Integer id) throws ComHasAssociatedAc, ComNotFound;
 
     public UserCom makeUserResponsable (String userId,Integer ComId);
 

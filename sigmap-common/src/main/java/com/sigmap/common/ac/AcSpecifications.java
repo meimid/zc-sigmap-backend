@@ -92,7 +92,7 @@ public class AcSpecifications {
 
   public static Specification<Ac> findByComId(Integer comId) {
 
-    return (root, query, cb) -> cb.equal(root.get("tutel").get("id"), comId);
+    return (root, query, cb) -> cb.equal(root.get("com").get("id"), comId);
   }
   public static Specification<Ac> hasCom(Integer comId) {
     return (root, query, criteriaBuilder) -> {

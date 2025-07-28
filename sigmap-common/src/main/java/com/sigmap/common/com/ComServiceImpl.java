@@ -233,9 +233,13 @@ public class ComServiceImpl implements ComService {
             .toList();
 
     for (Integer docId : docIdsToDelete) {
+
+      log.info("in for -------------------- {}", docId);
       Optional<Docs> docToDelete = docsRepository.findById(docId);
+      log.info("document for delete -------------------- {}", docToDelete.get().getId().toString());
       if (docToDelete.isPresent()) {
-        docsRepository.softDelete(docToDelete.get().getId());
+       // docsRepository.softDelete(docToDelete.get().getId());
+        docsRepository.softDeleteDoc(docToDelete.get().getId());
 
         log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
 
@@ -304,9 +308,6 @@ public class ComServiceImpl implements ComService {
 
     }
     repository.save(com);
-
-    entityManager.flush();
-    entityManager.clear();
     Com updatedCom = findById(id);
     List<Docs> docs=updatedCom.getDocs().stream().filter(doc->!doc.getIsDeleted()).collect(Collectors.toList());
     updatedCom.setDocs(docs);
@@ -335,7 +336,8 @@ public class ComServiceImpl implements ComService {
   }
 
   @Override
-  public void delete(Integer id) throws ComHasAssociatedAc {
+  public void delete(Integer id) throws ComHasAssociatedAc, ComNotFound {
+    findById(id);
     Specification<Ac> societeAddressSpec = Specification.where(
             AcSpecifications.deleted(false)
                     .and(AcSpecifications.hasCom(id))
