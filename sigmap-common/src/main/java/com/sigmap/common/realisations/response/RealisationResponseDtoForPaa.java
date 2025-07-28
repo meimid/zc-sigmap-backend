@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotPaaResponse;
 import com.sigmap.common.ref_params.RefParam;
@@ -32,6 +33,7 @@ public class RealisationResponseDtoForPaa {
     private LocalDate datePrevDp;
     private LocalDate datePrevAp;
     private BigDecimal budgetEstime;
+    private RealisationStatus statut;
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;

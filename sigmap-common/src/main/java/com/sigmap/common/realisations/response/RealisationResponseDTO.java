@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.lots.response.LotResponseDTO;
@@ -28,6 +29,7 @@ public class RealisationResponseDTO {
     private LocalDate datePrevDp;
     private LocalDate datePrevAp;
     private BigDecimal budgetEstime;
+    private RealisationStatus statut;
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;

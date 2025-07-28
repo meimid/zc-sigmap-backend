@@ -1,9 +1,8 @@
 package com.sigmap.sigmap_paa.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.config.Constants;
+
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
@@ -15,8 +14,8 @@ import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
-import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.security.Authentication;
@@ -47,6 +46,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 public class PaaFlowableService {
@@ -72,6 +72,9 @@ public class PaaFlowableService {
     private PaaService paaService;
 
     @Autowired
+    private RealisationService realisationService;
+
+    @Autowired
     private RepositoryService repositoryService;
 
     @Autowired
@@ -79,7 +82,6 @@ public class PaaFlowableService {
 
     @Autowired
     private CurrentUserService currentUserService;
-
 
     /**
      * Checks if the user has the specified role.
@@ -200,14 +202,14 @@ public class PaaFlowableService {
     }
 
     /**
-     * Starts a Flowable process instance for an Agpm entity using its ID.
-     * Automatically retrieves the latest version of the Agpm entity.
+     * Starts a Flowable process instance for a Paa entity using its ID.
+     * Automatically retrieves the latest version of the Paa entity and sets associated Realisation statuses to NON_PUBLIE.
      *
-     * @param id             The Agpm ID
+     * @param id             The Paa ID
      * @param processKey     The process definition key (optional)
      * @param initialTaskKey The initial task key (optional)
      * @return ProcessStartResponseDTO with the process details
-     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws PaaNotFound if the Paa entity is not found
      */
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, String processKey, String initialTaskKey) throws PaaNotFound, AcNotFound {
@@ -226,9 +228,17 @@ public class PaaFlowableService {
             return errorResponse;
         }
 
-        // Retrieve the Agpm entity with the latest version
-        Paa paa = paaService.findByIdPaa(id,null);
+        // Retrieve the Paa entity with the latest version
+        Paa paa = paaService.findByIdPaa(id, null);
         Integer version = paa.getVersion();
+
+        // Set associated Realisation statuses to NON_PUBLIE
+        List<Realisation> realisations = paa.getRealisations() != null ? paa.getRealisations() : new ArrayList<>();
+        for (Realisation realisation : realisations) {
+            realisation.setStatut(RealisationStatus.NON_PUBLIE);
+            realisationService.save(realisation);
+            log.info("Set Realisation [id={}, version={}] status to NON_PUBLIE", realisation.getId(), realisation.getVersion());
+        }
 
         String effectiveProcessKey = (processKey != null && !processKey.isEmpty()) ? processKey : this.processKey;
         String effectiveTaskKey = (initialTaskKey != null && !initialTaskKey.isEmpty()) ? initialTaskKey : this.initialTaskKey;
@@ -286,7 +296,7 @@ public class PaaFlowableService {
         if (paaOptional.isPresent()) {
             Paa updatedPaa = paaOptional.get();
             log.info("Updated paa [{}] to [{}]", id, updatedPaa.getStatus());
-           updatedPaa.setProcessInstanceId(processInstanceId);
+            updatedPaa.setProcessInstanceId(processInstanceId);
             paaService.save(updatedPaa);
         }
 
@@ -334,12 +344,12 @@ public class PaaFlowableService {
     }
 
     /**
-     * Starts a Flowable process instance for an Agpm entity using its ID.
-     * Automatically retrieves the latest version of the Agpm entity.
+     * Starts a Flowable process instance for a Paa entity using its ID.
+     * Automatically retrieves the latest version of the Paa entity.
      *
-     * @param id The Agpm ID
+     * @param id The Paa ID
      * @return ProcessStartResponseDTO with the process details
-     * @throws PaaNotFound if the Agpm entity is not found
+     * @throws PaaNotFound if the Paa entity is not found
      */
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id) throws PaaNotFound, AcNotFound {
@@ -458,11 +468,11 @@ public class PaaFlowableService {
     }
 
     /**
-     * Retrieves details of a specific task, including associated Agpm entities with non-deleted documents.
+     * Retrieves details of a specific task, including associated Paa entities with non-deleted documents.
      *
      * @param taskId The ID of the task
      * @return TaskDetailsDTO with the task details
-     * @throws PaaNotFound if the associated Agpm entity is not found
+     * @throws PaaNotFound if the associated Paa entity is not found
      */
     public TaskDetailsDTO getTaskDetails(String taskId) throws PaaNotFound, AcNotFound {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -637,12 +647,12 @@ public class PaaFlowableService {
     }
 
     /**
-     * Validates a task and updates the associated Agpm entity.
+     * Validates a task and updates the associated Paa entity and its Realisations.
      *
      * @param taskId  The ID of the task to validate
      * @param request The validation request
      * @return TaskDTO with the validation result
-     * @throws AgpmNotFound if the Agpm entity is not found
+     * @throws PaaNotFound if the Paa entity is not found
      * @throws DocNotFound if a document is not found
      * @throws AcNotFound if the associated Ac entity is not found
      * @throws IOException if an error occurs during file processing
@@ -773,6 +783,14 @@ public class PaaFlowableService {
                 return errorResponse;
             }
             latestPaa = updatedPaa;
+
+            // Set associated Realisation statuses to PUBLIE
+            List<Realisation> realisations = latestPaa.getRealisations() != null ? latestPaa.getRealisations() : new ArrayList<>();
+            for (Realisation realisation : realisations) {
+                realisation.setStatut(RealisationStatus.PUBLIE);
+                realisationService.save(realisation);
+                log.info("Set Realisation [id={}, version={}] status to PUBLIE", realisation.getId(), realisation.getVersion());
+            }
         }
 
         TaskDTO response = new TaskDTO();
@@ -821,7 +839,6 @@ public class PaaFlowableService {
         List<String> matchingProcessInstanceIds = new ArrayList<>();
 
         for (Integer acId : userAcIds) {
-
             List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
                     .variableValueEquals("acId", acId)
                     .list();
@@ -832,7 +849,6 @@ public class PaaFlowableService {
                             .map(ProcessInstance::getId)
                             .collect(Collectors.toList()));
         }
-
 
         List<Task> filteredTasks = new ArrayList<>();
         int chunkSize = 1000;
@@ -850,7 +866,6 @@ public class PaaFlowableService {
             );
         }
         log.info("filteredTasks " + filteredTasks);
-
 
         List<TaskDTO> taskList = filteredTasks.stream().map(task -> {
             TaskDTO taskInfo = new TaskDTO();
@@ -876,7 +891,7 @@ public class PaaFlowableService {
                         taskInfo.setRef(paa.getRef());
                     });
                 } catch (AcNotFound | PaaNotFound e) {
-                    log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
+                    log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
                 }
             }
 

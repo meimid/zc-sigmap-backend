@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -25,6 +26,7 @@ public class RealisationResponse {
     private LocalDate datePrevDp;
     private LocalDate datePrevAp;
     private BigDecimal budgetEstime;
+    private RealisationStatus statut;
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;
