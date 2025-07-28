@@ -1,6 +1,8 @@
 package com.sigmap.common.com.response;
 
 import com.sigmap.common.ac.response.AcResponseDto;
+import com.sigmap.common.adresse.response.AdresseResponseDto;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
@@ -26,6 +28,9 @@ public class ComResponse {
   //private List<UserDTO> users;
   private List<ComMemberDTO> users;
   private String responsableId;
-
+  private AcResponseDto tutel;
+  private String logo;
+  private AdresseResponseDto theAdresse;
+  private List<DocsResponseDTO> docs;
   private BaseEntityResponse metadata;
 }

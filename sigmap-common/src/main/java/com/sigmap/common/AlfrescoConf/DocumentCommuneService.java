@@ -1,6 +1,8 @@
 package com.sigmap.common.AlfrescoConf;
 
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
@@ -12,10 +14,12 @@ import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
@@ -27,13 +31,17 @@ import java.util.*;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DocumentCommuneService {
     @Autowired
     private AlfrescoService alfrescoService;
     private final DocsRepository docsRepository;
     @Autowired
     private PvDocsRepository pvDocsRepository;
+
+
+    public DocumentCommuneService(DocsRepository docsRepository) {
+        this.docsRepository = docsRepository;
+    }
 
     /**
      * Detects the file extension based on the MIME type provided.
@@ -319,6 +327,39 @@ public class DocumentCommuneService {
             }
         }
 
+    }
+
+    public  void processAndSaveDocumentsForCom(List<MultipartFile> files, Com entity, String path) throws IOException {
+
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d",path  , entity.getId());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue; // Skip to the next file
+            }
+
+            try {
+                //helper methode for mapping document
+                Docs document = mapperDocument(file,entityTypeName,baseFolderPath);
+
+
+                    if(entity.getDocs() == null) {
+                        entity.setDocs(new ArrayList<>());
+                }
+                entity.getDocs().add(document);
+                // Save the document (Docs entity)
+                docsRepository.save(document);
+
+
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                // Re-throw as IOException for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
     }
 }
 
