@@ -144,7 +144,12 @@ public class AcServiceImpl implements AcService{
             Com com=comService.findById(request.getComId());
             ac.setCom(com);
         }
-
+        if(request.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
         Ac savedAc = repository.save(ac);
 
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -204,6 +209,15 @@ public class AcServiceImpl implements AcService{
             Com com=comService.findById(request.getComId());
             ac.setCom(com);
         }
+        if(ac.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
+        ac.setId(ac.getId());
+        ac.setTutel(ac.getTutel());
+        ac.setIstTutel(ac.isIstTutel());
         Ac savedAc = repository.save(ac);
 
         // Seulement si SUPER_ADMIN ou ADMIN_CENTRAL
