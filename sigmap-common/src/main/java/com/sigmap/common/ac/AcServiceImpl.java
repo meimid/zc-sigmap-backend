@@ -116,9 +116,9 @@ public class AcServiceImpl implements AcService{
          else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
              throw new AcAttributeRequire("","tutel");
         }
-         else if(request.getContact() == null || request.getContact().isEmpty()) {
+       /*  else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
-        }
+        }*/
      /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }*/
@@ -180,9 +180,9 @@ public class AcServiceImpl implements AcService{
         else if(request.getTutelId()==null&&!request.isIstTutel()){
             throw new AcAttributeRequire("","tutel");
         }
-        else if(request.getContact() == null || request.getContact().isEmpty()) {
+       /* else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
-        }
+        }*/
   /*      else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }
