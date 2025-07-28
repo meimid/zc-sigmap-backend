@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -113,42 +114,21 @@ public class AcSeuilServiceImpl implements AcSeuilService {
     }
 
     @Override
-    public Optional<AcSeuil>  findById (Integer acId, Integer typeMarcherId, Integer modePassationId) throws AcSeuilNotFound, ModeDePassationSelectionNotFound, RefParamNotFound, AcNotFound {
-        log.debug("Fetching AcSeuil with acId: {}, typeMarcherId: {}, modePassationId: {}", acId, typeMarcherId, modePassationId);
+    public Page<AcSeuil> findById (Integer acId, Pageable pageable) throws AcSeuilNotFound {
+        log.debug("Fetching AcSeuil with acId: {} ", acId);
         // Validate request
-        if (acId == null || typeMarcherId == null || modePassationId == null) {
-            throw new IllegalArgumentException("you must have acId, typeMarcherId, and modePassationId");
+        if (acId == null ) {
+            throw new IllegalArgumentException("you must have acId");
         }
 
-        // Create composite key for lookup
-        AcSeuilId acSeuilId = new AcSeuilId();
+        // Find existing AcSeuil by specification with pagination
+        Specification<AcSeuil> spec = AcSeuilSpecifications.acId(acId);
+        Page<AcSeuil> results = acSeuilRepository.findAll(spec, pageable);
 
-        // Fetch AC by AC ID
-        Ac ac = acRepository.findById(acId)
-                .orElseThrow(() -> new AcNotFound("", List.of(acId)));
-        acSeuilId.setAc(ac);
-
-        // Fetch typeMarcher by TypeMarcherId
-        RefParam typeMarcher = typeMarcherRepository.findById(typeMarcherId)
-                .orElseThrow(() -> new RefParamNotFound("", List.of(typeMarcherId)));
-        acSeuilId.setTypeMarcher(typeMarcher);
-
-        // Fetch modePassation by modePassation ID
-        ModeDePassationSelection modePassation = modePassationRepository.findById(modePassationId)
-                .orElseThrow(() -> new ModeDePassationSelectionNotFound("", modePassationId));
-        acSeuilId.setModePassation(modePassation);
-
-        // Find existing AcSeuil by specification
-        Specification<AcSeuil> spec = AcSeuilSpecifications.findById(acId, typeMarcherId, modePassationId);
-
-        // Use the findById specification
-        List<AcSeuil> results = acSeuilRepository.findAll(spec);
         if (results.isEmpty()) {
-            throw new AcSeuilNotFound("AcSeuil not found with acId{], typeMarcherId={}, modePassationId={}", acId, typeMarcherId, modePassationId);
+            throw new AcSeuilNotFound("AcSeuil not found with acId {}", acId);
         }
-        if (results.size() > 1) {
-            log.warn("Multiple AcSeuil entities found for composite key: acId={}, typeMarcherId={}, modePassationId={}", acId, typeMarcherId, modePassationId);
-        }
-        return results.stream().findFirst();
+
+        return results;
     }
 }
