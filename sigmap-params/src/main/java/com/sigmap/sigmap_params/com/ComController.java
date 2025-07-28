@@ -10,6 +10,7 @@ import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
@@ -27,6 +28,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -145,9 +147,9 @@ public class ComController {
      * @param request the request to create the Com from
      * @return the created Com
      */
-    @PostMapping
+    @PostMapping(consumes = {"multipart/form-data"})
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<ComResponse> create(@RequestBody ComRequest request) throws  AcNotFound, RefParamNotFound {
+    public ResponseEntity<ComResponse> create(@ModelAttribute("request") ComRequest request) throws AcNotFound, RefParamNotFound, ComNotFound, IOException {
         Com com = comService.create(request);
         ComResponse response = ComMapper.INSTANCE.map(com);
         comResponsable(response);
@@ -159,9 +161,9 @@ public class ComController {
      * @param request the request to update the com from
      * @return the updated com
      */
-    @PutMapping("/{id}")
+    @PutMapping(consumes = {"multipart/form-data"},value = "/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@RequestBody ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus {
+    public ResponseEntity<ComResponse> update(@PathVariable Integer id,@ModelAttribute("request") ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus, DocNotFound, IOException {
         Com com = comService.update(id,request);
         ComResponse response = ComMapper.INSTANCE.map(com);
         comResponsable(response);
