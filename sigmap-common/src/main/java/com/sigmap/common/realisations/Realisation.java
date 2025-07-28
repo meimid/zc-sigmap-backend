@@ -88,7 +88,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     private Integer sort;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "statut", length = 50)
+    @Column(name = "statut", nullable = false)
     private RealisationStatus statut= RealisationStatus.NON_PUBLIE;
 
     @ManyToMany
