@@ -645,4 +645,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedAdress.class)
+    public ResponseEntity<ErrorResponse> HasAssociatedAdresseException(HasAssociatedAdress ex) {
+        String message = messageSource.getMessage("ref.hasAssociatedAddress",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
 }
