@@ -1,7 +1,9 @@
 package com.sigmap.common.adresse;
 
+import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 public class AdressSpecifications {
@@ -93,5 +95,13 @@ public class AdressSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
-
+    public static Specification<Adresse> hasPaysId(Integer paysId) {
+        return (root, query, cb) -> {
+            Join<Adresse, RefParam> serviceJoin = root.join("pays", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(serviceJoin.get("id"), paysId),
+                    cb.equal(serviceJoin.get("isDeleted"), false)
+            );
+        };
+    }
 }

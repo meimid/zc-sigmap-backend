@@ -44,9 +44,11 @@ public class AdressServiceImpl implements AdressService{
 
     @Override
     public Adresse create(AdresseRequest request) throws RefParamNotFound {
-        RefParam pays = refParamService.findById(request.getPaysId());
-            Adresse adresse = AdresseMapper.INSTANCE.map(request);
+        Adresse adresse = AdresseMapper.INSTANCE.map(request);
+        if(request.getPaysId()!=null){
+            RefParam pays = refParamService.findById(request.getPaysId());
             adresse.setPays(pays);
+        }
             return save(adresse);
     }
 

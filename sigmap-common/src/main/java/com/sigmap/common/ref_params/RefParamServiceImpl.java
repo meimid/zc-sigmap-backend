@@ -3,6 +3,8 @@ package com.sigmap.common.ref_params;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.adresse.AdressSpecifications;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmSpecifications;
@@ -282,6 +284,14 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAssociatedDynaDoc = repository.hasAssociatedDynaDoc(id);
         if (hasAssociatedDynaDoc) {
             throw new HasAssociatedDynaDoc(id);
+        }
+        Specification<Adresse> adresseSpec = Specification.where(
+                AdressSpecifications.deleted(false)
+                        .and(AdressSpecifications.hasPaysId(id))
+        );
+        boolean hasAdresse = realisationRepository.count(realisationSpec) > 0;
+        if (hasAdresse) {
+            throw new HasAssociatedAdress("", id);
         }
 
         repository.softDelete(id);
