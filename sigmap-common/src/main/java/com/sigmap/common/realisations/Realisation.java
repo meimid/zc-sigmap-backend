@@ -2,6 +2,7 @@ package com.sigmap.common.realisations;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
@@ -85,6 +86,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
 
     @Column(name = "sort")
     private Integer sort;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut", nullable = false)
+    private RealisationStatus statut= RealisationStatus.NON_PUBLIE;
 
     @ManyToMany
     @JoinTable(
