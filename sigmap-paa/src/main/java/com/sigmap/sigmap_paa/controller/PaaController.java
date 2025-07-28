@@ -17,6 +17,8 @@ import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.paas.response.*;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -42,6 +44,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -316,19 +319,110 @@ public ResponseEntity<PaaResponseWithRealisations> update(
                         continue;
                     }
 
+                    // MODIFIED: Handle budget field
+                    if (lotData.containsKey("budget")) {
+                        Object budgetObj = lotData.get("budget");
+                        if (budgetObj instanceof Number) {
+                            lot.setBudget(new java.math.BigDecimal(budgetObj.toString()));
+                            logger.debug("Set budget to {} for lot with description: {}", lot.getBudget(), lot.getDescription());
+                        } else {
+                            logger.warn("Invalid budget format for lot with description: {}, setting to null", lot.getDescription());
+                        }
+                    } else {
+                        logger.debug("Lot data missing budget, setting to null");
+                    }
+
                     lots.add(lot);
                 }
 
                 // Set the processed lots on the realisation
                 realisation.setLots(lots);
                 logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
-                log.info(lots.toString());
+                logger.info(lots.toString());
             }
         } catch (Exception e) {
             logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
         }
     }
+    //    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            logger.info("Processing lots JSON: {}", lotsJson);
+//
+//            // Validate input
+//            if (lotsJson == null || lotsJson.trim().isEmpty()) {
+//                logger.warn("Lots JSON is empty or null, skipping processing");
+//                return;
+//            }
+//
+//            // Parse JSON into a map of realisation indices to lists of lot data
+//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
+//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+//            logger.info("Parsed {} realisation indices from lots JSON", lotsMap.size());
+//
+//            // Ensure realisations list exists
+//            if (request.getRealisations() == null) {
+//                request.setRealisations(new ArrayList<>());
+//                logger.warn("Realisations list was null, initialized as empty");
+//            }
+//
+//            // Process each realisation's lots
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
+//                int realisationIndex = Integer.parseInt(entry.getKey());
+//
+//                // Skip if index is out of bounds
+//                if (realisationIndex >= request.getRealisations().size()) {
+//                    logger.warn("Skipping lots for realisation index {} as it's out of bounds (size: {})",
+//                            realisationIndex, request.getRealisations().size());
+//                    continue;
+//                }
+//
+//                // Get the target realisation
+//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+//                if (realisation == null) {
+//                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+//                    continue;
+//                }
+//
+//                List<LotResponse> lots = new ArrayList<>();
+//
+//                // Process lots for this realisation
+//                for (Map<String, Object> lotData : entry.getValue()) {
+//                    LotResponse lot = new LotResponse();
+//
+//                    if (lotData.containsKey("id")) {
+//                        lot.setId(((Number) lotData.get("id")).intValue());
+//                    } else {
+//                        logger.debug("Lot data missing id, setting to null");
+//                    }
+//
+//                    if (lotData.containsKey("version")) {
+//                        lot.setVersion(((Number) lotData.get("version")).intValue());
+//                    } else {
+//                        logger.debug("Lot data missing version, setting to null");
+//                    }
+//
+//                    if (lotData.containsKey("description")) {
+//                        lot.setDescription((String) lotData.get("description"));
+//                    } else {
+//                        logger.warn("Lot data missing description, skipping lot");
+//                        continue;
+//                    }
+//
+//                    lots.add(lot);
+//                }
+//
+//                // Set the processed lots on the realisation
+//                realisation.setLots(lots);
+//                logger.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+//                log.info(lots.toString());
+//            }
+//        } catch (Exception e) {
+//            logger.error("Failed to parse lots JSON: {}", e.getMessage(), e);
+//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
+//        }
+//    }
 
     /**
      * Updates a PAA by creating a new version with the updated data.
@@ -344,7 +438,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     public ResponseEntity<PaaResponseWithRealisations> updateWithVersioning(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer,
-            @RequestBody PaaRequestGlobal request) throws PaaNotFound {
+            @RequestBody PaaRequestGlobal request) throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         logger.info("Updating PAA ID: {} version: {} with versioning", paaId, paaVer);
         Paa updatedPaa = paaService.updateWithVersioning(paaId, paaVer, request);
 
@@ -359,7 +453,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningMultipart(
             @PathVariable Integer paaId,
             @ModelAttribute("request") PaaRequestGlobal request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         logger.info("Updating PAA ID: {} with versioning (multipart)", paaId);
 
         // Process lots from JSON string if provided
@@ -392,7 +486,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @PutMapping("/{paaId}/versioning")
     public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningLatest(
             @PathVariable Integer paaId,
-            @RequestBody PaaRequestGlobal request) throws PaaNotFound {
+            @RequestBody PaaRequestGlobal request) throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         logger.info("Updating latest version of PAA ID: {} with versioning", paaId);
         Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
 

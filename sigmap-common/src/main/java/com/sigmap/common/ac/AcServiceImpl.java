@@ -113,12 +113,12 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-       /*  else if(request.getTutelId()==null ) {
+         else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
              throw new AcAttributeRequire("","tutel");
-        }*/
-         else if(request.getContact() == null || request.getContact().isEmpty()) {
-             throw new AcAttributeRequire("","contact");
         }
+       /*  else if(request.getContact() == null || request.getContact().isEmpty()) {
+             throw new AcAttributeRequire("","contact");
+        }*/
      /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }*/
@@ -133,7 +133,12 @@ public class AcServiceImpl implements AcService{
         Ac ac = AcMapper.INSTANCE.map(request);
         if(request.getTutelId()!=null ) {
             Ac tutel= findById(request.getTutelId());
+            if(tutel.isIstTutel()){
             ac.setTutel(tutel);
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
         }
 
         if(request.getAdresse()!=null) {
@@ -144,7 +149,12 @@ public class AcServiceImpl implements AcService{
             Com com=comService.findById(request.getComId());
             ac.setCom(com);
         }
-
+        if(request.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
         Ac savedAc = repository.save(ac);
 
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -172,12 +182,12 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-        else if(request.getTutelId()==null){
+        else if(request.getTutelId()==null&&!request.isIstTutel()){
             throw new AcAttributeRequire("","tutel");
         }
-        else if(request.getContact() == null || request.getContact().isEmpty()) {
+       /* else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
-        }
+        }*/
   /*      else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }
@@ -193,7 +203,12 @@ public class AcServiceImpl implements AcService{
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
         if(request.getTutelId()!=null ) {
             Ac tutel= findById(request.getTutelId());
-            ac.setTutel(tutel);
+            if(tutel.isIstTutel()){
+                ac.setTutel(tutel);
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
         }
 
         if(request.getAdresse()!=null&& Objects.equals(ac.getAdresse().getId(), request.getAdresse().getId())) {
@@ -204,6 +219,15 @@ public class AcServiceImpl implements AcService{
             Com com=comService.findById(request.getComId());
             ac.setCom(com);
         }
+        if(ac.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
+        ac.setId(ac.getId());
+        ac.setTutel(ac.getTutel());
+        ac.setIstTutel(ac.isIstTutel());
         Ac savedAc = repository.save(ac);
 
         // Seulement si SUPER_ADMIN ou ADMIN_CENTRAL
@@ -276,6 +300,11 @@ public class AcServiceImpl implements AcService{
         boolean hasAssociatedPaa = repository.hasAssociatedPaa(id);
         if (hasAssociatedPaa) {
             throw new AcHasAssociatedPaa("" , id);
+        }
+
+        boolean hasAssociatedAc = repository.hasAssociatedAc(id);
+        if (hasAssociatedAc) {
+            throw new AcHasAssociatedAc("" , id);
         }
 
         repository.softDelete(id);

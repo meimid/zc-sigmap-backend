@@ -23,7 +23,7 @@ public class Constants {
   public static final String PATH_ENTREPOT_GED_PPM =
       "/SIGMAP-DEV/ARCHIVE/PPM/" + LocalDate.now().getYear();
   public static final String PATH_ENTREPOT_GED_PV="/PV";
-
+  public static final String PATH_ENTREPOT_GED_COM="/COM";
   // public static final Integer SERVICE = 16;
   // public static final Integer TYPE_MARCHER = 17;
   // public static final Integer SOURCE_FINANCEMENT = 18;

@@ -3,16 +3,14 @@ package com.sigmap.common.paas;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
-import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
-
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
+import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -31,8 +29,6 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
-import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
-import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
@@ -41,22 +37,17 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
-
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -67,12 +58,10 @@ import java.util.stream.Collectors;
 public class PaaServiceImpl implements PaaService {
     private final PaaRepository repository;
     private final RealisationRepository realisationRepository;
-    private final RefParamRepository refParamRepository;
     private final DocsRepository docsRepository;
     private final AcRepository acRepository;
     private final LotRepository lotRepository;
     private final RealisationService realisationService;
-    private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
     private final AcService acService;
     private final CurrentUserService currentUserService;
@@ -87,12 +76,10 @@ public class PaaServiceImpl implements PaaService {
     ) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
-        this.refParamRepository = refParamRepository;
         this.docsRepository = docsRepository;
         this.acRepository = acRepository;
         this.lotRepository = lotRepository;
         this.realisationService = realisationService;
-        this.alfrescoService = alfrescoService;
         this.documentCommuneService = documentCommuneService;
         this.acService = acService;
         this.currentUserService = currentUserService;
@@ -497,7 +484,7 @@ public class PaaServiceImpl implements PaaService {
 
         existingPaa.setNom(request.getNom());
         existingPaa.setAnnee(existingPaa.getAnnee());
-        existingPaa.setBudgetEstime(request.getBudgetEstime());
+        // MODIFIED: Do not set Paa budgetEstime here; it will be calculated from realisations
         existingPaa.setModePassation(request.getModePassation());
         existingPaa.setRemarque(request.getRemarque());
         if (request.getAcId() != null) {
@@ -607,7 +594,7 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
@@ -712,6 +699,13 @@ public class PaaServiceImpl implements PaaService {
                                 if (lot.getId() == null) {
                                     lot.setId(lotId);
                                     lot.setVersion(1);
+                                    lot.setDescription(lotRequest.getDescription());
+                                    lot.setBudget(lotRequest.getBudget());
+                                    System.out.println("Initialized new lot instance with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+                                } else {
+                                    lot.setDescription(lotRequest.getDescription());
+                                    lot.setBudget(lotRequest.getBudget());
+                                    System.out.println("Updated existing lot ID: " + lotId + ", Budget: " + lotRequest.getBudget());
                                 }
                             } else {
                                 // Create new lot
@@ -720,8 +714,10 @@ public class PaaServiceImpl implements PaaService {
                                 lot = new Lot();
                                 lot.setId(lotId);
                                 lot.setVersion(1);
+                                lot.setDescription(lotRequest.getDescription());
+                                lot.setBudget(lotRequest.getBudget());
+                                System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
                             }
-                            lot.setDescription(lotRequest.getDescription());
                             lot.setIsDeleted(false);
                             lot = lotRepository.save(lot);
                             lots.add(lot);
@@ -732,8 +728,9 @@ public class PaaServiceImpl implements PaaService {
                             for (Lot existingLot : realisation.getLots()) {
                                 if (!requestedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                     existingLot.setIsDeleted(true);
+                                    existingLot.setBudget(existingLot.getBudget());
                                     lotRepository.save(existingLot);
-                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request)");
+                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request), Budget: " + existingLot.getBudget());
                                 }
                             }
                         }
@@ -745,12 +742,16 @@ public class PaaServiceImpl implements PaaService {
                             for (Lot existingLot : realisation.getLots()) {
                                 if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                     existingLot.setIsDeleted(true);
+                                    existingLot.setBudget(existingLot.getBudget());
                                     lotRepository.save(existingLot);
-                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request)");
+                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request), Budget: " + existingLot.getBudget());
                                 }
                             }
                             realisation.setLots(new ArrayList<>());
                         }
+                        // Set budgetEstime from request even if no lots
+                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                        System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
                     if (realisation.getPaas() == null) {
@@ -778,7 +779,7 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
@@ -825,10 +826,15 @@ public class PaaServiceImpl implements PaaService {
                             lot.setId(lotId);
                             lot.setVersion(1);
                             lot.setDescription(lotRequest.getDescription());
+                            lot.setBudget(lotRequest.getBudget());
+                            System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
                             lot = lotRepository.save(lot);
                             lots.add(lot);
                         }
                         realisation.setLots(lots);
+                    } else {
+                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request even if no lots
+                        System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
                     realisation = realisationRepository.save(realisation);
@@ -837,8 +843,14 @@ public class PaaServiceImpl implements PaaService {
             }
             existingPaa.setRealisations(realisations);
         } else {
+            // MODIFIED: Clear realisations and set Paa budgetEstime to zero if no realisations
             existingPaa.getRealisations().clear();
+            existingPaa.setBudgetEstime(BigDecimal.ZERO);
+            System.out.println("Cleared realisations for PAA ID: " + paaId + ", set budgetEstime: 0");
         }
+
+        // Validate realisations before saving
+        validateRealisations(existingPaa);
 
         Paa savedPaa = repository.save(existingPaa);
         Paa copyForResponse = new Paa();
@@ -868,6 +880,7 @@ public class PaaServiceImpl implements PaaService {
                 }
             });
         }
+        // MODIFIED: Calculate Paa budgetEstime from active realisations
         BigDecimal budgetEstime = savedPaa.getRealisations().stream()
                 .map(Realisation::getBudgetEstime)
                 .filter(Objects::nonNull)
@@ -875,9 +888,9 @@ public class PaaServiceImpl implements PaaService {
         savedPaa.setBudgetEstime(budgetEstime);
         repository.save(savedPaa);
         copyForResponse.setBudgetEstime(budgetEstime);
+        System.out.println("Updated PAA ID: " + paaId + ", budgetEstime: " + budgetEstime);
         return copyForResponse;
     }
-
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
             return false;
@@ -912,10 +925,7 @@ public class PaaServiceImpl implements PaaService {
 
         // Process any document changes
         if (request.getDocIds() != null) {
-            // Get only the active (non-deleted) existing document IDs
             Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ? existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
-
-            // Compare with requested document IDs
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
             documentsChanged = !requestDocIds.equals(activeExistingDocIds);
 
@@ -940,37 +950,30 @@ public class PaaServiceImpl implements PaaService {
             }
         }
 
-        // Check if files are present - if so, we'll always create a new version
+        // Check if files are present
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
             System.out.println("Files detected in request - will create new version regardless of other changes");
         } else {
-            // Only check hash if no files are present
             System.out.println("Current request hash: " + requestHash);
             System.out.println("Previous request hash: " + previousRequestHash);
 
-            // If this is the exact same request as the previous one, return the existing PAA without changes
             boolean hasRealisationFiles = hasRealisationFiles(request.getRealisations());
             if (requestHash != null && requestHash.equals(previousRequestHash) && !documentsChanged && !hasNewLotsWithoutIds && !hasRealisationFiles) {
                 System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
 
-                // Create a filtered copy for response
                 Paa copyForResponse = new Paa();
                 BeanUtils.copyProperties(existingPaa, copyForResponse);
 
-                // Filter out deleted documents for the response
                 if (existingPaa.getDocs() != null) {
                     copyForResponse.setDocs(existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                 }
 
-                // Also filter realisation documents
                 if (copyForResponse.getRealisations() != null) {
                     copyForResponse.getRealisations().forEach(realisation -> {
                         if (realisation.getDocs() != null) {
                             realisation.setDocs(realisation.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).collect(Collectors.toList()));
                         }
-
-                        // Also filter lots in realisations
                         if (realisation.getLots() != null) {
                             realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                         }
@@ -983,37 +986,27 @@ public class PaaServiceImpl implements PaaService {
 
         // Create a temporary PAA to check for changes in direct fields
         Paa tempPaa = new Paa();
-
-        // Only use request values when they're not null, otherwise keep existing values
         tempPaa.setRef(existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
         tempPaa.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPaa.getAnnee());
         tempPaa.setProcessInstanceId(existingPaa.getProcessInstanceId());
-        tempPaa.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPaa.getBudgetEstime());
         tempPaa.setStatus(existingPaa.getStatus());
         tempPaa.setModePassation(request.getModePassation() != null ? request.getModePassation() : existingPaa.getModePassation());
         tempPaa.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPaa.getRemarque());
 
-        // Handle AC
         Ac requestAc = null;
         if (request.getAcId() != null) {
             requestAc = acRepository.findById(request.getAcId()).orElse(null);
         }
         tempPaa.setAc(requestAc != null ? requestAc : existingPaa.getAc());
 
-        // Check for changes in direct PAA fields
         boolean hasDirectChanges = !arePaaFieldsIdentical(existingPaa, tempPaa);
         System.out.println("Direct field changes detected: " + hasDirectChanges);
 
-        // Track whether any realisations have changed
         boolean realisationsChanged = false;
-
-        // Prepare lists for relationships
         List<Realisation> updatedRealisations = new ArrayList<>();
         List<Docs> updatedDocs = new ArrayList<>();
-
-        // Keep track of newly created lots to detect duplicates
-        Map<String, Lot> newLotsMap = new HashMap<>();
+        Map<String, Lot> newLotsMap = new HashMap<>(); // Used for new realisations only
 
         // Process Realisation DTOs
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
@@ -1044,153 +1037,66 @@ public class PaaServiceImpl implements PaaService {
                         boolean updateNeeded = realisationNeedsUpdate(existingRealisation, realisationDto);
                         System.out.println("Realisation update needed: " + updateNeeded);
 
-                        // Always check for files even if no other changes
                         boolean hasRealisationFiles = realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty();
-                        if (hasRealisationFiles) {
-                            System.out.println("Files detected in realisation, forcing update");
+                        boolean hasLots = realisationDto.getLots() != null && !realisationDto.getLots().isEmpty();
+                        if (hasRealisationFiles || hasLots) {
+                            System.out.println("Files or lots detected in realisation, forcing update");
                             updateNeeded = true;
                         }
 
                         if (updateNeeded) {
                             System.out.println("Updating Realisation with versioning...");
-                            Realisation updatedRealisation = realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
+                            List<Lot> updatedLots = new ArrayList<>();
+                            Set<Integer> processedLotIds = new HashSet<>();
+                            boolean lotChanges = false;
 
-                            // Handle realisation files if provided
-                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
-                                try {
-                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
-                                            " files for Realisation ID: " + updatedRealisation.getId() +
-                                            " version: " + updatedRealisation.getVersion());
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), updatedRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+                            Set<Integer> existingLotIds = existingRealisation.getLots() != null
+                                    ? existingRealisation.getLots().stream()
+                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                    .map(Lot::getId)
+                                    .collect(Collectors.toSet())
+                                    : new HashSet<>();
 
-                                    // Save the realisation again after adding documents
-                                    updatedRealisation = realisationRepository.save(updatedRealisation);
-                                    System.out.println("Saved Realisation after processing files");
-                                } catch (IOException e) {
-                                    System.err.println("Error processing Realisation files: " + e.getMessage());
-                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
-                                }
-                            }
-
-                            // Handle realisation document IDs if provided
-                            if (realisationDto.getDocIds() != null) {
-                                List<Docs> allDocs = new ArrayList<>();
-                                if (updatedRealisation.getDocs() != null) {
-                                    allDocs.addAll(updatedRealisation.getDocs());
-                                }
-                                System.out.println("[DEBUG] Docs from uploaded files for realisation " + updatedRealisation.getId() + ": " + allDocs.stream().map(Docs::getId).toList());
-                                Set<Integer> alreadyAddedDocIds = allDocs.stream().map(Docs::getId).collect(Collectors.toSet());
-                                System.out.println("[DEBUG] DocIds from request for realisation " + updatedRealisation.getId() + ": " + realisationDto.getDocIds());
-                                for (Integer docId : realisationDto.getDocIds()) {
-                                    if (alreadyAddedDocIds.contains(docId)) {
-                                        System.out.println("[DEBUG] Skipping already added docId: " + docId);
-                                        continue;
-                                    }
-
-                                    Docs doc = docsRepository.findById(docId)
-                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-
-                                    doc.setIsDeleted(false);
-                                    docsRepository.save(doc);
-                                    allDocs.add(doc);
-                                    System.out.println("[DEBUG] Added docId from docIds: " + docId);
-                                }
-
-                                System.out.println("[DEBUG] Final merged docs for realisation " + updatedRealisation.getId() + ": " + updatedRealisation.getVersion() + ": " + allDocs.stream().map(Docs::getId).toList());
-                                updatedRealisation.setDocs(allDocs);
-                                updatedRealisation = realisationRepository.save(updatedRealisation);
-                            }
-
-                            updatedRealisations.add(updatedRealisation);
-                            realisationsChanged = true;
-                        } else {
-                            System.out.println("Using existing Realisation without changes");
-
-                            // Even if no field changes detected, still process realisation files if any
-                            if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
-                                try {
-                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for existing Realisation ID: " + existingRealisation.getId() + " version: " + existingRealisation.getVersion());
-                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), existingRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-                                    existingRealisation = realisationRepository.save(existingRealisation);
-                                    System.out.println("Saved existing Realisation after processing files");
-                                    updateNeeded = true; // Force update needed
-                                    realisationsChanged = true;
-
-                                    // Create a new version of the Realisation through the service
-                                    System.out.println("Creating new Realisation version due to file uploads");
-                                    Realisation updatedRealisation = realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
-                                    updatedRealisations.add(updatedRealisation);
-                                    continue; // Skip to next iteration since we've handled this Realisation
-                                } catch (IOException e) {
-                                    System.err.println("Error processing existing Realisation files: " + e.getMessage());
-                                    throw new RuntimeException("Error processing existing Realisation files: " + e.getMessage(), e);
-                                }
-                            }
-
-                            // Handle lots for existing Realisation
-                            if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+                            if (hasLots) {
                                 System.out.println("Processing " + realisationDto.getLots().size() + " lots in DTO");
-
-                                List<Lot> updatedLots = new ArrayList<>();
-                                Set<Integer> processedLotIds = new HashSet<>();
-                                boolean lotChanges = false;
-
-                                Set<Integer> existingLotIds = existingRealisation.getLots() != null
-                                        ? existingRealisation.getLots().stream()
-                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                                        .map(Lot::getId)
-                                        .collect(Collectors.toSet())
-                                        : new HashSet<>();
-                                Map<Integer, String> existingLotDescriptions = existingRealisation.getLots() != null
-                                        ? existingRealisation.getLots().stream()
-                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                                        .collect(Collectors.toMap(Lot::getId, lot -> lot.getDescription() != null ? lot.getDescription() : "", (a, b) -> a))
-                                        : new HashMap<>();
+                                if (existingRealisation.getLots() != null) {
+                                    System.out.println("Existing lots for Realisation " + existingRealisation.getId() +
+                                            ", version " + existingRealisation.getVersion() + ":");
+                                    for (Lot existingLot : existingRealisation.getLots()) {
+                                        System.out.println("  - Lot ID: " + existingLot.getId() +
+                                                ", Description: " + existingLot.getDescription() +
+                                                ", Budget: " + existingLot.getBudget() +
+                                                ", isDeleted: " + existingLot.getIsDeleted());
+                                    }
+                                } else {
+                                    System.out.println("No existing lots for Realisation " + existingRealisation.getId());
+                                }
 
                                 for (LotResponse lotDto : realisationDto.getLots()) {
+                                    String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                    System.out.println("Processing lot with description: " + lotHash + ", ID: " + lotDto.getId());
+
                                     if (lotDto.getId() == null) {
-                                        // Handle new lot without ID
-                                        String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
-                                        System.out.println("Processing new lot with description: " + lotHash);
-
-                                        if (newLotsMap.containsKey(lotHash)) {
-                                            System.out.println("Using previously created lot for description: " + lotHash);
-                                            updatedLots.add(newLotsMap.get(lotHash));
-                                            processedLotIds.add(newLotsMap.get(lotHash).getId());
-                                            continue;
-                                        }
-
-                                        boolean lotExists = false;
-                                        if (existingRealisation.getLots() != null) {
-                                            for (Lot existingLot : existingRealisation.getLots()) {
-                                                String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
-                                                if (existingDesc.equals(lotHash) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
-                                                    System.out.println("Found matching existing lot with description: " + lotHash);
-                                                    updatedLots.add(existingLot);
-                                                    processedLotIds.add(existingLot.getId());
-                                                    lotExists = true;
-                                                    break;
-                                                }
-                                            }
-                                        }
-
-                                        if (lotExists) continue;
-
                                         System.out.println("Creating new lot with description: " + lotHash);
                                         Lot newLot = new Lot();
                                         newLot.setDescription(lotDto.getDescription());
-                                        newLot.setVersion(1); // First version
+                                        newLot.setBudget(lotDto.getBudget());
+                                        newLot.setVersion(1);
                                         Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                                        Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                                        if (maxLotId == null) {
+                                            System.err.println("Warning: sequenceGeneratorService returned null for LOT_ID_SEQ");
+                                            maxLotId = 0;
+                                        }
+                                        Integer lotId = maxLotId + 1;
                                         newLot.setId(lotId);
 
                                         Lot savedLot = lotRepository.save(newLot);
                                         updatedLots.add(savedLot);
                                         processedLotIds.add(savedLot.getId());
-                                        newLotsMap.put(lotHash, savedLot);
-                                        System.out.println("Created new Lot with ID: " + savedLot.getId());
+                                        System.out.println("Created new Lot with ID: " + savedLot.getId() +
+                                                ", Version: " + savedLot.getVersion() +
+                                                ", Budget: " + savedLot.getBudget());
                                         lotChanges = true;
-
                                     } else {
                                         if (processedLotIds.contains(lotDto.getId())) {
                                             System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
@@ -1212,26 +1118,41 @@ public class PaaServiceImpl implements PaaService {
                                             Lot existingLot = existingLotOpt.get();
                                             String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
                                             String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
-                                            if (!requestDesc.equals(existingDesc)) {
+                                            BigDecimal requestBudget = lotDto.getBudget();
+                                            BigDecimal existingBudget = existingLot.getBudget();
+
+                                            boolean descChanged = !Objects.equals(requestDesc, existingDesc);
+                                            boolean budgetChanged = (requestBudget != null && existingBudget != null && requestBudget.compareTo(existingBudget) != 0) ||
+                                                    (requestBudget != null && existingBudget == null) ||
+                                                    (requestBudget == null && existingBudget != null);
+
+                                            if (descChanged || budgetChanged) {
+                                                System.out.println("Changes detected for Lot ID: " + lotId +
+                                                        ", Description changed: " + (descChanged ? requestDesc + " != " + existingDesc : "no") +
+                                                        ", Budget changed: " + (budgetChanged ? requestBudget + " != " + existingBudget : "no"));
                                                 Lot newLot = new Lot();
                                                 newLot.setId(existingLot.getId());
                                                 newLot.setVersion(existingLot.getVersion() + 1);
                                                 newLot.setDescription(lotDto.getDescription());
-
+                                                newLot.setBudget(lotDto.getBudget());
                                                 Lot savedLot = lotRepository.save(newLot);
                                                 updatedLots.add(savedLot);
                                                 processedLotIds.add(savedLot.getId());
-                                                System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion());
+                                                System.out.println("Created new version of Lot: " + savedLot.getId() +
+                                                        ", Version: " + savedLot.getVersion() +
+                                                        ", Budget: " + savedLot.getBudget());
                                                 lotChanges = true;
                                             } else {
                                                 updatedLots.add(existingLot);
                                                 processedLotIds.add(existingLot.getId());
+                                                System.out.println("No changes for Lot ID: " + existingLot.getId() +
+                                                        ", Version: " + existingLot.getVersion() +
+                                                        ", Budget: " + existingLot.getBudget());
                                             }
                                         }
                                     }
                                 }
-
-                                // Mark existing lots as deleted if they are not in the request
+                                // Mark existing lots as deleted if not in request
                                 if (existingRealisation.getLots() != null) {
                                     for (Lot existingLot : existingRealisation.getLots()) {
                                         if (!processedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
@@ -1239,63 +1160,271 @@ public class PaaServiceImpl implements PaaService {
                                             newLotVersion.setId(existingLot.getId());
                                             newLotVersion.setVersion(existingLot.getVersion() + 1);
                                             newLotVersion.setDescription(existingLot.getDescription());
+                                            newLotVersion.setBudget(existingLot.getBudget());
                                             newLotVersion.setIsDeleted(true);
                                             lotRepository.save(newLotVersion);
-                                            System.out.println("Marked lot " + existingLot.getId() + " as deleted in new version");
+                                            System.out.println("Marked lot " + existingLot.getId() +
+                                                    " as deleted in new version, Budget: " + existingLot.getBudget());
                                             lotChanges = true;
                                         }
                                     }
                                 }
-
-                                Set<Integer> requestLotIds = realisationDto.getLots().stream()
-                                        .filter(lotDto -> lotDto.getId() != null)
-                                        .map(LotResponse::getId)
-                                        .collect(Collectors.toSet());
-                                requestLotIds.addAll(processedLotIds.stream()
-                                        .filter(id -> !existingLotIds.contains(id))
-                                        .collect(Collectors.toSet()));
-
-                                if (!requestLotIds.equals(existingLotIds)) {
-                                    lotChanges = true;
-                                }
-
-                                if (lotChanges) {
-                                    System.out.println("Lot associations changed, updating Realisation");
-                                    existingRealisation.setLots(updatedLots);
-                                    Realisation savedRealisation = realisationRepository.save(existingRealisation);
-                                    updatedRealisations.add(savedRealisation);
-                                    realisationsChanged = true;
-                                } else {
-                                    System.out.println("No changes to lot associations, using existing Realisation");
-                                    updatedRealisations.add(existingRealisation);
-                                }
                             } else {
-                                // Case where lots are null or empty in the request
-                                System.out.println("No lots provided in DTO for Realisation ID: " + realisationDto.getId());
                                 if (existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
-                                    // Mark all existing lots as deleted
-                                    List<Lot> updatedLots = new ArrayList<>();
                                     for (Lot existingLot : existingRealisation.getLots()) {
                                         if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                             Lot newLotVersion = new Lot();
                                             newLotVersion.setId(existingLot.getId());
                                             newLotVersion.setVersion(existingLot.getVersion() + 1);
                                             newLotVersion.setDescription(existingLot.getDescription());
+                                            newLotVersion.setBudget(existingLot.getBudget());
                                             newLotVersion.setIsDeleted(true);
                                             lotRepository.save(newLotVersion);
-                                            System.out.println("Marked lot " + existingLot.getId() + " as deleted in new version");
+                                            System.out.println("Marked lot " + existingLot.getId() +
+                                                    " as deleted (no lots in request), Budget: " + existingLot.getBudget());
+                                            lotChanges = true;
                                         }
                                     }
-                                    existingRealisation.setLots(updatedLots);
-                                    Realisation savedRealisation = realisationRepository.save(existingRealisation);
-                                    updatedRealisations.add(savedRealisation);
-                                    realisationsChanged = true;
-                                    System.out.println("All lots removed from Realisation, updated Realisation saved");
-                                } else {
-                                    // No lots in request and no existing lots
-                                    System.out.println("No lots in request and no existing lots, using existing Realisation");
-                                    updatedRealisations.add(existingRealisation);
+                                    updatedLots.clear();
                                 }
+                            }
+
+                            // Update Realisation via service
+                            Realisation updatedRealisation = realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
+
+                            // Set lots and use user-provided budgetEstime
+                            updatedRealisation.setLots(updatedLots);
+                            BigDecimal userBudget = realisationDto.getBudgetEstime();
+                            if (userBudget != null) {
+                                updatedRealisation.setBudgetEstime(userBudget);
+                                System.out.println("Set Realisation ID: " + updatedRealisation.getId() +
+                                        " budgetEstime from user input: " + userBudget);
+                            } else {
+                                BigDecimal calculatedBudget = updatedLots.stream()
+                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                        .map(Lot::getBudget)
+                                        .filter(Objects::nonNull)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                updatedRealisation.setBudgetEstime(calculatedBudget);
+                                System.out.println("Set Realisation ID: " + updatedRealisation.getId() +
+                                        " budgetEstime from lots: " + calculatedBudget);
+                            }
+                            updatedRealisation = realisationRepository.save(updatedRealisation);
+                            System.out.println("Updated Realisation ID: " + updatedRealisation.getId() +
+                                    " version: " + updatedRealisation.getVersion() +
+                                    ", budgetEstime: " + updatedRealisation.getBudgetEstime());
+
+                            if (hasRealisationFiles) {
+                                try {
+                                    System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                            " files for Realisation ID: " + updatedRealisation.getId() +
+                                            " version: " + updatedRealisation.getVersion());
+                                    documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), updatedRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+                                    updatedRealisation = realisationRepository.save(updatedRealisation);
+                                    System.out.println("Saved Realisation after processing files");
+                                } catch (IOException e) {
+                                    System.err.println("Error processing Realisation files: " + e.getMessage());
+                                    throw new RuntimeException("Error processing Realisation files: " + e.getMessage(), e);
+                                }
+                            }
+
+                            if (realisationDto.getDocIds() != null) {
+                                List<Docs> allDocs = new ArrayList<>();
+                                if (updatedRealisation.getDocs() != null) {
+                                    allDocs.addAll(updatedRealisation.getDocs());
+                                }
+                                System.out.println("[DEBUG] Docs from uploaded files for realisation " + updatedRealisation.getId() + ": " + allDocs.stream().map(Docs::getId).toList());
+                                Set<Integer> alreadyAddedDocIds = allDocs.stream().map(Docs::getId).collect(Collectors.toSet());
+                                System.out.println("[DEBUG] DocIds from request for realisation " + updatedRealisation.getId() + ": " + realisationDto.getDocIds());
+                                for (Integer docId : realisationDto.getDocIds()) {
+                                    if (alreadyAddedDocIds.contains(docId)) {
+                                        System.out.println("[DEBUG] Skipping already added docId: " + docId);
+                                        continue;
+                                    }
+
+                                    Docs doc = docsRepository.findById(docId)
+                                            .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                                    doc.setIsDeleted(false);
+                                    docsRepository.save(doc);
+                                    allDocs.add(doc);
+                                    System.out.println("[DEBUG] Added docId from docIds: " + docId);
+                                }
+
+                                updatedRealisation.setDocs(allDocs);
+                                updatedRealisation = realisationRepository.save(updatedRealisation);
+                            }
+
+                            updatedRealisations.add(updatedRealisation);
+                            realisationsChanged = true;
+                        } else {
+                            System.out.println("Using existing Realisation without changes");
+
+                            if (hasRealisationFiles || hasLots) {
+                                if (hasRealisationFiles) {
+                                    try {
+                                        System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                                " files for existing Realisation ID: " + existingRealisation.getId() +
+                                                " version: " + existingRealisation.getVersion());
+                                        documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), existingRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+                                        existingRealisation = realisationRepository.save(existingRealisation);
+                                        System.out.println("Saved existing Realisation after processing files");
+                                        realisationsChanged = true;
+                                    } catch (IOException e) {
+                                        System.err.println("Error processing existing Realisation files: " + e.getMessage());
+                                        throw new RuntimeException("Error processing existing Realisation files: " + e.getMessage(), e);
+                                    }
+                                }
+
+                                if (hasLots) {
+                                    List<Lot> updatedLots = new ArrayList<>();
+                                    Set<Integer> processedLotIds = new HashSet<>();
+                                    boolean lotChanges = false;
+
+                                    Set<Integer> existingLotIds = existingRealisation.getLots() != null
+                                            ? existingRealisation.getLots().stream()
+                                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                            .map(Lot::getId)
+                                            .collect(Collectors.toSet())
+                                            : new HashSet<>();
+
+                                    for (LotResponse lotDto : realisationDto.getLots()) {
+                                        String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                        System.out.println("Processing lot with description: " + lotHash + ", ID: " + lotDto.getId());
+
+                                        if (lotDto.getId() == null) {
+                                            boolean lotExists = false;
+                                            if (existingRealisation.getLots() != null) {
+                                                for (Lot existingLot : existingRealisation.getLots()) {
+                                                    String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+                                                    if (existingDesc.equals(lotHash) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                                        System.out.println("Found matching active lot in Realisation " + existingRealisation.getId() +
+                                                                ", Lot ID: " + existingLot.getId() +
+                                                                ", Description: " + lotHash +
+                                                                ", Budget: " + existingLot.getBudget() +
+                                                                ", skipping new lot creation");
+                                                        updatedLots.add(existingLot);
+                                                        processedLotIds.add(existingLot.getId());
+                                                        lotExists = true;
+                                                        break;
+                                                    }
+                                                }
+                                            }
+
+                                            if (lotExists) continue;
+
+                                            System.out.println("Creating new lot with description: " + lotHash);
+                                            Lot newLot = new Lot();
+                                            newLot.setDescription(lotDto.getDescription());
+                                            newLot.setBudget(lotDto.getBudget());
+                                            newLot.setVersion(1);
+                                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                                            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                                            newLot.setId(lotId);
+
+                                            Lot savedLot = lotRepository.save(newLot);
+                                            updatedLots.add(savedLot);
+                                            processedLotIds.add(savedLot.getId());
+                                            System.out.println("Created new Lot with ID: " + savedLot.getId() +
+                                                    ", Version: " + savedLot.getVersion() +
+                                                    ", Budget: " + savedLot.getBudget());
+                                            lotChanges = true;
+                                        } else {
+                                            if (processedLotIds.contains(lotDto.getId())) {
+                                                System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
+                                                continue;
+                                            }
+
+                                            Integer lotId = lotDto.getId();
+                                            Integer lotVersion = lotDto.getVersion();
+                                            if (lotVersion == null) {
+                                                lotVersion = lotRepository.findMaxVersionById(lotId);
+                                                if (lotVersion == null) {
+                                                    System.out.println("Lot ID " + lotId + " not found, skipping");
+                                                    continue;
+                                                }
+                                            }
+
+                                            Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
+                                            if (existingLotOpt.isPresent()) {
+                                                Lot existingLot = existingLotOpt.get();
+                                                String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                                String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+                                                BigDecimal requestBudget = lotDto.getBudget();
+                                                BigDecimal existingBudget = existingLot.getBudget();
+
+                                                boolean descChanged = !Objects.equals(requestDesc, existingDesc);
+                                                boolean budgetChanged = (requestBudget != null && existingBudget != null && requestBudget.compareTo(existingBudget) != 0) ||
+                                                        (requestBudget != null && existingBudget == null) ||
+                                                        (requestBudget == null && existingBudget != null);
+
+                                                if (descChanged || budgetChanged) {
+                                                    System.out.println("Changes detected for Lot ID: " + lotId +
+                                                            ", Description changed: " + (descChanged ? requestDesc + " != " + existingDesc : "no") +
+                                                            ", Budget changed: " + (budgetChanged ? requestBudget + " != " + existingBudget : "no"));
+                                                    Lot newLot = new Lot();
+                                                    newLot.setId(existingLot.getId());
+                                                    newLot.setVersion(existingLot.getVersion() + 1);
+                                                    newLot.setDescription(lotDto.getDescription());
+                                                    newLot.setBudget(lotDto.getBudget());
+                                                    Lot savedLot = lotRepository.save(newLot);
+                                                    updatedLots.add(savedLot);
+                                                    processedLotIds.add(savedLot.getId());
+                                                    System.out.println("Created new version of Lot: " + savedLot.getId() +
+                                                            ", Version: " + savedLot.getVersion() +
+                                                            ", Budget: " + savedLot.getBudget());
+                                                    lotChanges = true;
+                                                } else {
+                                                    updatedLots.add(existingLot);
+                                                    processedLotIds.add(existingLot.getId());
+                                                    System.out.println("No changes for Lot ID: " + existingLot.getId() +
+                                                            ", Version: " + existingLot.getVersion() +
+                                                            ", Budget: " + existingLot.getBudget());
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (existingRealisation.getLots() != null) {
+                                        for (Lot existingLot : existingRealisation.getLots()) {
+                                            if (!processedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                                                Lot newLotVersion = new Lot();
+                                                newLotVersion.setId(existingLot.getId());
+                                                newLotVersion.setVersion(existingLot.getVersion() + 1);
+                                                newLotVersion.setDescription(existingLot.getDescription());
+                                                newLotVersion.setBudget(existingLot.getBudget());
+                                                newLotVersion.setIsDeleted(true);
+                                                lotRepository.save(newLotVersion);
+                                                System.out.println("Marked lot " + existingLot.getId() +
+                                                        " as deleted in new version, Budget: " + existingLot.getBudget());
+                                                lotChanges = true;
+                                            }
+                                        }
+                                    }
+
+                                    existingRealisation.setLots(updatedLots);
+                                    BigDecimal userBudget = realisationDto.getBudgetEstime();
+                                    if (userBudget != null) {
+                                        existingRealisation.setBudgetEstime(userBudget);
+                                        System.out.println("Set existing Realisation ID: " + existingRealisation.getId() +
+                                                " budgetEstime from user input: " + userBudget);
+                                    } else {
+                                        BigDecimal calculatedBudget = updatedLots.stream()
+                                                .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                                .map(Lot::getBudget)
+                                                .filter(Objects::nonNull)
+                                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                        existingRealisation.setBudgetEstime(calculatedBudget);
+                                        System.out.println("Set existing Realisation ID: " + existingRealisation.getId() +
+                                                " budgetEstime from lots: " + calculatedBudget);
+                                    }
+                                    existingRealisation = realisationRepository.save(existingRealisation);
+                                    System.out.println("Updated existing Realisation ID: " + existingRealisation.getId() +
+                                            " version: " + existingRealisation.getVersion() +
+                                            ", budgetEstime: " + existingRealisation.getBudgetEstime());
+                                    realisationsChanged = true;
+                                }
+
+                                updatedRealisations.add(existingRealisation);
                             }
                         }
                     } else {
@@ -1312,7 +1441,6 @@ public class PaaServiceImpl implements PaaService {
                         newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
                         newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
                         newRealisationRequest.setDatePrevAp(realisationDto.getDatePrevAp());
-                        newRealisationRequest.setBudgetEstime(realisationDto.getBudgetEstime());
                         newRealisationRequest.setIsPublished(realisationDto.getIsPublished());
                         newRealisationRequest.setPublishedAt(realisationDto.getPublishedAt());
                         newRealisationRequest.setSort(realisationDto.getSort());
@@ -1324,13 +1452,61 @@ public class PaaServiceImpl implements PaaService {
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
 
-                        // Handle new realisation files if provided
+                        List<Lot> updatedLots = new ArrayList<>();
+                        if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
+                            for (LotResponse lotDto : realisationDto.getLots()) {
+                                String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                if (newLotsMap.containsKey(lotHash + "_" + newRealisation.getId())) {
+                                    System.out.println("Using previously created lot for description: " + lotHash +
+                                            " in realisation " + newRealisation.getId());
+                                    updatedLots.add(newLotsMap.get(lotHash + "_" + newRealisation.getId()));
+                                    continue;
+                                }
+
+                                Lot newLot = new Lot();
+                                newLot.setDescription(lotDto.getDescription());
+                                newLot.setBudget(lotDto.getBudget());
+                                newLot.setVersion(1);
+                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                                Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                                newLot.setId(lotId);
+
+                                Lot savedLot = lotRepository.save(newLot);
+                                updatedLots.add(savedLot);
+                                newLotsMap.put(lotHash + "_" + newRealisation.getId(), savedLot);
+                                System.out.println("Created new Lot with ID: " + savedLot.getId() +
+                                        ", Version: " + savedLot.getVersion() +
+                                        ", Budget: " + savedLot.getBudget());
+                            }
+                        }
+
+                        newRealisation.setLots(updatedLots);
+                        BigDecimal userBudget = realisationDto.getBudgetEstime();
+                        if (userBudget != null) {
+                            newRealisation.setBudgetEstime(userBudget);
+                            System.out.println("Set new Realisation ID: " + newRealisation.getId() +
+                                    " budgetEstime from user input: " + userBudget);
+                        } else {
+                            BigDecimal calculatedBudget = updatedLots.stream()
+                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                                    .map(Lot::getBudget)
+                                    .filter(Objects::nonNull)
+                                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            newRealisation.setBudgetEstime(calculatedBudget);
+                            System.out.println("Set new Realisation ID: " + newRealisation.getId() +
+                                    " budgetEstime from lots: " + calculatedBudget);
+                        }
+                        newRealisation = realisationRepository.save(newRealisation);
+                        System.out.println("Set new Realisation ID: " + newRealisation.getId() +
+                                " version: " + newRealisation.getVersion() +
+                                ", budgetEstime: " + newRealisation.getBudgetEstime());
+
                         if (realisationDto.getRealisationFiles() != null && !realisationDto.getRealisationFiles().isEmpty()) {
                             try {
-                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() + " files for new Realisation ID: " + newRealisation.getId() + " version: " + newRealisation.getVersion());
+                                System.out.println("Processing " + realisationDto.getRealisationFiles().size() +
+                                        " files for new Realisation ID: " + newRealisation.getId() +
+                                        " version: " + newRealisation.getVersion());
                                 documentCommuneService.processAndSaveDocuments(realisationDto.getRealisationFiles(), newRealisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
-
-                                // Save the new realisation again after adding documents
                                 newRealisation = realisationRepository.save(newRealisation);
                                 System.out.println("Saved new Realisation after processing files");
                             } catch (IOException e) {
@@ -1349,7 +1525,6 @@ public class PaaServiceImpl implements PaaService {
                 }
             }
 
-            // Check if realisations have changed compared to existing ones
             if (!realisationsChanged && existingPaa.getRealisations() != null) {
                 if (existingPaa.getRealisations().size() != updatedRealisations.size()) {
                     System.out.println("Realisation count changed: " + existingPaa.getRealisations().size() + " -> " + updatedRealisations.size());
@@ -1375,9 +1550,30 @@ public class PaaServiceImpl implements PaaService {
         } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
             System.out.println("Realisations removed from PAA");
             realisationsChanged = true;
+            for (Realisation existingRealisation : existingPaa.getRealisations()) {
+                if (existingRealisation.getLots() != null) {
+                    for (Lot existingLot : existingRealisation.getLots()) {
+                        if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+                            Lot newLotVersion = new Lot();
+                            newLotVersion.setId(existingLot.getId());
+                            newLotVersion.setVersion(existingLot.getVersion() + 1);
+                            newLotVersion.setDescription(existingLot.getDescription());
+                            newLotVersion.setBudget(existingLot.getBudget());
+                            newLotVersion.setIsDeleted(true);
+                            lotRepository.save(newLotVersion);
+                            System.out.println("Marked lot " + existingLot.getId() +
+                                    " as deleted in new version, Budget: " + existingLot.getBudget());
+                        }
+                    }
+                }
+                existingRealisation.setBudgetEstime(BigDecimal.ZERO);
+                realisationRepository.save(existingRealisation);
+                System.out.println("Set Realisation ID: " + existingRealisation.getId() +
+                        " budgetEstime: 0 (realisations removed)");
+            }
         }
 
-        // Process document IDs - improved document handling
+        // Process document IDs
         if (request.getDocIds() != null) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
             Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ? existingPaa.getDocs().stream().filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted())).map(Docs::getId).collect(Collectors.toSet()) : new HashSet<>();
@@ -1389,8 +1585,6 @@ public class PaaServiceImpl implements PaaService {
             if (!requestDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document ID sets are different - marking as changed");
                 documentsChanged = true;
-            } else {
-                System.out.println("Document ID sets match - no document changes detected");
             }
 
             updatedDocs = new ArrayList<>();
@@ -1495,6 +1689,15 @@ public class PaaServiceImpl implements PaaService {
                     });
                 }
 
+                BigDecimal totalBudget = copyForResponse.getRealisations().stream()
+                        .map(Realisation::getBudgetEstime)
+                        .filter(Objects::nonNull)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                copyForResponse.setBudgetEstime(totalBudget);
+                System.out.println("Updated existing PAA ID: " + copyForResponse.getId() +
+                        " version: " + copyForResponse.getVersion() +
+                        ", budgetEstime: " + totalBudget);
+
                 return copyForResponse;
             }
         }
@@ -1508,10 +1711,11 @@ public class PaaServiceImpl implements PaaService {
         newPaa.setRef(tempPaa.getRef());
         newPaa.setNom(tempPaa.getNom());
         newPaa.setAnnee(tempPaa.getAnnee());
-        newPaa.setBudgetEstime(tempPaa.getBudgetEstime());
         newPaa.setProcessInstanceId(tempPaa.getProcessInstanceId());
         newPaa.setStatus(tempPaa.getStatus());
         newPaa.setAc(tempPaa.getAc());
+        newPaa.setModePassation(tempPaa.getModePassation());
+        newPaa.setRemarque(tempPaa.getRemarque());
 
         newPaa.setRealisations(new ArrayList<>());
         newPaa.setDocs(new ArrayList<>());
@@ -1529,7 +1733,9 @@ public class PaaServiceImpl implements PaaService {
                 try {
                     Realisation confirmedRealisation = realisationRepository.findById(new CompositeId(realisation.getId(), realisation.getVersion())).orElse(null);
                     if (confirmedRealisation == null) {
-                        System.err.println("Warning: Realisation " + realisation.getId() + " version " + realisation.getVersion() + " not found in database. Skipping relationship setup.");
+                        System.err.println("Warning: Realisation " + realisation.getId() +
+                                " version " + realisation.getVersion() +
+                                " not found in database. Skipping relationship setup.");
                         continue;
                     }
 
@@ -1539,7 +1745,10 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     if (alreadyAssociated) {
-                        System.out.println("Realisation " + confirmedRealisation.getId() + " version " + confirmedRealisation.getVersion() + " is already associated with PAA " + finalNewPaa.getId() + " version " + finalNewPaa.getVersion() + ". Skipping association.");
+                        System.out.println("Realisation " + confirmedRealisation.getId() +
+                                " version " + confirmedRealisation.getVersion() +
+                                " is already associated with PAA " + finalNewPaa.getId() +
+                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
                         confirmedRealisations.add(confirmedRealisation);
                         continue;
                     }
@@ -1555,7 +1764,9 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     confirmedRealisation = realisationRepository.save(confirmedRealisation);
-                    System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() + " version " + confirmedRealisation.getVersion() + " with new PAA");
+                    System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
+                            " version " + confirmedRealisation.getVersion() +
+                            " with new PAA");
                     confirmedRealisations.add(confirmedRealisation);
                 } catch (Exception e) {
                     System.err.println("Error associating Realisation with PAA: " + e.getMessage());
@@ -1565,30 +1776,36 @@ public class PaaServiceImpl implements PaaService {
 
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
-            if (newPaa.getRealisations() != null) {
-                BigDecimal totalBudget = newPaa.getRealisations().stream()
-                        .map(com.sigmap.common.realisations.Realisation::getBudgetEstime)
-                        .filter(Objects::nonNull)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                newPaa.setBudgetEstime(totalBudget);
-                System.out.println("Updated PAA budgetEstime with sum of realisations: " + totalBudget);
-            }
+            BigDecimal totalBudget = newPaa.getRealisations().stream()
+                    .map(Realisation::getBudgetEstime)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            newPaa.setBudgetEstime(totalBudget);
+            System.out.println("Updated PAA ID: " + newPaa.getId() +
+                    " version: " + newPaa.getVersion() +
+                    ", budgetEstime: " + totalBudget);
+
+            // Validate realisations before saving
+            validateRealisations(newPaa);
+
+            newPaa = repository.save(newPaa);
         } else if (existingPaa.getRealisations() != null) {
-            List<Realisation> confirmedRealisations = new ArrayList<>();
             System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
+            List<Realisation> confirmedRealisations = new ArrayList<>();
             final Paa finalNewPaa = newPaa;
 
-            for (Realisation existingRealization : existingPaa.getRealisations()) {
+            for (Realisation existingRealisation : existingPaa.getRealisations()) {
                 try {
-                    Integer latestVersion = realisationRepository.findMaxVersionById(existingRealization.getId());
+                    Integer latestVersion = realisationRepository.findMaxVersionById(existingRealisation.getId());
                     if (latestVersion == null) {
-                        System.err.println("Warning: No versions found for Realisation ID " + existingRealization.getId());
+                        System.err.println("Warning: No versions found for Realisation ID " + existingRealisation.getId());
                         continue;
                     }
 
-                    Realisation latestRealisation = realisationRepository.findById(new CompositeId(existingRealization.getId(), latestVersion)).orElse(null);
+                    Realisation latestRealisation = realisationRepository.findById(new CompositeId(existingRealisation.getId(), latestVersion)).orElse(null);
                     if (latestRealisation == null) {
-                        System.err.println("Warning: Latest Realisation " + existingRealization.getId() + " version " + latestVersion + " not found in database. Skipping.");
+                        System.err.println("Warning: Latest Realisation " + existingRealisation.getId() +
+                                " version " + latestVersion + " not found in database. Skipping.");
                         continue;
                     }
 
@@ -1598,7 +1815,10 @@ public class PaaServiceImpl implements PaaService {
                     }
 
                     if (alreadyAssociated) {
-                        System.out.println("Realisation " + latestRealisation.getId() + " version " + latestRealisation.getVersion() + " is already associated with PAA " + finalNewPaa.getId() + " version " + finalNewPaa.getVersion() + ". Skipping association.");
+                        System.out.println("Realisation " + latestRealisation.getId() +
+                                " version " + latestRealisation.getVersion() +
+                                " is already associated with PAA " + finalNewPaa.getId() +
+                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
                         confirmedRealisations.add(latestRealisation);
                         continue;
                     }
@@ -1613,8 +1833,13 @@ public class PaaServiceImpl implements PaaService {
                         paaList.add(finalNewPaa);
                     }
 
+                    System.out.println("Set existing Realisation ID: " + latestRealisation.getId() +
+                            " version: " + latestRealisation.getVersion() +
+                            ", budgetEstime: " + latestRealisation.getBudgetEstime());
                     latestRealisation = realisationRepository.save(latestRealisation);
-                    System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() + " version " + latestRealisation.getVersion() + " with new PAA");
+                    System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() +
+                            " version " + latestRealisation.getVersion() +
+                            " with new PAA");
                     confirmedRealisations.add(latestRealisation);
                 } catch (Exception e) {
                     System.err.println("Error handling Realisation relationship: " + e.getMessage());
@@ -1624,6 +1849,19 @@ public class PaaServiceImpl implements PaaService {
 
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
+            BigDecimal totalBudget = newPaa.getRealisations().stream()
+                    .map(Realisation::getBudgetEstime)
+                    .filter(Objects::nonNull)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            newPaa.setBudgetEstime(totalBudget);
+
+            // Validate realisations before saving
+            validateRealisations(newPaa);
+
+            newPaa = repository.save(newPaa);
+            System.out.println("Updated PAA ID: " + newPaa.getId() +
+                    " version: " + newPaa.getVersion() +
+                    ", budgetEstime: " + totalBudget);
         }
 
         // Handle documents
@@ -1760,7 +1998,9 @@ public class PaaServiceImpl implements PaaService {
                                             .anyMatch(r -> r.getId().equals(realisation.getId()) && r.getVersion().equals(realisation.getVersion()));
                                     if (!found) {
                                         doc.getRealisations().add(realisation);
-                                        System.out.println("[DEBUG] Added realisation " + realisation.getId() + " v" + realisation.getVersion() + " to doc " + doc.getId());
+                                        System.out.println("[DEBUG] Added realisation " + realisation.getId() +
+                                                " v" + realisation.getVersion() +
+                                                " to doc " + doc.getId());
                                     }
                                 }
 
@@ -1772,7 +2012,8 @@ public class PaaServiceImpl implements PaaService {
 
                         realisation.setDocs(finalDocList);
                         realisationRepository.save(realisation);
-                        System.out.println("[DEBUG-FINAL] Realisation " + realisation.getId() + " final docs: " + finalDocList.stream().map(Docs::getId).toList());
+                        System.out.println("[DEBUG-FINAL] Realisation " + realisation.getId() +
+                                " final docs: " + finalDocList.stream().map(Docs::getId).toList());
                     }
                 }
             }
@@ -1807,6 +2048,15 @@ public class PaaServiceImpl implements PaaService {
                 }
             });
         }
+
+        BigDecimal finalBudget = copyForReturn.getRealisations().stream()
+                .map(Realisation::getBudgetEstime)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        copyForReturn.setBudgetEstime(finalBudget);
+        System.out.println("Final response PAA ID: " + copyForReturn.getId() +
+                " version: " + copyForReturn.getVersion() +
+                ", budgetEstime: " + finalBudget);
 
         return copyForReturn;
     }
@@ -2468,6 +2718,7 @@ public class PaaServiceImpl implements PaaService {
     }
     @Override
     @Transactional
+
     public Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException {
         String currentYear = String.valueOf(LocalDate.now().getYear());
         log.info("Creating PAA for year: {}", currentYear);
@@ -2520,19 +2771,27 @@ public class PaaServiceImpl implements PaaService {
         paa.setRemarque(request.getRemarque());
         paa.setAnnee(currentYear);
         setRef(paa);
-        paa.setBudgetEstime(request.getBudgetEstime());
+        paa.setBudgetEstime(request.getBudgetEstime()); // Note: This can be null if not provided
+        log.info("a ce niveau ca va 1 ");
         paa.setStatus(ProcessStatus.BROUILLON);
+        log.info("a ce niveau ca va 2 ");
+        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
+        if (userAcs == null || userAcs.isEmpty()) {
+            throw new AcNotFound("No AC IDs found for current user", List.of());
+        }
+
         paa.setAc(ac);
+
+        // Initialize collections
         paa.setRealisations(new ArrayList<>());
         paa.setDocs(new ArrayList<>());
-
-        // Step 7: Validate annee
-        if (!currentYear.equals(paa.getAnnee())) {
+        log.info("a ce niveau ca va 3 ");
+        if (paa.getAnnee() == null || !paa.getAnnee().equals(currentYear)) {
             throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + paa.getAnnee());
         }
-        log.info("Annee validation passed: {}", paa.getAnnee());
+        log.info("Annee test check passed: {}", paa.getAnnee());
 
-        // Step 8: Save PAA initially
+        // Save PAA initially
         Paa savedPaa = repository.save(paa);
 
         // Step 9: Handle documents for PAA
@@ -2584,7 +2843,7 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                 realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+                realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Can be null
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
@@ -2630,6 +2889,7 @@ public class PaaServiceImpl implements PaaService {
                         lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lotRequest.getDescription());
+                        lot.setBudget(lotRequest.getBudget()); // Can be null
                         try {
                             lot = lotRepository.save(lot);
                             log.info("Saved lot with ID: {}, Description: {}", lot.getId(), lot.getDescription());
@@ -2650,8 +2910,14 @@ public class PaaServiceImpl implements PaaService {
             }
             realisationRepository.saveAll(realisationsToSave);
         }
+
+        // Validate realisations before final save
+        validateRealisations(savedPaa);
+
+        log.info("a ce niveau ca va 10 ");
+        // Handle null budgets in the reduction
         BigDecimal budgetEstime = savedPaa.getRealisations().stream()
-                .map(Realisation::getBudgetEstime)
+                .map(realisation -> realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         savedPaa.setBudgetEstime(budgetEstime);
 
@@ -2665,6 +2931,62 @@ public class PaaServiceImpl implements PaaService {
                 .and(PaaSpecifications.isPublished())
                 .and(PaaSpecifications.isNotDeleted());
         return repository.findAll(finalSpec, pageable);
+    }
+
+    /**
+     * Validates that all lots within a realisation have consistent budgets (all null or all non-null).
+     */
+    private void validateLotBudgetConsistency(Realisation realisation) {
+        List<Lot> nonDeletedLots = realisation.getLots().stream()
+                .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                .collect(Collectors.toList());
+
+        if (!nonDeletedLots.isEmpty()) {
+            boolean hasBudget = nonDeletedLots.get(0).getBudget() != null;
+            boolean allConsistent = nonDeletedLots.stream()
+                    .allMatch(lot -> (lot.getBudget() != null) == hasBudget);
+
+            if (!allConsistent) {
+                throw new LotBudgetConsistencyException(
+                        "Inconsistent budgets in lots for Realisation ID " + realisation.getId() +
+                                ": all lots must have either non-null or null budgets.");
+            }
+        }
+    }
+
+    /**
+     * Validates that the sum of non-deleted lot budgets does not exceed the realisation's budgetEstime.
+     */
+    private void validateLotBudgetSum(Realisation realisation) {
+        BigDecimal budgetEstime = realisation.getBudgetEstime();
+        if (budgetEstime == null) {
+            return; // No validation needed if budgetEstime is null
+        }
+
+        BigDecimal totalLotBudget = realisation.getLots().stream()
+                .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()) && lot.getBudget() != null)
+                .map(Lot::getBudget)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (totalLotBudget.compareTo(budgetEstime) > 0) {
+            throw new LotBudgetExceedsRealisationException(
+                    "Sum of lot budgets (" + totalLotBudget + ") exceeds Realisation ID " + realisation.getId() +
+                            " budgetEstime (" + budgetEstime + ").");
+        }
+    }
+
+    /**
+     * Validates all realisations associated with a PAA.
+     */
+    private void validateRealisations(Paa paa) {
+        if (paa.getRealisations() != null) {
+            for (Realisation realisation : paa.getRealisations()) {
+                if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+                    validateLotBudgetConsistency(realisation);
+                    validateLotBudgetSum(realisation);
+                }
+            }
+        }
     }
 
 

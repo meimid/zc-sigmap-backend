@@ -1,5 +1,6 @@
 package com.sigmap.common.realisations.request;
 
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.RefParam;
@@ -27,6 +28,7 @@ public class RealisationRequest {
     private LocalDate datePrevDp;
     private LocalDate datePrevAp;
     private BigDecimal budgetEstime;
+    private RealisationStatus statut;
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;

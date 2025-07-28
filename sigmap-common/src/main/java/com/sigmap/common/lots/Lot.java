@@ -11,6 +11,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.util.Set;
 
 @Entity
@@ -30,6 +31,9 @@ public class Lot extends BaseEntity{
 
     @Column(name = "description", length = 100)
     private String description;
+
+    @Column(name = "budget", precision = 10, scale = 2)
+    private BigDecimal budget;
 
     @ManyToMany(mappedBy = "lots")
     @EqualsAndHashCode.Exclude
