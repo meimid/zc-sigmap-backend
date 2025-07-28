@@ -230,7 +230,7 @@ public class ComServiceImpl implements ComService {
     for (Integer docId : docIdsToDelete) {
       Optional<Docs> docToDelete = docsRepository.findById(docId);
       if (docToDelete.isPresent()) {
-        docsRepository.softDeleteDoc(docToDelete.get().getId());
+        docsRepository.softDelete(docToDelete.get().getId());
 
         log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
 
