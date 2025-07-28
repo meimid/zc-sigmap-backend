@@ -238,8 +238,7 @@ public class AcController {
      * Return a list of ac based on the given specifica tion and pageable.
      *
      * @param query the query to use
-     * @param list the pageable to use
-     * @return a page of ac
+     * @return a list of ac
      */
     @GetMapping("/is_tutel")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
@@ -260,5 +259,16 @@ public class AcController {
         List<AcResponseDto> acResponses = acs.stream().map(AcMapper.INSTANCE::mapToDto).collect(Collectors.toList());
 
         return ResponseEntity.ok(acResponses);
+    }
+
+    @GetMapping("/com/{comId}")
+    public ResponseEntity<List<AcResponseDto>> getAcsByComId(@PathVariable Integer comId) {
+        List<Ac> acs = acService.findAllByComId(comId);
+
+        List<AcResponseDto> response = acs.stream()
+                .map(AcMapper.INSTANCE::mapToDto) // Using the mapper for conversion
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
     }
 }

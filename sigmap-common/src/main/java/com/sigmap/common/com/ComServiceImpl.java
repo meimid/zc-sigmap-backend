@@ -1,6 +1,8 @@
 package com.sigmap.common.com;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
@@ -14,9 +16,12 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedSocieteAddress;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.*;
 
+import com.sigmap.common.societe_address.SocieteAddress;
+import com.sigmap.common.societe_address.SocieteAddressSpecifications;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
@@ -50,7 +55,6 @@ public class ComServiceImpl implements ComService {
   private RefParamRepository refParamRepository;
     @Autowired
     private UserAcRepository userAcRepository;
-
   public ComServiceImpl(
       ComRepository repository, RefParamService refParamService, AcRepository acRepository) {
     this.repository = repository;
@@ -240,6 +244,14 @@ public class ComServiceImpl implements ComService {
 
   @Override
   public void delete(Integer id) throws ComHasAssociatedAc {
+    Specification<Ac> societeAddressSpec = Specification.where(
+            AcSpecifications.deleted(false)
+                    .and(AcSpecifications.hasCom(id))
+    );
+    boolean hasAssociatedSocieteAddress = acRepository.count(societeAddressSpec) > 0;
+    if (hasAssociatedSocieteAddress) {
+      throw new ComHasAssociatedAc("", id);
+    }
 
     repository.softDelete(id);
   }

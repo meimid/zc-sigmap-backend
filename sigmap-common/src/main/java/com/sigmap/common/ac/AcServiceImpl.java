@@ -131,7 +131,7 @@ public class AcServiceImpl implements AcService{
             throw new AcNomAlreadyExist("", request.getNom());
         }
         Ac ac = AcMapper.INSTANCE.map(request);
-        if(request.getTutelId()!=null ) {
+        if(request.getTutelId()!=null&&!request.isIstTutel() ) {
             Ac tutel= findById(request.getTutelId());
             if(tutel.isIstTutel()){
             ac.setTutel(tutel);
@@ -300,5 +300,12 @@ public class AcServiceImpl implements AcService{
     public List<Ac> findAllTutel(Specification<Ac> ac) {
         Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.isItTutel(true));
         return repository.findAll(specification);
+    }
+
+    @Override
+    public List<Ac> findAllByComId(Integer comId) {
+        comService.delete(comId);
+        Specification<Ac> spec = AcSpecifications.findByComId(comId).and(AcSpecifications.deleted(false));
+        return repository.findAll(spec);
     }
 }
