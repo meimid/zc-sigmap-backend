@@ -1372,8 +1372,8 @@ public class PpmController {
     public ResponseEntity<PpmResponseDto> createPpmPerAc(
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
-            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, IOException {
-        logger.info("Creating PAA per AC with relationships using PaaRequestGlobal");
+            throws AcNotFound, IOException {
+        logger.info("Creating PPM per AC with relationships using PpmWithLotsRequestDto");
 
         // Process lots from JSON string if provided
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
