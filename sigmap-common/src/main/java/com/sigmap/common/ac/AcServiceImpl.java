@@ -288,6 +288,11 @@ public class AcServiceImpl implements AcService{
             throw new AcHasAssociatedPaa("" , id);
         }
 
+        boolean hasAssociatedAc = repository.hasAssociatedAc(id);
+        if (hasAssociatedAc) {
+            throw new AcHasAssociatedAc("" , id);
+        }
+
         repository.softDelete(id);
     }
 
