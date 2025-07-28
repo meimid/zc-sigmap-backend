@@ -5,6 +5,8 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.List;
+
 public class AcSpecifications {
   public static Specification<Ac> search(String search) {
 
@@ -84,6 +86,10 @@ public class AcSpecifications {
   public static Specification<Ac> hasTutleId(Integer id) {
     return (root, query, cb) -> cb.equal(root.get("tutel").get("id"), id);
   }
+  public static Specification<List<Ac>> acsListUnderCom(Integer comId) {
+    return (root, query, cb) -> cb.equal(root.get("com").get("id"), comId);
+  }
+
 
   /** isItTutel. */
   public static Specification<Ac> isItTutel(boolean istTutel) {
