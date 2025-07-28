@@ -17,6 +17,8 @@ import com.sigmap.common.paas.mappers.PaaDetailedMapper;
 import com.sigmap.common.paas.response.PaaResponseWithRealisations;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
@@ -646,7 +648,7 @@ public class PaaFlowableService {
      * @throws IOException if an error occurs during file processing
      */
     @Transactional
-    public TaskDTO validateTask(String taskId, ValidationRequest request) throws  DocNotFound, AcNotFound, IOException, PaaNotFound {
+    public TaskDTO validateTask(String taskId, ValidationRequest request) throws DocNotFound, AcNotFound, IOException, PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken)) {
             TaskDTO errorResponse = new TaskDTO();

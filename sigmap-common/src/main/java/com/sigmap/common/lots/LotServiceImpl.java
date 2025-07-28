@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 @Service
@@ -39,7 +40,6 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public Page<Lot> findAll(Specification<Lot> spec, Pageable pageable) {
-
         return repository.findAll(spec, pageable);
     }
 
@@ -80,14 +80,12 @@ public class LotServiceImpl implements LotService {
         return repository.save(lot);
     }
 
-
     @Override
     public Lot create(LotRequest request) throws RealisationNotFoundException {
         Lot lot = new Lot();
 
         Integer id = request.getId();
         if (id == null) {
-//            Integer maxId = repository.findMaxId();
             Integer maxId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             id = (maxId != null) ? maxId + 1 : 1;
             System.out.println("Generated Lot ID: " + id);
@@ -99,6 +97,7 @@ public class LotServiceImpl implements LotService {
         lot.setId(id);
         lot.setVersion(version);
         lot.setDescription(request.getDescription());
+        lot.setBudget(request.getBudget());
 
         Lot savedLot = repository.save(lot);
 
@@ -106,7 +105,7 @@ public class LotServiceImpl implements LotService {
             Set<Realisation> realisations = new HashSet<>();
             for (CompositeId realisationId : request.getRealisationIds()) {
                 Realisation realisation = realisationRepository.findById(realisationId)
-                        .orElseThrow(() -> new RealisationNotFoundException("",realisationId.getId(),realisationId.getVersion()));
+                        .orElseThrow(() -> new RealisationNotFoundException("", realisationId.getId(), realisationId.getVersion()));
 
                 if (realisation.getLots() == null) {
                     realisation.setLots(new ArrayList<>());
@@ -127,11 +126,12 @@ public class LotServiceImpl implements LotService {
     public Lot update(Integer lotId, Integer lotVer, LotRequest request) throws UpdateDeletedLot, LotNotFound {
         CompositeId compositeId = new CompositeId(lotId, lotVer);
         Lot existingLot = repository.findById(compositeId)
-                .orElseThrow(() -> new LotNotFound("" , List.of(lotId) , List.of(lotVer) ));
+                .orElseThrow(() -> new LotNotFound("", List.of(lotId), List.of(lotVer)));
         if (Boolean.TRUE.equals(existingLot.getIsDeleted())) {
-            throw new UpdateDeletedLot("" , List.of(lotId) , List.of(lotVer));
+            throw new UpdateDeletedLot("", List.of(lotId), List.of(lotVer));
         }
         existingLot.setDescription(request.getDescription());
+        existingLot.setBudget(request.getBudget());
 
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             Set<Realisation> realisations = new HashSet<>();
@@ -150,9 +150,8 @@ public class LotServiceImpl implements LotService {
 
     @Override
     public void delete(Integer lotsId, Integer lotsVer) {
-       repository.softDelete(lotsId, lotsVer);
+        repository.softDelete(lotsId, lotsVer);
     }
-
 
     @Transactional
     public Lot updateWithVersioning(Integer lotId, Integer lotVer, LotBaseRequestDto request) {
@@ -170,17 +169,24 @@ public class LotServiceImpl implements LotService {
         System.out.println("Request data: " + request);
         System.out.println("Current description: " + existingLot.getDescription());
         System.out.println("New description: " + request.getDescription());
+        System.out.println("Current budget: " + existingLot.getBudget());
+        System.out.println("New budget: " + request.getBudget());
 
         // Create a temporary lot to check for changes
         Lot tempLot = new Lot();
         String requestDescription = request.getDescription() != null ? request.getDescription() : existingLot.getDescription();
+        BigDecimal requestBudget = request.getBudget() != null ? request.getBudget() : existingLot.getBudget();
         tempLot.setDescription(requestDescription);
+        tempLot.setBudget(requestBudget);
 
-        // Check if there are actual changes to the description using the extracted method
-        boolean hasChanges = !areDescriptionsIdentical(existingLot.getDescription(), tempLot.getDescription());
+        // Check if there are actual changes to the description or budget using the extracted method
+        boolean hasChanges = !areDescriptionsIdentical(existingLot.getDescription(), tempLot.getDescription()) ||
+                !areBudgetsIdentical(existingLot.getBudget(), tempLot.getBudget());
 
         System.out.println("Existing description: '" + existingLot.getDescription() + "'");
         System.out.println("New description: '" + tempLot.getDescription() + "'");
+        System.out.println("Existing budget: '" + existingLot.getBudget() + "'");
+        System.out.println("New budget: '" + tempLot.getBudget() + "'");
         System.out.println("Has changes: " + hasChanges);
 
         // Handle realisations separately if provided
@@ -190,19 +196,20 @@ public class LotServiceImpl implements LotService {
             System.out.println("Updated realisations relationship without incrementing version");
         }
 
-        // If no changes to description, return the existing lot with possibly updated realisations
+        // If no changes to description or budget, return the existing lot with possibly updated realisations
         if (!hasChanges) {
-            System.out.println("No changes detected in description, returning existing version: " + lotVer);
+            System.out.println("No changes detected in description or budget, returning existing version: " + lotVer);
             return existingLot;
         }
 
-        // If there are changes to description, create a new version
-        System.out.println("Changes detected in description, creating new version: " + (lotVer + 1));
+        // If there are changes to description or budget, create a new version
+        System.out.println("Changes detected in description or budget, creating new version: " + (lotVer + 1));
 
         Lot newLot = new Lot();
         newLot.setId(lotId);
         newLot.setVersion(lotVer + 1);
         newLot.setDescription(tempLot.getDescription());
+        newLot.setBudget(tempLot.getBudget());
 
         // Copy relationships
         if (existingLot.getRealisations() != null) {
@@ -261,6 +268,29 @@ public class LotServiceImpl implements LotService {
     }
 
     /**
+     * Compares two budget values to check if they are exactly identical.
+     * This method handles null values and uses BigDecimal comparison.
+     *
+     * @param budget1 The first budget value
+     * @param budget2 The second budget value
+     * @return true if the budgets are exactly identical (including null), false otherwise
+     */
+    private boolean areBudgetsIdentical(BigDecimal budget1, BigDecimal budget2) {
+        // If both are null, they're identical
+        if (budget1 == null && budget2 == null) {
+            return true;
+        }
+
+        // If only one is null, they're different
+        if (budget1 == null || budget2 == null) {
+            return false;
+        }
+
+        // Compare using BigDecimal's compareTo for precise equality
+        return budget1.compareTo(budget2) == 0;
+    }
+
+    /**
      * Updates a lot with versioning by automatically finding and using the latest version.
      * <p>
      * This method finds the latest version of the Lot with the given ID and then
@@ -268,7 +298,7 @@ public class LotServiceImpl implements LotService {
      *
      * @param lotId the ID of the Lot to update
      * @param request the request containing the updated data
-     * @return the newly created version of the Lot if description changes, otherwise the existing lot
+     * @return the newly created version of the Lot if description or budget changes, otherwise the existing lot
      * @throws RuntimeException if no versions of the Lot exist or if all versions are deleted
      */
     @Transactional
@@ -285,5 +315,4 @@ public class LotServiceImpl implements LotService {
         // Call the version-specific method with the latest version
         return updateWithVersioning(lotId, latestVersion, request);
     }
-
 }
