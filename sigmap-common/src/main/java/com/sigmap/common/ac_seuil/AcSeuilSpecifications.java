@@ -38,7 +38,7 @@ public class AcSeuilSpecifications {
             if (acId == null) {
                 return null; // Return null to ignore this filter if acId is null
             }
-            return criteriaBuilder.equal(root.get("id").get("ac").get("acId"), acId);
+            return criteriaBuilder.equal(root.get("id").get("ac").get("id"), acId);
         };
     }
 
@@ -47,7 +47,7 @@ public class AcSeuilSpecifications {
             if (typeMarcherId == null) {
                 return null;
             }
-            return criteriaBuilder.equal(root.get("id").get("typeMarcher").get("refParamId"), typeMarcherId);
+            return criteriaBuilder.equal(root.get("id").get("typeMarcher").get("id"), typeMarcherId);
         };
     }
 
@@ -56,7 +56,7 @@ public class AcSeuilSpecifications {
             if (modePassationId == null) {
                 return null;
             }
-            return criteriaBuilder.equal(root.get("id").get("modePassation").get("modePassationId"), modePassationId);
+            return criteriaBuilder.equal(root.get("id").get("modePassation").get("id"), modePassationId);
         };
     }
 
