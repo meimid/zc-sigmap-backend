@@ -113,9 +113,9 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-       /*  else if(request.getTutelId()==null ) {
+         else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
              throw new AcAttributeRequire("","tutel");
-        }*/
+        }
          else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }
@@ -133,7 +133,12 @@ public class AcServiceImpl implements AcService{
         Ac ac = AcMapper.INSTANCE.map(request);
         if(request.getTutelId()!=null ) {
             Ac tutel= findById(request.getTutelId());
+            if(tutel.isIstTutel()){
             ac.setTutel(tutel);
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
         }
 
         if(request.getAdresse()!=null) {
@@ -172,9 +177,9 @@ public class AcServiceImpl implements AcService{
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-        /*else if(request.getTutelId()==null){
+        else if(request.getTutelId()==null&&!request.isIstTutel()){
             throw new AcAttributeRequire("","tutel");
-        }*/
+        }
         else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
         }
@@ -193,7 +198,12 @@ public class AcServiceImpl implements AcService{
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
         if(request.getTutelId()!=null ) {
             Ac tutel= findById(request.getTutelId());
-            ac.setTutel(tutel);
+            if(tutel.isIstTutel()){
+                ac.setTutel(tutel);
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
         }
 
         if(request.getAdresse()!=null&& Objects.equals(ac.getAdresse().getId(), request.getAdresse().getId())) {
