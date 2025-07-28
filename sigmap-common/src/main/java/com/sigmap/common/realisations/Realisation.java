@@ -89,7 +89,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "statut", length = 50)
-    private RealisationStatus statut;
+    private RealisationStatus statut= RealisationStatus.NON_PUBLIE;
 
     @ManyToMany
     @JoinTable(
