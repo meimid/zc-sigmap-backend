@@ -1,8 +1,6 @@
 package com.sigmap.common.com;
-import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;

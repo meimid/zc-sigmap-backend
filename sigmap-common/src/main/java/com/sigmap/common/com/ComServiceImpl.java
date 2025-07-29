@@ -24,23 +24,16 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
-import com.sigmap.common.ref_params.exceptions.RefParamHasAssociatedSocieteAddress;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.SocieteAddressSpecifications;
-import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -50,9 +43,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -76,8 +66,6 @@ public class ComServiceImpl implements ComService {
   private final AcService acService;
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
-  @PersistenceContext
-  EntityManager entityManager;
   public ComServiceImpl(
           ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
     this.repository = repository;

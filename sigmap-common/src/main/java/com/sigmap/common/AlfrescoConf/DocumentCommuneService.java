@@ -2,7 +2,6 @@ package com.sigmap.common.AlfrescoConf;
 
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.com.Com;
-import com.sigmap.common.com.ComService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
@@ -16,18 +15,15 @@ import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
 
@@ -331,7 +327,7 @@ public class DocumentCommuneService {
 
     }
 
-    public  List<Docs> processAndSaveDocumentsForCom(List<MultipartFile> files, Com entity, String path) throws IOException {
+    public  void processAndSaveDocumentsForCom(List<MultipartFile> files, Com entity, String path) throws IOException {
 
         String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
         String baseFolderPath = String.format("%s/%d",path  , entity.getId());
@@ -362,7 +358,6 @@ public class DocumentCommuneService {
                 throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
             }
         }
-        return entity.getDocs();
     }
 
     @Transactional
