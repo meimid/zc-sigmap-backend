@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AcSeuilService {
@@ -19,7 +20,7 @@ public interface AcSeuilService {
 
     Page<AcSeuil> getAllAcSeuils(Specification<AcSeuil> spec, Pageable pageable);
 
-    Optional<AcSeuil>  findById(Integer acId, Integer typeMarcherId, Integer modePassationId) throws AcSeuilNotFound, ModeDePassationSelectionNotFound, RefParamNotFound, AcNotFound;
+    Page<AcSeuil> findById(Integer acId, Pageable pageable) throws AcSeuilNotFound;
 
     Optional<AcSeuil> findOne(Specification<AcSeuil> specification);
 }

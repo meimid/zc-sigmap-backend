@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -47,16 +48,20 @@ public class AcSeuilController {
         return ResponseEntity.ok(acSeuilPage);
     }
 
-    @GetMapping("/{acId}/{typeMarcherId}/{modePassationId}")
-    public ResponseEntity<AcSeuil> findAcSeuilById(
-            @PathVariable("acId") Integer acId,
-            @PathVariable("typeMarcherId") Integer typeMarcherId,
-            @PathVariable("modePassationId") Integer modePassationId)
-            throws AcSeuilNotFound, AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound {
-        log.debug("Fetching AcSeuil by composite ID: acId={}, typeMarcherId={}, modePassationId={}",
-                acId, typeMarcherId, modePassationId);
-        Optional<AcSeuil> acSeuilOptional = acSeuilService.findById(acId, typeMarcherId, modePassationId);
-        return acSeuilOptional.map(ResponseEntity::ok)
-                .orElseThrow(() -> new AcSeuilNotFound("AcSeuil not found with acId{], typeMarcherId={}, modePassationId={}", acId, typeMarcherId, modePassationId));
+    @GetMapping("/{acId}")
+    public ResponseEntity<Page<AcSeuil>> findAcSeuilById(@PathVariable("acId") Integer acId, Pageable pageable)
+            throws AcSeuilNotFound{
+        try {
+            if (acId == null ) {
+                throw new IllegalArgumentException("you must have acId");
+            }
+            log.debug("Fetching AcSeuil by ID: acId={} : ", acId);
+            Page<AcSeuil> acSeuilList = acSeuilService.findById(acId,pageable);
+            return ResponseEntity.ok(acSeuilList);
+        } catch (IllegalArgumentException e) {
+            log.error("Error fetching AcSeuil by ID: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+
     }
 }
