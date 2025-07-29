@@ -51,9 +51,5 @@ public interface DocsRepository extends JpaRepository<Docs, Integer> , JpaSpecif
             @Param("ppmVersion") Integer ppmVersion,
             @Param("processVerbalId") String processVerbalId);
 
-    @Modifying
-    @Transactional
-    @Query("update Docs d set d.isDeleted = true, d.deletedAt = now(), d.deletedBy = ?#{principal?.subject} where d.id = ?1")
-    void softDeleteDoc(Integer id);
 
 }

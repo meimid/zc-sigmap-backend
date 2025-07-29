@@ -215,6 +215,10 @@ public class AcServiceImpl implements AcService{
             Adresse adresse=adressService.update(request.getAdresse());
             ac.setAdresse(adresse);
         }
+        else if (ac.getAdresse()==null){
+            Adresse theAdress=adressService.create(request.getAdresse());
+            ac.setAdresse(theAdress);
+        }
         if(request.getComId()!=null) {
             Com com=comService.findById(request.getComId());
             ac.setCom(com);

@@ -1,6 +1,8 @@
 package com.sigmap.common.docs;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.entity.BaseEntity;
 
 import com.sigmap.common.paas.Paa;
