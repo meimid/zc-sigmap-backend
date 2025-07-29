@@ -6,6 +6,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcAlreadyHaveCom;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
@@ -139,8 +140,14 @@ public class ComServiceImpl implements ComService {
       com.setComType(null);
     }
     if(request.getTutelId()!=null ) {
-      Ac tutel= acService.findById(request.getTutelId());
-      com.setTutel(tutel);
+      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+      }
+      else {
+        Ac tutel = acService.findById(request.getTutelId());
+        com.setTutel(tutel);
+      }
     }
 
     if(request.getTheAdresse()!=null) {
@@ -192,6 +199,16 @@ public class ComServiceImpl implements ComService {
     RefParam comType = refParamService.findById(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);
 
+    if(request.getTutelId()!=null ) {
+      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+      }
+      else {
+        Ac tutel = acService.findById(request.getTutelId());
+        com.setTutel(tutel);
+      }
+    }
     if (comType.getId() != null) {
       com.setComType(comType);
     } else {

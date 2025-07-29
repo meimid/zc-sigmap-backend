@@ -653,4 +653,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcAlreadyHaveCom.class)
+    public ResponseEntity<ErrorResponse> AcAlreadyHaveComException(AcAlreadyHaveCom ex) {
+        String message = messageSource.getMessage("ac.hasAlreadyHaveCom",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
 }

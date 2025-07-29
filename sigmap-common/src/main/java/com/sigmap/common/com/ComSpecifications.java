@@ -3,6 +3,7 @@ package com.sigmap.common.com;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Specification for managing {@link Com}. */
@@ -97,5 +98,11 @@ public class ComSpecifications {
 
   public static Specification<Com> hasComTypeId(Integer comTypeId) {
     return (root, query, cb) -> cb.equal(root.get("comType").get("id"), comTypeId);
+  }
+
+  public static Specification<Com> hasTute(Integer tutelId) {
+    return (root, query, criteriaBuilder) -> {
+      return criteriaBuilder.equal(root.get("tutel").get("id"), tutelId);
+    };
   }
 }
