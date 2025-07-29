@@ -10,6 +10,7 @@ import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComQuery;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.com.response.ComResponseDto;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -251,5 +252,27 @@ public class ComController {
         }
         response.setUsers(members);
 
+    }
+    @GetMapping("/by_own_tutel/{tutelId}")
+    public ResponseEntity<ComResponse> getCommissionDeTutelle(@PathVariable Integer tutelId) throws ComNotFound, AcNotFound {
+
+            Com com = comService.getCommissionDeTutelle(tutelId);
+            ComResponse response = ComMapper.INSTANCE.map(com);
+            return ResponseEntity.ok(response);
+
+    }
+
+    @GetMapping("/private_com_of_ac/{acId}")
+    public ResponseEntity<ComResponse> getCommissionPrivee(@PathVariable Integer acId) throws ComNotFound, AcNotFound {
+            Com com = comService.getCommissionPrivee(acId);
+            ComResponse response = ComMapper.INSTANCE.map(com);
+            return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/all_coms_of_tutels")
+    public ResponseEntity<List<ComResponseDto>> getAllCommissionsDeTutelles() {
+        List<Com> coms = comService.getAllCommissionsDeTutelles();
+        List  <ComResponseDto> response = coms.stream().map(ComMapper.INSTANCE::mapToDto).toList();
+        return ResponseEntity.ok(response);
     }
 }

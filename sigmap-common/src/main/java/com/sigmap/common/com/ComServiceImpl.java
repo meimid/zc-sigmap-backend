@@ -386,4 +386,34 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     return coms;
   }
 
+  @Override
+  public Com getCommissionDeTutelle(Integer tutelId) throws ComNotFound, AcNotFound {
+    Ac tutel=acService.findById(tutelId);
+    Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false));
+    Page<Com> page = findAll(specCom, Pageable.ofSize(1));
+    if (page.hasContent() &&tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
+      return page.getContent().get(0);
+    } else {
+      throw new ComNotFound("Com not found for tutel ID: " + tutelId, null);
+    }
+  }
+
+  @Override
+  public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
+    Ac tutel=acService.findById(acId);
+    Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false));
+    Page<Com> page = findAll(specCom, Pageable.ofSize(1));
+    if (page.hasContent() &&!tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
+      return page.getContent().get(0);
+    } else {
+      throw new ComNotFound("Com not found for tutel ID:",null);
+    }
+  }
+
+  @Override
+  public List<Com> getAllCommissionsDeTutelles() {
+    Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
+    return repository.findAll(spec);
+  }
+
 }

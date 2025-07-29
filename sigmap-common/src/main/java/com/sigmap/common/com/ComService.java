@@ -102,4 +102,9 @@ public interface ComService {
     List<Com> getComsWithTypeCPMP() throws RefParamNotFound;
 
     List<Com> getComsWithTypeCNCMP() throws RefParamNotFound;
+
+    Com getCommissionDeTutelle(Integer acId) throws ComNotFound,AcNotFound;
+
+    Com getCommissionPrivee(Integer acId) throws ComNotFound,AcNotFound;
+    List<Com>getAllCommissionsDeTutelles();
 }
