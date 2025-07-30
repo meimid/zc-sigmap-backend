@@ -1,8 +1,6 @@
 package com.sigmap.common.com;
-import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
@@ -97,11 +95,16 @@ public interface ComService {
      *
      * @param id the id of the Com to delete
      */
-    void delete(Integer id) throws ComHasAssociatedAc;
+    void delete(Integer id) throws ComHasAssociatedAc, ComNotFound;
 
     public UserCom makeUserResponsable (String userId,Integer ComId);
 
     List<Com> getComsWithTypeCPMP() throws RefParamNotFound;
 
     List<Com> getComsWithTypeCNCMP() throws RefParamNotFound;
+
+    Com getCommissionDeTutelle(Integer acId) throws ComNotFound,AcNotFound;
+
+    Com getCommissionPrivee(Integer acId) throws ComNotFound,AcNotFound;
+    List<Com>getAllCommissionsDeTutelles();
 }

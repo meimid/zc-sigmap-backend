@@ -1,9 +1,12 @@
 package com.sigmap.common.com;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcAlreadyHaveCom;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
@@ -17,6 +20,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -26,14 +30,11 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -66,8 +67,6 @@ public class ComServiceImpl implements ComService {
   private final AcService acService;
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
-@Autowired
-  EntityManager entityManager;
   public ComServiceImpl(
           ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
     this.repository = repository;
@@ -141,8 +140,14 @@ public class ComServiceImpl implements ComService {
       com.setComType(null);
     }
     if(request.getTutelId()!=null ) {
-      Ac tutel= acService.findById(request.getTutelId());
-      com.setTutel(tutel);
+      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+      }
+      else {
+        Ac tutel = acService.findById(request.getTutelId());
+        com.setTutel(tutel);
+      }
     }
 
     if(request.getTheAdresse()!=null) {
@@ -187,13 +192,23 @@ public class ComServiceImpl implements ComService {
   }
 
   @Override
-  @Transactional
+ // @Transactional
   public Com update(Integer id, ComRequest request)
           throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
     RefParam comType = refParamService.findById(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);
 
+    if(request.getTutelId()!=null ) {
+      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+      }
+      else {
+        Ac tutel = acService.findById(request.getTutelId());
+        com.setTutel(tutel);
+      }
+    }
     if (comType.getId() != null) {
       com.setComType(comType);
     } else {
@@ -202,6 +217,10 @@ public class ComServiceImpl implements ComService {
     if(request.getAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
       Adresse theAdress=adressService.update(request.getTheAdresse());
       com.setTheAdresse(theAdress);
+    }
+    else if (com.getAdresse()==null){
+      Adresse theAddress=adressService.create(request.getTheAdresse());
+      com.setTheAdresse(theAddress);
     }
 
     List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
@@ -226,24 +245,13 @@ public class ComServiceImpl implements ComService {
     List<Integer> docIdsToDelete = existingDocIds.stream()
             .filter(docId -> !requestedDocIds.contains(docId))
             .toList();
+List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).stream().filter(doc->!doc.getIsDeleted()).map(Docs::getId).toList();
 
-    for (Integer docId : docIdsToDelete) {
-      Optional<Docs> docToDelete = docsRepository.findById(docId);
-      if (docToDelete.isPresent()) {
-        docsRepository.softDelete(docToDelete.get().getId());
-
-        log.info("Soft deleted document with ID: {} (isDeleted set to true)", docId);
-
-      } else {
-        log.warn("Document with ID {} not found for soft deletion", docId);
-        throw new DocNotFound("Document not found for deletion", List.of(docId));
-      }
+    documentCommuneService.deleteDocuments(documentsIdsToDelete);
+      if (request.getFiles() != null) {
+        documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), com, Constants.PATH_ENTREPOT_GED_COM);
     }
-    log.debug("Requested document IDs: {}", requestedDocIds);
-    if (request.getFiles() != null) {
-      documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), com, Constants.PATH_ENTREPOT_GED_COM);
-    }
-
+     save(com);
 
     // 1. Récupérer les anciens UserCom liés à ce COM
     List<UserCom> existingUserComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
@@ -298,15 +306,14 @@ public class ComServiceImpl implements ComService {
       }
 
     }
-    repository.save(com);
 
-    entityManager.flush();
-    entityManager.clear();
-    Com updatedCom = findById(id);
-    List<Docs> docs=updatedCom.getDocs().stream().filter(doc->!doc.getIsDeleted()).collect(Collectors.toList());
-    updatedCom.setDocs(docs);
-    return  updatedCom;
+
+    return  findById(id);
   }
+
+
+
+
 
   private static int getSizeList(List<Integer> listIds) throws AcNotFound, DuplicateAcIdsException {
     int size = listIds.size();
@@ -330,7 +337,16 @@ public class ComServiceImpl implements ComService {
   }
 
   @Override
-  public void delete(Integer id) throws ComHasAssociatedAc {
+  public void delete(Integer id) throws ComHasAssociatedAc, ComNotFound {
+    findById(id);
+    Specification<Ac> societeAddressSpec = Specification.where(
+            AcSpecifications.deleted(false)
+                    .and(AcSpecifications.hasCom(id))
+    );
+    boolean hasAssociatedSocieteAddress = acRepository.count(societeAddressSpec) > 0;
+    if (hasAssociatedSocieteAddress) {
+      throw new ComHasAssociatedAc("", id);
+    }
 
     repository.softDelete(id);
   }
@@ -368,6 +384,36 @@ public class ComServiceImpl implements ComService {
     List<Com> coms = repository.findAll(spec);
     logger.info("Found {} Com entities with comType CNCMP", coms.size());
     return coms;
+  }
+
+  @Override
+  public Com getCommissionDeTutelle(Integer tutelId) throws ComNotFound, AcNotFound {
+    Ac tutel=acService.findById(tutelId);
+    Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false));
+    Page<Com> page = findAll(specCom, Pageable.ofSize(1));
+    if (page.hasContent() &&tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
+      return page.getContent().get(0);
+    } else {
+      throw new ComNotFound("Com not found for tutel ID: " + tutelId, null);
+    }
+  }
+
+  @Override
+  public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
+    Ac tutel=acService.findById(acId);
+    Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false));
+    Page<Com> page = findAll(specCom, Pageable.ofSize(1));
+    if (page.hasContent() &&!tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
+      return page.getContent().get(0);
+    } else {
+      throw new ComNotFound("Com not found for tutel ID:",null);
+    }
+  }
+
+  @Override
+  public List<Com> getAllCommissionsDeTutelles() {
+    Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
+    return repository.findAll(spec);
   }
 
 }

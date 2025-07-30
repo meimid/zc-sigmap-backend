@@ -52,10 +52,7 @@ public class Com extends BaseEntity {
   @JoinColumn(name = "adresse_id")
   private Adresse theAdresse;
 
-  @OneToMany(
-          cascade = CascadeType.ALL,
-          fetch = FetchType.EAGER
-  )
+  @ManyToMany
   @JoinTable(
           name = "com_doc",
           joinColumns = @JoinColumn(name = "com_id"),

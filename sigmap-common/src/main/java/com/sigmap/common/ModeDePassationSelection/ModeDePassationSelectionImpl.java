@@ -62,7 +62,7 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
 
     @Override
     public Optional<ModeDePassationSelection> findDeletedById(Integer id) {
-        Specification<ModeDePassationSelection> specification = ModeDePassationSelectionSpecifications.deleted(true);
+        Specification<ModeDePassationSelection> specification = ModeDePassationSelectionSpecifications.deleted(true).and(ModeDePassationSelectionSpecifications.id(id));
         return findOne(specification);
 
     }

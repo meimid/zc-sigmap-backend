@@ -1,9 +1,14 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.util.List;
 
 public class AcSpecifications {
   public static Specification<Ac> search(String search) {
@@ -84,6 +89,32 @@ public class AcSpecifications {
   public static Specification<Ac> hasTutleId(Integer id) {
     return (root, query, cb) -> cb.equal(root.get("tutel").get("id"), id);
   }
+
+  public static Specification<Ac> findByComId(Integer comId) {
+
+    return (root, query, cb) -> cb.equal(root.get("com").get("id"), comId);
+  }
+  public static Specification<Ac> hasCom(Integer comId) {
+    return (root, query, criteriaBuilder) -> {
+
+      // 1. Create an explicit INNER JOIN from Ac to Com.
+      // This ensures we only get Ac entities that have an associated Com.
+      Join<Ac, Com> comJoin = root.join("com", JoinType.INNER);
+
+      // 2. Create a predicate to match the Com ID on the joined table.
+      Predicate comIdPredicate = criteriaBuilder.equal(comJoin.get("id"), comId);
+
+      // 3. Create a predicate to ensure the joined Com entity is not deleted.
+      Predicate comNotDeletedPredicate = criteriaBuilder.isFalse(comJoin.get("isDeleted"));
+
+      // 4. Create a predicate to ensure the root Ac entity is not deleted.
+      Predicate acNotDeletedPredicate = criteriaBuilder.isFalse(root.get("isDeleted"));
+
+      // 5. Combine all conditions.
+      return criteriaBuilder.and(comIdPredicate, comNotDeletedPredicate, acNotDeletedPredicate);
+    };
+  }
+
 
   /** isItTutel. */
   public static Specification<Ac> isItTutel(boolean istTutel) {

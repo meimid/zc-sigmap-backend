@@ -98,4 +98,6 @@ public interface AcService {
     void delete(Integer id) throws AcHasAssociatedAgpm;
 
     List<Ac> findAllTutel(Specification<Ac> ac);
+
+    public List<Ac> findAllByComId(Integer comId) throws ComNotFound;
 }

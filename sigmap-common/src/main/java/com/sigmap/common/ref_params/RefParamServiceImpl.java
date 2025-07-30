@@ -3,6 +3,9 @@ package com.sigmap.common.ref_params;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.adresse.AdressSpecifications;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.AdresseRespository;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmSpecifications;
@@ -59,6 +62,8 @@ public class RefParamServiceImpl implements RefParamService {
     private final SocieteAddressRepository societeAddressRepository;
     private final ComRepository comRepository;
     private final AcRepository acRepository;
+    private final  AdresseRespository  adresseRespository;
+
 
     /**
      * Constructor.
@@ -77,8 +82,8 @@ public class RefParamServiceImpl implements RefParamService {
                                PaaRepository paaRepository,
                                SocieteAddressRepository societeAddressRepository,
                                ComRepository comRepository,
-                               AcRepository acRepository
-                               ) {
+                               AcRepository acRepository, AdresseRespository adresseRespository
+    ) {
         this.repository = repository;
         this.refTypeService = refTypeService;
         this.agpmRepository = agpmRepository;
@@ -90,6 +95,7 @@ public class RefParamServiceImpl implements RefParamService {
         this.societeAddressRepository = societeAddressRepository;
         this.comRepository = comRepository;
         this.acRepository = acRepository;
+        this.adresseRespository = adresseRespository;
     }
 
 
@@ -282,6 +288,14 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAssociatedDynaDoc = repository.hasAssociatedDynaDoc(id);
         if (hasAssociatedDynaDoc) {
             throw new HasAssociatedDynaDoc(id);
+        }
+        Specification<Adresse> adresseSpec = Specification.where(
+                AdressSpecifications.deleted(false)
+                        .and(AdressSpecifications.hasPaysId(id))
+        );
+        boolean hasAddresse = adresseRespository.count(adresseSpec) > 0;
+        if (hasAddresse) {
+            throw new HasAssociatedAdress("", id);
         }
 
         repository.softDelete(id);

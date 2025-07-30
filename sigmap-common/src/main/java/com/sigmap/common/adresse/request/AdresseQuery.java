@@ -39,13 +39,13 @@ public class AdresseQuery {
             spec = spec.and(AdressSpecifications.adresse(adresse));
         }
         if (compAdresse != null && !compAdresse.isBlank()) {
-            spec = spec.and(AdressSpecifications.adresse(compAdresse));
+            spec = spec.and(AdressSpecifications.compAdresse(compAdresse));
         }
         if (codePostal != null && !codePostal.isBlank()) {
-            spec = spec.and(AdressSpecifications.adresse(codePostal));
+            spec = spec.and(AdressSpecifications.codePostal(codePostal));
         }
         if (ville != null && !ville.isBlank()) {
-            spec = spec.and(AdressSpecifications.adresse(ville));
+            spec = spec.and(AdressSpecifications.ville(ville));
         }
         return spec;
     }

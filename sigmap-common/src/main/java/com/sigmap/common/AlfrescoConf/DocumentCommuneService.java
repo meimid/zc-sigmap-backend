@@ -2,11 +2,11 @@ package com.sigmap.common.AlfrescoConf;
 
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.com.Com;
-import com.sigmap.common.com.ComService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.Request.DocumentHolder;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
@@ -14,18 +14,16 @@ import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import jakarta.transaction.Transactional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
-import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
 
@@ -358,6 +356,44 @@ public class DocumentCommuneService {
                 log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
                 // Re-throw as IOException for upstream handling
                 throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    @Transactional
+    public void deleteDocuments(List<Integer> documentsIdsToDelete) throws DocNotFound {
+        for (Integer docId : documentsIdsToDelete) {
+            log.info("Processing document ID: {}", docId);
+            try {
+                // Check if document exists first
+                Optional<Docs> docToDelete = docsRepository.findById(docId);
+                if (docToDelete.isEmpty()) {
+                    log.warn("Document with ID {} not found for soft deletion", docId);
+                    throw new DocNotFound("Document not found for deletion", List.of(docId));
+                }
+
+                Docs doc = docToDelete.get();
+                if (doc.getIsDeleted()) {
+                    log.info("Document with ID {} is already soft-deleted", docId);
+                    continue; // Skip already deleted documents
+                }
+
+                log.info("Attempting soft delete for document ID: {}", docId);
+                docsRepository.softDelete(docId);
+                Docs deletedDocs = docsRepository.findById(docId)
+                        .orElseThrow(() -> new DocNotFound("Document not found after deletion", List.of(docId)));
+                log.info("Deleted document: {}", deletedDocs);
+
+                // Optional: Verify the soft delete was successful
+                if (!deletedDocs.getIsDeleted()) {
+                    log.error("Soft delete failed for document ID: {}", docId);
+                    throw new IllegalStateException("Soft delete failed for document ID: " + docId);
+                }
+            } catch (DocNotFound e) {
+                throw e; // Re-throw DocNotFound for specific handling
+            } catch (Exception e) {
+                log.error("Error processing document ID {}: {}", docId, e.getMessage(), e);
+                throw new RuntimeException("Failed to process soft deletion for document ID: " + docId, e);
             }
         }
     }

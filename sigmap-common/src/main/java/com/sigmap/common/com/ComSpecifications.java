@@ -1,8 +1,11 @@
 package com.sigmap.common.com;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 /** Specification for managing {@link Com}. */
@@ -98,4 +101,29 @@ public class ComSpecifications {
   public static Specification<Com> hasComTypeId(Integer comTypeId) {
     return (root, query, cb) -> cb.equal(root.get("comType").get("id"), comTypeId);
   }
+
+  public static Specification<Com> hasTute(Integer tutelId) {
+    return (root, query, criteriaBuilder) -> {
+      return criteriaBuilder.equal(root.get("tutel").get("id"), tutelId);
+    };
+  }
+  public static Specification<Com> findActiveComsWithActiveTutelAuthority() {
+    return (root, query, criteriaBuilder) -> {
+      // Create an explicit INNER JOIN from Com to its tutel (Ac).
+      Join<Com, Ac> tutelJoin = root.join("tutel", JoinType.INNER);
+
+      // Condition 1: The Com entity itself must not be deleted.
+      Predicate comNotDeleted = criteriaBuilder.isFalse(root.get("isDeleted"));
+
+      // Condition 2: The associated tutel (Ac) must not be deleted.
+      Predicate tutelNotDeleted = criteriaBuilder.isFalse(tutelJoin.get("isDeleted"));
+
+      // Condition 3: The associated tutel (Ac) must be a tutel authority.
+      Predicate isTutelAuthority = criteriaBuilder.isTrue(tutelJoin.get("istTutel"));
+
+      // Combine all conditions with AND.
+      return criteriaBuilder.and(comNotDeleted, tutelNotDeleted, isTutelAuthority);
+    };
+  }
+
 }
