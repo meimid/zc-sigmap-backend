@@ -334,6 +334,6 @@ public class AcServiceImpl implements AcService{
         if(com!=null){
             ac.setCom(com);
         }
-        return ac;
+        return save(ac);
     }
 }
