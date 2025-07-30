@@ -326,4 +326,14 @@ public class AcServiceImpl implements AcService{
         Specification<Ac> spec = AcSpecifications.findByComId(comId).and(AcSpecifications.deleted(false));
         return repository.findAll(spec);
     }
+
+    @Override
+    public Ac updateComeId(Integer id, Integer comeId) throws ComNotFound, AcNotFound {
+        Ac ac=findById(id);
+        Com com=comService.findById(comeId);
+        if(com!=null){
+            ac.setCom(com);
+        }
+        return ac;
+    }
 }

@@ -100,4 +100,6 @@ public interface AcService {
     List<Ac> findAllTutel(Specification<Ac> ac);
 
     List<Ac> findAllByComId(Integer comId) throws ComNotFound;
+
+    Ac updateComeId(Integer id,Integer comeId) throws ComNotFound, AcNotFound;
 }
