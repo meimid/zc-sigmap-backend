@@ -99,5 +99,5 @@ public interface AcService {
 
     List<Ac> findAllTutel(Specification<Ac> ac);
 
-    public List<Ac> findAllByComId(Integer comId) throws ComNotFound;
+    List<Ac> findAllByComId(Integer comId) throws ComNotFound;
 }

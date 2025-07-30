@@ -214,11 +214,11 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
-    if(request.getAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
+    if(request.getTheAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
       Adresse theAdress=adressService.update(request.getTheAdresse());
       com.setTheAdresse(theAdress);
     }
-    else if (com.getAdresse()==null){
+    else if (com.getTheAdresse()==null){
       Adresse theAddress=adressService.create(request.getTheAdresse());
       com.setTheAdresse(theAddress);
     }
@@ -387,11 +387,18 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
   }
 
   @Override
-  public Com getCommissionDeTutelle(Integer tutelId) throws ComNotFound, AcNotFound {
-    Ac tutel=acService.findById(tutelId);
+  public Com getCommissionDeTutelle(Integer acId) throws ComNotFound, AcNotFound {
+    Integer tutelId;
+    Ac ac=acService.findById(acId);
+    if(ac.isIstTutel()){
+      tutelId=ac.getId();
+    }
+    else{
+      tutelId=ac.getTutel().getId();
+    }
     Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false));
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
-    if (page.hasContent() &&tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
+    if (page.hasContent()) {
       return page.getContent().get(0);
     } else {
       throw new ComNotFound("Com not found for tutel ID: " + tutelId, null);
