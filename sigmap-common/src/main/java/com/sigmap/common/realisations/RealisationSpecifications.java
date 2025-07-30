@@ -178,6 +178,19 @@ public class RealisationSpecifications {
     }
 
     /**
+     * Check if refParam is used as imputationBudgetaire.
+     */
+    public static Specification<Realisation> hasImputationBudgetaireId(Integer imputationBudgetaireId) {
+        return (root, query, cb) -> {
+            Join<Realisation, RefParam> imputationBudgetaireJoin = root.join("imputationBudgetaire", JoinType.LEFT);
+            return cb.and(
+                    cb.equal(imputationBudgetaireJoin.get("id"), imputationBudgetaireId),
+                    cb.equal(imputationBudgetaireJoin.get("isDeleted"), false)
+            );
+        };
+    }
+
+    /**
      * Combined specification that checks all possible uses of refParam in Realisation.
      */
     public static Specification<Realisation> hasRefParamId(Integer refParamId) {
@@ -186,6 +199,7 @@ public class RealisationSpecifications {
                 .or(hasSourceFinancementId(refParamId))
                 .or(hasMonaisId(refParamId))
                 .or(hasTypeMarcherId(refParamId))
-                .or(hasModeSelectionId(refParamId));
+                .or(hasModeSelectionId(refParamId))
+                .or(hasImputationBudgetaireId(refParamId));
     }
 }

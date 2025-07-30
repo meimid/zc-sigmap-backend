@@ -170,6 +170,11 @@ public class RealisationServiceImpl implements RealisationService {
             realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
         }
+        if (request.getImputationBudgetaire() != null) {
+            log.info("Fetching ImputationBudgetaire with ID: {}", request.getImputationBudgetaire().getId());
+            realisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
+        }
         // Similar logging for monais, typeMarcher, modeSelection
 
         // Fetch associated PAAs if needed
@@ -253,6 +258,10 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getSourceFinancement() != null) {
             existingRealisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+        }
+        if (request.getImputationBudgetaire() != null) {
+            existingRealisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
         if (request.getMonais() != null) {
             existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
@@ -523,6 +532,15 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     }
     tempRealisation.setSourceFinancement(sourceFinancementParam);
 
+    RefParam imputationBudgetaireParam = null;
+    if (request.getImputationBudgetaire() != null) {
+        imputationBudgetaireParam = refParamRepository.findById(request.getImputationBudgetaire().getId())
+                .orElse(existingRealisation.getImputationBudgetaire());
+    } else {
+        imputationBudgetaireParam = existingRealisation.getImputationBudgetaire();
+    }
+    tempRealisation.setImputationBudgetaire(imputationBudgetaireParam);
+
     RefParam monaisParam = null;
     if (request.getMonais() != null) {
         monaisParam = refParamRepository.findById(request.getMonais().getId())
@@ -749,6 +767,7 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     newRealisation.setService(tempRealisation.getService());
     newRealisation.setDirection(tempRealisation.getDirection());
     newRealisation.setSourceFinancement(tempRealisation.getSourceFinancement());
+    newRealisation.setImputationBudgetaire(tempRealisation.getImputationBudgetaire());
     newRealisation.setMonais(tempRealisation.getMonais());
     newRealisation.setTypeMarcher(tempRealisation.getTypeMarcher());
     newRealisation.setModeSelection(tempRealisation.getModeSelection());
@@ -1093,6 +1112,14 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
+        // Check imputationBudgetaire
+        if (tempRealisation.getImputationBudgetaire() != existingRealisation.getImputationBudgetaire() &&
+                (tempRealisation.getImputationBudgetaire() == null || existingRealisation.getImputationBudgetaire() == null ||
+                        !tempRealisation.getImputationBudgetaire().getId().equals(existingRealisation.getImputationBudgetaire().getId()))) {
+            System.out.println("Change detected in imputationBudgetaire");
+            return true;
+        }
+
         // Check monais
         if (tempRealisation.getMonais() != existingRealisation.getMonais() &&
                 (tempRealisation.getMonais() == null || existingRealisation.getMonais() == null ||
@@ -1177,6 +1204,7 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
         target.setService(source.getService());
         target.setDirection(source.getDirection());
         target.setSourceFinancement(source.getSourceFinancement());
+        target.setImputationBudgetaire(source.getImputationBudgetaire());
         target.setMonais(source.getMonais());
         target.setTypeMarcher(source.getTypeMarcher());
         target.setModeSelection(source.getModeSelection());

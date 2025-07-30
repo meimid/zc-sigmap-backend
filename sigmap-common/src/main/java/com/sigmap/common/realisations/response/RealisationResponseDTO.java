@@ -21,6 +21,7 @@ public class RealisationResponseDTO {
     private RefParamResponseDto service;
     private RefParamResponseDto direction;
     private RefParamResponseDto sourceFinancement;
+    private RefParamResponseDto imputationBudgetaire;
     private RefParamResponseDto monais;
     private RefParamResponseDto typeMarcher;
     private RefParamResponseDto modeSelection;
