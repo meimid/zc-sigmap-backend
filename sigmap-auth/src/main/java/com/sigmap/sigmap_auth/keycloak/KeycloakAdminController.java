@@ -49,10 +49,6 @@ public class KeycloakAdminController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
-    private String generateTempPassword() {
-        return UUID.randomUUID().toString().substring(0, 8);
-    }
-
     /**
      * Récupérer la liste de tous les utilisateurs.
      *

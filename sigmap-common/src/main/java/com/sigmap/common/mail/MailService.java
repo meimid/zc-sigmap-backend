@@ -63,7 +63,7 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
-            log.info("....................... {} ", encodedStringLogo);
+            //log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
             String htmlContent = templateEngine.process("email/activationEmail", context);
@@ -72,7 +72,7 @@ public class MailService {
             // Send email
             javaMailSender.send(mimeMessage);
 
-            log.info("Email sent successfully --------- {} ", user.getEmail());
+            log.info("Email sent successfully to : {} ", user.getEmail());
 
         } catch (Exception e ) {
             throw new MessagingException("Failed to send email",e);
