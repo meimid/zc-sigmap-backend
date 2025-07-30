@@ -16,6 +16,7 @@ public class UserDTO {
     private String address;
     private String mobile;
     private String fixe;
+    private String GenericPassword;
     private boolean emailVerified;
     private List<UserComDTO> coms;
     private List<UserAcDTO> acs;

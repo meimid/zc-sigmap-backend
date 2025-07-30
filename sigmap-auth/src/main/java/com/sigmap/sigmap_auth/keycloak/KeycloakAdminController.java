@@ -6,6 +6,8 @@ import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.sigmap_auth.service.MailService;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 
 /**
@@ -27,6 +30,8 @@ public class KeycloakAdminController {
     // Service pour interagir avec l’API Admin de Keycloak
     @Autowired
     private KeycloakAdminService keycloakAdminService;
+    @Autowired
+    private MailService mailService;
 
     /**
      * Créer un nouvel utilisateur dans Keycloak.
@@ -36,9 +41,16 @@ public class KeycloakAdminController {
      */
     @PostMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) throws MessagingException {
+
         UserDTO createdUser = keycloakAdminService.createUser(userDTO);
+        mailService.sendActivationEmail(userDTO, createdUser.getGenericPassword());
+        createdUser.setGenericPassword(null);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+    }
+
+    private String generateTempPassword() {
+        return UUID.randomUUID().toString().substring(0, 8);
     }
 
     /**

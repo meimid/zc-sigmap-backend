@@ -27,6 +27,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -57,6 +58,7 @@ public class KeycloakAdminService {
 
     @Autowired
     private RefParamRepository refParamRepository;
+
 
     public List<UserDTO> getAllUsers() {
         String accessToken = tokenService.getAccessToken();
@@ -263,8 +265,8 @@ public class KeycloakAdminService {
 
         String userId = extractUserIdFromLocation(location);
 
-        updatePassword(userId, userDTO.getPassword());
-
+        //set update password for admin methode that return a generic password
+        String genericPassword = updatePasswordForAdmin(userId);
 
         if (!CollectionUtils.isEmpty(userDTO.getRoles())) {
             assignRolesToUser(userId, userDTO.getRoles());
@@ -273,7 +275,12 @@ public class KeycloakAdminService {
         linkUserToEntities(userId, userDTO.getAcIds(),userDTO.getAcPiloteId(), true);
         linkUserToEntities(userId, userDTO.getComIds(), null,false);
 
-        return getUserById(userId);
+
+        // Create a new UserDTO and set the generated password
+        UserDTO userDto = getUserById(userId);
+        userDto.setGenericPassword(genericPassword);
+
+        return userDto;
 
     }
     public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus {
@@ -430,6 +437,36 @@ public class KeycloakAdminService {
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(passwordPayload, headers);
 
         restTemplate.exchange(url, HttpMethod.PUT, request, Void.class);
+    }
+
+    public String updatePasswordForAdmin(String userId) {
+        String token = tokenService.getAccessToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> passwordPayload = new HashMap<>();
+        passwordPayload.put("type", "password");
+        passwordPayload.put("temporary", true);
+        passwordPayload.put("value", generateTemporaryPassword());
+
+        String url = String.format("%s/admin/realms/%s/users/%s/reset-password", keycloakBaseUrl, realm, userId);
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(passwordPayload, headers);
+
+        restTemplate.exchange(url, HttpMethod.PUT, request, Void.class);
+        return passwordPayload.get("value").toString();
+    }
+
+    public String generateTemporaryPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
+
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+
+        return password.toString();
     }
 
     private void updateUserRolesSmart(String userId, List<String> targetRoleNames) {

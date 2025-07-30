@@ -43,6 +43,26 @@ spring:
           principal-claim-name: preferred_username
           issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
 
+  #smtp mail configuration:
+  mail:
+    test-connection: true
+    host: smtp.mail.ovh.net
+    port: 465
+    username: dev.sigmap@siga-bc.com
+    password: N!772263572861ub
+    properties:
+      auth: true
+      mail:
+        debug: false
+        transport:
+          protocol: smtp
+        smtp:
+          ssl:
+            enable: true
+    default-encoding: utf-8
+    base-url: http://127.0.0.1:8081/
+    from: dev.sigmap@siga-bc.com
+
 springdoc:
   default-support-form-data: true
   default-flat-param-object: true
