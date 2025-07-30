@@ -214,11 +214,11 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
-    if(request.getAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
+    if(request.getTheAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
       Adresse theAdress=adressService.update(request.getTheAdresse());
       com.setTheAdresse(theAdress);
     }
-    else if (com.getAdresse()==null){
+    else if (com.getTheAdresse()==null){
       Adresse theAddress=adressService.create(request.getTheAdresse());
       com.setTheAdresse(theAddress);
     }

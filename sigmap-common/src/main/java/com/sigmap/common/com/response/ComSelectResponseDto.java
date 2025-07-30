@@ -6,4 +6,5 @@ import lombok.Data;
 public class ComSelectResponseDto {
     private Integer id;
     private String nom;
+
 }

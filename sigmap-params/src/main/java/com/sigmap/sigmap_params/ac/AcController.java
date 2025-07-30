@@ -2,6 +2,8 @@ package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.ac.response.AcResponseDto;
+import com.sigmap.common.ac.response.AcSelectResponseDto;
+import com.sigmap.common.ac.response.AcWebsiteResponse;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -270,5 +272,11 @@ public class AcController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/list")
+    public ResponseEntity <List<AcSelectResponseDto>> findAllAsList()  {
+        List<Ac> acs = acService.findAll();
+        List<AcSelectResponseDto> responses= AcMapper.INSTANCE.mapToSelectDto(acs);
+        return ResponseEntity.ok(responses);
     }
 }
