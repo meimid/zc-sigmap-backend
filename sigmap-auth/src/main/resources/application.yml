@@ -60,8 +60,8 @@ spring:
           ssl:
             enable: true
     default-encoding: utf-8
-    base-url: http://127.0.0.1:8081/
-    from: dev.sigmap@siga-bc.com
+    base-url: ${BASE_URL_MAIL:http://localhost:4200/}
+    from: ${FROM_MAIL:dev.sigmap@siga-bc.com}
 
 springdoc:
   default-support-form-data: true

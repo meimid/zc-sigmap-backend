@@ -6,7 +6,7 @@ import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.sigmap_auth.service.MailService;
+import com.sigmap.common.mail.MailService;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;

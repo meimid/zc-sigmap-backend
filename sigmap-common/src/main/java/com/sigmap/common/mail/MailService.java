@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_auth.service;
+package com.sigmap.common.mail;
 
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import jakarta.mail.MessagingException;
@@ -35,7 +35,7 @@ public class MailService {
     private String getBaseUrl;
 
 
-    @Async
+   // @Async
     public void sendActivationEmail(UserResquestDTO user, String GenericPassword) throws MessagingException {
 
         try {
@@ -63,7 +63,7 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
-            //log.info("....................... {} ", encodedStringLogo);
+            log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
             String htmlContent = templateEngine.process("email/activationEmail", context);
@@ -71,6 +71,8 @@ public class MailService {
 
             // Send email
             javaMailSender.send(mimeMessage);
+
+            log.info("Email sent successfully --------- {} ", user.getEmail());
 
         } catch (Exception e ) {
             throw new MessagingException("Failed to send email",e);
