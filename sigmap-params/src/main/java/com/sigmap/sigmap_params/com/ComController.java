@@ -270,9 +270,9 @@ public class ComController {
             return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/all_coms_of_tutels")
-    public ResponseEntity<List<ComSelectResponseDto>> getAllCommissionsDeTutelles() {
-        List<Com> coms = comService.getAllCommissionsDeTutelles();
+    @GetMapping("/all_coms_of_tutels/{acId}")
+    public ResponseEntity<List<ComSelectResponseDto>> getAllCommissionsDeTutelles(@PathVariable Integer acId) {
+        List<Com> coms = comService.getAllCommissionsDeTutelles(acId);
         List  <ComSelectResponseDto> response = coms.stream().map(ComMapper.INSTANCE::mapToSelectDto).toList();
         return ResponseEntity.ok(response);
     }
