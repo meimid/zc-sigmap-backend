@@ -46,10 +46,10 @@ spring:
   #smtp mail configuration:
   mail:
     test-connection: true
-    host: smtp.gmail.com
-    port: 587
-    username: sigatest18@gmail.com
-    password: rgnoxlzlyaygxqri
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:sigatest18@gmail.com}
+    password: ${SMTP_PASSWORD:rgnoxlzlyaygxqri}
     properties:
       auth: true
       mail:
@@ -60,8 +60,8 @@ spring:
           starttls:
             enable: true
     default-encoding: utf-8
-    base-url: ${BASE_URL_MAIL:http://localhost:4200/}
-    from: ${FROM_MAIL:sigatest18@gmail.com}
+    base-url: ${SMTP_BASE_URL_MAIL:http://localhost:4200/}
+    from: ${SMTP_FROM_MAIL:sigatest18@gmail.com}
 
 springdoc:
   default-support-form-data: true
