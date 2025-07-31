@@ -431,9 +431,9 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
   }
 
   @Override
-  public List<Com> getAllCommissionsDeTutelles() {
+  public List<Com> getAllCommissionsDeTutelles(Integer acId) {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
-    List<Com> coms= repository.findAll(spec);
+    List<Com> coms= repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
     coms.forEach(com -> com.setTypeCommission("Autre Commission"));
     return coms;
   }

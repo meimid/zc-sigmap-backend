@@ -106,5 +106,5 @@ public interface ComService {
     Com getCommissionDeTutelle(Integer acId) throws ComNotFound,AcNotFound;
 
     Com getCommissionPrivee(Integer acId) throws ComNotFound,AcNotFound;
-    List<Com>getAllCommissionsDeTutelles();
+    List<Com>getAllCommissionsDeTutelles(Integer acId);
 }
