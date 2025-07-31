@@ -18,6 +18,7 @@ public class RealisationResponse {
     private RefParam service;
     private RefParam direction;
     private RefParam sourceFinancement;
+    private RefParam imputationBudgetaire;
     private RefParam monais;
     private RefParam typeMarcher;
     private RefParam modeSelection;

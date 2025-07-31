@@ -63,6 +63,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "mode_selection_id")
     private RefParam modeSelection;
 
+    @ManyToOne
+    @JoinColumn(name = "imputation_budgetaire_id")
+    private RefParam imputationBudgetaire;
+
     @Column(name = "date_prev_lps")
     private LocalDate datePrevLps;
 
@@ -77,6 +81,8 @@ public class Realisation extends BaseEntity implements DocumentHolder {
 
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
+
+
 
     @Column(name = "is_published")
     private Boolean isPublished;

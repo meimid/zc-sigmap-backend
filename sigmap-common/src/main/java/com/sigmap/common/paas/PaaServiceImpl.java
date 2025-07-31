@@ -587,6 +587,7 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setMonais(realisationRequest.getMonais());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModeSelection(realisationRequest.getModeSelection());
@@ -2188,6 +2189,7 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
                 sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
                 sb.append("sourceFin:").append(realisation.getSourceFinancement() != null ? realisation.getSourceFinancement() : "").append(",");
+                sb.append("imputationBudgetaire:").append(realisation.getImputationBudgetaire() != null && realisation.getImputationBudgetaire().getId() != null ? realisation.getImputationBudgetaire().getId() : "").append(",");
                 sb.append("monais:").append(realisation.getMonais() != null ? realisation.getMonais() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
                 sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
@@ -2449,6 +2451,11 @@ public class PaaServiceImpl implements PaaService {
         }
 
         if (dto.getBudgetEstime() != null && !dto.getBudgetEstime().equals(existingRealisation.getBudgetEstime())) {
+            return true;
+        }
+
+        // Check imputationBudgetaire
+        if (dto.getImputationBudgetaire() != null && (existingRealisation.getImputationBudgetaire() == null || !dto.getImputationBudgetaire().getId().equals(existingRealisation.getImputationBudgetaire().getId()))) {
             return true;
         }
 
@@ -2719,7 +2726,7 @@ public class PaaServiceImpl implements PaaService {
     @Override
     @Transactional
 
-    public Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException {
+    public Paa createPaaPerAc(PaaRequestGlobal request) throws  AcNotFound, PaaCreationLimitExceededException, IOException {
         String currentYear = String.valueOf(LocalDate.now().getYear());
         log.info("Creating PAA for year: {}", currentYear);
 
@@ -2836,6 +2843,7 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setService(realisationRequest.getService());
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                 realisation.setMonais(realisationRequest.getMonais());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModeSelection(realisationRequest.getModeSelection());
