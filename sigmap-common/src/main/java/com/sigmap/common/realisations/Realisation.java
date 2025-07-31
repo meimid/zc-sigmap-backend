@@ -8,6 +8,7 @@ import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
@@ -54,6 +55,11 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @ManyToOne
     @JoinColumn(name = "monais_id")
     private RefParam monais;
+
+    @ManyToOne
+    @JoinColumn(name = "monnaie_id")
+    private Monnaie monnaie;
+
 
     @ManyToOne
     @JoinColumn(name = "type_marcher_id")

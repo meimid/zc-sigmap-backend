@@ -1,6 +1,7 @@
 package com.sigmap.common.realisations.response;
 
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -19,7 +20,8 @@ public class RealisationResponse {
     private RefParam direction;
     private RefParam sourceFinancement;
     private RefParam imputationBudgetaire;
-    private RefParam monais;
+//    private RefParam monais;
+    private Monnaie monnaie;
     private RefParam typeMarcher;
     private RefParam modeSelection;
     private LocalDate datePrevLps;

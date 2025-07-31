@@ -12,6 +12,8 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.monnaie.Monnaie;
+import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.Ppm;
@@ -48,6 +50,7 @@ public class RealisationServiceImpl implements RealisationService {
     private final PpmRepository ppmRepository;
     private final LotRepository lotRepository;
     private final RefParamRepository refParamRepository;
+    private final MonnaieRepository monnaieRepository;
 
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
@@ -57,7 +60,7 @@ public class RealisationServiceImpl implements RealisationService {
 
 
 
-    public RealisationServiceImpl(RealisationRepository repository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
+    public RealisationServiceImpl(RealisationRepository repository,MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
@@ -67,6 +70,7 @@ public class RealisationServiceImpl implements RealisationService {
         this.documentCommuneService = documentCommuneService;
         this.docsRepository = docsRepository;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.monnaieRepository = monnaieRepository;
     }
 
     @Override
@@ -263,8 +267,12 @@ public class RealisationServiceImpl implements RealisationService {
             existingRealisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
-        if (request.getMonais() != null) {
-            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+//        if (request.getMonais() != null) {
+//            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+//        }
+        if (request.getMonnaie() != null) {
+            existingRealisation.setMonnaie(monnaieRepository.findById(request.getMonnaie().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
         }
         if (request.getTypeMarcher() != null) {
@@ -541,14 +549,24 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     }
     tempRealisation.setImputationBudgetaire(imputationBudgetaireParam);
 
-    RefParam monaisParam = null;
-    if (request.getMonais() != null) {
-        monaisParam = refParamRepository.findById(request.getMonais().getId())
-                .orElse(existingRealisation.getMonais());
+//    RefParam monaisParam = null;
+//    if (request.getMonais() != null) {
+//        monaisParam = refParamRepository.findById(request.getMonais().getId())
+//                .orElse(existingRealisation.getMonais());
+//    } else {
+//        monaisParam = existingRealisation.getMonais();
+//    }
+//    tempRealisation.setMonais(monaisParam);
+
+    Monnaie monaisParam = null;
+    if (request.getMonnaie() != null) {
+        log.info("*************************monnaie :" + request.getMonnaie());
+                monaisParam = monnaieRepository.findById(request.getMonnaie().getId())
+                .orElse(existingRealisation.getMonnaie());
     } else {
-        monaisParam = existingRealisation.getMonais();
+        monaisParam = existingRealisation.getMonnaie();
     }
-    tempRealisation.setMonais(monaisParam);
+    tempRealisation.setMonnaie(monaisParam);
 
     RefParam typeMarcherParam = null;
     if (request.getTypeMarcher() != null) {
@@ -768,7 +786,8 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     newRealisation.setDirection(tempRealisation.getDirection());
     newRealisation.setSourceFinancement(tempRealisation.getSourceFinancement());
     newRealisation.setImputationBudgetaire(tempRealisation.getImputationBudgetaire());
-    newRealisation.setMonais(tempRealisation.getMonais());
+//    newRealisation.setMonais(tempRealisation.getMonais());
+    newRealisation.setMonnaie(tempRealisation.getMonnaie());
     newRealisation.setTypeMarcher(tempRealisation.getTypeMarcher());
     newRealisation.setModeSelection(tempRealisation.getModeSelection());
     newRealisation.setDatePrevLps(tempRealisation.getDatePrevLps());
@@ -1120,11 +1139,19 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
-        // Check monais
-        if (tempRealisation.getMonais() != existingRealisation.getMonais() &&
-                (tempRealisation.getMonais() == null || existingRealisation.getMonais() == null ||
-                        !tempRealisation.getMonais().getId().equals(existingRealisation.getMonais().getId()))) {
-            System.out.println("Change detected in monais");
+//        // Check monais
+//        if (tempRealisation.getMonais() != existingRealisation.getMonais() &&
+//                (tempRealisation.getMonais() == null || existingRealisation.getMonais() == null ||
+//                        !tempRealisation.getMonais().getId().equals(existingRealisation.getMonais().getId()))) {
+//            System.out.println("Change detected in monais");
+//            return true;
+//        }
+
+        // Check monnaie
+        if (tempRealisation.getMonnaie() != existingRealisation.getMonnaie() &&
+                (tempRealisation.getMonnaie() == null || existingRealisation.getMonnaie() == null ||
+                        !tempRealisation.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
+            System.out.println("Change detected in monnaie");
             return true;
         }
 
@@ -1205,7 +1232,8 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
         target.setDirection(source.getDirection());
         target.setSourceFinancement(source.getSourceFinancement());
         target.setImputationBudgetaire(source.getImputationBudgetaire());
-        target.setMonais(source.getMonais());
+//        target.setMonais(source.getMonais());
+        target.setMonnaie(source.getMonnaie());
         target.setTypeMarcher(source.getTypeMarcher());
         target.setModeSelection(source.getModeSelection());
         target.setDatePrevLps(source.getDatePrevLps());

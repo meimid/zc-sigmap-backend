@@ -19,7 +19,7 @@ import lombok.EqualsAndHashCode;
 //   `deleted_at` datetime(0) NULL,
 //   `deleted_by` int(0) NULL,
 //   `is_deleted` tinyint(1) NULL,
-//   PRIMARY KEY (`ref_param_id`),
+//   PRIMARY KEY (`ref_param_id`),th
 //   UNIQUE INDEX `ref_param_code_idx`(`code`)
 // );
 

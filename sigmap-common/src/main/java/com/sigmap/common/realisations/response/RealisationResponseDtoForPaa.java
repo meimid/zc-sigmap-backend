@@ -3,6 +3,7 @@ package com.sigmap.common.realisations.response;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotPaaResponse;
+import com.sigmap.common.monnaie.response.MonnaieResponseDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.response.BaseEntityResponse;
@@ -26,7 +27,8 @@ public class RealisationResponseDtoForPaa {
     private RefParamResponseDto direction;
     private RefParamResponseDto sourceFinancement;
     private RefParamResponseDto imputationBudgetaire;
-    private RefParamResponseDto monais;
+//    private RefParamResponseDto monais;
+    private MonnaieResponseDto monnaie;
     private RefParamResponseDto typeMarcher;
     private RefParamResponseDto modeSelection;
     private LocalDate datePrevLps;

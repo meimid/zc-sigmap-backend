@@ -4,6 +4,7 @@ import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.lots.response.LotResponseDTO;
+import com.sigmap.common.monnaie.response.MonnaieResponseDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
@@ -22,7 +23,8 @@ public class RealisationResponseDTO {
     private RefParamResponseDto direction;
     private RefParamResponseDto sourceFinancement;
     private RefParamResponseDto imputationBudgetaire;
-    private RefParamResponseDto monais;
+//    private RefParamResponseDto monais;
+    private MonnaieResponseDto monnaie;
     private RefParamResponseDto typeMarcher;
     private RefParamResponseDto modeSelection;
     private LocalDate datePrevLps;

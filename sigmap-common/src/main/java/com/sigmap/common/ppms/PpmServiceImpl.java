@@ -397,7 +397,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 realisation.setService(realisationRequest.getService());
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                realisation.setMonais(realisationRequest.getMonais());
+//                realisation.setMonais(realisationRequest.getMonais());
+                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -1009,7 +1010,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 baseRealisation.setService(realisationWithLots.getService());
                 baseRealisation.setDirection(realisationWithLots.getDirection());
                 baseRealisation.setSourceFinancement(realisationWithLots.getSourceFinancement());
-                baseRealisation.setMonais(realisationWithLots.getMonais());
+//                baseRealisation.setMonais(realisationWithLots.getMonais());
+                baseRealisation.setMonnaie(realisationWithLots.getMonnaie());
                 baseRealisation.setTypeMarcher(realisationWithLots.getTypeMarcher());
                 baseRealisation.setModeSelection(realisationWithLots.getModeSelection());
                 baseRealisation.setDatePrevLps(realisationWithLots.getDatePrevLps());
@@ -1367,7 +1369,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         realisation.setService(realisationDto.getService());
         realisation.setDirection(realisationDto.getDirection());
         realisation.setSourceFinancement(realisationDto.getSourceFinancement());
-        realisation.setMonais(realisationDto.getMonais());
+//        realisation.setMonais(realisationDto.getMonais());
+        realisation.setMonnaie(realisationDto.getMonnaie());
         realisation.setTypeMarcher(realisationDto.getTypeMarcher());
         realisation.setModeSelection(realisationDto.getModeSelection());
         realisation.setDatePrevLps(realisationDto.getDatePrevLps());
@@ -1402,7 +1405,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             if (dto.getService() != null) sb.append("S").append(dto.getService().getId()).append("|");
             if (dto.getDirection() != null) sb.append("D").append(dto.getDirection().getId()).append("|");
             if (dto.getSourceFinancement() != null) sb.append("SF").append(dto.getSourceFinancement().getId()).append("|");
-            if (dto.getMonais() != null) sb.append("M").append(dto.getMonais().getId()).append("|");
+//            if (dto.getMonais() != null) sb.append("M").append(dto.getMonais().getId()).append("|");
+            if (dto.getMonnaie() != null) sb.append("M").append(dto.getMonnaie().getId()).append("|");
             if (dto.getTypeMarcher() != null) sb.append("TM").append(dto.getTypeMarcher().getId()).append("|");
             if (dto.getModeSelection() != null) sb.append("MS").append(dto.getModeSelection().getId()).append("|");
 
@@ -1458,7 +1462,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             if (realisation.getService() != null) sb.append("S").append(realisation.getService().getId()).append("|");
             if (realisation.getDirection() != null) sb.append("D").append(realisation.getDirection().getId()).append("|");
             if (realisation.getSourceFinancement() != null) sb.append("SF").append(realisation.getSourceFinancement().getId()).append("|");
-            if (realisation.getMonais() != null) sb.append("M").append(realisation.getMonais().getId()).append("|");
+//            if (realisation.getMonais() != null) sb.append("M").append(realisation.getMonais().getId()).append("|");
+            if (realisation.getMonnaie() != null) sb.append("M").append(realisation.getMonnaie().getId()).append("|");
             if (realisation.getTypeMarcher() != null) sb.append("TM").append(realisation.getTypeMarcher().getId()).append("|");
             if (realisation.getModeSelection() != null) sb.append("MS").append(realisation.getModeSelection().getId()).append("|");
 
@@ -2087,9 +2092,13 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
         );
 
+//        boolean monaisChanged = fieldChanged(
+//            existingRealisation.getMonais() != null ? existingRealisation.getMonais().getId() : null,
+//            realisationDto.getMonais() != null ? realisationDto.getMonais().getId() : null
+//        );
         boolean monaisChanged = fieldChanged(
-            existingRealisation.getMonais() != null ? existingRealisation.getMonais().getId() : null,
-            realisationDto.getMonais() != null ? realisationDto.getMonais().getId() : null
+            existingRealisation.getMonnaie() != null ? existingRealisation.getMonnaie().getId() : null,
+            realisationDto.getMonnaie() != null ? realisationDto.getMonnaie().getId() : null
         );
 
         boolean typeMarcherChanged = fieldChanged(
@@ -2225,7 +2234,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
                 sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
                 sb.append("sourceFin:").append(realisation.getSourceFinancement() != null && realisation.getSourceFinancement().getId() != null ? realisation.getSourceFinancement().getId() : "").append(",");
-                sb.append("monais:").append(realisation.getMonais() != null && realisation.getMonais().getId() != null ? realisation.getMonais().getId() : "").append(",");
+//                sb.append("monais:").append(realisation.getMonais() != null && realisation.getMonais().getId() != null ? realisation.getMonais().getId() : "").append(",");
+                sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null && realisation.getTypeMarcher().getId() != null ? realisation.getTypeMarcher().getId() : "").append(",");
                 sb.append("modeSelection:").append(realisation.getModeSelection() != null && realisation.getModeSelection().getId() != null ? realisation.getModeSelection().getId() : "").append(",");
 
@@ -2462,7 +2472,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 realisation.setService(realisationRequest.getService());
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                realisation.setMonais(realisationRequest.getMonais());
+//                realisation.setMonais(realisationRequest.getMonais());
+                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -2881,7 +2892,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                    realisation.setMonais(realisationRequest.getMonais());
+//                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -2953,7 +2965,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                    realisation.setMonais(realisationRequest.getMonais());
+//                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -3225,8 +3238,10 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             realisationRequest.getDirection() : realisation.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement() != null ?
                             realisationRequest.getSourceFinancement() : realisation.getSourceFinancement());
-                    realisation.setMonais(realisationRequest.getMonais() != null ?
-                            realisationRequest.getMonais() : realisation.getMonais());
+//                    realisation.setMonais(realisationRequest.getMonais() != null ?
+//                            realisationRequest.getMonais() : realisation.getMonais());
+                    realisation.setMonnaie(realisationRequest.getMonnaie() != null ?
+                            realisationRequest.getMonnaie() : realisation.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher() != null ?
                             realisationRequest.getTypeMarcher() : realisation.getTypeMarcher());
                     realisation.setModeSelection(realisationRequest.getModeSelection() != null ?
@@ -3327,7 +3342,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                    realisation.setMonais(realisationRequest.getMonais());
+//                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -3635,7 +3651,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         request.setService(dto.getService());
         request.setDirection(dto.getDirection());
         request.setSourceFinancement(dto.getSourceFinancement());
-        request.setMonais(dto.getMonais());
+//        request.setMonais(dto.getMonais());
+        request.setMonnaie(dto.getMonnaie());
         request.setTypeMarcher(dto.getTypeMarcher());
         request.setModeSelection(dto.getModeSelection());
         request.setDatePrevLps(dto.getDatePrevLps());
@@ -3851,7 +3868,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 realisation.setService(realisationRequest.getService());
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                realisation.setMonais(realisationRequest.getMonais());
+//                realisation.setMonais(realisationRequest.getMonais());
+                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());

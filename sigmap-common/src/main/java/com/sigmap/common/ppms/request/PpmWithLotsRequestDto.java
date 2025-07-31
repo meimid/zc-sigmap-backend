@@ -82,7 +82,8 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setService(baseDto.getService());
                     withLotsDto.setDirection(baseDto.getDirection());
                     withLotsDto.setSourceFinancement(baseDto.getSourceFinancement());
-                    withLotsDto.setMonais(baseDto.getMonais());
+//                    withLotsDto.setMonais(baseDto.getMonais());
+                    withLotsDto.setMonnaie(baseDto.getMonnaie());
                     withLotsDto.setTypeMarcher(baseDto.getTypeMarcher());
                     withLotsDto.setModeSelection(baseDto.getModeSelection());
                     withLotsDto.setDatePrevLps(baseDto.getDatePrevLps());
