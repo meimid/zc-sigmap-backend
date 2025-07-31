@@ -422,7 +422,7 @@ public class KeycloakAdminService {
 
 
 
-    public void updatePassword(String userId, String newPassword) {
+    public UserDTO updatePassword(String userId, String tepmPassword) {
         String token = tokenService.getAccessToken();
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -430,13 +430,14 @@ public class KeycloakAdminService {
 
         Map<String, Object> passwordPayload = new HashMap<>();
         passwordPayload.put("type", "password");
-        passwordPayload.put("temporary", false);
-        passwordPayload.put("value", newPassword);
+        passwordPayload.put("temporary", true);
+        passwordPayload.put("value", tepmPassword);
 
         String url = String.format("%s/admin/realms/%s/users/%s/reset-password", keycloakBaseUrl, realm, userId);
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(passwordPayload, headers);
 
         restTemplate.exchange(url, HttpMethod.PUT, request, Void.class);
+        return getUserById(userId);
     }
 
     public String updatePasswordForAdmin(String userId) {

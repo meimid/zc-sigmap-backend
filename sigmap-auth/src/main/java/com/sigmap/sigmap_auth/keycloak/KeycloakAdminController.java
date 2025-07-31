@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -96,22 +97,25 @@ public class KeycloakAdminController {
      * Réinitialiser le mot de passe d’un utilisateur.
      *
      * @param id           l’ID de l’utilisateur
-     * @param passwordDTO  l’objet contenant le nouveau mot de passe et sa confirmation
      * @return 200 OK si succès, 400 si validation échoue
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> updatePassword(@PathVariable String id,
-                                               @RequestBody PasswordRequestDTO passwordDTO) {
-        // Validation de la correspondance des mots de passe
-        if (passwordDTO.getNewPassword() == null ||
-                passwordDTO.getRepeatNewPassword() == null ||
-                !passwordDTO.getNewPassword().equals(passwordDTO.getRepeatNewPassword())) {
-            return ResponseEntity.badRequest().build(); // 400 Bad Request
-        }
-
-        keycloakAdminService.updatePassword(id, passwordDTO.getNewPassword());
+    public ResponseEntity<Void> updatePassword(@PathVariable String id) throws MessagingException {
+        String tmpPassword = generateTemporaryPassword();
+        UserDTO user = keycloakAdminService.updatePassword(id,tmpPassword);
+        mailService.sendEditPasswordForAdminEmail(user, tmpPassword);
         return ResponseEntity.ok().build(); // 200 OK
+    }
+    public String generateTemporaryPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
+
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
     }
 
     /**
