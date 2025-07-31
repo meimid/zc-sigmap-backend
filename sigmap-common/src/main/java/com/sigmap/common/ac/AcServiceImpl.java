@@ -97,9 +97,21 @@ public class AcServiceImpl implements AcService{
     public Ac findById(Integer id) throws AcNotFound {
         Specification<Ac> specification = AcSpecifications.id(id)
                 .and(AcSpecifications.deleted(false));
-        return findOne(specification)
+        Ac ac= findOne(specification)
                 .orElseThrow(() -> new AcNotFound("", List.of(id)));
-
+        if(ac.getCom()!=null&&ac.getCom().getTutel()!=null&&ac.getCom().getTutel().getId().equals(id)){
+            ac.getCom().setTypeCommission("Commission Interne");
+        }
+        else if(ac.getCom()!=null&&ac.getCom().getTutel()!=null&&ac.getCom().getTutel().getId().equals(ac.getTutel().getId())&&!ac.isIstTutel()){
+            ac.getCom().setTypeCommission("Commission Tutelle");
+        }
+        else if(ac.getCom()!=null){
+            ac.getCom().setTypeCommission("Autre Commission");
+        }
+        else {
+            return ac;
+        }
+        return ac;
     }
 
     @Override
@@ -325,5 +337,30 @@ public class AcServiceImpl implements AcService{
         comService.findById(comId);
         Specification<Ac> spec = AcSpecifications.findByComId(comId).and(AcSpecifications.deleted(false));
         return repository.findAll(spec);
+    }
+
+    @Override
+    public Ac updateComeId(Integer id, Integer comeId) throws ComNotFound, AcNotFound {
+        Ac ac=findById(id);
+        Com com=comService.findById(comeId);
+        if(com!=null){
+            ac.setCom(com);
+            if(com.getTutel()!=null&&com.getTutel().isIstTutel()&&com.getTutel().getTutel().getId()==id){
+                com.setTypeCommission("Commission Interne");
+            }
+            else if(com.getTutel()!=null&&!com.getTutel().isIstTutel()&&com.getTutel().getTutel().getId()==id){
+                com.setTypeCommission("Commission Tutelle");
+            }
+            else{
+                com.setTypeCommission("Commission Interne");
+            }
+        }
+        return save(ac);
+    }
+
+    @Override
+    public List<Ac> findAllAcsWithNoCom() {
+        Specification<Ac>specification=AcSpecifications.hasComNull();
+        return repository.findAll(specification);
     }
 }

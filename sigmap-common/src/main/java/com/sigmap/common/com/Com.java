@@ -8,7 +8,6 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -59,4 +58,6 @@ public class Com extends BaseEntity {
           inverseJoinColumns = @JoinColumn(name = "doc_id")
   )
   private List<Docs> docs ;
+  @Transient
+  private String TypeCommission;
 }

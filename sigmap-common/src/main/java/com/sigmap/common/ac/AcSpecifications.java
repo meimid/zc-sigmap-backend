@@ -127,4 +127,17 @@ public class AcSpecifications {
       return criteriaBuilder.isTrue(root.get("istTutel"));
     };
   }
+
+  public static Specification<Ac> hasComNull() {
+    return (root, query, criteriaBuilder) -> {
+      // Condition 1: The 'com' field in the Ac entity must be null.
+      Predicate comIsNull = criteriaBuilder.isNull(root.get("com"));
+
+      // Condition 2: The Ac entity itself must not be soft-deleted.
+      Predicate notDeleted = criteriaBuilder.isFalse(root.get("isDeleted"));
+
+      // Combine both conditions with an AND clause.
+      return criteriaBuilder.and(comIsNull, notDeleted);
+    };
+  }
 }

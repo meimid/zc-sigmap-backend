@@ -16,6 +16,8 @@ public class ComResponseDto {
   private RefParamResponseDto comType;
   private String responsableId;
   private String logo;
+  private String TypeCommission;
+
 
 
 
