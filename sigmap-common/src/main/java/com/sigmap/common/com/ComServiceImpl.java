@@ -2,7 +2,6 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
-import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.ac.AcService;
@@ -20,7 +19,6 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ActiveStatus;
-import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -399,7 +397,9 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false));
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
     if (page.hasContent()) {
-      return page.getContent().get(0);
+      Com com= page.getContent().get(0);
+      com.setTypeCommission("Commission Tutelle");
+      return com;
     } else {
       throw new ComNotFound("Com not found for tutel ID: " + tutelId, null);
     }
@@ -407,20 +407,33 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
   @Override
   public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
-    Ac tutel=acService.findById(acId);
+    Ac ac=acService.findById(acId);
+    if(!ac.isIstTutel()){
     Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false));
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
-    if (page.hasContent() &&!tutel.isIstTutel()&&page.getContent().get(0).getTutel().getId().equals(tutel.getId())) {
-      return page.getContent().get(0);
+    if (page.hasContent() ) {
+      Com com= page.getContent().get(0);
+      com.setTypeCommission("Commission Interne");
+      return com;
     } else {
-      throw new ComNotFound("Com not found for tutel ID:",null);
+      throw new ComNotFound("Com not found for ac :",null);
+    }
+    }else{
+      if(ac.getCom()!=null){
+        return ac.getCom();
+      }
+      else{
+        throw new ComNotFound("Com not found for ac ",null);
+      }
     }
   }
 
   @Override
   public List<Com> getAllCommissionsDeTutelles() {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
-    return repository.findAll(spec);
+    List<Com> coms= repository.findAll(spec);
+    coms.forEach(com -> com.setTypeCommission("Autre Commission"));
+    return coms;
   }
 
 }

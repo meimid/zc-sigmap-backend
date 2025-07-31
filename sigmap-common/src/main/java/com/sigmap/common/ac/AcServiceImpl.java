@@ -97,9 +97,18 @@ public class AcServiceImpl implements AcService{
     public Ac findById(Integer id) throws AcNotFound {
         Specification<Ac> specification = AcSpecifications.id(id)
                 .and(AcSpecifications.deleted(false));
-        return findOne(specification)
+        Ac ac= findOne(specification)
                 .orElseThrow(() -> new AcNotFound("", List.of(id)));
-
+        if(ac.getCom()!=null&&ac.getCom().getTutel()!=null&&ac.getCom().getTutel().getId().equals(id)){
+            ac.getCom().setTypeCommission("Commission Interne");
+        }
+        else if(ac.getCom()!=null&&ac.getCom().getTutel()!=null&&ac.getCom().getTutel().getId().equals(ac.getTutel().getId())&&!ac.isIstTutel()){
+            ac.getCom().setTypeCommission("Commission Tutelle");
+        }
+        else if(ac.getCom()!=null){
+            ac.getCom().setTypeCommission("Autre Commission");
+        }
+        return ac;
     }
 
     @Override
@@ -333,6 +342,15 @@ public class AcServiceImpl implements AcService{
         Com com=comService.findById(comeId);
         if(com!=null){
             ac.setCom(com);
+            if(com.getTutel()!=null&&com.getTutel().isIstTutel()&&com.getTutel().getTutel().getId()==id){
+                com.setTypeCommission("Commission Interne");
+            }
+            else if(com.getTutel()!=null&&!com.getTutel().isIstTutel()&&com.getTutel().getTutel().getId()==id){
+                com.setTypeCommission("Commission Tutelle");
+            }
+            else{
+                com.setTypeCommission("Commission Interne");
+            }
         }
         return save(ac);
     }
