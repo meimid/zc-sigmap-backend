@@ -108,6 +108,9 @@ public class AcServiceImpl implements AcService{
         else if(ac.getCom()!=null){
             ac.getCom().setTypeCommission("Autre Commission");
         }
+        else {
+            return ac;
+        }
         return ac;
     }
 
@@ -353,5 +356,11 @@ public class AcServiceImpl implements AcService{
             }
         }
         return save(ac);
+    }
+
+    @Override
+    public List<Ac> findAllAcsWithNoCom() {
+        Specification<Ac>specification=AcSpecifications.hasComNull();
+        return repository.findAll(specification);
     }
 }
