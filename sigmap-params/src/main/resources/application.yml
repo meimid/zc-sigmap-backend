@@ -34,6 +34,26 @@ spring:
   liquibase:
     change-log: classpath:/db/db.changelog-master.yml
 
+    #smtp mail configuration:
+  mail:
+    test-connection: true
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:sigatest18@gmail.com}
+    password: ${SMTP_PASSWORD:rgnoxlzlyaygxqri}
+    properties:
+      auth: true
+      mail:
+        debug: false
+        transport:
+          protocol: smtp
+        smtp:
+          starttls:
+            enable: true
+    default-encoding: utf-8
+    base-url: ${SMTP_BASE_URL_MAIL:http://localhost:4200/}
+    from: ${SMTP_FROM_MAIL:sigatest18@gmail.com}
+
   security:
     oauth2:
       resourceserver:

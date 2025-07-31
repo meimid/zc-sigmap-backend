@@ -6,6 +6,8 @@ import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.mail.MailService;
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -13,7 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.UUID;
 
 
 /**
@@ -27,6 +31,8 @@ public class KeycloakAdminController {
     // Service pour interagir avec l’API Admin de Keycloak
     @Autowired
     private KeycloakAdminService keycloakAdminService;
+    @Autowired
+    private MailService mailService;
 
     /**
      * Créer un nouvel utilisateur dans Keycloak.
@@ -36,8 +42,11 @@ public class KeycloakAdminController {
      */
     @PostMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) throws MessagingException {
+
         UserDTO createdUser = keycloakAdminService.createUser(userDTO);
+        mailService.sendActivationEmail(userDTO, createdUser.getGenericPassword());
+        createdUser.setGenericPassword(null);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
@@ -88,22 +97,25 @@ public class KeycloakAdminController {
      * Réinitialiser le mot de passe d’un utilisateur.
      *
      * @param id           l’ID de l’utilisateur
-     * @param passwordDTO  l’objet contenant le nouveau mot de passe et sa confirmation
      * @return 200 OK si succès, 400 si validation échoue
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> updatePassword(@PathVariable String id,
-                                               @RequestBody PasswordRequestDTO passwordDTO) {
-        // Validation de la correspondance des mots de passe
-        if (passwordDTO.getNewPassword() == null ||
-                passwordDTO.getRepeatNewPassword() == null ||
-                !passwordDTO.getNewPassword().equals(passwordDTO.getRepeatNewPassword())) {
-            return ResponseEntity.badRequest().build(); // 400 Bad Request
-        }
-
-        keycloakAdminService.updatePassword(id, passwordDTO.getNewPassword());
+    public ResponseEntity<Void> updatePassword(@PathVariable String id) throws MessagingException {
+        String tmpPassword = generateTemporaryPassword();
+        UserDTO user = keycloakAdminService.updatePassword(id,tmpPassword);
+        mailService.sendEditPasswordForAdminEmail(user, tmpPassword);
         return ResponseEntity.ok().build(); // 200 OK
+    }
+    public String generateTemporaryPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
+
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
     }
 
     /**
