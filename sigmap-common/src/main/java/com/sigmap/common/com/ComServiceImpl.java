@@ -420,7 +420,9 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     }
     }else{
       if(ac.getCom()!=null){
-        return ac.getCom();
+        Com com= ac.getCom();
+        com.setTypeCommission("Commission Interne");
+        return com;
       }
       else{
         throw new ComNotFound("Com not found for ac ",null);
