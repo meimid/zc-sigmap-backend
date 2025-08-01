@@ -74,8 +74,7 @@ public class DocController {
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");
-        return ResponseEntity.ok()
-                .headers(headers)
+        return ResponseEntity.ok().headers(headers)
                 .contentLength(fileContent.length)
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
