@@ -2,7 +2,7 @@
 
 
 -- changeset sigmap:1749671959050-66
-CREATE SEQUENCE participant_seq INCREMENT BY 1 START WITH 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE participant_id_seq INCREMENT BY 1 START WITH 1;
 
 -- changeset sigmap:1749671959050-67
 CREATE TABLE reunion (
@@ -66,7 +66,7 @@ CREATE TABLE participant (
                                      nom VARCHAR(100) NOT NULL,
                                      prenom VARCHAR(100) NOT NULL,
                                      organisme VARCHAR(100) NULL,
-                                     foncation VARCHAR(100) NULL,
+                                     fonction VARCHAR(100) NULL,
                                      mail VARCHAR(100) NULL,
                                      user_id VARCHAR (100) NULL,
                                      present BOOLEAN DEFAULT FALSE NOT NULL,
