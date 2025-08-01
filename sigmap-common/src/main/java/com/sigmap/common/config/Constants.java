@@ -53,7 +53,7 @@ public class Constants {
   public static final String DYNA_DOCS_SEQ = "dyna_docs_id_seq";
   public static final String EMAIL_REGEX = "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,3}";
   public static final String PV_MEMEBER_PRESENT = "pv_membre_present_seq";
-
+  public static final String PQRTICIPANT_SEQ = "participant_seq";
   public static final String DIRECTION_SEQ = "direction_id_seq";
 
 
