@@ -68,9 +68,9 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "type_marcher_id")
     private RefParam typeMarcher;
 
-//    @ManyToOne
-//    @JoinColumn(name = "mode_selection_id")
-//    private RefParam modeSelection;
+    @ManyToOne
+    @JoinColumn(name = "mode_selection_id")
+    private RefParam modeSelection;
 
     @ManyToOne
     @JoinColumn(name = "imputation_budgetaire_id")
