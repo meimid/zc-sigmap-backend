@@ -577,7 +577,8 @@ public class PpmController {
                 copiedRealisation.setService(originalRealisation.getService());
                 copiedRealisation.setDirection(originalRealisation.getDirection());
                 copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
-                copiedRealisation.setMonais(originalRealisation.getMonais());
+//                copiedRealisation.setMonais(originalRealisation.getMonais());
+                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
                 copiedRealisation.setTypeMarcher(originalRealisation.getTypeMarcher());
                 copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
                 copiedRealisation.setDatePrevLps(originalRealisation.getDatePrevLps());
