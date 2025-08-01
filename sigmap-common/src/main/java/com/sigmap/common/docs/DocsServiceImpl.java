@@ -7,6 +7,7 @@ import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -67,5 +68,20 @@ public class DocsServiceImpl implements DocsService {
     @Override
     public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
+    }
+    @Override
+    public byte[] downloadDocument(String alfrescoId) throws IOException {
+
+        if (alfrescoId == null || alfrescoId.isBlank()) {
+            throw new IOException("Alfresco ID cannot be null or empty.");
+        }
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(alfrescoId));
+        if (dummyContent.getFile()!=null) {
+            return dummyContent.getFile();
+        }
+        else {
+            throw new IOException("Error while downloading document.");
+        }
+
     }
 }
