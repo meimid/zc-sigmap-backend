@@ -9,8 +9,13 @@ import com.sigmap.common.docs.Response.DocsResponse;
 
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.io.IOException;
 
 
 @Slf4j
@@ -56,6 +61,24 @@ public class DocController {
                 .orElseThrow(() -> new DocsNotFoundException("Document not found with id: " + id));
         DocsResponse response = DocMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download")
+    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = docsService.downloadDocument(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
     }
 
 }
