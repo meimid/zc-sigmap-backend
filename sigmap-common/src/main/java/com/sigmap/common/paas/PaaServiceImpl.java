@@ -591,7 +591,8 @@ public class PaaServiceImpl implements PaaService {
 //                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -777,7 +778,8 @@ public class PaaServiceImpl implements PaaService {
 //                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -1440,7 +1442,8 @@ public class PaaServiceImpl implements PaaService {
 //                        newRealisationRequest.setMonais(realisationDto.getMonais());
                         newRealisationRequest.setMonnaie(realisationDto.getMonnaie());
                         newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
-                        newRealisationRequest.setModeSelection(realisationDto.getModeSelection());
+//                        newRealisationRequest.setModeSelection(realisationDto.getModeSelection());
+                        newRealisationRequest.setModePassation(realisationDto.getModePassation());
                         newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
                         newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
                         newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
@@ -2197,7 +2200,9 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("monnaie:").append(realisation.getMonnaie() != null ? realisation.getMonnaie() : "").append(",");
    //             sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
-                sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+//                sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+                sb.append("modePassation:").append(realisation.getModePassation() != null ? realisation.getModePassation() : "").append(",");
+
                 sb.append("budgetEstime:").append(realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : "").append(",");
 
                 if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
@@ -2386,7 +2391,8 @@ public class PaaServiceImpl implements PaaService {
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+//                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -2472,6 +2478,11 @@ public class PaaServiceImpl implements PaaService {
 
         // Check monnaie
         if (dto.getMonnaie() != null && (existingRealisation.getMonnaie() == null || !dto.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
+            return true;
+        }
+
+        // Check modePassation
+        if (dto.getModePassation() != null && (existingRealisation.getModePassation() == null || !dto.getModePassation().getId().equals(existingRealisation.getMonnaie().getId()))) {
             return true;
         }
 
@@ -2858,7 +2869,8 @@ public class PaaServiceImpl implements PaaService {
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+//                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());

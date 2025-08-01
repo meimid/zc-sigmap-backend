@@ -2,6 +2,7 @@ package com.sigmap.common.realisations;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
@@ -19,9 +20,7 @@ import lombok.EqualsAndHashCode;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 @Entity
 @Table(name = "realisation")
@@ -60,14 +59,18 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "monnaie_id")
     private Monnaie monnaie;
 
+    @ManyToOne
+    @JoinColumn(name = "mode_passation_id")
+    private ModeDePassationSelection modePassation;
+
 
     @ManyToOne
     @JoinColumn(name = "type_marcher_id")
     private RefParam typeMarcher;
 
-    @ManyToOne
-    @JoinColumn(name = "mode_selection_id")
-    private RefParam modeSelection;
+//    @ManyToOne
+//    @JoinColumn(name = "mode_selection_id")
+//    private RefParam modeSelection;
 
     @ManyToOne
     @JoinColumn(name = "imputation_budgetaire_id")
@@ -88,7 +91,8 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
 
-
+    @Column(name = "seuil_applicable", precision = 10, scale = 3)
+    private BigDecimal seuilApplicable;
 
     @Column(name = "is_published")
     private Boolean isPublished;
@@ -101,7 +105,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "statut", nullable = false)
-    private RealisationStatus statut= RealisationStatus.NON_PUBLIE;
+    private RealisationStatus statut = RealisationStatus.NON_PUBLIE;
 
     @ManyToMany
     @JoinTable(
@@ -146,7 +150,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             }
     )
     @JsonManagedReference
-    private List<Lot> lots ;
+    private List<Lot> lots;
 
     @ManyToMany
     @JoinTable(
