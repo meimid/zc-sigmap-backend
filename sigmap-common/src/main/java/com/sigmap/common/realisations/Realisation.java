@@ -7,6 +7,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
@@ -153,6 +154,11 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     )
     @JsonManagedReference
     private List<Docs> docs;
+
+    @OneToMany(mappedBy = "id.realisation",
+            fetch = FetchType.LAZY)
+    @JsonManagedReference("realisation-financements")
+    private List<Financement> financements = new ArrayList<>();
 
     @Override
     public Integer getId() {
