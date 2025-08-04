@@ -1,6 +1,7 @@
 package com.sigmap.common.ac.request;
 
 import com.sigmap.common.adresse.request.AdresseRequest;
+import com.sigmap.common.config.TypeAffCommission;
 import lombok.*;
 
 import java.util.List;
@@ -18,4 +19,6 @@ public class AcRequest {
   private boolean istTutel;
   private Integer comId;
   private AdresseRequest adresse;
+  private TypeAffCommission typeAffCommission;
+
 }

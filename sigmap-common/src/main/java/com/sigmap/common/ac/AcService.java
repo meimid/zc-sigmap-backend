@@ -101,6 +101,5 @@ public interface AcService {
 
     List<Ac> findAllByComId(Integer comId) throws ComNotFound;
 
-    Ac updateComeId(Integer id,Integer comeId) throws ComNotFound, AcNotFound;
     List<Ac> findAllAcsWithNoCom();
 }
