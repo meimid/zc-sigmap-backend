@@ -61,6 +61,11 @@ public class ParticipantServiceImpl implements ParticipantService {
     }
 
     @Override
+    public List<Participant> findByReunionId(Integer reunionId) {
+       return repository.findByReunionIdAndIsDeletedFalse(reunionId);
+    }
+
+    @Override
     public Participant findById(Integer id, Integer reunionId) throws ParticipantNotFound {
         ParticipantId compositeId = new ParticipantId();
         compositeId.setId(id);

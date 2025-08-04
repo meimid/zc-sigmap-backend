@@ -28,4 +28,8 @@ public interface ParticipantRepository extends JpaRepository<Participant, Partic
     @Transactional
     @Query("UPDATE Participant p SET p.isDeleted = true, p.deletedAt = CURRENT_TIMESTAMP, p.deletedBy = :#{principal.subject} WHERE p IN :members")
     void softDeleteAll(@Param("members") List<Participant> members);
+
+    List<Participant> findByReunionIdAndIsDeletedFalse(Integer reunionId);
+
+
 }

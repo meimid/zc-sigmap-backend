@@ -39,24 +39,18 @@ public class Reunion extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ReunionStatus status;
 
-    @OneToMany(fetch = FetchType.EAGER,
+    @OneToMany(fetch = FetchType.LAZY,
             mappedBy = "reunion"
     )
+    private List<ReunionPpm> reunionPpms = new ArrayList<>();
 
-    private List<ReunionPpm> reunionPpms ;
-
-    @OneToMany(fetch = FetchType.EAGER,
-
-
+    @OneToMany(fetch = FetchType.LAZY,
             mappedBy = "reunion"
     )
-
     private List<ReunionDac> reunionDacs = new ArrayList<>();
 
-    @OneToMany(fetch = FetchType.EAGER,
-
+    @OneToMany(fetch = FetchType.LAZY,
             mappedBy = "reunion"
     )
-
     private List<Participant> participants = new ArrayList<>();
 }

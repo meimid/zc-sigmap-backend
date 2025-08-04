@@ -23,4 +23,5 @@ public interface ParticipantService {
     Optional<Participant> findOneByUserIdAndReunionId(String userId, Integer reunionId);
     void softDeleteAll( List<Participant> members);
     List<Participant> saveAll( List<Participant> members);
+    List<Participant> findByReunionId(Integer reunionId);
 }

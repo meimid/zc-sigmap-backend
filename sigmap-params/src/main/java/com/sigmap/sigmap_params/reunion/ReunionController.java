@@ -1,7 +1,9 @@
 package com.sigmap.sigmap_params.reunion;
 
 
+import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.mapper.ParticipantMapper;
+import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
@@ -19,6 +21,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/reunions")
@@ -47,7 +51,8 @@ public class ReunionController {
     @GetMapping("/{id}")
     public ResponseEntity<ReunionResponse> findById(@PathVariable Integer id) throws ReunionNotFound {
         Reunion reunion = reunionService.findById(id);
-        return ResponseEntity.ok(ReunionMapper.INSTANCE.map(reunion));
+        ReunionResponse response=ReunionMapper.INSTANCE.map(reunion);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping
@@ -55,8 +60,9 @@ public class ReunionController {
     public ResponseEntity<ReunionResponse> create(@RequestBody ReunionRequest request) throws PpmNotFound, ComNotFound, AcNotFound {
         Reunion createdReunion = reunionService.create(request);
         ReunionResponse response=ReunionMapper.INSTANCE.map(createdReunion);
-        log.info("...................... {}",response.toString());
-
+        response.setReunionDacs(response.getReunionDacs().stream().filter(el->el.getDac()!=null).toList());
+        response.setParticipants(response.getParticipants().stream().filter(el->el.getId()!=null).toList());
+        response.setReunionPpms(response.getReunionPpms().stream().filter(el->el.getPpm()!=null).toList());
         return ResponseEntity.ok(response);
     }
 
@@ -64,7 +70,11 @@ public class ReunionController {
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
     public ResponseEntity<ReunionResponse> update(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion updatedReunion = reunionService.update(id, request);
-        return ResponseEntity.ok(ReunionMapper.INSTANCE.map(updatedReunion));
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setParticipants(responseDtos);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")

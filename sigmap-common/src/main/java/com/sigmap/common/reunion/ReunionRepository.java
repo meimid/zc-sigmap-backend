@@ -23,6 +23,10 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
             "LEFT JOIN FETCH r.participants p " +
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithRelations(@Param("id") Integer id);
+    @Query("SELECT DISTINCT r FROM Reunion r " +
+            "LEFT JOIN FETCH r.participants p " +
+            "WHERE r.id = :id AND r.isDeleted = false")
+    Optional<Reunion> findByIdWithParticipantsFetched(@Param("id") Integer id);
 }
 
 
