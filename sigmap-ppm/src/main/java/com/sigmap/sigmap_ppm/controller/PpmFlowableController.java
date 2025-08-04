@@ -20,6 +20,7 @@ import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
@@ -47,12 +48,15 @@ public class PpmFlowableController {
     @Autowired
     private PpmFlowableService ppmFlowableService;
     private final ProcessVerbalService processVerbalService;
+    private final ObjectMapper objectMapper;
 
 
 
 
-    public PpmFlowableController(ProcessVerbalService processVerbalService) {
+
+    public PpmFlowableController(ProcessVerbalService processVerbalService,ObjectMapper objectMapper) {
         this.processVerbalService = processVerbalService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -124,6 +128,49 @@ public class PpmFlowableController {
             }
         }
         TaskDTO response = ppmFlowableService.validateTask(taskId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Validates a group of tasks and updates the associated Ppm entities.
+     *
+     * @param requestsJson The list of validation requests containing task IDs
+     * @param realisationsLotsJson JSON string containing lots for realisations
+     * @return ResponseEntity with List<TaskDTO>
+     * @throws PpmNotFound if a Ppm entity is not found
+     * @throws DocNotFound if a document is not found
+     * @throws AcNotFound if an associated Ac entity is not found
+     * @throws IOException if an error occurs during file processing
+     * @throws ComNotFound if a commission is not found
+     */
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group")
+    public ResponseEntity<List<TaskDTO>> validateTaskGroup(
+            @RequestParam("requestsJson") String requestsJson,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+        log.info("Validating group of tasks with requests JSON");
+
+        // Deserialize requestsJson into List<GroupValidationRequest>
+        List<GroupValidationRequest> requests;
+        try {
+            requests = objectMapper.readValue(requestsJson, new TypeReference<List<GroupValidationRequest>>() {});
+            log.info("Parsed {} requests from JSON", requests.size());
+        } catch (IOException e) {
+            log.error("Failed to parse requests JSON: {}", e.getMessage());
+            throw new IOException("Invalid requests JSON format", e);
+        }
+
+        for (GroupValidationRequest request : requests) {
+            if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+                try {
+                    processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);
+                    log.info("Successfully processed lots from JSON string for task ID: {}", request.getTaskId());
+                } catch (Exception e) {
+                    log.error("Error processing lots JSON for task ID: {}: {}", request.getTaskId(), e.getMessage());
+                }
+            }
+        }
+        List<TaskDTO> response = ppmFlowableService.validateTaskGroup(requests);
         return ResponseEntity.ok(response);
     }
 
