@@ -33,8 +33,12 @@ public class RealisationPaaWebSite {
             this.contractType = realisation.getTypeMarcher().getCode();
         }
 
-        if (realisation.getModeSelection() != null) {
-            this.selectionMode = realisation.getModeSelection().getCode();
+//        if (realisation.getModeSelection() != null) {
+//            this.selectionMode = realisation.getModeSelection().getCode();
+//        }
+
+        if (realisation.getModePassation() != null) {
+            this.selectionMode = realisation.getModePassation().getLibelle();
         }
 
         // --- Date Mappings (formatting LocalDate to String "dd/MM/yyyy") ---

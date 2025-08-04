@@ -5,6 +5,9 @@ import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac_seuil.AcSeuil;
+import com.sigmap.common.ac_seuil.AcSeuilService;
+import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -66,14 +69,13 @@ public class PaaServiceImpl implements PaaService {
     private final AcService acService;
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final AcSeuilService acSeuilService;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
-    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService
-
-
-    ) {
+    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
+                          AcSeuilService acSeuilService) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -84,6 +86,7 @@ public class PaaServiceImpl implements PaaService {
         this.acService = acService;
         this.currentUserService = currentUserService;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.acSeuilService = acSeuilService;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -461,6 +464,8 @@ public class PaaServiceImpl implements PaaService {
             throw new PaaInvalidStateException(message.toString(), List.of(paa.getId()), List.of(paa.getVersion()));
         }
     }
+    @Transactional
+    @Override
     public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
         System.out.println("calling the method");
         CompositeId compositeId = new CompositeId(paaId, paaVer);
@@ -479,14 +484,13 @@ public class PaaServiceImpl implements PaaService {
                     List.of(paaId), List.of(paaVer));
         }
 
-        // Check if PAA is in DRAFT status and has null processInstanceId
         restrictUpdatePaa(existingPaa);
 
         existingPaa.setNom(request.getNom());
         existingPaa.setAnnee(existingPaa.getAnnee());
-        // MODIFIED: Do not set Paa budgetEstime here; it will be calculated from realisations
         existingPaa.setModePassation(request.getModePassation());
         existingPaa.setRemarque(request.getRemarque());
+        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPaa.getAc().getId();
         if (request.getAcId() != null) {
             Ac ac = acRepository.findById(request.getAcId())
                     .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
@@ -588,18 +592,19 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-//                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
+
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     if (realisationRequest.getDocIds() != null) {
                         Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
@@ -653,7 +658,6 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
 
-                    // Process uploaded files AFTER setting the docIds documents
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
                             List<Docs> currentDocs = realisation.getDocs();
@@ -678,7 +682,6 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
 
-                    // Handle lots
                     if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
                         List<Lot> lots = new ArrayList<>();
                         Set<Integer> requestedLotIds = realisationRequest.getLots().stream()
@@ -695,8 +698,7 @@ public class PaaServiceImpl implements PaaService {
                             Lot lot;
                             Integer lotId = lotRequest.getId();
                             if (lotId != null) {
-                                // Update existing lot
-                                lot = lotRepository.findById(new CompositeId(lotId, 1)) // Assuming version 1 for simplicity
+                                lot = lotRepository.findById(new CompositeId(lotId, 1))
                                         .orElse(new Lot());
                                 if (lot.getId() == null) {
                                     lot.setId(lotId);
@@ -710,7 +712,6 @@ public class PaaServiceImpl implements PaaService {
                                     System.out.println("Updated existing lot ID: " + lotId + ", Budget: " + lotRequest.getBudget());
                                 }
                             } else {
-                                // Create new lot
                                 Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                                 lotId = (maxLotId != null) ? maxLotId + 1 : 1;
                                 lot = new Lot();
@@ -725,7 +726,6 @@ public class PaaServiceImpl implements PaaService {
                             lots.add(lot);
                         }
 
-                        // Mark existing lots not in request as deleted
                         if (realisation.getLots() != null) {
                             for (Lot existingLot : realisation.getLots()) {
                                 if (!requestedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
@@ -738,7 +738,6 @@ public class PaaServiceImpl implements PaaService {
                         }
                         realisation.setLots(lots);
                     } else {
-                        // If lots are null or empty, mark all existing lots as deleted
                         System.out.println("No lots provided for Realisation ID: " + realisation.getId());
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (Lot existingLot : realisation.getLots()) {
@@ -751,7 +750,6 @@ public class PaaServiceImpl implements PaaService {
                             }
                             realisation.setLots(new ArrayList<>());
                         }
-                        // Set budgetEstime from request even if no lots
                         realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                         System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
@@ -774,18 +772,20 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setService(realisationRequest.getService());
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                    realisation.setMonais(realisationRequest.getMonais());
+                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request
+                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
+
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
@@ -836,7 +836,7 @@ public class PaaServiceImpl implements PaaService {
                         }
                         realisation.setLots(lots);
                     } else {
-                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Set from request even if no lots
+                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                         System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
@@ -846,13 +846,11 @@ public class PaaServiceImpl implements PaaService {
             }
             existingPaa.setRealisations(realisations);
         } else {
-            // MODIFIED: Clear realisations and set Paa budgetEstime to zero if no realisations
             existingPaa.getRealisations().clear();
             existingPaa.setBudgetEstime(BigDecimal.ZERO);
             System.out.println("Cleared realisations for PAA ID: " + paaId + ", set budgetEstime: 0");
         }
 
-        // Validate realisations before saving
         validateRealisations(existingPaa);
 
         Paa savedPaa = repository.save(existingPaa);
@@ -881,9 +879,12 @@ public class PaaServiceImpl implements PaaService {
                                     .collect(Collectors.toList())
                     );
                 }
+                if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                    log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+                }
             });
         }
-        // MODIFIED: Calculate Paa budgetEstime from active realisations
         BigDecimal budgetEstime = savedPaa.getRealisations().stream()
                 .map(Realisation::getBudgetEstime)
                 .filter(Objects::nonNull)
@@ -980,6 +981,10 @@ public class PaaServiceImpl implements PaaService {
                         if (realisation.getLots() != null) {
                             realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                         }
+                        if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                            log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+                            realisation.setSeuilApplicable(BigDecimal.ZERO);
+                        }
                     });
                 }
 
@@ -1002,6 +1007,8 @@ public class PaaServiceImpl implements PaaService {
             requestAc = acRepository.findById(request.getAcId()).orElse(null);
         }
         tempPaa.setAc(requestAc != null ? requestAc : existingPaa.getAc());
+
+        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPaa.getAc().getId();
 
         boolean hasDirectChanges = !arePaaFieldsIdentical(existingPaa, tempPaa);
         System.out.println("Direct field changes detected: " + hasDirectChanges);
@@ -1195,6 +1202,9 @@ public class PaaServiceImpl implements PaaService {
                             // Update Realisation via service
                             Realisation updatedRealisation = realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
 
+                            // Set seuilApplicable for the updated realisation
+                            setSeuilApplicableForRealisation(updatedRealisation, requestAcId);
+
                             // Set lots and use user-provided budgetEstime
                             updatedRealisation.setLots(updatedLots);
                             BigDecimal userBudget = realisationDto.getBudgetEstime();
@@ -1261,6 +1271,9 @@ public class PaaServiceImpl implements PaaService {
                             realisationsChanged = true;
                         } else {
                             System.out.println("Using existing Realisation without changes");
+
+                            // Set seuilApplicable for the existing realisation
+                            setSeuilApplicableForRealisation(existingRealisation, requestAcId);
 
                             if (hasRealisationFiles || hasLots) {
                                 if (hasRealisationFiles) {
@@ -1437,10 +1450,9 @@ public class PaaServiceImpl implements PaaService {
                         newRealisationRequest.setService(realisationDto.getService());
                         newRealisationRequest.setDirection(realisationDto.getDirection());
                         newRealisationRequest.setSourceFinancement(realisationDto.getSourceFinancement());
-//                        newRealisationRequest.setMonais(realisationDto.getMonais());
                         newRealisationRequest.setMonnaie(realisationDto.getMonnaie());
                         newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
-                        newRealisationRequest.setModeSelection(realisationDto.getModeSelection());
+                        newRealisationRequest.setModePassation(realisationDto.getModePassation());
                         newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
                         newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
                         newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
@@ -1455,6 +1467,9 @@ public class PaaServiceImpl implements PaaService {
                         }
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
+
+                        // Set seuilApplicable for the new realisation
+                        setSeuilApplicableForRealisation(newRealisation, requestAcId);
 
                         List<Lot> updatedLots = new ArrayList<>();
                         if (realisationDto.getLots() != null && !realisationDto.getLots().isEmpty()) {
@@ -1690,6 +1705,10 @@ public class PaaServiceImpl implements PaaService {
                         if (realisation.getLots() != null) {
                             realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                         }
+                        if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                            log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+                            realisation.setSeuilApplicable(BigDecimal.ZERO);
+                        }
                     });
                 }
 
@@ -1812,6 +1831,9 @@ public class PaaServiceImpl implements PaaService {
                                 " version " + latestVersion + " not found in database. Skipping.");
                         continue;
                     }
+
+                    // Set seuilApplicable for the copied realisation
+                    setSeuilApplicableForRealisation(latestRealisation, requestAcId);
 
                     boolean alreadyAssociated = false;
                     if (latestRealisation.getPaas() != null) {
@@ -2050,6 +2072,10 @@ public class PaaServiceImpl implements PaaService {
                 if (realisation.getLots() != null) {
                     realisation.setLots(realisation.getLots().stream().filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted())).collect(Collectors.toList()));
                 }
+                if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                    log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+                }
             });
         }
 
@@ -2197,7 +2223,9 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("monnaie:").append(realisation.getMonnaie() != null ? realisation.getMonnaie() : "").append(",");
    //             sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
-                sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+//                sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
+                sb.append("modePassation:").append(realisation.getModePassation() != null ? realisation.getModePassation() : "").append(",");
+
                 sb.append("budgetEstime:").append(realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : "").append(",");
 
                 if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
@@ -2386,7 +2414,8 @@ public class PaaServiceImpl implements PaaService {
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+//                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -2472,6 +2501,11 @@ public class PaaServiceImpl implements PaaService {
 
         // Check monnaie
         if (dto.getMonnaie() != null && (existingRealisation.getMonnaie() == null || !dto.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
+            return true;
+        }
+
+        // Check modePassation
+        if (dto.getModePassation() != null && (existingRealisation.getModePassation() == null || !dto.getModePassation().getId().equals(existingRealisation.getMonnaie().getId()))) {
             return true;
         }
 
@@ -2734,20 +2768,17 @@ public class PaaServiceImpl implements PaaService {
         log.info("Found {} ACs without non-deleted PAA for user", acsWithoutPaa.size());
         return acsWithoutPaa;
     }
-    @Override
     @Transactional
-
-    public Paa createPaaPerAc(PaaRequestGlobal request) throws  AcNotFound, PaaCreationLimitExceededException, IOException {
+    @Override
+    public Paa createPaaPerAc(PaaRequestGlobal request) throws AcNotFound, PaaCreationLimitExceededException, IOException {
         String currentYear = String.valueOf(LocalDate.now().getYear());
         log.info("Creating PAA for year: {}", currentYear);
 
-        // Step 1: Validate the AC in the request
         Integer requestAcId = request.getAcId();
         if (requestAcId == null) {
             throw new IllegalArgumentException("AC ID is required to create a PAA.");
         }
 
-        // Step 2: Verify that the user is associated with the requested AC
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
             log.warn("No AC IDs found for the connected user");
@@ -2758,10 +2789,8 @@ public class PaaServiceImpl implements PaaService {
             throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
         }
 
-        // Step 3: Verify that the AC exists
         Ac ac = acService.findById(requestAcId);
 
-        // Step 4: Restrict creation to one PAA per AC per year
         Specification<Paa> spec = PaaSpecifications.annee(currentYear)
                 .and(PaaSpecifications.paaAc(requestAcId))
                 .and(PaaSpecifications.deleted(false));
@@ -2776,11 +2805,9 @@ public class PaaServiceImpl implements PaaService {
             );
         }
 
-        // Step 5: Generate new PAA ID and set version
         Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
         Integer paaVersion = 1;
 
-        // Step 6: Create and populate PAA entity
         Paa paa = new Paa();
         paa.setId(paaId);
         paa.setVersion(paaVersion);
@@ -2789,30 +2816,16 @@ public class PaaServiceImpl implements PaaService {
         paa.setRemarque(request.getRemarque());
         paa.setAnnee(currentYear);
         setRef(paa);
-        paa.setBudgetEstime(request.getBudgetEstime()); // Note: This can be null if not provided
-        log.info("a ce niveau ca va 1 ");
+        paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatus(ProcessStatus.BROUILLON);
-        log.info("a ce niveau ca va 2 ");
-        List<UserAc> userAcs = currentUserService.getCurrentUserAc();
-        if (userAcs == null || userAcs.isEmpty()) {
-            throw new AcNotFound("No AC IDs found for current user", List.of());
-        }
-
         paa.setAc(ac);
 
-        // Initialize collections
         paa.setRealisations(new ArrayList<>());
         paa.setDocs(new ArrayList<>());
-        log.info("a ce niveau ca va 3 ");
-        if (paa.getAnnee() == null || !paa.getAnnee().equals(currentYear)) {
-            throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + paa.getAnnee());
-        }
         log.info("Annee test check passed: {}", paa.getAnnee());
 
-        // Save PAA initially
         Paa savedPaa = repository.save(paa);
 
-        // Step 9: Handle documents for PAA
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = new ArrayList<>();
             for (Integer docId : request.getDocIds()) {
@@ -2836,11 +2849,9 @@ public class PaaServiceImpl implements PaaService {
             );
         }
 
-        // Step 10: Process realisations if provided
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
-            // Initialize lot ID counter once for all realisations
             Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
             log.info("Starting lot ID sequence at: {}", nextLotId);
@@ -2855,20 +2866,20 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                 realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-//                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                 realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                realisation.setBudgetEstime(realisationRequest.getBudgetEstime()); // Can be null
+                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
 
-                // Handle realisation files
+                setSeuilApplicableForRealisation(realisation, requestAcId);
+
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     documentCommuneService.processAndSaveDocuments(
                             realisationRequest.getRealisationFiles(),
@@ -2877,14 +2888,12 @@ public class PaaServiceImpl implements PaaService {
                     );
                 }
 
-                // Set bidirectional relationship with PAA
                 if (realisation.getPaas() == null) {
                     realisation.setPaas(new ArrayList<>());
                 }
                 realisation.getPaas().add(savedPaa);
                 savedPaa.getRealisations().add(realisation);
 
-                // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
                     log.info("Processing {} lots for realisation ID: {}", realisationRequest.getLots().size(), realisation.getId());
                     List<Lot> lots = new ArrayList<>();
@@ -2900,7 +2909,6 @@ public class PaaServiceImpl implements PaaService {
                             lotId = nextLotId++;
                             log.info("Assigned new lot ID: {}", lotId);
                         }
-                        // Check if lot ID already exists
                         CompositeId compositeId = new CompositeId(lotId, 1);
                         if (lotRepository.existsById(compositeId)) {
                             log.error("Lot ID {} already exists in the database", lotId);
@@ -2909,7 +2917,7 @@ public class PaaServiceImpl implements PaaService {
                         lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lotRequest.getDescription());
-                        lot.setBudget(lotRequest.getBudget()); // Can be null
+                        lot.setBudget(lotRequest.getBudget());
                         try {
                             lot = lotRepository.save(lot);
                             log.info("Saved lot with ID: {}, Description: {}", lot.getId(), lot.getDescription());
@@ -2931,15 +2939,19 @@ public class PaaServiceImpl implements PaaService {
             realisationRepository.saveAll(realisationsToSave);
         }
 
-        // Validate realisations before final save
         validateRealisations(savedPaa);
 
-        log.info("a ce niveau ca va 10 ");
-        // Handle null budgets in the reduction
         BigDecimal budgetEstime = savedPaa.getRealisations().stream()
                 .map(realisation -> realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         savedPaa.setBudgetEstime(budgetEstime);
+
+        for (Realisation realisation : savedPaa.getRealisations()) {
+            if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+                realisation.setSeuilApplicable(BigDecimal.ZERO);
+            }
+        }
 
         return repository.save(savedPaa);
     }
@@ -3006,6 +3018,34 @@ public class PaaServiceImpl implements PaaService {
                     validateLotBudgetSum(realisation);
                 }
             }
+        }
+    }
+
+    private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
+        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
+            try {
+                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
+                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+                if (acSeuilOpt.isPresent()) {
+                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+                } else {
+                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+                    log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
+                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+                }
+            } catch (Exception e) {
+                realisation.setSeuilApplicable(BigDecimal.ZERO);
+                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
+                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
+            }
+        } else {
+            realisation.setSeuilApplicable(BigDecimal.ZERO);
+            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
         }
     }
 

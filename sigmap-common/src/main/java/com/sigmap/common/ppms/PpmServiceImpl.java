@@ -7,6 +7,9 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac_seuil.AcSeuil;
+import com.sigmap.common.ac_seuil.AcSeuilService;
+import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.DacRepository;
@@ -75,6 +78,7 @@ public class PpmServiceImpl implements PpmService {
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final DacRepository dacRepository;
+    private final AcSeuilService acSeuilService;
 
 
     /**
@@ -89,7 +93,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository) {
+    public PpmServiceImpl(PpmRepository repository,AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -104,6 +108,7 @@ public class PpmServiceImpl implements PpmService {
         this.currentUserService = currentUserService;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.dacRepository = dacRepository;
+        this.acSeuilService = acSeuilService;
     }
 
     @Override
@@ -400,7 +405,8 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+//                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -475,6 +481,9 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             throw new RuntimeException("Cannot update a deleted Ppm with ID " + ppmId + " and version " + ppmVer);
         }
 
+        // Determine acId for seuilApplicable
+        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPpm.getAc().getId();
+
         if (isUpdatable) {
             // Create a new version
             Ppm newPpm = new Ppm();
@@ -506,8 +515,16 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             // Copy existing realisations to the new PPM
             newPpm.setRealisations(existingPpm.getRealisations() != null ? new ArrayList<>(existingPpm.getRealisations()) : new ArrayList<>());
 
+            // Set seuilApplicable for each realisation
+            if (newPpm.getRealisations() != null) {
+                for (Realisation realisation : newPpm.getRealisations()) {
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
+                }
+            }
+
             // Validate realisations for budget consistency
             validateRealisations(newPpm);
+
 
             return repository.save(newPpm);
         } else {
@@ -531,6 +548,13 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
                 existingPpm.setAc(ac);
             } else {
                 existingPpm.setAc(existingPpm.getAc()); // Preserve existing Ac
+            }
+
+            // Set seuilApplicable for each realisation
+            if (existingPpm.getRealisations() != null) {
+                for (Realisation realisation : existingPpm.getRealisations()) {
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
+                }
             }
 
             // Validate realisations for budget consistency
@@ -617,6 +641,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         // Get the existing PPM
         Ppm existingPpm = getExistingPpm(ppmId, ppmVer);
 
+        // Determine acId for seuilApplicable
+        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPpm.getAc().getId();
+
         // Create a temporary PPM with the new data for comparison
         Ppm tempPpm = buildTempPpm(existingPpm, request);
 
@@ -627,6 +654,11 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         // Process realisations
         List<Realisation> updatedRealisations = new ArrayList<>();
         boolean realisationsChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
+
+        // Set seuilApplicable for each realisation
+        for (Realisation realisation : updatedRealisations) {
+            setSeuilApplicableForRealisation(realisation, requestAcId);
+        }
 
         // Process documents if present
         List<Docs> updatedDocs = new ArrayList<>();
@@ -696,6 +728,12 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                                             .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
                                             .collect(Collectors.toList())
                             );
+                        }
+
+                        // Validate seuilApplicable
+                        if (real.getSeuilApplicable() != null && real.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                            log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", real.getId());
+                            real.setSeuilApplicable(BigDecimal.ZERO);
                         }
                     }
                 }
@@ -837,7 +875,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             responseVersion.setDocs(filteredDocs);
         }
 
-        // Filter out any deleted items in realisations
+        // Filter out any deleted items in realisations and validate seuilApplicable
         if (responseVersion.getRealisations() != null) {
             for (Realisation real : responseVersion.getRealisations()) {
                 if (real.getDocs() != null) {
@@ -854,6 +892,12 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                                     .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
                                     .collect(Collectors.toList())
                     );
+                }
+
+                // Validate seuilApplicable
+                if (real.getSeuilApplicable() != null && real.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                    log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", real.getId());
+                    real.setSeuilApplicable(BigDecimal.ZERO);
                 }
             }
         }
@@ -1013,7 +1057,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                baseRealisation.setMonais(realisationWithLots.getMonais());
                 baseRealisation.setMonnaie(realisationWithLots.getMonnaie());
                 baseRealisation.setTypeMarcher(realisationWithLots.getTypeMarcher());
-                baseRealisation.setModeSelection(realisationWithLots.getModeSelection());
+//                baseRealisation.setModeSelection(realisationWithLots.getModeSelection());
+                baseRealisation.setModePassation(realisationWithLots.getModePassation());
                 baseRealisation.setDatePrevLps(realisationWithLots.getDatePrevLps());
                 baseRealisation.setDatePrevAc(realisationWithLots.getDatePrevAc());
                 baseRealisation.setDatePrevDp(realisationWithLots.getDatePrevDp());
@@ -1372,7 +1417,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //        realisation.setMonais(realisationDto.getMonais());
         realisation.setMonnaie(realisationDto.getMonnaie());
         realisation.setTypeMarcher(realisationDto.getTypeMarcher());
-        realisation.setModeSelection(realisationDto.getModeSelection());
+//        realisation.setModeSelection(realisationDto.getModeSelection());
+        realisation.setModePassation(realisationDto.getModePassation());
         realisation.setDatePrevLps(realisationDto.getDatePrevLps());
         realisation.setDatePrevAc(realisationDto.getDatePrevAc());
         realisation.setDatePrevDp(realisationDto.getDatePrevDp());
@@ -1408,7 +1454,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //            if (dto.getMonais() != null) sb.append("M").append(dto.getMonais().getId()).append("|");
             if (dto.getMonnaie() != null) sb.append("M").append(dto.getMonnaie().getId()).append("|");
             if (dto.getTypeMarcher() != null) sb.append("TM").append(dto.getTypeMarcher().getId()).append("|");
-            if (dto.getModeSelection() != null) sb.append("MS").append(dto.getModeSelection().getId()).append("|");
+//            if (dto.getModeSelection() != null) sb.append("MS").append(dto.getModeSelection().getId()).append("|");
+            if (dto.getModePassation() != null) sb.append("MP").append(dto.getModePassation().getId()).append("|");
+
 
             // Add flags
             sb.append(dto.getIsPublished()).append("|");
@@ -1465,7 +1513,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //            if (realisation.getMonais() != null) sb.append("M").append(realisation.getMonais().getId()).append("|");
             if (realisation.getMonnaie() != null) sb.append("M").append(realisation.getMonnaie().getId()).append("|");
             if (realisation.getTypeMarcher() != null) sb.append("TM").append(realisation.getTypeMarcher().getId()).append("|");
-            if (realisation.getModeSelection() != null) sb.append("MS").append(realisation.getModeSelection().getId()).append("|");
+//            if (realisation.getModeSelection() != null) sb.append("MS").append(realisation.getModeSelection().getId()).append("|");
+            if (realisation.getModePassation() != null) sb.append("MP").append(realisation.getModePassation().getId()).append("|");
 
             // Add flags
             sb.append(realisation.getIsPublished()).append("|");
@@ -2106,9 +2155,14 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             realisationDto.getTypeMarcher() != null ? realisationDto.getTypeMarcher().getId() : null
         );
 
-        boolean modeSelectionChanged = fieldChanged(
-            existingRealisation.getModeSelection() != null ? existingRealisation.getModeSelection().getId() : null,
-            realisationDto.getModeSelection() != null ? realisationDto.getModeSelection().getId() : null
+//        boolean modeSelectionChanged = fieldChanged(
+//            existingRealisation.getModeSelection() != null ? existingRealisation.getModeSelection().getId() : null,
+//            realisationDto.getModeSelection() != null ? realisationDto.getModeSelection().getId() : null
+//        );
+
+        boolean modePassationChanged = fieldChanged(
+                existingRealisation.getModePassation() != null ? existingRealisation.getModePassation().getId() : null,
+                realisationDto.getModePassation() != null ? realisationDto.getModePassation().getId() : null
         );
 
         // Log field changes for debugging
@@ -2117,12 +2171,12 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         if (sourceFinChanged) System.out.println("  - Source financement changed");
         if (monaisChanged) System.out.println("  - Monais changed");
         if (typeMarcherChanged) System.out.println("  - Type marcher changed");
-        if (modeSelectionChanged) System.out.println("  - Mode selection changed");
+        if (modePassationChanged) System.out.println("  - Mode passation changed");
 
         // Important: Lot changes should NOT trigger a new Realisation version
         // Just checking the actual field changes, not lot relationships
         boolean result = docsChanged || textChanged || serviceChanged || directionChanged ||
-                         sourceFinChanged || monaisChanged || typeMarcherChanged || modeSelectionChanged;
+                         sourceFinChanged || monaisChanged || typeMarcherChanged || modePassationChanged;
 
         System.out.println("Realisation needs update: " + result);
         return result;
@@ -2237,7 +2291,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                sb.append("monais:").append(realisation.getMonais() != null && realisation.getMonais().getId() != null ? realisation.getMonais().getId() : "").append(",");
                 sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null && realisation.getTypeMarcher().getId() != null ? realisation.getTypeMarcher().getId() : "").append(",");
-                sb.append("modeSelection:").append(realisation.getModeSelection() != null && realisation.getModeSelection().getId() != null ? realisation.getModeSelection().getId() : "").append(",");
+//                sb.append("modeSelection:").append(realisation.getModeSelection() != null && realisation.getModeSelection().getId() != null ? realisation.getModeSelection().getId() : "").append(",");
+                sb.append("modePassation:").append(realisation.getModePassation() != null && realisation.getModePassation().getId() != null ? realisation.getModePassation().getId() : "").append(",");
 
                 // Add document IDs in sorted order
                 if (realisation.getDocIds() != null && !realisation.getDocIds().isEmpty()) {
@@ -2475,7 +2530,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+//                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -2895,7 +2951,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -2968,7 +3025,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -3244,8 +3302,10 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             realisationRequest.getMonnaie() : realisation.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher() != null ?
                             realisationRequest.getTypeMarcher() : realisation.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection() != null ?
-                            realisationRequest.getModeSelection() : realisation.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection() != null ?
+//                            realisationRequest.getModeSelection() : realisation.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation() != null ?
+                            realisationRequest.getModePassation() : realisation.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps() != null ?
                             realisationRequest.getDatePrevLps() : realisation.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc() != null ?
@@ -3345,7 +3405,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //                    realisation.setMonais(realisationRequest.getMonais());
                     realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+                    realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -3654,7 +3715,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //        request.setMonais(dto.getMonais());
         request.setMonnaie(dto.getMonnaie());
         request.setTypeMarcher(dto.getTypeMarcher());
-        request.setModeSelection(dto.getModeSelection());
+//        request.setModeSelection(dto.getModeSelection());
+        request.setModePassation(dto.getModePassation());
         request.setDatePrevLps(dto.getDatePrevLps());
         request.setDatePrevAc(dto.getDatePrevAc());
         request.setDatePrevDp(dto.getDatePrevDp());
@@ -3868,10 +3930,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 realisation.setService(realisationRequest.getService());
                 realisation.setDirection(realisationRequest.getDirection());
                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                realisation.setModeSelection(realisationRequest.getModeSelection());
+                realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
@@ -3880,6 +3941,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
+
+                // Set seuilApplicable for the realisation
+                setSeuilApplicableForRealisation(realisation, requestAcId);
 
                 // Handle realisation files
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
@@ -3933,8 +3997,10 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         savedPpm.setBudgetEstime(budgetEstime);
 
-        // Step 13: Save and return the final PPM
-        return repository.save(savedPpm);
+        // Step 13: Save and prepare the final PPM for return
+        Ppm finalPpm = repository.save(savedPpm);
+
+        return finalPpm;
     }
 
     @Override
@@ -4113,6 +4179,34 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     validateLotBudgetSum(realisation);
                 }
             }
+        }
+    }
+
+    private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
+        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
+            try {
+                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
+                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+                if (acSeuilOpt.isPresent()) {
+                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+                } else {
+                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+                    log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
+                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+                }
+            } catch (Exception e) {
+                realisation.setSeuilApplicable(BigDecimal.ZERO);
+                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
+                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
+            }
+        } else {
+            realisation.setSeuilApplicable(BigDecimal.ZERO);
+            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
         }
     }
 
