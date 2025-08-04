@@ -145,7 +145,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
 
-    private void createAndSetParticipantsFromUsers(Reunion reunion, ReunionRequest request) {
+    private Reunion createAndSetParticipantsFromUsers(Reunion reunion, ReunionRequest request) {
         List<UserCom> commissionMembers = userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
         Set<String> commissionMemberUserIds = commissionMembers.stream().map(UserCom::getUserId).collect(Collectors.toSet());
 
@@ -176,7 +176,6 @@ public class ReunionServiceImpl implements ReunionService{
             Participant participant= participantService.create(participantRequest);
             reunion.getParticipants().add(participant);
 
-
         }
 
         if (request.getParticipants() != null) {
@@ -190,10 +189,10 @@ public class ReunionServiceImpl implements ReunionService{
                 }
             }
         }
-
+        return reunion;
     }
 
-    private void synchronizeParticipants(ReunionRequest request, Reunion reunion) {
+    private Reunion synchronizeParticipants(ReunionRequest request, Reunion reunion) {
         Map<Integer, Participant> currentParticipantsMap = reunion.getParticipants().stream()
                 .collect(Collectors.toMap(Participant::getId, Function.identity()));
 
