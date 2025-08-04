@@ -20,5 +20,7 @@ public interface EmailTraceService {
      */
     EmailTrace saveEmailTrace(String AdminId,TypeEmail typeEmail, String objet, String contenu, String destinataire, boolean successSend, LocalDateTime dateSend);
 
+    EmailTrace updateEmailTrace(String AdminId,TypeEmail typeEmail, String objet, String contenu, String destinataire, boolean successSend, LocalDateTime dateSend);
+
     Page<EmailTrace> findAll(Specification<EmailTrace> spec, Pageable pageable);
 }
