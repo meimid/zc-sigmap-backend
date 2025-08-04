@@ -3,6 +3,8 @@ package com.sigmap.common.realisations;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
@@ -51,6 +53,7 @@ public class RealisationServiceImpl implements RealisationService {
     private final LotRepository lotRepository;
     private final RefParamRepository refParamRepository;
     private final MonnaieRepository monnaieRepository;
+    private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
 
     private final AlfrescoService alfrescoService;
     private final DocumentCommuneService documentCommuneService;
@@ -60,7 +63,7 @@ public class RealisationServiceImpl implements RealisationService {
 
 
 
-    public RealisationServiceImpl(RealisationRepository repository,MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
+    public RealisationServiceImpl(RealisationRepository repository,ModeDePassationSelectionRepository modeDePassationSelectionRepository,MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
@@ -71,6 +74,7 @@ public class RealisationServiceImpl implements RealisationService {
         this.docsRepository = docsRepository;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.monnaieRepository = monnaieRepository;
+        this.modeDePassationSelectionRepository = modeDePassationSelectionRepository;
     }
 
     @Override
@@ -279,9 +283,14 @@ public class RealisationServiceImpl implements RealisationService {
             existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
         }
-        if (request.getModeSelection() != null) {
-            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+//        if (request.getModeSelection() != null) {
+//            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
+//        }
+
+        if (request.getModePassation() != null) {
+            existingRealisation.setModePassation(modeDePassationSelectionRepository.findById(request.getModePassation().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Mode Passation not found")));
         }
 
         // Handle document management by comparing existing docs with requested docIds
@@ -577,14 +586,23 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     }
     tempRealisation.setTypeMarcher(typeMarcherParam);
 
-    RefParam modeSelectionParam = null;
-    if (request.getModeSelection() != null) {
-        modeSelectionParam = refParamRepository.findById(request.getModeSelection().getId())
-                .orElse(existingRealisation.getModeSelection());
+//    RefParam modeSelectionParam = null;
+//    if (request.getModeSelection() != null) {
+//        modeSelectionParam = refParamRepository.findById(request.getModeSelection().getId())
+//                .orElse(existingRealisation.getModeSelection());
+//    } else {
+//        modeSelectionParam = existingRealisation.getModeSelection();
+//    }
+//    tempRealisation.setModeSelection(modeSelectionParam);
+
+    ModeDePassationSelection modePassationParam = null;
+    if (request.getModePassation() != null) {
+        modePassationParam = modeDePassationSelectionRepository.findById(request.getModePassation().getId())
+                .orElse(existingRealisation.getModePassation());
     } else {
-        modeSelectionParam = existingRealisation.getModeSelection();
+        modePassationParam = existingRealisation.getModePassation();
     }
-    tempRealisation.setModeSelection(modeSelectionParam);
+    tempRealisation.setModePassation(modePassationParam);
 
     // Set other properties
     tempRealisation.setDatePrevLps(request.getDatePrevLps() != null ?
@@ -789,7 +807,8 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
 //    newRealisation.setMonais(tempRealisation.getMonais());
     newRealisation.setMonnaie(tempRealisation.getMonnaie());
     newRealisation.setTypeMarcher(tempRealisation.getTypeMarcher());
-    newRealisation.setModeSelection(tempRealisation.getModeSelection());
+//    newRealisation.setModeSelection(tempRealisation.getModeSelection());
+    newRealisation.setModePassation(tempRealisation.getModePassation());
     newRealisation.setDatePrevLps(tempRealisation.getDatePrevLps());
     newRealisation.setDatePrevAc(tempRealisation.getDatePrevAc());
     newRealisation.setDatePrevDp(tempRealisation.getDatePrevDp());
@@ -1163,11 +1182,19 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
-        // Check modeSelection
-        if (tempRealisation.getModeSelection() != existingRealisation.getModeSelection() &&
-                (tempRealisation.getModeSelection() == null || existingRealisation.getModeSelection() == null ||
-                        !tempRealisation.getModeSelection().getId().equals(existingRealisation.getModeSelection().getId()))) {
-            System.out.println("Change detected in modeSelection");
+//        // Check modeSelection
+//        if (tempRealisation.getModeSelection() != existingRealisation.getModeSelection() &&
+//                (tempRealisation.getModeSelection() == null || existingRealisation.getModeSelection() == null ||
+//                        !tempRealisation.getModeSelection().getId().equals(existingRealisation.getModeSelection().getId()))) {
+//            System.out.println("Change detected in modeSelection");
+//            return true;
+//        }
+
+        // Check modePassation
+        if (tempRealisation.getModePassation() != existingRealisation.getModePassation() &&
+                (tempRealisation.getModePassation() == null || existingRealisation.getModePassation() == null ||
+                        !tempRealisation.getModePassation().getId().equals(existingRealisation.getModePassation().getId()))) {
+            System.out.println("Change detected in modePassation");
             return true;
         }
 
@@ -1235,7 +1262,8 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
 //        target.setMonais(source.getMonais());
         target.setMonnaie(source.getMonnaie());
         target.setTypeMarcher(source.getTypeMarcher());
-        target.setModeSelection(source.getModeSelection());
+//        target.setModeSelection(source.getModeSelection());
+        target.setModePassation(source.getModePassation());
         target.setDatePrevLps(source.getDatePrevLps());
         target.setDatePrevAc(source.getDatePrevAc());
         target.setDatePrevDp(source.getDatePrevDp());

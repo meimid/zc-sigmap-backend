@@ -1,5 +1,7 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponseDto;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.lots.response.LotPaaResponse;
@@ -30,7 +32,8 @@ public class RealisationResponseDtoForPaa {
 //    private RefParamResponseDto monais;
     private MonnaieResponseDto monnaie;
     private RefParamResponseDto typeMarcher;
-    private RefParamResponseDto modeSelection;
+//    private RefParamResponseDto modeSelection;
+    private ModeDePassationSelectionResponseDto modePassation;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;
     private LocalDate datePrevDp;
