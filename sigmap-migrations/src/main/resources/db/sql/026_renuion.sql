@@ -6,7 +6,7 @@ CREATE SEQUENCE participant_id_seq INCREMENT BY 1 START WITH 1;
 
 -- changeset sigmap:1749671959050-67
 CREATE TABLE reunion (
-                         reunion_id INT NOT NULL,
+                         reunion_id INT AUTO_INCREMENT NOT NULL,
                          com_id INT NOT NULL,
                          reunion_date DATETIME NULL,
                          emplacement TEXT NULL,
@@ -62,7 +62,7 @@ ALTER TABLE reunion_dac ADD CONSTRAINT FK_REUNIONDAC_TO_DAC
 CREATE TABLE participant (
                                      reunion_id INT NOT NULL,
                                      participant_id INT NOT NULL,
-                                     type ENUM('RESPONSABLE', 'MEMEBRE', 'INVITE') NOT NULL DEFAULT 'INVITE',
+                                     type ENUM('RESPONSABLE', 'MEMBRE', 'INVITE') NOT NULL DEFAULT 'INVITE',
                                      nom VARCHAR(100) NOT NULL,
                                      prenom VARCHAR(100) NOT NULL,
                                      organisme VARCHAR(100) NULL,

@@ -11,7 +11,7 @@ import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface ComMapper {
     ComMapper INSTANCE = Mappers.getMapper(ComMapper.class);
     @Mapping(target = "metadata.createdAt", source = "createdAt")

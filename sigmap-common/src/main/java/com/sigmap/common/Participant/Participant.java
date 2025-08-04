@@ -2,6 +2,7 @@ package com.sigmap.common.Participant;
 
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.reunion.Reunion;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,9 @@ public class Participant extends BaseEntity {
     @Id
     @Column(name = "reunion_id")
     private Integer reunionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reunion_id", insertable = false, updatable = false)
+    private Reunion reunion;
     @Enumerated(EnumType.STRING)
     private ParticipantType type;
     private String nom;

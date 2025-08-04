@@ -3,21 +3,20 @@ package com.sigmap.common.reunion;
 import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
-import com.sigmap.common.dac.Dac;
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.reunionDac.ReunionDac;
+import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.Calendar;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @Entity
 @Table(name = "reunion")
 public class Reunion extends BaseEntity {
@@ -27,7 +26,7 @@ public class Reunion extends BaseEntity {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "com_id", nullable = false)
+    @JoinColumn(name = "com_id")
     private Com com;
 
     @Temporal(TemporalType.TIMESTAMP)
@@ -40,28 +39,24 @@ public class Reunion extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private ReunionStatus status;
 
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(
-            name = "reunion_ppm",
-            joinColumns = @JoinColumn(name = "reunion_id"),
-            inverseJoinColumns = {
-                    @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
-                    @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
-            }
+    @OneToMany(fetch = FetchType.EAGER,
+            mappedBy = "reunion"
     )
-    private Set<Ppm> ppms = new HashSet<>();
 
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(
-            name = "reunion_dac",
-            joinColumns = @JoinColumn(name = "reunion_id"),
-            inverseJoinColumns = {
-                    @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),
-                    @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver")
-            }
+    private List<ReunionPpm> reunionPpms ;
+
+    @OneToMany(fetch = FetchType.EAGER,
+
+
+            mappedBy = "reunion"
     )
-    private Set<Dac> dacs = new HashSet<>();
 
+    private List<ReunionDac> reunionDacs = new ArrayList<>();
 
+    @OneToMany(fetch = FetchType.EAGER,
 
+            mappedBy = "reunion"
+    )
+
+    private List<Participant> participants = new ArrayList<>();
 }

@@ -1,11 +1,15 @@
 package com.sigmap.common.Participant;
 
 
-import lombok.Data;
+import lombok.*;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.Serializable;
 import java.util.Objects;
-@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class ParticipantId implements Serializable {
     private Integer id;
     private Integer reunionId;
