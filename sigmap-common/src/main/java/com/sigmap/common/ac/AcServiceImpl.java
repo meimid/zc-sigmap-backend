@@ -11,6 +11,7 @@ import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.FileStorageProperties;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
@@ -22,14 +23,21 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import jakarta.transaction.Transactional;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 @Service
@@ -51,6 +59,8 @@ public class AcServiceImpl implements AcService{
     private final ComService comService;
     private final RefParamService refParamService;
 
+    @Autowired
+    private FileStorageProperties fileStorageProperties;
 
     public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService, RefParamService refParamService) {
         this.repository = repository;
@@ -115,7 +125,7 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound {
+    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
@@ -173,7 +183,26 @@ public class AcServiceImpl implements AcService{
             ac.setTypeAffCommission(request.getTypeAffCommission());
         }
         Ac savedAc = repository.save(ac);
+        if (request.getLogoFile() != null && !request.getLogoFile().isEmpty()) {
+            String originalFilename = StringUtils.cleanPath(request.getLogoFile().getOriginalFilename());
+            String extension = FilenameUtils.getExtension(originalFilename);
+            String newFilename = "logo-ac-" + savedAc.getId() + "." + extension;
 
+            Path logoDir = Paths.get(fileStorageProperties.getAcLogoPath(), String.valueOf(savedAc.getId()));
+            Files.createDirectories(logoDir);
+
+            Path targetPath = logoDir.resolve(newFilename);
+
+            if (savedAc.getLogo() != null) {
+                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
+                Files.deleteIfExists(oldFilePath);
+            }
+
+            request.getLogoFile().transferTo(targetPath.toFile());
+
+            savedAc.setLogo(newFilename);
+            repository.save(savedAc);
+        }
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
             for (String userId : request.getUserIds()) {
                 try {
@@ -195,7 +224,7 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
@@ -235,7 +264,7 @@ public class AcServiceImpl implements AcService{
             adresse.setPays(pays);
             ac.setAdresse(adresse);
         }
-        else if (ac.getAdresse()==null){
+        else if (ac.getAdresse()==null&&request.getAdresse()!=null){
             Adresse theAdress=adressService.create(request.getAdresse());
             theAdress.setPays(pays);
             ac.setAdresse(theAdress);
@@ -257,6 +286,27 @@ public class AcServiceImpl implements AcService{
         ac.setTypeAffCommission(request.getTypeAffCommission());
         }
         Ac savedAc = repository.save(ac);
+
+        if (request.getLogoFile() != null && !request.getLogoFile().isEmpty()) {
+            String originalFilename = StringUtils.cleanPath(request.getLogoFile().getOriginalFilename());
+            String extension = FilenameUtils.getExtension(originalFilename);
+            String newFilename = "logo-ac-" + savedAc.getId() + "." + extension;
+
+            Path logoDir = Paths.get(fileStorageProperties.getAcLogoPath(), String.valueOf(savedAc.getId()));
+            Files.createDirectories(logoDir);
+
+            Path targetPath = logoDir.resolve(newFilename);
+
+            if (savedAc.getLogo() != null) {
+                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
+                Files.deleteIfExists(oldFilePath);
+            }
+
+            request.getLogoFile().transferTo(targetPath.toFile());
+
+            savedAc.setLogo(newFilename);
+            repository.save(savedAc);
+        }
 
         // Seulement si SUPER_ADMIN ou ADMIN_CENTRAL
         boolean hasRightToAffectUsers = Authentication.hasRole("SUPER_ADMIN") || Authentication.hasRole("ADMIN_CENTRAL");

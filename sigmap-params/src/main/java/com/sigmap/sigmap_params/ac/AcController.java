@@ -34,6 +34,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -188,9 +189,9 @@ public class AcController {
      * @param request the request to create the ac from
      * @return the created ac
      */
-    @PostMapping
+    @PostMapping(consumes = {"multipart/form-data"})
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<AcResponse> create(@RequestBody AcRequest request) throws ComNotFound, ComDeleted, RefParamNotFound, AcNotFound {
+    public ResponseEntity<AcResponse> create(@ModelAttribute("request") AcRequest request) throws ComNotFound, ComDeleted, RefParamNotFound, AcNotFound, IOException {
         Ac ac = acService.create(request);
         AcResponse response = AcMapper.INSTANCE.map(ac);
         return ResponseEntity.ok(response);
@@ -201,9 +202,9 @@ public class AcController {
      * @param request the request to update the ac from
      * @return the updated ac
      */
-    @PutMapping("/{id}")
+    @PutMapping(consumes = {"multipart/form-data"},value = "/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @RequestBody AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, UserAcDefaultStatus, RefParamNotFound {
+    public ResponseEntity<AcResponse> update(@PathVariable Integer id, @ModelAttribute("request") AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, ComDeleted, UserAcDefaultStatus, RefParamNotFound, IOException {
         boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
                 && !Authentication.hasRole("SUPER_ADMIN")
                 && !Authentication.hasRole("ADMIN_CENTRAL");
