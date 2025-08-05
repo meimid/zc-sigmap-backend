@@ -2427,6 +2427,13 @@ public class PaaServiceImpl implements PaaService {
 
                 System.out.println("the realisations have files");
                 System.out.println(realisationRequest.getRealisationFiles());
+
+                log.info("a ce niveau ca va  5");
+                if (realisation.getPaas() == null) {
+                    realisation.setPaas(new ArrayList<>());
+                }
+                realisation.getPaas().add(savedPaa);
+                savedPaa.getRealisations().add(realisation);
                 if (realisationRequest.getRealisationFiles() != null) {
                     try {
                         // processAndSaveRelisationsDocuments(realisationRequest.getRealisationFiles(), realisation);
@@ -2436,12 +2443,6 @@ public class PaaServiceImpl implements PaaService {
                         throw new RuntimeException(e);
                     }
                 }
-                log.info("a ce niveau ca va  5");
-                if (realisation.getPaas() == null) {
-                    realisation.setPaas(new ArrayList<>());
-                }
-                realisation.getPaas().add(savedPaa);
-                savedPaa.getRealisations().add(realisation);
                 log.info("a ce niveau ca va 6 ");
                 // Handle Lots
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {

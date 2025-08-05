@@ -428,10 +428,12 @@
 //}
 package com.sigmap.common.AlfrescoConf;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.ByteArrayResource;
@@ -447,6 +449,7 @@ import java.security.Principal;
 import java.util.*;
 
 @Service
+@Slf4j
 public class AlfrescoService {
     @Value("${alfresco.url}")
     private String alfrescoUrl;
@@ -558,7 +561,7 @@ public class AlfrescoService {
      * @return L'ID du dernier dossier dans le chemin (soit un dossier existant, soit un dossier créé).
      * @throws Exception Si une erreur se produit lors de l'appel à l'API Alfresco
      */
-    public String getOrCreateFolderByPath(String path) throws Exception {
+ /*   public String getOrCreateFolderByPath(String path) throws Exception {
         // Sépare le chemin du dossier en parties individuelles (dossiers séparés par "/")
         String[] parts = path.split("/");
 
@@ -630,7 +633,7 @@ public class AlfrescoService {
 
         // Retourne l'ID du dernier dossier dans le chemin
         return parentId; // L'ID du dossier final (existant ou créé)
-    }
+    }*/
 
 
     // Consultation de document
@@ -828,79 +831,106 @@ public class AlfrescoService {
             throw new IOException("Error uploading document to existing folder: " + e.getMessage(), e);
         }
     }
-   /* public String getOrCreateFolderByPath(String path) throws Exception {
+
+    public String getOrCreateFolderByPath(String path) throws Exception {
+        // Split the folder path into individual parts (folders separated by "/")
         String[] parts = path.split("/");
-        String parentId = "-root-";
 
+        // Initialize parent ID to "-root-" for the first folder (root folder)
+        String parentId = "-root-"; // Root folder ID in Alfresco
+
+        // Process each folder in the given path
         for (String folderName : parts) {
-            if (folderName == null || folderName.trim().isEmpty()) {
-                continue;
+            // Ignore empty or null parts (e.g., if path starts or ends with "/")
+            if (folderName == null || folderName.trim().isEmpty()) continue;
+
+            // 1. Get children of current folder (search only for folders)
+            String url = alfrescoUrl +
+                    "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
+                    "/children?where=(nodeType='cm:folder')" +  // Filter to get only folders
+                    "&alf_ticket=" + tokenHolder.getTicket(); // Authentication parameter
+
+            // Create authentication headers for the request
+            HttpHeaders headers = new HttpHeaders();
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            // Send request to get children of current folder
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+
+            // Extract list of child folders from response
+            List<Map<String, Object>> entries = (List<Map<String, Object>>)
+                    ((Map<String, Object>) response.getBody().get("list")).get("entries");
+
+            boolean found = false; // Variable to know if folder was found
+
+            // Check children to see if current folder already exists
+            if (entries != null) {
+                for (Map<String, Object> entryMap : entries) {
+                    Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
+                    // If folder name matches, update parent ID and mark as found
+                    if (entry.get("name").equals(folderName)) {
+                        parentId = (String) entry.get("id"); // Update parent ID with found folder
+                        found = true;
+                        log.info("Found existing folder: {} with ID: {}", folderName, parentId); // ✅ Added logging
+                        break; // If found, exit the loop
+                    }
+                }
             }
 
-            // --- START OF NEW AND CORRECTED LOGIC ---
+            // 2. If folder was not found, create it
+            if (!found) {
+                log.info("Creating new folder: {} under parent: {}", folderName, parentId); // ✅ Added logging
 
-            String foundFolderId = null;
+                // URL to create new folder under parent folder
+                String createUrl = alfrescoUrl +
+                        "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
+                        "/children?alf_ticket=" + tokenHolder.getTicket(); // Authentication parameter
 
-            // 1. Use the Search API to find the folder with an EXACT name match.
-            String searchUrl = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/queries/nodes?alf_ticket=" + tokenHolder.getTicket();
-
-            // Construct the search query body
-            Map<String, Object> query = new HashMap<>();
-            // Note the use of =cm:name for exact matching and the need for quotes inside the query string.
-            query.put("query", String.format("TYPE:\"cm:folder\" AND PARENT:\"workspace://SpacesStore/%s\" AND =cm:name:\"%s\"",
-                    parentId.equals("-root-") ? "company_home" : parentId, // The root node has a special noderef
-                    folderName
-            ));
-            query.put("language", "afts"); // Alfresco Full Text Search language
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("query", query);
-
-            HttpHeaders searchHeaders = new HttpHeaders();
-            searchHeaders.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> searchRequest = new HttpEntity<>(requestBody, searchHeaders);
-
-            // Execute the POST request to the Search API
-            ResponseEntity<Map> searchResponse = restTemplate.exchange(searchUrl, HttpMethod.POST, searchRequest, Map.class);
-
-            Map<String, Object> list = (Map<String, Object>) searchResponse.getBody().get("list");
-            List<Map<String, Object>> entries = (List<Map<String, Object>>) list.get("entries");
-
-            // If the 'entries' list is NOT empty, the folder was found.
-            if (entries != null && !entries.isEmpty()) {
-                Map<String, Object> entryMap = entries.get(0);
-                Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
-                foundFolderId = (String) entry.get("id");
-            }
-
-            // 2. Decide whether to use the found folder's ID or create a new one.
-            if (foundFolderId != null) {
-                // Folder was found, update parentId for the next loop iteration.
-                parentId = foundFolderId;
-            } else {
-                // Folder was NOT found, so we create it.
-                String createUrl = String.format(
-                        "%s/api/-default-/public/alfresco/versions/1/nodes/%s/children?alf_ticket=%s",
-                        alfrescoUrl,
-                        parentId,
-                        tokenHolder.getTicket()
-                );
-
+                // Headers for folder creation request (with JSON Content-Type)
                 HttpHeaders createHeaders = new HttpHeaders();
                 createHeaders.setContentType(MediaType.APPLICATION_JSON);
 
+                // Request body for creation with folder name and type
                 Map<String, Object> folderBody = new HashMap<>();
-                folderBody.put("name", folderName);
-                folderBody.put("nodeType", "cm:folder");
+                folderBody.put("name", folderName); // Folder name
+                folderBody.put("nodeType", "cm:folder"); // Node type: cm:folder (folder)
 
+                // Send POST request to create folder
                 HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
-                ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
 
-                Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
-                parentId = (String) createdEntry.get("id");
+                try {
+                    ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
+
+                    // Extract ID of created folder and update parent ID
+                    Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
+                    parentId = (String) createdEntry.get("id");
+                    log.info("Successfully created folder: {} with ID: {}", folderName, parentId); // ✅ Added logging
+
+                } catch (HttpClientErrorException.Conflict e) {
+                    // ✅ Handle race condition - folder was created by another thread
+                    log.warn("Folder {} already exists (race condition), fetching existing folder ID", folderName);
+
+                    // Re-fetch the folder list to get the existing folder ID
+                    ResponseEntity<Map> retryResponse = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+                    List<Map<String, Object>> retryEntries = (List<Map<String, Object>>)
+                            ((Map<String, Object>) retryResponse.getBody().get("list")).get("entries");
+
+                    if (retryEntries != null) {
+                        for (Map<String, Object> entryMap : retryEntries) {
+                            Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
+                            if (entry.get("name").equals(folderName)) {
+                                parentId = (String) entry.get("id");
+                                log.info("Found existing folder after conflict: {} with ID: {}", folderName, parentId);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        return parentId;
-    }*/
+        // Return ID of the last folder in the path
+        return parentId; // ID of final folder (existing or created)
+    }
+
 }
