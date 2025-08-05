@@ -10,6 +10,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -23,6 +24,7 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 
 import java.io.IOException;
@@ -148,8 +150,17 @@ public class ComServiceImpl implements ComService {
       }
     }
 
+    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
     if(request.getTheAdresse()!=null) {
       Adresse adresse=adressService.create(request.getTheAdresse());
+      adresse.setPays(pays);
+      com.setTheAdresse(adresse);
+    }
+    else{
+      AdresseRequest adresseRequest=new AdresseRequest();
+      Adresse adresse=adressService.create(adresseRequest);
+      adresse.setPays(pays);
       com.setTheAdresse(adresse);
     }
 
@@ -212,12 +223,17 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
+    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
+
     if(request.getTheAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
       Adresse theAdress=adressService.update(request.getTheAdresse());
+      theAdress.setPays(pays);
       com.setTheAdresse(theAdress);
     }
     else if (com.getTheAdresse()==null){
       Adresse theAddress=adressService.create(request.getTheAdresse());
+      theAddress.setPays(pays);
       com.setTheAdresse(theAddress);
     }
 

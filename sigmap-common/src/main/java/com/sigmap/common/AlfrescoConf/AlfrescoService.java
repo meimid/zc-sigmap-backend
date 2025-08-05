@@ -437,10 +437,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.util.UriUtils;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.*;
 
@@ -826,5 +828,79 @@ public class AlfrescoService {
             throw new IOException("Error uploading document to existing folder: " + e.getMessage(), e);
         }
     }
+   /* public String getOrCreateFolderByPath(String path) throws Exception {
+        String[] parts = path.split("/");
+        String parentId = "-root-";
 
+        for (String folderName : parts) {
+            if (folderName == null || folderName.trim().isEmpty()) {
+                continue;
+            }
+
+            // --- START OF NEW AND CORRECTED LOGIC ---
+
+            String foundFolderId = null;
+
+            // 1. Use the Search API to find the folder with an EXACT name match.
+            String searchUrl = alfrescoUrl + "/api/-default-/public/alfresco/versions/1/queries/nodes?alf_ticket=" + tokenHolder.getTicket();
+
+            // Construct the search query body
+            Map<String, Object> query = new HashMap<>();
+            // Note the use of =cm:name for exact matching and the need for quotes inside the query string.
+            query.put("query", String.format("TYPE:\"cm:folder\" AND PARENT:\"workspace://SpacesStore/%s\" AND =cm:name:\"%s\"",
+                    parentId.equals("-root-") ? "company_home" : parentId, // The root node has a special noderef
+                    folderName
+            ));
+            query.put("language", "afts"); // Alfresco Full Text Search language
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("query", query);
+
+            HttpHeaders searchHeaders = new HttpHeaders();
+            searchHeaders.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> searchRequest = new HttpEntity<>(requestBody, searchHeaders);
+
+            // Execute the POST request to the Search API
+            ResponseEntity<Map> searchResponse = restTemplate.exchange(searchUrl, HttpMethod.POST, searchRequest, Map.class);
+
+            Map<String, Object> list = (Map<String, Object>) searchResponse.getBody().get("list");
+            List<Map<String, Object>> entries = (List<Map<String, Object>>) list.get("entries");
+
+            // If the 'entries' list is NOT empty, the folder was found.
+            if (entries != null && !entries.isEmpty()) {
+                Map<String, Object> entryMap = entries.get(0);
+                Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
+                foundFolderId = (String) entry.get("id");
+            }
+
+            // 2. Decide whether to use the found folder's ID or create a new one.
+            if (foundFolderId != null) {
+                // Folder was found, update parentId for the next loop iteration.
+                parentId = foundFolderId;
+            } else {
+                // Folder was NOT found, so we create it.
+                String createUrl = String.format(
+                        "%s/api/-default-/public/alfresco/versions/1/nodes/%s/children?alf_ticket=%s",
+                        alfrescoUrl,
+                        parentId,
+                        tokenHolder.getTicket()
+                );
+
+                HttpHeaders createHeaders = new HttpHeaders();
+                createHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+                Map<String, Object> folderBody = new HashMap<>();
+                folderBody.put("name", folderName);
+                folderBody.put("nodeType", "cm:folder");
+
+                HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
+                ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
+
+                Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
+                parentId = (String) createdEntry.get("id");
+            }
+        }
+
+        return parentId;
+    }*/
 }
