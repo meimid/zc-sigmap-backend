@@ -495,7 +495,9 @@ public class PpmController {
     public ResponseEntity<PpmResponseDto> updateWithVersioningMultipart(
             @PathVariable Integer ppmId,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+            ) {
         logger.info("Updating PPM ID: {} with versioning (multipart)", ppmId);
 
         // Process lots from JSON string if provided
@@ -505,6 +507,15 @@ public class PpmController {
                 logger.info("Successfully processed lots from JSON string");
             } catch (Exception e) {
                 logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
             }
         }
 
