@@ -14,9 +14,10 @@ public class AcSpecifications {
   public static Specification<Ac> search(String search) {
 
     return (root, query, criteriaBuilder) -> {
-      Join<Ac, RefParam> joinPays = root.join("pays");
-      Join<Ac, Adresse>joinAdresses = joinPays.join("adresse");
-
+      // To prevent duplicate Ac results when joining a collection (like adresse),
+      query.distinct(true);
+      Join<Ac, Adresse> joinAdresses = root.join("adresse", JoinType.LEFT);
+      Join<Adresse, RefParam> joinPays = joinAdresses.join("pays", JoinType.LEFT);
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
