@@ -3,6 +3,7 @@ package com.sigmap.common.ac;
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -13,7 +14,10 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.FileStorageProperties;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
@@ -53,11 +57,12 @@ public class AcServiceImpl implements AcService{
     private final AdressService adressService;
 
     private final ComService comService;
+    private final RefParamService refParamService;
 
     @Autowired
     private FileStorageProperties fileStorageProperties;
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService) {
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService, RefParamService refParamService) {
         this.repository = repository;
         this.comRepository = comRepository;
         this.keycloakAdminService = keycloakAdminService;
@@ -65,6 +70,7 @@ public class AcServiceImpl implements AcService{
         this.refParamRepository = refParamRepository;
         this.adressService = adressService;
         this.comService = comService;
+        this.refParamService = refParamService;
     }
 
 
@@ -150,10 +156,18 @@ public class AcServiceImpl implements AcService{
                 throw new AcAttributeRequire("","tutel");
             }
         }
-
+        Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+        RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
         if(request.getAdresse()!=null) {
            Adresse adresse=adressService.create(request.getAdresse());
+           adresse.setPays(pays);
            ac.setAdresse(adresse);
+        }
+        else{
+            AdresseRequest adresseRequest=new AdresseRequest();
+           Adresse adresse=adressService.create(adresseRequest);
+            adresse.setPays(pays);
+            ac.setAdresse(adresse);
         }
         if(request.getComId()!=null) {
             Com com=comService.findById(request.getComId());
@@ -242,13 +256,17 @@ public class AcServiceImpl implements AcService{
                 throw new AcAttributeRequire("","tutel");
             }
         }
+        Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+        RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
 
         if(request.getAdresse()!=null&& Objects.equals(ac.getAdresse().getId(), request.getAdresse().getId())) {
             Adresse adresse=adressService.update(request.getAdresse());
+            adresse.setPays(pays);
             ac.setAdresse(adresse);
         }
         else if (ac.getAdresse()==null&&request.getAdresse()!=null){
             Adresse theAdress=adressService.create(request.getAdresse());
+            theAdress.setPays(pays);
             ac.setAdresse(theAdress);
         }
         if(request.getComId()!=null) {
