@@ -2,6 +2,8 @@ package com.sigmap.common.realisations.request;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.financement.request.FinancementRequest;
+import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.ref_params.RefParam;
@@ -21,6 +23,8 @@ public class RealisationBaseRequestDto {
     private RefParam service;
     private RefParam direction;
     private RefParam sourceFinancement;
+    private List<FinancementRequest> financements;
+
     private RefParam imputationBudgetaire;
 //    private RefParam monais;
     private Monnaie monnaie;

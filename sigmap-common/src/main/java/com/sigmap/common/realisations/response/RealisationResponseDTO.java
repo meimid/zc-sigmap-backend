@@ -3,6 +3,7 @@ package com.sigmap.common.realisations.response;
 import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponseDto;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.lots.response.LotResponseDTO;
 import com.sigmap.common.monnaie.response.MonnaieResponseDto;
@@ -23,6 +24,9 @@ public class RealisationResponseDTO {
     private RefParamResponseDto service;
     private RefParamResponseDto direction;
     private RefParamResponseDto sourceFinancement;
+
+    private List<FinancementResponse> financements;
+
     private RefParamResponseDto imputationBudgetaire;
 //    private RefParamResponseDto monais;
     private MonnaieResponseDto monnaie;

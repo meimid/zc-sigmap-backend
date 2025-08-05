@@ -11,6 +11,11 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.financement.FinancementId;
+import com.sigmap.common.financement.FinancementRepository;
+import com.sigmap.common.financement.request.FinancementBaseRequestDto;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
@@ -59,11 +64,12 @@ public class RealisationServiceImpl implements RealisationService {
     private final DocumentCommuneService documentCommuneService;
 
     private final DocsRepository docsRepository;
+    private final FinancementRepository financementRepository;
     private final SequenceGeneratorService sequenceGeneratorService;
 
 
 
-    public RealisationServiceImpl(RealisationRepository repository,ModeDePassationSelectionRepository modeDePassationSelectionRepository,MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, SequenceGeneratorService sequenceGeneratorService) {
+    public RealisationServiceImpl(RealisationRepository repository, ModeDePassationSelectionRepository modeDePassationSelectionRepository, MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, FinancementRepository financementRepository, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
@@ -72,6 +78,7 @@ public class RealisationServiceImpl implements RealisationService {
         this.alfrescoService = alfrescoService;
         this.documentCommuneService = documentCommuneService;
         this.docsRepository = docsRepository;
+        this.financementRepository = financementRepository;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.monnaieRepository = monnaieRepository;
         this.modeDePassationSelectionRepository = modeDePassationSelectionRepository;
@@ -161,6 +168,7 @@ public class RealisationServiceImpl implements RealisationService {
         realisation.setPpms(new ArrayList<>());
         realisation.setLots(new ArrayList<>());
         realisation.setDocs(new ArrayList<>());
+        realisation.setFinancements(new ArrayList<>());
 
         // Fetch and set RefParam associations
         if (request.getService() != null) {
@@ -173,11 +181,66 @@ public class RealisationServiceImpl implements RealisationService {
             realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
         }
-        if (request.getSourceFinancement() != null) {
-            log.info("Fetching SourceFinancement with ID: {}", request.getSourceFinancement().getId());
-            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+//        if (request.getSourceFinancement() != null) {
+//            log.info("Fetching SourceFinancement with ID: {}", request.getSourceFinancement().getId());
+//            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
+//        }
+
+        // Handle MULTIPLE Financements creation after realisation is saved
+        if (request.getFinancementRequests() != null && !request.getFinancementRequests().isEmpty()) {
+            log.info("Creating {} Financements", request.getFinancementRequests().size());
+
+            List<Financement> createdFinancements = new ArrayList<>();
+
+            for (FinancementBaseRequestDto financementRequest : request.getFinancementRequests()) {
+                log.info("Processing Financement request: {}", financementRequest);
+
+                // Create FinancementId (composite key)
+                FinancementId financementId = new FinancementId();
+//                financementId.setRealisation(savedRealisation);
+
+                // Set Monnaie from individual financement request
+                if (financementRequest.getMonnaieId() != null) {
+                    log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
+                    Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                            .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+                    financementId.setMonnaie(monnaie);
+                } else {
+                    throw new IllegalArgumentException("Monnaie ID is required for each Financement");
+                }
+
+                // Generate unique financement ID for each financement
+                Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+                financementId.setFinancementId(nextFinancementId);
+
+                log.info("Generated Financement ID: {}", nextFinancementId);
+
+                // Create Financement entity
+                Financement financement = new Financement();
+                financement.setId(financementId);
+                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+
+                // Set source financement if provided
+                if (financementRequest.getSourceFinancement().getId() != null) {
+                    log.info("Fetching SourceFinancement with ID: {}", financementRequest.getSourceFinancement().getId());
+                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                    financement.setSourceFinancement(sourceFinancement);
+                }
+
+                // Save individual financement
+                Financement savedFinancement = financementRepository.save(financement);
+                log.info("Created and saved Financement: {}", savedFinancement);
+
+                createdFinancements.add(savedFinancement);
+            }
+
+            // Associate ALL created financements with the realisation (bidirectional)
+            realisation.setFinancements(createdFinancements);
+            log.info("Associated {} financements with realisation", createdFinancements.size());
         }
+
         if (request.getImputationBudgetaire() != null) {
             log.info("Fetching ImputationBudgetaire with ID: {}", request.getImputationBudgetaire().getId());
             realisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
@@ -296,25 +359,25 @@ public class RealisationServiceImpl implements RealisationService {
         // Handle document management by comparing existing docs with requested docIds
         if (request.getDocIds() != null) {
             Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
-            
+
             // Get active document IDs
             Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null ?
                     existingRealisation.getDocs().stream()
                             .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                             .map(Docs::getId)
                             .collect(Collectors.toSet()) : new HashSet<>();
-            
+
             // Log document changes
             if (!requestedDocIds.equals(activeExistingDocIds)) {
                 System.out.println("Document changes detected for Realisation update ID: " + realisationId);
-                
+
                 // Find new documents
                 Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
                 newDocIds.removeAll(activeExistingDocIds);
                 if (!newDocIds.isEmpty()) {
                     System.out.println("  - New documents added: " + newDocIds);
                 }
-                
+
                 // Find removed documents
                 Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
                 removedDocIds.removeAll(requestedDocIds);
@@ -322,10 +385,10 @@ public class RealisationServiceImpl implements RealisationService {
                     System.out.println("  - Documents marked as deleted: " + removedDocIds);
                 }
             }
-            
+
             // Create a list to hold updated documents
             List<Docs> updatedDocs = new ArrayList<>();
-            
+
             if (existingRealisation.getDocs() != null) {
                 // For each existing document in the Realisation
                 for (Docs existingDoc : existingRealisation.getDocs()) {
@@ -334,7 +397,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingDoc.setIsDeleted(false);
                         docsRepository.save(existingDoc);
                         updatedDocs.add(existingDoc);
-                        
+
                         // Remove from requested IDs since we've handled it
                         requestedDocIds.remove(existingDoc.getId());
                     } else {
@@ -346,12 +409,12 @@ public class RealisationServiceImpl implements RealisationService {
                     }
                 }
             }
-            
+
             // Add any new docs from the request that weren't already in existingRealisation
             for (Integer docId : requestedDocIds) {
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                
+
                 // Set up bidirectional relationship
                 if (doc.getRealisations() == null) {
                     doc.setRealisations(new ArrayList<>());
@@ -359,15 +422,15 @@ public class RealisationServiceImpl implements RealisationService {
                 if (!doc.getRealisations().contains(existingRealisation)) {
                     doc.getRealisations().add(existingRealisation);
                 }
-                
+
                 // Ensure doc is active
                 doc.setIsDeleted(false);
                 docsRepository.save(doc);
-                
+
                 updatedDocs.add(doc);
                 System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
             }
-            
+
             // Update the Realisation with the final docs list
             existingRealisation.setDocs(updatedDocs);
         } else if (existingRealisation.getDocs() != null && !existingRealisation.getDocs().isEmpty()) {
@@ -389,9 +452,9 @@ public class RealisationServiceImpl implements RealisationService {
                 .filter(lot -> lot.getId() != null)
                 .map(LotResponse::getId)
                 .collect(Collectors.toSet());
-            
+
             List<Lot> updatedLots = new ArrayList<>();
-            
+
             if (existingRealisation.getLots() != null) {
                 for (Lot existingLot : existingRealisation.getLots()) {
                     if (requestedLotIds.contains(existingLot.getId())) {
@@ -399,7 +462,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingLot.setIsDeleted(false);
                         lotRepository.save(existingLot);
                         updatedLots.add(existingLot);
-                        
+
                         // Remove from requested IDs since we've handled it
                         requestedLotIds.remove(existingLot.getId());
                     } else {
@@ -411,7 +474,7 @@ public class RealisationServiceImpl implements RealisationService {
                     }
                 }
             }
-            
+
             // Add any new lots from the request
             for (LotResponse lotResponse : request.getLots()) {
                 if (lotResponse.getId() == null) {
@@ -419,12 +482,12 @@ public class RealisationServiceImpl implements RealisationService {
                     Lot newLot = new Lot();
                     newLot.setDescription(lotResponse.getDescription());
                     newLot.setVersion(1); // First version
-                    
+
                     // Generate new ID if not provided
 //                    Integer lotId = lotRepository.findMaxId() + 1;
                     Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
-                    
+
                     // Save the new lot
                     Lot savedLot = lotRepository.save(newLot);
                     updatedLots.add(savedLot);
@@ -439,7 +502,7 @@ public class RealisationServiceImpl implements RealisationService {
                             });
                 }
             }
-            
+
             // Update the Realisation with the final lots set
             existingRealisation.setLots(updatedLots);
         } else if (existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
@@ -458,11 +521,11 @@ public class RealisationServiceImpl implements RealisationService {
         Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request, existingRealisation);
         // Save the updated realisation
         Realisation savedRealisation = repository.save(realisation);
-        
+
         // Create a copy for the response with only non-deleted documents
         Realisation copyForResponse = new Realisation();
         BeanUtils.copyProperties(savedRealisation, copyForResponse);
-        
+
         // Filter out deleted documents for the response
         if (savedRealisation.getDocs() != null) {
             copyForResponse.setDocs(
@@ -471,7 +534,7 @@ public class RealisationServiceImpl implements RealisationService {
                     .collect(Collectors.toList())
             );
         }
-        
+
         // Also filter lot documents if there are any
         if (copyForResponse.getLots() != null) {
             copyForResponse.setLots(
@@ -480,7 +543,7 @@ public class RealisationServiceImpl implements RealisationService {
                     .collect(Collectors.toList())
             );
         }
-        
+
         return copyForResponse;
     }
 
@@ -603,6 +666,40 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
         modePassationParam = existingRealisation.getModePassation();
     }
     tempRealisation.setModePassation(modePassationParam);
+
+    // FINANCEMENT HANDLING HERE:
+// Handle financements - create temporary list for comparison
+    List<Financement> tempFinancements = new ArrayList<>();
+    if (request.getSourceFinancement() != null && !request.getFinancements().isEmpty()) {
+        for (FinancementRequest financementUpdate : request.getFinancements()) {
+            // Create temporary financement for comparison purposes only
+            Financement tempFinancement = new Financement();
+
+            // Set basic properties for comparison
+            if (financementUpdate.getBudgetEstimer() != null) {
+                tempFinancement.setBudgetEstimer(financementUpdate.getBudgetEstimer());
+            }
+
+            // Set monnaie for comparison
+            if (financementUpdate.getMonnaieId() != null) {
+                Monnaie monnaie = monnaieRepository.findById(financementUpdate.getMonnaieId()).orElse(null);
+                if (monnaie != null) {
+                    FinancementId tempId = new FinancementId();
+                    tempId.setMonnaie(monnaie);
+                    tempFinancement.setId(tempId);
+                }
+            }
+
+            // Set source financement for comparison
+            if (financementUpdate.getSourceFinancement() != null && financementUpdate.getSourceFinancement().getId() != null) {
+                RefParam sourceFinancement = refParamRepository.findById(financementUpdate.getSourceFinancement().getId()).orElse(null);
+                tempFinancement.setSourceFinancement(sourceFinancement);
+            }
+
+            tempFinancements.add(tempFinancement);
+        }
+    }
+    tempRealisation.setFinancements(tempFinancements);
 
     // Set other properties
     tempRealisation.setDatePrevLps(request.getDatePrevLps() != null ?
@@ -754,15 +851,23 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
         updatedDocs = new ArrayList<>();
     }
 
+    // Check for Financement changes - ADD THIS SECTION
+    boolean financementChangesDetected = checkFinancementChanges(
+            existingRealisation.getFinancements(),
+            request.getFinancements()
+    );
+
+    System.out.println("Financement changes detected: " + financementChangesDetected);
+
     // Check if there are actual changes
     boolean hasChanges = hasChanges(tempRealisation, existingRealisation, request.getDocIds()) ||
-            lotChangesDetected || documentsChanged;
+            lotChangesDetected || documentsChanged | financementChangesDetected;
 
     System.out.println("Has changes: " + hasChanges);
     System.out.println("  - Field changes: " + hasChanges(tempRealisation, existingRealisation, request.getDocIds()));
     System.out.println("  - Lot changes: " + lotChangesDetected);
     System.out.println("  - Document changes: " + documentsChanged);
-
+    System.out.println("  - Financement changes: " + financementChangesDetected);
     if (!hasChanges) {
         System.out.println("No changes detected, returning existing version: " + realisationVer);
 
@@ -823,7 +928,7 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     newRealisation.setPpms(new ArrayList<>());
     newRealisation.setDocs(new ArrayList<>());
     newRealisation.setLots(new ArrayList<>());
-
+    newRealisation.setFinancements(new ArrayList<>());
     // IMPORTANT CHANGE: Save the new realisation FIRST to ensure it exists in the database
     // before establishing any relationships
     System.out.println("Saving new Realisation entity to database before setting up relationships");
@@ -1013,6 +1118,28 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     // Set the new/updated lots on the new Realisation
     finalNewRealisation.setLots(newLots);
 
+    // ADD THIS SECTION - This is likely what's missing:
+// Handle Financements for new version
+    List<Financement> newFinancements = new ArrayList<>();
+
+    if (financementChangesDetected) {
+        System.out.println("Creating updated financements for new version");
+        newFinancements = createUpdatedFinancements(
+                existingRealisation.getFinancements(),
+                request.getFinancements(),
+                finalNewRealisation
+        );
+        log.info("Created {} updated financements", newFinancements.size());
+    } else if (existingRealisation.getFinancements() != null && !existingRealisation.getFinancements().isEmpty()) {
+        System.out.println("Copying existing financements to new version");
+        newFinancements = copyFinancementsToNewVersion(
+                existingRealisation.getFinancements(),
+                finalNewRealisation
+        );
+        log.info("Copied {} existing financements", newFinancements.size());
+    }
+    finalNewRealisation.setFinancements(newFinancements);
+   log.info("Associated {} financements with new Realisation version", newFinancements.size());
     // Handle documents - establish bidirectional relationships
     if (!updatedDocs.isEmpty()) {
         System.out.println("Setting up document relationships for new Realisation version");
@@ -1451,6 +1578,147 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
                 }
             }
         }
+    }
+
+
+    /**
+     * Check if financement data has changed compared to existing financements
+     */
+    private boolean checkFinancementChanges(List<Financement> existingFinancements, List<FinancementRequest> updates) {
+        // If both are null/empty, no changes
+        if ((existingFinancements == null || existingFinancements.isEmpty()) &&
+                (updates == null || updates.isEmpty())) {
+            return false;
+        }
+
+        // If one is null/empty and other isn't, there are changes
+        if ((existingFinancements == null || existingFinancements.isEmpty()) ||
+                (updates == null || updates.isEmpty())) {
+            return true;
+        }
+
+        // If different sizes, there are changes
+        if (existingFinancements.size() != updates.size()) {
+            return true;
+        }
+
+        // Create maps for easier comparison by monnaie
+//        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
+//                .collect(Collectors.toMap(f -> f.getId().getMonnaie().getId(), f -> f));
+        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
+                .collect(Collectors.toMap(
+                        f -> f.getId().getMonnaie().getId(),
+                        f -> f,
+                        (existing, replacement) -> replacement // ← Keep the newer one
+                ));
+
+        Map<Integer, FinancementRequest> updatesByMonnaie = updates.stream()
+                .collect(Collectors.toMap(FinancementRequest::getMonnaieId, f -> f));
+
+        // Check if monnaie sets are different
+        if (!existingByMonnaie.keySet().equals(updatesByMonnaie.keySet())) {
+            return true;
+        }
+
+        // Compare each financement
+        for (Integer monnaieId : existingByMonnaie.keySet()) {
+            Financement existing = existingByMonnaie.get(monnaieId);
+            FinancementRequest update = updatesByMonnaie.get(monnaieId);
+
+            // Compare budget
+            if (update.getBudgetEstimer() != null &&
+                    existing.getBudgetEstimer().compareTo(update.getBudgetEstimer()) != 0) {
+                return true;
+            }
+
+            // Compare source financement
+            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
+                Integer existingSourceId = existing.getSourceFinancement() != null ?
+                        existing.getSourceFinancement().getId() : null;
+                if (!Objects.equals(existingSourceId, update.getSourceFinancement().getId())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Create updated financements for new realisation version
+     */
+    private List<Financement> createUpdatedFinancements(List<Financement> existingFinancements,
+                                                        List<FinancementRequest> updates,
+                                                        Realisation newVersionRealisation) {
+        List<Financement> newFinancements = new ArrayList<>();
+
+        if (updates == null || updates.isEmpty()) {
+            return newFinancements;
+        }
+
+        for (FinancementRequest update : updates) {
+            // Create new FinancementId (composite key)
+            FinancementId financementId = new FinancementId();
+            financementId.setRealisation(newVersionRealisation);
+
+            // Set Monnaie
+            Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
+                    .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
+            financementId.setMonnaie(monnaie);
+
+            // Generate new financement ID
+            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            financementId.setFinancementId(nextFinancementId);
+
+            // Create Financement entity
+            Financement financement = new Financement();
+            financement.setId(financementId);
+            financement.setBudgetEstimer(update.getBudgetEstimer());
+
+            // Set source financement if provided
+            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
+                RefParam sourceFinancement = refParamRepository.findById(update.getSourceFinancement().getId())
+                        .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + update.getSourceFinancement().getId()));
+                financement.setSourceFinancement(sourceFinancement);
+            }
+
+            newFinancements.add(financement);
+        }
+
+        return newFinancements;
+    }
+
+    /**
+     * Copy existing financements to new realisation version (when no financement changes)
+     */
+    private List<Financement> copyFinancementsToNewVersion(List<Financement> existingFinancements,
+                                                           Realisation newVersionRealisation) {
+        List<Financement> copiedFinancements = new ArrayList<>();
+
+        if (existingFinancements == null || existingFinancements.isEmpty()) {
+            return copiedFinancements;
+        }
+
+        for (Financement existing : existingFinancements) {
+            // Create new FinancementId for new version
+            FinancementId newFinancementId = new FinancementId();
+            newFinancementId.setRealisation(newVersionRealisation);
+            newFinancementId.setMonnaie(existing.getId().getMonnaie());
+
+            // Generate new financement ID
+            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            newFinancementId.setFinancementId(nextFinancementId);
+
+            // Create copied financement
+            Financement copiedFinancement = new Financement();
+            copiedFinancement.setId(newFinancementId);
+            copiedFinancement.setBudgetEstimer(existing.getBudgetEstimer());
+            copiedFinancement.setSourceFinancement(existing.getSourceFinancement());
+
+            copiedFinancements.add(copiedFinancement);
+        }
+
+        return copiedFinancements;
     }
 
 }

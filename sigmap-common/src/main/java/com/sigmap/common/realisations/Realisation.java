@@ -17,17 +17,20 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Entity
 @Table(name = "realisation")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
+@ToString(exclude = {"paas","financements"})
 public class Realisation extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "realisation_id")
@@ -48,13 +51,20 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "direction_id")
     private RefParam direction;
 
+    //TODO : to delete
+
     @ManyToOne
     @JoinColumn(name = "source_financement_id")
     private RefParam sourceFinancement;
 
+    //TODO: to delete
+
     @ManyToOne
     @JoinColumn(name = "monais_id")
     private RefParam monais;
+
+
+    //TODO: to delete
 
     @ManyToOne
     @JoinColumn(name = "monnaie_id")
@@ -89,6 +99,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "date_prev_ap")
     private LocalDate datePrevAp;
 
+    //TODO: to delete
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
 
@@ -166,7 +177,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     private List<Docs> docs;
 
     @OneToMany(mappedBy = "id.realisation",
-            fetch = FetchType.LAZY)
+             cascade = CascadeType.ALL)
     @JsonManagedReference("realisation-financements")
     private List<Financement> financements = new ArrayList<>();
 
@@ -186,5 +197,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             this.docs = new ArrayList<>();
         }
         return this.docs;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id); // Only use simple fields
     }
 }

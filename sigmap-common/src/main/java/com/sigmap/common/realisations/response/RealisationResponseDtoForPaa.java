@@ -4,6 +4,7 @@ import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponseDto;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.response.LotPaaResponse;
 import com.sigmap.common.monnaie.response.MonnaieResponseDto;
 import com.sigmap.common.ref_params.RefParam;
@@ -28,6 +29,10 @@ public class RealisationResponseDtoForPaa {
     private RefParamResponseDto service;
     private RefParamResponseDto direction;
     private RefParamResponseDto sourceFinancement;
+
+    private List<FinancementResponse> financements;
+
+
     private RefParamResponseDto imputationBudgetaire;
 //    private RefParamResponseDto monais;
     private MonnaieResponseDto monnaie;

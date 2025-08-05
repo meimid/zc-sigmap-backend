@@ -68,6 +68,7 @@ public interface PpmMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     PpmResponseDto mapToDto(Ppm source);
+
     PpmResponseSoftDto toDto(Ppm ppm);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")

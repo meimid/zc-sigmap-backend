@@ -18,12 +18,18 @@ import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.financement.FinancementId;
+import com.sigmap.common.financement.FinancementRepository;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.monnaie.Monnaie;
+import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
@@ -79,7 +85,8 @@ public class PpmServiceImpl implements PpmService {
     private final SequenceGeneratorService sequenceGeneratorService;
     private final DacRepository dacRepository;
     private final AcSeuilService acSeuilService;
-
+    private final FinancementRepository financementRepository;
+    private final MonnaieRepository monnaieRepository;
 
     /**
      * Constructor.
@@ -93,7 +100,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository,AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, FinancementRepository financementRepository, MonnaieRepository monnaieRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -109,6 +116,8 @@ public class PpmServiceImpl implements PpmService {
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.dacRepository = dacRepository;
         this.acSeuilService = acSeuilService;
+        this.financementRepository = financementRepository;
+        this.monnaieRepository = monnaieRepository;
     }
 
     @Override
@@ -659,6 +668,89 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         for (Realisation realisation : updatedRealisations) {
             setSeuilApplicableForRealisation(realisation, requestAcId);
         }
+
+        // ============= ADD FINANCEMENT PROCESSING HERE =============
+//        boolean financementChanged = false;
+//        System.out.println("=== PROCESSING FINANCEMENTS ===");
+//
+//        // Process financements for each realisation in the request
+//        for (int i = 0; i < request.getRealisations().size(); i++) {
+//            RealisationBaseRequestDto realisationRequest = request.getRealisations().get(i);
+//            Realisation correspondingRealisation = updatedRealisations.get(i);
+//
+//            System.out.println("Processing financements for realisation " +
+//                    (realisationRequest.getId() != null ? realisationRequest.getId() : "NEW"));
+//
+//            List<Financement> processedFinancementsForRealisation = new ArrayList<>();
+//            boolean financementChangedForThisRealisation = false;
+//
+//            if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+//                System.out.println("Processing " + realisationRequest.getFinancements().size() +
+//                        " financements for this realisation");
+//
+//                for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+//                    System.out.println("Processing financement: " + financementRequest);
+//
+//                    if (financementRequest.getFinancementId() != null) {
+//                        // Existing financement - find and update
+//                        Optional<Financement> existingFinancementOpt = correspondingRealisation.getFinancements().stream()
+//                                .filter(f -> f.getId().equals(financementRequest.getFinancementId()))
+//                                .findFirst();
+//
+//                        if (existingFinancementOpt.isPresent()) {
+//                            Financement existingFinancement = existingFinancementOpt.get();
+//                            Financement updatedFinancement = updateFinancementFromRequest(
+//                                    existingFinancement, financementRequest);
+//
+//                            if (!areFinancementsIdentical(existingFinancement, updatedFinancement)) {
+//                                System.out.println("Financement " + existingFinancement.getId() + " has changed");
+//                                financementChangedForThisRealisation = true;
+//                            }
+//                            processedFinancementsForRealisation.add(updatedFinancement);
+//                        } else {
+//                            throw new RuntimeException("Financement not found with ID: " + financementRequest.getFinancementId());
+//                        }
+//                    } else {
+//                        // New financement
+//                        System.out.println("Creating new financement");
+//                        financementChangedForThisRealisation = true;
+//                        Financement newFinancement = createFinancementFromRequest(financementRequest);
+//                        processedFinancementsForRealisation.add(newFinancement);
+//                    }
+//                }
+//            }
+//
+//            // Check for deleted financements in this realisation
+//            if (correspondingRealisation.getFinancements() != null) {
+//                for (Financement existingFinancement : correspondingRealisation.getFinancements()) {
+//                    boolean found = realisationRequest.getFinancements() != null &&
+//                            realisationRequest.getFinancements().stream()
+//                                    .anyMatch(f -> f.getFinancementId() != null && f.getFinancementId().equals(existingFinancement.getId()));
+//
+//                    if (!found) {
+//                        System.out.println("Financement " + existingFinancement.getId() + " was deleted");
+//                        financementChangedForThisRealisation = true;
+//                    }
+//                }
+//            }
+//
+//            // Update the realisation with processed financements
+//            correspondingRealisation.setFinancements(processedFinancementsForRealisation);
+//            for (Financement financement : processedFinancementsForRealisation) {
+//                financement.setRealisation(correspondingRealisation);
+//            }
+//
+//            // Aggregate the financement change flag
+//            if (financementChangedForThisRealisation) {
+//                financementChanged = true;
+//            }
+//
+//            System.out.println("Financement changes detected for this realisation: " + financementChangedForThisRealisation);
+//        }
+//
+//        System.out.println("Overall financement changes detected: " + financementChanged);
+        // ============= END OF FINANCEMENT PROCESSING =============
+
 
         // Process documents if present
         List<Docs> updatedDocs = new ArrayList<>();
@@ -2699,6 +2791,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     System.out.println("Set " + lots.size() + " lots on realisation ID: " + realisation.getId());
                 }
 
+
                 // Add the realisation to the list to save later
                 realisationsToSave.add(realisation);
             }
@@ -3916,6 +4009,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             );
         }
 
+
         // Step 10: Process realisations if provided
         if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
@@ -3982,9 +4076,126 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setLots(lots);
                 }
 
+
+
+                // ADD: Handle Financements
+                Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+
+                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
+
+                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+
+                    // SAFE: Create list without triggering hashCode on entities
+                    List<Financement> financements = new ArrayList<>();
+
+                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+
+                        // Validate required fields
+                        if (financementRequest.getMonnaieId() == null) {
+                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+                            continue;
+                        }
+
+                        // SAFE: Create entities step by step without setting relationships
+                        Financement financement = new Financement();
+                        FinancementId financementId = new FinancementId();
+
+                        // Set simple fields first
+                        financementId.setFinancementId(nextFinancementId++);
+                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+
+                        // Get monnaie entity
+                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+
+                        // Set source financement if provided
+                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                            financement.setSourceFinancement(sourceFinancement);
+                        }
+
+                        // CRITICAL: Set relationships LAST to avoid cycles
+                        financementId.setMonnaie(monnaie);
+                        financementId.setRealisation(realisation);
+                        financement.setId(financementId);
+
+                        // SAFE: Add to ArrayList (doesn't trigger hashCode)
+                        financements.add(financement);
+
+                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
+                                financementId.getFinancementId(),
+                                financementRequest.getMonnaieId(),
+                                financementRequest.getBudgetEstimer());
+                    }
+
+                    // SAFE: Set the collection on realisation
+                    realisation.setFinancements(financements);
+                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+                } else {
+                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+                    realisation.setFinancements(new ArrayList<>());
+                }
+
+//                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+//                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+//                    List<Financement> financements = new ArrayList<>();
+//
+//                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+//                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+//
+//                        // Validate required fields
+//                        if (financementRequest.getMonnaieId() == null) {
+//                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+//                            continue;
+//                        }
+//
+//                        // Create FinancementId (composite key)
+//                        FinancementId financementId = new FinancementId();
+//                        financementId.setRealisation(realisation);
+//
+//                        // Set Monnaie
+//                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+//                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+//                        financementId.setMonnaie(monnaie);
+//
+//                        // Generate unique financement ID
+//                        financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
+//
+//                        // Create Financement entity
+//                        Financement financement = new Financement();
+//                        financement.setId(financementId);
+//                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+//
+//                        // Set source financement if provided
+//                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+//                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+//                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+//                            financement.setSourceFinancement(sourceFinancement);
+//                        }
+//
+//                        // Add the financement to the list
+//                        financements.add(financement);
+//                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
+//                                financementId.getFinancementId(),
+//                                financementRequest.getMonnaieId(),
+//                                financementRequest.getBudgetEstimer());
+//                    }
+//
+//                    realisation.setFinancements(financements);
+//                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+//                }
+//                else {
+//                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+//                    realisation.setFinancements(new ArrayList<>());
+//                }
+
                 realisationsToSave.add(realisation);
             }
             realisationRepository.saveAll(realisationsToSave);
+
         }
 
         // Step 11: Validate realisations for budget consistency
@@ -4209,5 +4420,90 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
         }
     }
+
+
+//    /**
+//     * Compares two Financement objects to check if their fields are identical.
+//     */
+//    private boolean areFinancementsIdentical(Financement f1, Financement f2) {
+//        if (f1 == f2) return true;
+//        if (f1 == null || f2 == null) return false;
+//
+//        return Objects.equals(f1.getBudgetEstimer(), f2.getBudgetEstimer())
+//                && Objects.equals(getId(f1.getSourceFinancement()), getId(f2.getSourceFinancement()))
+//                && Objects.equals(getMonnaieId(f1.getId().getMonnaie()), getMonnaieId(f2.getId().getMonnaie()));
+//    }
+//
+//    /**
+//     * Safely extracts ID from RefParam (already exists in your class from PAA logic)
+//     */
+//    private Integer getId(RefParam refParam) {
+//        return refParam != null ? refParam.getId() : null;
+//    }
+//
+//    /**
+//     * Safely extracts ID from Monnaie
+//     */
+//    private Integer getMonnaieId(Monnaie monnaie) {
+//        return monnaie != null ? monnaie.getId() : null;
+//    }
+//
+//    /**
+//     * Updates an existing Financement from request data
+//     */
+//    private Financement updateFinancementFromRequest(Financement existingFinancement, FinancementRequest request) {
+//        // Update budget estimé
+//        existingFinancement.setBudgetEstimer(request.getBudgetEstimer());
+//
+//        // Update sourceFinancement if provided
+//        if (request.getSourceFinancementId() != null) {
+//            RefParam sourceFinancement = refParamService.findById(request.getSourceFinancementId());
+//            existingFinancement.setSourceFinancement(sourceFinancement);
+//        }
+//
+//        // Update monnaie in composite key if provided
+//        if (request.getMonnaieId() != null) {
+//            Monnaie monnaie = monnaieService.findById(request.getMonnaieId());
+//            FinancementId id = existingFinancement.getId();
+//            id.setMonnaie(monnaie);
+//            existingFinancement.setId(id);
+//        }
+//
+//        return existingFinancement;
+//    }
+//
+//    /**
+//     * Creates a new Financement from request data
+//     */
+//    private Financement createFinancementFromRequest(FinancementRequest request, Realisation realisation) {
+//        Financement financement = new Financement();
+//
+//        // Set budget estimé
+//        financement.setBudgetEstimer(request.getBudgetEstimer());
+//
+//        // Set sourceFinancement
+//        if (request.getFinancementId() != null) {
+//            RefParam sourceFinancement = refParamService.findById(request.getSourceFinancementId());
+//            financement.setSourceFinancement(sourceFinancement);
+//        }
+//
+//        // Create composite ID
+//        FinancementId financementId = new FinancementId();
+//        financementId.setRealisation(realisation);
+//
+//        // Set monnaie
+//        if (request.getMonnaieId() != null) {
+//            Monnaie monnaie = monnaieService.findById(request.getMonnaieId());
+//            financementId.setMonnaie(monnaie);
+//        }
+//
+//        // Set financement ID (you may need to generate this)
+//        financementId.setFinancementId(generateNewFinancementId());
+//
+//        financement.setId(financementId);
+//
+//        return financement;
+//    }
+
 
 }

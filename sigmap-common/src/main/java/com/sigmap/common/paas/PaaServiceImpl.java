@@ -11,9 +11,16 @@ import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.financement.FinancementId;
+import com.sigmap.common.financement.FinancementRepository;
+import com.sigmap.common.financement.request.FinancementBaseRequestDto;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
+import com.sigmap.common.monnaie.Monnaie;
+import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.mappers.PaaMapper;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -70,12 +77,15 @@ public class PaaServiceImpl implements PaaService {
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final AcSeuilService acSeuilService;
+    private final MonnaieRepository monnaieRepository;
+    private final FinancementRepository financementRepository;
+    private final RefParamRepository refParamRepository;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
     public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
-                          AcSeuilService acSeuilService) {
+                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -87,6 +97,9 @@ public class PaaServiceImpl implements PaaService {
         this.currentUserService = currentUserService;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.acSeuilService = acSeuilService;
+        this.monnaieRepository = monnaieRepository;
+        this.financementRepository = financementRepository;
+        this.refParamRepository = refParamRepository1;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -2228,6 +2241,18 @@ public class PaaServiceImpl implements PaaService {
 
                 sb.append("budgetEstime:").append(realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : "").append(",");
 
+                if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
+                    sb.append("financements:[");
+                    for (FinancementRequest financement : realisation.getFinancements()) {
+                        sb.append("monnaieId:").append(financement.getMonnaieId() != null ? financement.getMonnaieId() : "").append(",");
+                        sb.append("sourceFinId:").append(financement.getSourceFinancement() != null && financement.getSourceFinancement().getId() != null ? financement.getSourceFinancement().getId() : "").append(",");
+                        sb.append("budgetEstimer:").append(financement.getBudgetEstimer() != null ? financement.getBudgetEstimer() : "").append("},");
+                    }
+                    sb.append("]");
+                }
+                sb.append("],");
+
+
                 if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                     // Sort lots by ID
                     List<LotResponse> sortedLots = new ArrayList<>(realisation.getLots());
@@ -2856,6 +2881,12 @@ public class PaaServiceImpl implements PaaService {
             Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
             log.info("Starting lot ID sequence at: {}", nextLotId);
 
+            // ADD THIS: Initialize financement sequence
+            Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+            Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
+            log.info("Starting financement ID sequence at: {}", nextFinancementId);
+
+
             List<Realisation> realisationsToSave = new ArrayList<>();
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 Realisation realisation = new Realisation();
@@ -2933,6 +2964,60 @@ public class PaaServiceImpl implements PaaService {
                     log.info("No lots provided for realisation ID: {}", realisation.getId());
                     realisation.setLots(new ArrayList<>());
                 }
+                // INSERT FINANCEMENT CODE HERE - RIGHT AFTER LOTS PROCESSING
+                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+                    List<Financement> financements = new ArrayList<>();
+
+                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) { // FIXED: Use correct DTO type
+                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+
+                        // Validate required fields
+                        if (financementRequest.getMonnaieId() == null) {
+                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+                            continue;
+                        }
+
+                        // Create FinancementId (composite key)
+                        FinancementId financementId = new FinancementId();
+                        financementId.setRealisation(realisation);
+
+                        // Set Monnaie
+                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+                        financementId.setMonnaie(monnaie);
+
+                        // Generate unique financement ID
+                        financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
+
+                        // Create Financement entity
+                        Financement financement = new Financement();
+                        financement.setId(financementId);
+                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+
+                        // Set source financement if provided
+                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                            financement.setSourceFinancement(sourceFinancement);
+                        }
+
+                        // FIXED: Add the financement to the list (this was missing!)
+                        financements.add(financement);
+                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
+                                financementId.getFinancementId(),
+                                financementRequest.getMonnaieId(),
+                                financementRequest.getBudgetEstimer());
+                    }
+
+                    realisation.setFinancements(financements);
+                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+                } else {
+                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+                    realisation.setFinancements(new ArrayList<>());
+                }
+
+
 
                 realisationsToSave.add(realisation);
             }

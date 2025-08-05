@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Getter
@@ -48,6 +49,10 @@ public class Ac extends BaseEntity {
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(id); // Only use simple fields, not related entities
+  }
 
 
 }

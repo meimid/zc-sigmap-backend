@@ -1,5 +1,6 @@
 package com.sigmap.common.financement.request;
 
+import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 import java.math.BigDecimal;
 
@@ -10,6 +11,8 @@ import java.math.BigDecimal;
  */
 @Data
 public class FinancementRequest {
+
+    private Integer financementId ;
 
     /**
      * The ID of the Realisation entity (part of composite key).
@@ -29,7 +32,7 @@ public class FinancementRequest {
     /**
      * The ID of the financing source.
      */
-    private Integer sourceDeFinancementId;
+    private RefParam sourceFinancement;
 
     /**
      * The estimated budget amount.

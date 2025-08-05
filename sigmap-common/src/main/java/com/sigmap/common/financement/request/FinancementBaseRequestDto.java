@@ -1,5 +1,6 @@
 package com.sigmap.common.financement.request;
 
+import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 import java.math.BigDecimal;
 
@@ -11,10 +12,12 @@ import java.math.BigDecimal;
 @Data
 public class FinancementBaseRequestDto {
 
+    private Integer monnaieId;
+
     /**
      * The ID of the financing source.
      */
-    private Integer sourceDeFinancementId;
+    private RefParam sourceFinancement;
 
     /**
      * The estimated budget amount.
