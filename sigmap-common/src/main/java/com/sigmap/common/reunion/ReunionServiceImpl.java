@@ -256,12 +256,12 @@ public class ReunionServiceImpl implements ReunionService{
 
         }
 
-       for (ReunionPpm currentLink : currentLinks.values()) {
+   /*    for (ReunionPpm currentLink : currentLinks.values()) {
             ReunionPpmId currentId = new ReunionPpmId(currentLink.getReunionId(), currentLink.getPpmId(), currentLink.getPpmVer());
             if (!requestLinkIds.contains(currentId)) {
                 reunionPpmRepository.delete(currentLink);
             }
-        }
+        }*/
     }
 
     private void synchronizeDacs(ReunionRequest request, Reunion reunion) {
@@ -289,12 +289,12 @@ public class ReunionServiceImpl implements ReunionService{
 
         }
 
-        for (ReunionDac currentLink : currentLinks.values()) {
+      /*  for (ReunionDac currentLink : currentLinks.values()) {
             ReunionDacId currentId = new ReunionDacId(currentLink.getReunionId(), currentLink.getDacId(), currentLink.getDacVer());
             if (!requestDacIds.contains(currentId)) {
                 reunionDacRepository.delete(currentLink);
             }
-        }
+        }*/
     }
     @Override
     public List<Reunion> findAll() {
