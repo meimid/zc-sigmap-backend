@@ -35,6 +35,17 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
     Page<Realisation> findRealisationsWithoutDacByPpm(@Param("ppmId") Integer ppmId,
                                                       @Param("ppmVer") Integer ppmVer,
                                                       Pageable pageable);
+
+    @Query("SELECT r FROM Realisation r " +
+            "WHERE EXISTS (SELECT 1 FROM Realisation r2 JOIN r2.ppms ppm " +
+            "WHERE ppm.id = :ppmId AND ppm.version = :ppmVersion " +
+            "AND r2.id = r.id AND r2.version = r.version) " +
+            "AND r.version = (SELECT MAX(r3.version) FROM Realisation r3 " +
+            "WHERE r3.id = r.id AND r3.isDeleted = false) " +
+            "AND r.isDeleted = false")
+    List<Realisation> findLatestRealisationVersionsByPpm(@Param("ppmId") Integer ppmId,
+                                                         @Param("ppmVersion") Integer ppmVersion);
+
 }
 
 //public interface RealisationRepository extends JpaRepository<Realisation, RealisationId>,

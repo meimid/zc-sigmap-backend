@@ -1,6 +1,7 @@
 package com.sigmap.common.financement;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.*;
@@ -19,6 +20,7 @@ public class FinancementId {
             @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
     })
     @JsonBackReference("realisation-financements")
+    @JsonIgnore
     private Realisation realisation;
 
     @ManyToOne
