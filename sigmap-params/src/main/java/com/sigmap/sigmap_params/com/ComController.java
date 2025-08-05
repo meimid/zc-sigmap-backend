@@ -242,6 +242,8 @@ public class ComController {
                 member.setMobile(keycloakUser.getMobile());
             }
         }
+        UserCom responsable=userComRepository.findResponsableByComId(response.getId());
+        if(responsable!=null){
         String responsibleUserId = userComRepository.findResponsableByComId(response.getId()).getUserId();
         response.setResponsableId(responsibleUserId);
         for (ComMemberDTO member : members) {
@@ -252,6 +254,7 @@ public class ComController {
             }
         }
         response.setUsers(members);
+        }
 
     }
     @GetMapping("/by_own_tutel/{acId}")
