@@ -1,8 +1,7 @@
 
 package com.sigmap.common.ac.response;
 
-import com.sigmap.common.adresse.response.AdresseResponseDto;
-import com.sigmap.common.com.response.ComResponseDto;
+import com.sigmap.common.config.TypeAffCommission;
 import lombok.Data;
 
 @Data
@@ -14,5 +13,7 @@ public class AcResponseDto {
     private String email;
     private String logo;
     private boolean istTutel;
+    private TypeAffCommission typeAffCommission;
+
 
 }

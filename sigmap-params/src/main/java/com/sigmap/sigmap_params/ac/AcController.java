@@ -279,12 +279,6 @@ public class AcController {
         List<AcSelectResponseDto> responses= AcMapper.INSTANCE.mapToSelectDto(acs);
         return ResponseEntity.ok(responses);
     }
-    @PutMapping("{acId}/com/{comId}")
-    public ResponseEntity<AcResponse> updateComeId(@PathVariable Integer acId, @PathVariable Integer comId) throws ComNotFound, AcNotFound {
-        Ac ac = acService.updateComeId(acId,comId);
-        AcResponse response = AcMapper.INSTANCE.map(ac);
-        return ResponseEntity.ok(response);
-    }
     @GetMapping("/acs_list_with_no_com")
     public ResponseEntity<List<AcSelectResponseDto>> findAllAsListWithNoCom() {
         List<Ac> acs=acService.findAllAcsWithNoCom();
