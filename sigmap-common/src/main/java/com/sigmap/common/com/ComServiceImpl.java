@@ -258,11 +258,20 @@ public class ComServiceImpl implements ComService {
       theAdress.setPays(pays);
       com.setTheAdresse(theAdress);
     }
-    else if (com.getTheAdresse()==null){
+    else if (com.getTheAdresse()==null&&request.getTheAdresse()!=null){
+
       Adresse theAddress=adressService.create(request.getTheAdresse());
       theAddress.setPays(pays);
       com.setTheAdresse(theAddress);
+      }
+    else {
+      AdresseRequest adresseRequest=new AdresseRequest();
+      adresseRequest.setPaysId(pays.getId());
+      Adresse theAddress=adressService.create(adresseRequest);
+      theAddress.setPays(pays);
+      com.setTheAdresse(theAddress);
     }
+
 
     List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
     List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
