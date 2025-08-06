@@ -1,9 +1,7 @@
 package com.sigmap.sigmap_params.ac;
 
 import com.sigmap.common.ac.exception.*;
-import com.sigmap.common.ac.response.AcResponseDto;
-import com.sigmap.common.ac.response.AcSelectResponseDto;
-import com.sigmap.common.ac.response.AcWebsiteResponse;
+import com.sigmap.common.ac.response.*;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComDeleted;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
@@ -12,7 +10,6 @@ import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcQuery;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.dto.AcMemberDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -22,9 +19,11 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -37,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/ac")
-
+@Slf4j
 public class AcController {
     private final Logger logger = LoggerFactory.getLogger(AcController.class);
     @Autowired
@@ -66,7 +66,8 @@ public class AcController {
     public AcController(AcService acService) {
         this.acService = acService;
     }
-
+    @Value("${file.upload.ac-logo-path}")
+    private String acLogoPath;
     /**
      * Return a page of ac based on the given specifica tion and pageable.
      *
@@ -285,5 +286,12 @@ public class AcController {
         List<Ac> acs=acService.findAllAcsWithNoCom();
          List<AcSelectResponseDto> responses=AcMapper.INSTANCE.mapToSelectDto(acs);
          return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{acId}/photo/display")
+    public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
+        // 2. Pass BOTH the ID and the path to the service
+        LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
+        return ResponseEntity.ok(response);
     }
 }

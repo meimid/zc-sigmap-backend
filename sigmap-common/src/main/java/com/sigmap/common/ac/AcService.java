@@ -1,6 +1,7 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.request.AcRequest;
@@ -103,4 +104,5 @@ public interface AcService {
     List<Ac> findAllByComId(Integer comId) throws ComNotFound;
 
     List<Ac> findAllAcsWithNoCom();
+     LogoResponse getAcPhoto(Integer acId,String basePath) throws AcNotFound;
 }

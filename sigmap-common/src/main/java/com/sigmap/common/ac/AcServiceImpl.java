@@ -1,6 +1,7 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.request.AdresseRequest;
@@ -23,10 +24,12 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -40,7 +43,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
+import static org.testcontainers.shaded.com.google.common.io.Files.getFileExtension;
+
 @Service
+@Slf4j
 public class AcServiceImpl implements AcService{
 
     private final Logger logger = LoggerFactory.getLogger(AcService.class);
@@ -61,6 +67,7 @@ public class AcServiceImpl implements AcService{
 
     @Autowired
     private FileStorageProperties fileStorageProperties;
+
 
     public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService, RefParamService refParamService) {
         this.repository = repository;
@@ -416,4 +423,65 @@ public class AcServiceImpl implements AcService{
         Specification<Ac>specification=AcSpecifications.hasComNull();
         return repository.findAll(specification);
     }
+
+    /**
+     * Retrieves photo bytes for a given AC ID
+     * @param acId the ID of the AC
+     * @return byte array of the photo
+     * @throws RuntimeException if AC not found or photo cannot be read
+     */
+    @Override
+    public LogoResponse getAcPhoto(Integer acId, String basePath) throws AcNotFound {
+        log.info("Retrieving photo for AC ID: {} using base path: {}", acId, basePath);
+
+        Ac ac = findById(acId);
+        String logoPath = ac.getLogo();
+
+        // 1. Return null if there is no logo path in the database.
+        if (!StringUtils.hasText(logoPath)) {
+            log.warn("No logo path found in the database for AC ID: {}", acId);
+            return null;
+        }
+
+        try {
+            // 2. Try to read the file from the disk.
+            byte[] photoBytes = readPhotoFromFileSystem(acId, logoPath, basePath);
+            String extension = getFileExtension(logoPath);
+            return new LogoResponse(photoBytes, extension);
+
+        } catch (RuntimeException e) {
+            // 3. If readPhotoFromFileSystem throws an exception (file not found),
+            //    log it and return null instead of crashing.
+            log.warn("Could not find or read photo file for AC ID: {}. Reason: {}", acId, e.getMessage());
+            return null;
+        }
+    }
+
+    // This private method now takes the basePath as an argument
+    private byte[] readPhotoFromFileSystem(Integer acId, String logoPath, String basePath) {
+        if (basePath == null || basePath.trim().isEmpty()) {
+            throw new RuntimeException("Base path was not provided by the calling service.");
+        }
+
+        try {
+            // Build the path dynamically using the provided base path
+            Path fullPath = Paths.get(basePath, acId.toString(), logoPath);
+
+            if (!Files.exists(fullPath)) {
+                log.error("Photo file does not exist: {}", fullPath);
+                throw new RuntimeException("Photo file not found: " + logoPath);
+            }
+
+            log.info("Reading photo file from: {}", fullPath);
+            return Files.readAllBytes(fullPath);
+
+        } catch (IOException e) {
+            log.error("Error reading photo file: {}", logoPath, e);
+            throw new RuntimeException("Could not read photo file: " + logoPath, e);
+        }
+    }
+
+
+
+
 }
