@@ -23,9 +23,6 @@ public class FinancementId {
     @JsonIgnore
     private Realisation realisation;
 
-    @ManyToOne
-    @JoinColumn(name = "monnaie_id")
-    private Monnaie monnaie;
 
     @Column(name = "financement_id")
     private Integer financementId;

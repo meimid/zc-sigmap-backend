@@ -799,14 +799,24 @@ public class PaaServiceImpl implements PaaService {
                                     throw new EntityNotFoundException("Financement with ID " + financementId + " not found");
                                 }
                                 financement = existingFinancementOpt.get();
-                                System.out.println("Found existing financement ID: " + financementId + ", current Monnaie ID: " + financement.getId().getMonnaie().getId());
+                                System.out.println("Found existing financement ID: " + financementId + ", current Monnaie ID: " + financement.getMonnaie().getId());
                                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                         .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+
+                                // Auto-assign taux from Monnaie to tauxApplicable
+                                if (monnaie.getTaux() != null) {
+                                    financement.setTauxApplicable(monnaie.getTaux());
+                                    System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                                } else {
+                                    financement.setTauxApplicable(0.0); // Default value if taux is null
+                                    System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                                }
+
                                 FinancementId newFinancementId = new FinancementId();
                                 newFinancementId.setFinancementId(financementId);
                                 newFinancementId.setRealisation(financement.getId().getRealisation());
-                                newFinancementId.setMonnaie(monnaie);
+                                financement.setMonnaie(monnaie);
                                 financement.setId(newFinancementId);
                                 if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
                                     RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
@@ -828,7 +838,17 @@ public class PaaServiceImpl implements PaaService {
                                 compositeFinancementId.setRealisation(realisation);
                                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                         .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
-                                compositeFinancementId.setMonnaie(monnaie);
+
+                                // Auto-assign taux from Monnaie to tauxApplicable
+                                if (monnaie.getTaux() != null) {
+                                    financement.setTauxApplicable(monnaie.getTaux());
+                                    System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                                } else {
+                                    financement.setTauxApplicable(0.0); // Default value if taux is null
+                                    System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                                }
+
+                                financement.setMonnaie(monnaie);
                                 financement.setId(compositeFinancementId);
                                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                                 if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
@@ -972,7 +992,7 @@ public class PaaServiceImpl implements PaaService {
                             compositeFinancementId.setRealisation(realisation);
                             Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                     .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
-                            compositeFinancementId.setMonnaie(monnaie);
+                            financement.setMonnaie(monnaie);
                             financement.setId(compositeFinancementId);
                             financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                             if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
@@ -4110,7 +4130,7 @@ public class PaaServiceImpl implements PaaService {
                             log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
                             continue;
                         }
-
+                        Financement financement = new Financement();
                         // Create FinancementId (composite key)
                         FinancementId financementId = new FinancementId();
                         financementId.setRealisation(realisation);
@@ -4118,13 +4138,21 @@ public class PaaServiceImpl implements PaaService {
                         // Set Monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-                        financementId.setMonnaie(monnaie);
+                        financement.setMonnaie(monnaie);
+                        // Auto-assign taux from Monnaie to tauxApplicable
+                        if (monnaie.getTaux() != null) {
+                            financement.setTauxApplicable(monnaie.getTaux());
+                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                        } else {
+                            financement.setTauxApplicable(0.0); // Default value if taux is null
+                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                        }
 
                         // Generate unique financement ID
                         financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
 
                         // Create Financement entity
-                        Financement financement = new Financement();
+
                         financement.setId(financementId);
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 

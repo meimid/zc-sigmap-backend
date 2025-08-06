@@ -199,13 +199,21 @@ public class RealisationServiceImpl implements RealisationService {
                 // Create FinancementId (composite key)
                 FinancementId financementId = new FinancementId();
 //                financementId.setRealisation(savedRealisation);
-
+                Financement financement = new Financement();
                 // Set Monnaie from individual financement request
                 if (financementRequest.getMonnaieId() != null) {
                     log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
                     Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                             .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-                    financementId.setMonnaie(monnaie);
+                    // ADD THIS LOGIC HERE
+                    if (monnaie.getTaux() != null) {
+                        financement.setTauxApplicable(monnaie.getTaux());
+                        System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                    } else {
+                        financement.setTauxApplicable(0.0);
+                        System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                    }
+                    financement.setMonnaie(monnaie);
                 } else {
                     throw new IllegalArgumentException("Monnaie ID is required for each Financement");
                 }
@@ -217,7 +225,7 @@ public class RealisationServiceImpl implements RealisationService {
                 log.info("Generated Financement ID: {}", nextFinancementId);
 
                 // Create Financement entity
-                Financement financement = new Financement();
+
                 financement.setId(financementId);
                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
@@ -683,9 +691,10 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             // Set monnaie for comparison
             if (financementUpdate.getMonnaieId() != null) {
                 Monnaie monnaie = monnaieRepository.findById(financementUpdate.getMonnaieId()).orElse(null);
+
                 if (monnaie != null) {
                     FinancementId tempId = new FinancementId();
-                    tempId.setMonnaie(monnaie);
+                    tempFinancement.setMonnaie(monnaie);
                     tempFinancement.setId(tempId);
                 }
             }
@@ -1607,7 +1616,7 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
 //                .collect(Collectors.toMap(f -> f.getId().getMonnaie().getId(), f -> f));
         Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
                 .collect(Collectors.toMap(
-                        f -> f.getId().getMonnaie().getId(),
+                        f -> f.getMonnaie().getId(),
                         f -> f,
                         (existing, replacement) -> replacement // ← Keep the newer one
                 ));
@@ -1660,18 +1669,27 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             // Create new FinancementId (composite key)
             FinancementId financementId = new FinancementId();
             financementId.setRealisation(newVersionRealisation);
-
+            Financement financement = new Financement();
             // Set Monnaie
             Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
-            financementId.setMonnaie(monnaie);
+            financement.setMonnaie(monnaie);
+
+            // ADD THIS LOGIC HERE
+            if (monnaie.getTaux() != null) {
+                financement.setTauxApplicable(monnaie.getTaux());
+                System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+            } else {
+                financement.setTauxApplicable(0.0);
+                System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+            }
 
             // Generate new financement ID
             Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
             financementId.setFinancementId(nextFinancementId);
 
             // Create Financement entity
-            Financement financement = new Financement();
+
             financement.setId(financementId);
             financement.setBudgetEstimer(update.getBudgetEstimer());
 
@@ -1701,16 +1719,17 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
 
         for (Financement existing : existingFinancements) {
             // Create new FinancementId for new version
+            Financement copiedFinancement = new Financement();
             FinancementId newFinancementId = new FinancementId();
             newFinancementId.setRealisation(newVersionRealisation);
-            newFinancementId.setMonnaie(existing.getId().getMonnaie());
+            copiedFinancement.setMonnaie(existing.getMonnaie());
 
             // Generate new financement ID
             Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
             newFinancementId.setFinancementId(nextFinancementId);
 
             // Create copied financement
-            Financement copiedFinancement = new Financement();
+
             copiedFinancement.setId(newFinancementId);
             copiedFinancement.setBudgetEstimer(existing.getBudgetEstimer());
             copiedFinancement.setSourceFinancement(existing.getSourceFinancement());

@@ -21,7 +21,7 @@ public interface FinancementRepository extends JpaRepository<Financement, Financ
     /**
      * Find financement by specific realisation and monnaie.
      */
-    @Query("SELECT f FROM Financement f WHERE f.id.realisation.id = :realisationId AND f.id.realisation.version = :realisationVer AND f.id.monnaie.id = :monnaieId")
+    @Query("SELECT f FROM Financement f WHERE f.id.realisation.id = :realisationId AND f.id.realisation.version = :realisationVer AND f.monnaie.id = :monnaieId")
     Financement findByRealisationAndMonnaie(@Param("realisationId") Integer realisationId,
                                             @Param("realisationVer") Integer realisationVer,
                                             @Param("monnaieId") Integer monnaieId);

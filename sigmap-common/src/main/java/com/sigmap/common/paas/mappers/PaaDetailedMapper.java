@@ -56,7 +56,7 @@ public interface PaaDetailedMapper {
     @Mapping(target = "financementId", source = "id.financementId")
     @Mapping(target = "realisationId", source = "id.realisation.id")
     @Mapping(target = "realisationVer", source = "id.realisation.version")
-    @Mapping(target = "monnaieId", source = "id.monnaie.id")
+    @Mapping(target = "monnaieId", source = "monnaie.id")
     @Mapping(target = "sourceFinancement", source = "sourceFinancement")
     @Mapping(target = "budgetEstimer", source = "budgetEstimer")
     FinancementResponse mapFinancement(Financement financement);
