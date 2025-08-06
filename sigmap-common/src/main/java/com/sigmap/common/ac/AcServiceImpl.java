@@ -270,6 +270,13 @@ public class AcServiceImpl implements AcService{
             theAdress.setPays(pays);
             ac.setAdresse(theAdress);
         }
+        else{
+            AdresseRequest adresseRequest=new AdresseRequest();
+            adresseRequest.setPaysId(pays.getId());
+            Adresse theAddress=adressService.create(adresseRequest);
+            theAddress.setPays(pays);
+            ac.setAdresse(theAddress);
+        }
         if(request.getComId()!=null) {
             Com com=comService.findById(request.getComId());
             ac.setCom(com);
