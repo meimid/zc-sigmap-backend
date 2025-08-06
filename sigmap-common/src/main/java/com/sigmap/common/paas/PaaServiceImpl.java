@@ -41,6 +41,7 @@ import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
@@ -80,11 +81,12 @@ public class PaaServiceImpl implements PaaService {
     private final MonnaieRepository monnaieRepository;
     private final FinancementRepository financementRepository;
     private final RefParamRepository refParamRepository;
+    private final EntityManager entityManager;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
-    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
+    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, EntityManager entityManager,RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
                           AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
@@ -100,6 +102,7 @@ public class PaaServiceImpl implements PaaService {
         this.monnaieRepository = monnaieRepository;
         this.financementRepository = financementRepository;
         this.refParamRepository = refParamRepository1;
+        this.entityManager = entityManager;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -605,7 +608,6 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -767,6 +769,108 @@ public class PaaServiceImpl implements PaaService {
                         System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
+                    // Process financements
+                    if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+                        List<Financement> financements = new ArrayList<>();
+                        Set<Integer> requestedFinancementIds = realisationRequest.getFinancements().stream()
+                                .filter(financementRequest -> financementRequest.getFinancementId() != null)
+                                .map(FinancementRequest::getFinancementId)
+                                .collect(Collectors.toSet());
+                        Set<Integer> existingFinancementIds = realisation.getFinancements() != null ?
+                                realisation.getFinancements().stream()
+                                        .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted()))
+                                        .map(financement -> financement.getId().getFinancementId())
+                                        .collect(Collectors.toSet()) : new HashSet<>();
+
+                        for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+                            if (financementRequest.getMonnaieId() == null) {
+                                log.warn("Skipping financement with null monnaieId for Realisation ID: {}", realisation.getId());
+                                continue;
+                            }
+                            Financement financement;
+                            Integer financementId = financementRequest.getFinancementId();
+                            if (financementId != null) {
+                                // Update existing financement
+                                Optional<Financement> existingFinancementOpt = realisation.getFinancements().stream()
+                                        .filter(f -> f.getId().getFinancementId().equals(financementId) && !Boolean.TRUE.equals(f.getIsDeleted()))
+                                        .findFirst();
+                                if (existingFinancementOpt.isEmpty()) {
+                                    log.warn("Financement with ID {} not found or already deleted for Realisation ID: {}", financementId, realisation.getId());
+                                    throw new EntityNotFoundException("Financement with ID " + financementId + " not found");
+                                }
+                                financement = existingFinancementOpt.get();
+                                System.out.println("Found existing financement ID: " + financementId + ", current Monnaie ID: " + financement.getId().getMonnaie().getId());
+                                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                                Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                        .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+                                FinancementId newFinancementId = new FinancementId();
+                                newFinancementId.setFinancementId(financementId);
+                                newFinancementId.setRealisation(financement.getId().getRealisation());
+                                newFinancementId.setMonnaie(monnaie);
+                                financement.setId(newFinancementId);
+                                if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                            .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+                                    financement.setSourceFinancement(sourceFinancement);
+                                } else {
+                                    financement.setSourceFinancement(null);
+                                }
+                                financement.setIsDeleted(false);
+                                entityManager.merge(financement); // Force merge to update composite key
+                                System.out.println("Updated financement ID: " + financementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                            } else {
+                                // Create new financement
+                                Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                                newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
+                                financement = new Financement();
+                                FinancementId compositeFinancementId = new FinancementId();
+                                compositeFinancementId.setFinancementId(newFinancementId);
+                                compositeFinancementId.setRealisation(realisation);
+                                Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                        .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+                                compositeFinancementId.setMonnaie(monnaie);
+                                financement.setId(compositeFinancementId);
+                                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                                if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                            .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+                                    financement.setSourceFinancement(sourceFinancement);
+                                } else {
+                                    financement.setSourceFinancement(null);
+                                }
+                                financement.setIsDeleted(false);
+                                financementRepository.save(financement);
+                                System.out.println("Created new financement with ID: " + newFinancementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                            }
+                            financements.add(financement);
+                        }
+
+                        // Mark existing financements not in request as deleted
+                        if (realisation.getFinancements() != null) {
+                            for (Financement existingFinancement : realisation.getFinancements()) {
+                                if (!requestedFinancementIds.contains(existingFinancement.getId().getFinancementId()) && !Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+                                    existingFinancement.setIsDeleted(true);
+                                    financements.add(existingFinancement);
+                                    System.out.println("Marked financement with ID: " + existingFinancement.getId().getFinancementId() + " as deleted (not in request)");
+                                }
+                            }
+                        }
+                        realisation.setFinancements(financements);
+                        financementRepository.saveAll(financements);
+                    } else {
+                        System.out.println("No financements provided for Realisation ID: " + realisation.getId());
+                        if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
+                            for (Financement existingFinancement : realisation.getFinancements()) {
+                                if (!Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+                                    existingFinancement.setIsDeleted(true);
+                                    System.out.println("Marked financement with ID: " + existingFinancement.getId().getFinancementId() + " as deleted (no financements in request)");
+                                }
+                            }
+                            realisation.setFinancements(realisation.getFinancements());
+                            financementRepository.saveAll(realisation.getFinancements());
+                        }
+                    }
+
                     if (realisation.getPaas() == null) {
                         realisation.setPaas(new ArrayList<>());
                     }
@@ -786,7 +890,6 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDirection(realisationRequest.getDirection());
                     realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
@@ -853,6 +956,41 @@ public class PaaServiceImpl implements PaaService {
                         System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
+                    // Process financements for new realisation
+                    if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+                        List<Financement> financements = new ArrayList<>();
+                        for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+                            if (financementRequest.getMonnaieId() == null) {
+                                log.warn("Skipping financement with null monnaieId for new Realisation ID: {}", realisation.getId());
+                                continue;
+                            }
+                            Financement financement = new Financement();
+                            Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                            newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
+                            FinancementId compositeFinancementId = new FinancementId();
+                            compositeFinancementId.setFinancementId(newFinancementId);
+                            compositeFinancementId.setRealisation(realisation);
+                            Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                    .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+                            compositeFinancementId.setMonnaie(monnaie);
+                            financement.setId(compositeFinancementId);
+                            financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                            if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                                RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                        .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+                                financement.setSourceFinancement(sourceFinancement);
+                            } else {
+                                financement.setSourceFinancement(null);
+                            }
+                            financement.setIsDeleted(false);
+                            financementRepository.save(financement);
+                            financements.add(financement);
+                            System.out.println("Created new financement with ID: " + newFinancementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                        }
+                        realisation.setFinancements(financements);
+                        financementRepository.saveAll(financements);
+                    }
+
                     realisation = realisationRepository.save(realisation);
                 }
                 realisations.add(realisation);
@@ -892,6 +1030,13 @@ public class PaaServiceImpl implements PaaService {
                                     .collect(Collectors.toList())
                     );
                 }
+                if (realisation.getFinancements() != null) {
+                    realisation.setFinancements(
+                            realisation.getFinancements().stream()
+                                    .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted()))
+                                    .collect(Collectors.toList())
+                    );
+                }
                 if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
                     log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
@@ -908,6 +1053,994 @@ public class PaaServiceImpl implements PaaService {
         System.out.println("Updated PAA ID: " + paaId + ", budgetEstime: " + budgetEstime);
         return copyForResponse;
     }
+
+//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
+//        System.out.println("calling the method");
+//        CompositeId compositeId = new CompositeId(paaId, paaVer);
+//        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+//
+//        if (existingPaaOpt.isEmpty()) {
+//            throw new PaaNotFound(
+//                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",
+//                    List.of(paaId), List.of(paaVer));
+//        }
+//
+//        Paa existingPaa = existingPaaOpt.get();
+//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//            throw new PaaNotFound(
+//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
+//                    List.of(paaId), List.of(paaVer));
+//        }
+//
+//        restrictUpdatePaa(existingPaa);
+//
+//        existingPaa.setNom(request.getNom());
+//        existingPaa.setAnnee(existingPaa.getAnnee());
+//        existingPaa.setModePassation(request.getModePassation());
+//        existingPaa.setRemarque(request.getRemarque());
+//        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPaa.getAc().getId();
+//        if (request.getAcId() != null) {
+//            Ac ac = acRepository.findById(request.getAcId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
+//            existingPaa.setAc(ac);
+//        }
+//
+//        if (request.getDocIds() != null) {
+//            Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
+//            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                    existingPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .map(Docs::getId)
+//                            .collect(Collectors.toSet()) : new HashSet<>();
+//
+//            if (!requestedDocIds.equals(activeExistingDocIds)) {
+//                System.out.println("Document changes detected for PAA update ID: " + paaId);
+//                Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
+//                newDocIds.removeAll(activeExistingDocIds);
+//                if (!newDocIds.isEmpty()) {
+//                    System.out.println("  - New documents added: " + newDocIds);
+//                }
+//                Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
+//                removedDocIds.removeAll(requestedDocIds);
+//                if (!removedDocIds.isEmpty()) {
+//                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
+//                }
+//            }
+//
+//            List<Docs> updatedDocs = new ArrayList<>();
+//            if (existingPaa.getDocs() != null) {
+//                for (Docs existingDoc : existingPaa.getDocs()) {
+//                    if (requestedDocIds.contains(existingDoc.getId())) {
+//                        existingDoc.setIsDeleted(false);
+//                        docsRepository.save(existingDoc);
+//                        updatedDocs.add(existingDoc);
+//                        requestedDocIds.remove(existingDoc.getId());
+//                    } else {
+//                        existingDoc.setIsDeleted(true);
+//                        docsRepository.save(existingDoc);
+//                        updatedDocs.add(existingDoc);
+//                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
+//                    }
+//                }
+//            }
+//
+//            for (Integer docId : requestedDocIds) {
+//                Docs doc = docsRepository.findById(docId)
+//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                if (doc.getPaas() == null) {
+//                    doc.setPaas(new ArrayList<>());
+//                }
+//                if (!doc.getPaas().contains(existingPaa)) {
+//                    doc.getPaas().add(existingPaa);
+//                }
+//                doc.setIsDeleted(false);
+//                docsRepository.save(doc);
+//                updatedDocs.add(doc);
+//                System.out.println("Added new document with ID " + doc.getId() + " to PAA");
+//            }
+//            existingPaa.setDocs(updatedDocs);
+//        } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//            List<Docs> existingDocs = existingPaa.getDocs();
+//            for (Docs doc : existingDocs) {
+//                if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
+//                    doc.setIsDeleted(true);
+//                    docsRepository.save(doc);
+//                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
+//                }
+//            }
+//        }
+//
+//        if (request.getPaaFiles() != null) {
+//            try {
+//                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//
+//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//            List<Realisation> realisations = new ArrayList<>();
+//            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+//                Realisation realisation;
+//                if (realisationRequest.getId() != null) {
+//                    Integer versionToUse = realisationRequest.getVersion();
+//                    if (versionToUse == null) {
+//                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationRequest.getId());
+//                        if (maxVersion != null) {
+//                            versionToUse = maxVersion;
+//                        } else {
+//                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationRequest.getId());
+//                        }
+//                    }
+//                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
+//                    realisation = realisationRepository.findById(realisationId)
+//                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
+//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    realisation.setModePassation(realisationRequest.getModePassation());
+//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    realisation.setIsPublished(realisationRequest.getIsPublished());
+//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    realisation.setSort(realisationRequest.getSort());
+//
+//                    setSeuilApplicableForRealisation(realisation, requestAcId);
+//
+//                    if (realisationRequest.getDocIds() != null) {
+//                        Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
+//                        Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ?
+//                                realisation.getDocs().stream()
+//                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                        .map(Docs::getId)
+//                                        .collect(Collectors.toSet()) : new HashSet<>();
+//                        if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
+//                            System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
+//                        }
+//                        List<Docs> updatedRealisationDocs = new ArrayList<>();
+//                        if (realisation.getDocs() != null) {
+//                            for (Docs existingDoc : realisation.getDocs()) {
+//                                if (requestedRealisationDocIds.contains(existingDoc.getId())) {
+//                                    existingDoc.setIsDeleted(false);
+//                                    docsRepository.save(existingDoc);
+//                                    updatedRealisationDocs.add(existingDoc);
+//                                    requestedRealisationDocIds.remove(existingDoc.getId());
+//                                } else {
+//                                    existingDoc.setIsDeleted(true);
+//                                    docsRepository.save(existingDoc);
+//                                    updatedRealisationDocs.add(existingDoc);
+//                                    System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
+//                                }
+//                            }
+//                        }
+//                        for (Integer docId : requestedRealisationDocIds) {
+//                            Docs doc = docsRepository.findById(docId)
+//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                            if (doc.getRealisations() == null) {
+//                                doc.setRealisations(new ArrayList<>());
+//                            }
+//                            if (!doc.getRealisations().contains(realisation)) {
+//                                doc.getRealisations().add(realisation);
+//                            }
+//                            doc.setIsDeleted(false);
+//                            docsRepository.save(doc);
+//                            updatedRealisationDocs.add(doc);
+//                            System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
+//                        }
+//                        realisation.setDocs(updatedRealisationDocs);
+//                    } else if (realisation.getDocs() != null && !realisation.getDocs().isEmpty()) {
+//                        List<Docs> realisationDocs = realisation.getDocs();
+//                        for (Docs doc : realisationDocs) {
+//                            if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
+//                                doc.setIsDeleted(true);
+//                                docsRepository.save(doc);
+//                                System.out.println("Marked realisation document with ID " + doc.getId() + " as deleted (no docIds provided)");
+//                            }
+//                        }
+//                    }
+//
+//                    if (realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            List<Docs> currentDocs = realisation.getDocs();
+//                            if (currentDocs == null) {
+//                                currentDocs = new ArrayList<>();
+//                            }
+//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+//                            List<Docs> newDocs = realisation.getDocs();
+//                            if (newDocs != null) {
+//                                Set<Integer> existingDocIds = currentDocs.stream()
+//                                        .map(Docs::getId)
+//                                        .collect(Collectors.toSet());
+//                                for (Docs newDoc : newDocs) {
+//                                    if (!existingDocIds.contains(newDoc.getId())) {
+//                                        currentDocs.add(newDoc);
+//                                    }
+//                                }
+//                                realisation.setDocs(currentDocs);
+//                            }
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        List<Lot> lots = new ArrayList<>();
+//                        Set<Integer> requestedLotIds = realisationRequest.getLots().stream()
+//                                .filter(lotRequest -> lotRequest.getId() != null)
+//                                .map(LotResponse::getId)
+//                                .collect(Collectors.toSet());
+//                        Set<Integer> existingLotIds = realisation.getLots() != null ?
+//                                realisation.getLots().stream()
+//                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                        .map(Lot::getId)
+//                                        .collect(Collectors.toSet()) : new HashSet<>();
+//
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot;
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId != null) {
+//                                lot = lotRepository.findById(new CompositeId(lotId, 1))
+//                                        .orElse(new Lot());
+//                                if (lot.getId() == null) {
+//                                    lot.setId(lotId);
+//                                    lot.setVersion(1);
+//                                    lot.setDescription(lotRequest.getDescription());
+//                                    lot.setBudget(lotRequest.getBudget());
+//                                    System.out.println("Initialized new lot instance with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                                } else {
+//                                    lot.setDescription(lotRequest.getDescription());
+//                                    lot.setBudget(lotRequest.getBudget());
+//                                    System.out.println("Updated existing lot ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                                }
+//                            } else {
+//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                                lot = new Lot();
+//                                lot.setId(lotId);
+//                                lot.setVersion(1);
+//                                lot.setDescription(lotRequest.getDescription());
+//                                lot.setBudget(lotRequest.getBudget());
+//                                System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                            }
+//                            lot.setIsDeleted(false);
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//
+//                        if (realisation.getLots() != null) {
+//                            for (Lot existingLot : realisation.getLots()) {
+//                                if (!requestedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+//                                    existingLot.setIsDeleted(true);
+//                                    existingLot.setBudget(existingLot.getBudget());
+//                                    lotRepository.save(existingLot);
+//                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request), Budget: " + existingLot.getBudget());
+//                                }
+//                            }
+//                        }
+//                        realisation.setLots(lots);
+//                    } else {
+//                        System.out.println("No lots provided for Realisation ID: " + realisation.getId());
+//                        if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+//                            for (Lot existingLot : realisation.getLots()) {
+//                                if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+//                                    existingLot.setIsDeleted(true);
+//                                    existingLot.setBudget(existingLot.getBudget());
+//                                    lotRepository.save(existingLot);
+//                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request), Budget: " + existingLot.getBudget());
+//                                }
+//                            }
+//                            realisation.setLots(new ArrayList<>());
+//                        }
+//                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                        System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
+//                    }
+//
+//                    // Process financements
+//                    if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+//                        List<Financement> financements = new ArrayList<>();
+//                        Set<Integer> requestedFinancementIds = realisationRequest.getFinancements().stream()
+//                                .filter(financementRequest -> financementRequest.getFinancementId() != null)
+//                                .map(FinancementRequest::getFinancementId)
+//                                .collect(Collectors.toSet());
+//                        Set<Integer> existingFinancementIds = realisation.getFinancements() != null ?
+//                                realisation.getFinancements().stream()
+//                                        .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted()))
+//                                        .map(financement -> financement.getId().getFinancementId())
+//                                        .collect(Collectors.toSet()) : new HashSet<>();
+//
+//                        for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+//                            if (financementRequest.getMonnaieId() == null) {
+//                                log.warn("Skipping financement with null monnaieId for Realisation ID: {}", realisation.getId());
+//                                continue;
+//                            }
+//                            Financement financement;
+//                            Integer financementId = financementRequest.getFinancementId();
+//                            if (financementId != null) {
+//
+//                                // Update existing financement
+//                                financement = realisation.getFinancements().stream()
+//                                        .filter(f -> f.getId().getFinancementId().equals(financementRequest.getFinancementId()) && !Boolean.TRUE.equals(f.getIsDeleted()))
+//                                        .findFirst()
+//                                        .orElseThrow(() -> new EntityNotFoundException("Financement with ID " + financementRequest.getFinancementId() + " not found"));
+//                                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+//                                if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+//                                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+//                                            .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+//                                    financement.setSourceFinancement(sourceFinancement);
+//                                } else {
+//                                    financement.setSourceFinancement(null);
+//                                }
+//                                System.out.println("Updated existing financement ID: " + financementId + ", Budget: " + financementRequest.getBudgetEstimer());
+//                            } else {
+//                                // Create new financement
+//                                Integer maxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+//                                financementId = (maxFinancementId != null) ? maxFinancementId + 1 : 1;
+//                                financement = new Financement();
+//                                FinancementId compositeFinancementId = new FinancementId();
+//                                compositeFinancementId.setFinancementId(financementId);
+//                                compositeFinancementId.setRealisation(realisation);
+//                                Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+//                                        .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+//                                compositeFinancementId.setMonnaie(monnaie);
+//                                financement.setId(compositeFinancementId);
+//                                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+//                                if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+//                                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+//                                            .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+//                                    financement.setSourceFinancement(sourceFinancement);
+//                                } else {
+//                                    financement.setSourceFinancement(null);
+//                                }
+//                                System.out.println("Created new financement with ID: " + financementId + ", Budget: " + financementRequest.getBudgetEstimer());
+//                            }
+//                            financement.setIsDeleted(false);
+//                            financements.add(financement);
+//                        }
+//
+//                        // Mark existing financements not in request as deleted
+//                        if (realisation.getFinancements() != null) {
+//                            for (Financement existingFinancement : realisation.getFinancements()) {
+//                                if (!requestedFinancementIds.contains(existingFinancement.getId().getFinancementId()) && !Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+//                                    existingFinancement.setIsDeleted(true);
+//                                    financements.add(existingFinancement);
+//                                    System.out.println("Marked financement with ID " + existingFinancement.getId().getFinancementId() + " as deleted (not in request)");
+//                                }
+//                            }
+//                        }
+//                        realisation.setFinancements(financements);
+//                        financementRepository.saveAll(financements);
+//                    } else {
+//                        System.out.println("No financements provided for Realisation ID: " + realisation.getId());
+//                        if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
+//                            for (Financement existingFinancement : realisation.getFinancements()) {
+//                                if (!Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+//                                    existingFinancement.setIsDeleted(true);
+//                                    System.out.println("Marked financement with ID " + existingFinancement.getId().getFinancementId() + " as deleted (no financements in request)");
+//                                }
+//                            }
+//                            realisation.setFinancements(realisation.getFinancements());
+//                            financementRepository.saveAll(realisation.getFinancements());
+//                        }
+//                    }
+//
+//                    if (realisation.getPaas() == null) {
+//                        realisation.setPaas(new ArrayList<>());
+//                    }
+//                    if (!realisation.getPaas().contains(existingPaa)) {
+//                        realisation.getPaas().add(existingPaa);
+//                    }
+//
+//                    realisation = realisationRepository.save(realisation);
+//                } else {
+//                    realisation = new Realisation();
+//                    Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+//                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+//                    realisation.setId(realisationId);
+//                    realisation.setVersion(1);
+//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    realisation.setModePassation(realisationRequest.getModePassation());
+//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    realisation.setIsPublished(realisationRequest.getIsPublished());
+//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    realisation.setSort(realisationRequest.getSort());
+//
+//                    setSeuilApplicableForRealisation(realisation, requestAcId);
+//
+//                    if (realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    List<Paa> paaList = new ArrayList<>();
+//                    paaList.add(existingPaa);
+//                    realisation.setPaas(paaList);
+//
+//                    if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
+//                        List<Docs> docs = new ArrayList<>();
+//                        for (Integer docId : realisationRequest.getDocIds()) {
+//                            Docs doc = docsRepository.findById(docId)
+//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                            if (doc.getRealisations() == null) {
+//                                doc.setRealisations(new ArrayList<>());
+//                            }
+//                            if (!doc.getRealisations().contains(realisation)) {
+//                                doc.getRealisations().add(realisation);
+//                            }
+//                            doc.setIsDeleted(false);
+//                            docsRepository.save(doc);
+//                            docs.add(doc);
+//                        }
+//                        realisation.setDocs(docs);
+//                    }
+//
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        List<Lot> lots = new ArrayList<>();
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot = new Lot();
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId == null) {
+//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                            }
+//                            lot.setId(lotId);
+//                            lot.setVersion(1);
+//                            lot.setDescription(lotRequest.getDescription());
+//                            lot.setBudget(lotRequest.getBudget());
+//                            System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//                        realisation.setLots(lots);
+//                    } else {
+//                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                        System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
+//                    }
+//
+//                    // Process financements for new realisation
+//                    if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+//                        List<Financement> financements = new ArrayList<>();
+//                        for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+//                            if (financementRequest.getMonnaieId() == null) {
+//                                log.warn("Skipping financement with null monnaieId for new Realisation ID: {}", realisation.getId());
+//                                continue;
+//                            }
+//                            Financement financement = new Financement();
+//                            Integer maxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+//                            Integer financementId = (maxFinancementId != null) ? maxFinancementId + 1 : 1;
+//                            FinancementId compositeFinancementId = new FinancementId();
+//                            compositeFinancementId.setFinancementId(financementId);
+//                            compositeFinancementId.setRealisation(realisation);
+//                            Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+//                                    .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+//                            compositeFinancementId.setMonnaie(monnaie);
+//                            financement.setId(compositeFinancementId);
+//                            financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+//                            if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+//                                RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+//                                        .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
+//                                financement.setSourceFinancement(sourceFinancement);
+//                            } else {
+//                                financement.setSourceFinancement(null);
+//                            }
+//                            financement.setIsDeleted(false);
+//                            financements.add(financement);
+//                            System.out.println("Created new financement with ID: " + financementId + ", Budget: " + financementRequest.getBudgetEstimer());
+//                        }
+//                        realisation.setFinancements(financements);
+//                        financementRepository.saveAll(financements);
+//                    }
+//
+//                    realisation = realisationRepository.save(realisation);
+//                }
+//                realisations.add(realisation);
+//            }
+//            existingPaa.setRealisations(realisations);
+//        } else {
+//            existingPaa.getRealisations().clear();
+//            existingPaa.setBudgetEstime(BigDecimal.ZERO);
+//            System.out.println("Cleared realisations for PAA ID: " + paaId + ", set budgetEstime: 0");
+//        }
+//
+//        validateRealisations(existingPaa);
+//
+//        Paa savedPaa = repository.save(existingPaa);
+//        Paa copyForResponse = new Paa();
+//        BeanUtils.copyProperties(savedPaa, copyForResponse);
+//        if (savedPaa.getDocs() != null) {
+//            copyForResponse.setDocs(
+//                    savedPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .collect(Collectors.toList())
+//            );
+//        }
+//        if (copyForResponse.getRealisations() != null) {
+//            copyForResponse.getRealisations().forEach(realisation -> {
+//                if (realisation.getDocs() != null) {
+//                    realisation.setDocs(
+//                            realisation.getDocs().stream()
+//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//                if (realisation.getLots() != null) {
+//                    realisation.setLots(
+//                            realisation.getLots().stream()
+//                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//                if (realisation.getFinancements() != null) {
+//                    realisation.setFinancements(
+//                            realisation.getFinancements().stream()
+//                                    .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//                if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+//                    log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+//                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+//                }
+//            });
+//        }
+//        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
+//                .map(Realisation::getBudgetEstime)
+//                .filter(Objects::nonNull)
+//                .reduce(BigDecimal.ZERO, BigDecimal::add);
+//        savedPaa.setBudgetEstime(budgetEstime);
+//        repository.save(savedPaa);
+//        copyForResponse.setBudgetEstime(budgetEstime);
+//        System.out.println("Updated PAA ID: " + paaId + ", budgetEstime: " + budgetEstime);
+//        return copyForResponse;
+//    }
+//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
+//        System.out.println("calling the method");
+//        CompositeId compositeId = new CompositeId(paaId, paaVer);
+//        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
+//
+//        if (existingPaaOpt.isEmpty()) {
+//            throw new PaaNotFound(
+//                    "Paa with ID " + paaId + " and version " + paaVer + " was not found in the database.",
+//                    List.of(paaId), List.of(paaVer));
+//        }
+//
+//        Paa existingPaa = existingPaaOpt.get();
+//        if (Boolean.TRUE.equals(existingPaa.getIsDeleted())) {
+//            throw new PaaNotFound(
+//                    "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
+//                    List.of(paaId), List.of(paaVer));
+//        }
+//
+//        restrictUpdatePaa(existingPaa);
+//
+//        existingPaa.setNom(request.getNom());
+//        existingPaa.setAnnee(existingPaa.getAnnee());
+//        existingPaa.setModePassation(request.getModePassation());
+//        existingPaa.setRemarque(request.getRemarque());
+//        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPaa.getAc().getId();
+//        if (request.getAcId() != null) {
+//            Ac ac = acRepository.findById(request.getAcId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Ac with ID " + request.getAcId() + " not found"));
+//            existingPaa.setAc(ac);
+//        }
+//
+//        if (request.getDocIds() != null) {
+//            Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
+//            Set<Integer> activeExistingDocIds = existingPaa.getDocs() != null ?
+//                    existingPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .map(Docs::getId)
+//                            .collect(Collectors.toSet()) : new HashSet<>();
+//
+//            if (!requestedDocIds.equals(activeExistingDocIds)) {
+//                System.out.println("Document changes detected for PAA update ID: " + paaId);
+//                Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
+//                newDocIds.removeAll(activeExistingDocIds);
+//                if (!newDocIds.isEmpty()) {
+//                    System.out.println("  - New documents added: " + newDocIds);
+//                }
+//                Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
+//                removedDocIds.removeAll(requestedDocIds);
+//                if (!removedDocIds.isEmpty()) {
+//                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
+//                }
+//            }
+//
+//            List<Docs> updatedDocs = new ArrayList<>();
+//            if (existingPaa.getDocs() != null) {
+//                for (Docs existingDoc : existingPaa.getDocs()) {
+//                    if (requestedDocIds.contains(existingDoc.getId())) {
+//                        existingDoc.setIsDeleted(false);
+//                        docsRepository.save(existingDoc);
+//                        updatedDocs.add(existingDoc);
+//                        requestedDocIds.remove(existingDoc.getId());
+//                    } else {
+//                        existingDoc.setIsDeleted(true);
+//                        docsRepository.save(existingDoc);
+//                        updatedDocs.add(existingDoc);
+//                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
+//                    }
+//                }
+//            }
+//
+//            for (Integer docId : requestedDocIds) {
+//                Docs doc = docsRepository.findById(docId)
+//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                if (doc.getPaas() == null) {
+//                    doc.setPaas(new ArrayList<>());
+//                }
+//                if (!doc.getPaas().contains(existingPaa)) {
+//                    doc.getPaas().add(existingPaa);
+//                }
+//                doc.setIsDeleted(false);
+//                docsRepository.save(doc);
+//                updatedDocs.add(doc);
+//                System.out.println("Added new document with ID " + doc.getId() + " to PAA");
+//            }
+//            existingPaa.setDocs(updatedDocs);
+//        } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
+//            List<Docs> existingDocs = existingPaa.getDocs();
+//            for (Docs doc : existingDocs) {
+//                if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
+//                    doc.setIsDeleted(true);
+//                    docsRepository.save(doc);
+//                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
+//                }
+//            }
+//        }
+//
+//        if (request.getPaaFiles() != null) {
+//            try {
+//                documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
+//            } catch (IOException e) {
+//                throw new RuntimeException(e);
+//            }
+//        }
+//
+//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//            List<Realisation> realisations = new ArrayList<>();
+//            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+//                Realisation realisation;
+//                if (realisationRequest.getId() != null) {
+//                    Integer versionToUse = realisationRequest.getVersion();
+//                    if (versionToUse == null) {
+//                        Integer maxVersion = realisationRepository.findMaxVersionById(realisationRequest.getId());
+//                        if (maxVersion != null) {
+//                            versionToUse = maxVersion;
+//                        } else {
+//                            throw new RuntimeException("No versions found for Realisation with ID: " + realisationRequest.getId());
+//                        }
+//                    }
+//                    CompositeId realisationId = new CompositeId(realisationRequest.getId(), versionToUse);
+//                    realisation = realisationRepository.findById(realisationId)
+//                            .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
+//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    realisation.setModePassation(realisationRequest.getModePassation());
+//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    realisation.setIsPublished(realisationRequest.getIsPublished());
+//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    realisation.setSort(realisationRequest.getSort());
+//
+//                    setSeuilApplicableForRealisation(realisation, requestAcId);
+//
+//                    if (realisationRequest.getDocIds() != null) {
+//                        Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
+//                        Set<Integer> activeExistingRealisationDocIds = realisation.getDocs() != null ?
+//                                realisation.getDocs().stream()
+//                                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                        .map(Docs::getId)
+//                                        .collect(Collectors.toSet()) : new HashSet<>();
+//                        if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
+//                            System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
+//                        }
+//                        List<Docs> updatedRealisationDocs = new ArrayList<>();
+//                        if (realisation.getDocs() != null) {
+//                            for (Docs existingDoc : realisation.getDocs()) {
+//                                if (requestedRealisationDocIds.contains(existingDoc.getId())) {
+//                                    existingDoc.setIsDeleted(false);
+//                                    docsRepository.save(existingDoc);
+//                                    updatedRealisationDocs.add(existingDoc);
+//                                    requestedRealisationDocIds.remove(existingDoc.getId());
+//                                } else {
+//                                    existingDoc.setIsDeleted(true);
+//                                    docsRepository.save(existingDoc);
+//                                    updatedRealisationDocs.add(existingDoc);
+//                                    System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
+//                                }
+//                            }
+//                        }
+//                        for (Integer docId : requestedRealisationDocIds) {
+//                            Docs doc = docsRepository.findById(docId)
+//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                            if (doc.getRealisations() == null) {
+//                                doc.setRealisations(new ArrayList<>());
+//                            }
+//                            if (!doc.getRealisations().contains(realisation)) {
+//                                doc.getRealisations().add(realisation);
+//                            }
+//                            doc.setIsDeleted(false);
+//                            docsRepository.save(doc);
+//                            updatedRealisationDocs.add(doc);
+//                            System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
+//                        }
+//                        realisation.setDocs(updatedRealisationDocs);
+//                    } else if (realisation.getDocs() != null && !realisation.getDocs().isEmpty()) {
+//                        List<Docs> realisationDocs = realisation.getDocs();
+//                        for (Docs doc : realisationDocs) {
+//                            if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
+//                                doc.setIsDeleted(true);
+//                                docsRepository.save(doc);
+//                                System.out.println("Marked realisation document with ID " + doc.getId() + " as deleted (no docIds provided)");
+//                            }
+//                        }
+//                    }
+//
+//                    if (realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            List<Docs> currentDocs = realisation.getDocs();
+//                            if (currentDocs == null) {
+//                                currentDocs = new ArrayList<>();
+//                            }
+//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+//                            List<Docs> newDocs = realisation.getDocs();
+//                            if (newDocs != null) {
+//                                Set<Integer> existingDocIds = currentDocs.stream()
+//                                        .map(Docs::getId)
+//                                        .collect(Collectors.toSet());
+//                                for (Docs newDoc : newDocs) {
+//                                    if (!existingDocIds.contains(newDoc.getId())) {
+//                                        currentDocs.add(newDoc);
+//                                    }
+//                                }
+//                                realisation.setDocs(currentDocs);
+//                            }
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        List<Lot> lots = new ArrayList<>();
+//                        Set<Integer> requestedLotIds = realisationRequest.getLots().stream()
+//                                .filter(lotRequest -> lotRequest.getId() != null)
+//                                .map(LotResponse::getId)
+//                                .collect(Collectors.toSet());
+//                        Set<Integer> existingLotIds = realisation.getLots() != null ?
+//                                realisation.getLots().stream()
+//                                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                        .map(Lot::getId)
+//                                        .collect(Collectors.toSet()) : new HashSet<>();
+//
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot;
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId != null) {
+//                                lot = lotRepository.findById(new CompositeId(lotId, 1))
+//                                        .orElse(new Lot());
+//                                if (lot.getId() == null) {
+//                                    lot.setId(lotId);
+//                                    lot.setVersion(1);
+//                                    lot.setDescription(lotRequest.getDescription());
+//                                    lot.setBudget(lotRequest.getBudget());
+//                                    System.out.println("Initialized new lot instance with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                                } else {
+//                                    lot.setDescription(lotRequest.getDescription());
+//                                    lot.setBudget(lotRequest.getBudget());
+//                                    System.out.println("Updated existing lot ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                                }
+//                            } else {
+//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                                lot = new Lot();
+//                                lot.setId(lotId);
+//                                lot.setVersion(1);
+//                                lot.setDescription(lotRequest.getDescription());
+//                                lot.setBudget(lotRequest.getBudget());
+//                                System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                            }
+//                            lot.setIsDeleted(false);
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//
+//                        if (realisation.getLots() != null) {
+//                            for (Lot existingLot : realisation.getLots()) {
+//                                if (!requestedLotIds.contains(existingLot.getId()) && !Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+//                                    existingLot.setIsDeleted(true);
+//                                    existingLot.setBudget(existingLot.getBudget());
+//                                    lotRepository.save(existingLot);
+//                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request), Budget: " + existingLot.getBudget());
+//                                }
+//                            }
+//                        }
+//                        realisation.setLots(lots);
+//                    } else {
+//                        System.out.println("No lots provided for Realisation ID: " + realisation.getId());
+//                        if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+//                            for (Lot existingLot : realisation.getLots()) {
+//                                if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
+//                                    existingLot.setIsDeleted(true);
+//                                    existingLot.setBudget(existingLot.getBudget());
+//                                    lotRepository.save(existingLot);
+//                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request), Budget: " + existingLot.getBudget());
+//                                }
+//                            }
+//                            realisation.setLots(new ArrayList<>());
+//                        }
+//                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                        System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
+//                    }
+//
+//                    if (realisation.getPaas() == null) {
+//                        realisation.setPaas(new ArrayList<>());
+//                    }
+//                    if (!realisation.getPaas().contains(existingPaa)) {
+//                        realisation.getPaas().add(existingPaa);
+//                    }
+//
+//                    realisation = realisationRepository.save(realisation);
+//                } else {
+//                    realisation = new Realisation();
+//                    Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+//                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+//                    realisation.setId(realisationId);
+//                    realisation.setVersion(1);
+//                    realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                    realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                    realisation.setModePassation(realisationRequest.getModePassation());
+//                    realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                    realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                    realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                    realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                    realisation.setIsPublished(realisationRequest.getIsPublished());
+//                    realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                    realisation.setSort(realisationRequest.getSort());
+//
+//                    setSeuilApplicableForRealisation(realisation, requestAcId);
+//
+//                    if (realisationRequest.getRealisationFiles() != null) {
+//                        try {
+//                            documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
+//                        } catch (IOException e) {
+//                            throw new RuntimeException(e);
+//                        }
+//                    }
+//
+//                    List<Paa> paaList = new ArrayList<>();
+//                    paaList.add(existingPaa);
+//                    realisation.setPaas(paaList);
+//
+//                    if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
+//                        List<Docs> docs = new ArrayList<>();
+//                        for (Integer docId : realisationRequest.getDocIds()) {
+//                            Docs doc = docsRepository.findById(docId)
+//                                    .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                            if (doc.getRealisations() == null) {
+//                                doc.setRealisations(new ArrayList<>());
+//                            }
+//                            if (!doc.getRealisations().contains(realisation)) {
+//                                doc.getRealisations().add(realisation);
+//                            }
+//                            doc.setIsDeleted(false);
+//                            docsRepository.save(doc);
+//                            docs.add(doc);
+//                        }
+//                        realisation.setDocs(docs);
+//                    }
+//
+//                    if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                        List<Lot> lots = new ArrayList<>();
+//                        for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                            Lot lot = new Lot();
+//                            Integer lotId = lotRequest.getId();
+//                            if (lotId == null) {
+//                                Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+//                                lotId = (maxLotId != null) ? maxLotId + 1 : 1;
+//                            }
+//                            lot.setId(lotId);
+//                            lot.setVersion(1);
+//                            lot.setDescription(lotRequest.getDescription());
+//                            lot.setBudget(lotRequest.getBudget());
+//                            System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+//                            lot = lotRepository.save(lot);
+//                            lots.add(lot);
+//                        }
+//                        realisation.setLots(lots);
+//                    } else {
+//                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                        System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
+//                    }
+//
+//                    realisation = realisationRepository.save(realisation);
+//                }
+//                realisations.add(realisation);
+//            }
+//            existingPaa.setRealisations(realisations);
+//        } else {
+//            existingPaa.getRealisations().clear();
+//            existingPaa.setBudgetEstime(BigDecimal.ZERO);
+//            System.out.println("Cleared realisations for PAA ID: " + paaId + ", set budgetEstime: 0");
+//        }
+//
+//        validateRealisations(existingPaa);
+//
+//        Paa savedPaa = repository.save(existingPaa);
+//        Paa copyForResponse = new Paa();
+//        BeanUtils.copyProperties(savedPaa, copyForResponse);
+//        if (savedPaa.getDocs() != null) {
+//            copyForResponse.setDocs(
+//                    savedPaa.getDocs().stream()
+//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                            .collect(Collectors.toList())
+//            );
+//        }
+//        if (copyForResponse.getRealisations() != null) {
+//            copyForResponse.getRealisations().forEach(realisation -> {
+//                if (realisation.getDocs() != null) {
+//                    realisation.setDocs(
+//                            realisation.getDocs().stream()
+//                                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//                if (realisation.getLots() != null) {
+//                    realisation.setLots(
+//                            realisation.getLots().stream()
+//                                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+//                                    .collect(Collectors.toList())
+//                    );
+//                }
+//                if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+//                    log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+//                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+//                }
+//            });
+//        }
+//        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
+//                .map(Realisation::getBudgetEstime)
+//                .filter(Objects::nonNull)
+//                .reduce(BigDecimal.ZERO, BigDecimal::add);
+//        savedPaa.setBudgetEstime(budgetEstime);
+//        repository.save(savedPaa);
+//        copyForResponse.setBudgetEstime(budgetEstime);
+//        System.out.println("Updated PAA ID: " + paaId + ", budgetEstime: " + budgetEstime);
+//        return copyForResponse;
+//    }
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
             return false;

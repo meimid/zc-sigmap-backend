@@ -1,6 +1,7 @@
 package com.sigmap.common.financement.response;
 
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -27,7 +28,7 @@ public class FinancementResponse {
     /**
      * The ID of the financing source.
      */
-    private RefParam sourceFinancement;
+    private RefParamResponseDto sourceFinancement;
 
     /**
      * The ID of the financing source.

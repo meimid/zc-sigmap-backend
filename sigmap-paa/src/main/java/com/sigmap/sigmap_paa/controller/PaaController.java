@@ -60,11 +60,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class PaaController {
     private final Logger logger = LoggerFactory.getLogger(PaaController.class);
     private final PaaService paaService;
+    private final ObjectMapper objectMapper;
     @Autowired
     private PaaFlowableService flowableService;
 
-    public PaaController(PaaService paaService) {
+    public PaaController(PaaService paaService,ObjectMapper objectMapper) {
         this.paaService = paaService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -248,103 +250,186 @@ public class PaaController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+    private void processRealisationFinancementsFromJson(PaaRequestGlobal request, String realisationsFinancementsJson) {
+        if (realisationsFinancementsJson == null || realisationsFinancementsJson.isEmpty()) {
+            return;
+        }
 
-    private void processRealisationFinancementsFromJson(PaaRequestGlobal request, String financementsJson) {
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            logger.info("Processing financements JSON: {}", financementsJson);
+            log.info("Processing financements JSON: {}", realisationsFinancementsJson);
+            Map<String, List<Map<String, Object>>> financementMap = objectMapper.readValue(
+                    realisationsFinancementsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {}
+            );
 
-            // Validate input
-            if (financementsJson == null || financementsJson.trim().isEmpty()) {
-                logger.warn("Financements JSON is empty or null, skipping processing");
-                return;
+            log.info("Parsed {} realisation indices from financements JSON", financementMap.size());
+
+            List<RealisationRequestForPaa> realisations = request.getRealisations();
+            if (realisations == null) {
+                realisations = new ArrayList<>();
+                request.setRealisations(realisations);
             }
 
-            // Parse JSON into a map of realisation indices to lists of financement data
-            Map<String, List<Map<String, Object>>> financementsMap = objectMapper.readValue(financementsJson,
-                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
-            logger.info("Parsed {} realisation indices from financements JSON", financementsMap.size());
-
-            // Ensure realisations list exists
-            if (request.getRealisations() == null) {
-                request.setRealisations(new ArrayList<>());
-                logger.warn("Realisations list was null, initialized as empty");
-            }
-
-            // Process each realisation's financements
-            for (Map.Entry<String, List<Map<String, Object>>> entry : financementsMap.entrySet()) {
-                int realisationIndex = Integer.parseInt(entry.getKey());
-
-                // Skip if index is out of bounds
-                if (realisationIndex >= request.getRealisations().size()) {
-                    logger.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})",
-                            realisationIndex, request.getRealisations().size());
+            for (Map.Entry<String, List<Map<String, Object>>> entry : financementMap.entrySet()) {
+                int index;
+                try {
+                    index = Integer.parseInt(entry.getKey());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid realisation index: {}. Skipping.", entry.getKey());
                     continue;
                 }
 
-                // Get the target realisation
-                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
-                if (realisation == null) {
-                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+                if (index >= realisations.size()) {
+                    log.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})", index, realisations.size());
                     continue;
                 }
 
-                // CORRECTED: Use FinancementBaseRequestDto for input processing
-                List<FinancementRequest> financements = new ArrayList<>();
-
-                // Process financements for this realisation
+                List<FinancementRequest> financementRequests = new ArrayList<>();
                 for (Map<String, Object> financementData : entry.getValue()) {
-                    FinancementRequest financement = new FinancementRequest();
-
-                    if (financementData.containsKey("monnaieId")) {
-                        financement.setMonnaieId(((Number) financementData.get("monnaieId")).intValue());
-                        logger.debug("Set monnaieId to {} for financement", financement.getMonnaieId());
-                    } else {
-                        logger.warn("Financement data missing monnaieId, skipping financement");
-                        continue;
-                    }
-
-                    if (financementData.containsKey("sourceFinancement")) {
-                        Map<String, Object> sourceFinancementObj = (Map<String, Object>) financementData.get("sourceFinancement");
-                        Integer sourceId = ((Number) sourceFinancementObj.get("id")).intValue(); // Use .get("id")
-
-                        // Create RefParam object from ID
-                        RefParam sourceFinancement = new RefParam();
-                        sourceFinancement.setId(sourceId);
-
-                        financement.setSourceFinancement(sourceFinancement);
-                        logger.debug("Set sourceFinancement ID to {} for financement", sourceId);
-                    } else {
-                        logger.debug("Financement data missing sourceFinancement, setting to null");
-                    }
-
-                    if (financementData.containsKey("budgetEstimer")) {
-                        Object budgetObj = financementData.get("budgetEstimer");
-                        if (budgetObj instanceof Number) {
-                            financement.setBudgetEstimer(new BigDecimal(budgetObj.toString()));
-                            logger.debug("Set budgetEstimer to {} for financement with monnaieId: {}",
-                                    financement.getBudgetEstimer(), financement.getMonnaieId());
-                        } else {
-                            logger.warn("Invalid budgetEstimer format for financement with monnaieId: {}, setting to null",
-                                    financement.getMonnaieId());
+                    FinancementRequest financementRequest = new FinancementRequest();
+                    // Explicitly map fields
+                    if (financementData.containsKey("id")) {
+                        Object id = financementData.get("id");
+                        if (id instanceof Number) {
+                            financementRequest.setFinancementId(((Number) id).intValue());
                         }
-                    } else {
-                        logger.debug("Financement data missing budgetEstimer, setting to null");
                     }
-
-                    financements.add(financement);
+                    if (financementData.containsKey("monnaieId")) {
+                        Object monnaieId = financementData.get("monnaieId");
+                        if (monnaieId instanceof Number) {
+                            financementRequest.setMonnaieId(((Number) monnaieId).intValue());
+                        }
+                    }
+                    if (financementData.containsKey("budgetEstimer")) {
+                        Object budgetEstimer = financementData.get("budgetEstimer");
+                        if (budgetEstimer instanceof Number) {
+                            financementRequest.setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
+                        }
+                    }
+                    if (financementData.containsKey("sourceFinancement")) {
+                        Object sourceFinancement = financementData.get("sourceFinancement");
+                        if (sourceFinancement instanceof Map) {
+                            Map<String, Object> sourceFinancementMap = (Map<String, Object>) sourceFinancement;
+                            if (sourceFinancementMap.containsKey("id")) {
+                                Object sourceId = sourceFinancementMap.get("id");
+                                if (sourceId instanceof Number) {
+                                    RefParam refParam = new RefParam();
+                                    refParam.setId(((Number) sourceId).intValue());
+                                    financementRequest.setSourceFinancement(refParam);
+                                }
+                            }
+                        }
+                    }
+                    financementRequests.add(financementRequest);
                 }
 
-                // Set the processed financements on the realisation
-                realisation.setFinancements(financements); // Changed method name
-                logger.info("Added {} financements to realisation at index {}", financements.size(), realisationIndex);
-                logger.info(financements.toString());
+                log.info("Added {} financements to realisation at index {}", financementRequests.size(), index);
+                log.info("{}", financementRequests);
+                realisations.get(index).setFinancements(financementRequests);
             }
-        } catch (Exception e) {
-            logger.error("Failed to parse financements JSON: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to parse financements JSON: " + e.getMessage(), e);
+
+            log.info("Successfully processed financements from JSON string");
+        } catch (IOException e) {
+            log.error("Error parsing financements JSON: {}", realisationsFinancementsJson, e);
+            throw new IllegalArgumentException("Failed to parse financements JSON: " + e.getMessage());
         }
     }
+    //    private void processRealisationFinancementsFromJson(PaaRequestGlobal request, String financementsJson) {
+//        try {
+//            ObjectMapper objectMapper = new ObjectMapper();
+//            logger.info("Processing financements JSON: {}", financementsJson);
+//
+//            // Validate input
+//            if (financementsJson == null || financementsJson.trim().isEmpty()) {
+//                logger.warn("Financements JSON is empty or null, skipping processing");
+//                return;
+//            }
+//
+//            // Parse JSON into a map of realisation indices to lists of financement data
+//            Map<String, List<Map<String, Object>>> financementsMap = objectMapper.readValue(financementsJson,
+//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+//            logger.info("Parsed {} realisation indices from financements JSON", financementsMap.size());
+//
+//            // Ensure realisations list exists
+//            if (request.getRealisations() == null) {
+//                request.setRealisations(new ArrayList<>());
+//                logger.warn("Realisations list was null, initialized as empty");
+//            }
+//
+//            // Process each realisation's financements
+//            for (Map.Entry<String, List<Map<String, Object>>> entry : financementsMap.entrySet()) {
+//                int realisationIndex = Integer.parseInt(entry.getKey());
+//
+//                // Skip if index is out of bounds
+//                if (realisationIndex >= request.getRealisations().size()) {
+//                    logger.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})",
+//                            realisationIndex, request.getRealisations().size());
+//                    continue;
+//                }
+//
+//                // Get the target realisation
+//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
+//                if (realisation == null) {
+//                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+//                    continue;
+//                }
+//
+//                // CORRECTED: Use FinancementBaseRequestDto for input processing
+//                List<FinancementRequest> financements = new ArrayList<>();
+//
+//                // Process financements for this realisation
+//                for (Map<String, Object> financementData : entry.getValue()) {
+//                    FinancementRequest financement = new FinancementRequest();
+//
+//                    if (financementData.containsKey("monnaieId")) {
+//                        financement.setMonnaieId(((Number) financementData.get("monnaieId")).intValue());
+//                        logger.debug("Set monnaieId to {} for financement", financement.getMonnaieId());
+//                    } else {
+//                        logger.warn("Financement data missing monnaieId, skipping financement");
+//                        continue;
+//                    }
+//
+//                    if (financementData.containsKey("sourceFinancement")) {
+//                        Map<String, Object> sourceFinancementObj = (Map<String, Object>) financementData.get("sourceFinancement");
+//                        Integer sourceId = ((Number) sourceFinancementObj.get("id")).intValue(); // Use .get("id")
+//
+//                        // Create RefParam object from ID
+//                        RefParam sourceFinancement = new RefParam();
+//                        sourceFinancement.setId(sourceId);
+//
+//                        financement.setSourceFinancement(sourceFinancement);
+//                        logger.debug("Set sourceFinancement ID to {} for financement", sourceId);
+//                    } else {
+//                        logger.debug("Financement data missing sourceFinancement, setting to null");
+//                    }
+//
+//                    if (financementData.containsKey("budgetEstimer")) {
+//                        Object budgetObj = financementData.get("budgetEstimer");
+//                        if (budgetObj instanceof Number) {
+//                            financement.setBudgetEstimer(new BigDecimal(budgetObj.toString()));
+//                            logger.debug("Set budgetEstimer to {} for financement with monnaieId: {}",
+//                                    financement.getBudgetEstimer(), financement.getMonnaieId());
+//                        } else {
+//                            logger.warn("Invalid budgetEstimer format for financement with monnaieId: {}, setting to null",
+//                                    financement.getMonnaieId());
+//                        }
+//                    } else {
+//                        logger.debug("Financement data missing budgetEstimer, setting to null");
+//                    }
+//
+//                    financements.add(financement);
+//                }
+//
+//                // Set the processed financements on the realisation
+//                realisation.setFinancements(financements); // Changed method name
+//                logger.info("Added {} financements to realisation at index {}", financements.size(), realisationIndex);
+//                logger.info(financements.toString());
+//            }
+//        } catch (Exception e) {
+//            logger.error("Failed to parse financements JSON: {}", e.getMessage(), e);
+//            throw new RuntimeException("Failed to parse financements JSON: " + e.getMessage(), e);
+//        }
+//    }
 
 
 //    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
@@ -375,7 +460,11 @@ public class PaaController {
 public ResponseEntity<PaaResponseWithRealisations> update(
         @PathVariable Integer paaId,
         @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request, @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound, PaaInvalidStateException {
+        @ModelAttribute("request") PaaRequestGlobal request,
+        @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+        @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+) throws PaaNotFound, PaaInvalidStateException {
+
     logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
     if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
         try {
@@ -385,6 +474,17 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             logger.error("Error processing lots JSON: {}", e.getMessage());
         }
     }
+
+    if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+        try {
+//            log.info(realisationsFinancementsJson);
+            processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+            logger.info("Successfully processed financements from JSON string");
+        } catch (Exception e) {
+            logger.error("Error processing financements JSON: {}", e.getMessage());
+        }
+    }
+
     Paa updatedPaa = paaService.update(paaId, paaVer, request);
 
     // Use the detailed mapper to create a response with specialised DTOs
