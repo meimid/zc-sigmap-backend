@@ -18,18 +18,12 @@ import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
-import com.sigmap.common.financement.Financement;
-import com.sigmap.common.financement.FinancementId;
-import com.sigmap.common.financement.FinancementRepository;
-import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.lots.response.LotResponse;
-import com.sigmap.common.monnaie.Monnaie;
-import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
@@ -66,7 +60,6 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 @Slf4j
 @Service
@@ -86,8 +79,7 @@ public class PpmServiceImpl implements PpmService {
     private final SequenceGeneratorService sequenceGeneratorService;
     private final DacRepository dacRepository;
     private final AcSeuilService acSeuilService;
-    private final FinancementRepository financementRepository;
-    private final MonnaieRepository monnaieRepository;
+
 
     /**
      * Constructor.
@@ -101,7 +93,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, FinancementRepository financementRepository, MonnaieRepository monnaieRepository) {
+    public PpmServiceImpl(PpmRepository repository,AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -117,8 +109,6 @@ public class PpmServiceImpl implements PpmService {
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.dacRepository = dacRepository;
         this.acSeuilService = acSeuilService;
-        this.financementRepository = financementRepository;
-        this.monnaieRepository = monnaieRepository;
     }
 
     @Override
@@ -161,95 +151,95 @@ public class PpmServiceImpl implements PpmService {
         return repository.findOne(specification);
     }
 
-@Override
-public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
-    log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
+    @Override
+    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+        log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
 
-    // Step 1: Validate input
-    if (ppmId == null) {
-        log.error("PPM ID est null");
-        throw new IllegalArgumentException("PPM ID cannot be null");
-    }
+        // Step 1: Validate input
+        if (ppmId == null) {
+            log.error("PPM ID est null");
+            throw new IllegalArgumentException("PPM ID cannot be null");
+        }
 
-    // Step 2: Get user's AC IDs and comIds
-    List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-    List<Integer> userComIds = currentUserService.getCurrentUserComIds();
-    log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
+        // Step 2: Get user's AC IDs and comIds
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+        log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
 
-    if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
-        log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
-        throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
-    }
+        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+            log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
+            throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
+        }
 
-    // Step 3: Validate ACs if any exist
-    if (userAcIds != null && !userAcIds.isEmpty()) {
-        for (Integer acId : userAcIds) {
-            try {
-                log.debug("Validation de l'AC ID: {}", acId);
-                acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC non trouvé avec ID: {}", acId);
-                throw e;
+        // Step 3: Validate ACs if any exist
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            for (Integer acId : userAcIds) {
+                try {
+                    log.debug("Validation de l'AC ID: {}", acId);
+                    acService.findById(acId);
+                } catch (AcNotFound e) {
+                    log.warn("AC non trouvé avec ID: {}", acId);
+                    throw e;
+                }
             }
         }
-    }
 
-    // Step 4: Determine the version to use
-    Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
-    if (targetVersion == null) {
-        log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
-        throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
-    }
-    log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
+        // Step 4: Determine the version to use
+        Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
+        if (targetVersion == null) {
+            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
+            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
+        }
+        log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
 
-    // Step 5: Retrieve the PPM
-    Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
-    if (ppmOpt.isEmpty()) {
-        log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
-        throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
-    }
+        // Step 5: Retrieve the PPM
+        Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
+        if (ppmOpt.isEmpty()) {
+            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
+            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
+        }
 
-    Ppm ppm = ppmOpt.get();
-    log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
+        Ppm ppm = ppmOpt.get();
+        log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
 
-    // Step 6: Check if the PPM is deleted
-    if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
-        log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
-        throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
-    }
+        // Step 6: Check if the PPM is deleted
+        if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
+            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
+            throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
+        }
 
-    // Step 7: Validate AC or com association
-    Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-    boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
-    boolean hasMatchingCom = false;
+        // Step 7: Validate AC or com association
+        Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
+        boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+        boolean hasMatchingCom = false;
 
-    // Check if any comId in ppm.coms matches user's comIds
-    if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
-        for (Com com : ppm.getComs()) {
-            if (com != null && userComIds.contains(com.getId())) {
-                hasMatchingCom = true;
-                log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
-                break;
+        // Check if any comId in ppm.coms matches user's comIds
+        if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
+            for (Com com : ppm.getComs()) {
+                if (com != null && userComIds.contains(com.getId())) {
+                    hasMatchingCom = true;
+                    log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
+                    break;
+                }
             }
         }
-    }
 
-    if (!hasMatchingAc && !hasMatchingCom) {
-        log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
-                ppmId, ppmAcId, userAcIds, userComIds);
-        throw new PpmNotAssociatedWithUserAcException(
-                "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
-                List.of(ppmId.longValue()),
-                List.of(targetVersion)
-        );
-    }
-    log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
+        if (!hasMatchingAc && !hasMatchingCom) {
+            log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
+                    ppmId, ppmAcId, userAcIds, userComIds);
+            throw new PpmNotAssociatedWithUserAcException(
+                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
+                    List.of(ppmId.longValue()),
+                    List.of(targetVersion)
+            );
+        }
+        log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-    // Step 8: Prepare and return the response
-    Ppm responsePpm = createFilteredResponsePpm(ppm);
-    log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
-    return Optional.ofNullable(responsePpm);
-}
+        // Step 8: Prepare and return the response
+        Ppm responsePpm = createFilteredResponsePpm(ppm);
+        log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
+        return Optional.ofNullable(responsePpm);
+    }
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -607,7 +597,7 @@ public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound,
             return null;
         }
 
-log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " with status: " + status);
+        log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " with status: " + status);
         existingPpm.setStatus(status);
         return repository.save(existingPpm);
 
@@ -669,146 +659,6 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         for (Realisation realisation : updatedRealisations) {
             setSeuilApplicableForRealisation(realisation, requestAcId);
         }
-
-        // ============= ADD FINANCEMENT PROCESSING HERE =============
-//        boolean financementChanged = false;
-//        System.out.println("=== PROCESSING FINANCEMENTS ===");
-//
-//        // Process financements for each realisation in the request
-//        for (int i = 0; i < request.getRealisations().size(); i++) {
-//            RealisationBaseRequestDto realisationRequest = request.getRealisations().get(i);
-//            Realisation correspondingRealisation = updatedRealisations.get(i);
-//
-//            System.out.println("Processing financements for realisation " +
-//                    (realisationRequest.getId() != null ? realisationRequest.getId() : "NEW"));
-//
-//            List<Financement> processedFinancementsForRealisation = new ArrayList<>();
-//            boolean financementChangedForThisRealisation = false;
-//
-//            if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-//                System.out.println("Processing " + realisationRequest.getFinancements().size() +
-//                        " financements for this realisation");
-//
-//                for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-//                    System.out.println("Processing financement: " + financementRequest);
-//
-//                    if (financementRequest.getFinancementId() != null) {
-//                        // Existing financement - find and update
-//                        Optional<Financement> existingFinancementOpt = correspondingRealisation.getFinancements().stream()
-//                                .filter(f -> f.getId().equals(financementRequest.getFinancementId()))
-//                                .findFirst();
-//
-//                        if (existingFinancementOpt.isPresent()) {
-//                            Financement existingFinancement = existingFinancementOpt.get();
-//                            Financement updatedFinancement = updateFinancementFromRequest(
-//                                    existingFinancement, financementRequest);
-//
-//                            if (!areFinancementsIdentical(existingFinancement, updatedFinancement)) {
-//                                System.out.println("Financement " + existingFinancement.getId() + " has changed");
-//                                financementChangedForThisRealisation = true;
-//                            }
-//                            processedFinancementsForRealisation.add(updatedFinancement);
-//                        } else {
-//                            throw new RuntimeException("Financement not found with ID: " + financementRequest.getFinancementId());
-//                        }
-//                    } else {
-//                        // New financement
-//                        System.out.println("Creating new financement");
-//                        financementChangedForThisRealisation = true;
-//                        Financement newFinancement = createFinancementFromRequest(financementRequest);
-//                        processedFinancementsForRealisation.add(newFinancement);
-//                    }
-//                }
-//            }
-//
-//            // Check for deleted financements in this realisation
-//            if (correspondingRealisation.getFinancements() != null) {
-//                for (Financement existingFinancement : correspondingRealisation.getFinancements()) {
-//                    boolean found = realisationRequest.getFinancements() != null &&
-//                            realisationRequest.getFinancements().stream()
-//                                    .anyMatch(f -> f.getFinancementId() != null && f.getFinancementId().equals(existingFinancement.getId()));
-//
-//                    if (!found) {
-//                        System.out.println("Financement " + existingFinancement.getId() + " was deleted");
-//                        financementChangedForThisRealisation = true;
-//                    }
-//                }
-//            }
-//
-//            // Update the realisation with processed financements
-//            correspondingRealisation.setFinancements(processedFinancementsForRealisation);
-//            for (Financement financement : processedFinancementsForRealisation) {
-//                financement.setRealisation(correspondingRealisation);
-//            }
-//
-//            // Aggregate the financement change flag
-//            if (financementChangedForThisRealisation) {
-//                financementChanged = true;
-//            }
-//
-//            System.out.println("Financement changes detected for this realisation: " + financementChangedForThisRealisation);
-//        }
-//
-//        System.out.println("Overall financement changes detected: " + financementChanged);
-        // ============= END OF FINANCEMENT PROCESSING =============
-// ============= FINANCEMENT PROCESSING =============
-        boolean financementChanged = false;
-        log.info("=== PROCESSING FINANCEMENTS ===");
-
-        Map<Integer, Realisation> existingRealisationsMap = existingPpm.getRealisations().stream()
-                .collect(Collectors.toMap(Realisation::getId, Function.identity(), (r1, r2) -> r1));
-
-        Map<Integer, RealisationBaseRequestDto> requestRealisationsMap = new HashMap<>();
-        if (request.getRealisations() != null) {
-            requestRealisationsMap = request.getRealisations().stream()
-                    .filter(r -> r.getId() != null)
-                    .collect(Collectors.toMap(RealisationBaseRequestDto::getId, Function.identity(), (r1, r2) -> r1));
-        }
-
-        for (Realisation updatedRealisation : updatedRealisations) {
-            Realisation existingRealisation = existingRealisationsMap.get(updatedRealisation.getId());
-            RealisationBaseRequestDto realisationRequest = requestRealisationsMap.get(updatedRealisation.getId());
-
-            if (existingRealisation != null && realisationRequest != null) {
-                log.info("Processing financements for existing Realisation ID {}", existingRealisation.getId());
-
-                boolean changedForThisRealisation = checkFinancementChanges(
-                        existingRealisation.getFinancements(),
-                        realisationRequest.getFinancements()
-                );
-
-                if (changedForThisRealisation) {
-                    financementChanged = true;
-                    log.info("Financement change detected for Realisation ID {}", existingRealisation.getId());
-                }
-
-                List<Financement> processedFinancements;
-                if (changedForThisRealisation) {
-                    processedFinancements = createUpdatedFinancements(
-                            existingRealisation.getFinancements(),
-                            realisationRequest.getFinancements(),
-                            updatedRealisation
-                    );
-                } else {
-                    processedFinancements = copyFinancementsToNewVersion(
-                            existingRealisation.getFinancements(),
-                            updatedRealisation
-                    );
-                }
-                updatedRealisation.setFinancements(processedFinancements);
-            } else if (realisationRequest != null && realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-                financementChanged = true;
-                log.info("Financements found for new Realisation, flagging as change.");
-                List<Financement> newFinancements = createUpdatedFinancements(
-                        Collections.emptyList(),
-                        realisationRequest.getFinancements(),
-                        updatedRealisation
-                );
-                updatedRealisation.setFinancements(newFinancements);
-            }
-        }
-        log.info("Overall financement changes detected: {}", financementChanged);
-        // ============= END OF FINANCEMENT PROCESSING =============
 
         // Process documents if present
         List<Docs> updatedDocs = new ArrayList<>();
@@ -893,8 +743,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         }
 
         // Determine if we need to create a new version
-        boolean shouldCreateNewVersion = directFieldsChanged || realisationsChanged || documentsChanged || hasFiles || financementChanged;
-        logVersionDecision(shouldCreateNewVersion, directFieldsChanged, realisationsChanged, documentsChanged, financementChanged);
+        boolean shouldCreateNewVersion = directFieldsChanged || realisationsChanged || documentsChanged || hasFiles;
+        logVersionDecision(shouldCreateNewVersion, directFieldsChanged, realisationsChanged, documentsChanged);
 
         // If no changes, return the existing PPM
         if (!shouldCreateNewVersion) {
@@ -1115,9 +965,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 RealisationWithLotsRequestDto real = request.getRealisationsWithLots().get(i);
                 System.out.println("   - Realisation " + i + " with ID " + (real.getId() != null ? real.getId() : "new"));
                 System.out.println("     - Has files: " + (real.getRealisationFiles() != null ?
-                                                         (!real.getRealisationFiles().isEmpty() ?
-                                                          real.getRealisationFiles().size() + " files" : "empty list") :
-                                                         "null"));
+                        (!real.getRealisationFiles().isEmpty() ?
+                                real.getRealisationFiles().size() + " files" : "empty list") :
+                        "null"));
 
                 // Detail each file
                 if (real.getRealisationFiles() != null && !real.getRealisationFiles().isEmpty()) {
@@ -1125,8 +975,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                         MultipartFile file = real.getRealisationFiles().get(j);
                         if (file != null) {
                             System.out.println("       - File " + j + ": name=" + file.getOriginalFilename() +
-                                             ", size=" + file.getSize() +
-                                             ", content-type=" + file.getContentType());
+                                    ", size=" + file.getSize() +
+                                    ", content-type=" + file.getContentType());
                         } else {
                             System.out.println("       - File " + j + ": NULL");
                         }
@@ -1143,7 +993,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     if (withLots.getRealisationFiles() != null && !withLots.getRealisationFiles().isEmpty()) {
                         hasRealisationsWithFiles = true;
                         System.out.println("   - Found RealisationWithLotsRequestDto with " +
-                                         withLots.getRealisationFiles().size() + " files in regular realisations list");
+                                withLots.getRealisationFiles().size() + " files in regular realisations list");
                         break;
                     }
                 }
@@ -1180,14 +1030,14 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 // Verify if files are present in the DTO
                 if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                     System.out.println("Realisation with ID " +
-                                     (realisationWithLots.getId() != null ? realisationWithLots.getId() : "new") +
-                                     " has " + realisationWithLots.getRealisationFiles().size() + " files:");
+                            (realisationWithLots.getId() != null ? realisationWithLots.getId() : "new") +
+                            " has " + realisationWithLots.getRealisationFiles().size() + " files:");
                     for (int i = 0; i < realisationWithLots.getRealisationFiles().size(); i++) {
                         MultipartFile file = realisationWithLots.getRealisationFiles().get(i);
                         if (file != null) {
                             System.out.println(" - File " + i + ": " + file.getOriginalFilename() +
-                                             ", size=" + file.getSize() +
-                                             ", empty=" + file.isEmpty());
+                                    ", size=" + file.getSize() +
+                                    ", empty=" + file.isEmpty());
                         } else {
                             System.out.println(" - File " + i + ": NULL");
                         }
@@ -1227,7 +1077,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 
                 if (baseRealisation.getRealisationFiles() != null) {
                     System.out.println("Files successfully copied to base realisation DTO: " +
-                                     baseRealisation.getRealisationFiles().size() + " files");
+                            baseRealisation.getRealisationFiles().size() + " files");
                 } else {
                     System.out.println("No files in base realisation DTO after copying");
                 }
@@ -1241,7 +1091,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             // If no realisationsWithLots provided, just use the regular realisations
             baseRequest.setRealisations(request.getRealisations());
             System.out.println("Using regular realisations: " +
-                             (request.getRealisations() != null ? request.getRealisations().size() : 0));
+                    (request.getRealisations() != null ? request.getRealisations().size() : 0));
         }
 
         // Use the existing updateWithVersioning method with the populated base request
@@ -1255,7 +1105,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             System.out.println("Returned PPM has " + result.getRealisations().size() + " realisations:");
             for (Realisation real : result.getRealisations()) {
                 System.out.println(" - Realisation " + real.getId() + ", version " + real.getVersion() +
-                                 " has " + (real.getDocs() != null ? real.getDocs().size() : 0) + " documents");
+                        " has " + (real.getDocs() != null ? real.getDocs().size() : 0) + " documents");
             }
         }
 
@@ -1295,12 +1145,11 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         System.out.println("Request data: " + request);
     }
 
-    private void logVersionDecision(boolean shouldCreate, boolean direct, boolean real, boolean docs, boolean financement) {
+    private void logVersionDecision(boolean shouldCreate, boolean direct, boolean real, boolean docs) {
         System.out.println("Should create new PPM version: " + shouldCreate);
         System.out.println("  - Direct changes: " + direct);
         System.out.println("  - Realisations changed: " + real);
         System.out.println("  - Documents changed: " + docs);
-        System.out.println("  - Financements changed: " + financement);
     }
 
     private boolean isDuplicateRequest(Integer ppmId, Integer ppmVer, PpmBaseRequestDto request) {
@@ -1619,16 +1468,16 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 RealisationWithLotsRequestDto lotsDto = (RealisationWithLotsRequestDto) dto;
                 if (lotsDto.getLots() != null) {
                     lotsDto.getLots().stream()
-                        .sorted(Comparator.comparing(lot -> lot.getDescription(), Comparator.nullsFirst(String::compareTo)))
-                        .forEach(lot -> sb.append("L|").append(lot.getDescription()).append("|"));
+                            .sorted(Comparator.comparing(lot -> lot.getDescription(), Comparator.nullsFirst(String::compareTo)))
+                            .forEach(lot -> sb.append("L|").append(lot.getDescription()).append("|"));
                 }
             }
 
             // Add document IDs if available
             if (dto.getDocIds() != null) {
                 dto.getDocIds().stream()
-                    .sorted()
-                    .forEach(docId -> sb.append("D").append(docId).append("|"));
+                        .sorted()
+                        .forEach(docId -> sb.append("D").append(docId).append("|"));
             }
 
             // Compute and return hash
@@ -1675,18 +1524,18 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             // Add lots if available
             if (realisation.getLots() != null) {
                 realisation.getLots().stream()
-                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                    .sorted(Comparator.comparing(Lot::getDescription, Comparator.nullsFirst(String::compareTo)))
-                    .forEach(lot -> sb.append("L|").append(lot.getDescription()).append("|"));
+                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                        .sorted(Comparator.comparing(Lot::getDescription, Comparator.nullsFirst(String::compareTo)))
+                        .forEach(lot -> sb.append("L|").append(lot.getDescription()).append("|"));
             }
 
             // Add document IDs if available, filtering out deleted docs
             if (realisation.getDocs() != null) {
                 realisation.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .map(Docs::getId)
-                    .sorted()
-                    .forEach(docId -> sb.append("D").append(docId).append("|"));
+                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                        .map(Docs::getId)
+                        .sorted()
+                        .forEach(docId -> sb.append("D").append(docId).append("|"));
             }
 
             // Compute and return hash
@@ -1732,7 +1581,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
      */
     private List<Lot> processLotsForRealisation(Realisation existingRealisation, RealisationBaseRequestDto realisationDto, Map<String, Lot> newLotsMap) {
         System.out.println("==== PROCESSING LOTS FOR REALISATION ID " + existingRealisation.getId() +
-                          ", VERSION " + existingRealisation.getVersion() + " ====");
+                ", VERSION " + existingRealisation.getVersion() + " ====");
         List<Lot> updatedLots = new ArrayList<>();
 
         if (existingRealisation.getLots() != null) {
@@ -1742,12 +1591,12 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     .collect(Collectors.toList());
 
             System.out.println("Starting with " + updatedLots.size() + " existing active lots for realisation " +
-                              existingRealisation.getId() + ", version " + existingRealisation.getVersion());
+                    existingRealisation.getId() + ", version " + existingRealisation.getVersion());
             // Log details of existing lots
             updatedLots.forEach(lot ->
-                System.out.println("  - Existing lot: ID=" + lot.getId() + ", version=" + lot.getVersion() +
-                                 ", description=" + lot.getDescription() +
-                                 ", realisations=" + (lot.getRealisations() != null ? lot.getRealisations().size() : "none"))
+                    System.out.println("  - Existing lot: ID=" + lot.getId() + ", version=" + lot.getVersion() +
+                            ", description=" + lot.getDescription() +
+                            ", realisations=" + (lot.getRealisations() != null ? lot.getRealisations().size() : "none"))
             );
         } else {
             System.out.println("No existing lots found for realisation " + existingRealisation.getId());
@@ -1761,16 +1610,16 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 System.out.println("Processing " + withLotsDto.getLots().size() + " lots from request:");
                 // Log details of lots in request
                 withLotsDto.getLots().forEach(lotResponse ->
-                    System.out.println("  - Request lot: ID=" + lotResponse.getId() +
-                                     ", version=" + lotResponse.getVersion() +
-                                     ", description=" + lotResponse.getDescription())
+                        System.out.println("  - Request lot: ID=" + lotResponse.getId() +
+                                ", version=" + lotResponse.getVersion() +
+                                ", description=" + lotResponse.getDescription())
                 );
 
                 // Track lots to keep
                 Set<Integer> requestLotIds = withLotsDto.getLots().stream()
-                    .filter(lot -> lot.getId() != null)
-                    .map(LotResponse::getId)
-                    .collect(Collectors.toSet());
+                        .filter(lot -> lot.getId() != null)
+                        .map(LotResponse::getId)
+                        .collect(Collectors.toSet());
 
                 System.out.println("Lot IDs in request: " + requestLotIds);
 
@@ -1791,7 +1640,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                 // Process each lot from the request
                 for (LotResponse lotResponse : withLotsDto.getLots()) {
                     System.out.println("Processing lot from request: ID=" + lotResponse.getId() +
-                                     ", description=" + lotResponse.getDescription());
+                            ", description=" + lotResponse.getDescription());
 
                     if (lotResponse.getId() != null) {
                         // This is an existing lot - check if it needs updating
@@ -1818,15 +1667,15 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                         }
 
                         System.out.println("Found existing lot: ID=" + existingLot.getId() +
-                                         ", version=" + existingLot.getVersion() +
-                                         ", description=" + existingLot.getDescription());
+                                ", version=" + existingLot.getVersion() +
+                                ", description=" + existingLot.getDescription());
 
                         // Check if the lot needs updating (description changed)
                         boolean descriptionChanged = !Objects.equals(existingLot.getDescription(), lotResponse.getDescription());
 
                         if (descriptionChanged) {
                             System.out.println("Lot description changed for lot " + existingLot.getId() +
-                                             ": " + existingLot.getDescription() + " -> " + lotResponse.getDescription());
+                                    ": " + existingLot.getDescription() + " -> " + lotResponse.getDescription());
 
                             // Create a new version of the lot
                             Integer newVersion = existingLot.getVersion() + 1;
@@ -1839,10 +1688,10 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             Set<Realisation> realisations = new HashSet<>();
                             if (existingLot.getRealisations() != null) {
                                 System.out.println("Copying existing relationships from lot " + existingLot.getId() +
-                                                 ": " + existingLot.getRealisations().size() + " realisations");
+                                        ": " + existingLot.getRealisations().size() + " realisations");
                                 existingLot.getRealisations().forEach(real ->
-                                    System.out.println("  - Existing relationship with realisation: ID=" +
-                                                     real.getId() + ", version=" + real.getVersion())
+                                        System.out.println("  - Existing relationship with realisation: ID=" +
+                                                real.getId() + ", version=" + real.getVersion())
                                 );
                                 realisations.addAll(existingLot.getRealisations());
                             }
@@ -1850,11 +1699,11 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             // Ensure this realization is included
                             if (!realisations.contains(existingRealisation)) {
                                 System.out.println("Adding current realisation " + existingRealisation.getId() +
-                                                 " to relationships of lot " + existingLot.getId());
+                                        " to relationships of lot " + existingLot.getId());
                                 realisations.add(existingRealisation);
                             } else {
                                 System.out.println("Current realisation " + existingRealisation.getId() +
-                                                 " is already in relationships of lot " + existingLot.getId());
+                                        " is already in relationships of lot " + existingLot.getId());
                             }
 
                             newLot.setRealisations(realisations);
@@ -1862,8 +1711,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             // Save the new lot version
                             newLot = lotRepository.save(newLot);
                             System.out.println("Created new lot version: ID " + newLot.getId() +
-                                             ", version " + newLot.getVersion() +
-                                             ", has " + newLot.getRealisations().size() + " realisation relationships");
+                                    ", version " + newLot.getVersion() +
+                                    ", has " + newLot.getRealisations().size() + " realisation relationships");
 
                             // Replace old version with new
                             updatedLots.removeIf(lot -> lot.getId().equals(existingLot.getId()));
@@ -1882,7 +1731,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                                     lotRepository.save(existingLot);
                                 } else if (!existingLot.getRealisations().contains(existingRealisation)) {
                                     System.out.println("Adding current realisation " + existingRealisation.getId() +
-                                                    " to relationships of unchanged lot " + existingLot.getId());
+                                            " to relationships of unchanged lot " + existingLot.getId());
                                     existingLot.getRealisations().add(existingRealisation);
                                     lotRepository.save(existingLot);
                                 }
@@ -1900,7 +1749,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             if (!updatedLots.contains(existingNewLot)) {
                                 updatedLots.add(existingNewLot);
                                 System.out.println("Reusing existing new lot: ID " + existingNewLot.getId() +
-                                                 ", version " + existingNewLot.getVersion());
+                                        ", version " + existingNewLot.getVersion());
 
                                 // Make sure realisation relationship is set
                                 if (existingNewLot.getRealisations() == null) {
@@ -1911,11 +1760,11 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                                 if (!existingNewLot.getRealisations().contains(existingRealisation)) {
                                     existingNewLot.getRealisations().add(existingRealisation);
                                     System.out.println("Adding realisation " + existingRealisation.getId() +
-                                                    " to reused lot " + existingNewLot.getId());
+                                            " to reused lot " + existingNewLot.getId());
                                     lotRepository.save(existingNewLot);
                                 } else {
                                     System.out.println("Realisation " + existingRealisation.getId() +
-                                                    " already associated with reused lot " + existingNewLot.getId());
+                                            " already associated with reused lot " + existingNewLot.getId());
                                 }
                             }
                         } else {
@@ -1940,10 +1789,10 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                             // Save the new lot
                             Lot savedLot = lotRepository.save(newLot);
                             System.out.println("Created brand new lot: ID " + savedLot.getId() +
-                                             ", version " + savedLot.getVersion() +
-                                             ", has realisations: " +
-                                             (savedLot.getRealisations() != null ?
-                                              savedLot.getRealisations().size() : "none"));
+                                    ", version " + savedLot.getVersion() +
+                                    ", has realisations: " +
+                                    (savedLot.getRealisations() != null ?
+                                            savedLot.getRealisations().size() : "none"));
 
                             // Add to our tracking collections
                             updatedLots.add(savedLot);
@@ -1955,15 +1804,15 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         }
 
         System.out.println("Final lot count for realisation " + existingRealisation.getId() +
-                          ", version " + existingRealisation.getVersion() + ": " + updatedLots.size());
+                ", version " + existingRealisation.getVersion() + ": " + updatedLots.size());
 
         // Log the final set of lots
         System.out.println("Final lots for realisation " + existingRealisation.getId() + ":");
         updatedLots.forEach(lot ->
-            System.out.println("  - Lot: ID=" + lot.getId() +
-                             ", version=" + lot.getVersion() +
-                             ", description=" + lot.getDescription() +
-                             ", realisations=" + (lot.getRealisations() != null ? lot.getRealisations().size() : "none"))
+                System.out.println("  - Lot: ID=" + lot.getId() +
+                        ", version=" + lot.getVersion() +
+                        ", description=" + lot.getDescription() +
+                        ", realisations=" + (lot.getRealisations() != null ? lot.getRealisations().size() : "none"))
         );
 
         System.out.println("==== FINISHED PROCESSING LOTS FOR REALISATION ID " + existingRealisation.getId() + " ====");
@@ -1978,8 +1827,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         // Early exit if one has lots and the other doesn't
         boolean existingHasLots = existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty();
         boolean dtoHasLots = realisationDto instanceof RealisationWithLotsRequestDto &&
-                            ((RealisationWithLotsRequestDto) realisationDto).getLots() != null &&
-                            !((RealisationWithLotsRequestDto) realisationDto).getLots().isEmpty();
+                ((RealisationWithLotsRequestDto) realisationDto).getLots() != null &&
+                !((RealisationWithLotsRequestDto) realisationDto).getLots().isEmpty();
 
         if (existingHasLots != dtoHasLots) {
             System.out.println("Lots changed: one has lots, the other doesn't");
@@ -2044,8 +1893,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 
         // Handle null docIds as empty set
         Set<Integer> requestDocIds = request.getDocIds() != null ?
-                                     new HashSet<>(request.getDocIds()) :
-                                     new HashSet<>();
+                new HashSet<>(request.getDocIds()) :
+                new HashSet<>();
 
         // Compare document sets - sort both sets before comparison to ensure consistent order
         List<Integer> sortedExistingIds = new ArrayList<>(activeExistingDocIds);
@@ -2126,8 +1975,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             updatedDocs.clear();
             if (existingPpm.getDocs() != null) {
                 existingPpm.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .forEach(updatedDocs::add);
+                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                        .forEach(updatedDocs::add);
             }
         }
 
@@ -2156,15 +2005,15 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 
         // Handle null docIds as empty set
         Set<Integer> requestDocIds = realisationDto.getDocIds() != null ?
-                                     new HashSet<>(realisationDto.getDocIds()) :
-                                     new HashSet<>();
+                new HashSet<>(realisationDto.getDocIds()) :
+                new HashSet<>();
 
         // Compare document sets
         boolean docsAdded = !requestDocIds.isEmpty() &&
-                           !activeExistingDocIds.containsAll(requestDocIds);
+                !activeExistingDocIds.containsAll(requestDocIds);
 
         boolean docsRemoved = !activeExistingDocIds.isEmpty() &&
-                             !requestDocIds.containsAll(activeExistingDocIds);
+                !requestDocIds.containsAll(activeExistingDocIds);
 
         documentsChanged = docsAdded || docsRemoved;
 
@@ -2189,8 +2038,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             updatedDocs.clear();
             if (existingRealisation.getDocs() != null) {
                 existingRealisation.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .forEach(updatedDocs::add);
+                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                        .forEach(updatedDocs::add);
             }
         }
 
@@ -2266,8 +2115,8 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 
         // Check if text has changed
         boolean textChanged = fieldChanged(
-            existingRealisation.getRealisationEnvisagees(),
-            realisationDto.getRealisationEnvisagees()
+                existingRealisation.getRealisationEnvisagees(),
+                realisationDto.getRealisationEnvisagees()
         );
 
         if (textChanged) {
@@ -2278,18 +2127,18 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 
         // Check other fields
         boolean serviceChanged = fieldChanged(
-            existingRealisation.getService() != null ? existingRealisation.getService().getId() : null,
-            realisationDto.getService() != null ? realisationDto.getService().getId() : null
+                existingRealisation.getService() != null ? existingRealisation.getService().getId() : null,
+                realisationDto.getService() != null ? realisationDto.getService().getId() : null
         );
 
         boolean directionChanged = fieldChanged(
-            existingRealisation.getDirection() != null ? existingRealisation.getDirection().getId() : null,
-            realisationDto.getDirection() != null ? realisationDto.getDirection().getId() : null
+                existingRealisation.getDirection() != null ? existingRealisation.getDirection().getId() : null,
+                realisationDto.getDirection() != null ? realisationDto.getDirection().getId() : null
         );
 
         boolean sourceFinChanged = fieldChanged(
-            existingRealisation.getSourceFinancement() != null ? existingRealisation.getSourceFinancement().getId() : null,
-            realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
+                existingRealisation.getSourceFinancement() != null ? existingRealisation.getSourceFinancement().getId() : null,
+                realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
         );
 
 //        boolean monaisChanged = fieldChanged(
@@ -2297,13 +2146,13 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
 //            realisationDto.getMonais() != null ? realisationDto.getMonais().getId() : null
 //        );
         boolean monaisChanged = fieldChanged(
-            existingRealisation.getMonnaie() != null ? existingRealisation.getMonnaie().getId() : null,
-            realisationDto.getMonnaie() != null ? realisationDto.getMonnaie().getId() : null
+                existingRealisation.getMonnaie() != null ? existingRealisation.getMonnaie().getId() : null,
+                realisationDto.getMonnaie() != null ? realisationDto.getMonnaie().getId() : null
         );
 
         boolean typeMarcherChanged = fieldChanged(
-            existingRealisation.getTypeMarcher() != null ? existingRealisation.getTypeMarcher().getId() : null,
-            realisationDto.getTypeMarcher() != null ? realisationDto.getTypeMarcher().getId() : null
+                existingRealisation.getTypeMarcher() != null ? existingRealisation.getTypeMarcher().getId() : null,
+                realisationDto.getTypeMarcher() != null ? realisationDto.getTypeMarcher().getId() : null
         );
 
 //        boolean modeSelectionChanged = fieldChanged(
@@ -2327,7 +2176,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         // Important: Lot changes should NOT trigger a new Realisation version
         // Just checking the actual field changes, not lot relationships
         boolean result = docsChanged || textChanged || serviceChanged || directionChanged ||
-                         sourceFinChanged || monaisChanged || typeMarcherChanged || modePassationChanged;
+                sourceFinChanged || monaisChanged || typeMarcherChanged || modePassationChanged;
 
         System.out.println("Realisation needs update: " + result);
         return result;
@@ -2619,7 +2468,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         if (request.getPpmFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPpmFiles().size() + " files for PPM");
-               // processAndSaveDocuments(request.getPpmFiles(), savedPpm);
+                // processAndSaveDocuments(request.getPpmFiles(), savedPpm);
                 documentCommuneService.processAndSaveDocuments(request.getPpmFiles(),savedPpm,Constants.PATH_ENTREPOT_GED_PPM);
 
                 System.out.println("Processed PPM files successfully");
@@ -2849,7 +2698,6 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setLots(lots);
                     System.out.println("Set " + lots.size() + " lots on realisation ID: " + realisation.getId());
                 }
-
 
                 // Add the realisation to the list to save later
                 realisationsToSave.add(realisation);
@@ -3193,7 +3041,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                         RealisationWithLotsRequestDto realisationWithLots = (RealisationWithLotsRequestDto) realisationRequest;
                         if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
                             try {
-                               // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
+                                // processAndSaveRelisationsDocumentsForUpdate(realisationWithLots.getRealisationFiles(), realisation);
                                 documentCommuneService.processAndSaveDocuments(realisationWithLots.getRealisationFiles(),realisation,Constants.PATH_ENTREPOT_GED_PPM+"/"+existingPpm.getId()+Constants.PATH_ENTREPOT_GED_REALISATION);
 
                             } catch (Exception e) {
@@ -3789,7 +3637,7 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
      * @return The newly created PPM version
      */
     private Ppm createAndSaveNewPpmVersion(Integer ppmId, Integer ppmVer, Ppm tempPpm,
-                                   List<Realisation> updatedRealisations, List<Docs> updatedDocs, Ppm existingPpm) {
+                                           List<Realisation> updatedRealisations, List<Docs> updatedDocs, Ppm existingPpm) {
         System.out.println("Creating new PPM version: " + (ppmVer + 1));
 
         // Create new PPM
@@ -4068,7 +3916,6 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
             );
         }
 
-
         // Step 10: Process realisations if provided
         if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
@@ -4135,126 +3982,9 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
                     realisation.setLots(lots);
                 }
 
-
-
-                // ADD: Handle Financements
-                Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-
-                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
-
-                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
-
-                    // SAFE: Create list without triggering hashCode on entities
-                    List<Financement> financements = new ArrayList<>();
-
-                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
-
-                        // Validate required fields
-                        if (financementRequest.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
-                            continue;
-                        }
-
-                        // SAFE: Create entities step by step without setting relationships
-                        Financement financement = new Financement();
-                        FinancementId financementId = new FinancementId();
-
-                        // Set simple fields first
-                        financementId.setFinancementId(nextFinancementId++);
-                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-
-                        // Get monnaie entity
-                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-
-                        // Set source financement if provided
-                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
-                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
-                            financement.setSourceFinancement(sourceFinancement);
-                        }
-
-                        // CRITICAL: Set relationships LAST to avoid cycles
-                        financementId.setMonnaie(monnaie);
-                        financementId.setRealisation(realisation);
-                        financement.setId(financementId);
-
-                        // SAFE: Add to ArrayList (doesn't trigger hashCode)
-                        financements.add(financement);
-
-                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
-                                financementId.getFinancementId(),
-                                financementRequest.getMonnaieId(),
-                                financementRequest.getBudgetEstimer());
-                    }
-
-                    // SAFE: Set the collection on realisation
-                    realisation.setFinancements(financements);
-                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
-                } else {
-                    log.info("No financements provided for realisation ID: {}", realisation.getId());
-                    realisation.setFinancements(new ArrayList<>());
-                }
-
-//                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-//                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
-//                    List<Financement> financements = new ArrayList<>();
-//
-//                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-//                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
-//
-//                        // Validate required fields
-//                        if (financementRequest.getMonnaieId() == null) {
-//                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
-//                            continue;
-//                        }
-//
-//                        // Create FinancementId (composite key)
-//                        FinancementId financementId = new FinancementId();
-//                        financementId.setRealisation(realisation);
-//
-//                        // Set Monnaie
-//                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-//                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-//                        financementId.setMonnaie(monnaie);
-//
-//                        // Generate unique financement ID
-//                        financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
-//
-//                        // Create Financement entity
-//                        Financement financement = new Financement();
-//                        financement.setId(financementId);
-//                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-//
-//                        // Set source financement if provided
-//                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
-//                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-//                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
-//                            financement.setSourceFinancement(sourceFinancement);
-//                        }
-//
-//                        // Add the financement to the list
-//                        financements.add(financement);
-//                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
-//                                financementId.getFinancementId(),
-//                                financementRequest.getMonnaieId(),
-//                                financementRequest.getBudgetEstimer());
-//                    }
-//
-//                    realisation.setFinancements(financements);
-//                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
-//                }
-//                else {
-//                    log.info("No financements provided for realisation ID: {}", realisation.getId());
-//                    realisation.setFinancements(new ArrayList<>());
-//                }
-
                 realisationsToSave.add(realisation);
             }
             realisationRepository.saveAll(realisationsToSave);
-
         }
 
         // Step 11: Validate realisations for budget consistency
@@ -4480,186 +4210,4 @@ log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " wit
         }
     }
 
-
-//    /**
-//     * Compares two Financement objects to check if their fields are identical.
-//     */
-//    private boolean areFinancementsIdentical(Financement f1, Financement f2) {
-//        if (f1 == f2) return true;
-//        if (f1 == null || f2 == null) return false;
-//
-//        return Objects.equals(f1.getBudgetEstimer(), f2.getBudgetEstimer())
-//                && Objects.equals(getId(f1.getSourceFinancement()), getId(f2.getSourceFinancement()))
-//                && Objects.equals(getMonnaieId(f1.getId().getMonnaie()), getMonnaieId(f2.getId().getMonnaie()));
-//    }
-//
-//    /**
-//     * Safely extracts ID from RefParam (already exists in your class from PAA logic)
-//     */
-//    private Integer getId(RefParam refParam) {
-//        return refParam != null ? refParam.getId() : null;
-//    }
-//
-//    /**
-//     * Safely extracts ID from Monnaie
-//     */
-//    private Integer getMonnaieId(Monnaie monnaie) {
-//        return monnaie != null ? monnaie.getId() : null;
-//    }
-//
-//    /**
-//     * Updates an existing Financement from request data
-//     */
-//    private Financement updateFinancementFromRequest(Financement existingFinancement, FinancementRequest request) {
-//        // Update budget estimé
-//        existingFinancement.setBudgetEstimer(request.getBudgetEstimer());
-//
-//        // Update sourceFinancement if provided
-//        if (request.getSourceFinancementId() != null) {
-//            RefParam sourceFinancement = refParamService.findById(request.getSourceFinancementId());
-//            existingFinancement.setSourceFinancement(sourceFinancement);
-//        }
-//
-//        // Update monnaie in composite key if provided
-//        if (request.getMonnaieId() != null) {
-//            Monnaie monnaie = monnaieService.findById(request.getMonnaieId());
-//            FinancementId id = existingFinancement.getId();
-//            id.setMonnaie(monnaie);
-//            existingFinancement.setId(id);
-//        }
-//
-//        return existingFinancement;
-//    }
-//
-//    /**
-//     * Creates a new Financement from request data
-//     */
-//    private Financement createFinancementFromRequest(FinancementRequest request, Realisation realisation) {
-//        Financement financement = new Financement();
-//
-//        // Set budget estimé
-//        financement.setBudgetEstimer(request.getBudgetEstimer());
-//
-//        // Set sourceFinancement
-//        if (request.getFinancementId() != null) {
-//            RefParam sourceFinancement = refParamService.findById(request.getSourceFinancementId());
-//            financement.setSourceFinancement(sourceFinancement);
-//        }
-//
-//        // Create composite ID
-//        FinancementId financementId = new FinancementId();
-//        financementId.setRealisation(realisation);
-//
-//        // Set monnaie
-//        if (request.getMonnaieId() != null) {
-//            Monnaie monnaie = monnaieService.findById(request.getMonnaieId());
-//            financementId.setMonnaie(monnaie);
-//        }
-//
-//        // Set financement ID (you may need to generate this)
-//        financementId.setFinancementId(generateNewFinancementId());
-//
-//        financement.setId(financementId);
-//
-//        return financement;
-//    }
-
-    /**
-     * Check if financement data has changed compared to existing financements.
-     */
-    private boolean checkFinancementChanges(List<Financement> existingFinancements, List<FinancementRequest> updates) {
-        if ((existingFinancements == null || existingFinancements.isEmpty()) && (updates == null || updates.isEmpty())) {
-            return false;
-        }
-        if ((existingFinancements == null || existingFinancements.isEmpty()) || (updates == null || updates.isEmpty())) {
-            return true;
-        }
-        if (existingFinancements.size() != updates.size()) {
-            return true;
-        }
-
-        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
-                .collect(Collectors.toMap(f -> f.getId().getMonnaie().getId(), f -> f, (e1, e2) -> e1));
-        Map<Integer, FinancementRequest> updatesByMonnaie = updates.stream()
-                .collect(Collectors.toMap(FinancementRequest::getMonnaieId, f -> f, (u1, u2) -> u1));
-
-        if (!existingByMonnaie.keySet().equals(updatesByMonnaie.keySet())) {
-            return true;
-        }
-
-        for (Integer monnaieId : existingByMonnaie.keySet()) {
-            Financement existing = existingByMonnaie.get(monnaieId);
-            FinancementRequest update = updatesByMonnaie.get(monnaieId);
-
-            if (update.getBudgetEstimer() != null && existing.getBudgetEstimer().compareTo(update.getBudgetEstimer()) != 0) {
-                return true;
-            }
-
-            Integer existingSourceId = existing.getSourceFinancement() != null ? existing.getSourceFinancement().getId() : null;
-            Integer updateSourceId = update.getSourceFinancement() != null ? update.getSourceFinancement().getId() : null;
-            if (!Objects.equals(existingSourceId, updateSourceId)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Create updated financements for a new realisation version.
-     */
-    private List<Financement> createUpdatedFinancements(List<Financement> existingFinancements, List<FinancementRequest> updates, Realisation newVersionRealisation) {
-        List<Financement> newFinancements = new ArrayList<>();
-        if (updates == null || updates.isEmpty()) {
-            return newFinancements;
-        }
-
-        for (FinancementRequest update : updates) {
-            FinancementId financementId = new FinancementId();
-            financementId.setRealisation(newVersionRealisation);
-            Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
-            financementId.setMonnaie(monnaie);
-
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            financementId.setFinancementId(nextFinancementId);
-
-            Financement financement = new Financement();
-            financement.setId(financementId);
-            financement.setBudgetEstimer(update.getBudgetEstimer());
-
-            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                RefParam sourceFinancement = refParamRepository.findById(update.getSourceFinancement().getId())
-                        .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + update.getSourceFinancement().getId()));
-                financement.setSourceFinancement(sourceFinancement);
-            }
-            newFinancements.add(financement);
-        }
-        return newFinancements;
-    }
-
-    /**
-     * Copy existing financements to a new realisation version when no changes are detected.
-     */
-    private List<Financement> copyFinancementsToNewVersion(List<Financement> existingFinancements, Realisation newVersionRealisation) {
-        List<Financement> copiedFinancements = new ArrayList<>();
-        if (existingFinancements == null || existingFinancements.isEmpty()) {
-            return copiedFinancements;
-        }
-
-        for (Financement existing : existingFinancements) {
-            FinancementId newFinancementId = new FinancementId();
-            newFinancementId.setRealisation(newVersionRealisation);
-            newFinancementId.setMonnaie(existing.getId().getMonnaie());
-
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            newFinancementId.setFinancementId(nextFinancementId);
-
-            Financement copiedFinancement = new Financement();
-            copiedFinancement.setId(newFinancementId);
-            copiedFinancement.setBudgetEstimer(existing.getBudgetEstimer());
-            copiedFinancement.setSourceFinancement(existing.getSourceFinancement());
-            copiedFinancements.add(copiedFinancement);
-        }
-        return copiedFinancements;
-    }
 }
