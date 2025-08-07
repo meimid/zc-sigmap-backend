@@ -940,9 +940,9 @@ public class PaaServiceImpl implements PaaService {
                         }
                     }
 
-                    List<Paa> ObserverList = new ArrayList<>();
-                    ObserverList.add(existingPaa);
-                    realisation.setPaas(ObserverList);
+                    List<Paa> paaList = new ArrayList<>();
+                    paaList.add(existingPaa);
+                    realisation.setPaas(paaList);
 
                     if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
                         List<Docs> docs = new ArrayList<>();
@@ -1130,8 +1130,7 @@ public class PaaServiceImpl implements PaaService {
         copyForResponse.setBudgetEstime(budgetEstime);
         log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
         return copyForResponse;
-    }
-//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
+    }//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
 //        System.out.println("calling the method");
 //        CompositeId compositeId = new CompositeId(paaId, paaVer);
 //        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
