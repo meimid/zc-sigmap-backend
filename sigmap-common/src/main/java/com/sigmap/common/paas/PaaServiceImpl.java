@@ -326,13 +326,20 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setDeletedBy(paa.getDeletedBy());
         filteredPaa.setDeletedAt(paa.getDeletedAt());
         filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
-        filteredPaa.setRealisations(paa.getRealisations());
+//        filteredPaa.setRealisations(paa.getRealisations());
 
         if (paa.getDocs() != null) {
             List<Docs> nonDeletedDocs = paa.getDocs().stream()
                     .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                     .collect(Collectors.toList());
             filteredPaa.setDocs(nonDeletedDocs);
+        }
+
+        if (paa.getRealisations() != null) {
+            List<Realisation> nondeletedRea = paa.getRealisations().stream()
+                    .filter(rea -> !Boolean.TRUE.equals(rea.getIsDeleted()))
+                    .collect(Collectors.toList());
+            filteredPaa.setRealisations(nondeletedRea);
         }
 
         return filteredPaa;
@@ -800,7 +807,7 @@ public class PaaServiceImpl implements PaaService {
                                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                         .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
-
+                                financement.setMonnaie(monnaie);
                                 if (monnaie.getTaux() != null) {
                                     financement.setTauxApplicable(monnaie.getTaux());
                                     log.info("Auto-assigned tauxApplicable: {} from Monnaie ID: {}", monnaie.getTaux(), monnaie.getId());
@@ -808,12 +815,6 @@ public class PaaServiceImpl implements PaaService {
                                     financement.setTauxApplicable(0.0);
                                     log.info("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: {}", monnaie.getId());
                                 }
-
-                                FinancementId newFinancementId = new FinancementId();
-                                newFinancementId.setFinancementId(financementId);
-                                newFinancementId.setRealisation(financement.getId().getRealisation());
-                                financement.setMonnaie(monnaie);
-                                financement.setId(newFinancementId);
                                 if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
                                     RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
                                             .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + financementRequest.getSourceFinancement().getId() + " not found"));
@@ -822,7 +823,6 @@ public class PaaServiceImpl implements PaaService {
                                     financement.setSourceFinancement(null);
                                 }
                                 financement.setIsDeleted(false);
-                                entityManager.merge(financement);
                                 log.info("Updated financement ID: {}, Budget: {}, Monnaie ID: {}, SourceFinancement ID: {}",
                                         financementId, financementRequest.getBudgetEstimer(), financementRequest.getMonnaieId(),
                                         (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
@@ -835,7 +835,7 @@ public class PaaServiceImpl implements PaaService {
                                 compositeFinancementId.setRealisation(realisation);
                                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                         .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
-
+                                financement.setMonnaie(monnaie);
                                 if (monnaie.getTaux() != null) {
                                     financement.setTauxApplicable(monnaie.getTaux());
                                     log.info("Auto-assigned tauxApplicable: {} from Monnaie ID: {}", monnaie.getTaux(), monnaie.getId());
@@ -843,8 +843,6 @@ public class PaaServiceImpl implements PaaService {
                                     financement.setTauxApplicable(0.0);
                                     log.info("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: {}", monnaie.getId());
                                 }
-
-                                financement.setMonnaie(monnaie);
                                 financement.setId(compositeFinancementId);
                                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                                 if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
@@ -1130,8 +1128,7 @@ public class PaaServiceImpl implements PaaService {
         copyForResponse.setBudgetEstime(budgetEstime);
         log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
         return copyForResponse;
-    }//    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
-//        System.out.println("calling the method");
+    }//        System.out.println("calling the method");
 //        CompositeId compositeId = new CompositeId(paaId, paaVer);
 //        Optional<Paa> existingPaaOpt = repository.findById(compositeId);
 //
@@ -5435,7 +5432,8 @@ public class PaaServiceImpl implements PaaService {
         }
 
         return repository.save(savedPaa);
-    }//        log.info("Creating PAA for year: {}", currentYear);
+    }
+    //        log.info("Creating PAA for year: {}", currentYear);
 //
 //        Integer requestAcId = request.getAcId();
 //        if (requestAcId == null) {
@@ -5783,11 +5781,7 @@ public class PaaServiceImpl implements PaaService {
                 }
             } catch (RealisationBudgetExceedsAcSeuilException e) {
                 log.error("Budget validation failed for Realisation ID: {}. Error: {}", realisation.getId(), e.getMessage());
-                throw e; // Rethrow to stop processing and trigger rollback
-            } catch (Exception e) {
-                realisation.setSeuilApplicable(BigDecimal.ZERO);
-                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
-                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
+                throw e; // Rethrow to stop processing
             }
         } else {
             realisation.setSeuilApplicable(BigDecimal.ZERO);
