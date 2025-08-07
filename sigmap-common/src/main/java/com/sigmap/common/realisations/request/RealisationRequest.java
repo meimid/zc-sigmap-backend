@@ -22,8 +22,9 @@ public class RealisationRequest {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParam service;
-    private RefParam direction;
+    private String beneficiaire;
+//    private RefParam service;
+//    private RefParam direction;
     private RefParam sourceFinancement;
     private List<FinancementBaseRequestDto> financementRequests;
     private RefParam imputationBudgetaire;

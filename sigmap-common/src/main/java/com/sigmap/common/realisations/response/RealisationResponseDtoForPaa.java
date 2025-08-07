@@ -26,16 +26,17 @@ public class RealisationResponseDtoForPaa {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParamResponseDto service;
-    private RefParamResponseDto direction;
-    private RefParamResponseDto sourceFinancement;
+    private String beneficiaire;
+//    private RefParamResponseDto service;
+//    private RefParamResponseDto direction;
+//    private RefParamResponseDto sourceFinancement;
 
     private List<FinancementResponse> financements;
 
 
     private RefParamResponseDto imputationBudgetaire;
 //    private RefParamResponseDto monais;
-    private MonnaieResponseDto monnaie;
+//    private MonnaieResponseDto monnaie;
     private RefParamResponseDto typeMarcher;
 //    private RefParamResponseDto modeSelection;
     private ModeDePassationSelectionResponseDto modePassation;

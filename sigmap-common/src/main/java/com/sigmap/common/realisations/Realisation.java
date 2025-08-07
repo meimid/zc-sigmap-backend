@@ -43,29 +43,20 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "realisation_envisagees", length = 100)
     private String realisationEnvisagees;
 
-    @ManyToOne
-    @JoinColumn(name = "service_id")
-    private RefParam service;
+    @Column(name = "beneficiaire")
+    private String beneficiaire;
 
-    @ManyToOne
-    @JoinColumn(name = "direction_id")
-    private RefParam direction;
-
-    //TODO : to delete
-
-    @ManyToOne
-    @JoinColumn(name = "source_financement_id")
-    private RefParam sourceFinancement;
+//    //TODO : to delete
+//    @ManyToOne
+//    @JoinColumn(name = "source_financement_id")
+//    private RefParam sourceFinancement;
 
     //TODO: to delete
-
     @ManyToOne
     @JoinColumn(name = "monais_id")
     private RefParam monais;
 
-
     //TODO: to delete
-
     @ManyToOne
     @JoinColumn(name = "monnaie_id")
     private Monnaie monnaie;
@@ -73,7 +64,6 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @ManyToOne
     @JoinColumn(name = "mode_passation_id")
     private ModeDePassationSelection modePassation;
-
 
     @ManyToOne
     @JoinColumn(name = "type_marcher_id")
@@ -99,9 +89,9 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "date_prev_ap")
     private LocalDate datePrevAp;
 
-    //TODO: to delete
-    @Column(name = "budget_estime", precision = 10, scale = 2)
-    private BigDecimal budgetEstime;
+        //TODO: to delete
+        @Column(name = "budget_estime", precision = 10, scale = 2)
+        private BigDecimal budgetEstime;
 
     @Column(name = "seuil_applicable", precision = 10, scale = 3)
     private BigDecimal seuilApplicable;
@@ -177,7 +167,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     private List<Docs> docs;
 
     @OneToMany(mappedBy = "id.realisation",
-             cascade = CascadeType.ALL)
+            cascade = CascadeType.ALL)
     @JsonManagedReference("realisation-financements")
     private List<Financement> financements = new ArrayList<>();
 

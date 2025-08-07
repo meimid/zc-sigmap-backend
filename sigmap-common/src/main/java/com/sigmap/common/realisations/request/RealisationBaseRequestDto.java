@@ -20,14 +20,16 @@ public class RealisationBaseRequestDto {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParam service;
-    private RefParam direction;
-    private RefParam sourceFinancement;
+    private String beneficiaire;
+
+    //    private RefParam service;
+//    private RefParam direction;
+//    private RefParam sourceFinancement;
     private List<FinancementRequest> financements;
 
     private RefParam imputationBudgetaire;
 //    private RefParam monais;
-    private Monnaie monnaie;
+//    private Monnaie monnaie;
     private RefParam typeMarcher;
     private ModeDePassationSelection modePassation;
 //    private RefParam modeSelection;

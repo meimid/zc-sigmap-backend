@@ -19,13 +19,14 @@ public class RealisationResponse {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParam service;
-    private RefParam direction;
+    private String beneficiaire;
+//    private RefParam service;
+//    private RefParam direction;
 //    private RefParam sourceFinancement;
     private List<FinancementResponse> financements;
     private RefParam imputationBudgetaire;
 //    private RefParam monais;
-    private Monnaie monnaie;
+//    private Monnaie monnaie;
     private RefParam typeMarcher;
 //    private RefParam modeSelection;
     private ModeDePassationSelection modePassation;

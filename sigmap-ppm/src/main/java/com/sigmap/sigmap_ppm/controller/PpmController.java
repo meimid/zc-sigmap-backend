@@ -589,11 +589,12 @@ public class PpmController {
                 copiedRealisation.setId(originalRealisation.getId());
                 copiedRealisation.setVersion(originalRealisation.getVersion());
                 copiedRealisation.setRealisationEnvisagees(originalRealisation.getRealisationEnvisagees());
-                copiedRealisation.setService(originalRealisation.getService());
-                copiedRealisation.setDirection(originalRealisation.getDirection());
-                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
+                copiedRealisation.setBeneficiaire(originalRealisation.getBeneficiaire());
+//                copiedRealisation.setService(originalRealisation.getService());
+//                copiedRealisation.setDirection(originalRealisation.getDirection());
+//                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
 //                copiedRealisation.setMonais(originalRealisation.getMonais());
-                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
+//                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
                 copiedRealisation.setTypeMarcher(originalRealisation.getTypeMarcher());
 //                copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
                 copiedRealisation.setModePassation(originalRealisation.getModePassation());

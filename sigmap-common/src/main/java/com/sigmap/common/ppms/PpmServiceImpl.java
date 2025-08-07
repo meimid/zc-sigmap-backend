@@ -409,9 +409,10 @@ public class PpmServiceImpl implements PpmService {
 
                 // Set all fields from the request
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                realisation.setService(realisationRequest.getService());
-                realisation.setDirection(realisationRequest.getDirection());
-                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                realisation.setService(realisationRequest.getService());
+//                realisation.setDirection(realisationRequest.getDirection());
+//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                realisation.setMonais(realisationRequest.getMonais());
                 realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
@@ -1102,11 +1103,12 @@ public class PpmServiceImpl implements PpmService {
                 baseRealisation.setId(realisationWithLots.getId());
                 baseRealisation.setVersion(realisationWithLots.getVersion());
                 baseRealisation.setRealisationEnvisagees(realisationWithLots.getRealisationEnvisagees());
-                baseRealisation.setService(realisationWithLots.getService());
-                baseRealisation.setDirection(realisationWithLots.getDirection());
-                baseRealisation.setSourceFinancement(realisationWithLots.getSourceFinancement());
+                baseRealisation.setBeneficiaire(realisationWithLots.getBeneficiaire());
+//                baseRealisation.setService(realisationWithLots.getService());
+//                baseRealisation.setDirection(realisationWithLots.getDirection());
+//                baseRealisation.setSourceFinancement(realisationWithLots.getSourceFinancement());
 //                baseRealisation.setMonais(realisationWithLots.getMonais());
-                baseRealisation.setMonnaie(realisationWithLots.getMonnaie());
+//                baseRealisation.setMonnaie(realisationWithLots.getMonnaie());
                 baseRealisation.setTypeMarcher(realisationWithLots.getTypeMarcher());
 //                baseRealisation.setModeSelection(realisationWithLots.getModeSelection());
                 baseRealisation.setModePassation(realisationWithLots.getModePassation());
@@ -1462,11 +1464,12 @@ public class PpmServiceImpl implements PpmService {
 
     private void updateRealisationFields(Realisation realisation, RealisationBaseRequestDto realisationDto) {
         realisation.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
-        realisation.setService(realisationDto.getService());
-        realisation.setDirection(realisationDto.getDirection());
-        realisation.setSourceFinancement(realisationDto.getSourceFinancement());
+        realisation.setBeneficiaire(realisationDto.getBeneficiaire());
+//        realisation.setService(realisationDto.getService());
+//        realisation.setDirection(realisationDto.getDirection());
+//        realisation.setSourceFinancement(realisationDto.getSourceFinancement());
 //        realisation.setMonais(realisationDto.getMonais());
-        realisation.setMonnaie(realisationDto.getMonnaie());
+//        realisation.setMonnaie(realisationDto.getMonnaie());
         realisation.setTypeMarcher(realisationDto.getTypeMarcher());
 //        realisation.setModeSelection(realisationDto.getModeSelection());
         realisation.setModePassation(realisationDto.getModePassation());
@@ -1499,11 +1502,11 @@ public class PpmServiceImpl implements PpmService {
             sb.append(dto.getDatePrevAp()).append("|");
 
             // Add reference IDs
-            if (dto.getService() != null) sb.append("S").append(dto.getService().getId()).append("|");
-            if (dto.getDirection() != null) sb.append("D").append(dto.getDirection().getId()).append("|");
-            if (dto.getSourceFinancement() != null) sb.append("SF").append(dto.getSourceFinancement().getId()).append("|");
+//            if (dto.getService() != null) sb.append("S").append(dto.getService().getId()).append("|");
+//            if (dto.getDirection() != null) sb.append("D").append(dto.getDirection().getId()).append("|");
+//            if (dto.getSourceFinancement() != null) sb.append("SF").append(dto.getSourceFinancement().getId()).append("|");
 //            if (dto.getMonais() != null) sb.append("M").append(dto.getMonais().getId()).append("|");
-            if (dto.getMonnaie() != null) sb.append("M").append(dto.getMonnaie().getId()).append("|");
+//            if (dto.getMonnaie() != null) sb.append("M").append(dto.getMonnaie().getId()).append("|");
             if (dto.getTypeMarcher() != null) sb.append("TM").append(dto.getTypeMarcher().getId()).append("|");
 //            if (dto.getModeSelection() != null) sb.append("MS").append(dto.getModeSelection().getId()).append("|");
             if (dto.getModePassation() != null) sb.append("MP").append(dto.getModePassation().getId()).append("|");
@@ -1558,9 +1561,9 @@ public class PpmServiceImpl implements PpmService {
             sb.append(realisation.getDatePrevAp()).append("|");
 
             // Add reference IDs
-            if (realisation.getService() != null) sb.append("S").append(realisation.getService().getId()).append("|");
-            if (realisation.getDirection() != null) sb.append("D").append(realisation.getDirection().getId()).append("|");
-            if (realisation.getSourceFinancement() != null) sb.append("SF").append(realisation.getSourceFinancement().getId()).append("|");
+//            if (realisation.getService() != null) sb.append("S").append(realisation.getService().getId()).append("|");
+//            if (realisation.getDirection() != null) sb.append("D").append(realisation.getDirection().getId()).append("|");
+//            if (realisation.getSourceFinancement() != null) sb.append("SF").append(realisation.getSourceFinancement().getId()).append("|");
 //            if (realisation.getMonais() != null) sb.append("M").append(realisation.getMonais().getId()).append("|");
             if (realisation.getMonnaie() != null) sb.append("M").append(realisation.getMonnaie().getId()).append("|");
             if (realisation.getTypeMarcher() != null) sb.append("TM").append(realisation.getTypeMarcher().getId()).append("|");
@@ -2176,30 +2179,30 @@ public class PpmServiceImpl implements PpmService {
             System.out.println("    - New: " + (realisationDto.getRealisationEnvisagees() != null ? realisationDto.getRealisationEnvisagees().substring(0, Math.min(realisationDto.getRealisationEnvisagees().length(), 50)) + "..." : "null"));
         }
 
-        // Check other fields
-        boolean serviceChanged = fieldChanged(
-                existingRealisation.getService() != null ? existingRealisation.getService().getId() : null,
-                realisationDto.getService() != null ? realisationDto.getService().getId() : null
-        );
+//        // Check other fields
+//        boolean serviceChanged = fieldChanged(
+//                existingRealisation.getService() != null ? existingRealisation.getService().getId() : null,
+//                realisationDto.getService() != null ? realisationDto.getService().getId() : null
+//        );
+//
+//        boolean directionChanged = fieldChanged(
+//                existingRealisation.getDirection() != null ? existingRealisation.getDirection().getId() : null,
+//                realisationDto.getDirection() != null ? realisationDto.getDirection().getId() : null
+//        );
 
-        boolean directionChanged = fieldChanged(
-                existingRealisation.getDirection() != null ? existingRealisation.getDirection().getId() : null,
-                realisationDto.getDirection() != null ? realisationDto.getDirection().getId() : null
-        );
-
-        boolean sourceFinChanged = fieldChanged(
-                existingRealisation.getSourceFinancement() != null ? existingRealisation.getSourceFinancement().getId() : null,
-                realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
-        );
+//        boolean sourceFinChanged = fieldChanged(
+//                existingRealisation.getSourceFinancement() != null ? existingRealisation.getSourceFinancement().getId() : null,
+//                realisationDto.getSourceFinancement() != null ? realisationDto.getSourceFinancement().getId() : null
+//        );
 
 //        boolean monaisChanged = fieldChanged(
 //            existingRealisation.getMonais() != null ? existingRealisation.getMonais().getId() : null,
 //            realisationDto.getMonais() != null ? realisationDto.getMonais().getId() : null
 //        );
-        boolean monaisChanged = fieldChanged(
-                existingRealisation.getMonnaie() != null ? existingRealisation.getMonnaie().getId() : null,
-                realisationDto.getMonnaie() != null ? realisationDto.getMonnaie().getId() : null
-        );
+//        boolean monaisChanged = fieldChanged(
+//                existingRealisation.getMonnaie() != null ? existingRealisation.getMonnaie().getId() : null,
+//                realisationDto.getMonnaie() != null ? realisationDto.getMonnaie().getId() : null
+//        );
 
         boolean typeMarcherChanged = fieldChanged(
                 existingRealisation.getTypeMarcher() != null ? existingRealisation.getTypeMarcher().getId() : null,
@@ -2217,17 +2220,16 @@ public class PpmServiceImpl implements PpmService {
         );
 
         // Log field changes for debugging
-        if (serviceChanged) System.out.println("  - Service changed");
-        if (directionChanged) System.out.println("  - Direction changed");
-        if (sourceFinChanged) System.out.println("  - Source financement changed");
-        if (monaisChanged) System.out.println("  - Monais changed");
+//        if (serviceChanged) System.out.println("  - Service changed");
+//        if (directionChanged) System.out.println("  - Direction changed");
+//        if (sourceFinChanged) System.out.println("  - Source financement changed");
+//        if (monaisChanged) System.out.println("  - Monais changed");
         if (typeMarcherChanged) System.out.println("  - Type marcher changed");
         if (modePassationChanged) System.out.println("  - Mode passation changed");
 
         // Important: Lot changes should NOT trigger a new Realisation version
         // Just checking the actual field changes, not lot relationships
-        boolean result = docsChanged || textChanged || serviceChanged || directionChanged ||
-                sourceFinChanged || monaisChanged || typeMarcherChanged || modePassationChanged;
+        boolean result = docsChanged || textChanged  || typeMarcherChanged || modePassationChanged;
 
         System.out.println("Realisation needs update: " + result);
         return result;
@@ -2336,11 +2338,11 @@ public class PpmServiceImpl implements PpmService {
                 sb.append("text:").append(realisation.getRealisationEnvisagees() != null ? realisation.getRealisationEnvisagees().substring(0, Math.min(realisation.getRealisationEnvisagees().length(), 20)) : "").append(",");
 
                 // Include other fields that should trigger a version change - using ID values
-                sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
-                sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
-                sb.append("sourceFin:").append(realisation.getSourceFinancement() != null && realisation.getSourceFinancement().getId() != null ? realisation.getSourceFinancement().getId() : "").append(",");
+//                sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
+//                sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
+//                sb.append("sourceFin:").append(realisation.getSourceFinancement() != null && realisation.getSourceFinancement().getId() != null ? realisation.getSourceFinancement().getId() : "").append(",");
 //                sb.append("monais:").append(realisation.getMonais() != null && realisation.getMonais().getId() != null ? realisation.getMonais().getId() : "").append(",");
-                sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
+//                sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null && realisation.getTypeMarcher().getId() != null ? realisation.getTypeMarcher().getId() : "").append(",");
 //                sb.append("modeSelection:").append(realisation.getModeSelection() != null && realisation.getModeSelection().getId() != null ? realisation.getModeSelection().getId() : "").append(",");
                 sb.append("modePassation:").append(realisation.getModePassation() != null && realisation.getModePassation().getId() != null ? realisation.getModePassation().getId() : "").append(",");
@@ -2656,11 +2658,12 @@ public class PpmServiceImpl implements PpmService {
 
                 // Set all fields from the request
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                realisation.setService(realisationRequest.getService());
-                realisation.setDirection(realisationRequest.getDirection());
-                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                realisation.setService(realisationRequest.getService());
+//                realisation.setDirection(realisationRequest.getDirection());
+//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                realisation.setMonais(realisationRequest.getMonais());
-                realisation.setMonnaie(realisationRequest.getMonnaie());
+//                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
 //                realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setModePassation(realisationRequest.getModePassation());
@@ -3077,11 +3080,12 @@ public class PpmServiceImpl implements PpmService {
 
                     // Update realisation fields
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService());
-                    realisation.setDirection(realisationRequest.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                    realisation.setMonais(realisationRequest.getMonais());
-                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
 //                    realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -3151,11 +3155,12 @@ public class PpmServiceImpl implements PpmService {
 
                     // Set all fields from the request
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService());
-                    realisation.setDirection(realisationRequest.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                    realisation.setMonais(realisationRequest.getMonais());
-                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
 //                    realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -3425,16 +3430,19 @@ public class PpmServiceImpl implements PpmService {
 
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees() != null ?
                             realisationRequest.getRealisationEnvisagees() : realisation.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService() != null ?
-                            realisationRequest.getService() : realisation.getService());
-                    realisation.setDirection(realisationRequest.getDirection() != null ?
-                            realisationRequest.getDirection() : realisation.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement() != null ?
-                            realisationRequest.getSourceFinancement() : realisation.getSourceFinancement());
+
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire() != null ?
+                            realisationRequest.getBeneficiaire() : realisation.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService() != null ?
+//                            realisationRequest.getService() : realisation.getService());
+//                    realisation.setDirection(realisationRequest.getDirection() != null ?
+//                            realisationRequest.getDirection() : realisation.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement() != null ?
+//                            realisationRequest.getSourceFinancement() : realisation.getSourceFinancement());
 //                    realisation.setMonais(realisationRequest.getMonais() != null ?
 //                            realisationRequest.getMonais() : realisation.getMonais());
-                    realisation.setMonnaie(realisationRequest.getMonnaie() != null ?
-                            realisationRequest.getMonnaie() : realisation.getMonnaie());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie() != null ?
+//                            realisationRequest.getMonnaie() : realisation.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher() != null ?
                             realisationRequest.getTypeMarcher() : realisation.getTypeMarcher());
 //                    realisation.setModeSelection(realisationRequest.getModeSelection() != null ?
@@ -3534,11 +3542,12 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setVersion(1);
 
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService());
-                    realisation.setDirection(realisationRequest.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                    realisation.setMonais(realisationRequest.getMonais());
-                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//                    realisation.setMonnaie(realisationRequest.getMonnaie());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
 //                    realisation.setModeSelection(realisationRequest.getModeSelection());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -3855,11 +3864,12 @@ public class PpmServiceImpl implements PpmService {
     private RealisationRequest mapToRealisationRequest(RealisationBaseRequestDto dto) {
         RealisationRequest request = new RealisationRequest();
         request.setRealisationEnvisagees(dto.getRealisationEnvisagees());
-        request.setService(dto.getService());
-        request.setDirection(dto.getDirection());
-        request.setSourceFinancement(dto.getSourceFinancement());
+        request.setBeneficiaire(dto.getBeneficiaire());
+//        request.setService(dto.getService());
+//        request.setDirection(dto.getDirection());
+//        request.setSourceFinancement(dto.getSourceFinancement());
 //        request.setMonais(dto.getMonais());
-        request.setMonnaie(dto.getMonnaie());
+//        request.setMonnaie(dto.getMonnaie());
         request.setTypeMarcher(dto.getTypeMarcher());
 //        request.setModeSelection(dto.getModeSelection());
         request.setModePassation(dto.getModePassation());
@@ -4254,10 +4264,11 @@ public class PpmServiceImpl implements PpmService {
                  realisation.setId(nextRealisationId++);
                  realisation.setVersion(1);
                  realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                 realisation.setService(realisationRequest.getService());
-                 realisation.setDirection(realisationRequest.getDirection());
-                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-                 realisation.setMonnaie(realisationRequest.getMonnaie());
+                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                 realisation.setService(realisationRequest.getService());
+//                 realisation.setDirection(realisationRequest.getDirection());
+//                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                 realisation.setMonnaie(realisationRequest.getMonnaie());
                  realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                  realisation.setModePassation(realisationRequest.getModePassation());
                  realisation.setDatePrevLps(realisationRequest.getDatePrevLps());

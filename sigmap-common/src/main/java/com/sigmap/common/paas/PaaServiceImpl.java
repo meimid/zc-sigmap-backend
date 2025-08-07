@@ -606,9 +606,10 @@ public class PaaServiceImpl implements PaaService {
                     realisation = realisationRepository.findById(realisationId)
                             .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService());
-                    realisation.setDirection(realisationRequest.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -902,9 +903,10 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setId(realisationId);
                     realisation.setVersion(1);
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                    realisation.setService(realisationRequest.getService());
-                    realisation.setDirection(realisationRequest.getDirection());
-                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                    realisation.setService(realisationRequest.getService());
+//                    realisation.setDirection(realisationRequest.getDirection());
+//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -2637,10 +2639,11 @@ public class PaaServiceImpl implements PaaService {
                         System.out.println("Creating new Realisation");
                         RealisationRequest newRealisationRequest = new RealisationRequest();
                         newRealisationRequest.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
-                        newRealisationRequest.setService(realisationDto.getService());
-                        newRealisationRequest.setDirection(realisationDto.getDirection());
-                        newRealisationRequest.setSourceFinancement(realisationDto.getSourceFinancement());
-                        newRealisationRequest.setMonnaie(realisationDto.getMonnaie());
+                        newRealisationRequest.setBeneficiaire(realisationDto.getBeneficiaire());
+//                        newRealisationRequest.setService(realisationDto.getService());
+//                        newRealisationRequest.setDirection(realisationDto.getDirection());
+//                        newRealisationRequest.setSourceFinancement(realisationDto.getSourceFinancement());
+//                        newRealisationRequest.setMonnaie(realisationDto.getMonnaie());
                         newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
                         newRealisationRequest.setModePassation(realisationDto.getModePassation());
                         newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
@@ -4577,14 +4580,16 @@ public class PaaServiceImpl implements PaaService {
                 sb.append("id:").append(realisation.getId() != null ? realisation.getId() : "").append(",");
                 sb.append("ver:").append(realisation.getVersion() != null ? realisation.getVersion() : "").append(",");
                 sb.append("text:").append(realisation.getRealisationEnvisagees() != null ? realisation.getRealisationEnvisagees() : "").append(",");
+                sb.append("text:").append(realisation.getBeneficiaire() != null ? realisation.getBeneficiaire() : "").append(",");
+
 
                 // Include other Realisation fields
-                sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
-                sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
-                sb.append("sourceFin:").append(realisation.getSourceFinancement() != null ? realisation.getSourceFinancement() : "").append(",");
+//                sb.append("service:").append(realisation.getService() != null && realisation.getService().getId() != null ? realisation.getService().getId() : "").append(",");
+//                sb.append("direction:").append(realisation.getDirection() != null && realisation.getDirection().getId() != null ? realisation.getDirection().getId() : "").append(",");
+//                sb.append("sourceFin:").append(realisation.getSourceFinancement() != null ? realisation.getSourceFinancement() : "").append(",");
                 sb.append("imputationBudgetaire:").append(realisation.getImputationBudgetaire() != null && realisation.getImputationBudgetaire().getId() != null ? realisation.getImputationBudgetaire().getId() : "").append(",");
 //                sb.append("monais:").append(realisation.getMonais() != null ? realisation.getMonais() : "").append(",");
-                sb.append("monnaie:").append(realisation.getMonnaie() != null ? realisation.getMonnaie() : "").append(",");
+//                sb.append("monnaie:").append(realisation.getMonnaie() != null ? realisation.getMonnaie() : "").append(",");
    //             sb.append("monnaie:").append(realisation.getMonnaie() != null && realisation.getMonnaie().getId() != null ? realisation.getMonnaie().getId() : "").append(",");
                 sb.append("typeMarcher:").append(realisation.getTypeMarcher() != null ? realisation.getTypeMarcher() : "").append(",");
 //                sb.append("modeSelection:").append(realisation.getModeSelection() != null ? realisation.getModeSelection() : "").append(",");
@@ -4784,11 +4789,12 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setId(nextRealisationId++); // Assign and then increment
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                realisation.setService(realisationRequest.getService());
-                realisation.setDirection(realisationRequest.getDirection());
-                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                realisation.setService(realisationRequest.getService());
+//                realisation.setDirection(realisationRequest.getDirection());
+//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
 //                realisation.setMonais(realisationRequest.getMonais());
-                realisation.setMonnaie(realisationRequest.getMonnaie());
+//                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
 //                realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setModePassation(realisationRequest.getModePassation());
@@ -4861,6 +4867,11 @@ public class PaaServiceImpl implements PaaService {
             return true;
         }
 
+        // Check if any field is different
+        if (dto.getBeneficiaire() != null && !dto.getBeneficiaire().equals(existingRealisation.getBeneficiaire())) {
+            return true;
+        }
+
         if (dto.getBudgetEstime() != null && !dto.getBudgetEstime().equals(existingRealisation.getBudgetEstime())) {
             return true;
         }
@@ -4870,25 +4881,25 @@ public class PaaServiceImpl implements PaaService {
             return true;
         }
 
-        // Check service
-        if (dto.getService() != null && (existingRealisation.getService() == null || !dto.getService().getId().equals(existingRealisation.getService().getId()))) {
-            return true;
-        }
+//        // Check service
+//        if (dto.getService() != null && (existingRealisation.getService() == null || !dto.getService().getId().equals(existingRealisation.getService().getId()))) {
+//            return true;
+//        }
 
-        // Check monnaie
-        if (dto.getMonnaie() != null && (existingRealisation.getMonnaie() == null || !dto.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
-            return true;
-        }
+//        // Check monnaie
+//        if (dto.getMonnaie() != null && (existingRealisation.getMonnaie() == null || !dto.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
+//            return true;
+//        }
 
         // Check modePassation
         if (dto.getModePassation() != null && (existingRealisation.getModePassation() == null || !dto.getModePassation().getId().equals(existingRealisation.getMonnaie().getId()))) {
             return true;
         }
 
-        // Check direction
-        if (dto.getDirection() != null && (existingRealisation.getDirection() == null || !dto.getDirection().getId().equals(existingRealisation.getDirection().getId()))) {
-            return true;
-        }
+//        // Check direction
+//        if (dto.getDirection() != null && (existingRealisation.getDirection() == null || !dto.getDirection().getId().equals(existingRealisation.getDirection().getId()))) {
+//            return true;
+//        }
 
         // Check if doc IDs have changed
         if (dto.getDocIds() != null) {
@@ -5244,11 +5255,12 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setId(nextRealisationId++);
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                realisation.setService(realisationRequest.getService());
-                realisation.setDirection(realisationRequest.getDirection());
-                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//                realisation.setService(realisationRequest.getService());
+//                realisation.setDirection(realisationRequest.getDirection());
+//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                 realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-                realisation.setMonnaie(realisationRequest.getMonnaie());
+//                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());

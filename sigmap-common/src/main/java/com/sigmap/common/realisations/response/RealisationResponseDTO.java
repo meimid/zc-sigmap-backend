@@ -23,7 +23,7 @@ public class RealisationResponseDTO {
     private String realisationEnvisagees;
     private RefParamResponseDto service;
     private RefParamResponseDto direction;
-    private RefParamResponseDto sourceFinancement;
+//    private RefParamResponseDto sourceFinancement;
 
     private List<FinancementResponse> financements;
 
