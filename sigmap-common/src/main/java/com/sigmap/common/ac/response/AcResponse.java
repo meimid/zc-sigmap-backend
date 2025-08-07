@@ -23,8 +23,8 @@ public class AcResponse {
   //private List<UserDTO> users;
   private List<AcMemberDTO> users;
   private AcResponseDto tutel;
-  @JsonIgnoreProperties
-  private List<DirectionResponseDto> directions;
+ // @JsonIgnoreProperties
+ // private List<DirectionResponseDto> directions;
   private String email;
   private String logo;
   private boolean istTutel;

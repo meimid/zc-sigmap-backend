@@ -31,6 +31,8 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
@@ -316,10 +318,20 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
         if(existing.isResponsable()) {
           throw new UserResponsibleForCom("",existing.getUserId(),existing.getComId());
         }
-        userComRepository.softDelete(existing.getComId(), existing.getUserId());
+        //userComRepository.softDelete(existing.getComId(), existing.getUserId());
+        manyallySoftDelete(existing.getComId() , existing.getUserId());
       }
 
     }
+
+
+    // call new methode
+
+   // manuallyDelete(existingUserComs, newUserIds);
+
+
+
+
 
     // 4. Ajouter les nouveaux
     for (String userId : newUserIds) {
@@ -361,7 +373,39 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     return  findById(id);
   }
 
+/*
 
+  void manuallyDelete(List<UserCom> existingUserComs, List<String> newUserIds) {
+
+    // 3. Supprimer ceux qui n'existent plus
+    for (UserCom existing : existingUserComs) {
+      if (!newUserIds.contains(existing.getUserId())) {
+        if(existing.isResponsable()) {
+          throw new UserResponsibleForCom("",existing.getUserId(),existing.getComId());
+        }
+        //userComRepository.softDelete(existing.getComId(), existing.getUserId());
+        manyallySoftDelete(existing.getComId() , existing.getUserId());
+      }
+
+    }
+  }
+
+*/
+
+  void manyallySoftDelete (Integer comId , String userId ) {
+    Optional<UserCom> uscom = userComRepository.findByUserIdAndComId(userId,comId);
+
+    String ConnectedUserID =Authentication.getCurrentUserId().orElse("system");
+    if(uscom.isPresent()) {
+
+      uscom.get().setIsDeleted(true);
+      uscom.get().setDeletedAt(Calendar.getInstance());
+      uscom.get().setDeletedBy(ConnectedUserID);
+
+      userComRepository.save(uscom.get());
+
+    }
+  }
 
 
 
