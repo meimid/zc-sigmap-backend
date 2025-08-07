@@ -1071,7 +1071,8 @@ public class PpmController {
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
     ) {
         logger.info("Updating PPM ID: {}, Version: {} with relationships (documents, realisations, and lots)", ppmId, ppmVer);
 
@@ -1151,6 +1152,17 @@ public class PpmController {
                 logger.error("Error processing lots JSON: {}", e.getMessage(), e);
             }
         }
+
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+//            log.info(realisationsFinancementsJson);
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
+            }
+        }
+
 
         Ppm updatedPpm = ppmService.updateWithRelationships(ppmId, ppmVer, request);
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
@@ -1325,6 +1337,14 @@ public class PpmController {
                 for (Map<String, Object> financementData : entry.getValue()) {
                     FinancementRequest financement = new FinancementRequest();
 
+                    // ADD THE MISSING MAPPING CODE HERE ↓
+                    if (financementData.containsKey("id")) {
+                        Object idVal = financementData.get("id");
+                        if (idVal instanceof Number) {
+                            financement.setFinancementId(((Number) idVal).intValue());
+                            logger.debug("Set financementId to {} for financement", financement.getFinancementId());
+                        }
+                    }
                     if (financementData.containsKey("monnaieId")) {
                         financement.setMonnaieId(((Number) financementData.get("monnaieId")).intValue());
                         logger.debug("Set monnaieId to {} for financement", financement.getMonnaieId());

@@ -1,5 +1,7 @@
 package com.sigmap.common.financement.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sigmap.common.ref_params.RefParam;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -12,6 +14,8 @@ import java.math.BigDecimal;
 @Data
 public class FinancementRequest {
 
+    @JsonProperty("FinancementId")
+    @JsonAlias({"id", "financementId", "FinancementId"})
     private Integer financementId ;
 
     /**
