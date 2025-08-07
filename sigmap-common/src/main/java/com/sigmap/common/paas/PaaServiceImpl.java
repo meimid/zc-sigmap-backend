@@ -28,6 +28,7 @@ import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetExceedsAcSeuilException;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.ref_params.RefParam;
@@ -5243,11 +5244,9 @@ public class PaaServiceImpl implements PaaService {
             Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
             log.info("Starting lot ID sequence at: {}", nextLotId);
 
-            // ADD THIS: Initialize financement sequence
             Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
             Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
             log.info("Starting financement ID sequence at: {}", nextFinancementId);
-
 
             List<Realisation> realisationsToSave = new ArrayList<>();
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
@@ -5256,23 +5255,16 @@ public class PaaServiceImpl implements PaaService {
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//                realisation.setService(realisationRequest.getService());
-//                realisation.setDirection(realisationRequest.getDirection());
-//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                 realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
-//                realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                 realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
-
-                setSeuilApplicableForRealisation(realisation, requestAcId);
 
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     documentCommuneService.processAndSaveDocuments(
@@ -5327,53 +5319,44 @@ public class PaaServiceImpl implements PaaService {
                     log.info("No lots provided for realisation ID: {}", realisation.getId());
                     realisation.setLots(new ArrayList<>());
                 }
-                // INSERT FINANCEMENT CODE HERE - RIGHT AFTER LOTS PROCESSING
+
+                // Process Financements
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
                     log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
                     List<Financement> financements = new ArrayList<>();
 
-                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) { // FIXED: Use correct DTO type
+                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
                         log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
 
-                        // Validate required fields
                         if (financementRequest.getMonnaieId() == null) {
                             log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
                             continue;
                         }
                         Financement financement = new Financement();
-                        // Create FinancementId (composite key)
                         FinancementId financementId = new FinancementId();
                         financementId.setRealisation(realisation);
 
-                        // Set Monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
                         financement.setMonnaie(monnaie);
-                        // Auto-assign taux from Monnaie to tauxApplicable
                         if (monnaie.getTaux() != null) {
                             financement.setTauxApplicable(monnaie.getTaux());
                             System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
                         } else {
-                            financement.setTauxApplicable(0.0); // Default value if taux is null
+                            financement.setTauxApplicable(0.0);
                             System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
                         }
 
-                        // Generate unique financement ID
-                        financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
-
-                        // Create Financement entity
-
+                        financementId.setFinancementId(nextFinancementId++);
                         financement.setId(financementId);
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                        // Set source financement if provided
                         if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
                             RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
                                     .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
                             financement.setSourceFinancement(sourceFinancement);
                         }
 
-                        // FIXED: Add the financement to the list (this was missing!)
                         financements.add(financement);
                         log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
                                 financementId.getFinancementId(),
@@ -5383,12 +5366,22 @@ public class PaaServiceImpl implements PaaService {
 
                     realisation.setFinancements(financements);
                     log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+
+                    // Calculate realisation budgetEstime as sum of financement budgets
+                    BigDecimal realisationBudget = financements.stream()
+                            .map(financement -> financement.getBudgetEstimer() != null ? financement.getBudgetEstimer() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    realisation.setBudgetEstime(realisationBudget);
+                    log.info("Set realisation ID {} budgetEstime to {} based on sum of financements", realisation.getId(), realisationBudget);
                 } else {
                     log.info("No financements provided for realisation ID: {}", realisation.getId());
                     realisation.setFinancements(new ArrayList<>());
+                    realisation.setBudgetEstime(BigDecimal.ZERO);
+                    log.info("Set realisation ID {} budgetEstime to 0 due to no financements", realisation.getId());
                 }
 
-
+                // Set seuilApplicable and validate budget
+                setSeuilApplicableForRealisation(realisation, requestAcId);
 
                 realisationsToSave.add(realisation);
             }
@@ -5401,6 +5394,7 @@ public class PaaServiceImpl implements PaaService {
                 .map(realisation -> realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         savedPaa.setBudgetEstime(budgetEstime);
+        log.info("Set PAA ID {} budgetEstime to {} based on sum of realisation budgets", savedPaa.getId(), budgetEstime);
 
         for (Realisation realisation : savedPaa.getRealisations()) {
             if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
@@ -5410,7 +5404,258 @@ public class PaaServiceImpl implements PaaService {
         }
 
         return repository.save(savedPaa);
-    }
+    }//        log.info("Creating PAA for year: {}", currentYear);
+//
+//        Integer requestAcId = request.getAcId();
+//        if (requestAcId == null) {
+//            throw new IllegalArgumentException("AC ID is required to create a PAA.");
+//        }
+//
+//        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+//        if (userAcIds.isEmpty()) {
+//            log.warn("No AC IDs found for the connected user");
+//            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+//        }
+//        if (!userAcIds.contains(requestAcId)) {
+//            log.warn("User does not have permission for AC ID: {}", requestAcId);
+//            throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
+//        }
+//
+//        Ac ac = acService.findById(requestAcId);
+//
+//        Specification<Paa> spec = PaaSpecifications.annee(currentYear)
+//                .and(PaaSpecifications.paaAc(requestAcId))
+//                .and(PaaSpecifications.deleted(false));
+//        List<Paa> existingPaas = repository.findAll(spec);
+//        if (!existingPaas.isEmpty()) {
+//            Paa existingPaa = existingPaas.get(0);
+//            throw new PaaCreationLimitExceededException(
+//                    "A PAA already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
+//                    existingPaa.getId(),
+//                    existingPaa.getVersion(),
+//                    1
+//            );
+//        }
+//
+//        Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
+//        Integer paaVersion = 1;
+//
+//        Paa paa = new Paa();
+//        paa.setId(paaId);
+//        paa.setVersion(paaVersion);
+//        paa.setNom(request.getNom());
+//        paa.setModePassation(request.getModePassation());
+//        paa.setRemarque(request.getRemarque());
+//        paa.setAnnee(currentYear);
+//        setRef(paa);
+//        paa.setBudgetEstime(request.getBudgetEstime());
+//        paa.setStatus(ProcessStatus.BROUILLON);
+//        paa.setAc(ac);
+//
+//        paa.setRealisations(new ArrayList<>());
+//        paa.setDocs(new ArrayList<>());
+//        log.info("Annee test check passed: {}", paa.getAnnee());
+//
+//        Paa savedPaa = repository.save(paa);
+//
+//        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+//            List<Docs> docs = new ArrayList<>();
+//            for (Integer docId : request.getDocIds()) {
+//                Docs doc = docsRepository.findById(docId)
+//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+//                if (doc.getPaas() == null) {
+//                    doc.setPaas(new ArrayList<>());
+//                }
+//                doc.getPaas().add(savedPaa);
+//                docs.add(doc);
+//                docsRepository.save(doc);
+//            }
+//            savedPaa.setDocs(docs);
+//        }
+//
+//        if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
+//            documentCommuneService.processAndSaveDocuments(
+//                    request.getPaaFiles(),
+//                    savedPaa,
+//                    Constants.PATH_ENTREPOT_GED_PAA
+//            );
+//        }
+//
+//        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+//            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+//            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+//            Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+//            Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
+//            log.info("Starting lot ID sequence at: {}", nextLotId);
+//
+//            // ADD THIS: Initialize financement sequence
+//            Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+//            Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
+//            log.info("Starting financement ID sequence at: {}", nextFinancementId);
+//
+//
+//            List<Realisation> realisationsToSave = new ArrayList<>();
+//            for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+//                Realisation realisation = new Realisation();
+//                realisation.setId(nextRealisationId++);
+//                realisation.setVersion(1);
+//                realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+//                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+////                realisation.setService(realisationRequest.getService());
+////                realisation.setDirection(realisationRequest.getDirection());
+////                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//                realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
+////                realisation.setMonnaie(realisationRequest.getMonnaie());
+//                realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+//                realisation.setModePassation(realisationRequest.getModePassation());
+//                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+//                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
+//                realisation.setIsPublished(realisationRequest.getIsPublished());
+//                realisation.setPublishedAt(realisationRequest.getPublishedAt());
+//                realisation.setSort(realisationRequest.getSort());
+//
+//                setSeuilApplicableForRealisation(realisation, requestAcId);
+//
+//                if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
+//                    documentCommuneService.processAndSaveDocuments(
+//                            realisationRequest.getRealisationFiles(),
+//                            realisation,
+//                            Constants.PATH_ENTREPOT_GED_PAA + "/" + paa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
+//                    );
+//                }
+//
+//                if (realisation.getPaas() == null) {
+//                    realisation.setPaas(new ArrayList<>());
+//                }
+//                realisation.getPaas().add(savedPaa);
+//                savedPaa.getRealisations().add(realisation);
+//
+//                if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+//                    log.info("Processing {} lots for realisation ID: {}", realisationRequest.getLots().size(), realisation.getId());
+//                    List<Lot> lots = new ArrayList<>();
+//                    for (LotResponse lotRequest : realisationRequest.getLots()) {
+//                        log.info("Processing lot with description: {}", lotRequest.getDescription());
+//                        if (lotRequest.getDescription() == null || lotRequest.getDescription().isEmpty()) {
+//                            log.warn("Skipping lot with null or empty description for realisation ID: {}", realisation.getId());
+//                            continue;
+//                        }
+//                        Lot lot = new Lot();
+//                        Integer lotId = lotRequest.getId();
+//                        if (lotId == null) {
+//                            lotId = nextLotId++;
+//                            log.info("Assigned new lot ID: {}", lotId);
+//                        }
+//                        CompositeId compositeId = new CompositeId(lotId, 1);
+//                        if (lotRepository.existsById(compositeId)) {
+//                            log.error("Lot ID {} already exists in the database", lotId);
+//                            throw new IllegalStateException("Generated lot ID " + lotId + " already exists");
+//                        }
+//                        lot.setId(lotId);
+//                        lot.setVersion(1);
+//                        lot.setDescription(lotRequest.getDescription());
+//                        lot.setBudget(lotRequest.getBudget());
+//                        try {
+//                            lot = lotRepository.save(lot);
+//                            log.info("Saved lot with ID: {}, Description: {}", lot.getId(), lot.getDescription());
+//                            lots.add(lot);
+//                        } catch (Exception e) {
+//                            log.error("Failed to save lot with ID: {}, Description: {}. Error: {}", lotId, lotRequest.getDescription(), e.getMessage());
+//                            throw new RuntimeException("Failed to save lot: " + e.getMessage(), e);
+//                        }
+//                    }
+//                    realisation.setLots(lots);
+//                    log.info("Assigned {} lots to realisation ID: {}", lots.size(), realisation.getId());
+//                } else {
+//                    log.info("No lots provided for realisation ID: {}", realisation.getId());
+//                    realisation.setLots(new ArrayList<>());
+//                }
+//                // INSERT FINANCEMENT CODE HERE - RIGHT AFTER LOTS PROCESSING
+//                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+//                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+//                    List<Financement> financements = new ArrayList<>();
+//
+//                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) { // FIXED: Use correct DTO type
+//                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+//
+//                        // Validate required fields
+//                        if (financementRequest.getMonnaieId() == null) {
+//                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+//                            continue;
+//                        }
+//                        Financement financement = new Financement();
+//                        // Create FinancementId (composite key)
+//                        FinancementId financementId = new FinancementId();
+//                        financementId.setRealisation(realisation);
+//
+//                        // Set Monnaie
+//                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+//                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+//                        financement.setMonnaie(monnaie);
+//                        // Auto-assign taux from Monnaie to tauxApplicable
+//                        if (monnaie.getTaux() != null) {
+//                            financement.setTauxApplicable(monnaie.getTaux());
+//                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+//                        } else {
+//                            financement.setTauxApplicable(0.0); // Default value if taux is null
+//                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+//                        }
+//
+//                        // Generate unique financement ID
+//                        financementId.setFinancementId(nextFinancementId++); // Use and increment the sequence
+//
+//                        // Create Financement entity
+//
+//                        financement.setId(financementId);
+//                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+//
+//                        // Set source financement if provided
+//                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+//                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+//                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+//                            financement.setSourceFinancement(sourceFinancement);
+//                        }
+//
+//                        // FIXED: Add the financement to the list (this was missing!)
+//                        financements.add(financement);
+//                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
+//                                financementId.getFinancementId(),
+//                                financementRequest.getMonnaieId(),
+//                                financementRequest.getBudgetEstimer());
+//                    }
+//
+//                    realisation.setFinancements(financements);
+//                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+//                } else {
+//                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+//                    realisation.setFinancements(new ArrayList<>());
+//                }
+//
+//
+//
+//                realisationsToSave.add(realisation);
+//            }
+//            realisationRepository.saveAll(realisationsToSave);
+//        }
+//
+//        validateRealisations(savedPaa);
+//
+//        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
+//                .map(realisation -> realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO)
+//                .reduce(BigDecimal.ZERO, BigDecimal::add);
+//        savedPaa.setBudgetEstime(budgetEstime);
+//
+//        for (Realisation realisation : savedPaa.getRealisations()) {
+//            if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+//                log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
+//                realisation.setSeuilApplicable(BigDecimal.ZERO);
+//            }
+//        }
+//
+//        return repository.save(savedPaa);
+//    }
 
     @Override
     public Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) {
@@ -5485,15 +5730,29 @@ public class PaaServiceImpl implements PaaService {
                         .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
                 if (acSeuilOpt.isPresent()) {
-                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
+                    BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
+                    realisation.setSeuilApplicable(acSeuil);
                     log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
                             realisation.getSeuilApplicable(), realisation.getId(), acId,
                             realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // Validate Realisation budget against AcSeuil
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO;
+                    if (budgetEstime.compareTo(acSeuil) > 0) {
+                        log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
+                                realisation.getId(), budgetEstime, acSeuil);
+                        throw new RealisationBudgetExceedsAcSeuilException(
+                                String.format("Realisation ID %d budgetEstime %s exceeds Ac seuil %s for PAA",
+                                        realisation.getId(), budgetEstime, acSeuil));
+                    }
                 } else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
                     log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
                             acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
                 }
+            } catch (RealisationBudgetExceedsAcSeuilException e) {
+                log.error("Budget validation failed for Realisation ID: {}. Error: {}", realisation.getId(), e.getMessage());
+                throw e; // Rethrow to stop processing and trigger rollback
             } catch (Exception e) {
                 realisation.setSeuilApplicable(BigDecimal.ZERO);
                 log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
@@ -5504,6 +5763,34 @@ public class PaaServiceImpl implements PaaService {
             log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
         }
     }
+
+//    private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
+//        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
+//            try {
+//                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
+//                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
+//                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+//                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+//                if (acSeuilOpt.isPresent()) {
+//                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
+//                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+//                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+//                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+//                } else {
+//                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+//                    log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
+//                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+//                }
+//            } catch (Exception e) {
+//                realisation.setSeuilApplicable(BigDecimal.ZERO);
+//                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
+//                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
+//            }
+//        } else {
+//            realisation.setSeuilApplicable(BigDecimal.ZERO);
+//            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
+//        }
+//    }
 
 
 }
