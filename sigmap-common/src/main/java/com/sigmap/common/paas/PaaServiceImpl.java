@@ -484,7 +484,7 @@ public class PaaServiceImpl implements PaaService {
     @Transactional
     @Override
     public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
-        System.out.println("calling the method");
+        log.info("Updating PAA with ID: {}, Version: {}", paaId, paaVer);
         CompositeId compositeId = new CompositeId(paaId, paaVer);
         Optional<Paa> existingPaaOpt = repository.findById(compositeId);
 
@@ -523,16 +523,16 @@ public class PaaServiceImpl implements PaaService {
                             .collect(Collectors.toSet()) : new HashSet<>();
 
             if (!requestedDocIds.equals(activeExistingDocIds)) {
-                System.out.println("Document changes detected for PAA update ID: " + paaId);
+                log.info("Document changes detected for PAA update ID: {}", paaId);
                 Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
                 newDocIds.removeAll(activeExistingDocIds);
                 if (!newDocIds.isEmpty()) {
-                    System.out.println("  - New documents added: " + newDocIds);
+                    log.info("  - New documents added: {}", newDocIds);
                 }
                 Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
                 removedDocIds.removeAll(requestedDocIds);
                 if (!removedDocIds.isEmpty()) {
-                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
+                    log.info("  - Documents marked as deleted: {}", removedDocIds);
                 }
             }
 
@@ -548,7 +548,7 @@ public class PaaServiceImpl implements PaaService {
                         existingDoc.setIsDeleted(true);
                         docsRepository.save(existingDoc);
                         updatedDocs.add(existingDoc);
-                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
+                        log.info("Marked document with ID {} as deleted (not in request)", existingDoc.getId());
                     }
                 }
             }
@@ -565,7 +565,7 @@ public class PaaServiceImpl implements PaaService {
                 doc.setIsDeleted(false);
                 docsRepository.save(doc);
                 updatedDocs.add(doc);
-                System.out.println("Added new document with ID " + doc.getId() + " to PAA");
+                log.info("Added new document with ID {} to PAA", doc.getId());
             }
             existingPaa.setDocs(updatedDocs);
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
@@ -574,7 +574,7 @@ public class PaaServiceImpl implements PaaService {
                 if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
                     doc.setIsDeleted(true);
                     docsRepository.save(doc);
-                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
+                    log.info("Marked document with ID {} as deleted (no docIds provided)", doc.getId());
                 }
             }
         }
@@ -583,7 +583,7 @@ public class PaaServiceImpl implements PaaService {
             try {
                 documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Failed to process PAA files: " + e.getMessage(), e);
             }
         }
 
@@ -608,9 +608,9 @@ public class PaaServiceImpl implements PaaService {
                             .orElseThrow(() -> new RuntimeException("Realisation not found with ID: " + realisationId.getId()));
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                     realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//                    realisation.setService(realisationRequest.getService());
-//                    realisation.setDirection(realisationRequest.getDirection());
-//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    // realisation.setService(realisationRequest.getService());
+                    // realisation.setDirection(realisationRequest.getDirection());
+                    // realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -618,12 +618,9 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
-
-                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     if (realisationRequest.getDocIds() != null) {
                         Set<Integer> requestedRealisationDocIds = new HashSet<>(realisationRequest.getDocIds());
@@ -633,7 +630,7 @@ public class PaaServiceImpl implements PaaService {
                                         .map(Docs::getId)
                                         .collect(Collectors.toSet()) : new HashSet<>();
                         if (!requestedRealisationDocIds.equals(activeExistingRealisationDocIds)) {
-                            System.out.println("Document changes detected for Realisation update ID: " + realisationRequest.getId());
+                            log.info("Document changes detected for Realisation update ID: {}", realisationRequest.getId());
                         }
                         List<Docs> updatedRealisationDocs = new ArrayList<>();
                         if (realisation.getDocs() != null) {
@@ -647,7 +644,7 @@ public class PaaServiceImpl implements PaaService {
                                     existingDoc.setIsDeleted(true);
                                     docsRepository.save(existingDoc);
                                     updatedRealisationDocs.add(existingDoc);
-                                    System.out.println("Marked realisation document with ID " + existingDoc.getId() + " as deleted (not in request)");
+                                    log.info("Marked realisation document with ID {} as deleted (not in request)", existingDoc.getId());
                                 }
                             }
                         }
@@ -663,7 +660,7 @@ public class PaaServiceImpl implements PaaService {
                             doc.setIsDeleted(false);
                             docsRepository.save(doc);
                             updatedRealisationDocs.add(doc);
-                            System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
+                            log.info("Added new document with ID {} to Realisation", doc.getId());
                         }
                         realisation.setDocs(updatedRealisationDocs);
                     } else if (realisation.getDocs() != null && !realisation.getDocs().isEmpty()) {
@@ -672,7 +669,7 @@ public class PaaServiceImpl implements PaaService {
                             if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
                                 doc.setIsDeleted(true);
                                 docsRepository.save(doc);
-                                System.out.println("Marked realisation document with ID " + doc.getId() + " as deleted (no docIds provided)");
+                                log.info("Marked realisation document with ID {} as deleted (no docIds provided)", doc.getId());
                             }
                         }
                     }
@@ -697,7 +694,7 @@ public class PaaServiceImpl implements PaaService {
                                 realisation.setDocs(currentDocs);
                             }
                         } catch (IOException e) {
-                            throw new RuntimeException(e);
+                            throw new RuntimeException("Failed to process realisation files: " + e.getMessage(), e);
                         }
                     }
 
@@ -724,11 +721,11 @@ public class PaaServiceImpl implements PaaService {
                                     lot.setVersion(1);
                                     lot.setDescription(lotRequest.getDescription());
                                     lot.setBudget(lotRequest.getBudget());
-                                    System.out.println("Initialized new lot instance with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+                                    log.info("Initialized new lot instance with ID: {}, Budget: {}", lotId, lotRequest.getBudget());
                                 } else {
                                     lot.setDescription(lotRequest.getDescription());
                                     lot.setBudget(lotRequest.getBudget());
-                                    System.out.println("Updated existing lot ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+                                    log.info("Updated existing lot ID: {}, Budget: {}", lotId, lotRequest.getBudget());
                                 }
                             } else {
                                 Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
@@ -738,7 +735,7 @@ public class PaaServiceImpl implements PaaService {
                                 lot.setVersion(1);
                                 lot.setDescription(lotRequest.getDescription());
                                 lot.setBudget(lotRequest.getBudget());
-                                System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+                                log.info("Created new lot with ID: {}, Budget: {}", lotId, lotRequest.getBudget());
                             }
                             lot.setIsDeleted(false);
                             lot = lotRepository.save(lot);
@@ -751,26 +748,24 @@ public class PaaServiceImpl implements PaaService {
                                     existingLot.setIsDeleted(true);
                                     existingLot.setBudget(existingLot.getBudget());
                                     lotRepository.save(existingLot);
-                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request), Budget: " + existingLot.getBudget());
+                                    log.info("Marked lot with ID {} as deleted (not in request), Budget: {}", existingLot.getId(), existingLot.getBudget());
                                 }
                             }
                         }
                         realisation.setLots(lots);
                     } else {
-                        System.out.println("No lots provided for Realisation ID: " + realisation.getId());
+                        log.info("No lots provided for Realisation ID: {}", realisation.getId());
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (Lot existingLot : realisation.getLots()) {
                                 if (!Boolean.TRUE.equals(existingLot.getIsDeleted())) {
                                     existingLot.setIsDeleted(true);
                                     existingLot.setBudget(existingLot.getBudget());
                                     lotRepository.save(existingLot);
-                                    System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (no lots in request), Budget: " + existingLot.getBudget());
+                                    log.info("Marked lot with ID {} as deleted (no lots in request), Budget: {}", existingLot.getId(), existingLot.getBudget());
                                 }
                             }
                             realisation.setLots(new ArrayList<>());
                         }
-                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-                        System.out.println("Set Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
                     }
 
                     if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
@@ -801,17 +796,17 @@ public class PaaServiceImpl implements PaaService {
                                     throw new EntityNotFoundException("Financement with ID " + financementId + " not found");
                                 }
                                 financement = existingFinancementOpt.get();
-                                System.out.println("Found existing financement ID: " + financementId + ", current Monnaie ID: " + financement.getMonnaie().getId());
+                                log.info("Found existing financement ID: {}, current Monnaie ID: {}", financementId, financement.getMonnaie().getId());
                                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                         .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
 
                                 if (monnaie.getTaux() != null) {
                                     financement.setTauxApplicable(monnaie.getTaux());
-                                    System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                                    log.info("Auto-assigned tauxApplicable: {} from Monnaie ID: {}", monnaie.getTaux(), monnaie.getId());
                                 } else {
                                     financement.setTauxApplicable(0.0);
-                                    System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                                    log.info("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: {}", monnaie.getId());
                                 }
 
                                 FinancementId newFinancementId = new FinancementId();
@@ -828,7 +823,9 @@ public class PaaServiceImpl implements PaaService {
                                 }
                                 financement.setIsDeleted(false);
                                 entityManager.merge(financement);
-                                System.out.println("Updated financement ID: " + financementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                                log.info("Updated financement ID: {}, Budget: {}, Monnaie ID: {}, SourceFinancement ID: {}",
+                                        financementId, financementRequest.getBudgetEstimer(), financementRequest.getMonnaieId(),
+                                        (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
                             } else {
                                 Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
                                 newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
@@ -841,10 +838,10 @@ public class PaaServiceImpl implements PaaService {
 
                                 if (monnaie.getTaux() != null) {
                                     financement.setTauxApplicable(monnaie.getTaux());
-                                    System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
+                                    log.info("Auto-assigned tauxApplicable: {} from Monnaie ID: {}", monnaie.getTaux(), monnaie.getId());
                                 } else {
                                     financement.setTauxApplicable(0.0);
-                                    System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                                    log.info("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: {}", monnaie.getId());
                                 }
 
                                 financement.setMonnaie(monnaie);
@@ -859,7 +856,9 @@ public class PaaServiceImpl implements PaaService {
                                 }
                                 financement.setIsDeleted(false);
                                 financementRepository.save(financement);
-                                System.out.println("Created new financement with ID: " + newFinancementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                                log.info("Created new financement with ID: {}, Budget: {}, Monnaie ID: {}, SourceFinancement ID: {}",
+                                        newFinancementId, financementRequest.getBudgetEstimer(), financementRequest.getMonnaieId(),
+                                        (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
                             }
                             financements.add(financement);
                         }
@@ -869,25 +868,39 @@ public class PaaServiceImpl implements PaaService {
                                 if (!requestedFinancementIds.contains(existingFinancement.getId().getFinancementId()) && !Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
                                     existingFinancement.setIsDeleted(true);
                                     financements.add(existingFinancement);
-                                    System.out.println("Marked financement with ID: " + existingFinancement.getId().getFinancementId() + " as deleted (not in request)");
+                                    log.info("Marked financement with ID: {} as deleted (not in request)", existingFinancement.getId().getFinancementId());
                                 }
                             }
                         }
                         realisation.setFinancements(financements);
                         financementRepository.saveAll(financements);
+
+                        // Calculate realisation budgetEstime as sum of financement budgets
+                        BigDecimal realisationBudget = financements.stream()
+                                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                                .map(financement -> financement.getBudgetEstimer() != null ? financement.getBudgetEstimer() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        realisation.setBudgetEstime(realisationBudget);
+                        log.info("Set realisation ID {} budgetEstime to {} based on sum of financements", realisation.getId(), realisationBudget);
                     } else {
-                        System.out.println("No financements provided for Realisation ID: " + realisation.getId());
+                        log.info("No financements provided for Realisation ID: {}", realisation.getId());
                         if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
                             for (Financement existingFinancement : realisation.getFinancements()) {
                                 if (!Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
                                     existingFinancement.setIsDeleted(true);
-                                    System.out.println("Marked financement with ID: " + existingFinancement.getId().getFinancementId() + " as deleted (no financements in request)");
+                                    log.info("Marked financement with ID: {} as deleted (no financements in request)", existingFinancement.getId().getFinancementId());
                                 }
                             }
                             realisation.setFinancements(realisation.getFinancements());
                             financementRepository.saveAll(realisation.getFinancements());
+                        } else {
+                            realisation.setFinancements(new ArrayList<>());
                         }
+                        realisation.setBudgetEstime(BigDecimal.ZERO);
+                        log.info("Set realisation ID {} budgetEstime to 0 due to no financements", realisation.getId());
                     }
+
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     if (realisation.getPaas() == null) {
                         realisation.setPaas(new ArrayList<>());
@@ -905,9 +918,9 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setVersion(1);
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                     realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//                    realisation.setService(realisationRequest.getService());
-//                    realisation.setDirection(realisationRequest.getDirection());
-//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+                    // realisation.setService(realisationRequest.getService());
+                    // realisation.setDirection(realisationRequest.getDirection());
+                    // realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
                     realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation());
@@ -915,24 +928,21 @@ public class PaaServiceImpl implements PaaService {
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                     realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                     realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                    realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
-
-                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     if (realisationRequest.getRealisationFiles() != null) {
                         try {
                             documentCommuneService.processAndSaveDocuments(realisationRequest.getRealisationFiles(), realisation, Constants.PATH_ENTREPOT_GED_PAA + "/" + existingPaa.getId() + Constants.PATH_ENTREPOT_GED_REALISATION);
                         } catch (IOException e) {
-                            throw new RuntimeException(e);
+                            throw new RuntimeException("Failed to process realisation files: " + e.getMessage(), e);
                         }
                     }
 
-                    List<Paa> paaList = new ArrayList<>();
-                    paaList.add(existingPaa);
-                    realisation.setPaas(paaList);
+                    List<Paa> ObserverList = new ArrayList<>();
+                    ObserverList.add(existingPaa);
+                    realisation.setPaas(ObserverList);
 
                     if (realisationRequest.getDocIds() != null && !realisationRequest.getDocIds().isEmpty()) {
                         List<Docs> docs = new ArrayList<>();
@@ -965,14 +975,13 @@ public class PaaServiceImpl implements PaaService {
                             lot.setVersion(1);
                             lot.setDescription(lotRequest.getDescription());
                             lot.setBudget(lotRequest.getBudget());
-                            System.out.println("Created new lot with ID: " + lotId + ", Budget: " + lotRequest.getBudget());
+                            log.info("Created new lot with ID: {}, Budget: {}", lotId, lotRequest.getBudget());
                             lot = lotRepository.save(lot);
                             lots.add(lot);
                         }
                         realisation.setLots(lots);
                     } else {
-                        realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-                        System.out.println("Set new Realisation ID: " + realisation.getId() + ", budgetEstime: " + realisationRequest.getBudgetEstime());
+                        realisation.setLots(new ArrayList<>());
                     }
 
                     if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
@@ -991,6 +1000,13 @@ public class PaaServiceImpl implements PaaService {
                             Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                     .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
                             financement.setMonnaie(monnaie);
+                            if (monnaie.getTaux() != null) {
+                                financement.setTauxApplicable(monnaie.getTaux());
+                                log.info("Auto-assigned tauxApplicable: {} from Monnaie ID: {}", monnaie.getTaux(), monnaie.getId());
+                            } else {
+                                financement.setTauxApplicable(0.0);
+                                log.info("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: {}", monnaie.getId());
+                            }
                             financement.setId(compositeFinancementId);
                             financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                             if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
@@ -1003,11 +1019,28 @@ public class PaaServiceImpl implements PaaService {
                             financement.setIsDeleted(false);
                             financementRepository.save(financement);
                             financements.add(financement);
-                            System.out.println("Created new financement with ID: " + newFinancementId + ", Budget: " + financementRequest.getBudgetEstimer() + ", Monnaie ID: " + financementRequest.getMonnaieId() + ", SourceFinancement ID: " + (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
+                            log.info("Created new financement with ID: {}, Budget: {}, Monnaie ID: {}, SourceFinancement ID: {}",
+                                    newFinancementId, financementRequest.getBudgetEstimer(), financementRequest.getMonnaieId(),
+                                    (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
                         }
                         realisation.setFinancements(financements);
                         financementRepository.saveAll(financements);
+
+                        // Calculate realisation budgetEstime as sum of financement budgets
+                        BigDecimal realisationBudget = financements.stream()
+                                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                                .map(financement -> financement.getBudgetEstimer() != null ? financement.getBudgetEstimer() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        realisation.setBudgetEstime(realisationBudget);
+                        log.info("Set realisation ID {} budgetEstime to {} based on sum of financements", realisation.getId(), realisationBudget);
+                    } else {
+                        log.info("No financements provided for new Realisation ID: {}", realisation.getId());
+                        realisation.setFinancements(new ArrayList<>());
+                        realisation.setBudgetEstime(BigDecimal.ZERO);
+                        log.info("Set realisation ID {} budgetEstime to 0 due to no financements", realisation.getId());
                     }
+
+                    setSeuilApplicableForRealisation(realisation, requestAcId);
 
                     realisation = realisationRepository.save(realisation);
                 }
@@ -1020,7 +1053,7 @@ public class PaaServiceImpl implements PaaService {
                         existingRealisation.setIsDeleted(true);
                         existingRealisation.setBudgetEstime(BigDecimal.ZERO);
                         realisationRepository.save(existingRealisation);
-                        System.out.println("Marked Realisation ID: " + existingRealisation.getId() + " as deleted (not in request)");
+                        log.info("Marked Realisation ID: {} as deleted (not in request)", existingRealisation.getId());
                         realisations.add(existingRealisation);
                     }
                 }
@@ -1034,7 +1067,7 @@ public class PaaServiceImpl implements PaaService {
                         existingRealisation.setIsDeleted(true);
                         existingRealisation.setBudgetEstime(BigDecimal.ZERO);
                         realisationRepository.save(existingRealisation);
-                        System.out.println("Marked Realisation ID: " + existingRealisation.getId() + " as deleted (no realisations in request)");
+                        log.info("Marked Realisation ID: {} as deleted (no realisations in request)", existingRealisation.getId());
                     }
                     realisations.add(existingRealisation);
                 }
@@ -1043,7 +1076,7 @@ public class PaaServiceImpl implements PaaService {
                 existingPaa.setRealisations(new ArrayList<>());
             }
             existingPaa.setBudgetEstime(BigDecimal.ZERO);
-            System.out.println("Cleared realisations for PAA ID: " + paaId + ", set budgetEstime: 0");
+            log.info("Cleared realisations for PAA ID: {}, set budgetEstime: 0", paaId);
         }
 
         validateRealisations(existingPaa);
@@ -1095,10 +1128,9 @@ public class PaaServiceImpl implements PaaService {
         savedPaa.setBudgetEstime(budgetEstime);
         repository.save(savedPaa);
         copyForResponse.setBudgetEstime(budgetEstime);
-        System.out.println("Updated PAA ID: " + paaId + ", budgetEstime: " + budgetEstime);
+        log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
         return copyForResponse;
     }
-
 //    public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException {
 //        System.out.println("calling the method");
 //        CompositeId compositeId = new CompositeId(paaId, paaVer);
