@@ -111,3 +111,9 @@ templateDac:
 
 documents:
   convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}
+
+file:
+  upload:
+    parent-path: ${FILE_UPLOAD_PARENT:C:\\uploads}
+    user-profile-path: ${FILE_UPLOAD_USER_PROFILE:${file.upload.parent-path}\\users}
+    ac-logo-path: ${FILE_UPLOAD_AC_LOGO:${file.upload.parent-path}\\acs}

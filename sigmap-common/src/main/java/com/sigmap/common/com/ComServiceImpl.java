@@ -10,8 +10,10 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.com.exception.PermanentComAlreadyExist;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
@@ -23,6 +25,7 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 
 import java.io.IOException;
@@ -129,7 +132,21 @@ public class ComServiceImpl implements ComService {
   @Override
   public Com create(ComRequest request)
           throws RefParamNotFound, AcNotFound, DuplicateAcIdsException, ComNotFound, IOException {
-    RefParam comType = refParamService.findById(request.getComTypeId());
+    Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
+    List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
+    if (!refParams.isEmpty()) {
+      for(RefParam refParam:refParams){
+        Integer id = refParam.getId();
+        Specification<Com>comSpecification =ComSpecifications.hasComTypeId(id).and(ComSpecifications.deleted(false));
+        List<Com> com=repository.findAll(comSpecification);
+        log.info("Com count:"+com.size());
+        if(!com.isEmpty()&& Objects.equals(request.getComTypeId(), id)) {
+          throw new PermanentComAlreadyExist("",refParam.getCode());
+        }
+      }
+
+    }
+    RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
     Com com = ComMapper.INSTANCE.map(request);
 
     if (comType.getId() != null) {
@@ -148,8 +165,17 @@ public class ComServiceImpl implements ComService {
       }
     }
 
+    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
     if(request.getTheAdresse()!=null) {
       Adresse adresse=adressService.create(request.getTheAdresse());
+      adresse.setPays(pays);
+      com.setTheAdresse(adresse);
+    }
+    else{
+      AdresseRequest adresseRequest=new AdresseRequest();
+      Adresse adresse=adressService.create(adresseRequest);
+      adresse.setPays(pays);
       com.setTheAdresse(adresse);
     }
 
@@ -194,7 +220,19 @@ public class ComServiceImpl implements ComService {
   public Com update(Integer id, ComRequest request)
           throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
-    RefParam comType = refParamService.findById(request.getComTypeId());
+    Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
+    List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
+    if (!refParams.isEmpty()) {
+      for(RefParam refParam:refParams){
+        Integer refParamId = refParam.getId();
+        Specification<Com>comSpecification =ComSpecifications.hasComTypeId(refParamId).and(ComSpecifications.deleted(false));
+        List<Com> optionalCom=repository.findAll(comSpecification);
+        if(!optionalCom.isEmpty()&&!optionalCom.get(0).getId().equals(com.getId())&& Objects.equals(request.getComTypeId(), refParamId)) {
+          throw new PermanentComAlreadyExist("",refParam.getCode());
+        }
+      }
+    }
+    RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
     ComMapper.INSTANCE.updateFromRequest(request, com);
 
     if(request.getTutelId()!=null ) {
@@ -212,14 +250,28 @@ public class ComServiceImpl implements ComService {
     } else {
       com.setComType(null);
     }
+    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
+
     if(request.getTheAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
       Adresse theAdress=adressService.update(request.getTheAdresse());
+      theAdress.setPays(pays);
       com.setTheAdresse(theAdress);
     }
-    else if (com.getTheAdresse()==null){
+    else if (com.getTheAdresse()==null&&request.getTheAdresse()!=null){
+
       Adresse theAddress=adressService.create(request.getTheAdresse());
+      theAddress.setPays(pays);
+      com.setTheAdresse(theAddress);
+      }
+    else {
+      AdresseRequest adresseRequest=new AdresseRequest();
+      adresseRequest.setPaysId(pays.getId());
+      Adresse theAddress=adressService.create(adresseRequest);
+      theAddress.setPays(pays);
       com.setTheAdresse(theAddress);
     }
+
 
     List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
     List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
