@@ -119,8 +119,21 @@ public class KeycloakAdminController {
     @GetMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public List<UserDTO> getUsers() {
-        return keycloakAdminService.getAllUsers();
+
+        String currentUserId = Authentication.getCurrentUserId()
+                .orElseThrow(() -> new IllegalStateException("Utilisateur courant introuvable"));
+
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            return keycloakAdminService.getUsersManagedByCurrentAdmin(currentUserId);
+        } else {
+            return keycloakAdminService.getAllUsers();
+        }
     }
+
 
     /**
      * Récupérer un utilisateur par son ID.
