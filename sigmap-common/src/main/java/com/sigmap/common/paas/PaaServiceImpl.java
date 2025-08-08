@@ -827,7 +827,7 @@ public class PaaServiceImpl implements PaaService {
                                         financementId, financementRequest.getBudgetEstimer(), financementRequest.getMonnaieId(),
                                         (financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null));
                             } else {
-                                Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                                Integer newFinancementId = generateFinancementIdWithRetry();
                                 newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
                                 financement = new Financement();
                                 FinancementId compositeFinancementId = new FinancementId();
@@ -990,7 +990,7 @@ public class PaaServiceImpl implements PaaService {
                                 continue;
                             }
                             Financement financement = new Financement();
-                            Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                            Integer newFinancementId = generateFinancementIdWithRetry();
                             newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
                             FinancementId compositeFinancementId = new FinancementId();
                             compositeFinancementId.setFinancementId(newFinancementId);
@@ -5816,6 +5816,20 @@ public class PaaServiceImpl implements PaaService {
 //            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
 //        }
 //    }
+
+
+        private Integer generateFinancementIdWithRetry() {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                Integer nextVal = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                return (nextVal != null) ? nextVal + 1 : 1;
+            } catch (Exception e) {
+                if (attempt == 2) throw e; // Re-throw on final attempt
+                try { Thread.sleep(100); } catch (InterruptedException ie) { /* ignore */ }
+            }
+        }
+        return 1; // Fallback
+    }
 
 
 }
