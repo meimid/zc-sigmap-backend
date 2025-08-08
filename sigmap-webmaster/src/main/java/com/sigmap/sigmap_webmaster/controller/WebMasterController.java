@@ -118,9 +118,9 @@ public class WebMasterController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/{acId}/photo/display")
+  /*  @GetMapping("/{acId}/photo/display")
     public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
         return ResponseEntity.ok(response);
-    }
+    }*/
 }

@@ -2,6 +2,7 @@ package com.sigmap.common.com;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.config.TypeAffCommission;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
@@ -47,7 +48,7 @@ public class Com extends BaseEntity {
 
   private String logo;
 
-  @OneToOne
+  @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "adresse_id")
   private Adresse theAdresse;
 
@@ -58,6 +59,5 @@ public class Com extends BaseEntity {
           inverseJoinColumns = @JoinColumn(name = "doc_id")
   )
   private List<Docs> docs ;
-  @Transient
-  private String TypeCommission;
+
 }
