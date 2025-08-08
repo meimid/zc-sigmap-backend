@@ -290,7 +290,6 @@ public class AcController {
 
     @GetMapping("/{acId}/photo/display")
     public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
-        // 2. Pass BOTH the ID and the path to the service
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
         return ResponseEntity.ok(response);
     }
