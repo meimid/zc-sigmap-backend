@@ -71,6 +71,19 @@ public class KeycloakAdminService {
         return users;
     }
 
+    public List<UserDTO> getUsersManagedByCurrentAdmin(String currentUserId) {
+        List<Integer> managedAcIds = userAcRepository.findManagedAcIds(currentUserId);
+
+        if (managedAcIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds);
+
+        return userIds.stream()
+                .map(this::getUserById)
+                .collect(Collectors.toList());
+    }
 
     private HttpHeaders createHeaders(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
