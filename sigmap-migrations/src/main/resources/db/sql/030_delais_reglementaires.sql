@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1749671959050-87
+-- changeset sigmap:1749671959050-77
 
 CREATE TABLE delais_reglementaires (
                              type_marche_id INT NOT NULL,
@@ -17,9 +17,9 @@ CREATE TABLE delais_reglementaires (
                              is_deleted BOOLEAN DEFAULT FALSE NOT NULL
 );
 
--- changeset sigmap:1749671959050-88
+-- changeset sigmap:1749671959050-78
 ALTER TABLE delais_reglementaires ADD CONSTRAINT fk_delais_reglementaires_type_marche_id FOREIGN KEY (type_marche_id) REFERENCES ref_param (ref_param_id) ON UPDATE NO ACTION ON DELETE NO ACTION;
 
--- changeset sigmap:1749671959050-89
+-- changeset sigmap:1749671959050-79
 ALTER TABLE delais_reglementaires ADD CONSTRAINT fk_delais_reglementaires_mode_passation_id FOREIGN KEY (mode_passation_id) REFERENCES mode_passation (mode_passation_id) ON UPDATE NO ACTION ON DELETE NO ACTION;
 
