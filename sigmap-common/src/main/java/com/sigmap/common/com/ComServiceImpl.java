@@ -494,7 +494,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
     if (page.hasContent()) {
       Com com= page.getContent().get(0);
-      com.setTypeCommission("Commission Tutelle");
       return com;
     } else {
       throw new ComNotFound("Com not found for tutel ID: " + tutelId, null);
@@ -509,7 +508,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
     if (page.hasContent() ) {
       Com com= page.getContent().get(0);
-      com.setTypeCommission("Commission Interne");
       return com;
     } else {
       throw new ComNotFound("Com not found for ac :",null);
@@ -517,7 +515,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     }else{
       if(ac.getCom()!=null){
         Com com= ac.getCom();
-        com.setTypeCommission("Commission Tutelle");
         return com;
       }
       else{
@@ -530,7 +527,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
   public List<Com> getAllCommissionsDeTutelles(Integer acId) {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
     List<Com> coms= repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
-    coms.forEach(com -> com.setTypeCommission("Autre Commission"));
     return coms;
   }
 

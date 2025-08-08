@@ -60,7 +60,7 @@ public class ComController {
      * @return a page of com
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP')")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP', 'ADMIN_AC')")
     public ResponseEntity<Page<ComResponse>> findAll(
             ComQuery query, Pageable pageable) {
         Page<Com> params = comService.findAll(query.toSpecification(), pageable);
