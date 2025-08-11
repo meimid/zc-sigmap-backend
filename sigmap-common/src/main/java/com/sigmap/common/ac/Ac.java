@@ -44,7 +44,7 @@ public class Ac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "com_id")
   private Com com;
-  @OneToOne
+  @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;
 
