@@ -6,6 +6,7 @@ import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionService;
@@ -41,12 +42,12 @@ public class ReunionController {
         return ResponseEntity.ok(page.map(ReunionMapper.INSTANCE::map));
     }
 
-    @GetMapping("/deleted")
+   /* @GetMapping("/deleted")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN')")
     public ResponseEntity<Page<ReunionResponse>> findAllDeleted(ReunionQuery query, Pageable pageable) {
         Page<Reunion> page = reunionService.findAllDeleted(query.toSpecification(), pageable);
         return ResponseEntity.ok(page.map(ReunionMapper.INSTANCE::map));
-    }
+    }*/
 
     @GetMapping("/{id}")
     public ResponseEntity<ReunionResponse> findById(@PathVariable Integer id) throws ReunionNotFound {
@@ -66,16 +67,38 @@ public class ReunionController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/brouillon")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<ReunionResponse> update(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
-        Reunion updatedReunion = reunionService.update(id, request);
+    public ResponseEntity<ReunionResponse> updateBrouillon(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion updatedReunion = reunionService.update(id, request,ReunionStatus.BROUILLON);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
         List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
         ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
         response.setParticipants(responseDtos);
         return ResponseEntity.ok(response);
     }
+    @PutMapping("/{id}/planifier_or_not")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<ReunionResponse> updatePlanifierOrNot(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion updatedReunion = reunionService.updatePlanifierOrNot(id, request);
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setParticipants(responseDtos);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/annuler")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion updatedReunion = reunionService.update(id, request,ReunionStatus.ANNULER);
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setParticipants(responseDtos);
+        return ResponseEntity.ok(response);
+    }
+
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")

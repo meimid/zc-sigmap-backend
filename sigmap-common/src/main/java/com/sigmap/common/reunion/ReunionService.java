@@ -2,6 +2,7 @@ package com.sigmap.common.reunion;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
@@ -22,6 +23,7 @@ public interface ReunionService {
     Reunion findById(Integer id) throws ReunionNotFound;
     Reunion save(Reunion reunion);
     Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound;
-    Reunion update(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound;
+    Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound;
+    Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound;
     void delete(Integer id) throws ReunionNotFound;
 }

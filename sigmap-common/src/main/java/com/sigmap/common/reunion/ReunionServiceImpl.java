@@ -12,6 +12,7 @@ import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ParticipantType;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -119,6 +120,7 @@ public class ReunionServiceImpl implements ReunionService{
         Com com = comService.findById(request.getComId());
         Reunion reunion = ReunionMapper.INSTANCE.map(request);
         reunion.setCom(com);
+        reunion.setStatus(ReunionStatus.BROUILLON);
         Reunion savedReunion = repository.save(reunion);
         createAndSetParticipantsFromUsers(savedReunion, request);
         synchronizePpms(request, savedReunion);
@@ -129,17 +131,35 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     @Transactional
-    public Reunion update(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
+        reunionToUpdate.setStatus(status);
         synchronizeParticipants(request, reunionToUpdate);
         synchronizePpms(request, reunionToUpdate);
         synchronizeDacs(request, reunionToUpdate);
         return save(reunionToUpdate);
     }
+    @Override
+    @Transactional
+    public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        reunionToUpdate.getReunionDacs().size();
+        reunionToUpdate.getReunionPpms().size();
+        ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
+        if(request.getReunionDate()!=null){
+            reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
+        }else{
+            reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
+        }
 
+        synchronizeParticipants(request, reunionToUpdate);
+        synchronizePpms(request, reunionToUpdate);
+        synchronizeDacs(request, reunionToUpdate);
+        return save(reunionToUpdate);
+    }
 
     private void createAndSetParticipantsFromUsers(Reunion reunion, ReunionRequest request) {
         List<UserCom> commissionMembers = userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
