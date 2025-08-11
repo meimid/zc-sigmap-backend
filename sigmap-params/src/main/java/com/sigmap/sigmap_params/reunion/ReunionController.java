@@ -90,8 +90,8 @@ public class ReunionController {
 
     @PutMapping("/{id}/annuler")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
-        Reunion updatedReunion = reunionService.update(id, request,ReunionStatus.ANNULER);
+    public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion updatedReunion = reunionService.updateAnnule(id);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
         List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
         ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);

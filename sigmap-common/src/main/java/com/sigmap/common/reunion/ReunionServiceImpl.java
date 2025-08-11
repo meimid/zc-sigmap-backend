@@ -161,6 +161,16 @@ public class ReunionServiceImpl implements ReunionService{
         return save(reunionToUpdate);
     }
 
+    @Override
+    @Transactional
+    public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        reunionToUpdate.getReunionDacs().size();
+        reunionToUpdate.getReunionPpms().size();
+        reunionToUpdate.setStatus(ReunionStatus.ANNULER);
+        return save(reunionToUpdate);
+    }
+
     private void createAndSetParticipantsFromUsers(Reunion reunion, ReunionRequest request) {
         List<UserCom> commissionMembers = userComRepository.findAllByComIdAndIsDeletedFalse(request.getComId());
         Set<String> commissionMemberUserIds = commissionMembers.stream().map(UserCom::getUserId).collect(Collectors.toSet());
