@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RealisationRepository extends JpaRepository<Realisation, CompositeId>,
         JpaSpecificationExecutor<Realisation>,
@@ -45,6 +46,19 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
             "AND r.isDeleted = false")
     List<Realisation> findLatestRealisationVersionsByPpm(@Param("ppmId") Integer ppmId,
                                                          @Param("ppmVersion") Integer ppmVersion);
+
+    /**
+     * Finds the full Realisation entity with the highest version number for a given ID.
+     * This method returns only non-deleted realisations.
+     *
+     * @param id The ID of the Realisation to find.
+     * @return An Optional containing the Realisation entity with the latest version, or an empty Optional if not found.
+     */
+    @Query("SELECT r FROM Realisation r WHERE r.id = :id " +
+            "AND r.isDeleted = false " +
+            "AND r.version = (SELECT MAX(r2.version) FROM Realisation r2 WHERE r2.id = :id AND r2.isDeleted = false)")
+    Optional<Realisation> findLatestVersionById(@Param("id") Integer id);
+
 
 }
 
