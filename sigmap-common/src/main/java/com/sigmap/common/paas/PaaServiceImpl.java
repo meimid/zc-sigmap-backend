@@ -3782,13 +3782,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 //            return true;
 //        }
 
-//        // Check monnaie
-//        if (dto.getMonnaie() != null && (existingRealisation.getMonnaie() == null || !dto.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
-//            return true;
-//        }
+
 
         // Check modePassation
-        if (dto.getModePassation() != null && (existingRealisation.getModePassation() == null || !dto.getModePassation().getId().equals(existingRealisation.getMonnaie().getId()))) {
+        if (dto.getModePassation() != null && (existingRealisation.getModePassation() == null || !dto.getModePassation().getId().equals(existingRealisation.getModePassation().getId()))) {
             return true;
         }
 

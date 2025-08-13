@@ -7,6 +7,7 @@ import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
@@ -305,7 +306,7 @@ public class RealisationServiceImpl implements RealisationService {
         }
 
         log.info("Realisation before save: {}", realisation);
-
+        realisation.setStatut(RealisationStatus.NON_PUBLIE);
         Realisation savedRealisation = repository.save(realisation);
         log.info("Saved Realisation: {}", savedRealisation);
 
@@ -369,6 +370,7 @@ public class RealisationServiceImpl implements RealisationService {
                 createdFinancements.add(savedFinancement);
             }
 
+//            savedRealisation.setStatut(RealisationStatus.NON_PUBLIE);
             savedRealisation.setFinancements(createdFinancements);
             savedRealisation = repository.save(savedRealisation);
             log.info("Updated Realisation with {} financements", createdFinancements.size());
@@ -417,10 +419,10 @@ public class RealisationServiceImpl implements RealisationService {
 //            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
 //                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
 //        }
-        if (request.getMonnaie() != null) {
-            existingRealisation.setMonnaie(monnaieRepository.findById(request.getMonnaie().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-        }
+//        if (request.getMonnaie() != null) {
+//            existingRealisation.setMonnaie(monnaieRepository.findById(request.getMonnaie().getId())
+//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
+//        }
         if (request.getBeneficiaire() != null) {
             existingRealisation.setBeneficiaire(request.getBeneficiaire());
         }
