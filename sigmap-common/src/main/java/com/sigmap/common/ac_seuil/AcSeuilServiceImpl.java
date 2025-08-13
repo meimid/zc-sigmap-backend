@@ -104,6 +104,7 @@ public class AcSeuilServiceImpl implements AcSeuilService {
 
     @Override
     public Optional<AcSeuil> findOne(Specification<AcSeuil> specification) {
+        log.info("--------------- Finding acSeuil by specification {}", specification);
         return acSeuilRepository.findOne(specification);
     }
 
