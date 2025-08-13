@@ -171,7 +171,8 @@ public class RefParamController {
 
     @GetMapping("/type-comite")
     public ResponseEntity<List<RefParamResponseDto>> findAllTypeComite() throws RefTypeNotFound {
-        List<RefParam> params = refParamService.findByRefType(RefTypes.TYPE_COMITE);
+     //   List<RefParam> params = refParamService.findByRefType(RefTypes.TYPE_COMITE);
+        List<RefParam> params = refParamService.findByRefTypeWithoutSystemType(RefTypes.TYPE_COMITE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());

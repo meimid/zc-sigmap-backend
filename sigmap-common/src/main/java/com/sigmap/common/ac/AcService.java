@@ -1,6 +1,7 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.request.AcRequest;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,7 +82,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the created Ac
      */
-    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound;
+    Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, IOException;
 
     /**
      * update Ac.
@@ -88,7 +90,7 @@ public interface AcService {
      * @param request the request to create the Ac from
      * @return the updated Ac
      */
-    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound;
+    Ac update(Integer id,AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound, IOException;
 
     /**
      * Delete a Ac.
@@ -101,6 +103,6 @@ public interface AcService {
 
     List<Ac> findAllByComId(Integer comId) throws ComNotFound;
 
-    Ac updateComeId(Integer id,Integer comeId) throws ComNotFound, AcNotFound;
     List<Ac> findAllAcsWithNoCom();
+     LogoResponse getAcPhoto(Integer acId,String basePath) throws AcNotFound;
 }

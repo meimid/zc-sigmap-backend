@@ -3,9 +3,9 @@ package com.sigmap.common.ac;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.config.TypeAffCommission;
 import com.sigmap.common.direction.Direction;
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -45,14 +45,21 @@ public class Ac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "com_id")
   private Com com;
-  @OneToOne
+  @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;
 
+<<<<<<< HEAD
   @Override
   public int hashCode() {
     return Objects.hash(id); // Only use simple fields, not related entities
   }
+=======
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type_com")
+  private TypeAffCommission typeAffCommission;
+
+>>>>>>> 31248262ab6dde4cb8cbcf087487a2c1743de14b
 
 
 }

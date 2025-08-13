@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -71,6 +72,19 @@ public class KeycloakAdminService {
         return users;
     }
 
+    public List<UserDTO> getUsersManagedByCurrentAdmin(String currentUserId) {
+        List<Integer> managedAcIds = userAcRepository.findManagedAcIds(currentUserId);
+
+        if (managedAcIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds);
+
+        return userIds.stream()
+                .map(this::getUserById)
+                .collect(Collectors.toList());
+    }
 
     private HttpHeaders createHeaders(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
@@ -130,6 +144,119 @@ public class KeycloakAdminService {
         userDTO.setComs(fetchComsForUser(userId));
 
         return userDTO;
+    }
+
+    // In KeycloakAdminService
+    public Map<String, UserDTO> fetchUsersInBatch(Set<String> userIds) {
+        long startTime = System.nanoTime();
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users?max=1000";
+        try {
+            ParameterizedTypeReference<List<Map<String, Object>>> typeRef =
+                    new ParameterizedTypeReference<List<Map<String, Object>>>() {};
+            ResponseEntity<List<Map<String, Object>>> response =
+                    restTemplate.exchange(url, HttpMethod.GET, entity, typeRef);
+            List<Map<String, Object>> userMaps = response.getBody();
+            if (userMaps == null) {
+                logger.warn("No users returned from Keycloak");
+                return Collections.emptyMap();
+            }
+
+            Map<String, UserDTO> userMap = new HashMap<>();
+            for (Map<String, Object> userData : userMaps) {
+                String userId = (String) userData.get("id");
+                if (userIds.contains(userId)) {
+                    UserDTO userDTO = mapToUserDTO(userData);
+                    userMap.put(userId, userDTO);
+                }
+            }
+
+            return userMap;
+        } catch (Exception e) {
+            logger.error("Failed to fetch users from Keycloak: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+    public UserDTO getOneUserByEmail(String email) {
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+
+        // Search users by email using Keycloak API
+        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users?email=" + email;
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+
+        List<Map<String, Object>> users = response.getBody();
+        if (users == null || users.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé avec l'email : " + email);
+        }
+
+        // Get the first user (email should be unique)
+        Map<String, Object> userMap = users.get(0);
+        String userId = (String) userMap.get("id");
+
+        UserDTO userDTO = mapToUserDTO(userMap);
+        userDTO.setRoles(fetchRealmRolesForUserWithDescriptions(userId, entity));
+        userDTO.setAcs(fetchAcsForUser(userId));
+        userDTO.setComs(fetchComsForUser(userId));
+
+        return userDTO;
+    }
+    public UserResquestDTO getUserByEmail(String email) {
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+
+        // Search users by email using Keycloak API
+        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users?email=" + email;
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+
+        List<Map<String, Object>> users = response.getBody();
+        if (users == null || users.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé avec l'email : " + email);
+        }
+
+        // Get the first user (email should be unique)
+        Map<String, Object> userMap = users.get(0);
+        String userId = (String) userMap.get("id");
+
+        return mapToUserRequestDTO(userMap, userId);
+    }
+
+    private UserResquestDTO mapToUserRequestDTO(Map<String, Object> userMap, String userId) {
+        UserResquestDTO dto = new UserResquestDTO();
+        dto.setUsername((String) userMap.get("username"));
+        dto.setFirstName((String) userMap.get("firstName"));
+        dto.setLastName((String) userMap.get("lastName"));
+        dto.setEmail((String) userMap.get("email"));
+        dto.setEnable((Boolean) userMap.getOrDefault("enabled", false));
+        
+        // Get user attributes
+        Map<String, List<String>> attributes = (Map<String, List<String>>) userMap.get("attributes");
+        if (attributes != null) {
+            List<String> addressList = attributes.get("address");
+            dto.setAddress((addressList != null && !addressList.isEmpty()) ? addressList.get(0) : null);
+
+            List<String> mobileList = attributes.get("mobile");
+            dto.setMobile((mobileList != null && !mobileList.isEmpty()) ? mobileList.get(0) : null);
+
+            List<String> fixeList = attributes.get("fixe");
+            dto.setFixe((fixeList != null && !fixeList.isEmpty()) ? fixeList.get(0) : null);
+        }
+        
+        // Get user roles
+        dto.setRoles(fetchRealmRolesForUserWithDescriptions(userId, createHttpEntityWithToken()));
+        
+        // Get user ACs and COMs
+        List<UserAcDTO> acs = fetchAcsForUser(userId);
+        dto.setAcIds(acs.stream().map(UserAcDTO::getId).collect(Collectors.toList()));
+        
+        List<UserComDTO> coms = fetchComsForUser(userId);
+        dto.setComIds(coms.stream().map(UserComDTO::getId).collect(Collectors.toList()));
+        
+        // Set AC Pilote ID if exists
+        acs.stream()
+           .filter(UserAcDTO::getAcPilote)
+           .findFirst()
+           .ifPresent(ac -> dto.setAcPiloteId(ac.getId()));
+        
+        return dto;
     }
 
     private HttpEntity<Void> createHttpEntityWithToken() {

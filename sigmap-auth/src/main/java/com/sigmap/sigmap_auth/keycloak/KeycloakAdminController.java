@@ -7,8 +7,11 @@ import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.security.Authentication;
 import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +20,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 
 /**
@@ -26,7 +30,10 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/keycloak")
 @RequiredArgsConstructor
+
 public class KeycloakAdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(KeycloakAdminController.class);
 
     // Service pour interagir avec l’API Admin de Keycloak
     @Autowired
@@ -34,18 +41,72 @@ public class KeycloakAdminController {
     @Autowired
     private MailService mailService;
 
+
+    private boolean sendWithRetry(Supplier<Boolean> emailSender, String recipientEmail, int maxRetries) {
+        int retryCount = 0;
+        boolean emailSent = false;
+        while (!emailSent && retryCount < maxRetries) {
+            try {
+                emailSent = emailSender.get();
+                if (emailSent) {
+                    log.info("Email sent successfully to {} (attempt {})", recipientEmail, retryCount + 1);
+                    return true;
+                } else {
+                    retryCount++;
+                    log.warn("Failed to send email to {} (attempt {}/{}): emailSender returned false", recipientEmail, retryCount, maxRetries);
+                }
+            } catch (Exception e) {
+                retryCount++;
+                log.warn("Failed to send email to {} (attempt {}/{}): {}", recipientEmail, retryCount, maxRetries, e.getMessage());
+            }
+            if (retryCount >= maxRetries) {
+                log.error("Failed to send email to {} after {} attempts", recipientEmail, maxRetries);
+                return false;
+            }
+        }
+        return emailSent;
+    }
     /**
      * Créer un nouvel utilisateur dans Keycloak.
      *
-     * @param userDTO les données de l’utilisateur à créer
-     * @return les informations de l’utilisateur créé
+     * @param userDTO les données de l'utilisateur à créer
+     * @return les informations de l'utilisateur créé
      */
     @PostMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<UserDTO> createUser(@RequestBody UserResquestDTO userDTO) throws MessagingException {
 
+        // Get the current authenticated user ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String connectedUserId = currentUserId.orElse("System");
         UserDTO createdUser = keycloakAdminService.createUser(userDTO);
-        mailService.sendActivationEmail(userDTO, createdUser.getGenericPassword());
+
+        // First attempt to send activation email
+        boolean emailSent = false;
+        try {
+            mailService.sendActivationEmail(userDTO, createdUser.getGenericPassword(), connectedUserId);
+            emailSent = true;
+            log.info("Activation email sent successfully to {} on first attempt", userDTO.getEmail());
+        } catch (MessagingException e) {
+            log.error("Failed to send activation email to {} on first attempt: {}", userDTO.getEmail(), e.getMessage());
+            
+            // If first attempt fails, retry multiple times
+            emailSent = sendWithRetry(
+                () -> {
+                    try {
+                        mailService.RetrySendActivationEmail(userDTO, createdUser.getGenericPassword(), connectedUserId);
+                        return true;
+                    } catch (MessagingException retryException) {
+                        log.error("Failed to send activation email to {} during retry: {}", userDTO.getEmail(), retryException.getMessage());
+                        return false;
+                    }
+                },
+                userDTO.getEmail(),3);
+        }
+        if (!emailSent) {
+            log.warn("Failed to send activation email to {} after all attempts", userDTO.getEmail());
+        }
+
         createdUser.setGenericPassword(null);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
@@ -58,8 +119,21 @@ public class KeycloakAdminController {
     @GetMapping("/users")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public List<UserDTO> getUsers() {
-        return keycloakAdminService.getAllUsers();
+
+        String currentUserId = Authentication.getCurrentUserId()
+                .orElseThrow(() -> new IllegalStateException("Utilisateur courant introuvable"));
+
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            return keycloakAdminService.getUsersManagedByCurrentAdmin(currentUserId);
+        } else {
+            return keycloakAdminService.getAllUsers();
+        }
     }
+
 
     /**
      * Récupérer un utilisateur par son ID.
@@ -94,17 +168,43 @@ public class KeycloakAdminController {
     }
 
     /**
-     * Réinitialiser le mot de passe d’un utilisateur.
+     * Réinitialiser le mot de passe d'un utilisateur.
      *
-     * @param id           l’ID de l’utilisateur
+     * @param id           l'ID de l'utilisateur
      * @return 200 OK si succès, 400 si validation échoue
      */
     @PostMapping("/{id}/reset-password")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Void> updatePassword(@PathVariable String id) throws MessagingException {
+        // Get the current authenticated user ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String connectedUserId = currentUserId.orElse("System");
         String tmpPassword = generateTemporaryPassword();
-        UserDTO user = keycloakAdminService.updatePassword(id,tmpPassword);
-        mailService.sendEditPasswordForAdminEmail(user, tmpPassword);
+        UserDTO user = keycloakAdminService.updatePassword(id, tmpPassword);
+        boolean emailSent = false;
+        try {
+            mailService.sendEditPasswordForAdminEmail(user, tmpPassword, connectedUserId);
+            emailSent = true;
+            log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
+        } catch (MessagingException e) {
+            log.warn("Failed to send password reset email to {} on first attempt: {}", user.getEmail(), e.getMessage());
+            // If first attempt fails, retry multiple times
+            emailSent = sendWithRetry(
+                    () -> {
+                        try {
+                            mailService.RetrySendEditPasswordForAdminEmail(user, tmpPassword, connectedUserId);
+                            return true;
+                        } catch (MessagingException retryException) {
+                            log.error("Failed to send password reset email to {} during retry: {}", user.getEmail(), retryException.getMessage());
+                            return false;
+                        }
+                    },
+                    user.getEmail(),3);
+        }
+
+        if (!emailSent) {
+            log.error("Failed to send password reset email to {} after all attempts", user.getEmail());
+        }
         return ResponseEntity.ok().build(); // 200 OK
     }
     public String generateTemporaryPassword() {

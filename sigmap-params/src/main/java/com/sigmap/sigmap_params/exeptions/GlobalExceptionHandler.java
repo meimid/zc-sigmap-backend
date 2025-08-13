@@ -7,16 +7,13 @@ import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
-import com.sigmap.common.com.exception.ComDeleted;
-import com.sigmap.common.com.exception.ComHasAssociatedAc;
-import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.com.exception.*;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
@@ -659,6 +656,22 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ac.hasAlreadyHaveCom",new Object[] {ex.getId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(PermanentComAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> PermanentComAlreadyExistException(PermanentComAlreadyExist ex) {
+        String message = messageSource.getMessage("com.permanentComAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RefParamAlredyExist.class)
+    public ResponseEntity<ErrorResponse> RefParamAlredyExistExistException(RefParamAlredyExist ex) {
+        String message = messageSource.getMessage("refparam.referenceAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 }

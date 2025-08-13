@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -29,6 +30,7 @@ public class AcSeuilController {
     private final AcSeuilService acSeuilService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<AcSeuil> createAcSeuil(@RequestBody AcSeuilRequest request) throws
             AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound {
         AcSeuil savedAcSeuil = acSeuilService.save(request);
@@ -36,6 +38,7 @@ public class AcSeuilController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<AcSeuil> updateAcSeuil(@RequestBody AcSeuilRequest request)
             throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound, AcSeuilNotFound {
         AcSeuil updatedAcSeuil = acSeuilService.update(request);
@@ -43,12 +46,14 @@ public class AcSeuilController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Page<AcSeuil>> getAllAcSeuil(AcSeuilQuery query, Pageable pageable) {
         Page<AcSeuil> acSeuilPage = acSeuilService.getAllAcSeuils(query.toSpecification(),pageable);
         return ResponseEntity.ok(acSeuilPage);
     }
 
     @GetMapping("/{acId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Page<AcSeuil>> findAcSeuilById(@PathVariable("acId") Integer acId, Pageable pageable)
             throws AcSeuilNotFound{
         try {

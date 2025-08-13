@@ -121,15 +121,8 @@ public class AcSeuilServiceImpl implements AcSeuilService {
         if (acId == null ) {
             throw new IllegalArgumentException("you must have acId");
         }
-
         // Find existing AcSeuil by specification with pagination
         Specification<AcSeuil> spec = AcSeuilSpecifications.acId(acId);
-        Page<AcSeuil> results = acSeuilRepository.findAll(spec, pageable);
-
-        if (results.isEmpty()) {
-            throw new AcSeuilNotFound("AcSeuil not found with acId {}", acId);
-        }
-
-        return results;
+        return acSeuilRepository.findAll(spec, pageable);
     }
 }

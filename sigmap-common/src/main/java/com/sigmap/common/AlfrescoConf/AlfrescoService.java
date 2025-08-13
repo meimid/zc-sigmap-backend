@@ -428,23 +428,28 @@
 //}
 package com.sigmap.common.AlfrescoConf;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.util.UriUtils;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.*;
 
 @Service
+@Slf4j
 public class AlfrescoService {
     @Value("${alfresco.url}")
     private String alfrescoUrl;
@@ -579,50 +584,56 @@ public class AlfrescoService {
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
             // Envoi de la requête pour récupérer les enfants du dossier actuel
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+            try {
 
-            // Extraction de la liste des dossiers enfants depuis la réponse
-            List<Map<String, Object>> entries = (List<Map<String, Object>>)
-                    ((Map<String, Object>) response.getBody().get("list")).get("entries");
 
-            boolean found = false; // Variable pour savoir si le dossier a été trouvé
+                ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
 
-            // Parcours les enfants pour vérifier si le dossier actuel existe déjà
-            if (entries != null) {
-                for (Map<String, Object> entryMap : entries) {
-                    Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
-                    // Si le nom du dossier correspond, met à jour l'ID parent et marque comme trouvé
-                    if (entry.get("name").equals(folderName)) {
-                        parentId = (String) entry.get("id"); // Met à jour l'ID parent avec celui du dossier trouvé
-                        found = true;
-                        break; // Si trouvé, on quitte la boucle
+                // Extraction de la liste des dossiers enfants depuis la réponse
+                List<Map<String, Object>> entries = (List<Map<String, Object>>)
+                        ((Map<String, Object>) response.getBody().get("list")).get("entries");
+
+                boolean found = false; // Variable pour savoir si le dossier a été trouvé
+
+                // Parcours les enfants pour vérifier si le dossier actuel existe déjà
+                if (entries != null) {
+                    for (Map<String, Object> entryMap : entries) {
+                        Map<String, Object> entry = (Map<String, Object>) entryMap.get("entry");
+                        // Si le nom du dossier correspond, met à jour l'ID parent et marque comme trouvé
+                        if (entry.get("name").equals(folderName)) {
+                            parentId = (String) entry.get("id"); // Met à jour l'ID parent avec celui du dossier trouvé
+                            found = true;
+                            break; // Si trouvé, on quitte la boucle
+                        }
                     }
                 }
-            }
 
-            // 2. Si le dossier n'a pas été trouvé, on doit le créer
-            if (!found) {
-                // URL pour créer un nouveau dossier sous le dossier parent
-                String createUrl = alfrescoUrl +
-                        "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
-                        "/children?alf_ticket=" + tokenHolder.getTicket(); // Paramètre pour l'authentification
+                // 2. Si le dossier n'a pas été trouvé, on doit le créer
+                if (!found) {
+                    // URL pour créer un nouveau dossier sous le dossier parent
+                    String createUrl = alfrescoUrl +
+                            "/api/-default-/public/alfresco/versions/1/nodes/" + parentId +
+                            "/children?alf_ticket=" + tokenHolder.getTicket(); // Paramètre pour l'authentification
 
-                // Headers pour la requête de création de dossier (avec Content-Type JSON)
-                HttpHeaders createHeaders = new HttpHeaders();
-                createHeaders.setContentType(MediaType.APPLICATION_JSON);
+                    // Headers pour la requête de création de dossier (avec Content-Type JSON)
+                    HttpHeaders createHeaders = new HttpHeaders();
+                    createHeaders.setContentType(MediaType.APPLICATION_JSON);
 
-                // Corps de la requête de création avec le nom du dossier et son type
-                Map<String, Object> folderBody = new HashMap<>();
-                folderBody.put("name", folderName); // Nom du dossier
-                folderBody.put("nodeType", "cm:folder"); // Type de noeud : cm:folder (dossier)
+                    // Corps de la requête de création avec le nom du dossier et son type
+                    Map<String, Object> folderBody = new HashMap<>();
+                    folderBody.put("name", folderName); // Nom du dossier
+                    folderBody.put("nodeType", "cm:folder"); // Type de noeud : cm:folder (dossier)
 
-                // Envoi de la requête POST pour créer le dossier
-                HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
-                ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
+                    // Envoi de la requête POST pour créer le dossier
+                    HttpEntity<Map<String, Object>> createRequest = new HttpEntity<>(folderBody, createHeaders);
+                    ResponseEntity<Map> createResponse = restTemplate.exchange(createUrl, HttpMethod.POST, createRequest, Map.class);
 
-                // Extraction de l'ID du dossier créé et mise à jour de l'ID parent
-                Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
-                parentId = (String) createdEntry.get("id");
+                    // Extraction de l'ID du dossier créé et mise à jour de l'ID parent
+                    Map<String, Object> createdEntry = (Map<String, Object>) createResponse.getBody().get("entry");
+                    parentId = (String) createdEntry.get("id");
+                }
+            }catch (HttpClientErrorException e) {
+                log.error(e.getResponseBodyAsString());
             }
         }
 
@@ -826,5 +837,7 @@ public class AlfrescoService {
             throw new IOException("Error uploading document to existing folder: " + e.getMessage(), e);
         }
     }
+
+
 
 }

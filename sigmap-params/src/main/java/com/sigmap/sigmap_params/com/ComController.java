@@ -60,7 +60,7 @@ public class ComController {
      * @return a page of com
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP')")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP', 'ADMIN_AC')")
     public ResponseEntity<Page<ComResponse>> findAll(
             ComQuery query, Pageable pageable) {
         Page<Com> params = comService.findAll(query.toSpecification(), pageable);
@@ -242,6 +242,8 @@ public class ComController {
                 member.setMobile(keycloakUser.getMobile());
             }
         }
+        UserCom responsable=userComRepository.findResponsableByComId(response.getId());
+        if(responsable!=null){
         String responsibleUserId = userComRepository.findResponsableByComId(response.getId()).getUserId();
         response.setResponsableId(responsibleUserId);
         for (ComMemberDTO member : members) {
@@ -252,6 +254,7 @@ public class ComController {
             }
         }
         response.setUsers(members);
+        }
 
     }
     @GetMapping("/by_own_tutel/{acId}")

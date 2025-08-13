@@ -5,6 +5,7 @@ import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcWebsiteResponse;
+import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
@@ -27,6 +28,7 @@ import com.sigmap.common.realisations.response.RealisationPaaWebSite;
 import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,7 +51,8 @@ public class WebMasterController {
     private final AgpmService agpmService;
     private final AcService acService;
     private final WebMasterService webMasterService;
-
+    @Value("${file.upload.ac-logo-path}")
+    private String acLogoPath;
     public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService, WebMasterService webMasterService) {
         this.ppmService = ppmService;
         this.paaService = paaService;
@@ -114,4 +117,10 @@ public class WebMasterController {
         List<AcWebsiteResponse> responses= AcMapper.INSTANCE.mapToWebsiteResponse(acs);
         return ResponseEntity.ok(responses);
     }
+
+  /*  @GetMapping("/{acId}/photo/display")
+    public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
+        LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
+        return ResponseEntity.ok(response);
+    }*/
 }

@@ -17,6 +17,7 @@ import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import jakarta.persistence.EntityManager;
@@ -477,6 +478,26 @@ public class PpmFlowableService {
         response.setStatus("Task details retrieved successfully");
 
         return response;
+    }
+    @Transactional
+    public List<TaskDTO> validateTaskGroup(List<GroupValidationRequest> requests)
+            throws PpmNotFound, AcNotFound, MissingComIdException, MissingAcIdException,
+            UserNotAssociatedWithAcException, ComNotFound {
+
+        List<TaskDTO> responses = new ArrayList<>();
+
+        for (GroupValidationRequest request : requests) {
+            ValidationRequest validationRequest = new ValidationRequest();
+            validationRequest.setValidate(request.getValidate());
+            validationRequest.setComment(request.getComment());
+            validationRequest.setPpm(request.getPpm());
+            validationRequest.setComId(request.getComId());
+
+            TaskDTO response = validateTask(request.getTaskId(), validationRequest);
+            responses.add(response);
+        }
+
+        return responses;
     }
 
     @Transactional
