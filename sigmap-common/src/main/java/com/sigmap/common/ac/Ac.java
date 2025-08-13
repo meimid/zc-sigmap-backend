@@ -49,17 +49,14 @@ public class Ac extends BaseEntity {
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;
 
-<<<<<<< HEAD
   @Override
   public int hashCode() {
     return Objects.hash(id); // Only use simple fields, not related entities
   }
-=======
   @Enumerated(EnumType.STRING)
   @Column(name = "type_com")
   private TypeAffCommission typeAffCommission;
 
->>>>>>> 31248262ab6dde4cb8cbcf087487a2c1743de14b
 
 
 }
