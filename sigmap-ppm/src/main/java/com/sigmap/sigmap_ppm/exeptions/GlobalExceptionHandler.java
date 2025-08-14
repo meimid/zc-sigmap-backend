@@ -13,10 +13,7 @@ import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
-import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
-import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
+import com.sigmap.common.realisations.exceptions.*;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
@@ -60,6 +57,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePpmNotAssociatedWithUserAc(PpmNotAssociatedWithUserAcException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RealisationBudgetBelowAcSeuilForPpmException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationBudgetBelowAcSeuilForPpmException(
+            RealisationBudgetBelowAcSeuilForPpmException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PpmCreationLimitExceededException.class)

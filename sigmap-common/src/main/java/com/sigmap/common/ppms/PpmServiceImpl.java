@@ -40,6 +40,7 @@ import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetBelowAcSeuilForPpmException;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
@@ -526,16 +527,24 @@ public class PpmServiceImpl implements PpmService {
             // Copy existing realisations to the new PPM
             newPpm.setRealisations(existingPpm.getRealisations() != null ? new ArrayList<>(existingPpm.getRealisations()) : new ArrayList<>());
 
-            // Set seuilApplicable for each realisation
+            // === ADDED: recompute budgetEstime per Realisation from its financements, then apply PPM seuil control
             if (newPpm.getRealisations() != null) {
                 for (Realisation realisation : newPpm.getRealisations()) {
-                    setSeuilApplicableForRealisation(realisation, requestAcId);
+                    // Recompute budget from non-deleted financements
+                    BigDecimal rb = (realisation.getFinancements() == null) ? BigDecimal.ZERO
+                            : realisation.getFinancements().stream()
+                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                            .map(f -> f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    realisation.setBudgetEstime(rb);
+
+                    // PPM-specific seuil control (throws if budget < seuil)
+                    setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
                 }
             }
 
             // Validate realisations for budget consistency
             validateRealisations(newPpm);
-
 
             return repository.save(newPpm);
         } else {
@@ -561,10 +570,19 @@ public class PpmServiceImpl implements PpmService {
                 existingPpm.setAc(existingPpm.getAc()); // Preserve existing Ac
             }
 
-            // Set seuilApplicable for each realisation
+            // === ADDED: recompute budgetEstime per Realisation from its financements, then apply PPM seuil control
             if (existingPpm.getRealisations() != null) {
                 for (Realisation realisation : existingPpm.getRealisations()) {
-                    setSeuilApplicableForRealisation(realisation, requestAcId);
+                    // Recompute budget from non-deleted financements
+                    BigDecimal rb = (realisation.getFinancements() == null) ? BigDecimal.ZERO
+                            : realisation.getFinancements().stream()
+                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                            .map(f -> f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    realisation.setBudgetEstime(rb);
+
+                    // PPM-specific seuil control (throws if budget < seuil)
+                    setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
                 }
             }
 
@@ -665,17 +683,10 @@ public class PpmServiceImpl implements PpmService {
         // Process realisations
         List<Realisation> updatedRealisations = new ArrayList<>();
 
-//        boolean realisationsChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
-//
-//        // Process financements separately and combine the results
-//        boolean financementsChanged = processRealisationsWithFinancementLogic(existingPpm, request, updatedRealisations);
-//
-//        realisationsChanged = realisationsChanged || financementsChanged;
-
         // Process lots first
         boolean lotsChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
 
-// Process financements on the SAME realisation versions (don't create new versions)
+        // Process financements on the SAME realisation versions (don't create new versions)
         boolean financementsChanged = false;
         if (request.getRealisations() != null) {
             for (int i = 0; i < updatedRealisations.size(); i++) {
@@ -692,10 +703,19 @@ public class PpmServiceImpl implements PpmService {
 
         boolean realisationsChanged = lotsChanged || financementsChanged;
 
-        // Set seuilApplicable for each realisation
+        // ===== ADDED: Recompute budget from financements and apply PPM seuil control
         for (Realisation realisation : updatedRealisations) {
-            setSeuilApplicableForRealisation(realisation, requestAcId);
+            BigDecimal rb = (realisation.getFinancements() == null) ? BigDecimal.ZERO
+                    : realisation.getFinancements().stream()
+                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                    .map(f -> f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            realisation.setBudgetEstime(rb);
+
+            // PPM-specific control: throws if budget < seuil
+            setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
         }
+        // ===== END ADDED
 
         // Process documents if present
         List<Docs> updatedDocs = new ArrayList<>();
@@ -896,7 +916,6 @@ public class PpmServiceImpl implements PpmService {
         // Update the hash for the new version
         storePreviousRequestHash(ppmId, newPpm.getVersion(), requestHash);
 
-
         // Create a filtered copy for the response to exclude deleted items
         Ppm responseVersion = new Ppm();
         BeanUtils.copyProperties(newPpm, responseVersion);
@@ -940,7 +959,7 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-// Apply final filtering to show only latest versions
+        // Apply final filtering to show only latest versions
         if (responseVersion.getRealisations() != null && !responseVersion.getRealisations().isEmpty()) {
             List<Realisation> latestRealisations = filterLatestRealisationVersions(responseVersion.getRealisations());
             responseVersion.setRealisations(latestRealisations);
@@ -3327,6 +3346,12 @@ public class PpmServiceImpl implements PpmService {
             existingPpm.setAc(ac);
         }
 
+        // ADDED: determine acId to use for seuil control (keep logic intact)
+        Integer requestAcId = request.getAcId() != null
+                ? request.getAcId()
+                : (existingPpm.getAc() != null ? existingPpm.getAc().getId() : null);
+        // END ADDED
+
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
             Set<Integer> existingDocIds = existingPpm.getDocs() != null ?
@@ -3543,13 +3568,13 @@ public class PpmServiceImpl implements PpmService {
 
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                     realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//                    realisation.setService(realisationRequest.getService());
-//                    realisation.setDirection(realisationRequest.getDirection());
-//                    realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                    realisation.setMonais(realisationRequest.getMonais());
-//                    realisation.setMonnaie(realisationRequest.getMonnaie());
+//              realisation.setService(...);
+//              realisation.setDirection(...);
+//              realisation.setSourceFinancement(...);
+//              realisation.setMonais(...);
+//              realisation.setMonnaie(...);
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-//                    realisation.setModeSelection(realisationRequest.getModeSelection());
+//              realisation.setModeSelection(...);
                     realisation.setModePassation(realisationRequest.getModePassation());
                     realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                     realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
@@ -3591,9 +3616,8 @@ public class PpmServiceImpl implements PpmService {
                 System.out.println("Saved realisation ID: " + realisation.getId() + " version: " + realisation.getVersion());
 
                 System.out.println("the relisations request are");
-
-
                 System.out.println(realisationRequest.getFinancements());
+
                 // Process financements using helper method
                 processFinancementsForRealisation(realisation, realisationRequest.getFinancements());
 
@@ -3739,9 +3763,21 @@ public class PpmServiceImpl implements PpmService {
                     System.out.println("Cleared lots for realisation ID: " + realisation.getId());
                 }
 
-                // Process financements using helper method
+                // Process financements using helper method (again as in original logic)
                 processFinancementsForRealisation(realisation, realisationRequest.getFinancements());
 
+                // ===== ADDED: Recompute budget from financements then apply PPM seuil control
+                BigDecimal recalculatedBudget = (realisation.getFinancements() == null)
+                        ? BigDecimal.ZERO
+                        : realisation.getFinancements().stream()
+                        .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                        .map(f -> f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                realisation.setBudgetEstime(recalculatedBudget);
+
+                // PPM-specific rule: if budget < seuil -> throw (activity fits PAA, not PPM)
+                setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
+                // ===== END ADDED
 
                 updatedRealisations.add(realisation);
             }
@@ -3778,6 +3814,7 @@ public class PpmServiceImpl implements PpmService {
 
         return existingPpm;
     }
+
 
 
     /**
@@ -3978,441 +4015,260 @@ public class PpmServiceImpl implements PpmService {
         return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, allRealisationsForPpm.size());
     }
 
-
-//    @Transactional
-//    @Override
-//    public Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException {
-//        String currentYear = String.valueOf(LocalDate.now().getYear());
-//        log.info("Creating PPM for year: {}", currentYear);
-//
-//        // Step 1: Validate the AC in the request
-//        Integer requestAcId = request.getAcId();
-//        if (requestAcId == null) {
-//            throw new IllegalArgumentException("AC ID is required to create a PPM.");
-//        }
-//
-//        // Step 2: Verify that the user is associated with the requested AC
-//        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-//        if (userAcIds.isEmpty()) {
-//            log.warn("No AC IDs found for the connected user");
-//            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
-//        }
-//        if (!userAcIds.contains(requestAcId)) {
-//            log.warn("User does not have permission for AC ID: {}", requestAcId);
-//            throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
-//        }
-//
-//        // Step 3: Verify that the AC exists
-//        Ac ac = acService.findById(requestAcId);
-//
-//        // Step 4: Restrict creation to one PPM per AC per year
-//        Specification<Ppm> spec = PpmSpecifications.annee(currentYear)
-//                .and(PpmSpecifications.ppmAc(requestAcId))
-//                .and(PpmSpecifications.deleted(false));
-//        List<Ppm> existingPpms = repository.findAll(spec);
-//        if (!existingPpms.isEmpty()) {
-//            Ppm existingPpm = existingPpms.get(0);
-//            throw new PpmCreationLimitExceededException(
-//                    "A PPM already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
-//                    existingPpm.getId(),
-//                    existingPpm.getVersion(),
-//                    1
-//            );
-//        }
-//
-//        // Step 5: Generate new PPM ID and set version
-//        Integer ppmId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
-//        Integer ppmVersion = 1;
-//
-//        // Step 6: Create and populate PPM entity
-//        Ppm ppm = new Ppm();
-//        ppm.setId(ppmId);
-//        ppm.setVersion(ppmVersion);
-//        ppm.setNom(request.getNom());
-//        ppm.setModePassation(request.getModePassation());
-//        ppm.setRemarque(request.getRemarque());
-//        ppm.setAnnee(currentYear);
-//        setRef(ppm);
-//        ppm.setBudgetEstime(request.getBudgetEstime());
-//        ppm.setStatus(ProcessStatus.BROUILLON);
-//        ppm.setAc(ac);
-//        ppm.setRealisations(new ArrayList<>());
-//        ppm.setDocs(new ArrayList<>());
-//
-//        // Step 7: Validate annee
-//        if (!currentYear.equals(ppm.getAnnee())) {
-//            throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
-//        }
-//        log.info("Annee validation passed: {}", ppm.getAnnee());
-//
-//        // Step 8: Save PPM initially
-//        Ppm savedPpm = repository.save(ppm);
-//
-//        // Step 9: Handle documents for PPM
-//        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-//            List<Docs> docs = new ArrayList<>();
-//            for (Integer docId : request.getDocIds()) {
-//                Docs doc = docsRepository.findById(docId)
-//                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-//                if (doc.getPpms() == null) {
-//                    doc.setPpms(new ArrayList<>());
-//                }
-//                doc.getPpms().add(savedPpm);
-//                docs.add(doc);
-//                docsRepository.save(doc);
-//            }
-//            savedPpm.setDocs(docs);
-//        }
-//
-//        if (request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
-//            documentCommuneService.processAndSaveDocuments(
-//                    request.getPpmFiles(),
-//                    savedPpm,
-//                    Constants.PATH_ENTREPOT_GED_PPM
-//            );
-//        }
-//
-//        // Step 10: Process realisations if provided
-//        if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
-//            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-//            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
-//
-//            List<Realisation> realisationsToSave = new ArrayList<>();
-//            for (RealisationWithLotsRequestDto realisationRequest : request.getRealisationsWithLots()) {
-//                Realisation realisation = new Realisation();
-//                realisation.setId(nextRealisationId++);
-//                realisation.setVersion(1);
-//                realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-//                realisation.setService(realisationRequest.getService());
-//                realisation.setDirection(realisationRequest.getDirection());
-//                realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                realisation.setMonnaie(realisationRequest.getMonnaie());
-//                realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-//                realisation.setModePassation(realisationRequest.getModePassation());
-//                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-//                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-//                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-//                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-//                realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-//                realisation.setIsPublished(realisationRequest.getIsPublished());
-//                realisation.setPublishedAt(realisationRequest.getPublishedAt());
-//                realisation.setSort(realisationRequest.getSort());
-//
-//                // Set seuilApplicable for the realisation
-//                setSeuilApplicableForRealisation(realisation, requestAcId);
-//
-//                // Handle realisation files
-//                if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
-//                    documentCommuneService.processAndSaveDocuments(
-//                            realisationRequest.getRealisationFiles(),
-//                            realisation,
-//                            Constants.PATH_ENTREPOT_GED_PPM + "/" + ppm.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
-//                    );
-//                }
-//
-//                // Set bidirectional relationship with PPM
-//                if (realisation.getPpms() == null) {
-//                    realisation.setPpms(new ArrayList<>());
-//                }
-//                realisation.getPpms().add(savedPpm);
-//                savedPpm.getRealisations().add(realisation);
-//
-//                // Handle Lots
-//                if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-//                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-//                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
-//                    List<Lot> lots = new ArrayList<>();
-//                    for (LotResponse lotRequest : realisationRequest.getLots()) {
-//                        Lot lot = new Lot();
-//                        Integer lotId = lotRequest.getId();
-//                        if (lotId == null) {
-//                            lotId = nextLotId++;
-//                        }
-//                        lot.setId(lotId);
-//                        lot.setVersion(1);
-//                        lot.setDescription(lotRequest.getDescription());
-//                        lot.setBudget(lotRequest.getBudget());
-//                        lot = lotRepository.save(lot);
-//                        lots.add(lot);
-//                    }
-//                    realisation.setLots(lots);
-//                }
-//
-//                realisationsToSave.add(realisation);
-//            }
-//            realisationRepository.saveAll(realisationsToSave);
-//        }
-//
-//        // Step 11: Validate realisations for budget consistency
-//        validateRealisations(savedPpm);
-//
-//        // Step 12: Calculate and set estimated budget based on realisations
-//        BigDecimal budgetEstime = savedPpm.getRealisations().stream()
-//                .map(Realisation::getBudgetEstime)
-//                .filter(b -> b != null)
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
-//        savedPpm.setBudgetEstime(budgetEstime);
-//
-//        // Step 13: Save and prepare the final PPM for return
-//        Ppm finalPpm = repository.save(savedPpm);
-//
-//        return finalPpm;
-//    }
-
     @Transactional
-     @Override
-     public Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException {
-         String currentYear = String.valueOf(LocalDate.now().getYear());
-         log.info("Creating PPM for year: {}", currentYear);
+    @Override
+    public Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException {
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+        log.info("Creating PPM for year: {}", currentYear);
 
-         // Step 1: Validate the AC in the request
-         Integer requestAcId = request.getAcId();
-         if (requestAcId == null) {
-             throw new IllegalArgumentException("AC ID is required to create a PPM.");
-         }
+        // Step 1: Validate the AC in the request
+        Integer requestAcId = request.getAcId();
+        if (requestAcId == null) {
+            throw new IllegalArgumentException("AC ID is required to create a PPM.");
+        }
 
-         // Step 2: Verify that the user is associated with the requested AC
-         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-         if (userAcIds.isEmpty()) {
-             log.warn("No AC IDs found for the connected user");
-             throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
-         }
-         if (!userAcIds.contains(requestAcId)) {
-             log.warn("User does not have permission for AC ID: {}", requestAcId);
-             throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
-         }
+        // Step 2: Verify that the user is associated with the requested AC
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds.isEmpty()) {
+            log.warn("No AC IDs found for the connected user");
+            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+        }
+        if (!userAcIds.contains(requestAcId)) {
+            log.warn("User does not have permission for AC ID: {}", requestAcId);
+            throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
+        }
 
-         // Step 3: Verify that the AC exists
-         Ac ac = acService.findById(requestAcId);
+        // Step 3: Verify that the AC exists
+        Ac ac = acService.findById(requestAcId);
 
-         // Step 4: Restrict creation to one PPM per AC per year
-         Specification<Ppm> spec = PpmSpecifications.annee(currentYear)
-                 .and(PpmSpecifications.ppmAc(requestAcId))
-                 .and(PpmSpecifications.deleted(false));
-         List<Ppm> existingPpms = repository.findAll(spec);
-         if (!existingPpms.isEmpty()) {
-             Ppm existingPpm = existingPpms.get(0);
-             throw new PpmCreationLimitExceededException(
-                     "A PPM already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
-                     existingPpm.getId(),
-                     existingPpm.getVersion(),
-                     1
-             );
-         }
+        // Step 4: Restrict creation to one PPM per AC per year
+        Specification<Ppm> spec = PpmSpecifications.annee(currentYear)
+                .and(PpmSpecifications.ppmAc(requestAcId))
+                .and(PpmSpecifications.deleted(false));
+        List<Ppm> existingPpms = repository.findAll(spec);
+        if (!existingPpms.isEmpty()) {
+            Ppm existingPpm = existingPpms.get(0);
+            throw new PpmCreationLimitExceededException(
+                    "A PPM already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
+                    existingPpm.getId(),
+                    existingPpm.getVersion(),
+                    1
+            );
+        }
 
-         // Step 5: Generate new PPM ID and set version
-         Integer ppmId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
-         Integer ppmVersion = 1;
+        // Step 5: Generate new PPM ID and set version
+        Integer ppmId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
+        Integer ppmVersion = 1;
 
-         // Step 6: Create and populate PPM entity
-         Ppm ppm = new Ppm();
-         ppm.setId(ppmId);
-         ppm.setVersion(ppmVersion);
-         ppm.setNom(request.getNom());
-         ppm.setModePassation(request.getModePassation());
-         ppm.setRemarque(request.getRemarque());
-         ppm.setAnnee(currentYear);
-         setRef(ppm);
-         ppm.setBudgetEstime(request.getBudgetEstime());
-         ppm.setStatus(ProcessStatus.BROUILLON);
-         ppm.setAc(ac);
-         ppm.setRealisations(new ArrayList<>());
-         ppm.setDocs(new ArrayList<>());
+        // Step 6: Create and populate PPM entity
+        Ppm ppm = new Ppm();
+        ppm.setId(ppmId);
+        ppm.setVersion(ppmVersion);
+        ppm.setNom(request.getNom());
+        ppm.setModePassation(request.getModePassation());
+        ppm.setRemarque(request.getRemarque());
+        ppm.setAnnee(currentYear);
+        setRef(ppm);
+        ppm.setBudgetEstime(request.getBudgetEstime());
+        ppm.setStatus(ProcessStatus.BROUILLON);
+        ppm.setAc(ac);
+        ppm.setRealisations(new ArrayList<>());
+        ppm.setDocs(new ArrayList<>());
 
-         // Step 7: Validate annee
-         if (!currentYear.equals(ppm.getAnnee())) {
-             throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
-         }
-         log.info("Annee validation passed: {}", ppm.getAnnee());
+        // Step 7: Validate annee
+        if (!currentYear.equals(ppm.getAnnee())) {
+            throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
+        }
+        log.info("Annee validation passed: {}", ppm.getAnnee());
 
-         // Step 8: Save PPM initially
-         Ppm savedPpm = repository.save(ppm);
+        // Step 8: Save PPM initially
+        Ppm savedPpm = repository.save(ppm);
 
-         // Step 9: Handle documents for PPM
-         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
-             List<Docs> docs = new ArrayList<>();
-             for (Integer docId : request.getDocIds()) {
-                 Docs doc = docsRepository.findById(docId)
-                         .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                 if (doc.getPpms() == null) {
-                     doc.setPpms(new ArrayList<>());
-                 }
-                 doc.getPpms().add(savedPpm);
-                 docs.add(doc);
-                 docsRepository.save(doc);
-             }
-             savedPpm.setDocs(docs);
-         }
+        // Step 9: Handle documents for PPM
+        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            List<Docs> docs = new ArrayList<>();
+            for (Integer docId : request.getDocIds()) {
+                Docs doc = docsRepository.findById(docId)
+                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
+                if (doc.getPpms() == null) {
+                    doc.setPpms(new ArrayList<>());
+                }
+                doc.getPpms().add(savedPpm);
+                docs.add(doc);
+                docsRepository.save(doc);
+            }
+            savedPpm.setDocs(docs);
+        }
 
-         if (request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
-             documentCommuneService.processAndSaveDocuments(
-                     request.getPpmFiles(),
-                     savedPpm,
-                     Constants.PATH_ENTREPOT_GED_PPM
-             );
-         }
+        if (request.getPpmFiles() != null && !request.getPpmFiles().isEmpty()) {
+            documentCommuneService.processAndSaveDocuments(
+                    request.getPpmFiles(),
+                    savedPpm,
+                    Constants.PATH_ENTREPOT_GED_PPM
+            );
+        }
 
+        // Step 10: Process realisations if provided
+        if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
+            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
 
-         // Step 10: Process realisations if provided
-         if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
-             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+            List<Realisation> realisationsToSave = new ArrayList<>();
+            for (RealisationWithLotsRequestDto realisationRequest : request.getRealisationsWithLots()) {
+                Realisation realisation = new Realisation();
+                realisation.setId(nextRealisationId++);
+                realisation.setVersion(1);
+                realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
+                realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
+//          realisation.setService(realisationRequest.getService());
+//          realisation.setDirection(realisationRequest.getDirection());
+//          realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
+//          realisation.setMonnaie(realisationRequest.getMonnaie());
+                realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
+                realisation.setModePassation(realisationRequest.getModePassation());
+                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
+                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                // NOTE: do NOT set budgetEstime from request; we compute it from financements below
+                realisation.setIsPublished(realisationRequest.getIsPublished());
+                realisation.setPublishedAt(realisationRequest.getPublishedAt());
+                realisation.setSort(realisationRequest.getSort());
 
-             List<Realisation> realisationsToSave = new ArrayList<>();
-             for (RealisationWithLotsRequestDto realisationRequest : request.getRealisationsWithLots()) {
-                 Realisation realisation = new Realisation();
-                 realisation.setId(nextRealisationId++);
-                 realisation.setVersion(1);
-                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
-                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//                 realisation.setService(realisationRequest.getService());
-//                 realisation.setDirection(realisationRequest.getDirection());
-//                 realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//                 realisation.setMonnaie(realisationRequest.getMonnaie());
-                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
-                 realisation.setModePassation(realisationRequest.getModePassation());
-                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-                 realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                 realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
-                 realisation.setIsPublished(realisationRequest.getIsPublished());
-                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
-                 realisation.setSort(realisationRequest.getSort());
+                // Handle realisation files
+                if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
+                    documentCommuneService.processAndSaveDocuments(
+                            realisationRequest.getRealisationFiles(),
+                            realisation,
+                            Constants.PATH_ENTREPOT_GED_PPM + "/" + ppm.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
+                    );
+                }
 
-                 // Set seuilApplicable for the realisation
-                 setSeuilApplicableForRealisation(realisation, requestAcId);
+                // Set bidirectional relationship with PPM
+                if (realisation.getPpms() == null) {
+                    realisation.setPpms(new ArrayList<>());
+                }
+                realisation.getPpms().add(savedPpm);
+                savedPpm.getRealisations().add(realisation);
 
-                 // Handle realisation files
-                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
-                     documentCommuneService.processAndSaveDocuments(
-                             realisationRequest.getRealisationFiles(),
-                             realisation,
-                             Constants.PATH_ENTREPOT_GED_PPM + "/" + ppm.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
-                     );
-                 }
+                // Handle Lots
+                if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
+                    List<Lot> lots = new ArrayList<>();
+                    for (LotResponse lotRequest : realisationRequest.getLots()) {
+                        Lot lot = new Lot();
+                        Integer lotId = lotRequest.getId();
+                        if (lotId == null) {
+                            lotId = nextLotId++;
+                        }
+                        lot.setId(lotId);
+                        lot.setVersion(1);
+                        lot.setDescription(lotRequest.getDescription());
+                        lot.setBudget(lotRequest.getBudget());
+                        lot = lotRepository.save(lot);
+                        lots.add(lot);
+                    }
+                    realisation.setLots(lots);
+                }
 
-                 // Set bidirectional relationship with PPM
-                 if (realisation.getPpms() == null) {
-                     realisation.setPpms(new ArrayList<>());
-                 }
-                 realisation.getPpms().add(savedPpm);
-                 savedPpm.getRealisations().add(realisation);
+                // ADD: Handle Financements
+                Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
 
-                 // Handle Lots
-                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                     Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                     Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
-                     List<Lot> lots = new ArrayList<>();
-                     for (LotResponse lotRequest : realisationRequest.getLots()) {
-                         Lot lot = new Lot();
-                         Integer lotId = lotRequest.getId();
-                         if (lotId == null) {
-                             lotId = nextLotId++;
-                         }
-                         lot.setId(lotId);
-                         lot.setVersion(1);
-                         lot.setDescription(lotRequest.getDescription());
-                         lot.setBudget(lotRequest.getBudget());
-                         lot = lotRepository.save(lot);
-                         lots.add(lot);
-                     }
-                     realisation.setLots(lots);
-                 }
+                if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
 
+                    List<Financement> financements = new ArrayList<>();
 
+                    for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
+                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
 
-                 // ADD: Handle Financements
-                 Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                        if (financementRequest.getMonnaieId() == null) {
+                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+                            continue;
+                        }
 
-                 Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
+                        Financement financement = new Financement();
+                        FinancementId financementId = new FinancementId();
 
-                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-                     log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+                        // assign simple fields
+                        financementId.setFinancementId(nextFinancementId++);
+                        financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                     // SAFE: Create list without triggering hashCode on entities
-                     List<Financement> financements = new ArrayList<>();
+                        Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
 
-                     for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-                         log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+                        if (monnaie.getTaux() != null) {
+                            financement.setTauxApplicable(monnaie.getTaux());
+                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() +
+                                    " from Monnaie ID: " + monnaie.getId());
+                        } else {
+                            financement.setTauxApplicable(0.0);
+                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+                        }
 
-                         // Validate required fields
-                         if (financementRequest.getMonnaieId() == null) {
-                             log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
-                             continue;
-                         }
+                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
+                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                            financement.setSourceFinancement(sourceFinancement);
+                        }
 
-                         // SAFE: Create entities step by step without setting relationships
-                         Financement financement = new Financement();
-                         FinancementId financementId = new FinancementId();
+                        // relationships last
+                        financement.setMonnaie(monnaie);
+                        financementId.setRealisation(realisation);
+                        financement.setId(financementId);
 
-                         // Set simple fields first
-                         financementId.setFinancementId(nextFinancementId++);
-                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                        financements.add(financement);
 
-                         // Get monnaie entity
-                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
+                                financementId.getFinancementId(),
+                                financementRequest.getMonnaieId(),
+                                financementRequest.getBudgetEstimer());
+                    }
 
-                         // AUTO-ASSIGN TAUX FROM MONNAIE
-                         if (monnaie.getTaux() != null) {
-                             financement.setTauxApplicable(monnaie.getTaux());
-                             System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() +
-                                     " from Monnaie ID: " + monnaie.getId());
-                         } else {
-                             financement.setTauxApplicable(0.0);
-                             System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
-                         }
-                         // Set source financement if provided
-                         if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
-                             RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                                     .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
-                             financement.setSourceFinancement(sourceFinancement);
-                         }
+                    realisation.setFinancements(financements);
+                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
 
-                         // CRITICAL: Set relationships LAST to avoid cycles
-                         financement.setMonnaie(monnaie);
-                         financementId.setRealisation(realisation);
-                         financement.setId(financementId);
+                    // >>> NEW: compute budget from financements (like PAA)
+                    BigDecimal realisationBudget = financements.stream()
+                            .map(f -> f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    realisation.setBudgetEstime(realisationBudget);
 
-                         // SAFE: Add to ArrayList (doesn't trigger hashCode)
-                         financements.add(financement);
+                    // >>> NEW: validate for PPM (throws if budget < seuil)
+                    setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
 
-                         log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
-                                 financementId.getFinancementId(),
-                                 financementRequest.getMonnaieId(),
-                                 financementRequest.getBudgetEstimer());
-                     }
+                } else {
+                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+                    realisation.setFinancements(new ArrayList<>());
+                    realisation.setBudgetEstime(BigDecimal.ZERO);
 
-                     // SAFE: Set the collection on realisation
-                     realisation.setFinancements(financements);
-                     log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
-                 } else {
-                     log.info("No financements provided for realisation ID: {}", realisation.getId());
-                     realisation.setFinancements(new ArrayList<>());
-                 }
+                    // >>> NEW: still validate for PPM (throws if budget < seuil)
+                    setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
+                }
 
-                 realisationsToSave.add(realisation);
-             }
-             realisationRepository.saveAll(realisationsToSave);
+                realisationsToSave.add(realisation);
+            }
+            realisationRepository.saveAll(realisationsToSave);
 
-         }
+        }
 
-         // Step 11: Validate realisations for budget consistency
-         validateRealisations(savedPpm);
+        // Step 11: Validate realisations for budget consistency
+        validateRealisations(savedPpm);
 
-         // Step 12: Calculate and set estimated budget based on realisations
-         BigDecimal budgetEstime = savedPpm.getRealisations().stream()
-                 .map(Realisation::getBudgetEstime)
-                 .filter(b -> b != null)
-                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-         savedPpm.setBudgetEstime(budgetEstime);
+        // Step 12: Calculate and set estimated budget based on realisations
+        BigDecimal budgetEstime = savedPpm.getRealisations().stream()
+                .map(Realisation::getBudgetEstime)
+                .filter(b -> b != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        savedPpm.setBudgetEstime(budgetEstime);
 
-         // Step 13: Save and prepare the final PPM for return
-         Ppm finalPpm = repository.save(savedPpm);
+        // Step 13: Save and prepare the final PPM for return
+        Ppm finalPpm = repository.save(savedPpm);
 
-         return finalPpm;
-     }
+        return finalPpm;
+    }
 
 
     @Override
@@ -5331,6 +5187,75 @@ public class PpmServiceImpl implements PpmService {
 
         realisation.setFinancements(financements);
         return hasChanges;
+    }
+
+    /**
+     * PPM rule:
+     * - Fetch AC seuil by (acId, typeMarcher, modePassation).
+     * - Set realisation.seuilApplicable.
+     * - If budgetEstime < seuil  -> throw RealisationBudgetBelowAcSeuilForPpmException
+     *   (activity is compatible with PAA, not PPM).
+     * - If no seuil or missing params -> set 0 and warn (same behavior as PAA helper).
+     *
+     * IMPORTANT: Call this only AFTER you finalized the realisation's financements/lots
+     * and recomputed budgetEstime, to avoid auto-flush issues during the query.
+     */
+    private void setSeuilApplicableForRealisationInPpm(Realisation realisation, Integer acId) {
+        if (acId == null) {
+            realisation.setSeuilApplicable(BigDecimal.ZERO);
+            log.warn("[PPM] AC ID is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
+            return;
+        }
+
+        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
+            try {
+                log.info("[PPM] ************** ac id : {} type marche id : {} mode de passation : {}",
+                        acId,
+                        realisation.getTypeMarcher().getId(),
+                        realisation.getModePassation().getId());
+
+                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
+                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+
+                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+
+                if (acSeuilOpt.isPresent()) {
+                    BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
+                    realisation.setSeuilApplicable(acSeuil);
+
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null
+                            ? realisation.getBudgetEstime()
+                            : BigDecimal.ZERO;
+
+                    log.info("[PPM] Set seuilApplicable={} for Realisation ID: {} (budgetEstime={}) with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            acSeuil, realisation.getId(), budgetEstime, acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // PPM control: reject if budget is BELOW the seuil
+                    if (budgetEstime.compareTo(acSeuil) < 0) {
+                        String msg = String.format(
+                                "Realisation ID %d has budgetEstime %s BELOW AC seuil %s. " +
+                                        "This activity is compatible with PAA, not PPM.",
+                                realisation.getId(), budgetEstime, acSeuil);
+                        log.error("[PPM] {}", msg);
+                        throw new RealisationBudgetBelowAcSeuilForPpmException(msg);
+                    }
+
+                } else {
+                    realisation.setSeuilApplicable(BigDecimal.ZERO);
+                    log.warn("[PPM] No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
+                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+                }
+            } catch (RealisationBudgetBelowAcSeuilForPpmException e) {
+                // bubble up to stop processing this realisation in PPM flow
+                throw e;
+            }
+        } else {
+            realisation.setSeuilApplicable(BigDecimal.ZERO);
+            log.warn("[PPM] TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.",
+                    realisation.getId());
+        }
     }
 
 

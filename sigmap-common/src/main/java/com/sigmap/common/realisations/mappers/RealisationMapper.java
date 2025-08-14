@@ -17,7 +17,6 @@ public interface RealisationMapper {
     @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
     @Mapping(target = "beneficiaire", source = "beneficiaire")
-
 //    @Mapping(target = "service", source = "service")
 //    @Mapping(target = "direction", source = "direction")
 //    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
