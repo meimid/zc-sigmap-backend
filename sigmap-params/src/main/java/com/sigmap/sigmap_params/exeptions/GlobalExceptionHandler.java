@@ -673,5 +673,11 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
-
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(CNCMPPNotFound.class)
+    public ResponseEntity<ErrorResponse> CNCMPPNotFoundException(CNCMPPNotFound ex) {
+        String message = messageSource.getMessage("com.cncpp_notfound",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 }
