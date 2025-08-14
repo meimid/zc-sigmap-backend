@@ -6,7 +6,9 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -19,6 +21,8 @@ import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
+import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
@@ -33,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -116,7 +121,9 @@ public class PpmFlowableController {
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false
+            ) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
         log.info("Validating task ID: {} with request: {}", taskId, request);
 
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
@@ -127,9 +134,104 @@ public class PpmFlowableController {
                 log.error("Error processing lots JSON: {}", e.getMessage());
             }
         }
+        // ADDED THIS: Process financements from JSON string if provided
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                processRealisationFinancementsFromJson(request.getPpm(), realisationsFinancementsJson);
+                log.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                log.error("Error processing financements JSON: {}", e.getMessage());
+            }
+        }
         TaskDTO response = ppmFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
     }
+
+    private void processRealisationFinancementsFromJson(PpmWithLotsRequestDto request, String realisationsFinancementsJson) {
+        if (realisationsFinancementsJson == null || realisationsFinancementsJson.isEmpty()) {
+            return;
+        }
+
+        try {
+            log.info("Processing financements JSON: {}", realisationsFinancementsJson);
+            Map<String, List<Map<String, Object>>> financementMap = objectMapper.readValue(
+                    realisationsFinancementsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {}
+            );
+
+            log.info("Parsed {} realisation indices from financements JSON", financementMap.size());
+
+            List<RealisationBaseRequestDto> realisations = request.getRealisations();
+            if (realisations == null) {
+                realisations = new ArrayList<>();
+                request.setRealisations(realisations);
+            }
+
+            for (Map.Entry<String, List<Map<String, Object>>> entry : financementMap.entrySet()) {
+                int index;
+                try {
+                    index = Integer.parseInt(entry.getKey());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid realisation index: {}. Skipping.", entry.getKey());
+                    continue;
+                }
+
+                if (index >= realisations.size()) {
+                    log.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})", index, realisations.size());
+                    continue;
+                }
+
+                List<FinancementRequest> financementRequests = new ArrayList<>();
+                for (Map<String, Object> financementData : entry.getValue()) {
+                    FinancementRequest financementRequest = new FinancementRequest();
+                    // Explicitly map fields
+                    if (financementData.containsKey("id")) {
+                        Object id = financementData.get("id");
+                        if (id instanceof Number) {
+                            financementRequest.setFinancementId(((Number) id).intValue());
+                        }
+                    }
+                    if (financementData.containsKey("monnaieId")) {
+                        Object monnaieId = financementData.get("monnaieId");
+                        if (monnaieId instanceof Number) {
+                            financementRequest.setMonnaieId(((Number) monnaieId).intValue());
+                        }
+                    }
+                    if (financementData.containsKey("budgetEstimer")) {
+                        Object budgetEstimer = financementData.get("budgetEstimer");
+                        if (budgetEstimer instanceof Number) {
+                            financementRequest.setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
+                        }
+                    }
+                    if (financementData.containsKey("sourceFinancement")) {
+                        Object sourceFinancement = financementData.get("sourceFinancement");
+                        if (sourceFinancement instanceof Map) {
+                            Map<String, Object> sourceFinancementMap = (Map<String, Object>) sourceFinancement;
+                            if (sourceFinancementMap.containsKey("id")) {
+                                Object sourceId = sourceFinancementMap.get("id");
+                                if (sourceId instanceof Number) {
+                                    RefParam refParam = new RefParam();
+                                    refParam.setId(((Number) sourceId).intValue());
+                                    financementRequest.setSourceFinancement(refParam);
+                                }
+                            }
+                        }
+                    }
+                    financementRequests.add(financementRequest);
+                }
+
+                log.info("Added {} financements to realisation at index {}", financementRequests.size(), index);
+                log.info("{}", financementRequests);
+                realisations.get(index).setFinancements(financementRequests);
+            }
+
+            log.info("Successfully processed financements from JSON string");
+        } catch (IOException e) {
+            log.error("Error parsing financements JSON: {}", realisationsFinancementsJson, e);
+            throw new IllegalArgumentException("Failed to parse financements JSON: " + e.getMessage());
+        }
+    }
+
 
     /**
      * Validates a group of tasks and updates the associated Ppm entities.
