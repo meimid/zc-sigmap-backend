@@ -5,6 +5,7 @@ import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcWebsiteResponse;
+import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
@@ -14,17 +15,20 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaQuery;
+import com.sigmap.common.paas.response.PaaDetailsWebsite;
 import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmQuery;
+import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.response.RealisationPaaWebSite;
 import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -47,7 +51,8 @@ public class WebMasterController {
     private final AgpmService agpmService;
     private final AcService acService;
     private final WebMasterService webMasterService;
-
+    @Value("${file.upload.ac-logo-path}")
+    private String acLogoPath;
     public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService, WebMasterService webMasterService) {
         this.ppmService = ppmService;
         this.paaService = paaService;
@@ -67,10 +72,11 @@ public class WebMasterController {
     }
 
     @GetMapping("/ppm/{ppmId}")
-    public ResponseEntity<Page<RealisationPpmWebsite>> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
-                                                                                       ,Pageable pageable) throws PpmNotFound, AcNotFound {
-        Page<Realisation> realisations = webMasterService.getPpmById(ppmId, pageable);
-        Page<RealisationPpmWebsite >response = realisations.map(RealisationPpmWebsite::new);
+    public ResponseEntity<PpmDetailsWebsite> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
+                                                                                       , Pageable pageable)
+            throws PpmNotFound, AcNotFound {
+        PpmDetailsWebsite response= webMasterService.getPpmById(ppmId, pageable);
+
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
     @GetMapping("/paa")
@@ -83,10 +89,9 @@ public class WebMasterController {
         return new ResponseEntity<>(paaResponsePage, HttpStatus.OK);
     }
     @GetMapping("/paa/{paaId}")
-    public ResponseEntity<Page<RealisationPaaWebSite>> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
-                                                                                      Pageable pageable) throws PaaNotFound {
-        Page<Realisation> realisations = webMasterService.getPaaById(paaId,pageable);
-        Page<RealisationPaaWebSite> response =  realisations.map(RealisationPaaWebSite::new);
+    public ResponseEntity<PaaDetailsWebsite> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
+                                                                             Pageable pageable) throws PaaNotFound {
+        PaaDetailsWebsite response = webMasterService.getPaaById(paaId,pageable);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
@@ -112,4 +117,10 @@ public class WebMasterController {
         List<AcWebsiteResponse> responses= AcMapper.INSTANCE.mapToWebsiteResponse(acs);
         return ResponseEntity.ok(responses);
     }
+
+  /*  @GetMapping("/{acId}/photo/display")
+    public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
+        LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
+        return ResponseEntity.ok(response);
+    }*/
 }

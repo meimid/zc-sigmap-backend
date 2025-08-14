@@ -1,13 +1,16 @@
 package com.sigmap.common.ac;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.config.TypeAffCommission;
 import com.sigmap.common.direction.Direction;
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Getter
@@ -27,7 +30,7 @@ public class Ac extends BaseEntity {
   private String contact;
   @ManyToOne
   @JoinColumn(name = "tutel_id")
-  private RefParam tutel;
+  private Ac tutel;
   @JsonIgnoreProperties
   @OneToMany(
           cascade = CascadeType.ALL,
@@ -36,4 +39,24 @@ public class Ac extends BaseEntity {
   @JoinColumn(name = "ac_id")
   Set<Direction> directions= new HashSet<>();
   private String email;
+  private String logo;
+  @Column(name = "is_tutel")
+  private boolean istTutel;
+  @ManyToOne
+  @JoinColumn(name = "com_id")
+  private Com com;
+  @OneToOne(cascade = CascadeType.ALL)
+  @JoinColumn(name = "adresse_id")
+  private Adresse adresse;
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id); // Only use simple fields, not related entities
+  }
+  @Enumerated(EnumType.STRING)
+  @Column(name = "type_com")
+  private TypeAffCommission typeAffCommission;
+
+
+
 }

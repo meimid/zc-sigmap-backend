@@ -19,5 +19,7 @@ public interface AcRepository extends JpaRepository<Ac, Integer>,
     boolean hasAssociatedPaa(@Param("acId") Integer acId);
     @Query("SELECT EXISTS (SELECT p FROM Ppm p WHERE p.ac.id = :acId and p.isDeleted=false)")
     boolean hasAssociatedPpm(@Param("acId") Integer acId);
+    @Query("SELECT EXISTS (SELECT a FROM Ac a WHERE a.tutel.id = :acId and a.isDeleted=false)")
+    boolean hasAssociatedAc(@Param("acId") Integer acId);
 }
 

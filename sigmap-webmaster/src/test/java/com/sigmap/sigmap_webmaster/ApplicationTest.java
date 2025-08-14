@@ -2,6 +2,7 @@ package com.sigmap.sigmap_webmaster;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MariaDBContainer;
@@ -9,6 +10,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 @SpringBootTest
+@Import(MailSenderTestConfig.class)
 public class ApplicationTest {
   static final MariaDBContainer<?> MARIA_DB_CONTAINER;
 

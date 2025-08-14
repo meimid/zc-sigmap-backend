@@ -3,6 +3,9 @@ package com.sigmap.common.ref_params;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.adresse.AdressSpecifications;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.AdresseRespository;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmSpecifications;
@@ -59,6 +62,8 @@ public class RefParamServiceImpl implements RefParamService {
     private final SocieteAddressRepository societeAddressRepository;
     private final ComRepository comRepository;
     private final AcRepository acRepository;
+    private final  AdresseRespository  adresseRespository;
+
 
     /**
      * Constructor.
@@ -77,8 +82,8 @@ public class RefParamServiceImpl implements RefParamService {
                                PaaRepository paaRepository,
                                SocieteAddressRepository societeAddressRepository,
                                ComRepository comRepository,
-                               AcRepository acRepository
-                               ) {
+                               AcRepository acRepository, AdresseRespository adresseRespository
+    ) {
         this.repository = repository;
         this.refTypeService = refTypeService;
         this.agpmRepository = agpmRepository;
@@ -90,6 +95,7 @@ public class RefParamServiceImpl implements RefParamService {
         this.societeAddressRepository = societeAddressRepository;
         this.comRepository = comRepository;
         this.acRepository = acRepository;
+        this.adresseRespository = adresseRespository;
     }
 
 
@@ -143,7 +149,7 @@ public class RefParamServiceImpl implements RefParamService {
     @Override
     public RefParam findById(Integer id) throws RefParamNotFound {
         Specification<RefParam> specification = RefParamSpecifications.id(id)
-                .and(RefParamSpecifications.systemType(false));
+                .and(RefParamSpecifications.systemType(false)).and(RefParamSpecifications.deleted(false));
         RefParam ref= findOne(specification)
                 .orElseThrow(() -> new RefParamNotFound("", List.of(id)));
         if(ref.getRefType().getSystemType()!=null&&ref.getRefType().getSystemType()) {
@@ -159,6 +165,11 @@ public class RefParamServiceImpl implements RefParamService {
 
     @Override
     public RefParam create(RefParamRequest request) throws RefTypeNotFound {
+        Specification<RefParam> specification = RefParamSpecifications.systemType(false).and(RefParamSpecifications.code(request.getCode())).and(RefParamSpecifications.deleted(false));
+        List<RefParam> refParamUnique=findListRefParamSpecification(specification);
+        if (!refParamUnique.isEmpty()) {
+        throw new RefParamAlredyExist("",request.getCode());
+        }
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         if(request.getRefTypeId()!=null) {
             RefType refType = refTypeService.findById(request.getRefTypeId());
@@ -174,6 +185,15 @@ public class RefParamServiceImpl implements RefParamService {
     @Override
     public RefParam update(Integer id,RefParamRequest request) throws RefParamNotFound, RefTypeNotFound {
         RefParam refParam = findById(id);
+        Specification<RefParam> specification = RefParamSpecifications.systemType(false).and(RefParamSpecifications.code(request.getCode())).and(RefParamSpecifications.deleted(false));
+        List<RefParam> refParams=findListRefParamSpecification(specification);
+        if (!refParams.isEmpty()) {
+            for(RefParam refParam1: refParams) {
+                if(!refParam1.getId().equals(id)) {
+                    throw new RefParamAlredyExist("",request.getCode());
+                }
+            }
+        }
         if(refParam.getRefType().getSystemType()) {
             throw new RefParamNotFound("", List.of(id));
         }
@@ -283,6 +303,14 @@ public class RefParamServiceImpl implements RefParamService {
         if (hasAssociatedDynaDoc) {
             throw new HasAssociatedDynaDoc(id);
         }
+        Specification<Adresse> adresseSpec = Specification.where(
+                AdressSpecifications.deleted(false)
+                        .and(AdressSpecifications.hasPaysId(id))
+        );
+        boolean hasAddresse = adresseRespository.count(adresseSpec) > 0;
+        if (hasAddresse) {
+            throw new HasAssociatedAdress("", id);
+        }
 
         repository.softDelete(id);
     }
@@ -328,6 +356,41 @@ public class RefParamServiceImpl implements RefParamService {
         RefParam refParam = RefParamMapper.INSTANCE.map(request);
         refParam.setRefType(refType);
         return save(refParam);
+    }
+
+    @Override
+    public List<RefParam> findListRefParamSpecification(Specification<RefParam> refParamSpecification) {
+        return repository.findAll(refParamSpecification);
+    }
+
+    @Override
+    public List<RefParam> findByRefTypeWithoutSystemType(RefTypes refTypeCode) {
+        refTypeService.findByCode(refTypeCode);
+        Specification<RefType> refTypeSpec = RefTypeSpecifications.code(refTypeCode.name());
+
+        refTypeService.findOne(refTypeSpec).orElseThrow(() -> new RefTypeNotFound("", refTypeCode));
+
+        Specification<RefParam> refParamSpec = Specification.where(
+                RefParamSpecifications.hasRefTypeCode(refTypeCode)
+                        .and(RefParamSpecifications.deleted(false))
+        );
+
+        return repository.findAll(refParamSpec);
+    }
+
+    @Override
+    public RefParam findByIdWithoutSystemType(Integer id) throws RefParamNotFound {
+        Specification<RefParam> specification = RefParamSpecifications.id(id)
+                .and(RefParamSpecifications.deleted(false));
+        System.out.println("-----------------------------------------"+specification);
+        RefParam ref= findOneWithoutSystemType(specification)
+                .orElseThrow(() -> new RefParamNotFound("", List.of(id)));
+        return ref;
+    }
+
+    @Override
+    public Optional<RefParam> findOneWithoutSystemType(Specification<RefParam> specification) {
+        return repository.findOne(specification);
     }
 
 }

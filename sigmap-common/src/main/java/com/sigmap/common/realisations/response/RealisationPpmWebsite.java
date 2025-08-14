@@ -25,9 +25,9 @@ public class RealisationPpmWebsite {
         this.id = realisation.getId();
         this.envisionedDeliverables = realisation.getRealisationEnvisagees();
 
-        if (realisation.getSourceFinancement() != null) {
-            this.fundingSource = realisation.getSourceFinancement().getCode();
-        }
+//        if (realisation.getSourceFinancement() != null) {
+//            this.fundingSource = realisation.getSourceFinancement().getCode();
+//        }
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
         }

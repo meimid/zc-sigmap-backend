@@ -4,7 +4,6 @@ import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
-import com.sigmap.common.ref_params.RefParam;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -17,12 +16,14 @@ public interface RealisationMapper {
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
-    @Mapping(target = "service", source = "service")
-    @Mapping(target = "direction", source = "direction")
-    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
-    @Mapping(target = "monais", source = "monais")
+    @Mapping(target = "beneficiaire", source = "beneficiaire")
+//    @Mapping(target = "service", source = "service")
+//    @Mapping(target = "direction", source = "direction")
+//    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "imputationBudgetaire",source  = "imputationBudgetaire")
+//    @Mapping(target = "monnaie", source = "monnaie")
     @Mapping(target = "typeMarcher", source = "typeMarcher")
-    @Mapping(target = "modeSelection", source = "modeSelection")
+    @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "datePrevLps", source = "datePrevLps")
     @Mapping(target = "datePrevAc", source = "datePrevAc")
     @Mapping(target = "datePrevDp", source = "datePrevDp")
@@ -31,6 +32,7 @@ public interface RealisationMapper {
     @Mapping(target = "isPublished", source = "isPublished")
     @Mapping(target = "publishedAt", source = "publishedAt")
     @Mapping(target = "sort", source = "sort")
+    @Mapping(target = "statut", source = "statut")
     @Mapping(target = "paas", source = "paas")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
@@ -42,12 +44,14 @@ public interface RealisationMapper {
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
-    @Mapping(target = "service", source = "service")
-    @Mapping(target = "direction", source = "direction")
-    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
-    @Mapping(target = "monais", source = "monais")
+    @Mapping(target = "beneficiaire", source = "beneficiaire")
+//    @Mapping(target = "service", source = "service")
+//    @Mapping(target = "direction", source = "direction")
+//    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "imputationBudgetaire",source  = "imputationBudgetaire")
+//    @Mapping(target = "monnaie", source = "monnaie")
     @Mapping(target = "typeMarcher", source = "typeMarcher")
-    @Mapping(target = "modeSelection", source = "modeSelection")
+    @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "datePrevLps", source = "datePrevLps")
     @Mapping(target = "datePrevAc", source = "datePrevAc")
     @Mapping(target = "datePrevDp", source = "datePrevDp")
@@ -56,6 +60,7 @@ public interface RealisationMapper {
     @Mapping(target = "isPublished", source = "isPublished")
     @Mapping(target = "publishedAt", source = "publishedAt")
     @Mapping(target = "sort", source = "sort")
+    @Mapping(target = "statut", source = "statut")
     @Mapping(target = "paas", ignore = true)
     @Mapping(target = "lots", ignore = true)
     @Mapping(target = "ppms", ignore = true)
@@ -64,7 +69,9 @@ public interface RealisationMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "version", ignore = true)
+    @Mapping(target = "statut", source = "statut")
     Realisation updateRealisationFromRequest(RealisationRequest request, @MappingTarget Realisation realisation);
 
+    @Mapping(target = "statut", source = "statut")
     RealisationResponseDTO mapWithDTO(Realisation realisation);
 }

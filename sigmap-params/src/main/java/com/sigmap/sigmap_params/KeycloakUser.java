@@ -27,7 +27,7 @@ public class KeycloakUser implements UserDetails {
   public KeycloakUser(Jwt jwt) {
     this.userId = jwt.getSubject();
     this.username = jwt.getClaimAsString("preferred_username");
-    this.email = jwt.getClaimAsString("email");
+    this.email = jwt.getClaimAsString("templates/email");
     this.authorities = this.extractAuthorities(jwt);
   }
 

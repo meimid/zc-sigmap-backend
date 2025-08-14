@@ -23,7 +23,9 @@ public class Constants {
   public static final String PATH_ENTREPOT_GED_PPM =
       "/SIGMAP-DEV/ARCHIVE/PPM/" + LocalDate.now().getYear();
   public static final String PATH_ENTREPOT_GED_PV="/PV";
-
+  public static final String PATH_ENTREPOT_GED_COM="/SIGMAP-DEV/ARCHIVE/COM";
+  public static final String PATH_ENTREPOT_GED_LOT =
+          "/LOT";
   // public static final Integer SERVICE = 16;
   // public static final Integer TYPE_MARCHER = 17;
   // public static final Integer SOURCE_FINANCEMENT = 18;
@@ -49,6 +51,7 @@ public class Constants {
   public static final String PAA_ID_SEQ = "paa_id_seq";
   public static final String PPM_ID_SEQ = "ppm_id_seq";
   public static final String REALISATION_ID_SEQ = "realisation_id_seq";
+  public static final String FINANCEMENT_ID_SEQ = "financement_id_seq";
   public static final String LOT_ID_SEQ = "lot_id_seq";
   public static final String DYNA_DOCS_SEQ = "dyna_docs_id_seq";
   public static final String EMAIL_REGEX = "[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,3}";

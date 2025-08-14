@@ -15,5 +15,10 @@ public class ComResponseDto {
   private String adresse;
   private RefParamResponseDto comType;
   private String responsableId;
+  private String logo;
+  private String TypeCommission;
+
+
+
 
 }

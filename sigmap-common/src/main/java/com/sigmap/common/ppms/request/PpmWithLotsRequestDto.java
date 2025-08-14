@@ -79,12 +79,15 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setId(baseDto.getId());
                     withLotsDto.setVersion(baseDto.getVersion());
                     withLotsDto.setRealisationEnvisagees(baseDto.getRealisationEnvisagees());
-                    withLotsDto.setService(baseDto.getService());
-                    withLotsDto.setDirection(baseDto.getDirection());
-                    withLotsDto.setSourceFinancement(baseDto.getSourceFinancement());
-                    withLotsDto.setMonais(baseDto.getMonais());
+                    withLotsDto.setBeneficiaire(baseDto.getBeneficiaire());
+//                    withLotsDto.setService(baseDto.getService());
+//                    withLotsDto.setDirection(baseDto.getDirection());
+//                    withLotsDto.setSourceFinancement(baseDto.getSourceFinancement());
+//                    withLotsDto.setMonais(baseDto.getMonais());
+//                    withLotsDto.setMonnaie(baseDto.getMonnaie());
                     withLotsDto.setTypeMarcher(baseDto.getTypeMarcher());
-                    withLotsDto.setModeSelection(baseDto.getModeSelection());
+//                    withLotsDto.setModeSelection(baseDto.getModeSelection());
+                    withLotsDto.setModePassation(baseDto.getModePassation());
                     withLotsDto.setDatePrevLps(baseDto.getDatePrevLps());
                     withLotsDto.setDatePrevAc(baseDto.getDatePrevAc());
                     withLotsDto.setDatePrevDp(baseDto.getDatePrevDp());
@@ -95,7 +98,7 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setSort(baseDto.getSort());
                     withLotsDto.setDocIds(baseDto.getDocIds());
                     withLotsDto.setLots(baseDto.getLots());
-
+                    withLotsDto.setFinancements(baseDto.getFinancements());
                     withLotsDto.setRealisationFiles(baseDto.getRealisationFiles());
                     result.add(withLotsDto);
                 }

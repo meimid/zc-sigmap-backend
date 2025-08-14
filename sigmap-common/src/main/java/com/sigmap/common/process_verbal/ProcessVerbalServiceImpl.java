@@ -475,7 +475,7 @@ public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String pr
         if (!docIdsToDelete.isEmpty()) {
             log.info("Found {} documents to remove.", docIdsToDelete.size());
             // Step 1: Soft-delete the actual documents in the 'docs' table
-            docsRepository.softDeleteAllById(docIdsToDelete);
+            documentCommuneService.deleteDocuments(docIdsToDelete);
             log.info("Soft-deleted Docs with IDs: {}", docIdsToDelete);
             // Step 2: Hard-delete the link records from the 'pv_docs' join table
             pvDocsRepository.deleteByDocIdIn(docIdsToDelete);

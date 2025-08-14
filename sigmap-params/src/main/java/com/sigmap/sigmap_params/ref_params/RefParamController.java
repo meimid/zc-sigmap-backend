@@ -171,7 +171,8 @@ public class RefParamController {
 
     @GetMapping("/type-comite")
     public ResponseEntity<List<RefParamResponseDto>> findAllTypeComite() throws RefTypeNotFound {
-        List<RefParam> params = refParamService.findByRefType(RefTypes.TYPE_COMITE);
+     //   List<RefParam> params = refParamService.findByRefType(RefTypes.TYPE_COMITE);
+        List<RefParam> params = refParamService.findByRefTypeWithoutSystemType(RefTypes.TYPE_COMITE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
@@ -519,6 +520,14 @@ public class RefParamController {
     @GetMapping("/tutel")
     public ResponseEntity<List<RefParamResponseDto>> findAllTutel() throws RefTypeNotFound {
         List<RefParam> params = refParamService.findByRefType(RefTypes.TUTEL);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+    @GetMapping("/Imputation_budgetaire")
+    public ResponseEntity<List<RefParamResponseDto>> findImputationBudgetaire() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(RefTypes.IMPLUMENTATION_BUDGETAIRE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());

@@ -1,32 +1,52 @@
 package com.sigmap.common.ac;
 
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.ac.response.LogoResponse;
+import com.sigmap.common.adresse.AdressService;
+import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.request.AdresseRequest;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.DuplicateComIdsException;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.request.AcRequest;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.config.Constants;
+import com.sigmap.common.config.FileStorageProperties;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
+import static org.testcontainers.shaded.com.google.common.io.Files.getFileExtension;
+
 @Service
+@Slf4j
 public class AcServiceImpl implements AcService{
 
     private final Logger logger = LoggerFactory.getLogger(AcService.class);
@@ -40,14 +60,24 @@ public class AcServiceImpl implements AcService{
 
     private final RefParamRepository refParamRepository;
 
+    private final AdressService adressService;
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository) {
+    private final ComService comService;
+    private final RefParamService refParamService;
+
+    @Autowired
+    private FileStorageProperties fileStorageProperties;
+
+
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService, RefParamService refParamService) {
         this.repository = repository;
         this.comRepository = comRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.userAcRepository = userAcRepository;
         this.refParamRepository = refParamRepository;
-
+        this.adressService = adressService;
+        this.comService = comService;
+        this.refParamService = refParamService;
     }
 
 
@@ -102,16 +132,16 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound {
+    public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-         else if(request.getTutelId()==null ) {
+         else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
              throw new AcAttributeRequire("","tutel");
         }
-         else if(request.getContact() == null || request.getContact().isEmpty()) {
+       /*  else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
-        }
+        }*/
      /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }*/
@@ -124,14 +154,63 @@ public class AcServiceImpl implements AcService{
             throw new AcNomAlreadyExist("", request.getNom());
         }
         Ac ac = AcMapper.INSTANCE.map(request);
-
-            RefParam tutel= refParamRepository.findById(request.getTutelId()).
-                    orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
+        if(request.getTutelId()!=null&&!request.isIstTutel() ) {
+            Ac tutel= findById(request.getTutelId());
+            if(tutel.isIstTutel()){
             ac.setTutel(tutel);
-
-
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
+        }
+        Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+        RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
+        if(request.getAdresse()!=null) {
+           Adresse adresse=adressService.create(request.getAdresse());
+           adresse.setPays(pays);
+           ac.setAdresse(adresse);
+        }
+        else{
+            AdresseRequest adresseRequest=new AdresseRequest();
+           Adresse adresse=adressService.create(adresseRequest);
+            adresse.setPays(pays);
+            ac.setAdresse(adresse);
+        }
+        if(request.getComId()!=null) {
+            Com com=comService.findById(request.getComId());
+            ac.setCom(com);
+        }
+        if(request.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
+        if(ac.getTypeAffCommission()!=null) {
+            ac.setTypeAffCommission(request.getTypeAffCommission());
+        }
         Ac savedAc = repository.save(ac);
+        if (request.getLogoFile() != null && !request.getLogoFile().isEmpty()) {
+            String originalFilename = StringUtils.cleanPath(request.getLogoFile().getOriginalFilename());
+            String extension = FilenameUtils.getExtension(originalFilename);
+            String newFilename = "logo-ac-" + savedAc.getId() + "." + extension;
 
+            Path logoDir = Paths.get(fileStorageProperties.getAcLogoPath(), String.valueOf(savedAc.getId()));
+            Files.createDirectories(logoDir);
+
+            Path targetPath = logoDir.resolve(newFilename);
+
+            if (savedAc.getLogo() != null) {
+                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
+                Files.deleteIfExists(oldFilePath);
+            }
+            Files.createDirectories(targetPath.getParent());
+
+            request.getLogoFile().transferTo(targetPath.toFile());
+
+            savedAc.setLogo(newFilename);
+            repository.save(savedAc);
+        }
         if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
             for (String userId : request.getUserIds()) {
                 try {
@@ -153,16 +232,16 @@ public class AcServiceImpl implements AcService{
 
     @Override
     @Transactional
-    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound {
+    public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
             throw new AcAttributeRequire("","nom");
         }
-        else if(request.getTutelId()==null){
+        else if(request.getTutelId()==null&&!request.isIstTutel()){
             throw new AcAttributeRequire("","tutel");
         }
-        else if(request.getContact() == null || request.getContact().isEmpty()) {
+       /* else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
-        }
+        }*/
   /*      else if(request.getEmail() == null || request.getEmail().isEmpty()) {
             throw new AcAttributeRequire("","email");
         }
@@ -176,12 +255,74 @@ public class AcServiceImpl implements AcService{
             throw new AcNomAlreadyExist("", request.getNom());
         }
         AcMapper.INSTANCE.updateAcFromRequest(request, ac);
-        if(request.getTutelId() != null) {
-        RefParam tutel= refParamRepository.findById(request.getTutelId()).
-                orElseThrow(() -> new RefParamNotFound("", List.of(request.getTutelId())));
-        ac.setTutel(tutel);
+        if(request.getTutelId()!=null ) {
+            Ac tutel= findById(request.getTutelId());
+            if(tutel.isIstTutel()){
+                ac.setTutel(tutel);
+            }
+            else {
+                throw new AcAttributeRequire("","tutel");
+            }
+        }
+        Specification<RefParam> specPays= RefParamSpecifications.code("MR");
+        RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
+
+        if(request.getAdresse()!=null&& Objects.equals(ac.getAdresse().getId(), request.getAdresse().getId())) {
+            Adresse adresse=adressService.update(request.getAdresse());
+            adresse.setPays(pays);
+            ac.setAdresse(adresse);
+        }
+        else if (ac.getAdresse()==null&&request.getAdresse()!=null){
+            Adresse theAdress=adressService.create(request.getAdresse());
+            theAdress.setPays(pays);
+            ac.setAdresse(theAdress);
+        }
+        else{
+            AdresseRequest adresseRequest=new AdresseRequest();
+            adresseRequest.setPaysId(pays.getId());
+            Adresse theAddress=adressService.create(adresseRequest);
+            theAddress.setPays(pays);
+            ac.setAdresse(theAddress);
+        }
+        if(request.getComId()!=null) {
+            Com com=comService.findById(request.getComId());
+            ac.setCom(com);
+        }
+        if(ac.isIstTutel()){
+            ac.setTutel(null);
+        }
+        else if(ac.getTutel()!=null){
+            ac.setIstTutel(false);
+        }
+        ac.setId(ac.getId());
+        ac.setTutel(ac.getTutel());
+        ac.setIstTutel(ac.isIstTutel());
+        if(ac.getTypeAffCommission()!=null) {
+        ac.setTypeAffCommission(request.getTypeAffCommission());
         }
         Ac savedAc = repository.save(ac);
+
+        if (request.getLogoFile() != null && !request.getLogoFile().isEmpty()) {
+            String originalFilename = StringUtils.cleanPath(request.getLogoFile().getOriginalFilename());
+            String extension = FilenameUtils.getExtension(originalFilename);
+            String newFilename = "logo-ac-" + savedAc.getId() + "." + extension;
+
+            Path logoDir = Paths.get(fileStorageProperties.getAcLogoPath(), String.valueOf(savedAc.getId()));
+            Files.createDirectories(logoDir);
+
+            Path targetPath = logoDir.resolve(newFilename);
+
+            if (savedAc.getLogo() != null) {
+                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
+                Files.deleteIfExists(oldFilePath);
+            }
+            Files.createDirectories(targetPath.getParent());
+
+            request.getLogoFile().transferTo(targetPath.toFile());
+
+            savedAc.setLogo(newFilename);
+            repository.save(savedAc);
+        }
 
         // Seulement si SUPER_ADMIN ou ADMIN_CENTRAL
         boolean hasRightToAffectUsers = Authentication.hasRole("SUPER_ADMIN") || Authentication.hasRole("ADMIN_CENTRAL");
@@ -255,6 +396,92 @@ public class AcServiceImpl implements AcService{
             throw new AcHasAssociatedPaa("" , id);
         }
 
+        boolean hasAssociatedAc = repository.hasAssociatedAc(id);
+        if (hasAssociatedAc) {
+            throw new AcHasAssociatedAc("" , id);
+        }
+
         repository.softDelete(id);
     }
+
+    @Override
+    public List<Ac> findAllTutel(Specification<Ac> ac) {
+        Specification<Ac> specification = AcSpecifications.deleted(false).and(AcSpecifications.isItTutel(true));
+        return repository.findAll(specification);
+    }
+
+    @Override
+    public List<Ac> findAllByComId(Integer comId) throws ComNotFound {
+        comService.findById(comId);
+        Specification<Ac> spec = AcSpecifications.findByComId(comId).and(AcSpecifications.deleted(false));
+        return repository.findAll(spec);
+    }
+
+
+    @Override
+    public List<Ac> findAllAcsWithNoCom() {
+        Specification<Ac>specification=AcSpecifications.hasComNull();
+        return repository.findAll(specification);
+    }
+
+    /**
+     * Retrieves photo bytes for a given AC ID
+     * @param acId the ID of the AC
+     * @return byte array of the photo
+     * @throws RuntimeException if AC not found or photo cannot be read
+     */
+    @Override
+    public LogoResponse getAcPhoto(Integer acId, String basePath) throws AcNotFound {
+        log.info("Retrieving photo for AC ID: {} using base path: {}", acId, basePath);
+
+        Ac ac = findById(acId);
+        String logoPath = ac.getLogo();
+
+        // 1. Return null if there is no logo path in the database.
+        if (!StringUtils.hasText(logoPath)) {
+            log.warn("No logo path found in the database for AC ID: {}", acId);
+            return null;
+        }
+
+        try {
+            // 2. Try to read the file from the disk.
+            byte[] photoBytes = readPhotoFromFileSystem(acId, logoPath, basePath);
+            String extension = getFileExtension(logoPath);
+            return new LogoResponse(photoBytes, extension);
+
+        } catch (RuntimeException e) {
+            // 3. If readPhotoFromFileSystem throws an exception (file not found),
+            //    log it and return null instead of crashing.
+            log.warn("Could not find or read photo file for AC ID: {}. Reason: {}", acId, e.getMessage());
+            return null;
+        }
+    }
+
+    // This private method now takes the basePath as an argument
+    private byte[] readPhotoFromFileSystem(Integer acId, String logoPath, String basePath) {
+        if (basePath == null || basePath.trim().isEmpty()) {
+            throw new RuntimeException("Base path was not provided by the calling service.");
+        }
+
+        try {
+            // Build the path dynamically using the provided base path
+            Path fullPath = Paths.get(basePath, acId.toString(), logoPath);
+
+            if (!Files.exists(fullPath)) {
+                log.error("Photo file does not exist: {}", fullPath);
+                throw new RuntimeException("Photo file not found: " + logoPath);
+            }
+
+            log.info("Reading photo file from: {}", fullPath);
+            return Files.readAllBytes(fullPath);
+
+        } catch (IOException e) {
+            log.error("Error reading photo file: {}", logoPath, e);
+            throw new RuntimeException("Could not read photo file: " + logoPath, e);
+        }
+    }
+
+
+
+
 }

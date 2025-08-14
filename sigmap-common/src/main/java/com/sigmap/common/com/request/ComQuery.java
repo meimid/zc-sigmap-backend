@@ -15,6 +15,7 @@ public class ComQuery {
   private String ancrage;
   private String contact;
   private String adresse;
+  private String responsableId;
   private boolean deleted;
 
   /**

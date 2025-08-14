@@ -1,10 +1,12 @@
 package com.sigmap.sigmap_paa.exeptions;
 
-
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
+import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
+import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.paas.exceptions.*;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetExceedsAcSeuilException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -13,12 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -32,15 +35,6 @@ public class GlobalExceptionHandler {
     private Locale getLocal() {
         return LocaleContextHolder.getLocale();
     }
-
-
-    // @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    // @ExceptionHandler(Exception.class)
-    // public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
-    //     ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),
-    //             "An unexpected error occurred");
-    //     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
-    // }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(BadRequest.class)
@@ -68,6 +62,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RealisationsMinimumRequirement.class)
     public ResponseEntity<ErrorResponse> realisationsMinimumRequirementException(RealisationsMinimumRequirement ex) {
@@ -76,21 +71,19 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    /* // Handler for MaxUploadSizeExceededException (from Spring's MultipartResolver)
-     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
-     @ExceptionHandler(MaxUploadSizeExceededException.class)
-     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
-         String message = messageSource.getMessage("doc.maxSize", new Object[] {}, getLocal());
-         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
-         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
-     }
- */
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     @ExceptionHandler(MaxUploadSizeFile.class)
     public ResponseEntity<ErrorResponse> MaxUploadSizeFileException(MaxUploadSizeFile ex) {
         String message = messageSource.getMessage("doc.maxSize", new Object[]{ex.getMaxFileUploadSize()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RealisationBudgetExceedsAcSeuilException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationBudgetExceedsAcSeuil(RealisationBudgetExceedsAcSeuilException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PaaInvalidStateException.class)
@@ -137,7 +130,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
-    // New Handler for NotFoundException
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException ex) {
@@ -146,7 +138,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    // New Handler for SecurityException
     @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<ErrorResponse> handleSecurityException(SecurityException ex) {
@@ -158,6 +149,20 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(AllAcsHavePaaException.class)
     public ResponseEntity<ErrorResponse> handleAllAcsHavePaaException(AllAcsHavePaaException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(LotBudgetConsistencyException.class)
+    public ResponseEntity<ErrorResponse> handleLotBudgetConsistencyException(LotBudgetConsistencyException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(LotBudgetExceedsRealisationException.class)
+    public ResponseEntity<ErrorResponse> handleLotBudgetExceedsRealisationException(LotBudgetExceedsRealisationException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
