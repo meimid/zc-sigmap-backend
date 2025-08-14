@@ -125,5 +125,16 @@ public class ComSpecifications {
       return criteriaBuilder.and(comNotDeleted, tutelNotDeleted, isTutelAuthority);
     };
   }
+/*special*/
+  public static Specification<Com> special(boolean special) {
+    return (root, query, criteriaBuilder) -> {
+      if (!special) {
+        return criteriaBuilder.or(
+                criteriaBuilder.isNull(root.get("special")),
+                criteriaBuilder.isFalse(root.get("special")));
+      }
+      return criteriaBuilder.isTrue(root.get("special"));
+    };
+  }
 
 }
