@@ -11,6 +11,7 @@ import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.request.AdresseRequest;
+import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.exception.PermanentComAlreadyExist;
@@ -528,6 +529,30 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
     List<Com> coms= repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
     return coms;
+  }
+
+  @Override
+  public List<Com> getAllSpecialCommissions() {
+    Specification<Com> specification=ComSpecifications.special(true).and(ComSpecifications.deleted(false));
+    return repository.findAll(specification);
+  }
+
+  @Override
+  public Com findCNCMPP() throws CNCMPPNotFound {
+    Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
+    List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
+    if (!refParams.isEmpty()) {
+      for(RefParam refParam:refParams){
+        Integer id = refParam.getId();
+        Specification<Com>comSpecification =ComSpecifications.hasComTypeId(id).and(ComSpecifications.deleted(false));
+        List<Com> com=repository.findAll(comSpecification);
+        log.info("Com count:"+com.size());
+        if(!com.isEmpty()) {
+          return com.get(0);
+        }
+      }
+    }
+    throw new CNCMPPNotFound("");
   }
 
 }

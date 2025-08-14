@@ -4,6 +4,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
@@ -277,6 +278,19 @@ public class ComController {
     public ResponseEntity<List<ComSelectResponseDto>> getAllCommissionsDeTutelles(@PathVariable Integer acId) {
         List<Com> coms = comService.getAllCommissionsDeTutelles(acId);
         List  <ComSelectResponseDto> response = coms.stream().map(ComMapper.INSTANCE::mapToSelectDto).toList();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/all_special")
+    public ResponseEntity<List<ComSelectResponseDto>> getAllSpecialCommissions() {
+        List<Com> coms = comService.getAllSpecialCommissions();
+        List  <ComSelectResponseDto> response = coms.stream().map(ComMapper.INSTANCE::mapToSelectDto).toList();
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/find_cncpp")
+    public ResponseEntity<ComResponse> findCNCMPP() throws CNCMPPNotFound {
+        Com com = comService.findCNCMPP();
+        ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.ok(response);
     }
 }

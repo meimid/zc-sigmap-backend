@@ -2,6 +2,7 @@ package com.sigmap.common.ac_seuil.mapper;
 
 import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.request.AcSeuilRequest;
+import com.sigmap.common.ac_seuil.response.AcSeuilResponse;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import org.mapstruct.Mapper;
@@ -12,4 +13,5 @@ public interface AcSeuilMapper {
     AcSeuilMapper INSTANCE = Mappers.getMapper(AcSeuilMapper.class);
 
    // AcSeuil toEntity (AcSeuilRequest request);
+    AcSeuilResponse map(AcSeuil acSeuil);
 }
