@@ -6,6 +6,7 @@ import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.paas.exceptions.*;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetExceedsAcSeuilException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -61,6 +62,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(RealisationsMinimumRequirement.class)
     public ResponseEntity<ErrorResponse> realisationsMinimumRequirementException(RealisationsMinimumRequirement ex) {
@@ -75,6 +77,13 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("doc.maxSize", new Object[]{ex.getMaxFileUploadSize()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), message);
         return new ResponseEntity<>(error, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RealisationBudgetExceedsAcSeuilException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationBudgetExceedsAcSeuil(RealisationBudgetExceedsAcSeuilException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PaaInvalidStateException.class)

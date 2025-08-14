@@ -79,11 +79,11 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setId(baseDto.getId());
                     withLotsDto.setVersion(baseDto.getVersion());
                     withLotsDto.setRealisationEnvisagees(baseDto.getRealisationEnvisagees());
-                    withLotsDto.setService(baseDto.getService());
-                    withLotsDto.setDirection(baseDto.getDirection());
-                    withLotsDto.setSourceFinancement(baseDto.getSourceFinancement());
+//                    withLotsDto.setService(baseDto.getService());
+//                    withLotsDto.setDirection(baseDto.getDirection());
+//                    withLotsDto.setSourceFinancement(baseDto.getSourceFinancement());
 //                    withLotsDto.setMonais(baseDto.getMonais());
-                    withLotsDto.setMonnaie(baseDto.getMonnaie());
+//                    withLotsDto.setMonnaie(baseDto.getMonnaie());
                     withLotsDto.setTypeMarcher(baseDto.getTypeMarcher());
 //                    withLotsDto.setModeSelection(baseDto.getModeSelection());
                     withLotsDto.setModePassation(baseDto.getModePassation());
@@ -97,7 +97,7 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setSort(baseDto.getSort());
                     withLotsDto.setDocIds(baseDto.getDocIds());
                     withLotsDto.setLots(baseDto.getLots());
-
+                    withLotsDto.setFinancements(baseDto.getFinancements());
                     withLotsDto.setRealisationFiles(baseDto.getRealisationFiles());
                     result.add(withLotsDto);
                 }
