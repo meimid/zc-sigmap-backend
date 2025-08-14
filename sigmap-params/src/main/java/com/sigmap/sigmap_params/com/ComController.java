@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.com;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
@@ -31,9 +32,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hibernate.cache.spi.support.SimpleTimestamper.next;
 
@@ -47,6 +49,8 @@ public class ComController {
     private KeycloakAdminService keycloakAdminService;
     @Autowired
     private UserComRepository userComRepository;
+    @Autowired
+    private ComRepository comRepository;
 
     public ComController(ComService comService) {
         this.comService = comService;
@@ -120,6 +124,53 @@ public class ComController {
 
         response.setUsers(users);
         comResponsable(response);
+        return ResponseEntity.ok(response);
+    }
+
+
+    @GetMapping("/batch/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<ComResponse> findByIdBatch(@PathVariable Integer id) throws ComNotFound {
+        Com param = comService.findById(id);
+        ComResponse response = ComMapper.INSTANCE.map(param);
+
+        // Fetch all UserAc non-deleted entries
+        List<UserCom> userComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
+
+        // Collect unique user IDs (userId and createdBy)
+        Set<String> userIds = userComs.stream()
+                .flatMap(userAc -> Stream.of(userAc.getUserId(), userAc.getCreatedBy()))
+                .collect(Collectors.toSet());
+
+        // Batch fetch users from Keycloak
+        Map<String, UserDTO> keycloakUsers = keycloakAdminService.fetchUsersInBatch(userIds);
+
+        List<ComMemberDTO> users = userComs.stream().map(userCom -> {
+            UserDTO keycloakUser = keycloakUsers.get(userCom.getUserId());
+            if (keycloakUser == null) {
+                logger.warn("Utilisateur {} introuvable dans Keycloak", userCom.getUserId());
+                return null;
+            }
+
+            ComMemberDTO dto = new ComMemberDTO();
+            dto.setId(keycloakUser.getId());
+            dto.setFirstName(keycloakUser.getFirstName());
+            dto.setLastName(keycloakUser.getLastName());
+            dto.setEmail(keycloakUser.getEmail());
+            dto.setMobile(keycloakUser.getMobile());
+            dto.setCreatedAt(userCom.getCreatedAt());
+            UserDTO createdByUser = keycloakUsers.get(userCom.getCreatedBy());
+            dto.setCreatedBy(createdByUser != null ? createdByUser.getEmail() : "system");
+            return dto;
+
+        }).filter(Objects::nonNull).toList();
+
+        response.setUsers(users);
+        String responsableId = comRepository.findIdResponsableByComId(response.getId());
+        assert responsableId != null;
+        if (responsableId != null) {
+            response.setResponsableId(responsableId);
+        }
         return ResponseEntity.ok(response);
     }
     @GetMapping("/user/{userId}/coms")
