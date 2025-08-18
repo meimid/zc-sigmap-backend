@@ -4,7 +4,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComServiceImpl;
 import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.config.Constants;
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -15,7 +15,9 @@ import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.response.PpmResponseDto;
-import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
+import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import jakarta.persistence.EntityManager;
@@ -63,6 +65,7 @@ public class PpmFlowableService {
 
     @Autowired
     private TaskService taskService;
+
     @Autowired
     private KeycloakAdminService keycloakAdminService;
 
@@ -80,6 +83,12 @@ public class PpmFlowableService {
 
     @Autowired
     private ComServiceImpl comServiceImpl;
+
+    @Autowired
+    private RealisationService realisationService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     // Utility method to check if the user has a specific role
     private boolean hasRole(JwtAuthenticationToken jwtAuth, String role) {
@@ -168,9 +177,10 @@ public class PpmFlowableService {
             log.error("Error retrieving properties for task [{}]: {}", task.getId(), e.getMessage(), e);
         }
 
-        log.info("Returning task properties for task [{}]: {}", task.getId(), properties); // Add this log
+        log.info("Returning task properties for task [{}]: {}", task.getId(), properties);
         return properties;
     }
+
     @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id, Integer version) throws PpmNotFound, AcNotFound {
         // Validate authentication
@@ -202,6 +212,14 @@ public class PpmFlowableService {
             errorResponse.setStatus("Process can only be started when PPM is in draft status. Current status ID: " +
                     (ppm.getStatus() != null ? ppm.getStatus() : "null"));
             return errorResponse;
+        }
+
+        // Set associated Realisation statuses to NON_PUBLIE
+        List<Realisation> realisations = ppm.getRealisations() != null ? ppm.getRealisations() : new ArrayList<>();
+        for (Realisation realisation : realisations) {
+            realisation.setStatut(RealisationStatus.NON_PUBLIE);
+            realisationService.save(realisation);
+            log.info("Set Realisation [id={}, version={}] status to NON_PUBLIE", realisation.getId(), realisation.getVersion());
         }
 
         // Use provided processKey or fallback to default
@@ -312,14 +330,7 @@ public class PpmFlowableService {
         return response;
     }
 
-    /**
-     * Overloaded method to start a Flowable process instance for a Ppm entity using default process and task keys.
-     *
-     * @param id The Ppm ID
-     * @return ProcessStartResponseDTO with the process details
-     * @throws PpmNotFound if the Ppm entity is not found
-     */
-    @jakarta.transaction.Transactional
+    @Transactional
     public ProcessStartResponseDTO startProcessInstance(Integer id) throws PpmNotFound, AcNotFound {
         Integer latestVersion = ppmService.findLatestVersionById(id);
         return startProcessInstance(id, latestVersion);
@@ -350,9 +361,7 @@ public class PpmFlowableService {
                 Optional<Ppm> ppmOptional = null;
                 try {
                     ppmOptional = ppmService.findById(id, version);
-                } catch (PpmNotFound e) {
-                    throw new RuntimeException(e);
-                } catch (AcNotFound e) {
+                } catch (PpmNotFound | AcNotFound e) {
                     throw new RuntimeException(e);
                 }
                 ppmOptional.ifPresent(ppm -> {
@@ -470,7 +479,26 @@ public class PpmFlowableService {
 
         return response;
     }
+    @Transactional
+    public List<TaskDTO> validateTaskGroup(List<GroupValidationRequest> requests)
+            throws PpmNotFound, AcNotFound, MissingComIdException, MissingAcIdException,
+            UserNotAssociatedWithAcException, ComNotFound {
 
+        List<TaskDTO> responses = new ArrayList<>();
+
+        for (GroupValidationRequest request : requests) {
+            ValidationRequest validationRequest = new ValidationRequest();
+            validationRequest.setValidate(request.getValidate());
+            validationRequest.setComment(request.getComment());
+            validationRequest.setPpm(request.getPpm());
+            validationRequest.setComId(request.getComId());
+
+            TaskDTO response = validateTask(request.getTaskId(), validationRequest);
+            responses.add(response);
+        }
+
+        return responses;
+    }
 
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request) throws PpmNotFound, AcNotFound, MissingComIdException, MissingAcIdException, UserNotAssociatedWithAcException, ComNotFound {
@@ -588,6 +616,14 @@ public class PpmFlowableService {
             }
             latestPpm = updatedPpm;
             log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus());
+
+            // Set associated Realisation statuses to PUBLIE
+            List<Realisation> realisations = latestPpm.getRealisations() != null ? latestPpm.getRealisations() : new ArrayList<>();
+            for (Realisation realisation : realisations) {
+                realisation.setStatut(RealisationStatus.PUBLIE);
+                realisationService.save(realisation);
+                log.info("Set Realisation [id={}, version={}] status to PUBLIE", realisation.getId(), realisation.getVersion());
+            }
         } else if (request.getValidate() != null && request.getValidate()) {
             newStatus = ProcessStatus.EN_TRAITEMENT;
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
@@ -703,6 +739,7 @@ public class PpmFlowableService {
 
         return response;
     }
+
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
         List<NextStepDTO> nextSteps = new ArrayList<>();
         try {
@@ -785,13 +822,8 @@ public class PpmFlowableService {
         return nextSteps;
     }
 
-    /**
-     * Retrieves tasks assigned to the current user based on their candidate groups.
-     *
-     * @return TaskListResponseDTO with the user's tasks
-     */
     public TaskListResponseDTO getUserTasks() {
-        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
         // Get user's AC IDs and comIds
@@ -937,7 +969,6 @@ public class PpmFlowableService {
         return response;
     }
 
-    // Helper method to extract variable name from condition expression
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
         // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
@@ -976,15 +1007,6 @@ public class PpmFlowableService {
         return null;
     }
 
-    /**
-     * Retrieves a Ppm entity by its ID along with its associated task, if any.
-     * If a task exists and the user has permission to view it, includes the task details and sets hasTask to true.
-     * Otherwise, sets hasTask to false and omits task details.
-     *
-     * @param ppmId The ID of the Ppm entity
-     * @return TaskDetailsDTO containing the Ppm details and task information (if applicable)
-     * @throws PpmNotFound if the Ppm entity is not found
-     */
     @Transactional
     public TaskDetailsDTO getPpmWithTasks(Integer ppmId) throws PpmNotFound, AcNotFound {
         log.info("Récupération du PPM avec ID: {} et sa tâche associée", ppmId);
@@ -1093,8 +1115,6 @@ public class PpmFlowableService {
 
         return response;
     }
-    @Autowired
-    private EntityManager entityManager;
 
     private void handleCommissionRequired(Boolean commissionRequired, ValidationRequest request, Map<String, Object> processVariables, String processInstanceId, Ppm ppm) throws ComNotFound {
         if (commissionRequired) {
@@ -1141,6 +1161,7 @@ public class PpmFlowableService {
             }
         }
     }
+
     private void validateUserCommissionAssociation(Map<String, Object> processVariables, JwtAuthenticationToken jwtAuth) {
         Integer comId = (Integer) processVariables.get("comId");
         if (comId != null) {

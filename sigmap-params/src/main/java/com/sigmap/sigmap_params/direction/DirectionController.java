@@ -7,7 +7,6 @@ import com.sigmap.common.direction.exception.DirectionNotFound;
 import com.sigmap.common.direction.mappers.DirectionMapper;
 import com.sigmap.common.direction.request.DirectionQuery;
 import com.sigmap.common.direction.request.DirectionRequest;
-import com.sigmap.common.direction.request.DirectionunderAcRequest;
 import com.sigmap.common.direction.response.DirectionResponse;
 import com.sigmap.common.direction.response.DirectionResponseDto;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 
 @Slf4j
@@ -61,54 +61,27 @@ public class DirectionController {
     /**
      * Return a Direction based on the given id.
      *
-     * @param id the id of the Direction to return
+     * @param directionId the id of the Direction to return
      * @return the Direction
      */
-    @GetMapping("/{id}")
-    public ResponseEntity<DirectionResponse> findById(@PathVariable Integer id) throws DirectionNotFound {
-        Direction param = directionService.findById(id);
+    @GetMapping("/{directionId}/ac/{acId}")
+    public ResponseEntity<DirectionResponse> findByIds(@PathVariable Integer directionId,@PathVariable Integer acId) throws DirectionNotFound {
+        Direction param = directionService.findByIds(directionId,acId);
         DirectionResponse response = DirectionMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Create a new Direction.
-     *
-     * @param request the request to create the Direction from
-     * @return the created Direction
-     */
-    @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<DirectionResponse> create(@RequestBody DirectionRequest request) throws AcNotFound {
-        Direction Direction = directionService.create(request);
-        DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
-        return ResponseEntity.ok(response);
-    }
-    /**
-     * Update  Direction.
-     *
-     * @param request the request to update the Direction from
-     * @return the updated Direction
-     */
-    @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<DirectionResponse> update(@PathVariable Integer id,@RequestBody DirectionRequest request) throws DirectionNotFound, AcNotFound {
-        Direction Direction = directionService.update(id,request);
-        DirectionResponse response = DirectionMapper.INSTANCE.map(Direction);
-        return ResponseEntity.ok(response);
-    }
-    /**
      * Delete a Direction based on the given id.
      *
-     * @param id the id of the Direction to delete
+     * @param directionId the id of the Direction to delete
      * @return the deleted Direction
      */
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer id) {
-        directionService.delete(id);
+    @DeleteMapping("/{directionId}/ac/{acId}")
+    public ResponseEntity<DirectionResponse> deleteById(@PathVariable Integer directionId,@PathVariable Integer acId) throws AcNotFound {
+        directionService.delete(directionId, acId);
 
-        Direction deleted = directionService.findDeletedById(id)
+        Direction deleted = directionService.findDeletedByIds(directionId,acId)
                 .orElseThrow();
         DirectionResponse response = DirectionMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
@@ -117,27 +90,37 @@ public class DirectionController {
     // create under Ac with acId
     @PostMapping("/ac/{acId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
+    public ResponseEntity<DirectionResponse> createUnderAc(@PathVariable Integer acId, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.createUnderAc(acId,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // create under Ac with acId
-    @PutMapping("/ac/{acId}/{id}")
+    @PutMapping("/{id}/ac/{acId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionunderAcRequest request) throws AcNotFound {
+    public ResponseEntity<DirectionResponse> updateUnderAc(@PathVariable Integer acId,@PathVariable Integer id, @RequestBody DirectionRequest request) throws AcNotFound {
         Direction direction = directionService.updateUnderAc(acId,id,request);
         DirectionResponse response = DirectionMapper.INSTANCE.map(direction);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    //get all under Ac
+    //get all under Ac Page
     @GetMapping("/ac/{acId}")
-    public ResponseEntity<Page<DirectionResponseDto>> findAllUnderAc(
+    public ResponseEntity<Page<DirectionResponseDto>> findAllPageableUnderAc(
             @PathVariable Integer acId, Pageable pageable) throws AcNotFound {
-        Page <Direction> params = directionService.findAllunderAc(acId, pageable);
+        Page <Direction> params = directionService.findAllPageableUnderAc(acId, pageable);
         Page<DirectionResponseDto> acResponses = params.map(DirectionMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(acResponses);
+    }
+    //get all under Ac Page
+    @GetMapping("/ac-list/{acId}")
+    public ResponseEntity<List<DirectionResponseDto>> findAllListUnderAc(
+            @PathVariable Integer acId) throws AcNotFound {
+        List <Direction> params = directionService.findAllListUnderAc(acId);
+        List<DirectionResponseDto> acResponses = params.stream()
+                .map(DirectionMapper.INSTANCE::mapToDto)
+                .toList();
         return ResponseEntity.ok(acResponses);
     }
 }

@@ -13,10 +13,7 @@ import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.request.AgpmRequest;
-import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
-import com.sigmap.common.agpm.response.AgpmResponse;
-import com.sigmap.common.agpm.response.AgpmResponseDto;
-import com.sigmap.common.agpm.response.AgpmResponseDtoSoft;
+import com.sigmap.common.agpm.response.*;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.file_check.FileCheckServices;
 import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
@@ -237,4 +234,6 @@ public class AgpmController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
         }
     }
+
+
 }

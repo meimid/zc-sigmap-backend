@@ -118,5 +118,9 @@ public interface RefParamService {
   RefParam UpdateRefParamByRefTypeId(Integer refParamId, RefTypes refTypeCode,RefParamRequest request) throws RefParamNotFound;
   void deleteByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound;
   RefParam createUnderRefType(RefTypes refTypeCode,RefParamRequest request) throws RefTypeNotFound;
+  List<RefParam> findListRefParamSpecification(Specification<RefParam> refParamSpecification);
+  List<RefParam> findByRefTypeWithoutSystemType( RefTypes refTypeCode);
+  RefParam findByIdWithoutSystemType(Integer id)  throws RefParamNotFound;
+    Optional<RefParam> findOneWithoutSystemType(Specification<RefParam> specification);
 
 }

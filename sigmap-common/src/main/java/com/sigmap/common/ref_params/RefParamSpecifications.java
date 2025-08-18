@@ -45,7 +45,7 @@ public class RefParamSpecifications {
   /** code. */
   public static Specification<RefParam> code(String code) {
     return (root, query, criteriaBuilder) -> {
-      return criteriaBuilder.like(root.get("code"), "%" + code + "%");
+      return criteriaBuilder.like(root.get("code"), code  );
     };
   }
 

@@ -13,6 +13,7 @@ import com.sigmap.common.dyna_fields.exceptions.DynaFieldNotFound;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.request.DynaFieldsDetailsRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
+@Slf4j
+
 public class DacDocsDetailsServiceImpl implements DacDocsDetailsService {
 
   @Autowired
@@ -82,37 +84,33 @@ public class DacDocsDetailsServiceImpl implements DacDocsDetailsService {
     dacDocsDetails.setDynaDocsId(dacDocs.getId().getDynaDocsId());
     dacDocsDetails.setDynaDocsVer(dacDocs.getId().getDynaDocsVer());
     dacDocsDetails.setDynaFieldsId(dacDocs.getId().getDynaFieldsId());
-    
-    // Generate next row ID
-    //dacDocsDetails.setRowId(sequenceGenerator.getNextRowId());
 
-    // check if dynaFieldsDetails exists
-    Optional<DynaFieldsDetails> findAllDynaFieldsDetails = dynaFieldsDetailsRepository.findAllDynaFieldsDetails(dacDocs.getId().getDynaDocsId(), dacDocs.getId().getDynaDocsVer(), dacDocs.getId().getDynaFieldsId());
 
-    if (!findAllDynaFieldsDetails.isEmpty()) {
-      dacDocsDetails.setDynaFieldsDetailsId(findAllDynaFieldsDetails.get().getDynaFieldsDetailsId());
-    }
-
-    // Set the request fields
+    // Set the other request fields
     dacDocsDetails.setRowId(request.getRowId());
     dacDocsDetails.setSourceId(request.getSourceId());
     dacDocsDetails.setFieldValue(request.getFieldValue());
+    dacDocsDetails.setDynaFieldsDetailsId(request.getDynaFieldsDetailsId());
 
-    
     // Set the parent reference
     dacDocsDetails.setDac(dacDocs);
-    
-    return dacDocsDetailsRepository.save(dacDocsDetails);
+    DacDocsDetails savedDacDocsDetails = dacDocsDetailsRepository.save(dacDocsDetails);
+    log.debug("DacDocsDetails created: ............. {}", savedDacDocsDetails);
+    return savedDacDocsDetails ;
   }
 
   @Override
+  @Transactional
   public List<DacDocsDetails> createAll(DacDocs dynaField, List<DacDocsDetailsRequest> request) throws DynaFieldNotFound {
-    List<DacDocsDetails> dacDocsDetails = new ArrayList<>();
-
-    for (DacDocsDetailsRequest req : request) {
-      dacDocsDetails.add(create(dynaField, req));
+    if (dynaField.getId() == null) {
+      throw new IllegalArgumentException("Parent DacDocs must be persisted before adding details.");
     }
-
+    List<DacDocsDetails> dacDocsDetails = new ArrayList<>();
+    for (DacDocsDetailsRequest req : request) {
+      DacDocsDetails detail = create(dynaField, req);
+      log.debug("Saved DacDocsDetails: ............... {}", detail);
+      dacDocsDetails.add(detail);
+    }
     return dacDocsDetails;
   }
 

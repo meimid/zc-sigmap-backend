@@ -13,6 +13,7 @@ public class AcQuery {
     private String ancrage;
     private String contact;
     private String email;
+    private boolean istTutel;
     private boolean deleted;
 
 

@@ -1,18 +1,15 @@
 package com.sigmap.common.direction;
 
-import com.sigmap.common.ac.Ac;
-import jakarta.persistence.criteria.Join;
+
 import org.springframework.data.jpa.domain.Specification;
 public class DirectionSpecifications {
     public static Specification<Direction> search(String search) {
         return (root, query, criteriaBuilder) -> {
-            Join<Direction, Ac> join = root.join("acs");
 
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("ref")), "%" + search.toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
-                    criteriaBuilder.like(criteriaBuilder.lower(join.get("nom")), "%" + search.toLowerCase() + "%"));
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("nom")), "%" + search.toLowerCase() + "%"));
         };
     }
     /** id. */
@@ -48,19 +45,12 @@ public class DirectionSpecifications {
      * @param acId The ID of the Ac to filter by.
      * @return A Specification<Direction>. Returns a non-filtering specification if acId is null.
      */
-    public static Specification<Direction> hasAcWithId(Integer acId) {
-        // If no ID is provided, return a specification that does nothing.
+    public static Specification<Direction> isMemberOfAc(Integer acId) {
         if (acId == null) {
-            return (root, query, criteriaBuilder) -> criteriaBuilder.conjunction();
+            return null; // Return null to not add a filter if no ID is provided
         }
-
-        return (root, query, criteriaBuilder) -> {
-            // Join from Direction (root) to the collection of Ac entities ("acs").
-            Join<Direction, Ac> acJoin = root.join("acs");
-
-            // Create a predicate where the ID of the joined Ac ("id") must equal the provided acId.
-            return criteriaBuilder.equal(acJoin.get("id"), acId);
-        };
+        // This is now CORRECT because the Direction class has a field named "acId"
+        return (root, query, cb) -> cb.equal(root.get("acId"), acId);
     }
 }
 

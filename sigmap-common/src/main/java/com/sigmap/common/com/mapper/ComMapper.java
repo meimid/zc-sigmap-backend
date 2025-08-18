@@ -3,6 +3,8 @@ package com.sigmap.common.com.mapper;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.com.response.ComResponse;
+import com.sigmap.common.com.response.ComResponseDto;
+import com.sigmap.common.com.response.ComSelectResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -22,4 +24,6 @@ public interface ComMapper {
     ComResponse map(Com source);
     Com map(ComRequest source);
     void updateFromRequest(ComRequest source, @MappingTarget Com target);
+    ComResponseDto mapToDto(Com source);
+    ComSelectResponseDto mapToSelectDto(Com com);
 }

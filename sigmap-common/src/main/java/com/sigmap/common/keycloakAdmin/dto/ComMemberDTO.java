@@ -11,6 +11,7 @@ public class ComMemberDTO {
     private String lastName;
     private String email;
     private String mobile;
+    private boolean responsable;
     private Calendar createdAt;
     private String createdBy;
 }

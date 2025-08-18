@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -171,5 +172,45 @@ public class PpmSpecifications {
     }
     public static Specification<Ppm> ppmAc(Integer acId) {
         return (root, query, cb) -> cb.equal(root.get("ac").get("id"), acId);
+    }
+
+    public static Specification<Ppm> isPublished() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "PUBLIE");
+    }
+
+    /**
+     * Creates a Specification to find entities that are not marked as deleted.
+     *
+     * @return A Specification for non-deleted entities.
+     */
+    public static Specification<Ppm> isNotDeleted() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("isDeleted"), false);
+    }
+
+    /**
+     * Creates a Specification to filter by the associated 'ac' entity's ID.
+     *
+     * @param acId The ID of the 'ac' entity to filter by.
+     * @return A Specification for the given acId.
+     */
+    public static Specification<Ppm> withAcId(Integer acId) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("ac").get("id"), acId);
+    }
+
+    /**
+     * Creates a Specification to filter by the year of the 'updatedAt' field.
+     *
+     * @param year The year to filter by.
+     * @return A Specification for the given year.
+     */
+    public static Specification<Ppm> withYear(Integer year) {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(
+                        criteriaBuilder.function("YEAR", Integer.class, root.get("updatedAt")),
+                        year
+                );
     }
 }

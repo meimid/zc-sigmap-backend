@@ -2,30 +2,35 @@ package com.sigmap.common.realisations;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 
 @Entity
 @Table(name = "realisation")
 @Data
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
+@ToString(exclude = {"paas","financements"})
 public class Realisation extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "realisation_id")
@@ -38,21 +43,27 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "realisation_envisagees", length = 100)
     private String realisationEnvisagees;
 
-    @ManyToOne
-    @JoinColumn(name = "service_id")
-    private RefParam service;
+    @Column(name = "beneficiaire")
+    private String beneficiaire;
 
-    @ManyToOne
-    @JoinColumn(name = "direction_id")
-    private RefParam direction;
+//    //TODO : to delete
+//    @ManyToOne
+//    @JoinColumn(name = "source_financement_id")
+//    private RefParam sourceFinancement;
 
-    @ManyToOne
-    @JoinColumn(name = "source_financement_id")
-    private RefParam sourceFinancement;
-
+    //TODO: to delete
     @ManyToOne
     @JoinColumn(name = "monais_id")
     private RefParam monais;
+
+    //TODO: to delete
+    @ManyToOne
+    @JoinColumn(name = "monnaie_id")
+    private Monnaie monnaie;
+
+    @ManyToOne
+    @JoinColumn(name = "mode_passation_id")
+    private ModeDePassationSelection modePassation;
 
     @ManyToOne
     @JoinColumn(name = "type_marcher_id")
@@ -61,6 +72,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @ManyToOne
     @JoinColumn(name = "mode_selection_id")
     private RefParam modeSelection;
+
+    @ManyToOne
+    @JoinColumn(name = "imputation_budgetaire_id")
+    private RefParam imputationBudgetaire;
 
     @Column(name = "date_prev_lps")
     private LocalDate datePrevLps;
@@ -74,8 +89,12 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "date_prev_ap")
     private LocalDate datePrevAp;
 
+    //TODO: to delete
     @Column(name = "budget_estime", precision = 10, scale = 2)
     private BigDecimal budgetEstime;
+
+    @Column(name = "seuil_applicable", precision = 10, scale = 3)
+    private BigDecimal seuilApplicable;
 
     @Column(name = "is_published")
     private Boolean isPublished;
@@ -85,6 +104,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
 
     @Column(name = "sort")
     private Integer sort;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "statut")
+    private RealisationStatus statut = RealisationStatus.NON_PUBLIE;
 
     @ManyToMany
     @JoinTable(
@@ -129,7 +152,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             }
     )
     @JsonManagedReference
-    private Set<Lot> lots = new LinkedHashSet<>();;
+    private List<Lot> lots;
 
     @ManyToMany
     @JoinTable(
@@ -142,6 +165,11 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     )
     @JsonManagedReference
     private List<Docs> docs;
+
+    @OneToMany(mappedBy = "id.realisation",
+            cascade = CascadeType.ALL)
+    @JsonManagedReference("realisation-financements")
+    private List<Financement> financements = new ArrayList<>();
 
     @Override
     public Integer getId() {
@@ -159,5 +187,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             this.docs = new ArrayList<>();
         }
         return this.docs;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id); // Only use simple fields
     }
 }

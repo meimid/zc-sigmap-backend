@@ -1,0 +1,95 @@
+server:
+  port: ${PORT:8087}
+  
+  servlet:
+    context-path: /web
+
+spring:
+  application:
+    name: Sigmap WEB
+
+  devtools:
+    restart:
+      additional-paths: ../sigmap-common
+
+  datasource:
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: "UTC"
+    hibernate:
+      ddl-auto: validate
+
+  liquibase:
+    change-log: classpath:/db/db.changelog-master.yml
+
+  #smtp mail configuration:
+  mail:
+    test-connection: true
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:sigatest18@gmail.com}
+    password: ${SMTP_PASSWORD:rgnoxlzlyaygxqri}
+    properties:
+      auth: true
+      mail:
+        debug: false
+        transport:
+          protocol: smtp
+        smtp:
+          starttls:
+            enable: true
+    default-encoding: utf-8
+    base-url: ${SMTP_BASE_URL_MAIL:http://localhost:4200/}
+    from: ${SMTP_FROM_MAIL:sigatest18@gmail.com}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          principal-claim-name: preferred_username
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://sigmap-auth.zedneycreative.com/realms/sigmap-realm}
+
+springdoc:
+  default-support-form-data: true
+  default-flat-param-object: true
+  show-actuator: true
+  api-docs:
+    path: /api/docs
+  swagger-ui:
+    path: /api/docs-ui.html
+    operationsSorter: method
+    layout: StandaloneLayout
+    displayRequestDuration: true
+
+cors:
+  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:4200}
+
+keycloak:
+  client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+
+keycloak-admin:
+  server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
+  realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+
+alfresco:
+  url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}
+  username: ${ALFRESCO_USERNAME:admin}
+  password: ${ALFRESCO_PASSWORD:admin}
+
+
+file:
+  upload:
+    parent-path: ${FILE_UPLOAD_PARENT:C:\\uploads}
+    user-profile-path: ${FILE_UPLOAD_USER_PROFILE:${file.upload.parent-path}\\users}
+    ac-logo-path: ${FILE_UPLOAD_AC_LOGO:${file.upload.parent-path}\\acs}

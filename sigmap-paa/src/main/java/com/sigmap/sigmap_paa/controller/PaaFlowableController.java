@@ -4,10 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
+import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
+import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
@@ -16,12 +20,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.math.BigDecimal;
+import java.util.*;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Paa entities.
@@ -29,9 +32,14 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api/paas/flowable")
 public class PaaFlowableController {
-
+    private final ObjectMapper objectMapper;
     @Autowired
     private PaaFlowableService paaFlowableService;
+
+    public PaaFlowableController(ObjectMapper objectMapper, PaaFlowableService paaFlowableService) {
+        this.objectMapper = objectMapper;
+        this.paaFlowableService = paaFlowableService;
+    }
 
     private final Logger log = LoggerFactory.getLogger(PaaFlowableController.class);
 
@@ -91,7 +99,8 @@ public class PaaFlowableController {
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-    @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaNotFound, DocNotFound, AcNotFound, IOException {
+    @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+        @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)throws PaaNotFound, DocNotFound, AcNotFound, IOException, RealisationNotFoundException, RealisationAlreadyExistsException {
         log.info("Validating task ID: {} with request: {}", taskId, request);
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
             try {
@@ -101,105 +110,194 @@ public class PaaFlowableController {
                 log.error("Error processing lots JSON: {}", e.getMessage());
             }
         }
+
+        // ADDED THIS: Process financements from JSON string if provided
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                processRealisationFinancementsFromJson(request.getPaa(), realisationsFinancementsJson);
+                log.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                log.error("Error processing financements JSON: {}", e.getMessage());
+            }
+        }
         TaskDTO response = paaFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
     }
-//    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
-//        System.out.println("the lots from here is");
-//
-//        System.out.println(lotsJson);
-//        try {
-//            ObjectMapper objectMapper = new ObjectMapper();
-//            // The JSON should be in format: { "0": [{"id": 1, "description": "lot 1"}, ...], "1": [...] }
-//            // Where the keys are realisation indices
-//            Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
-//                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
-//
-//            // Process each realisation's lots
-//            for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
-//                int realisationIndex = Integer.parseInt(entry.getKey());
-//
-//                // Skip if index is out of bounds
-//                if (realisationIndex >= request.getRealisations().size()) {
-//                    continue;
-//                }
-//
-//                // Get the target realisation
-//                RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
-//                Set<LotResponse> lots = new HashSet<>();
-//
-//                // Process lots for this realisation
-//                for (Map<String, Object> lotData : entry.getValue()) {
-//                    LotResponse lot = new LotResponse();
-//
-//                    if (lotData.containsKey("id")) {
-//                        lot.setId(((Number) lotData.get("id")).intValue());
-//                    }
-//
-//                    if (lotData.containsKey("version")) {
-//                        lot.setVersion(((Number) lotData.get("version")).intValue());
-//                    }
-//
-//                    if (lotData.containsKey("description")) {
-//                        lot.setDescription((String) lotData.get("description"));
-//                    }
-//
-//                    lots.add(lot);
-//                }
-//
-//                // Set the processed lots on the realisation
-//                realisation.setLots(lots);
-//            }
-//        } catch (Exception e) {
-//            throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
-//        }
-//    }
-private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
-    System.out.println("Processing lots JSON: " + lotsJson);
-    System.out.println("Number of realisations in request: " + (request.getRealisations() != null ? request.getRealisations().size() : 0));
 
-    if (request.getRealisations() == null || request.getRealisations().isEmpty()) {
-        System.out.println("No realisations found in request - skipping lot processing");
-        return;
+    private void processRealisationFinancementsFromJson(PaaRequestGlobal request, String realisationsFinancementsJson) {
+        if (realisationsFinancementsJson == null || realisationsFinancementsJson.isEmpty()) {
+            return;
+        }
+
+        try {
+            log.info("Processing financements JSON: {}", realisationsFinancementsJson);
+            Map<String, List<Map<String, Object>>> financementMap = objectMapper.readValue(
+                    realisationsFinancementsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {}
+            );
+
+            log.info("Parsed {} realisation indices from financements JSON", financementMap.size());
+
+            List<RealisationRequestForPaa> realisations = request.getRealisations();
+            if (realisations == null) {
+                realisations = new ArrayList<>();
+                request.setRealisations(realisations);
+            }
+
+            for (Map.Entry<String, List<Map<String, Object>>> entry : financementMap.entrySet()) {
+                int index;
+                try {
+                    index = Integer.parseInt(entry.getKey());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid realisation index: {}. Skipping.", entry.getKey());
+                    continue;
+                }
+
+                if (index >= realisations.size()) {
+                    log.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})", index, realisations.size());
+                    continue;
+                }
+
+                List<FinancementRequest> financementRequests = new ArrayList<>();
+                for (Map<String, Object> financementData : entry.getValue()) {
+                    FinancementRequest financementRequest = new FinancementRequest();
+                    // Explicitly map fields
+                    if (financementData.containsKey("id")) {
+                        Object id = financementData.get("id");
+                        if (id instanceof Number) {
+                            financementRequest.setFinancementId(((Number) id).intValue());
+                        }
+                    }
+                    if (financementData.containsKey("monnaieId")) {
+                        Object monnaieId = financementData.get("monnaieId");
+                        if (monnaieId instanceof Number) {
+                            financementRequest.setMonnaieId(((Number) monnaieId).intValue());
+                        }
+                    }
+                    if (financementData.containsKey("budgetEstimer")) {
+                        Object budgetEstimer = financementData.get("budgetEstimer");
+                        if (budgetEstimer instanceof Number) {
+                            financementRequest.setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
+                        }
+                    }
+                    if (financementData.containsKey("sourceFinancement")) {
+                        Object sourceFinancement = financementData.get("sourceFinancement");
+                        if (sourceFinancement instanceof Map) {
+                            Map<String, Object> sourceFinancementMap = (Map<String, Object>) sourceFinancement;
+                            if (sourceFinancementMap.containsKey("id")) {
+                                Object sourceId = sourceFinancementMap.get("id");
+                                if (sourceId instanceof Number) {
+                                    RefParam refParam = new RefParam();
+                                    refParam.setId(((Number) sourceId).intValue());
+                                    financementRequest.setSourceFinancement(refParam);
+                                }
+                            }
+                        }
+                    }
+                    financementRequests.add(financementRequest);
+                }
+
+                log.info("Added {} financements to realisation at index {}", financementRequests.size(), index);
+                log.info("{}", financementRequests);
+                realisations.get(index).setFinancements(financementRequests);
+            }
+
+            log.info("Successfully processed financements from JSON string");
+        } catch (IOException e) {
+            log.error("Error parsing financements JSON: {}", realisationsFinancementsJson, e);
+            throw new IllegalArgumentException("Failed to parse financements JSON: " + e.getMessage());
+        }
     }
 
+
+    private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
     try {
         ObjectMapper objectMapper = new ObjectMapper();
+        log.info("Processing lots JSON: {}", lotsJson);
+
+        // Validate input
+        if (lotsJson == null || lotsJson.trim().isEmpty()) {
+            log.warn("Lots JSON is empty or null, skipping processing");
+            return;
+        }
+
+        // Parse JSON into a map of realisation indices to lists of lot data
         Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
                 new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+        log.info("Parsed {} realisation indices from lots JSON", lotsMap.size());
 
+        // Ensure realisations list exists
+        if (request.getRealisations() == null) {
+            request.setRealisations(new ArrayList<>());
+            log.warn("Realisations list was null, initialized as empty");
+        }
+
+        // Process each realisation's lots
         for (Map.Entry<String, List<Map<String, Object>>> entry : lotsMap.entrySet()) {
             int realisationIndex = Integer.parseInt(entry.getKey());
-            System.out.println("Processing realisation at index: " + realisationIndex);
 
+            // Skip if index is out of bounds
             if (realisationIndex >= request.getRealisations().size()) {
-                System.out.println("Realisation index " + realisationIndex + " is out of bounds - skipping");
+                log.warn("Skipping lots for realisation index {} as it's out of bounds (size: {})",
+                        realisationIndex, request.getRealisations().size());
                 continue;
             }
 
+            // Get the target realisation
             RealisationRequestForPaa realisation = request.getRealisations().get(realisationIndex);
-            System.out.println("Found realisation: " + realisation);
-
-            Set<LotResponse> lots = new HashSet<>();
-            for (Map<String, Object> lotData : entry.getValue()) {
-                LotResponse lot = new LotResponse();
-                if (lotData.containsKey("id")) {
-                    lot.setId(((Number) lotData.get("id")).intValue());
-                }
-                if (lotData.containsKey("version")) {
-                    lot.setVersion(((Number) lotData.get("version")).intValue());
-                }
-                if (lotData.containsKey("description")) {
-                    lot.setDescription((String) lotData.get("description"));
-                }
-                lots.add(lot);
-                System.out.println("Added lot: " + lot);
+            if (realisation == null) {
+                log.warn("Realisation at index {} is null, skipping", realisationIndex);
+                continue;
             }
 
+            List<LotResponse> lots = new ArrayList<>();
+
+            // Process lots for this realisation
+            for (Map<String, Object> lotData : entry.getValue()) {
+                LotResponse lot = new LotResponse();
+
+                if (lotData.containsKey("id")) {
+                    lot.setId(((Number) lotData.get("id")).intValue());
+                } else {
+                    log.debug("Lot data missing id, setting to null");
+                }
+
+                if (lotData.containsKey("version")) {
+                    lot.setVersion(((Number) lotData.get("version")).intValue());
+                } else {
+                    log.debug("Lot data missing version, setting to null");
+                }
+
+                if (lotData.containsKey("description")) {
+                    lot.setDescription((String) lotData.get("description"));
+                } else {
+                    log.warn("Lot data missing description, skipping lot");
+                    continue;
+                }
+
+                // MODIFIED: Handle budget field
+                if (lotData.containsKey("budget")) {
+                    Object budgetObj = lotData.get("budget");
+                    if (budgetObj instanceof Number) {
+                        lot.setBudget(new java.math.BigDecimal(budgetObj.toString()));
+                        log.debug("Set budget to {} for lot with description: {}", lot.getBudget(), lot.getDescription());
+                    } else {
+                        log.warn("Invalid budget format for lot with description: {}, setting to null", lot.getDescription());
+                    }
+                } else {
+                    log.debug("Lot data missing budget, setting to null");
+                }
+
+                lots.add(lot);
+            }
+
+            // Set the processed lots on the realisation
             realisation.setLots(lots);
-            System.out.println("Set lots on realisation at index " + realisationIndex + ": " + lots);
+            log.info("Added {} lots to realisation at index {}", lots.size(), realisationIndex);
+            log.info(lots.toString());
         }
     } catch (Exception e) {
+        log.error("Failed to parse lots JSON: {}", e.getMessage(), e);
         throw new RuntimeException("Failed to parse lots JSON: " + e.getMessage(), e);
     }
 }

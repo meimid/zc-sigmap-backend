@@ -1,23 +1,27 @@
 package com.sigmap.sigmap_params.exeptions;
 
+import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcherIdsException;
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
-import com.sigmap.common.com.exception.ComDeleted;
-import com.sigmap.common.com.exception.ComHasAssociatedAc;
-import com.sigmap.common.com.exception.DuplicateComIdsException;
+import com.sigmap.common.com.exception.*;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
-import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
 import com.sigmap.common.menu_item.exception.MenuItemNotFound;
 import com.sigmap.common.menu_item.exception.MenuItemSoftDeleteExeption;
 import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
+import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -498,7 +502,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     @ExceptionHandler(DirectionNotFound.class)
     public ResponseEntity<ErrorResponse> DirectionNotFoundException(DirectionNotFound ex) {
-        String message = messageSource.getMessage("direction.directionNotFound",new Object[] {ex.getId()}, getLocal());
+        String message = messageSource.getMessage("direction.directionNotFound",new Object[] {ex.getDirectionId(),ex.getAcId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
@@ -575,5 +579,105 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(MonnaieCodeAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> MonnaieCodeAlreadyExistException(MonnaieCodeAlreadyExist ex) {
+        String message = messageSource.getMessage("monnaie.codeAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ModeDePassationSelectionNotFound.class)
+    public ResponseEntity<ErrorResponse> ModeDePassationSelectionNotFoundException(ModeDePassationSelectionNotFound ex) {
+        String message = messageSource.getMessage("ModeDePassationSelectionNotFound.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateTypeMarcherIdsException.class)
+    public ResponseEntity<ErrorResponse> DuplicateCategorieIdsException(DuplicateTypeMarcherIdsException ex) {
+        String message = messageSource.getMessage("duplicate.typeMarcher",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ModeDePassationSelectionAlredyExist.class)
+    public ResponseEntity<ErrorResponse> ModeDePassationSelectionAlredyExistException(ModeDePassationSelectionAlredyExist ex) {
+        String message = messageSource.getMessage("ModeDePassationSelection.alredyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RequiredValue.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleException(RequiredValue ex) {
+        String message = messageSource.getMessage("ModeDePassationSelection.requiredlibelle",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MonnaieNotFound.class)
+    public ResponseEntity<ErrorResponse> MonnaieCodeAlreadyExistException(MonnaieNotFound ex) {
+        String message = messageSource.getMessage("monnaie.notfound",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AdresseNotFound.class)
+    public ResponseEntity<ErrorResponse> AdresseNotFoundException(AdresseNotFound ex) {
+        String message = messageSource.getMessage("adresse.notfound",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedAc.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedAcException(AcHasAssociatedAc ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedAc",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedAdress.class)
+    public ResponseEntity<ErrorResponse> HasAssociatedAdresseException(HasAssociatedAdress ex) {
+        String message = messageSource.getMessage("ref.hasAssociatedAddress",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcAlreadyHaveCom.class)
+    public ResponseEntity<ErrorResponse> AcAlreadyHaveComException(AcAlreadyHaveCom ex) {
+        String message = messageSource.getMessage("ac.hasAlreadyHaveCom",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(PermanentComAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> PermanentComAlreadyExistException(PermanentComAlreadyExist ex) {
+        String message = messageSource.getMessage("com.permanentComAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RefParamAlredyExist.class)
+    public ResponseEntity<ErrorResponse> RefParamAlredyExistExistException(RefParamAlredyExist ex) {
+        String message = messageSource.getMessage("refparam.referenceAlreadyExist",new Object[] {ex.getCode()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(CNCMPPNotFound.class)
+    public ResponseEntity<ErrorResponse> CNCMPPNotFoundException(CNCMPPNotFound ex) {
+        String message = messageSource.getMessage("com.cncpp_notfound",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 }

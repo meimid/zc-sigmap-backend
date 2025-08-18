@@ -6,10 +6,10 @@ import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import java.util.Optional;
 import java.util.List;
 
@@ -32,6 +32,13 @@ public class DacDocsController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/batch")
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatch(@RequestBody List<DacDocsRequest> requests) {
+        List<DacDocs> dacDocsList = dacDocsService.createDacDocsBatch(requests);
+        List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{dacId}/{dacVer}/{dynaDocsId}/{dynaDocsVer}/{dynaFieldsId}")
     public ResponseEntity<DacDocsResponse> getDacDocs(
             @PathVariable Integer dacId,
@@ -42,6 +49,18 @@ public class DacDocsController {
         Optional<DacDocs> dacDocs = dacDocsService.findById(dacId, dacVer, dynaDocsId, dynaDocsVer, dynaFieldsId);
         if (dacDocs.isPresent()) {
             DacDocsResponse response = DacDocsMapper.INSTANCE.toResponse(dacDocs.get());
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{dacId}/{dacVer}")
+    public ResponseEntity<List<DacDocResponseDTO>> getDacDocsByDacIdAndVer(
+            @PathVariable Integer dacId,
+            @PathVariable Integer dacVer) {
+        List<DacDocResponseDTO> response = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+        if (response != null) {
             return ResponseEntity.ok(response);
         } else {
             return ResponseEntity.notFound().build();

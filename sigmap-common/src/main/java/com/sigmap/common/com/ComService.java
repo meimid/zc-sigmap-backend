@@ -1,17 +1,18 @@
 package com.sigmap.common.com;
-import com.sigmap.common.ac.exception.AcDeleted;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
-import com.sigmap.common.com.exception.ComDeleted;
+import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_com.UserCom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -82,24 +83,33 @@ public interface ComService {
      * @param request the request to create the Com from
      * @return the created Com
      */
-    Com create(ComRequest request) throws AcNotFound, RefParamNotFound;
+    Com create(ComRequest request) throws AcNotFound, RefParamNotFound, ComNotFound, IOException;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated com
      */
-    Com update(Integer id,ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus;
+    Com update(Integer id,ComRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, AgpmDefaultStatus, DocNotFound, IOException;
     /**
      * Delete a Com.
      *
      * @param id the id of the Com to delete
      */
-    void delete(Integer id) throws ComHasAssociatedAc;
+    void delete(Integer id) throws ComHasAssociatedAc, ComNotFound;
 
     public UserCom makeUserResponsable (String userId,Integer ComId);
 
     List<Com> getComsWithTypeCPMP() throws RefParamNotFound;
 
     List<Com> getComsWithTypeCNCMP() throws RefParamNotFound;
+
+    Com getCommissionDeTutelle(Integer acId) throws ComNotFound,AcNotFound;
+
+    Com getCommissionPrivee(Integer acId) throws ComNotFound,AcNotFound;
+    List<Com>getAllCommissionsDeTutelles(Integer acId);
+    List<Com> getAllSpecialCommissions();
+    Com findCNCMPP() throws CNCMPPNotFound;
+
+
 }

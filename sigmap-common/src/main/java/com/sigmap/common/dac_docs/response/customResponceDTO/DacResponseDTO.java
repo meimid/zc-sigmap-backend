@@ -8,5 +8,8 @@ import java.util.List;
 public class DacResponseDTO {
     private Integer dacId;
     private Integer dacVer;
+    private DacPpmResponseDTO ppm;
+    private DacCategoryResponseDTO category;
+    private DacRealisationResponseDTO realisation;
     private List<DynaDocsResponseDTO> dynaDocs;
 }

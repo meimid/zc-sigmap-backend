@@ -1,7 +1,12 @@
 package com.sigmap.common.realisations.response;
 
+import com.sigmap.common.ModeDePassationSelection.response.ModeDePassationSelectionResponseDto;
+import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.lots.response.LotResponseDTO;
+import com.sigmap.common.monnaie.response.MonnaieResponseDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
@@ -16,22 +21,29 @@ public class RealisationResponseDTO {
     private Integer id;
     private Integer version;
     private String realisationEnvisagees;
-    private RefParamResponseDto service;
-    private RefParamResponseDto direction;
-    private RefParamResponseDto sourceFinancement;
-    private RefParamResponseDto monais;
+//    private RefParamResponseDto service;
+//    private RefParamResponseDto direction;
+//    private RefParamResponseDto sourceFinancement;
+private String beneficiaire;
+    private List<FinancementResponse> financements;
+
+    private RefParamResponseDto imputationBudgetaire;
+//    private RefParamResponseDto monais;
+    private MonnaieResponseDto monnaie;
     private RefParamResponseDto typeMarcher;
-    private RefParamResponseDto modeSelection;
+//    private RefParamResponseDto modeSelection;
+private ModeDePassationSelectionResponseDto modePassation;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;
     private LocalDate datePrevDp;
     private LocalDate datePrevAp;
     private BigDecimal budgetEstime;
+    private RealisationStatus statut;
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;
     private List<DocsResponseDTO> docs;
-    private Set<LotResponse> lots;
+    private List<LotResponseDTO> lots;
 
 
 } 

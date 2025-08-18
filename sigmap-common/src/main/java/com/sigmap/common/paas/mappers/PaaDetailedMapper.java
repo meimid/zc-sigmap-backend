@@ -1,5 +1,7 @@
 package com.sigmap.common.paas.mappers;
 
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.response.LotPaaResponse;
 import com.sigmap.common.paas.Paa;
@@ -48,7 +50,16 @@ public interface PaaDetailedMapper {
 //    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "lots", expression = "java(mapLots(realisation.getLots()))")
     @Mapping(target = "docs", expression = "java(mapDocs(realisation.getDocs()))")
+    @Mapping(target = "financements", expression = "java(mapFinancements(realisation.getFinancements()))")
     RealisationResponseDtoForPaa mapRealisation(Realisation realisation);
+
+    @Mapping(target = "financementId", source = "id.financementId")
+    @Mapping(target = "realisationId", source = "id.realisation.id")
+    @Mapping(target = "realisationVer", source = "id.realisation.version")
+    @Mapping(target = "monnaieId", source = "monnaie.id")
+    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "budgetEstimer", source = "budgetEstimer")
+    FinancementResponse mapFinancement(Financement financement);
 
     /**
      * Maps a Lot entity to a LotPaaResponse
@@ -68,9 +79,23 @@ public interface PaaDetailedMapper {
     }
 
     /**
+     * Helper method to map a list of Financement entities to FinancementResponse DTOs - ADD THIS METHOD
+     */
+    default List<FinancementResponse> mapFinancements(List<Financement> financements) {
+        if (financements == null) {
+            return null;
+        }
+        return financements.stream()
+                .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted())) // Filter out deleted financements
+                .map(this::mapFinancement)
+                .collect(Collectors.toList());
+    }
+
+
+    /**
      * Helper method to map a set of Lot entities to LotPaaResponse DTOs
      */
-    default List<LotPaaResponse> mapLots(Set<Lot> lots) {
+    default List<LotPaaResponse> mapLots(List<Lot> lots) {
         if (lots == null) {
             return null;
         }

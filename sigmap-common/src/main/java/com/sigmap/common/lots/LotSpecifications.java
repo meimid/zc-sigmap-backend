@@ -3,6 +3,8 @@ package com.sigmap.common.lots;
 import com.sigmap.common.entity.CompositeId;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
+
 public class LotSpecifications {
     /** Search across description field. */
     public static Specification<Lot> search(String search) {
@@ -57,6 +59,16 @@ public class LotSpecifications {
                 );
             }
             return criteriaBuilder.isTrue(root.get("isDeleted"));
+        };
+    }
+
+    /** Filter by budget value. */
+    public static Specification<Lot> budget(BigDecimal budget) {
+        return (root, query, criteriaBuilder) -> {
+            if (budget == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("budget"), budget);
         };
     }
 }

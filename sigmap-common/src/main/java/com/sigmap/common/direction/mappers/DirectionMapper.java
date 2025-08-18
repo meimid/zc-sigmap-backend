@@ -2,17 +2,14 @@ package com.sigmap.common.direction.mappers;
 
 import com.sigmap.common.direction.Direction;
 import com.sigmap.common.direction.request.DirectionRequest;
-import com.sigmap.common.direction.request.DirectionunderAcRequest;
 import com.sigmap.common.direction.response.DirectionResponse;
 import com.sigmap.common.direction.response.DirectionResponseDto;
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
-@Mapper
+@Mapper(componentModel = "spring")
 public interface DirectionMapper {
     DirectionMapper INSTANCE = Mappers.getMapper(DirectionMapper.class);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
@@ -26,7 +23,6 @@ public interface DirectionMapper {
     DirectionResponseDto mapToDto(Direction direction);
     Direction mapFromRequest(DirectionRequest request);
     void updateFromRequest(DirectionRequest source, @MappingTarget Direction target);
-    Direction mapFromDirectionUnderAcRequest(DirectionunderAcRequest source);
 
 
 }

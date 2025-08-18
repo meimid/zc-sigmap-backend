@@ -314,5 +314,6 @@ public interface PpmService {
      Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException;
      Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable);
      List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
+    Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) ;
 
     }

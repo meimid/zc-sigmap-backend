@@ -31,7 +31,7 @@ public class UserCom extends BaseEntity {
     private Integer comId;
 
     @ManyToOne
-    @JoinColumn(name = "com_id", insertable = false, updatable = false)
+    @JoinColumn(name = "com_id", referencedColumnName = "com_id", insertable = false, updatable = false)
     private Com com;
 
     @Enumerated(EnumType.STRING)

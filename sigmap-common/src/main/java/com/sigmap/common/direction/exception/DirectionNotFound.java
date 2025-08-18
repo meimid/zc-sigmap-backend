@@ -4,10 +4,12 @@ import lombok.Getter;
 
 @Getter
 public class DirectionNotFound extends RuntimeException {
-    private final Integer id ;
+    private final Integer directionId ;
+    private final Integer acId;
 
-    public DirectionNotFound(String message, Integer id) {
+    public DirectionNotFound(String message, Integer directionId, Integer acId) {
         super(message);
-        this.id = id;
+        this.directionId = directionId;
+        this.acId = acId;
     }
 }

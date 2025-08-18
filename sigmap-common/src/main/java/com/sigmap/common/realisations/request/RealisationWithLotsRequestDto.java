@@ -1,5 +1,7 @@
 package com.sigmap.common.realisations.request;
 
+import com.sigmap.common.financement.request.FinancementBaseRequestDto;
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.response.LotResponse;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -21,12 +23,15 @@ public class RealisationWithLotsRequestDto extends RealisationBaseRequestDto {
      * Set of Lot responses associated with this Realisation.
      * This field overrides the one in the parent class to ensure it's not ignored during JSON processing.
      */
-    private Set<LotResponse> lots;
+    private List<LotResponse> lots;
 
     /**
      * List of files to be uploaded for this Realisation.
      * Explicitly declare this field to ensure it's properly carried through inheritance.
      */
     private List<MultipartFile> realisationFiles;
+
+    private List<FinancementRequest> financements;
+
 
 } 

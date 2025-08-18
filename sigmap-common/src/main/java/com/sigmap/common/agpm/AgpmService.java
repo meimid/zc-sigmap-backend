@@ -163,4 +163,6 @@ public interface AgpmService {
      * find the list of agpms with Ac id
      * */
     Page<Agpm> findAgpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound;
+
+    Page<Agpm> findAllForWebsite(Specification<Agpm> spec, Pageable pageable) ;
 }
