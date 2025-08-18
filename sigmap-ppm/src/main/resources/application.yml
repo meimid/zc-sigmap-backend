@@ -40,7 +40,7 @@ spring:
 
   #smtp mail configuration:
   mail:
-    test-connection: true
+    test-connection: false
     host: ${SMTP_HOST:smtp.gmail.com}
     port: ${SMTP_PORT:587}
     username: ${SMTP_USERNAME:sigatest18@gmail.com}
