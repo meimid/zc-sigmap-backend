@@ -61,7 +61,7 @@ public class MailService {
 
             // Set email details
             helper.setTo(user.getEmail());
-            helper.setSubject("Activate Your Account");
+            helper.setSubject("SIGMAP – Lien d'activation compte");
             helper.setFrom(fromEmail);
 
             // Prepare Thymeleaf context
@@ -71,6 +71,7 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
+            context.setVariable("from", fromEmail);
             //log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
@@ -109,7 +110,7 @@ public class MailService {
 
             // Set email details
             helper.setTo(user.getEmail());
-            helper.setSubject("Activate Your Account");
+            helper.setSubject("SIGMAP – Lien d'activation compte");
             helper.setFrom(fromEmail);
 
             // Prepare Thymeleaf context
@@ -119,6 +120,7 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
+            context.setVariable("from", fromEmail);
             //log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
@@ -158,7 +160,7 @@ public class MailService {
 
             // Set email details
             helper.setTo(user.getEmail());
-            helper.setSubject("Reset Password");
+            helper.setSubject("SIGMAP – Lien de réinitialisation de mot de passe");
             helper.setFrom(fromEmail);
 
             // Prepare Thymeleaf context
@@ -168,6 +170,8 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
+            context.setVariable("from", fromEmail);
+
             //log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
@@ -206,7 +210,7 @@ public class MailService {
 
             // Set email details
             helper.setTo(user.getEmail());
-            helper.setSubject("Reset Password");
+            helper.setSubject("SIGMAP – Lien de réinitialisation de mot de passe");
             helper.setFrom(fromEmail);
 
             // Prepare Thymeleaf context
@@ -216,6 +220,7 @@ public class MailService {
             context.setVariable("email", user.getEmail());
             context.setVariable("baseUrl", getBaseUrl);
             context.setVariable("logo", encodedStringLogo);
+            context.setVariable("from", fromEmail);
             //log.info("....................... {} ", encodedStringLogo);
 
             // Render HTML template
