@@ -481,7 +481,11 @@ public class AcServiceImpl implements AcService{
         }
     }
 
-
-
+    @Override
+    public Integer getComIdByAcId(Integer acId) throws AcNotFound {
+        return repository.findById(acId)
+                .map(ac -> ac.getCom() != null ? ac.getCom().getId() : null)
+                .orElseThrow(() -> new AcNotFound("AC not found " , List.of(acId)));
+    }
 
 }
