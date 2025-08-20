@@ -5249,9 +5249,9 @@ public class PpmServiceImpl implements PpmService {
                     // PPM control: reject if budget is BELOW the seuil
                     if (budgetEstime.compareTo(acSeuil) < 0) {
                         String msg = String.format(
-                                "Realisation %s has budgetEstime %s BELOW AC seuil %s. " +
-                                        "This activity is compatible with PAA, not PPM.",
-                                realisation.getRealisationEnvisagees(), budgetEstime, acSeuil);
+                                "La réalisation %s a un budget estimé %s inférieur au seuil AC %s. Cette activité est compatible avec le PAA, mais pas avec le PPM.",
+                                realisation.getRealisationEnvisagees(), budgetEstime, acSeuil
+                        );
                         log.error("[PPM] {}", msg);
                         throw new RealisationBudgetBelowAcSeuilForPpmException(msg);
                     }

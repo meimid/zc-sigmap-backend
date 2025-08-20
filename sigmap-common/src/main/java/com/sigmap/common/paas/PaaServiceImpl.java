@@ -3476,9 +3476,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
                                 realisation.getId(), budgetEstime, acSeuil);
                         throw new RealisationBudgetExceedsAcSeuilException(
-                                String.format("Realisation %s has budgetEstime %s OVER AC seuil %s. " +
-                                                "This activity is compatible with PPM, not PAA.",
-                                        realisation.getRealisationEnvisagees(), budgetEstime, acSeuil));
+                                String.format(
+                                        "La réalisation %s a un budget estimé %s supérieur au seuil AC %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        realisation.getRealisationEnvisagees(), budgetEstime, acSeuil
+                                ));
                     }
                 } else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
