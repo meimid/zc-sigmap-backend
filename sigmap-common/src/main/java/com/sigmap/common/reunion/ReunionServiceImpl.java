@@ -217,11 +217,15 @@ public class ReunionServiceImpl implements ReunionService{
             participantRequest.setMail(userDetails.getEmail());
             participantRequest.setUserId(userCom.getUserId());
             participantRequest.setType(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE);
-          ParticipantRequest requestData = requestParticipantsMap.get(userCom.getUserId());
+            ParticipantRequest requestData = requestParticipantsMap.get(userCom.getUserId());
+            participantRequest.setOrganisme(reunion.getCom().getNom());
+            String participantFonction = String.valueOf(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId())
+                    ? ParticipantType.RESPONSABLE
+                    : ParticipantType.MEMBRE);
+            participantRequest.setFonction(participantFonction);
+
             if (requestData != null) {
                 participantRequest.setPresent(requestData.isPresent());
-                participantRequest.setOrganisme(requestData.getOrganisme());
-                participantRequest.setFonction(requestData.getFonction());
             } else {
                 participantRequest.setPresent(false);
             }
@@ -256,10 +260,12 @@ public class ReunionServiceImpl implements ReunionService{
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
                 if (participantToUpdate != null) {
                     participantToUpdate.setPresent(participantRequest.isPresent());
-                    participantToUpdate.setOrganisme(participantRequest.getOrganisme());
-                    participantToUpdate.setFonction(participantRequest.getFonction());
                     participantsToSave.add(participantToUpdate);
                     participantIdsToKeep.add(participantToUpdate.getId());
+                    if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
+                        participantToUpdate.setOrganisme(participantRequest.getOrganisme());
+                        participantToUpdate.setFonction(participantRequest.getFonction());
+                    }
                 }
             } else {
                 participantRequest.setReunionId(reunion.getId());
