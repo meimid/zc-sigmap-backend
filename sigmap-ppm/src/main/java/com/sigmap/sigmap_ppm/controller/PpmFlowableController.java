@@ -438,4 +438,9 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return ppmFlowableService.loadHistoricTasks(procInstId);
     }
+
+    @GetMapping("/tasks/by_com/{comId}")
+    public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
+        return ResponseEntity.ok(ppmFlowableService.getTasksByComId(comId));
+    }
 }
