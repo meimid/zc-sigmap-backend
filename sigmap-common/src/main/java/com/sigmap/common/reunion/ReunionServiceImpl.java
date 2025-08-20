@@ -21,7 +21,9 @@ import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.reunion.exception.ReunionDate;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
+import com.sigmap.common.reunion.exception.ReunionStatusException;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunionDac.ReunionDac;
@@ -133,6 +135,7 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        if(reunionToUpdate.getStatus() == ReunionStatus.BROUILLON) {
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
@@ -140,16 +143,23 @@ public class ReunionServiceImpl implements ReunionService{
         synchronizeParticipants(request, reunionToUpdate);
         synchronizePpms(request, reunionToUpdate);
         synchronizeDacs(request, reunionToUpdate);
-        return save(reunionToUpdate);
+        return save(reunionToUpdate);}
+        else {
+            throw new ReunionStatusException("", reunionToUpdate.getStatus());
+        }
     }
     @Override
     @Transactional
     public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)){
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
         if(request.getReunionDate()!=null){
+            if(request.getReunionDate().before(Calendar.getInstance())){
+                throw new ReunionDate("Reunion date cannot be before now");
+            }
             reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
         }else{
             reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
@@ -159,12 +169,28 @@ public class ReunionServiceImpl implements ReunionService{
         synchronizePpms(request, reunionToUpdate);
         synchronizeDacs(request, reunionToUpdate);
         return save(reunionToUpdate);
+    }else{
+            if(request.getReunionDate()!=null){
+                if(request.getReunionDate().before(Calendar.getInstance())){
+                    throw new ReunionDate("Reunion date cannot be before now");
+                }
+                reunionToUpdate.setReunionDate(request.getReunionDate());
+                reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
+            }else{
+                reunionToUpdate.setReunionDate(null);
+                reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
+            }
+            return save(reunionToUpdate);
+        }
     }
 
     @Override
     @Transactional
     public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        if(reunionToUpdate.getStatus()!=ReunionStatus.BROUILLON){
+            throw new ReunionStatusException("",reunionToUpdate.getStatus());
+        }
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         reunionToUpdate.setStatus(ReunionStatus.ANNULER);
@@ -333,7 +359,10 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public void delete(Integer id) throws ReunionNotFound {
-         findById(id);
+        Reunion reunion= findById(id);
+         if(reunion.getStatus()!=ReunionStatus.BROUILLON){
+             throw new ReunionStatusException("",reunion.getStatus());
+         }
         repository.softDelete(id);
     }
   /*  private void synchronizePpms(ReunionRequest request, Reunion reunion) throws PpmNotFound, AcNotFound {

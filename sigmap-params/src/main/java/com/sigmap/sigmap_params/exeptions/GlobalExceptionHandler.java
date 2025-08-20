@@ -31,7 +31,9 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
+import com.sigmap.common.reunion.exception.ReunionDate;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
+import com.sigmap.common.reunion.exception.ReunionStatusException;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -697,5 +699,19 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("com.cncpp_notfound",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionStatusException.class)
+    public ResponseEntity<ErrorResponse> ReunionStatusException(ReunionStatusException ex) {
+        String message = messageSource.getMessage("reunion.brouillon",new Object[] {ex.getStatus()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionDate.class)
+    public ResponseEntity<ErrorResponse> ReunionDateException() {
+        String message = messageSource.getMessage("reunion.date",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
