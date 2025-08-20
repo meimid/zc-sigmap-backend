@@ -700,6 +700,8 @@ public class PpmFlowableService {
 
                 runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
                 log.info("AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
+
+                skipComAssociationCheck = true; // small change requested
             }
 
             // CPMP meeting → next needs commission ⇒ set CNCMPP (Permanent)
@@ -726,7 +728,7 @@ public class PpmFlowableService {
                 runtimeService.setVariable(task.getProcessInstanceId(), "cncmpPerComId", cncmpPer.getId()); // store permanent comId
                 log.info("CPMP→CNCMPP: Set comId {} (Permanent) for process {}", cncmpPer.getId(), task.getProcessInstanceId());
 
-                // skip association for this system hand-off
+                // already skipped here for system hand-off
                 skipComAssociationCheck = true;
             }
         }
@@ -1295,6 +1297,19 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                     .collect(Collectors.toList());
             ppm.setDocs(nonDeletedDocs);
         }
+
+        if (ppm.getRealisations() != null) {
+            ppm.getRealisations().forEach(real -> {
+                if (real.getFinancements() != null) {
+                    real.setFinancements(
+                            real.getFinancements().stream()
+                                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                                    .collect(Collectors.toList())
+                    );
+                }
+            });
+        }
+
         PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
         response.setPpm(ppmResponse);
 
