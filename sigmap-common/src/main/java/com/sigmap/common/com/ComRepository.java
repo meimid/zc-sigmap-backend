@@ -14,4 +14,7 @@ public interface ComRepository extends JpaRepository<Com, Integer>,
     /*@Query("SELECT EXISTS (SELECT ac FROM Ac ac JOIN ac.coms c WHERE c.id = :comId and ac.isDeleted=false and c.isDeleted=false)")
     boolean hasAssociatedAc(@Param("comId") Integer comId);*/
 
+    @Query("SELECT c.responsableId FROM Com c WHERE c.id = :comId AND c.isDeleted = false")
+    String findIdResponsableByComId(@Param("comId") Integer comId);
+
 }

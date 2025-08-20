@@ -70,14 +70,14 @@ if (document.documentElement) {
                                     <!--begin:Text-->
                                     <div style="font-size: 14px; font-weight: 500; margin-bottom: 27px; font-family:Arial,Helvetica,sans-serif;">
                                         <p style="margin-bottom:9px; color:#181C32; font-size: 22px; font-weight:700"
-                                           th:text="${name}">
+                                           > Activation Compte
                                         </p>
                                         <p style="margin-bottom:2px; color:#7E8299"> Votre compte a été créé
                                             avec les coordonners suivantes : </p>
                                         <p style="color:#5E6278; font-size: 13px; font-weight: 500; padding-top:3px; margin:0;font-family:Arial,Helvetica,sans-serif">
                                             Email : <strong th:text="${email}"></strong></p>
                                         <p style="color:#5E6278; font-size: 13px; font-weight: 500; padding-top:3px; margin:0;font-family:Arial,Helvetica,sans-serif">
-                                            PassWord : <strong th:text="${password}"></strong></p>
+                                            Mot de passe : <strong th:text="${password}"></strong></p>
                                     </div>
                                     <!--end:Text-->
                                     <!--begin:Action-->
@@ -95,8 +95,8 @@ if (document.documentElement) {
                                 <p style="color:#181C32; font-size: 16px; font-weight: 600; margin-bottom:9px">Problémes
                                     de connexion ?</p>
                                 <p style="margin-bottom:4px">Email
-                                    <a href="mailto://dev.sigmap@siga-bc.com" rel="noopener" target="_blank"
-                                       style="font-weight: 600">dev.sigmap@siga-bc.com</a>.</p>
+                                    <a th:href="'mailto:' +${from}" rel="noopener" target="_blank"
+                                       style="font-weight: 600"> <strong th:text="${from}"></strong></a>.</p>
                             </td>
                         </tr>
                         <tr>
@@ -111,13 +111,7 @@ if (document.documentElement) {
                                 <p>&copy; SIGMAP team.
                             </td>
                         </tr>
-                        <tr>
-                            <td align="center" valign="center"
-                                style="font-size: 13px; padding:0 15px; text-align:center; font-weight: 500; color: #A1A5B7;font-family:Arial,Helvetica,sans-serif">
-                                <!-- Insertion du SVG avec la balise img -->
-                                <img alt="Logo" th:src="${logo}" style="height: 75px" />
-                            </td>
-                        </tr>
+
                         </tbody>
                     </table>
                 </div>

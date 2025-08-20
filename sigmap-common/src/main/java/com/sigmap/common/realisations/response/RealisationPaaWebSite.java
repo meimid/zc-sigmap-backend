@@ -24,10 +24,10 @@ public class RealisationPaaWebSite {
         this.id = realisation.getId();
         this.expenseObject = realisation.getRealisationEnvisagees();
 
-        // --- Mappings from related RefParam entities (assuming getNom() exists) ---
-        if (realisation.getSourceFinancement() != null) {
-            this.budgetAllocation = realisation.getSourceFinancement().getCode();
-        }
+//        // --- Mappings from related RefParam entities (assuming getNom() exists) ---
+//        if (realisation.getSourceFinancement() != null) {
+//            this.budgetAllocation = realisation.getSourceFinancement().getCode();
+//        }
 
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();

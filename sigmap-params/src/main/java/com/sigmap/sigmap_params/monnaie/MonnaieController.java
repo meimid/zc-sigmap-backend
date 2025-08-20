@@ -27,7 +27,6 @@ public class MonnaieController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<List<Monnaie>> findAll() {
     List<Monnaie> params = MonnaieService.findAll();
     return ResponseEntity.ok(params);
