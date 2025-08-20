@@ -366,6 +366,10 @@ public class PpmFlowableService {
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
             taskInfo.setCommissionRequired(taskProperties.get("commissionRequired"));
+            // ADDED: expose meetingRequired + comId on TaskDTO
+            taskInfo.setMeetingRequired(taskProperties.get("meetingRequired")); // ADDED
+            Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+            if (comIdVar != null) taskInfo.setComId(comIdVar); // ADDED
 
             return taskInfo;
         }).collect(Collectors.toList());
@@ -453,6 +457,10 @@ public class PpmFlowableService {
         response.setIsUpdatable(taskProperties.get("isUpdatable"));
         response.setIsPublishable(taskProperties.get("isPublishable"));
         response.setCommissionRequired(taskProperties.get("commissionRequired"));
+        // ADDED: expose meetingRequired + comId on TaskDetailsDTO
+        response.setMeetingRequired(taskProperties.get("meetingRequired")); // ADDED
+        Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+        if (comIdVar != null) response.setComId(comIdVar); // ADDED
 
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         response.setNextSteps(nextSteps);
@@ -478,6 +486,7 @@ public class PpmFlowableService {
             validationRequest.setPpm(request.getPpm());
             validationRequest.setComId(request.getComId());
             validationRequest.setCncmpDecision(request.getCncmpDecision());
+            validationRequest.setFromMeeting(true);
 
             TaskDTO response = validateTask(request.getTaskId(), validationRequest);
             responses.add(response);
@@ -551,11 +560,20 @@ public class PpmFlowableService {
         Boolean commissionRequired = taskProperties.get("commissionRequired");
         Boolean meetingRequired    = taskProperties.get("meetingRequired");
 
-        log.info("approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}",
-                task.getTaskDefinitionKey(), task.getName(), isUpdatable, meetingRequired, commissionRequired, isPublishable);
+        // ADDED: read flag (default false if null)
+        boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting()); // ADDED
 
-        // --- meetingRequired enforcement ---
+        log.info("approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
+                task.getTaskDefinitionKey(), task.getName(), isUpdatable, meetingRequired, commissionRequired, isPublishable, fromMeeting);
+
+            // --- meetingRequired enforcement ---
         if (Boolean.TRUE.equals(meetingRequired)) {
+            // Must come from the “meeting” flow AND have the closer-role
+            if (!fromMeeting) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Une réunion est requise pour clôturer cette tâche. Utilisez le service dédié à la réunion.");
+                return errorResponse;
+            }
             try {
                 BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
                 FlowElement fe = bpmnModel.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
@@ -574,7 +592,6 @@ public class PpmFlowableService {
                 log.warn("meetingRequired enforcement: could not resolve candidate groups for task [{}]: {}", taskId, e.getMessage());
             }
         }
-
         // --- If editable, update PPM (versioning) ---
         if (Boolean.TRUE.equals(isUpdatable)) {
             if (request.getPpm() == null) {
@@ -920,6 +937,11 @@ public class PpmFlowableService {
         response.setTraceability(varsToSet);
         response.setIsUpdatable(isUpdatable);
         response.setIsPublishable(isPublishable);
+        // ADDED: expose meetingRequired + comId on TaskDTO
+        response.setMeetingRequired(meetingRequired); // ADDED
+        Integer respComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+        if (respComId != null) response.setComId(respComId); // ADDED
+
         response.setStatus("Task validated successfully");
         return response;
     }
@@ -1015,55 +1037,54 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                                             ? nextElement.getName()
                                             : (nextElement != null ? nextElement.getId() : "Unknown");
 
-                                    NextStepDTO nextStep = new NextStepDTO();
-                                    nextStep.setValidationVariable(variableName);
-                                    nextStep.setValidationValue(rhs);
-                                    nextStep.setNextTaskName(nextStepName);
+                                        NextStepDTO nextStep = new NextStepDTO();
+                                        nextStep.setValidationVariable(variableName);
+                                        nextStep.setValidationValue(rhs);
+                                        nextStep.setNextTaskName(nextStepName);
 
-                                    if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
-                                        nextStep.setActionLabel("Publier");
-                                    } else if ("true".equalsIgnoreCase(rhs)) {
-                                        nextStep.setActionLabel("Validate");
-                                    } else if ("false".equalsIgnoreCase(rhs)) {
-                                        nextStep.setActionLabel("Reject");
-                                    } else {
-                                        nextStep.setActionLabel(variableName + " = " + rhs);
+                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                            nextStep.setActionLabel("Publier");
+                                        } else if ("true".equalsIgnoreCase(rhs)) {
+                                            nextStep.setActionLabel("Validate");
+                                        } else if ("false".equalsIgnoreCase(rhs)) {
+                                            nextStep.setActionLabel("Reject");
+                                        } else {
+                                            nextStep.setActionLabel(variableName + " = " + rhs);
+                                        }
+                                        nextSteps.add(nextStep);
                                     }
-                                    nextSteps.add(nextStep);
                                 }
                             }
-                        }
-                    } else {
-                        String nextStepName = (targetElement != null && targetElement.getName() != null && !targetElement.getName().isEmpty())
-                                ? targetElement.getName()
-                                : (targetElement != null ? targetElement.getId() : "Complete");
-
-                        NextStepDTO nextStep = new NextStepDTO();
-                        nextStep.setValidationVariable(null);
-                        nextStep.setValidationValue(null);
-                        nextStep.setNextTaskName(nextStepName);
-                        if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
-                            nextStep.setActionLabel("Publier");
                         } else {
-                            nextStep.setActionLabel("Passer pour validation");
+                            String nextStepName = (targetElement != null && targetElement.getName() != null && !targetElement.getName().isEmpty())
+                                    ? targetElement.getName()
+                                    : (targetElement != null ? targetElement.getId() : "Complete");
+
+                            NextStepDTO nextStep = new NextStepDTO();
+                            nextStep.setValidationVariable(null);
+                            nextStep.setValidationValue(null);
+                            nextStep.setNextTaskName(nextStepName);
+                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
+                                nextStep.setActionLabel("Publier");
+                            } else {
+                                nextStep.setActionLabel("Passer pour validation");
+                            }
+                            nextSteps.add(nextStep);
                         }
-                        nextSteps.add(nextStep);
                     }
                 }
             }
+        } catch (Exception e) {
+            log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
+            NextStepDTO nextStep = new NextStepDTO();
+            nextStep.setValidationVariable(null);
+            nextStep.setValidationValue(null);
+            nextStep.setNextTaskName("Unknown");
+            nextStep.setActionLabel("Complete");
+            nextSteps.add(nextStep);
         }
-    } catch (Exception e) {
-        log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
-        NextStepDTO nextStep = new NextStepDTO();
-        nextStep.setValidationVariable(null);
-        nextStep.setValidationValue(null);
-        nextStep.setNextTaskName("Unknown");
-        nextStep.setActionLabel("Complete");
-        nextSteps.add(nextStep);
+        return nextSteps;
     }
-    return nextSteps;
-}
-
 
     /* ======================= list user tasks ======================= */
 
@@ -1188,6 +1209,10 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
             taskInfo.setIsUpdatable(taskProperties.get("isUpdatable"));
             taskInfo.setIsPublishable(taskProperties.get("isPublishable"));
             taskInfo.setCommissionRequired(taskProperties.get("commissionRequired"));
+            // ADDED: expose meetingRequired + comId on TaskDTO
+            taskInfo.setMeetingRequired(taskProperties.get("meetingRequired")); // ADDED
+            Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+            if (comIdVar != null) taskInfo.setComId(comIdVar); // ADDED
 
             taskList.add(taskInfo);
         }
@@ -1321,6 +1346,8 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         response.setIsUpdatable(taskProperties.get("isUpdatable"));
         response.setIsPublishable(taskProperties.get("isPublishable"));
         response.setCommissionRequired(taskProperties.get("commissionRequired"));
+        // ADDED: expose meetingRequired on TaskDetailsDTO (composite)
+        response.setMeetingRequired(taskProperties.get("meetingRequired")); // ADDED
 
         Optional<Integer> ComId = Optional.ofNullable((Integer) runtimeService.getVariable(processInstanceId, "comId"));
         ComId.ifPresent(response::setComId);

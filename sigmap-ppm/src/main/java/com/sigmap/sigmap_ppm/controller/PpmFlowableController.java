@@ -143,6 +143,7 @@ public class PpmFlowableController {
                 log.error("Error processing financements JSON: {}", e.getMessage());
             }
         }
+        request.setFromMeeting(false);
         TaskDTO response = ppmFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
     }
