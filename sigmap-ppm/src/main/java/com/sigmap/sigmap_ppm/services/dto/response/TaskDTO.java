@@ -32,4 +32,5 @@ public class TaskDTO {
     private Boolean isUpdatable;
     private Boolean isPublishable;
     private boolean commissionRequired;
+    private Boolean meetingRequired;
 }

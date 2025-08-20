@@ -61,6 +61,12 @@
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
         <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"></flowable:formProperty>
+        <!-- NEW: enum decision used by gateways -->
+        <flowable:formProperty id="cncmpDecision" name="cncmpDecision" type="enum" required="true">
+          <flowable:value id="APPROVE" name="Approuver"/>
+          <flowable:value id="REJECT"  name="Réserver (CPMP)"/>
+          <flowable:value id="CI"  name="Révision SCS"/>
+        </flowable:formProperty>
       </extensionElements>
     </userTask>
 
@@ -111,15 +117,18 @@
     <sequenceFlow id="Flow_1elinq9" sourceRef="Task_0x68o40" targetRef="Activity_08yp2o2"></sequenceFlow>
     <sequenceFlow id="Flow_11s0knn" sourceRef="Activity_08yp2o2" targetRef="Activity_1iyb3ly"></sequenceFlow>
     <sequenceFlow id="Flow_0tt16gw" sourceRef="Activity_1iyb3ly" targetRef="ExclusiveGateway_0a8t8oz"></sequenceFlow>
-    <sequenceFlow id="SequenceFlow_1bxbg8j" name="cncmp_non_valide" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_11nk76a">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmp_valide==false}]]></conditionExpression>
+
+    <!-- UPDATED: 3-way split by enum cncmpDecision -->
+    <sequenceFlow id="SequenceFlow_1bxbg8j" name="cncmp_reject" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_11nk76a">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='REJECT'}]]></conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="Flow_1scuu6j" name="cncmp_valide" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_1is7nge">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmp_valide==true}]]></conditionExpression>
+    <sequenceFlow id="Flow_1scuu6j" name="cncmp_approve" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_1is7nge">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='APPROVE'}]]></conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="Flow_0ympl8t" name="CI" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_1lwas3w">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${decision=='CI'}]]></conditionExpression>
+    <sequenceFlow id="Flow_0ympl8t" name="cncmp_ci" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_1lwas3w">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='CI'}]]></conditionExpression>
     </sequenceFlow>
+
     <sequenceFlow id="Flow_0a89jat" sourceRef="Task_11nk76a" targetRef="Gateway_0kkfgcl"></sequenceFlow>
     <sequenceFlow id="Flow_1c774p3" name="reserve_non_valide" sourceRef="Gateway_0kkfgcl" targetRef="Activity_1d2aib2">
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reserve_valide==false}]]></conditionExpression>
