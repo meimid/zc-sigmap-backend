@@ -23,6 +23,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
+import com.sigmap.common.user_ac.UserAcSpecifications;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -455,6 +456,14 @@ public class AcServiceImpl implements AcService{
             log.warn("Could not find or read photo file for AC ID: {}. Reason: {}", acId, e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    public List<Ac> getAcsByUserId(String userId) {
+        Specification<UserAc> specification= UserAcSpecifications.activeAcsByUserId(userId);
+        List<UserAc> userAcs = userAcRepository.findAll(specification);
+
+        return userAcs.stream().map(UserAc::getAc).toList();
     }
 
     // This private method now takes the basePath as an argument

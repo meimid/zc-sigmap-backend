@@ -105,4 +105,5 @@ public interface AcService {
 
     List<Ac> findAllAcsWithNoCom();
      LogoResponse getAcPhoto(Integer acId,String basePath) throws AcNotFound;
+     List<Ac> getAcsByUserId(String userId);
 }
