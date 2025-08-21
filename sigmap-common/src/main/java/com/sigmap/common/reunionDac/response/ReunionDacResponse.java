@@ -1,11 +1,11 @@
 package com.sigmap.common.reunionDac.response;
 
-import com.sigmap.common.dac_docs.response.DacDocsResponse;
+import com.sigmap.common.dac.response.DacResponseReunion;
 import lombok.Data;
 
 @Data
 public class ReunionDacResponse {
-    private DacDocsResponse dac;
+    private DacResponseReunion dac;
     private String processInstanceId;
     private String taskId;
 

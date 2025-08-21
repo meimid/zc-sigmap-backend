@@ -14,6 +14,7 @@ public interface ReunionDacMapper {
     ReunionDacMapper INSTANCE = Mappers.getMapper(ReunionDacMapper.class);
 
     @Mapping(source = "dac", target = "dac")
+    @Mapping(source ="dac.ppm.ac",target = "dac.ac")
     ReunionDacResponse toResponse(ReunionDac reunionDac);
     List<ReunionDacResponse> toResponses(List<ReunionDac> reunionDacs);
 }

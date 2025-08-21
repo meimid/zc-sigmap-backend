@@ -4,12 +4,16 @@ import com.sigmap.common.Participant.Participant;
 
 import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.response.ParticipantResponseDto;
+import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
 
+import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
+import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.mapper.ReunionPpmMapper;
+import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -33,6 +37,8 @@ public interface ReunionMapper {
     @Mapping(source = "reunionPpms", target = "reunionPpms")
     @Mapping(source = "reunionDacs", target = "reunionDacs")
     @Mapping(source = "participants", target = "participants")
+
+
     ReunionResponse map(Reunion reunion);
 
 
@@ -47,6 +53,5 @@ public interface ReunionMapper {
     @Mapping(target = "reunionDacs", ignore = true)
     void updateFromRequest(ReunionRequest request, @MappingTarget Reunion reunion);
     ParticipantResponseDto toDto(Participant participant);
-
 
 }

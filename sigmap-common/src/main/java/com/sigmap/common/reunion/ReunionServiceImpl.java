@@ -175,6 +175,8 @@ public class ReunionServiceImpl implements ReunionService{
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
                 reunionToUpdate.setReunionDate(request.getReunionDate());
+                reunionToUpdate.setEmplacement(request.getEmplacement());
+                reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
             }else{
                 reunionToUpdate.setReunionDate(null);
@@ -188,7 +190,9 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
-        if(reunionToUpdate.getStatus()!=ReunionStatus.BROUILLON){
+        if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
+                reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
+                reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER){
             throw new ReunionStatusException("",reunionToUpdate.getStatus());
         }
         reunionToUpdate.getReunionDacs().size();
@@ -371,142 +375,5 @@ public class ReunionServiceImpl implements ReunionService{
          }
         repository.softDelete(id);
     }
-  /*  private void synchronizePpms(ReunionRequest request, Reunion reunion) throws PpmNotFound, AcNotFound {
-        // Step 1: Fetch the current children directly from the database. This is safe.
-        List<ReunionPpm> currentLinksList = reunionPpmRepository.findByReunionId(reunion.getId());
-        Map<ReunionPpmId, ReunionPpm> currentLinksMap = currentLinksList.stream()
-                .collect(Collectors.toMap(link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()), Function.identity()));
 
-        Set<ReunionPpmId> requestLinkIds = new HashSet<>();
-        List<ReunionPpm> linksToSave = new ArrayList<>();
-
-        // Step 2: Loop through the request to find new or updated links.
-        if (request.getReunionPpms() != null) {
-            for (ReunionPpmRequest ppmReq : request.getReunionPpms()) {
-                ReunionPpmId id = new ReunionPpmId(reunion.getId(), ppmReq.getId(), ppmReq.getVersion());
-                requestLinkIds.add(id);
-
-                // Get the existing link from our map, or create a new one if it doesn't exist.
-                ReunionPpm link = currentLinksMap.getOrDefault(id, new ReunionPpm());
-
-                // Update all fields
-                link.setReunion(reunion);
-                link.setPpmId(ppmReq.getId());
-                link.setPpmVer(ppmReq.getVersion());
-                link.setPpm(ppmService.findByIdPpm(ppmReq.getId(), ppmReq.getVersion()).orElseThrow(() -> new PpmNotFound("", List.of(ppmReq.getId()), List.of(ppmReq.getVersion()))));
-                link.setProcessInstanceId(ppmReq.getProcessInstanceId());
-                link.setTaskId(ppmReq.getTaskId());
-
-                linksToSave.add(link);
-            }
-        }
-
-        // Step 3: Save all new and updated links.
-        reunionPpmRepository.saveAll(linksToSave);
-
-        // Step 4: Find and delete any links that were not in the request.
-        List<ReunionPpm> linksToDelete = new ArrayList<>();
-        for (ReunionPpm currentLink : currentLinksList) {
-            ReunionPpmId currentId = new ReunionPpmId(currentLink.getReunionId(), currentLink.getPpmId(), currentLink.getPpmVer());
-            if (!requestLinkIds.contains(currentId)) {
-                linksToDelete.add(currentLink);
-            }
-        }
-
-        if (!linksToDelete.isEmpty()) {
-            reunionPpmRepository.deleteAll(linksToDelete);
-        }
-    }
-    private void synchronizeDacs(ReunionRequest request, Reunion reunion) {
-        // Step 1: Fetch the current children directly from the database.
-        List<ReunionDac> currentLinksList = reunionDacRepository.findByReunionId(reunion.getId());
-        Map<ReunionDacId, ReunionDac> currentLinksMap = currentLinksList.stream()
-                .collect(Collectors.toMap(link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()), Function.identity()));
-
-        Set<ReunionDacId> requestDacIds = new HashSet<>();
-        List<ReunionDac> linksToSave = new ArrayList<>();
-
-        // Step 2: Loop through the request to find new or updated links.
-        if (request.getReunionDacs() != null) {
-            for (ReunionDacRequest dacReq : request.getReunionDacs()) {
-                ReunionDacId id = new ReunionDacId(reunion.getId(), dacReq.getDacId(), dacReq.getDacVer());
-                requestDacIds.add(id);
-
-                ReunionDac link = currentLinksMap.getOrDefault(id, new ReunionDac());
-
-                // Update all fields
-                link.setReunion(reunion);
-                link.setDacId(dacReq.getDacId());
-                link.setDacVer(dacReq.getDacVer());
-                link.setDac(dacService.findById(dacReq.getDacId(), dacReq.getDacVer()).orElseThrow(() -> new RuntimeException("DAC not found")));
-                link.setProcessInstanceId(dacReq.getProcessInstanceId());
-                link.setTaskId(dacReq.getTaskId());
-
-                linksToSave.add(link);
-            }
-        }
-
-        // Step 3: Save all new and updated links.
-        reunionDacRepository.saveAll(linksToSave);
-
-        // Step 4: Find and delete any links that were not in the request.
-        List<ReunionDac> linksToDelete = new ArrayList<>();
-        for (ReunionDac currentLink : currentLinksList) {
-            ReunionDacId currentId = new ReunionDacId(currentLink.getReunionId(), currentLink.getDacId(), currentLink.getDacVer());
-            if (!requestDacIds.contains(currentId)) {
-                linksToDelete.add(currentLink);
-            }
-        }
-
-        if (!linksToDelete.isEmpty()) {
-            reunionDacRepository.deleteAll(linksToDelete);
-        }
-    }
-    private void synchronizeParticipants(ReunionRequest request, Reunion reunion) {
-        // Step 1: Fetch current participants directly from the database.
-        List<Participant> currentParticipants = participantService.findByReunionId(reunion.getId());
-        Map<Integer, Participant> currentParticipantsMap = currentParticipants.stream()
-                .collect(Collectors.toMap(Participant::getId, Function.identity()));
-
-        Set<Integer> participantIdsToKeep = new HashSet<>();
-        List<Participant> participantsToSave = new ArrayList<>();
-
-        // The rest of your logic is mostly correct, we just need to use our fetched list.
-        List<ParticipantRequest> participantsInRequest = request.getParticipants() != null ? request.getParticipants() : Collections.emptyList();
-
-        for (ParticipantRequest participantRequest : participantsInRequest) {
-            if (participantRequest.getId() != null) {
-                Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
-                if (participantToUpdate != null) {
-                    // Update existing participant
-                    participantToUpdate.setPresent(participantRequest.isPresent());
-                    participantToUpdate.setOrganisme(participantRequest.getOrganisme());
-                    participantToUpdate.setFonction(participantRequest.getFonction());
-                    participantsToSave.add(participantToUpdate);
-                    participantIdsToKeep.add(participantToUpdate.getId());
-                }
-            } else {
-                // Create new participant
-                participantRequest.setReunionId(reunion.getId());
-                participantRequest.setType(ParticipantType.INVITE);
-                participantsToSave.add(participantService.create(participantRequest));
-            }
-        }
-
-        // Determine which participants to delete
-        List<Participant> participantsToDelete = new ArrayList<>();
-        for (Participant currentParticipant : currentParticipants) {
-            if (!participantIdsToKeep.contains(currentParticipant.getId())) {
-                participantsToDelete.add(currentParticipant);
-            }
-        }
-
-        if (!participantsToDelete.isEmpty()) {
-            participantService.softDeleteAll(participantsToDelete);
-        }
-
-        if (!participantsToSave.isEmpty()) {
-            participantService.saveAll(participantsToSave);
-        }
-    }*/
 }

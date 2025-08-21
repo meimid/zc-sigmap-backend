@@ -13,7 +13,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(uses = {ComMapper.class})
+@Mapper(componentModel = "spring",uses = {ComMapper.class})
 public interface AcMapper {
     AcMapper INSTANCE = Mappers.getMapper(AcMapper.class);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
@@ -29,6 +29,7 @@ public interface AcMapper {
     void updateAcFromRequest(AcRequest source, @MappingTarget Ac target);
     List<AcWebsiteResponse> mapToWebsiteResponse(List<Ac> source);
     List<AcSelectResponseDto> mapToSelectDto (List<Ac> source);
+    AcWebsiteResponse mapToWebsiteResponse(Ac source);
 
 
 }
