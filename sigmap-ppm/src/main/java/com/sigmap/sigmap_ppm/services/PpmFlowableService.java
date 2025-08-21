@@ -34,7 +34,6 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.task.Comment;
 import org.flowable.task.api.Task;
 import org.flowable.identitylink.api.IdentityLink;
-import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -992,72 +991,6 @@ public class PpmFlowableService {
 
     /* ======================= next steps helper ======================= */
 
-//    private List<NextStepDTO> getPossibleNextSteps(Task task) {
-//        List<NextStepDTO> nextSteps = new ArrayList<>();
-//        try {
-//            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-//            if (bpmnModel != null) {
-//                FlowElement taskElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
-//                if (taskElement instanceof org.flowable.bpmn.model.UserTask) {
-//                    List<SequenceFlow> outgoingFlows = ((org.flowable.bpmn.model.UserTask) taskElement).getOutgoingFlows();
-//                    for (SequenceFlow flow : outgoingFlows) {
-//                        FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
-//                        if (targetElement instanceof ExclusiveGateway) {
-//                            List<SequenceFlow> gatewayFlows = ((ExclusiveGateway) targetElement).getOutgoingFlows();
-//                            for (SequenceFlow gatewayFlow : gatewayFlows) {
-//                                String conditionExpression = gatewayFlow.getConditionExpression();
-//                                if (conditionExpression != null) {
-//                                    String variableName = extractVariableName(conditionExpression);
-//                                    String conditionValue = extractConditionValue(conditionExpression);
-//                                    if (variableName != null && conditionValue != null) {
-//                                        FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
-//                                        String nextStepName = nextElement != null ? nextElement.getName() : "Unknown";
-//                                        if (nextStepName == null || nextStepName.isEmpty()) {
-//                                            nextStepName = nextElement != null ? nextElement.getId() : "Unknown";
-//                                        }
-//                                        NextStepDTO nextStep = new NextStepDTO();
-//                                        nextStep.setValidationVariable(variableName);
-//                                        nextStep.setValidationValue(String.valueOf(Boolean.parseBoolean(conditionValue)));
-//                                        nextStep.setNextTaskName(nextStepName);
-//                                        if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
-//                                            nextStep.setActionLabel("Publier");
-//                                        } else {
-//                                            nextStep.setActionLabel(Boolean.parseBoolean(nextStep.getValidationValue()) ? "Validate" : "Reject");
-//                                        }
-//                                        nextSteps.add(nextStep);
-//                                    }
-//                                }
-//                            }
-//                        } else {
-//                            String nextStepName = targetElement != null ? targetElement.getName() : "Complete";
-//                            if (nextStepName == null || nextStepName.isEmpty()) {
-//                                nextStepName = targetElement != null ? targetElement.getId() : "Complete";
-//                            }
-//                            NextStepDTO nextStep = new NextStepDTO();
-//                            nextStep.setValidationVariable(null);
-//                            nextStep.setValidationValue(null);
-//                            nextStep.setNextTaskName(nextStepName);
-//                            if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
-//                                nextStep.setActionLabel("Publier");
-//                            } else {
-//                                nextStep.setActionLabel("Passer pour validation");
-//                            }
-//                            nextSteps.add(nextStep);
-//                        }
-//                    }
-//                }
-//            }
-//        } catch (Exception e) {
-//            log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
-//            NextStepDTO nextStep = new NextStepDTO();
-//            nextStep.setValidationVariable(null);
-//            nextStep.setValidationValue(null);
-//            nextStep.setNextTaskName("Unknown");
-//            nextStep.setActionLabel("Complete");
-//            nextSteps.add(nextStep);
-//        }
-//        return nextSteps;
-//    }
 private List<NextStepDTO> getPossibleNextSteps(Task task) {
     List<NextStepDTO> nextSteps = new ArrayList<>();
     try {

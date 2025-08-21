@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_ppm.exeptions;
 
+import com.sigmap.common.ac.exception.AcNotAssociatedCom;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
@@ -280,5 +281,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleLotBudgetExceedsRealisationException(LotBudgetExceedsRealisationException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AcNotAssociatedCom.class)
+    public ResponseEntity<ErrorResponse> handleAcNotAssociatedCom(AcNotAssociatedCom ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }
