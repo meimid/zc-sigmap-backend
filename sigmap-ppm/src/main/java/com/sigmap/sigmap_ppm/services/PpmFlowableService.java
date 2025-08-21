@@ -32,6 +32,7 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.engine.task.Comment;
+import org.flowable.task.api.Task;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,10 +84,12 @@ public class PpmFlowableService {
                 .anyMatch(auth -> auth.equals("ROLE_" + role));
     }
 
+    // Utility method to check if the task is assigned to the current user
     private boolean hasAssign(Task task, JwtAuthenticationToken jwtAuth) {
         return task.getAssignee() != null && task.getAssignee().equals(jwtAuth.getName());
     }
 
+    // Utility method to check if the task's candidate group matches any of the user's roles
     private boolean hasCandidateGroup(Task task, JwtAuthenticationToken jwtAuth) {
         List<String> candidateGroups = taskService.getIdentityLinksForTask(task.getId()).stream()
                 .filter(link -> "candidate".equals(link.getType()))
@@ -185,12 +188,14 @@ public class PpmFlowableService {
         }
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Validate input parameters
         if (id == null || version == null) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
             errorResponse.setStatus("ID and version must not be null");
             return errorResponse;
         }
 
+        // Fetch PPM entity to check status
         Optional<Ppm> ppmOptional = ppmService.findById(id, version);
         if (ppmOptional.isEmpty()) {
             ProcessStartResponseDTO errorResponse = new ProcessStartResponseDTO();
@@ -205,15 +210,19 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        // Set associated Realisation statuses to NON_PUBLIE
         List<Realisation> realisations = ppm.getRealisations() != null ? ppm.getRealisations() : new ArrayList<>();
         for (Realisation realisation : realisations) {
             realisation.setStatut(RealisationStatus.NON_PUBLIE);
             realisationService.save(realisation);
+            log.info("Set Realisation [id={}, version={}] status to NON_PUBLIE", realisation.getId(), realisation.getVersion());
         }
 
+        // Use provided processKey or fallback to default
         String effectiveProcessKey = (processKey != null && !processKey.isEmpty()) ? processKey : this.processKey;
         String effectiveTaskKey = (initialTaskKey != null && !initialTaskKey.isEmpty()) ? initialTaskKey : this.initialTaskKey;
 
+        // Pre-check the role by inspecting the BPMN model for the initial task's candidate groups
         BpmnModel bpmnModel = repositoryService.getBpmnModel(
                 repositoryService.createProcessDefinitionQuery()
                         .processDefinitionKey(effectiveProcessKey)
@@ -236,6 +245,7 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        // Get user's groups (roles without ROLE_ prefix)
         List<String> userGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -251,10 +261,12 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
-        ppmService.updateStatus(id, version, ProcessStatus.EN_TRAITEMENT);
+        // Update PPM status to TRAITMENT_STATUS
+        Ppm updated = ppmService.updateStatus(id, version, ProcessStatus.EN_TRAITEMENT);
         Map<String, Object> variables = new HashMap<>();
         variables.put("id", id);
         variables.put("version", version);
+        // Add the AC ID from the Ppm entity
         Integer acId = ppm.getAc() != null ? ppm.getAc().getId() : null;
         if (acId != null) {
             variables.put("acId", acId);
@@ -263,6 +275,7 @@ public class PpmFlowableService {
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, variables, TENANT_ID);
         String processInstanceId = processInstance.getProcessInstanceId();
 
+        // Set the processInstanceId on the PPM entity
         Optional<Ppm> ppmOptionalUpdated = ppmService.findById(id, version);
         if (ppmOptionalUpdated.isPresent()) {
             Ppm updatedPpm = ppmOptionalUpdated.get();
@@ -340,6 +353,7 @@ public class PpmFlowableService {
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
             Integer id = (Integer) processVariables.getOrDefault("id", null);
             Integer version = (Integer) processVariables.getOrDefault("version", null);
+            log.info("Process variables for {} : {}", id, version);
 
             if (id != null && version != null) {
                 Optional<Ppm> ppmOptional;
@@ -445,6 +459,7 @@ public class PpmFlowableService {
             }
         }
         response.setPpm(ppmResponse);
+        log.info("PPM Responses for task [{}]: {}", taskId, ppmResponse);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -463,6 +478,7 @@ public class PpmFlowableService {
         if (comIdVar != null) response.setComId(comIdVar); // ADDED
 
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
+        log.info("Setting nextSteps for task [{}]: {}", taskId, nextSteps);
         response.setNextSteps(nextSteps);
 
         response.setStatus("Task details retrieved successfully");
@@ -521,6 +537,7 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        // Get candidate group
         String candidateGroup = getCandidateGroup(task);
         if (candidateGroup == null) {
             TaskDTO errorResponse = new TaskDTO();
@@ -528,6 +545,7 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        // Check user permissions
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus("User does not have the required role or assignment to validate this task");
@@ -536,15 +554,18 @@ public class PpmFlowableService {
 
         // --- Process vars & PPM ---
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        log.info("Process variables for task [{}]: {}", taskId, processVariables);
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
 
+        // Validate process variables
         if (id == null || version == null) {
             TaskDTO errorResponse = new TaskDTO();
             errorResponse.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return errorResponse;
         }
 
+        // Fetch Ppm entity
         Optional<Ppm> ppmOptional = ppmService.findById(id, version);
         if (ppmOptional.isEmpty()) {
             TaskDTO errorResponse = new TaskDTO();
@@ -599,6 +620,7 @@ public class PpmFlowableService {
                 errorResponse.setStatus("Ppm object is required in the request when isUpdatable is true");
                 return errorResponse;
             }
+            log.info("Inspecting request.getPpm() for task [{}]: {}", taskId, request.getPpm());
             Ppm updatedPpm = ppmService.updateWithVersioning(id, request.getPpm());
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
@@ -607,6 +629,7 @@ public class PpmFlowableService {
             }
             latestPpm = updatedPpm;
             runtimeService.setVariable(task.getProcessInstanceId(), "version", latestPpm.getVersion());
+            log.info("Updated ppm after versioning, coms: {}", latestPpm.getComs());
         }
 
         // --- Resolve next user task (best-effort for logging only) ---
@@ -842,11 +865,14 @@ public class PpmFlowableService {
                 return errorResponse;
             }
             latestPpm = updatedPpm;
+            log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus());
 
+            // Set associated Realisation statuses to PUBLIE
             List<Realisation> realisations = latestPpm.getRealisations() != null ? latestPpm.getRealisations() : new ArrayList<>();
             for (Realisation realisation : realisations) {
                 realisation.setStatut(RealisationStatus.PUBLIE);
                 realisationService.save(realisation);
+                log.info("Set Realisation [id={}, version={}] status to PUBLIE", realisation.getId(), realisation.getVersion());
             }
         } else if ((request.getValidate() != null) || actedByDecision) {
             // keep process "en traitement" after any validation/decision act
@@ -855,6 +881,15 @@ public class PpmFlowableService {
             if (updatedPpm == null) {
                 TaskDTO errorResponse = new TaskDTO();
                 errorResponse.setStatus("Failed to update PPM status to En cours de traitement");
+                return errorResponse;
+            }
+            latestPpm = updatedPpm;
+        } else if (request.getValidate() != null && !request.getValidate()) {
+            newStatus = ProcessStatus.EN_TRAITEMENT;
+            Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
+            if (updatedPpm == null) {
+                TaskDTO errorResponse = new TaskDTO();
+                errorResponse.setStatus("Failed to keeping en cours de traitement");
                 return errorResponse;
             }
             latestPpm = updatedPpm;
@@ -884,11 +919,13 @@ public class PpmFlowableService {
                                 FlowElement nextElement = bpmnModel.getFlowElement(gatewayFlow.getTargetRef());
                                 if (nextElement instanceof org.flowable.bpmn.model.EndEvent) {
                                     nextTaskIsLast = true;
+                                    log.info("Next task after [{}] is the last task", taskId);
                                     break;
                                 }
                             }
                         } else if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
                             nextTaskIsLast = true;
+                            log.info("Next task after [{}] is the last task", taskId);
                             break;
                         }
                     }
@@ -916,14 +953,18 @@ public class PpmFlowableService {
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), ProcessStatus.VALIDE);
             if (updatedPpm != null) {
                 latestPpm = updatedPpm;
+                log.info("Updated PPM status to Validée before entering last task for task [{}], new status: {}", taskId, latestPpm.getStatus());
             }
         }
 
+        // Save the updated Ppm to persist the coms relationship
         ppmService.save(latestPpm);
+        log.info("Saved PPM with coms: {} for ppmId: {}, version: {}", latestPpm.getComs(), latestPpm.getId(), latestPpm.getVersion());
         taskService.setAssignee(taskId, com.sigmap.common.security.Authentication.getCurrentUserId().get());
         if (request.getComment() != null) {
             taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
         }
+        // Complete task
         taskService.complete(taskId);
 
         // --- Response ---
@@ -945,6 +986,7 @@ public class PpmFlowableService {
         if (respComId != null) response.setComId(respComId); // ADDED
 
         response.setStatus("Task validated successfully");
+
         return response;
     }
 
@@ -1068,13 +1110,19 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                             nextStep.setNextTaskName(nextStepName);
                             if (targetElement instanceof org.flowable.bpmn.model.EndEvent) {
                                 nextStep.setActionLabel("Publier");
+                                log.info("Target element is an EndEvent, setting actionLabel to 'Publier' for task [{}]", task.getId());
                             } else {
                                 nextStep.setActionLabel("Passer pour validation");
                             }
                             nextSteps.add(nextStep);
+                            log.info("Added single next step for task [{}]: nextTask={}, action={}", task.getId(), nextStepName, nextStep.getActionLabel());
                         }
                     }
+                } else {
+                    log.info("Task [{}] is not a UserTask: {}", task.getId(), taskElement != null ? taskElement.getClass().getSimpleName() : "null");
                 }
+            } else {
+                log.info("BPMN model not found for process definition [{}] for task [{}]", task.getProcessDefinitionId(), task.getId());
             }
         } catch (Exception e) {
             log.info("Failed to determine next steps for task [" + task.getId() + "]: " + e.getMessage());
@@ -1094,6 +1142,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Get user's AC IDs and comIds
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         List<Integer> userComIds = currentUserService.getCurrentUserComIds();
         if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
@@ -1102,6 +1151,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         }
         log.info("ac ids: {}, comIds: {}", userAcIds, userComIds);
 
+        // Get user's candidate groups (roles)
         List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
                 .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
@@ -1114,11 +1164,13 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
 
         List<String> matchingProcessInstanceIds = new ArrayList<>();
 
+        // Collect process instances where acId or comId matches user's IDs
         if (userAcIds != null && !userAcIds.isEmpty()) {
             for (Integer acId : userAcIds) {
                 List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
                         .variableValueEquals("acId", acId)
                         .list();
+                log.info("ac id {} matched {} instances: {}", acId, instances.size(), instances.stream().map(ProcessInstance::getId).collect(Collectors.toList()));
                 matchingProcessInstanceIds.addAll(
                         instances.stream().map(ProcessInstance::getId).collect(Collectors.toList())
                 );
@@ -1129,12 +1181,14 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                 List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
                         .variableValueEquals("comId", comId)
                         .list();
+                log.info("comId {} matched {} instances: {}", comId, instances.size(), instances.stream().map(ProcessInstance::getId).collect(Collectors.toList()));
                 matchingProcessInstanceIds.addAll(
                         instances.stream().map(ProcessInstance::getId).collect(Collectors.toList())
                 );
             }
         }
 
+        // Log all active tasks for matched process instances to inspect candidate groups
         for (String processInstanceId : matchingProcessInstanceIds) {
             List<Task> allTasks = taskService.createTaskQuery()
                     .processInstanceId(processInstanceId)
@@ -1166,6 +1220,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                         task.getId(), task.getProcessInstanceId(), taskCandidateGroup, userCandidateGroups);
             }
         }
+        log.info("filteredTasks: {}", filteredTasks);
 
         List<TaskDTO> taskList = new ArrayList<>();
         for (Task task : filteredTasks) {
@@ -1181,9 +1236,11 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
             Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
             Integer id = (Integer) processVariables.getOrDefault("id", null);
             Integer version = (Integer) processVariables.getOrDefault("version", null);
+            log.info("taskId: {}, id {}, version: {}", task.getId(), id, version);
 
             if (id != null && version != null) {
                 try {
+                    log.info("id: {}, version: {}", id, version);
                     Optional<Ppm> ppmOptional = ppmService.findById(id, version);
                     ppmOptional.ifPresent(ppm -> {
                         taskInfo.setId(id);
@@ -1232,16 +1289,20 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
 
     private String extractVariableName(String conditionExpression) {
         if (conditionExpression == null) return null;
+        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
         String cleanedExpression = conditionExpression.trim().replace("#{", "${");
+        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
         Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
         Matcher matcher = pattern.matcher(cleanedExpression);
         if (matcher.find()) {
             return matcher.group(1).trim();
         }
+        // Fallback for simpler expressions like ${variable}
         if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
             String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
             if (!variableName.isEmpty()) return variableName;
         }
+        log.info("No variable name matched in expression: {}", conditionExpression);
         return null;
     }
 
@@ -1279,6 +1340,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
 
         JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Récupérer le PPM avec la dernière version
         Integer latestVersion = ppmService.findLatestVersionById(ppmId);
         Optional<Ppm> ppmOptional = ppmService.findById(ppmId, latestVersion);
         if (ppmOptional.isEmpty()) {
@@ -1289,8 +1351,10 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
 
         Ppm ppm = ppmOptional.get();
 
+        // Préparer l'objet de réponse
         TaskDetailsDTO response = new TaskDetailsDTO();
 
+        // Mapper le PPM vers PpmResponseDto
         if (ppm.getDocs() != null) {
             List<Docs> nonDeletedDocs = ppm.getDocs().stream()
                     .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
@@ -1313,6 +1377,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
         response.setPpm(ppmResponse);
 
+        // Vérifier si le PPM a un processus actif
         String processInstanceId = ppm.getProcessInstanceId();
         if (processInstanceId == null) {
             response.setHasTask(false);
@@ -1320,19 +1385,23 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
             return response;
         }
 
+        // Récupérer la tâche active pour ce processInstanceId (une seule tâche est attendue)
         Task task = taskService.createTaskQuery()
                 .processInstanceId(processInstanceId)
                 .taskTenantId(TENANT_ID)
                 .active()
                 .singleResult();
 
+        // S'il n'y a pas de tâche active
         if (task == null) {
             response.setHasTask(false);
             response.setStatus("PPM récupéré avec succès, aucune tâche active associée");
             return response;
         }
 
+        // Vérifier si l'utilisateur a les droits de voir la tâche
         boolean userCanViewTask = hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth);
+
         if (!userCanViewTask) {
             log.warn("L'utilisateur {} n'a pas les droits pour voir la tâche {} du PPM {}", jwtAuth.getName(), task.getId(), ppmId);
             response.setHasTask(false);
@@ -1340,6 +1409,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
             return response;
         }
 
+        // Si l'utilisateur a les droits, inclure les détails de la tâche et définir hasTask à true
         response.setHasTask(true);
         response.setTaskId(task.getId());
         response.setTaskName(task.getName());
@@ -1349,6 +1419,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         response.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
         response.setCandidateGroup(getCandidateGroup(task));
 
+        // Ajouter les variables de traçabilité
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
         Map<String, Object> variables = new HashMap<>();
         variables.put("decision", processVariables.getOrDefault("decision", ""));
@@ -1357,6 +1428,7 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         variables.put("treater", processVariables.getOrDefault("treater", ""));
         response.setTraceability(variables);
 
+        // Ajouter les propriétés de la tâche
         Map<String, Boolean> taskProperties = getTaskProperties(task);
         response.setIsUpdatable(taskProperties.get("isUpdatable"));
         response.setIsPublishable(taskProperties.get("isPublishable"));
@@ -1367,10 +1439,12 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
         Optional<Integer> ComId = Optional.ofNullable((Integer) runtimeService.getVariable(processInstanceId, "comId"));
         ComId.ifPresent(response::setComId);
 
+        // Ajouter les prochaines étapes possibles
         List<NextStepDTO> nextSteps = getPossibleNextSteps(task);
         response.setNextSteps(nextSteps);
 
         response.setStatus("PPM et détails de la tâche récupérés avec succès");
+
         return response;
     }
 
