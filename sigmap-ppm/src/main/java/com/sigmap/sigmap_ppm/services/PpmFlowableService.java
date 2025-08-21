@@ -1473,4 +1473,116 @@ private List<NextStepDTO> getPossibleNextSteps(Task task) {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public TaskListResponseDTO getTasksByComId(Integer comId) {
+        TaskListResponseDTO response = new TaskListResponseDTO();
+
+        // Auth check
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            response.setStatus("Invalid or missing JWT authentication");
+            return response;
+        }
+
+        if (comId == null) {
+            response.setStatus("comId must not be null");
+            return response;
+        }
+
+        // Collect process instances having this comId
+        List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                .variableValueEquals("comId", comId)
+                .list();
+
+        if (instances == null || instances.isEmpty()) {
+            response.setTenantId(TENANT_ID);
+            response.setTasks(Collections.emptyList());
+            response.setStatus("No active process instances found for comId " + comId);
+            return response;
+        }
+
+        List<String> processInstanceIds = instances.stream()
+                .map(ProcessInstance::getId)
+                .collect(Collectors.toList());
+
+        // User roles (candidate groups)
+        List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .collect(Collectors.toList());
+
+        List<TaskDTO> taskList = new ArrayList<>();
+        int chunkSize = 1000;
+
+        for (int i = 0; i < processInstanceIds.size(); i += chunkSize) {
+            List<String> chunk = processInstanceIds.subList(i, Math.min(i + chunkSize, processInstanceIds.size()));
+
+            // Fetch active tasks for these instances
+            List<Task> tasks = taskService.createTaskQuery()
+                    .taskTenantId(TENANT_ID)
+                    .processInstanceIdIn(chunk) // NOTE: pass the list directly
+                    .active()
+                    .orderByTaskCreateTime().desc()
+                    .list();
+
+            for (Task task : tasks) {
+                // Enforce visibility: user must be candidate or assignee
+                if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+                    continue;
+                }
+
+                TaskDTO taskInfo = new TaskDTO();
+                taskInfo.setTaskId(task.getId());
+                taskInfo.setTaskName(task.getName());
+                taskInfo.setTaskDefinitionKey(task.getTaskDefinitionKey());
+                taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+                taskInfo.setProcessInstanceId(task.getProcessInstanceId());
+                taskInfo.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+                taskInfo.setCandidateGroup(getCandidateGroup(task));
+
+                // Load process variables
+                Map<String, Object> procVars = runtimeService.getVariables(task.getProcessInstanceId());
+                Integer id = (Integer) procVars.getOrDefault("id", null);
+                Integer version = (Integer) procVars.getOrDefault("version", null);
+
+                // Attach PPM info if available
+                if (id != null && version != null) {
+                    try {
+                        Optional<Ppm> ppmOpt = ppmService.findById(id, version);
+                        ppmOpt.ifPresent(ppm -> {
+                            taskInfo.setId(id);
+                            taskInfo.setVersion(version);
+                            taskInfo.setNom(ppm.getNom());
+                            taskInfo.setRef(ppm.getRef());
+                        });
+                    } catch (Exception e) {
+                        log.warn("Failed loading PPM for id {}, version {} in task {}: {}",
+                                id, version, task.getId(), e.getMessage());
+                    }
+                }
+
+                // Traceability
+                Map<String, Object> trace = new HashMap<>();
+                trace.put("decision", procVars.getOrDefault("decision", ""));
+                trace.put("comment", procVars.getOrDefault("comment", ""));
+                trace.put("dateComment", procVars.getOrDefault("dateComment", ""));
+                trace.put("treater", procVars.getOrDefault("treater", ""));
+                taskInfo.setTraceability(trace);
+
+                // Task properties from BPMN form props
+                Map<String, Boolean> props = getTaskProperties(task);
+                taskInfo.setIsUpdatable(props.get("isUpdatable"));
+                taskInfo.setIsPublishable(props.get("isPublishable"));
+                taskInfo.setCommissionRequired(props.get("commissionRequired"));
+
+                taskList.add(taskInfo);
+            }
+        }
+
+        response.setTenantId(TENANT_ID);
+        response.setTasks(taskList);
+        response.setCandidateGroup(userCandidateGroups.isEmpty() ? null : String.join(", ", userCandidateGroups));
+        response.setStatus("Tasks retrieved successfully for comId " + comId);
+        return response;
+    }
 }
