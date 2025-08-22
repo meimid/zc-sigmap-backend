@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_auth.keycloak;
 
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.dto.PasswordRequestDTO;
 import com.sigmap.common.keycloakAdmin.dto.RoleDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -259,5 +260,24 @@ public class KeycloakAdminController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build(); // 404 Not Found
         }
     }
+
+    @GetMapping("/users/com")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    public List<UserDTO> getAllUsersExcptetTheUsersCom(@RequestParam Integer comId) throws ComNotFound {
+
+        String currentUserId = Authentication.getCurrentUserId()
+                .orElseThrow(() -> new IllegalStateException("Utilisateur courant introuvable"));
+
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            return keycloakAdminService.getUsersManagedByCurrentAdmin(currentUserId);
+        } else {
+            return keycloakAdminService.getAllUsersExcptetTheUsersCom(comId);
+        }
+    }
+
 
 }

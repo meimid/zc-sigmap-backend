@@ -13,7 +13,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring",uses = {ComMapper.class})
+@Mapper(componentModel = "spring")
 public interface AcMapper {
     AcMapper INSTANCE = Mappers.getMapper(AcMapper.class);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
