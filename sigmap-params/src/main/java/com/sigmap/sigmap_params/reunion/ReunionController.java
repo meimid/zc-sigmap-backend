@@ -94,7 +94,7 @@ public class ReunionController {
     }
     @PutMapping("/{id}/planifier_or_not")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<ReunionResponse> updatePlanifierOrNot(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public ResponseEntity<ReunionResponse> updatePlanifierOrNot(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion updatedReunion = reunionService.updatePlanifierOrNot(id, request);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
         List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
@@ -166,7 +166,7 @@ public class ReunionController {
         String AdminId = currentUserId.orElse("System");
 
         try {
-            reunionService.sendReunionInvitations(id, AdminId);
+            reunionService.sendReunionInvitations(id);
         } catch (MessagingException | IOException e) {
             throw new RuntimeException(e);
         }

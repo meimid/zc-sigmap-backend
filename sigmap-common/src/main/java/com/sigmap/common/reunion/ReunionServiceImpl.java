@@ -35,6 +35,7 @@ import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import jakarta.mail.MessagingException;
@@ -158,7 +159,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
     @Override
     @Transactional
-    public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
         if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)){
         reunionToUpdate.getReunionDacs().size();
@@ -169,6 +170,8 @@ public class ReunionServiceImpl implements ReunionService{
                 throw new ReunionDate("Reunion date cannot be before now");
             }
             reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
+            sendReunionInvitations(id);
+
         }else{
             reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
         }
@@ -186,6 +189,8 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setEmplacement(request.getEmplacement());
                 reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
+                sendReunionInvitations(id);
+
             }else{
                 reunionToUpdate.setReunionDate(null);
                 reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
@@ -373,13 +378,17 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
 
-    public void sendReunionInvitations(Integer id, String adminId) throws MessagingException, IOException {
+    public void sendReunionInvitations(Integer id) throws MessagingException, IOException {
+        // Get the current Admin ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String connectedUserId = currentUserId.orElse("System");
+
         // Fetch the Reunion entity by ID
         Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
 
         // Iterate over participants and send emails
         for (Participant participant : reunion.getParticipants()) {
-            mailService.sendReunionInvitationEmail(reunion, participant, adminId);
+            mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
         }
     }
 }

@@ -26,10 +26,10 @@ public interface ReunionService {
     Reunion save(Reunion reunion);
     Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound;
     Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound;
-    Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound;
+    Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
     Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound;
 
     void delete(Integer id) throws ReunionNotFound;
 
-    public void sendReunionInvitations(Integer id, String adminId) throws MessagingException, IOException;
+    public void sendReunionInvitations(Integer id) throws MessagingException, IOException;
 }
