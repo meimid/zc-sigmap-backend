@@ -730,20 +730,25 @@ public class KeycloakAdminService {
     public List<UserDTO> getAllUsersExcptetTheUsersCom(Integer comId) throws ComNotFound {
         Com commission=comRepository.findById(comId).orElseThrow(()->new ComNotFound("",List.of(comId)));
         if(commission.getIsDeleted()){
-          throw   new ComNotFound("",List.of(comId));
+            throw   new ComNotFound("",List.of(comId));
         }
-
+    List<UserCom> usersCom=userComRepository.findAllByComIdAndIsDeletedFalse(comId);
         String accessToken = tokenService.getAccessToken();
         HttpHeaders headers = createHeaders(accessToken);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
         String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
+        Set<String> userIdsInCom = usersCom.stream()
+                .filter(uc -> uc.getComId() != null && uc.getComId().equals(commission.getId()))
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+
         List<UserDTO> users = fetchUsersFromKeycloak(baseUrl, entity)
                 .stream()
-                .filter(userDTO -> Optional.ofNullable(userDTO.getComs())
-                .orElse(Collections.emptyList())
-                .stream()
-                .noneMatch(com -> Objects.equals(com.getId(), comId))).toList();
+                .filter(user -> !userIdsInCom.contains(user.getId()))
+                .collect(Collectors.toList());
+
+        logger.info("----------------dddddddddddddddddd--------- {}",users.size());
 
         return users;
     }
