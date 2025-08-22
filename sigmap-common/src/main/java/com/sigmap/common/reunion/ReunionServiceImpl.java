@@ -189,7 +189,9 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setEmplacement(request.getEmplacement());
                 reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
-                sendReunionInvitations(id);
+                if(request.getReunionDate()!=reunionToUpdate.getReunionDate()){
+                    sendReunionInvitations(id);
+                }
 
             }else{
                 reunionToUpdate.setReunionDate(null);
@@ -391,4 +393,5 @@ public class ReunionServiceImpl implements ReunionService{
             mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
         }
     }
+
 }
