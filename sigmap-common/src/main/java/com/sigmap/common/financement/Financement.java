@@ -28,7 +28,7 @@ public class Financement extends BaseEntity {
     @JoinColumn(name = "monnaie_id")
     private Monnaie monnaie;
 
-    @Column(name = "budget_estimer")
+    @Column(name = "budget_estimer",precision = 20, scale = 3)
     private BigDecimal budgetEstimer;
 
     @Column(name = "taux_applicable")
