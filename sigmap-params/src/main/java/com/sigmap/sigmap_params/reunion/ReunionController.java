@@ -8,6 +8,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.Reunion;
@@ -17,8 +18,13 @@ import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
+<<<<<<< Updated upstream
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
+=======
+import com.sigmap.common.security.Authentication;
+import jakarta.mail.MessagingException;
+>>>>>>> Stashed changes
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,7 +32,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/reunions")
@@ -126,6 +134,7 @@ public class ReunionController {
 
         return ResponseEntity.ok(response);
     }
+<<<<<<< Updated upstream
     private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
         if (reunionDacs == null) return List.of();
 
@@ -153,4 +162,24 @@ public class ReunionController {
     }
 
 
+=======
+
+
+
+    @PostMapping("/{id}/send-email-reuinion")
+    public ResponseEntity<Void> sendEmail (@PathVariable Integer id ) throws MessagingException, EmailTraceNotFound {
+
+        // Get the current Admin ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String AdminId = currentUserId.orElse("System");
+
+        try {
+            reunionService.sendReunionInvitations(id, AdminId);
+        } catch (MessagingException | IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return ResponseEntity.ok().build();
+    }
+>>>>>>> Stashed changes
 }

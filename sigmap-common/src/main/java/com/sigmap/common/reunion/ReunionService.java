@@ -6,10 +6,12 @@ import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import jakarta.mail.MessagingException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +30,6 @@ public interface ReunionService {
     Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound;
 
     void delete(Integer id) throws ReunionNotFound;
+
+    public void sendReunionInvitations(Integer id, String adminId) throws MessagingException, IOException;
 }

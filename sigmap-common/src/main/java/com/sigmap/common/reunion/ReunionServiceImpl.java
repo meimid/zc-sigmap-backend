@@ -17,6 +17,7 @@ import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -36,6 +37,7 @@ import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,9 +64,13 @@ public class ReunionServiceImpl implements ReunionService{
     private final DacService dacService;
     private final ReunionPpmRepository reunionPpmRepository;
     private final ReunionDacRepository reunionDacRepository;
+    private final MailService mailService;
     @Autowired
     EntityManager entityManager;
-    public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository, ParticipantService participantService, KeycloakAdminService keycloakAdminService, PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository, ReunionDacRepository reunionDacRepository) {
+    public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
+                              ParticipantService participantService, KeycloakAdminService keycloakAdminService,
+                              PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
+                              ReunionDacRepository reunionDacRepository, MailService mailService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -73,6 +80,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.dacService = dacService;
         this.reunionPpmRepository = reunionPpmRepository;
         this.reunionDacRepository = reunionDacRepository;
+        this.mailService = mailService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -322,12 +330,6 @@ public class ReunionServiceImpl implements ReunionService{
 
         }
 
-   /*    for (ReunionPpm currentLink : currentLinks.values()) {
-            ReunionPpmId currentId = new ReunionPpmId(currentLink.getReunionId(), currentLink.getPpmId(), currentLink.getPpmVer());
-            if (!requestLinkIds.contains(currentId)) {
-                reunionPpmRepository.delete(currentLink);
-            }
-        }*/
     }
 
     private void synchronizeDacs(ReunionRequest request, Reunion reunion) {
@@ -355,12 +357,6 @@ public class ReunionServiceImpl implements ReunionService{
 
         }
 
-      /*  for (ReunionDac currentLink : currentLinks.values()) {
-            ReunionDacId currentId = new ReunionDacId(currentLink.getReunionId(), currentLink.getDacId(), currentLink.getDacVer());
-            if (!requestDacIds.contains(currentId)) {
-                reunionDacRepository.delete(currentLink);
-            }
-        }*/
     }
     @Override
     public List<Reunion> findAll() {
@@ -376,4 +372,18 @@ public class ReunionServiceImpl implements ReunionService{
         repository.softDelete(id);
     }
 
+<<<<<<< Updated upstream
+=======
+
+    public void sendReunionInvitations(Integer id, String adminId) throws MessagingException, IOException {
+        // Fetch the Reunion entity by ID
+        Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+
+        // Iterate over participants and send emails
+        for (Participant participant : reunion.getParticipants()) {
+            mailService.sendReunionInvitationEmail(reunion, participant, adminId);
+        }
+    }
+
+>>>>>>> Stashed changes
 }
