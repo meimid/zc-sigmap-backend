@@ -29,7 +29,6 @@ import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -481,7 +480,11 @@ public class AcServiceImpl implements AcService{
         }
     }
 
-
-
+    @Override
+    public Integer getComIdByAcId(Integer acId) throws AcNotAssociatedCom {
+        return repository.findById(acId)
+                .map(ac -> ac.getCom() != null ? ac.getCom().getId() : null)
+                .orElseThrow(() -> new AcNotAssociatedCom ("Aucune commission n’est liée à cet AC. "));
+    }
 
 }
