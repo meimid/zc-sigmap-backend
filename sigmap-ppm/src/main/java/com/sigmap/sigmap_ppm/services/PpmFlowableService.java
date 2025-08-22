@@ -586,7 +586,7 @@ public class PpmFlowableService {
         log.info("approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
                 task.getTaskDefinitionKey(), task.getName(), isUpdatable, meetingRequired, commissionRequired, isPublishable, fromMeeting);
 
-            // --- meetingRequired enforcement ---
+        // --- meetingRequired enforcement ---
         if (Boolean.TRUE.equals(meetingRequired)) {
             // Must come from the “meeting” flow AND have the closer-role
             if (!fromMeeting) {
@@ -963,6 +963,15 @@ public class PpmFlowableService {
         if (request.getComment() != null) {
             taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
         }
+
+        // ADDED: snapshot comId BEFORE completion to avoid querying a finished execution
+        Integer comIdSnapshot = null;
+        try {
+            comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+        } catch (Exception ex) {
+            log.debug("Could not snapshot comId before completion for task [{}]: {}", taskId, ex.getMessage());
+        }
+
         // Complete task
         taskService.complete(taskId);
 
@@ -980,18 +989,20 @@ public class PpmFlowableService {
         response.setIsUpdatable(isUpdatable);
         response.setIsPublishable(isPublishable);
         // ADDED: expose meetingRequired + comId on TaskDTO
-        response.setMeetingRequired(meetingRequired); // ADDED
-        Integer respComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
-        if (respComId != null) response.setComId(respComId); // ADDED
+        response.setMeetingRequired(meetingRequired);
+        if (comIdSnapshot != null) {
+            response.setComId(comIdSnapshot);
+        }
 
         response.setStatus("Task validated successfully");
 
         return response;
     }
 
+
     /* ======================= next steps helper ======================= */
 
-private List<NextStepDTO> getPossibleNextSteps(Task task) {
+ private List<NextStepDTO> getPossibleNextSteps(Task task) {
     List<NextStepDTO> nextSteps = new ArrayList<>();
     try {
         BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
