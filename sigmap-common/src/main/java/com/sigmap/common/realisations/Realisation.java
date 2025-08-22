@@ -90,10 +90,10 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     private LocalDate datePrevAp;
 
     //TODO: to delete
-    @Column(name = "budget_estime", precision = 10, scale = 2)
+    @Column(name = "budget_estime", precision = 20, scale = 3)
     private BigDecimal budgetEstime;
 
-    @Column(name = "seuil_applicable", precision = 10, scale = 3)
+    @Column(name = "seuil_applicable", precision = 20, scale = 3)
     private BigDecimal seuilApplicable;
 
     @Column(name = "is_published")
