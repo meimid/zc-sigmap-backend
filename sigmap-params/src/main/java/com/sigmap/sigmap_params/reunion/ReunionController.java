@@ -18,13 +18,9 @@ import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
-<<<<<<< Updated upstream
-import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
-=======
 import com.sigmap.common.security.Authentication;
 import jakarta.mail.MessagingException;
->>>>>>> Stashed changes
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -134,7 +130,7 @@ public class ReunionController {
 
         return ResponseEntity.ok(response);
     }
-<<<<<<< Updated upstream
+
     private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
         if (reunionDacs == null) return List.of();
 
@@ -162,10 +158,6 @@ public class ReunionController {
     }
 
 
-=======
-
-
-
     @PostMapping("/{id}/send-email-reuinion")
     public ResponseEntity<Void> sendEmail (@PathVariable Integer id ) throws MessagingException, EmailTraceNotFound {
 
@@ -181,5 +173,4 @@ public class ReunionController {
 
         return ResponseEntity.ok().build();
     }
->>>>>>> Stashed changes
 }

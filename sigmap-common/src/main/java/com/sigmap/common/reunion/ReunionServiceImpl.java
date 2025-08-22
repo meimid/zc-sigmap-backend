@@ -372,8 +372,6 @@ public class ReunionServiceImpl implements ReunionService{
         repository.softDelete(id);
     }
 
-<<<<<<< Updated upstream
-=======
 
     public void sendReunionInvitations(Integer id, String adminId) throws MessagingException, IOException {
         // Fetch the Reunion entity by ID
@@ -384,6 +382,4 @@ public class ReunionServiceImpl implements ReunionService{
             mailService.sendReunionInvitationEmail(reunion, participant, adminId);
         }
     }
-
->>>>>>> Stashed changes
 }
