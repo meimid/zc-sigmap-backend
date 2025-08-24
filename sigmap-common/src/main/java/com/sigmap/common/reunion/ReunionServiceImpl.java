@@ -165,6 +165,9 @@ public class ReunionServiceImpl implements ReunionService{
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
+            synchronizeParticipants(request, reunionToUpdate);
+            synchronizePpms(request, reunionToUpdate);
+            synchronizeDacs(request, reunionToUpdate);
         if(request.getReunionDate()!=null){
             if(request.getReunionDate().before(Calendar.getInstance())){
                 throw new ReunionDate("Reunion date cannot be before now");
@@ -176,9 +179,7 @@ public class ReunionServiceImpl implements ReunionService{
             reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
         }
 
-        synchronizeParticipants(request, reunionToUpdate);
-        synchronizePpms(request, reunionToUpdate);
-        synchronizeDacs(request, reunionToUpdate);
+
         return save(reunionToUpdate);
     }else{
             if(request.getReunionDate()!=null){
@@ -191,6 +192,7 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
                 if(request.getReunionDate()!=reunionToUpdate.getReunionDate()){
                     sendReunionInvitations(id);
+
                 }
 
             }else{

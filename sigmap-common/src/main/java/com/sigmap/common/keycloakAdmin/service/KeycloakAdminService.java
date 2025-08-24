@@ -739,7 +739,7 @@ public class KeycloakAdminService {
         String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
         Set<String> userIdsInCom = usersCom.stream()
-                .filter(uc -> uc.getComId() != null && uc.getComId().equals(commission.getId()))
+                .filter(uc -> uc.getComId().equals(commission.getId()))
                 .map(UserCom::getUserId)
                 .collect(Collectors.toSet());
 
@@ -747,8 +747,6 @@ public class KeycloakAdminService {
                 .stream()
                 .filter(user -> !userIdsInCom.contains(user.getId()))
                 .collect(Collectors.toList());
-
-        logger.info("----------------dddddddddddddddddd--------- {}",users.size());
 
         return users;
     }
