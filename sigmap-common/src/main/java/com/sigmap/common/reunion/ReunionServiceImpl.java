@@ -168,8 +168,24 @@ public class ReunionServiceImpl implements ReunionService{
             synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
+
+
+
         if(request.getReunionDate()!=null){
-            if(request.getReunionDate().before(Calendar.getInstance())){
+            Calendar reqCal = Calendar.getInstance();
+            reqCal.setTime(request.getReunionDate().getTime());
+
+            reqCal.set(Calendar.HOUR_OF_DAY, 0);
+            reqCal.set(Calendar.MINUTE, 0);
+            reqCal.set(Calendar.SECOND, 0);
+            reqCal.set(Calendar.MILLISECOND, 0);
+
+            Calendar nowCal = Calendar.getInstance();
+            nowCal.set(Calendar.HOUR_OF_DAY, 0);
+            nowCal.set(Calendar.MINUTE, 0);
+            nowCal.set(Calendar.SECOND, 0);
+            nowCal.set(Calendar.MILLISECOND, 0);
+            if(request.getReunionDate().before(nowCal)){
                 throw new ReunionDate("Reunion date cannot be before now");
             }
             reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
@@ -183,7 +199,20 @@ public class ReunionServiceImpl implements ReunionService{
         return save(reunionToUpdate);
     }else{
             if(request.getReunionDate()!=null){
-                if(request.getReunionDate().before(Calendar.getInstance())){
+                Calendar reqCal = Calendar.getInstance();
+                reqCal.setTime(request.getReunionDate().getTime());
+
+                reqCal.set(Calendar.HOUR_OF_DAY, 0);
+                reqCal.set(Calendar.MINUTE, 0);
+                reqCal.set(Calendar.SECOND, 0);
+                reqCal.set(Calendar.MILLISECOND, 0);
+
+                Calendar nowCal = Calendar.getInstance();
+                nowCal.set(Calendar.HOUR_OF_DAY, 0);
+                nowCal.set(Calendar.MINUTE, 0);
+                nowCal.set(Calendar.SECOND, 0);
+                nowCal.set(Calendar.MILLISECOND, 0);
+                if(request.getReunionDate().before(nowCal)){
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
                 reunionToUpdate.setReunionDate(request.getReunionDate());

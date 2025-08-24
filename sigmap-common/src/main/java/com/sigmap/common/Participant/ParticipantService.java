@@ -2,6 +2,9 @@ package com.sigmap.common.Participant;
 
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.Participant.request.ParticipantRequest;
+import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.exception.ReunionNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -24,4 +27,5 @@ public interface ParticipantService {
     void softDeleteAll( List<Participant> members);
     List<Participant> saveAll( List<Participant> members);
     List<Participant> findByReunionId(Integer reunionId);
+    List<Participant> synchronizeCommissionParticipants(Reunion reunion) throws ReunionNotFound, ComNotFound;
 }
