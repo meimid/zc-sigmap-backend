@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/prticipant")
+@RequestMapping("/api/participant")
 public class ParticipantController {
     private final ParticipantService service;
     private final ReunionRepository reunionRepository;

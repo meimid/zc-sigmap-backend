@@ -173,4 +173,11 @@ public class ReunionController {
 
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/synchronize-status")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<String> updateReunionStatusToEnRetard() {
+        reunionService.updateReunionStatusToEnRetard();
+        return ResponseEntity.ok().body("Reunion statuses updated to EN_RETARD");
+    }
 }

@@ -8,5 +8,6 @@ public enum ReunionStatus {
     VALIDER,
     CLOTURER,
     REPORTER,
-    ANNULER
+    ANNULER,
+    EN_RETARD
 }

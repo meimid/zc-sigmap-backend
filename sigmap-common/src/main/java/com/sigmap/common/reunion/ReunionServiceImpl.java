@@ -46,6 +46,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -423,6 +424,18 @@ public class ReunionServiceImpl implements ReunionService{
         for (Participant participant : reunion.getParticipants()) {
             mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
         }
+    }
+
+   @Scheduled(cron = "* * * * * ?")
+   @Transactional
+    public void updateReunionStatusToEnRetard() {
+        Calendar now = Calendar.getInstance();
+        List<Reunion> reunions = repository.findAllByReunionDateBeforeAndStatusNot(now, ReunionStatus.EN_RETARD);
+        reunions.forEach(reunion -> {
+            log.info("Updating reunion {} to status EN_RETARD", reunion.getId());
+            reunion.setStatus(ReunionStatus.EN_RETARD);
+            repository.save(reunion);
+        });
     }
 
 }

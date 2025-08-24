@@ -32,4 +32,5 @@ public interface ReunionService {
     void delete(Integer id) throws ReunionNotFound;
 
     public void sendReunionInvitations(Integer id) throws MessagingException, IOException;
+    void updateReunionStatusToEnRetard();
 }

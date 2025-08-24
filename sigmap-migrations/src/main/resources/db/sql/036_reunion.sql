@@ -1,17 +1,17 @@
 -- liquibase formatted sql
 
 
--- changeset sigmap:1749671959050-80
+-- changeset sigmap:1749671959050-97
 CREATE SEQUENCE participant_id_seq INCREMENT BY 1 START WITH 1;
 
--- changeset sigmap:1749671959050-81
+-- changeset sigmap:1749671959050-98
 CREATE TABLE reunion (
                          reunion_id INT AUTO_INCREMENT NOT NULL,
                          com_id INT NOT NULL,
                          reunion_date DATETIME NULL,
                          emplacement TEXT NULL,
                          object TEXT NULL,
-                         status ENUM('BROUILLON', 'NON_PLANIFIER', 'PLANIFIER', 'EN_COURS', 'VALIDER', 'CLOTURER', 'REPORTER', 'ANNULER') NULL,
+                         status ENUM('BROUILLON', 'NON_PLANIFIER', 'PLANIFIER', 'EN_COURS', 'VALIDER', 'CLOTURER', 'REPORTER', 'ANNULER','EN_RETARD') NULL,
                          created_at DATETIME NULL,
                          created_by VARCHAR(100) NULL,
                          updated_at DATETIME NULL,
@@ -22,7 +22,7 @@ CREATE TABLE reunion (
                          CONSTRAINT PK_REUNION PRIMARY KEY (reunion_id)
 );
 
--- changeset sigmap:1749671959050-82
+-- changeset sigmap:1749671959050-99
 CREATE TABLE reunion_ppm (
                              reunion_id INT NOT NULL,
                              ppm_id INT NOT NULL,
@@ -32,15 +32,15 @@ CREATE TABLE reunion_ppm (
                              CONSTRAINT PK_REUNION_PPM PRIMARY KEY (reunion_id, ppm_id, ppm_ver)
 );
 
--- changeset sigmap:1749671959050-83
+-- changeset sigmap:1749671959050-100
 ALTER TABLE reunion_ppm ADD CONSTRAINT FK_REUNIONPPM_TO_REUNION
     FOREIGN KEY (reunion_id) REFERENCES reunion (reunion_id);
 
--- changeset sigmap:1749671959050-84
+-- changeset sigmap:1749671959050-101
 ALTER TABLE reunion_ppm ADD CONSTRAINT FK_REUNIONPPM_TO_PPM
     FOREIGN KEY (ppm_id, ppm_ver) REFERENCES ppm (ppm_id, ppm_ver);
 
--- changeset sigmap:1749671959050-85
+-- changeset sigmap:1749671959050-102
 CREATE TABLE reunion_dac (
                              reunion_id INT NOT NULL,
                              dac_id INT NOT NULL,
@@ -50,15 +50,15 @@ CREATE TABLE reunion_dac (
                              CONSTRAINT PK_REUNION_DAC PRIMARY KEY (reunion_id, dac_id, dac_ver)
 );
 
--- changeset sigmap:1749671959050-86
+-- changeset sigmap:1749671959050-103
 ALTER TABLE reunion_dac ADD CONSTRAINT FK_REUNIONDAC_TO_REUNION
     FOREIGN KEY (reunion_id) REFERENCES reunion (reunion_id);
 
--- changeset sigmap:1749671959050-87
+-- changeset sigmap:1749671959050-104
 ALTER TABLE reunion_dac ADD CONSTRAINT FK_REUNIONDAC_TO_DAC
     FOREIGN KEY (dac_id, dac_ver) REFERENCES dac (dac_id, dac_ver);
 
--- changeset sigmap:1749671959050-88
+-- changeset sigmap:1749671959050-105
 CREATE TABLE participant (
                                      reunion_id INT NOT NULL,
                                      participant_id INT NOT NULL,
@@ -81,6 +81,6 @@ CREATE TABLE participant (
 );
 
 
--- changeset sigmap:1749671959050-89
+-- changeset sigmap:1749671959050-106
 ALTER TABLE participant ADD CONSTRAINT FK_PARTICIPANT_TO_REUNION
     FOREIGN KEY (reunion_id) REFERENCES reunion (reunion_id);
