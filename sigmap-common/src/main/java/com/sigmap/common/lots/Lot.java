@@ -32,7 +32,7 @@ public class Lot extends BaseEntity{
     @Column(name = "description", length = 100)
     private String description;
 
-    @Column(name = "budget", precision = 10, scale = 2)
+    @Column(name = "budget", precision = 20, scale = 3)
     private BigDecimal budget;
 
     @ManyToMany(mappedBy = "lots")

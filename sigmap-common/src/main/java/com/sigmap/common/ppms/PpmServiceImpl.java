@@ -4074,7 +4074,7 @@ public class PpmServiceImpl implements PpmService {
         ppm.setRemarque(request.getRemarque());
         ppm.setAnnee(currentYear);
         setRef(ppm);
-        ppm.setBudgetEstime(request.getBudgetEstime());
+//        ppm.setBudgetEstime(request.getBudgetEstime());
         ppm.setStatus(ProcessStatus.BROUILLON);
         ppm.setAc(ac);
         ppm.setRealisations(new ArrayList<>());

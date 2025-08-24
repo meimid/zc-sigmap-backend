@@ -50,7 +50,7 @@ public class Paa extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "ac_id")
     private Ac ac;
 
-    @Column(name = "budget_estime", precision = 10, scale = 2)
+    @Column(name = "budget_estime", precision = 20, scale = 3)
     private BigDecimal budgetEstime;
 
     @Enumerated(EnumType.STRING)
