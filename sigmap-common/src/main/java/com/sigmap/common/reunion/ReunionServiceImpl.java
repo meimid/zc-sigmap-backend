@@ -178,14 +178,15 @@ public class ReunionServiceImpl implements ReunionService{
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
             }
-        reunionToUpdate.getReunionDacs().size();
-        reunionToUpdate.getReunionPpms().size();
-        ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
-        reunionToUpdate.setStatus(status);
-        synchronizeParticipants(request, reunionToUpdate);
-        synchronizePpms(request, reunionToUpdate);
-        synchronizeDacs(request, reunionToUpdate);
-        return save(reunionToUpdate);}
+            reunionToUpdate.getReunionDacs().size();
+            reunionToUpdate.getReunionPpms().size();
+            ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
+            reunionToUpdate.setStatus(status);
+            synchronizeParticipants(request, reunionToUpdate);
+            synchronizePpms(request, reunionToUpdate);
+            synchronizeDacs(request, reunionToUpdate);
+            return save(reunionToUpdate);
+        }
         else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());
         }
@@ -241,11 +242,11 @@ public class ReunionServiceImpl implements ReunionService{
                 if(reqCal.before(nowCal)){
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
-                reunionToUpdate.setReunionDate(request.getReunionDate());
                 reunionToUpdate.setEmplacement(request.getEmplacement());
                 reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
-                if(request.getReunionDate()!=reunionToUpdate.getReunionDate()){
+                if(!request.getReunionDate().equals(reunionToUpdate.getReunionDate())){
+                    reunionToUpdate.setReunionDate(request.getReunionDate());
                     sendReunionInvitations(id);
 
                 }
