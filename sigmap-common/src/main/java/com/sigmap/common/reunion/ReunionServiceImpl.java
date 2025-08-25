@@ -245,8 +245,8 @@ public class ReunionServiceImpl implements ReunionService{
 
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
                 if(!request.getReunionDate().equals(reunionToUpdate.getReunionDate())
-                    ||request.getEmplacement()!=null&&!request.getEmplacement().equals(reunionToUpdate.getEmplacement())
-                    ||request.getObject()!=null&&!request.getObject().equals(reunionToUpdate.getObject())){
+                    ||!request.getEmplacement().equals(reunionToUpdate.getEmplacement())
+                    ||!request.getObject().equals(reunionToUpdate.getObject())){
                     reunionToUpdate.setReunionDate(request.getReunionDate());
                     reunionToUpdate.setEmplacement(request.getEmplacement());
                     reunionToUpdate.setObject(request.getObject());
@@ -256,6 +256,8 @@ public class ReunionServiceImpl implements ReunionService{
 
             }else{
                 reunionToUpdate.setReunionDate(null);
+                reunionToUpdate.setEmplacement(request.getEmplacement());
+                reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
             }
             return save(reunionToUpdate);
@@ -308,11 +310,8 @@ public class ReunionServiceImpl implements ReunionService{
                     : ParticipantType.MEMBRE);
             participantRequest.setFonction(participantFonction);
 
-            if (requestData != null) {
-                participantRequest.setPresent(requestData.isPresent());
-            } else {
                 participantRequest.setPresent(false);
-            }
+
             Participant participant= participantService.create(participantRequest);
             reunion.getParticipants().add(participant);
 
@@ -343,7 +342,11 @@ public class ReunionServiceImpl implements ReunionService{
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
                 if (participantToUpdate != null) {
+                    if(request.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
+                    }else{
+                        participantToUpdate.setPresent(false);
+                    }
                     participantsToSave.add(participantToUpdate);
                     participantIdsToKeep.add(participantToUpdate.getId());
                     if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
