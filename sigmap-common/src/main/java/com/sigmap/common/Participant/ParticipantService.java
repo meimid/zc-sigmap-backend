@@ -27,5 +27,5 @@ public interface ParticipantService {
     void softDeleteAll( List<Participant> members);
     List<Participant> saveAll( List<Participant> members);
     List<Participant> findByReunionId(Integer reunionId);
-    List<Participant> synchronizeCommissionParticipants(Reunion reunion) throws ReunionNotFound, ComNotFound;
+    List<Participant> synchronizeCommissionParticipants(Integer reunionId) throws ReunionNotFound, ComNotFound;
 }

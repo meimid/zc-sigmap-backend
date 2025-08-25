@@ -29,15 +29,10 @@ public class ParticipantController {
     }
 
     @PutMapping("/{reunionId}/synchronize-participants")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<List<ParticipantResponseDto>> synchronizeCommissionParticipants(@PathVariable Integer reunionId) throws  ComNotFound {
-        Optional<Reunion> reunionOptional = reunionRepository.findById(reunionId);
-        if (reunionOptional.isEmpty()) {
-            throw new ReunionNotFound("",reunionId);
-        }
 
-        Reunion reunion = reunionOptional.get();
-        List<com.sigmap.common.Participant.Participant> updatedParticipants = service.synchronizeCommissionParticipants(reunion);
+        List<com.sigmap.common.Participant.Participant> updatedParticipants = service.synchronizeCommissionParticipants(reunionId);
         List<ParticipantResponseDto> response = ParticipantMapper.INSTANCE.toDtos(updatedParticipants);
         return ResponseEntity.ok().body(response);
     }

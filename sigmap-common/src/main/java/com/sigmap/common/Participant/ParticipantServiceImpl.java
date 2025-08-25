@@ -4,9 +4,13 @@ import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.config.ParticipantType;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.ReunionRepository;
+import com.sigmap.common.reunion.exception.ReunionNotFound;
+import com.sigmap.common.reunion.exception.ReunionStatusException;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
@@ -27,12 +31,14 @@ public class ParticipantServiceImpl implements ParticipantService {
     private final SequenceGeneratorService sequenceGeneratorService;
     private final UserComRepository userComRepository;
     private final KeycloakAdminService keycloakAdminService;
+    private final ReunionRepository reunionRepository;
 
-    public ParticipantServiceImpl(ParticipantRepository repository, SequenceGeneratorService sequenceGeneratorService, UserComRepository userComRepository, KeycloakAdminService keycloakAdminService) {
+    public ParticipantServiceImpl(ParticipantRepository repository, SequenceGeneratorService sequenceGeneratorService, UserComRepository userComRepository, KeycloakAdminService keycloakAdminService, ReunionRepository reunionRepository) {
         this.repository = repository;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.userComRepository = userComRepository;
         this.keycloakAdminService = keycloakAdminService;
+        this.reunionRepository = reunionRepository;
     }
 
     @Override
@@ -115,7 +121,16 @@ public class ParticipantServiceImpl implements ParticipantService {
 
     @Override
     @Transactional
-    public List<Participant> synchronizeCommissionParticipants(Reunion reunion) {
+    public List<Participant> synchronizeCommissionParticipants(Integer reunionId) {
+        Optional<Reunion> reunionOptional = reunionRepository.findById(reunionId);
+        if (reunionOptional.isEmpty()) {
+            throw new ReunionNotFound("",reunionId);
+        }
+
+        Reunion reunion = reunionOptional.get();
+        if(!reunion.getStatus().equals(ReunionStatus.BROUILLON)){
+            throw new ReunionStatusException("",reunion.getStatus());
+        }
 
         // Get current commission members
         List<UserCom> commissionMembers = userComRepository.findAllByComIdAndIsDeletedFalse(reunion.getCom().getId());
