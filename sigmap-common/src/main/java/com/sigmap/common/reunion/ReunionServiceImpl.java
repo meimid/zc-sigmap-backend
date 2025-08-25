@@ -245,8 +245,8 @@ public class ReunionServiceImpl implements ReunionService{
 
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
                 if(!request.getReunionDate().equals(reunionToUpdate.getReunionDate())
-                    ||!request.getEmplacement().equals(reunionToUpdate.getEmplacement())
-                    ||!request.getObject().equals(reunionToUpdate.getObject())){
+                    ||request.getEmplacement()!=null&&!request.getEmplacement().equals(reunionToUpdate.getEmplacement())
+                    ||request.getObject()!=null&&!request.getObject().equals(reunionToUpdate.getObject())){
                     reunionToUpdate.setReunionDate(request.getReunionDate());
                     reunionToUpdate.setEmplacement(request.getEmplacement());
                     reunionToUpdate.setObject(request.getObject());
