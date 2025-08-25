@@ -163,7 +163,8 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+    public Optional<Ppm> findById(Integer ppmId, Integer ppmVer)
+            throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
 
         // Step 1: Validate input
@@ -199,7 +200,8 @@ public class PpmServiceImpl implements PpmService {
         Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
         if (targetVersion == null) {
             log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId), ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
+            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId),
+                    ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
         }
         log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
 
@@ -211,7 +213,8 @@ public class PpmServiceImpl implements PpmService {
         }
 
         Ppm ppm = ppmOpt.get();
-        log.debug("PPM récupéré: ID={}, Version={}, AC={}", ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
+        log.debug("PPM récupéré: ID={}, Version={}, AC={}",
+                ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
 
         // Step 6: Check if the PPM is deleted
         if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
@@ -224,7 +227,6 @@ public class PpmServiceImpl implements PpmService {
         boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
         boolean hasMatchingCom = false;
 
-        // Check if any comId in ppm.coms matches user's comIds
         if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
             for (Com com : ppm.getComs()) {
                 if (com != null && userComIds.contains(com.getId())) {
@@ -246,11 +248,25 @@ public class PpmServiceImpl implements PpmService {
         }
         log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-        // Step 8: Prepare and return the response
+        if (ppm.getRealisations() != null) {
+            ppm.getRealisations().forEach(realisation -> {
+                if (realisation.getFinancements() != null) {
+                    realisation.setFinancements(
+                            realisation.getFinancements()
+                                    .stream()
+                                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                                    .collect(java.util.stream.Collectors.toList())
+                    );
+                }
+            });
+        }
+
+
         Ppm responsePpm = createFilteredResponsePpm(ppm);
         log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
         return Optional.ofNullable(responsePpm);
     }
+
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -298,20 +314,24 @@ public class PpmServiceImpl implements PpmService {
     public Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) {
         log.info("Recherche de tous les PPMs avec spécification: {}", spec);
 
-        // Get user's AC IDs
+        // Get user's AC IDs and COM IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.info("Aucun ID AC trouvé pour l'utilisateur connecté");
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+
+        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+            log.info("Aucun ID AC ou COM trouvé pour l'utilisateur connecté");
             return Page.empty(pageable);
         }
 
         // Validate ACs
-        for (Integer acId : userAcIds) {
-            try {
-                acService.findById(acId);
-            } catch (Exception e) {
-                log.info("AC non trouvé avec ID: {}", acId);
-                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            for (Integer acId : userAcIds) {
+                try {
+                    acService.findById(acId);
+                } catch (Exception e) {
+                    log.info("AC non trouvé avec ID: {}", acId);
+                    return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+                }
             }
         }
 
@@ -336,22 +356,49 @@ public class PpmServiceImpl implements PpmService {
             return Page.empty(pageable); // Return empty page instead of throwing PpmNotFound
         }
 
-        // Apply AC filter
-        Specification<Ppm> acFilterSpec = (root, query, cb) -> cb.in(root.get("ac").get("id")).value(userAcIds);
-        Specification<Ppm> combinedSpec = baseSpec.and(acFilterSpec);
+        // AC filter (only if user has ACs)
+        Specification<Ppm> acFilterSpec = null;
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            acFilterSpec = (root, query, cb) -> cb.in(root.get("ac").get("id")).value(userAcIds);
+        }
+
+        // COM filter via association table (only if user has COMs)
+        Specification<Ppm> comFilterSpec = null;
+        if (userComIds != null && !userComIds.isEmpty()) {
+            comFilterSpec = (root, query, cb) -> {
+                // Joining coms; distinct to avoid duplicates
+                query.distinct(true);
+                return root.join("coms", jakarta.persistence.criteria.JoinType.LEFT)
+                        .get("id").in(userComIds);
+            };
+        }
+
+        // Combine access filters with OR (AC OR COM)
+        Specification<Ppm> accessSpec;
+        if (acFilterSpec != null && comFilterSpec != null) {
+            accessSpec = acFilterSpec.or(comFilterSpec);
+        } else if (acFilterSpec != null) {
+            accessSpec = acFilterSpec;
+        } else {
+            accessSpec = comFilterSpec; // user has only COMs
+        }
+
+        Specification<Ppm> combinedSpec = baseSpec.and(accessSpec);
         Page<Ppm> allPpms = repository.findAll(combinedSpec, pageable);
 
         if (allPpms.isEmpty()) {
-            log.info("Aucun PPM associé aux ACs de l'utilisateur: {}", userAcIds);
+            log.info("Aucun PPM associé aux ACs/COMs de l'utilisateur. ACs: {}, COMs: {}", userAcIds, userComIds);
             return Page.empty(pageable);
         }
 
         // Map the results to filter Docs
         Page<Ppm> ppmResponse = allPpms.map(this::createFilteredResponsePpm);
-        log.info("Récupération de {} PPMs pour les AC de l'utilisateur {}", ppmResponse.getContent().size(), userAcIds);
+        log.info("Récupération de {} PPMs pour l'utilisateur. ACs: {}, COMs: {}",
+                ppmResponse.getContent().size(), userAcIds, userComIds);
 
         return ppmResponse;
     }
+
 
     @Override
     public Ppm save(Ppm ppm) {
@@ -3601,6 +3648,26 @@ public class PpmServiceImpl implements PpmService {
 
                 realisation = realisationRepository.save(realisation);
                 System.out.println("Saved realisation ID: " + realisation.getId() + " version: " + realisation.getVersion());
+
+                // =========================
+                // FIX (minimal, no logic changes):
+                // 1) make sure every saved realisation is considered "processed"
+                // 2) enforce the bidirectional link and persist it immediately
+                processedRealisationIds.add(realisation.getId());
+                if (existingPpm.getRealisations() == null) {
+                    existingPpm.setRealisations(new ArrayList<>());
+                }
+                if (!existingPpm.getRealisations().contains(realisation)) {
+                    existingPpm.getRealisations().add(realisation);
+                }
+                if (realisation.getPpms() == null) {
+                    realisation.setPpms(new ArrayList<>());
+                }
+                if (!realisation.getPpms().contains(existingPpm)) {
+                    realisation.getPpms().add(existingPpm);
+                }
+                realisation = realisationRepository.save(realisation);
+                // =========================
 
                 System.out.println("the relisations request are");
                 System.out.println(realisationRequest.getFinancements());
