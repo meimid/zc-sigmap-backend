@@ -76,14 +76,71 @@ public class EmailTraceController {
             log.warn("Email has already been sent successfully for trace id: {}", id);
             throw new MessagingException("Email has already been sent successfully");
         }else  {
+            if (emailTrace.getType_email() == TypeEmail.REUNION_INVITATION) {
             // Send the email using the generic email service
             mailService.sendGenericEmail(
                 emailTrace.getDestinataire(),
-                emailTrace.getObjet(),
+                "SIGMAP - Invitation à la réunion",
                 emailTrace.getContenu(),
                 adminId,
                 emailTrace.getType_email()
             );
+
+            }
+            else if (emailTrace.getType_email() == TypeEmail.ACTIVATION_COMPTE) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Activation Compte",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.MODIFICATION_MOT_DE_PASSE) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Modification Mot de Passe",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_AGPM) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation AGPM",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_PAA) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation PAA",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_PPM) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation PPM",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_DAC) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation DAC",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
 
             log.info("Email sent successfully to {} for trace id: {}", emailTrace.getDestinataire(), id);
             return ResponseEntity.ok().build();

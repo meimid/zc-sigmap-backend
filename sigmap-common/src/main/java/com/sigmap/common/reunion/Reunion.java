@@ -34,6 +34,9 @@ public class Reunion extends BaseEntity {
     private Calendar reunionDate;
 
     private String emplacement;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
     private String object;
 
     @Enumerated(EnumType.STRING)

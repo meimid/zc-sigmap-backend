@@ -24,7 +24,8 @@ public class EmailTrace extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private TypeEmail type_email;
 
-    @Column(name = "objet")
+    @Column(name = "objet",columnDefinition = "TEXT")
+    @Lob
     private String objet;
 
     @Column(name = "contenu")
