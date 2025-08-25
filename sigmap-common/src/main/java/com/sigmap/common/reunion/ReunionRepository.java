@@ -30,7 +30,7 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
             "LEFT JOIN FETCH r.participants p " +
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithParticipantsFetched(@Param("id") Integer id);
-    List<Reunion> findAllByReunionDateBeforeAndStatusNot(Calendar date, ReunionStatus status);
+    List<Reunion> findAllByReunionDateBeforeAndStatus(Calendar date, ReunionStatus status);
 }
 
 

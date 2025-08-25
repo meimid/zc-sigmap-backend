@@ -25,7 +25,7 @@ public interface ReunionService {
     Reunion findById(Integer id) throws ReunionNotFound;
     Reunion save(Reunion reunion);
     Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound;
-    Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound;
+    Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound;
     Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
     Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound;
 

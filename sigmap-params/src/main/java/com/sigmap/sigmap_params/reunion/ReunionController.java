@@ -44,6 +44,7 @@ public class ReunionController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<Page<ReunionResponse>> findAll(ReunionQuery query, Pageable pageable) {
         Page<Reunion> page = reunionService.findAll(query.toSpecification(), pageable);
         return ResponseEntity.ok(page.map(r -> {
@@ -61,6 +62,7 @@ public class ReunionController {
     }*/
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> findById(@PathVariable Integer id) throws ReunionNotFound {
         Reunion reunion = reunionService.findById(id);
         ReunionResponse response=ReunionMapper.INSTANCE.map(reunion);
@@ -69,7 +71,7 @@ public class ReunionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> create(@RequestBody ReunionRequest request) throws PpmNotFound, ComNotFound, AcNotFound {
         Reunion createdReunion = reunionService.create(request);
         ReunionResponse response=ReunionMapper.INSTANCE.map(createdReunion);
@@ -81,9 +83,9 @@ public class ReunionController {
     }
 
     @PutMapping("/{id}/brouillon")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> updateBrouillon(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound {
-        Reunion updatedReunion = reunionService.update(id, request,ReunionStatus.BROUILLON);
+        Reunion updatedReunion = reunionService.updateBrillon(id, request,ReunionStatus.BROUILLON);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
         List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
         ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
@@ -93,7 +95,7 @@ public class ReunionController {
         return ResponseEntity.ok(response);
     }
     @PutMapping("/{id}/planifier_or_not")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> updatePlanifierOrNot(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion updatedReunion = reunionService.updatePlanifierOrNot(id, request);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
@@ -106,7 +108,7 @@ public class ReunionController {
     }
 
     @PutMapping("/{id}/annuler")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion updatedReunion = reunionService.updateAnnule(id);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
@@ -120,7 +122,7 @@ public class ReunionController {
 
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> deleteById(@PathVariable Integer id) throws ReunionNotFound {
         reunionService.delete(id);
         Reunion deletedReunion = reunionService.findDeletedById(id)
@@ -174,10 +176,4 @@ public class ReunionController {
         return ResponseEntity.ok().build();
     }
 
-    @PutMapping("/synchronize-status")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<String> updateReunionStatusToEnRetard() {
-        reunionService.updateReunionStatusToEnRetard();
-        return ResponseEntity.ok().body("Reunion statuses updated to EN_RETARD");
-    }
 }

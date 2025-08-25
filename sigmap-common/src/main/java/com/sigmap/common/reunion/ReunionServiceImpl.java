@@ -130,6 +130,22 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion create(ReunionRequest request) throws PpmNotFound, AcNotFound, ComNotFound {
         Com com = comService.findById(request.getComId());
+        if(request.getReunionDate() != null) {
+        Calendar nowCal = Calendar.getInstance();
+        nowCal.set(Calendar.HOUR_OF_DAY, 0);
+        nowCal.set(Calendar.MINUTE, 0);
+        nowCal.set(Calendar.SECOND, 0);
+        nowCal.set(Calendar.MILLISECOND, 0);
+        Calendar reqCal = Calendar.getInstance();
+        reqCal.setTime(request.getReunionDate().getTime());
+        reqCal.set(Calendar.HOUR_OF_DAY, 0);
+        reqCal.set(Calendar.MINUTE, 0);
+        reqCal.set(Calendar.SECOND, 0);
+        reqCal.set(Calendar.MILLISECOND, 0);
+        if(reqCal.before(nowCal)){
+            throw new ReunionDate("Reunion date cannot be before now");
+        }
+        }
         Reunion reunion = ReunionMapper.INSTANCE.map(request);
         reunion.setCom(com);
         reunion.setStatus(ReunionStatus.BROUILLON);
@@ -143,9 +159,25 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     @Transactional
-    public Reunion update(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
         if(reunionToUpdate.getStatus() == ReunionStatus.BROUILLON) {
+            if(request.getReunionDate() != null) {
+                Calendar nowCal = Calendar.getInstance();
+                nowCal.set(Calendar.HOUR_OF_DAY, 0);
+                nowCal.set(Calendar.MINUTE, 0);
+                nowCal.set(Calendar.SECOND, 0);
+                nowCal.set(Calendar.MILLISECOND, 0);
+                Calendar reqCal = Calendar.getInstance();
+                reqCal.setTime(request.getReunionDate().getTime());
+                reqCal.set(Calendar.HOUR_OF_DAY, 0);
+                reqCal.set(Calendar.MINUTE, 0);
+                reqCal.set(Calendar.SECOND, 0);
+                reqCal.set(Calendar.MILLISECOND, 0);
+                if(reqCal.before(nowCal)){
+                    throw new ReunionDate("Reunion date cannot be before now");
+                }
+            }
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
@@ -162,6 +194,11 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        Calendar nowCal = Calendar.getInstance();
+        nowCal.set(Calendar.HOUR_OF_DAY, 0);
+        nowCal.set(Calendar.MINUTE, 0);
+        nowCal.set(Calendar.SECOND, 0);
+        nowCal.set(Calendar.MILLISECOND, 0);
         if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)){
         reunionToUpdate.getReunionDacs().size();
         reunionToUpdate.getReunionPpms().size();
@@ -175,18 +212,11 @@ public class ReunionServiceImpl implements ReunionService{
         if(request.getReunionDate()!=null){
             Calendar reqCal = Calendar.getInstance();
             reqCal.setTime(request.getReunionDate().getTime());
-
             reqCal.set(Calendar.HOUR_OF_DAY, 0);
             reqCal.set(Calendar.MINUTE, 0);
             reqCal.set(Calendar.SECOND, 0);
             reqCal.set(Calendar.MILLISECOND, 0);
-
-            Calendar nowCal = Calendar.getInstance();
-            nowCal.set(Calendar.HOUR_OF_DAY, 0);
-            nowCal.set(Calendar.MINUTE, 0);
-            nowCal.set(Calendar.SECOND, 0);
-            nowCal.set(Calendar.MILLISECOND, 0);
-            if(request.getReunionDate().before(nowCal)){
+            if(reqCal.before(nowCal)){
                 throw new ReunionDate("Reunion date cannot be before now");
             }
             reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
@@ -198,7 +228,7 @@ public class ReunionServiceImpl implements ReunionService{
 
 
         return save(reunionToUpdate);
-    }else{
+    }else if(reunionToUpdate.getStatus().equals(ReunionStatus.PLANIFIER)||reunionToUpdate.getStatus().equals(ReunionStatus.NON_PLANIFIER)||reunionToUpdate.getStatus().equals(ReunionStatus.EN_RETARD)){
             if(request.getReunionDate()!=null){
                 Calendar reqCal = Calendar.getInstance();
                 reqCal.setTime(request.getReunionDate().getTime());
@@ -208,12 +238,7 @@ public class ReunionServiceImpl implements ReunionService{
                 reqCal.set(Calendar.SECOND, 0);
                 reqCal.set(Calendar.MILLISECOND, 0);
 
-                Calendar nowCal = Calendar.getInstance();
-                nowCal.set(Calendar.HOUR_OF_DAY, 0);
-                nowCal.set(Calendar.MINUTE, 0);
-                nowCal.set(Calendar.SECOND, 0);
-                nowCal.set(Calendar.MILLISECOND, 0);
-                if(request.getReunionDate().before(nowCal)){
+                if(reqCal.before(nowCal)){
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
                 reunionToUpdate.setReunionDate(request.getReunionDate());
@@ -231,6 +256,9 @@ public class ReunionServiceImpl implements ReunionService{
             }
             return save(reunionToUpdate);
         }
+        else {
+             throw new ReunionStatusException("", reunionToUpdate.getStatus());
+        }
     }
 
     @Override
@@ -239,7 +267,8 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
                 reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
-                reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER){
+                reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER &&
+                reunionToUpdate.getStatus()!=ReunionStatus.EN_RETARD){
             throw new ReunionStatusException("",reunionToUpdate.getStatus());
         }
         reunionToUpdate.getReunionDacs().size();
@@ -426,15 +455,16 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
-   @Scheduled(cron = "* * * * * ?")
+   @Scheduled(cron = "* * 1 * * ?")
    @Transactional
     public void updateReunionStatusToEnRetard() {
         Calendar now = Calendar.getInstance();
-        List<Reunion> reunions = repository.findAllByReunionDateBeforeAndStatusNot(now, ReunionStatus.EN_RETARD);
+        List<Reunion> reunions = repository.findAllByReunionDateBeforeAndStatus(now, ReunionStatus.PLANIFIER);
         reunions.forEach(reunion -> {
             log.info("Updating reunion {} to status EN_RETARD", reunion.getId());
             reunion.setStatus(ReunionStatus.EN_RETARD);
             repository.save(reunion);
+
         });
     }
 

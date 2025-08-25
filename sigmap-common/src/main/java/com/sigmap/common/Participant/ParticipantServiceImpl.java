@@ -119,7 +119,6 @@ public class ParticipantServiceImpl implements ParticipantService {
 
         // Get current commission members
         List<UserCom> commissionMembers = userComRepository.findAllByComIdAndIsDeletedFalse(reunion.getCom().getId());
-        Set<String> currentComUserIds = commissionMembers.stream().map(UserCom::getUserId).collect(Collectors.toSet());
 
         // Get current commission-related participants (MEMBRE or RESPONSABLE)
         Map<String, Participant> comParticipantsMap = reunion.getParticipants().stream()
