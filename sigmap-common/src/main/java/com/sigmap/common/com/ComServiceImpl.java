@@ -326,14 +326,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     }
 
 
-    // call new methode
-
-   // manuallyDelete(existingUserComs, newUserIds);
-
-
-
-
-
     // 4. Ajouter les nouveaux
     for (String userId : newUserIds) {
       logger.info("*************"+ userId);

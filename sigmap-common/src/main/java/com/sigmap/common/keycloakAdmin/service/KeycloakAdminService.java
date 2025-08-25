@@ -5,6 +5,7 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.*;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
@@ -726,5 +727,27 @@ public class KeycloakAdminService {
         restTemplate.exchange(assignUrl, HttpMethod.POST, assignEntity, Void.class);
     }
 
+    public List<UserDTO> getAllUsersExcptetTheUsersCom(Integer comId) throws ComNotFound {
+        Com commission=comRepository.findById(comId).orElseThrow(()->new ComNotFound("",List.of(comId)));
+        if(commission.getIsDeleted()){
+            throw   new ComNotFound("",List.of(comId));
+        }
+    List<UserCom> usersCom=userComRepository.findAllByComIdAndIsDeletedFalse(comId);
+        String accessToken = tokenService.getAccessToken();
+        HttpHeaders headers = createHeaders(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
 
+        Set<String> userIdsInCom = usersCom.stream()
+                .filter(uc -> uc.getComId().equals(commission.getId()))
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+
+        List<UserDTO> users = fetchUsersFromKeycloak(baseUrl, entity)
+                .stream()
+                .filter(user -> !userIdsInCom.contains(user.getId()))
+                .collect(Collectors.toList());
+
+        return users;
+    }
 }

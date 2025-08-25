@@ -60,45 +60,92 @@ public class EmailTraceController {
 
     @PostMapping("/{id}/resend-email")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> sendEmailManually (@PathVariable Integer id ) throws MessagingException, EmailTraceNotFound {
+    public ResponseEntity<Void> sendEmailManually (@PathVariable Integer id) throws MessagingException, EmailTraceNotFound {
+        log.debug("API for sending email by user for email trace id: {}", id);
 
         // Get the current Admin ID
         Optional<String> currentUserId = Authentication.getCurrentUserId();
-        String AdminId = currentUserId.orElse("System");
+        String adminId = currentUserId.orElse("System");
 
-        // Generate a temporary password
-        String tmpPassword = generateTemporaryPassword();
+        // Get the email trace by id
+        EmailTrace emailTrace = emailTraceRepository.findById(id)
+                .orElseThrow(() -> new EmailTraceNotFound("Email trace not found with id: {}", id));
 
-        // get the email trace by id
-        EmailTrace emailTrace = emailTraceRepository.findById(id).orElseThrow(() -> new EmailTraceNotFound("Email trace not found with id {} ", id));
-
-        // get user info by email destinataire trace that return a UserResquestDTO
-        UserResquestDTO UserInfoByEmail = keycloakAdminService.getUserByEmail(emailTrace.getDestinataire());
-
-        // get user info by email destinataire trace that return a UserDTO
-        UserDTO UserInfo = keycloakAdminService.getOneUserByEmail(emailTrace.getDestinataire());
-
-        // tester si l'email est successSend
+        // Check if email was already sent successfully
         if (emailTrace.isSuccessSend()) {
-            throw new MessagingException("Email has already been sent");
-        }else {
-            if (UserInfoByEmail != null) {
-
-                // Activation compte
-                if (emailTrace.getType_email() == TypeEmail.ACTIVATION_COMPTE) {
-                    mailService.RetrySendActivationEmail(UserInfoByEmail, tmpPassword, AdminId);
-                }
-
-                // Modification mot de passe
-                if (emailTrace.getType_email() == TypeEmail.MODIFICATION_MOT_DE_PASSE) {
-                    mailService.RetrySendEditPasswordForAdminEmail(UserInfo, tmpPassword, AdminId);
-                }
+            log.warn("Email has already been sent successfully for trace id: {}", id);
+            throw new MessagingException("Email has already been sent successfully");
+        }else  {
+            if (emailTrace.getType_email() == TypeEmail.REUNION_INVITATION) {
+            // Send the email using the generic email service
+            mailService.sendGenericEmail(
+                emailTrace.getDestinataire(),
+                "SIGMAP - Invitation à la réunion",
+                emailTrace.getContenu(),
+                adminId,
+                emailTrace.getType_email()
+            );
 
             }
+            else if (emailTrace.getType_email() == TypeEmail.ACTIVATION_COMPTE) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Activation Compte",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.MODIFICATION_MOT_DE_PASSE) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Modification Mot de Passe",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_AGPM) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation AGPM",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_PAA) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation PAA",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_PPM) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation PPM",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+            else if (emailTrace.getType_email() == TypeEmail.VALIDATION_DAC) {
+                mailService.sendGenericEmail(
+                        emailTrace.getDestinataire(),
+                        "SIGMAP - Validation DAC",
+                        emailTrace.getContenu(),
+                        adminId,
+                        emailTrace.getType_email()
+                );
+            }
+
+            log.info("Email sent successfully to {} for trace id: {}", emailTrace.getDestinataire(), id);
+            return ResponseEntity.ok().build();
+
         }
-
-        return ResponseEntity.ok().build();
     }
-
 
 }

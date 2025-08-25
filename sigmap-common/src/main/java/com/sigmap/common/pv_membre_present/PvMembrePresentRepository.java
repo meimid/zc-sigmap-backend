@@ -23,7 +23,7 @@ public interface PvMembrePresentRepository extends JpaRepository<PvMembrePresent
                                                    @Param("process_verbal_id") String processVerbalId);
 
     List<PvMembrePresent> findByPpmIdAndPpmVersionAndProcessVerbalId(Integer ppmId, Integer ppmVer, String processVerbalId);
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Transactional
     @Query("UPDATE PvMembrePresent p SET p.isDeleted = true, p.deletedAt = CURRENT_TIMESTAMP, p.deletedBy = :#{principal.subject} WHERE p IN :members")
     void softDeleteAll(@Param("members") List<PvMembrePresent> members);
