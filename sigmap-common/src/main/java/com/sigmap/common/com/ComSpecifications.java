@@ -126,15 +126,9 @@ public class ComSpecifications {
     };
   }
 /*special*/
-  public static Specification<Com> special(boolean special) {
-    return (root, query, criteriaBuilder) -> {
-      if (!special) {
-        return criteriaBuilder.or(
-                criteriaBuilder.isNull(root.get("special")),
-                criteriaBuilder.isFalse(root.get("special")));
-      }
-      return criteriaBuilder.isTrue(root.get("special"));
-    };
+  public static Specification<Com> special() {
+    return (root, query, criteriaBuilder) ->
+      criteriaBuilder.equal(root.get("comType").get("code"), "CNCMP-S");
   }
 
 }

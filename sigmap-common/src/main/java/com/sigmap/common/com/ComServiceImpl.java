@@ -525,8 +525,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
   @Override
   public List<Com> getAllSpecialCommissions() {
-
-    Specification<Com> specification=ComSpecifications.special(true).and(ComSpecifications.deleted(false));
+    Specification<Com> specification=ComSpecifications.special().and(ComSpecifications.deleted(false));
     return repository.findAll(specification);
   }
 
