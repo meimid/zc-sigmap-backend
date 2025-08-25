@@ -580,15 +580,13 @@ public class PpmFlowableService {
         Boolean commissionRequired = taskProperties.get("commissionRequired");
         Boolean meetingRequired    = taskProperties.get("meetingRequired");
 
-        // ADDED: read flag (default false if null)
-        boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting()); // ADDED
+        boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting());
 
         log.info("approve-path: currentTask [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
                 task.getTaskDefinitionKey(), task.getName(), isUpdatable, meetingRequired, commissionRequired, isPublishable, fromMeeting);
 
         // --- meetingRequired enforcement ---
         if (Boolean.TRUE.equals(meetingRequired)) {
-            // Must come from the “meeting” flow AND have the closer-role
             if (!fromMeeting) {
                 TaskDTO errorResponse = new TaskDTO();
                 errorResponse.setStatus("Une réunion est requise pour clôturer cette tâche. Utilisez le service dédié à la réunion.");
@@ -612,6 +610,7 @@ public class PpmFlowableService {
                 log.warn("meetingRequired enforcement: could not resolve candidate groups for task [{}]: {}", taskId, e.getMessage());
             }
         }
+
         // --- If editable, update PPM (versioning) ---
         if (Boolean.TRUE.equals(isUpdatable)) {
             if (request.getPpm() == null) {
@@ -703,10 +702,15 @@ public class PpmFlowableService {
 
         boolean skipComAssociationCheck = false;
 
+        // We'll remember a deferred com to apply AFTER completing this task (e.g., CPMP → PER)
+        Integer deferComIdAfterCompletion = null;
+
         // --- Dynamic COM wiring (approve path) ---
         if (Boolean.TRUE.equals(request.getValidate())) {
+            log.info("Inspecting request for task [{}]: {}", taskId, request.getValidate());
             // AC validation (no meeting) → next meeting=true ⇒ set CPMP of AC
             if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
+
                 Integer acIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "acId");
                 if (acIdVar == null) throw new MissingAcIdException("acId is required to route commission from AC validation");
                 Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdVar);
@@ -723,10 +727,10 @@ public class PpmFlowableService {
                 runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
                 log.info("AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
 
-                skipComAssociationCheck = true; // small change requested
+                skipComAssociationCheck = true;
             }
 
-            // CPMP meeting → next needs commission ⇒ set CNCMPP (Permanent)
+            // CPMP meeting → next needs commission ⇒ prepare CNCMPP (Permanent)
             if (Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextCommissionRequired)) {
                 Com cncmpPer;
                 try {
@@ -746,92 +750,138 @@ public class PpmFlowableService {
                         .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm1.setComs(l); return l; });
                 if (currentComs.stream().noneMatch(c -> c.getId().equals(cncmpPer.getId()))) currentComs.add(cncmpPer);
 
-                runtimeService.setVariable(task.getProcessInstanceId(), "comId", cncmpPer.getId());
-                runtimeService.setVariable(task.getProcessInstanceId(), "cncmpPerComId", cncmpPer.getId()); // store permanent comId
-                log.info("CPMP→CNCMPP: Set comId {} (Permanent) for process {}", cncmpPer.getId(), task.getProcessInstanceId());
-
-                // already skipped here for system hand-off
-                skipComAssociationCheck = true;
+                // Remember to switch to PER AFTER this CPMP task completes
+                deferComIdAfterCompletion = cncmpPer.getId();
+                runtimeService.setVariable(task.getProcessInstanceId(), "cncmpPerComId", cncmpPer.getId());
+                log.info("CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
             }
         }
 
-        // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required ---
-        if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
-            if (Boolean.TRUE.equals(request.getValidate())) {
-                Integer reqComId = request.getComId();
-                if (reqComId == null) {
-                    throw new MissingComIdException("comId is required at Affectation (commissionRequired=true) when validate is true");
-                }
-                Com com = comServiceImpl.findById(reqComId);
-                if (com == null) throw new ComNotFound("Commission not found", List.of(reqComId));
-
-                if (!entityManager.contains(latestPpm)) latestPpm = entityManager.merge(latestPpm);
-                Ppm finalLatestPpm = latestPpm;
-                List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
-                        .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm.setComs(l); return l; });
-                if (currentComs.stream().noneMatch(c -> c.getId().equals(reqComId))) {
-                    currentComs.add(com);
-                    log.info("Affectation: Added comId {} to PPM", reqComId);
-                }
-
-                runtimeService.setVariable(task.getProcessInstanceId(), "comId", reqComId);
-                runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId); // store specialized comId
-                log.info("Affectation: Overwrote comId to {} for process {}", reqComId, task.getProcessInstanceId());
-                skipComAssociationCheck = false;
-            } else {
-                log.info("Affectation rejected/neutral: comId not required.");
-            }
-        }
-
-        /* -------- CNCMP Decision (APPROVE / REJECT / CI) — NO hardcoded task ids/names -------- */
-        Boolean validateFlag = request.getValidate(); // may be nullified for decision routing
+        /* -------- CNCMP Decision (APPROVE / REJECT / CI) -------- */
+        Boolean validateFlag = request.getValidate();
         boolean isCncmpDecisionTask = getModelUserTask(task)
                 .map(ut -> userTaskHasFormProp(ut, "cncmpDecision"))
                 .orElse(false);
+
+        Integer deferComIdAfterDecision = null;
 
         if (isCncmpDecisionTask) {
             CncmpDecision dec = request.getCncmpDecision();
             if (dec != null) {
                 String pid = task.getProcessInstanceId();
-                runtimeService.setVariable(pid, "cncmpDecision", dec.name()); // drive BPMN gateway
+
+                Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+                if (perId != null) {
+                    runtimeService.setVariable(pid, "comId", perId);
+                    try {
+                        if (!entityManager.contains(latestPpm)) latestPpm = entityManager.merge(latestPpm);
+                        Ppm finalLatestPpm4 = latestPpm;
+                        List<Com> current = Optional.ofNullable(latestPpm.getComs())
+                                .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm4.setComs(l); return l; });
+                        boolean exists = current.stream().anyMatch(c -> c.getId().equals(perId));
+                        if (!exists) {
+                            Com per = comServiceImpl.findById(perId);
+                            if (per != null) { current.add(per); ppmService.save(latestPpm); }
+                        }
+                        log.info("Association: added PER comId {} to PPM (id={}, ver={})", perId, latestPpm.getId(), latestPpm.getVersion());
+                    } catch (Exception e) {
+                        log.warn("Association: failed to add PER comId {}: {}", perId, e.getMessage());
+                    }
+                }
+
+                runtimeService.setVariable(pid, "cncmpDecision", dec.name());
 
                 switch (dec) {
                     case APPROVE:
-                        // → BPMN will route to Publication via ${cncmpDecision=='APPROVE'}
-                        validateFlag = null; // do not write *_valide
+                        deferComIdAfterDecision = perId;
+                        validateFlag = null;
                         log.info("CNCMP Decision: APPROVE");
                         break;
 
                     case REJECT:
-                        // → Route to Reserve (CPMP); ensure comId=CPMP by AC
                         Integer acIdVar = (Integer) runtimeService.getVariable(pid, "acId");
                         if (acIdVar == null) throw new MissingAcIdException("acId required to route REJECT to CPMP");
                         Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdVar);
                         if (cpmpComId == null) throw new ComNotFound("your ac dont have a cpmp", List.of(acIdVar));
-                        runtimeService.setVariable(pid, "comId", cpmpComId);
-                        log.info("CNCMP Decision: REJECT → set comId to CPMP={}", cpmpComId);
-                        validateFlag = null; // no *_valide
-                        // association will be checked below (no skipping)
+                        deferComIdAfterDecision = cpmpComId;
+                        validateFlag = null;
+                        log.info("CNCMP Decision: REJECT → defer comId to CPMP={}", cpmpComId);
                         break;
 
                     case CI:
-                        // → Route to Révision SCS (CI); restore specialized com if known
                         Integer speComId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
-                        if (speComId != null) {
-                            runtimeService.setVariable(pid, "comId", speComId);
-                            log.info("CNCMP Decision: CI → set comId to specialized SCS={}", speComId);
-                        } else {
-                            log.warn("CNCMP Decision: CI but cncmpSpeComId not found; leaving comId unchanged");
-                        }
-                        validateFlag = null; // no *_valide
+                        deferComIdAfterDecision = speComId;
+                        validateFlag = null;
+                        log.info("CNCMP Decision: CI → defer comId to SCS={}", speComId);
                         break;
                 }
             }
         }
 
-        // --- Association checks AFTER any comId overwrites ---
+        // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required ---
+        if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
+            Integer reqComId = request.getComId();
+            if (reqComId == null) {
+                throw new MissingComIdException("comId is required at Affectation (commissionRequired=true) when validate is true");
+            }
+            Com com = comServiceImpl.findById(reqComId);
+            if (com == null) throw new ComNotFound("Commission not found", List.of(reqComId));
+
+            if (!entityManager.contains(latestPpm)) latestPpm = entityManager.merge(latestPpm);
+            Ppm finalLatestPpm = latestPpm;
+            List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
+                    .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm.setComs(l); return l; });
+            if (currentComs.stream().noneMatch(c -> c.getId().equals(reqComId))) {
+                currentComs.add(com); // SCS chosen
+                log.info("Affectation: Added comId {} to PPM", reqComId);
+            }
+
+            // Set runtime for SCS so next task requires SCS membership
+            runtimeService.setVariable(task.getProcessInstanceId(), "comId", reqComId);
+            runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId); // specialized SCS id
+            log.info("Affectation: Overwrote comId to {} for process {}", reqComId, task.getProcessInstanceId());
+            skipComAssociationCheck = true;
+
+            // ---- Ensure PER + CPMP remain associated alongside SCS (idempotent) ----
+            try {
+                String pid = task.getProcessInstanceId();
+                Integer perId  = (Integer) runtimeService.getVariable(pid, "cncmpPerComId"); // PER from prior step (if any)
+                Integer acIdV  = (Integer) runtimeService.getVariable(pid, "acId");          // to resolve CPMP
+                Integer cpmpId = (acIdV != null) ? acServiceImpl.getComIdByAcId(acIdV) : null;
+
+                if (!entityManager.contains(latestPpm)) latestPpm = entityManager.merge(latestPpm);
+                Ppm finalLatestPpm5 = latestPpm;
+                List<Com> list = Optional.ofNullable(latestPpm.getComs())
+                        .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm5.setComs(l); return l; });
+
+                java.util.function.Consumer<Integer> addIfMissing = cid -> {
+                    if (cid != null && list.stream().noneMatch(x -> x.getId().equals(cid))) {
+                        Com cc = null;
+                        try {
+                            cc = comServiceImpl.findById(cid);
+                        } catch (ComNotFound e) {
+                            throw new RuntimeException(e);
+                        }
+                        if (cc != null) list.add(cc);
+                    }
+                };
+                addIfMissing.accept(reqComId); // SCS
+                addIfMissing.accept(perId);    // PER
+                addIfMissing.accept(cpmpId);   // CPMP
+
+                ppmService.save(latestPpm);
+                entityManager.flush();
+                log.info("Affectation: ensured associations SCS={}, PER={}, CPMP={} are persisted for PPM(id={},ver={})",
+                        reqComId, perId, cpmpId, latestPpm.getId(), latestPpm.getVersion());
+            } catch (Exception e) {
+                log.warn("Affectation: failed to persist SCS/PER/CPMP associations: {}", e.getMessage());
+            }
+            // ------------------------------------------------------------------------
+        }
+
+        // --- Association checks with CURRENT step's comId (SCS after Affectation) ---
         Integer currComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
-        if (!skipComAssociationCheck && currComId != null) {
+        if ((!skipComAssociationCheck && currComId != null)&& isPublishable ==false ){
             List<Integer> userComIds = currentUserService.getCurrentUserComIds();
             if (userComIds == null || !userComIds.contains(currComId)) {
                 throw new UserNotAssociatedWithComException("User is not associated with the commission ID: " + currComId);
@@ -851,6 +901,34 @@ public class PpmFlowableService {
             log.info("Skipping commission association check at system hand-off (comId={})", currComId);
         }
 
+        // Persist CURRENT comId into PPM.coms before any status update
+        try {
+            Integer currComIdForPersist = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+            log.info("Current comId for persist:***************************** {}", currComIdForPersist);
+            if (currComIdForPersist != null) {
+
+                if (!entityManager.contains(latestPpm)) {
+                    latestPpm = entityManager.merge(latestPpm);
+                }
+                Ppm finalLatestPpm3 = latestPpm;
+                List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
+                        .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm3.setComs(l); return l; });
+                boolean exists = currentComs.stream().anyMatch(c -> c.getId().equals(currComIdForPersist));
+                if (!exists) {
+                    Com assocCom = comServiceImpl.findById(currComIdForPersist);
+                    if (assocCom != null) {
+                        currentComs.add(assocCom);
+                        latestPpm.setComs(currentComs);
+                        ppmService.save(latestPpm);
+                        log.info("Association: Added CURRENT step comId {} to PPM (id={}, ver={}) BEFORE status update",
+                                currComIdForPersist, latestPpm.getId(), latestPpm.getVersion());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Association: failed to add CURRENT comId before status update: {}", e.getMessage());
+        }
+
         // --- Status updates ---
         ProcessStatus newStatus = null;
         boolean actedByDecision = isCncmpDecisionTask && request.getCncmpDecision() != null;
@@ -866,7 +944,6 @@ public class PpmFlowableService {
             latestPpm = updatedPpm;
             log.info("Updated PPM status to Publiée for task [{}], new status: {}", taskId, latestPpm.getStatus());
 
-            // Set associated Realisation statuses to PUBLIE
             List<Realisation> realisations = latestPpm.getRealisations() != null ? latestPpm.getRealisations() : new ArrayList<>();
             for (Realisation realisation : realisations) {
                 realisation.setStatut(RealisationStatus.PUBLIE);
@@ -874,7 +951,6 @@ public class PpmFlowableService {
                 log.info("Set Realisation [id={}, version={}] status to PUBLIE", realisation.getId(), realisation.getVersion());
             }
         } else if ((request.getValidate() != null) || actedByDecision) {
-            // keep process "en traitement" after any validation/decision act
             newStatus = ProcessStatus.EN_TRAITEMENT;
             Ppm updatedPpm = ppmService.updateStatus(id, latestPpm.getVersion(), newStatus);
             if (updatedPpm == null) {
@@ -892,6 +968,44 @@ public class PpmFlowableService {
                 return errorResponse;
             }
             latestPpm = updatedPpm;
+        }
+
+        // === SAFETY CASE #1 === (after status update, re-ensure CPMP/PER/SCS are associated)
+        try {
+            String pid = task.getProcessInstanceId();
+
+            Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
+            Integer cpmpId = (acIdForCpmp != null) ? acServiceImpl.getComIdByAcId(acIdForCpmp) : null;
+
+            Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+            Integer scsId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
+
+            if (!entityManager.contains(latestPpm)) {
+                latestPpm = entityManager.merge(latestPpm);
+            }
+            Ppm keepPpm = latestPpm;
+            List<Com> list = Optional.ofNullable(keepPpm.getComs())
+                    .orElseGet(() -> { List<Com> l = new ArrayList<>(); keepPpm.setComs(l); return l; });
+
+            java.util.function.Consumer<Integer> addIfMissing = cid -> {
+                if (cid != null && list.stream().noneMatch(x -> x.getId().equals(cid))) {
+                    try {
+                        Com cc = comServiceImpl.findById(cid);
+                        if (cc != null) list.add(cc);
+                    } catch (Exception ignore) { /* defensive only */ }
+                }
+            };
+
+            addIfMissing.accept(cpmpId); // keep CPMP
+            addIfMissing.accept(perId);  // keep PER
+            addIfMissing.accept(scsId);  // keep SCS
+
+            ppmService.save(latestPpm);
+            entityManager.flush();
+            log.info("SAFETY#1: ensured associations after status update (CPMP={}, PER={}, SCS={})",
+                    cpmpId, perId, scsId);
+        } catch (Exception e) {
+            log.warn("SAFETY#1: failed to re-ensure associations after status update: {}", e.getMessage());
         }
 
         // --- Determine gateway variable name & whether next is EndEvent ---
@@ -936,7 +1050,6 @@ public class PpmFlowableService {
 
         // --- Write vars, finish task ---
         Map<String, Object> varsToSet = new HashMap<>();
-        // IMPORTANT: only write *_valide when we actually have a boolean decision path
         if (validateFlag != null) {
             varsToSet.put(processVariable, validateFlag);
         }
@@ -956,7 +1069,6 @@ public class PpmFlowableService {
             }
         }
 
-        // Save the updated Ppm to persist the coms relationship
         ppmService.save(latestPpm);
         log.info("Saved PPM with coms: {} for ppmId: {}, version: {}", latestPpm.getComs(), latestPpm.getId(), latestPpm.getVersion());
         taskService.setAssignee(taskId, com.sigmap.common.security.Authentication.getCurrentUserId().get());
@@ -964,12 +1076,111 @@ public class PpmFlowableService {
             taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
         }
 
-        // ADDED: snapshot comId BEFORE completion to avoid querying a finished execution
+        // Snapshot current comId (e.g., SCS after Affectation)
         Integer comIdSnapshot = null;
         try {
             comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
         } catch (Exception ex) {
             log.debug("Could not snapshot comId before completion for task [{}]: {}", taskId, ex.getMessage());
+        }
+
+        // Ensure CURRENT comId is associated (idempotent)
+        if (comIdSnapshot != null) {
+            try {
+                if (!entityManager.contains(latestPpm)) {
+                    latestPpm = entityManager.merge(latestPpm);
+                }
+                List<Com> currentComs = latestPpm.getComs();
+                Integer finalComIdSnapshot = comIdSnapshot;
+                boolean exists = currentComs.stream().anyMatch(c -> c.getId().equals(finalComIdSnapshot));
+                if (!exists) {
+                    Com assocCom = comServiceImpl.findById(comIdSnapshot);
+                    if (assocCom != null) {
+                        currentComs.add(assocCom);
+                        log.info("Association: Added current step comId {} to PPM (id={}, ver={})", comIdSnapshot, latestPpm.getId(), latestPpm.getVersion());
+                        ppmService.save(latestPpm);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Association: failed to add comId {} to PPM: {}", comIdSnapshot, e.getMessage());
+            }
+        }
+
+        // ---------- SCS→PER (defer switch back) ----------
+        // Only schedule this when we are ON an SCS task (not Affectation):
+        // i.e. commissionRequired must be false, and current comId must equal SCS (speId).
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer perId     = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+            Integer speId     = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
+            Integer currentId = (Integer) runtimeService.getVariable(pid, "comId");
+
+            boolean onScsTask = !Boolean.TRUE.equals(commissionRequired)   // NOT Affectation
+                    && perId != null && speId != null
+                    && currentId != null && currentId.equals(speId);
+
+            if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
+                // switch back to PER after finishing THIS SCS task
+                deferComIdAfterCompletion = perId;
+                log.info("SCS→PER: defer switch back to Permanent comId {} after completing SCS task", perId);
+            }
+        } catch (Exception e) {
+            log.warn("SCS→PER: failed to plan switch back: {}", e.getMessage());
+        }
+        // -----------------------------------------------
+
+        // Apply deferred comId changes just before completion (and persist)
+        Integer finalSwitch = (deferComIdAfterDecision != null) ? deferComIdAfterDecision : deferComIdAfterCompletion;
+        if (finalSwitch != null) {
+            runtimeService.setVariable(task.getProcessInstanceId(), "comId", finalSwitch);
+            try {
+                if (!entityManager.contains(latestPpm)) latestPpm = entityManager.merge(latestPpm);
+                Ppm finalLatestPpm6 = latestPpm;
+                List<Com> currentComs = Optional.ofNullable(latestPpm.getComs())
+                        .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalLatestPpm6.setComs(l); return l; });
+                boolean exists = currentComs.stream().anyMatch(c -> c.getId().equals(finalSwitch));
+                if (!exists) {
+                    Com assocCom = comServiceImpl.findById(finalSwitch);
+                    if (assocCom != null) {
+                        currentComs.add(assocCom);
+                        ppmService.save(latestPpm);
+                    }
+                }
+                log.info("Switch & Association: set comId to {} and ensured association for next step", finalSwitch);
+            } catch (Exception e) {
+                log.warn("Switch & Association: failed to ensure deferred comId {}: {}", finalSwitch, e.getMessage());
+            }
+        }
+
+        // === SAFETY CASE #2 === (right before completing: keep CPMP associated)
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
+            Integer cpmpId = (acIdForCpmp != null) ? acServiceImpl.getComIdByAcId(acIdForCpmp) : null;
+
+            if (cpmpId != null) {
+                if (!entityManager.contains(latestPpm)) {
+                    latestPpm = entityManager.merge(latestPpm);
+                }
+                Ppm keepPpm2 = latestPpm;
+                List<Com> list2 = Optional.ofNullable(keepPpm2.getComs())
+                        .orElseGet(() -> { List<Com> l = new ArrayList<>(); keepPpm2.setComs(l); return l; });
+
+                boolean hasCpmp = list2.stream().anyMatch(c -> c.getId().equals(cpmpId));
+                if (!hasCpmp) {
+                    try {
+                        Com cpmp = comServiceImpl.findById(cpmpId);
+                        if (cpmp != null) {
+                            list2.add(cpmp);
+                            ppmService.save(latestPpm);
+                            entityManager.flush();
+                            log.info("SAFETY#2: re-added missing CPMP={} to association before completing task", cpmpId);
+                        }
+                    } catch (Exception ignore) { /* defensive only */ }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("SAFETY#2: failed to ensure CPMP before completing task: {}", e.getMessage());
         }
 
         // Complete task
@@ -988,16 +1199,16 @@ public class PpmFlowableService {
         response.setTraceability(varsToSet);
         response.setIsUpdatable(isUpdatable);
         response.setIsPublishable(isPublishable);
-        // ADDED: expose meetingRequired + comId on TaskDTO
         response.setMeetingRequired(meetingRequired);
         if (comIdSnapshot != null) {
             response.setComId(comIdSnapshot);
         }
-
         response.setStatus("Task validated successfully");
-
         return response;
     }
+
+
+
 
 
     /* ======================= next steps helper ======================= */
