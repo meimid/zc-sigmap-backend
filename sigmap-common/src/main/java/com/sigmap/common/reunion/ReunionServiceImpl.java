@@ -342,11 +342,11 @@ public class ReunionServiceImpl implements ReunionService{
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
                 if (participantToUpdate != null) {
-                    if(request.getStatus().equals(ReunionStatus.EN_COURS)){
+                   // if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
-                    }else{
+                   /* }else{
                         participantToUpdate.setPresent(false);
-                    }
+                    }*/
                     participantsToSave.add(participantToUpdate);
                     participantIdsToKeep.add(participantToUpdate.getId());
                     if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
