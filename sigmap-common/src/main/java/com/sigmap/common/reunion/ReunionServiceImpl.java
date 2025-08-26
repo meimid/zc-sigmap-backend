@@ -342,11 +342,11 @@ public class ReunionServiceImpl implements ReunionService{
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
                 if (participantToUpdate != null) {
-                   // if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
+                    if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
-                   /* }else{
+                    }else{
                         participantToUpdate.setPresent(false);
-                    }*/
+                    }
                     participantsToSave.add(participantToUpdate);
                     participantIdsToKeep.add(participantToUpdate.getId());
                     if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
@@ -399,8 +399,10 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setPpm(ppmService.findByIdPpm(ppmReq.getId(), ppmReq.getVersion()).orElseThrow(()->new PpmNotFound("", List.of(ppmReq.getId()), List.of(ppmReq.getVersion()))));
                 link.setProcessInstanceId(ppmReq.getProcessInstanceId());
                 link.setTaskId(ppmReq.getTaskId());
+                if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                 link.setDecision(ppmReq.getDecision());
                 link.setObservation(ppmReq.getObservation());
+                }
                 reunionPpmRepository.save(link);
                 reunion.getReunionPpms().add(link);
             }
@@ -428,8 +430,10 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setDac(dacService.findById(dacReq.getDacId(), dacReq.getDacVer()).orElseThrow(()->new RuntimeException("DAC not found")));
                 link.setProcessInstanceId(dacReq.getProcessInstanceId());
                 link.setTaskId(dacReq.getTaskId());
-                link.setDecision(dacReq.getDecision());
-                link.setObservation(dacReq.getObservation());
+                if(reunion.getStatus().equals(ReunionStatus.EN_COURS)) {
+                    link.setDecision(dacReq.getDecision());
+                    link.setObservation(dacReq.getObservation());
+                }
                 reunionDacRepository.save(link);
                 reunion.getReunionDacs().add(link);
             }

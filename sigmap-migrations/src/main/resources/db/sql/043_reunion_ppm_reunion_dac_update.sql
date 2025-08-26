@@ -20,9 +20,7 @@ ALTER TABLE reunion_dac ADD COLUMN decision VARCHAR(255) NULL;
 
 ALTER TABLE process_verbal DROP COLUMN decision_id;
 
--- changeset sigmap:1749671959050-113
 
-ALTER TABLE process_verbal DROP COLUMN observation;
 
 
 

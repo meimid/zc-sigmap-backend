@@ -54,10 +54,10 @@ public class ProcessVerbal extends BaseEntity {
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime dateDebutReunion;
 
-/*    @Column(name = "observation")
+   @Column(name = "observation")
     private String observation;
 
-    @Column(name = "decision_id")
+  /*   @Column(name = "decision_id")
     private boolean decision;*/
 
     @ManyToOne
