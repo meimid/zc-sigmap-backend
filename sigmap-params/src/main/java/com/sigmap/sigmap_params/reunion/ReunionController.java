@@ -154,6 +154,8 @@ public class ReunionController {
                     rdResponse.setDac(dacResponse);
                     rdResponse.setProcessInstanceId(rd.getProcessInstanceId());
                     rdResponse.setTaskId(rd.getTaskId());
+                    rdResponse.setDecision(rd.getDecision());
+                    rdResponse.setObservation(rd.getObservation());
                     return rdResponse;
                 })
                 .toList();
