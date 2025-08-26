@@ -11,10 +11,7 @@ import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.request.AdresseRequest;
-import com.sigmap.common.com.exception.CNCMPPNotFound;
-import com.sigmap.common.com.exception.ComHasAssociatedAc;
-import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.com.exception.PermanentComAlreadyExist;
+import com.sigmap.common.com.exception.*;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
@@ -434,7 +431,10 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     if (hasAssociatedSocieteAddress) {
       throw new ComHasAssociatedAc("", id);
     }
-
+    List<UserCom> users=userComRepository.findAllByComIdAndIsDeletedFalse(id);
+    if(!users.isEmpty()) {
+       throw new ComHasAssociatedUser("",id);
+    }
     repository.softDelete(id);
   }
 
