@@ -114,8 +114,8 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
             documentCommuneService.processAndSaveDocumentsForPv(request.getDocuments(), Constants.PATH_ENTREPOT_GED_PPM, processVerbal);
         }
 
-        processVerbal.setObservation(request.getObservation());
-        processVerbal.setDecision(request.isDecision());
+       /* processVerbal.setObservation(request.getObservation());
+        processVerbal.setDecision(request.isDecision());*/
         processVerbal.setTypeId(typeId);
         if (request.getStatus() != null) {
             processVerbal.setStatus(request.getStatus());
@@ -214,8 +214,8 @@ public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String pr
                 .orElseThrow(() -> new ProcessVerbalNotFound("Process Verbal not found for update", request.getPpmId(), request.getPpmVersion(), request.getProcessVerbalId()));
 
         // --- 2. Update Simple Fields on the Main Entity ---
-        pvToUpdate.setObservation(request.getObservation());
-        pvToUpdate.setDecision(request.isDecision());
+      /*  pvToUpdate.setObservation(request.getObservation());
+        pvToUpdate.setDecision(request.isDecision());*/
         pvToUpdate.setStatus(request.getStatus());
         if (request.getTypeId() != null) {
             pvToUpdate.setTypeId(refParamService.findById(request.getTypeId()));

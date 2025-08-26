@@ -8,4 +8,6 @@ public class ReunionPpmRequest {
     private Integer version;
     private String processInstanceId;
     private String taskId;
+    private String decision;
+    private String observation;
 }

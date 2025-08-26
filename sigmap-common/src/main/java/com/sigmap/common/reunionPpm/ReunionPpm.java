@@ -39,4 +39,8 @@ public class ReunionPpm {
 
     @Column(name = "task_id")
     private String taskId;
+
+    private String decision;
+
+    private String observation;
 }

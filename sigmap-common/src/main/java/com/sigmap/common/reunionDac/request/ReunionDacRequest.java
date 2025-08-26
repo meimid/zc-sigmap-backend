@@ -8,4 +8,6 @@ public class ReunionDacRequest {
     private Integer dacVer;
     private String processInstanceId;
     private String taskId;
+    private String decision;
+    private String observation;
 }

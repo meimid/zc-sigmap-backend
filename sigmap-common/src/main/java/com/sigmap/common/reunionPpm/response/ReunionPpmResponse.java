@@ -9,5 +9,7 @@ public class ReunionPpmResponse {
     private PpmIdVerNomResponseSoftDto ppm;
     private String processInstanceId;
     private String taskId;
+    private String decision;
+    private String observation;
 }
 

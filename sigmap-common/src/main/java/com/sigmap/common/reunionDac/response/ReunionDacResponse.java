@@ -8,5 +8,7 @@ public class ReunionDacResponse {
     private DacResponseReunion dac;
     private String processInstanceId;
     private String taskId;
+    private String decision;
+    private String observation;
 
 }

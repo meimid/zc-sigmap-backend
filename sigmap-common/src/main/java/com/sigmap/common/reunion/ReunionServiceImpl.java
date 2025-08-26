@@ -399,6 +399,8 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setPpm(ppmService.findByIdPpm(ppmReq.getId(), ppmReq.getVersion()).orElseThrow(()->new PpmNotFound("", List.of(ppmReq.getId()), List.of(ppmReq.getVersion()))));
                 link.setProcessInstanceId(ppmReq.getProcessInstanceId());
                 link.setTaskId(ppmReq.getTaskId());
+                link.setDecision(ppmReq.getDecision());
+                link.setObservation(ppmReq.getObservation());
                 reunionPpmRepository.save(link);
                 reunion.getReunionPpms().add(link);
             }
@@ -426,6 +428,8 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setDac(dacService.findById(dacReq.getDacId(), dacReq.getDacVer()).orElseThrow(()->new RuntimeException("DAC not found")));
                 link.setProcessInstanceId(dacReq.getProcessInstanceId());
                 link.setTaskId(dacReq.getTaskId());
+                link.setDecision(dacReq.getDecision());
+                link.setObservation(dacReq.getObservation());
                 reunionDacRepository.save(link);
                 reunion.getReunionDacs().add(link);
             }
