@@ -51,6 +51,7 @@ public interface ReunionMapper {
     @Mapping(target = "participants", ignore = true)
     @Mapping(target = "reunionPpms", ignore = true)
     @Mapping(target = "reunionDacs", ignore = true)
+    @Mapping(target ="status", ignore = true )
     void updateFromRequest(ReunionRequest request, @MappingTarget Reunion reunion);
     ParticipantResponseDto toDto(Participant participant);
 

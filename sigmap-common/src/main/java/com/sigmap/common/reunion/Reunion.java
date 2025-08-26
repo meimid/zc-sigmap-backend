@@ -4,6 +4,7 @@ import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.*;
@@ -56,4 +57,9 @@ public class Reunion extends BaseEntity {
             mappedBy = "reunion"
     )
     private List<Participant> participants = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "pv_id", referencedColumnName = "pv_id", insertable = false, updatable = false)
+    private ProcessVerbalReunion processVerbal;
+
 }

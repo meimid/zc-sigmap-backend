@@ -133,6 +133,19 @@ public class ReunionController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}/start")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
+    public ResponseEntity<ReunionResponse> startReunion(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
+        Reunion updatedReunion = reunionService.startReunion(id);
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setParticipants(responseDtos);
+        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
+
+        return ResponseEntity.ok(response);
+    }
+
     private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
         if (reunionDacs == null) return List.of();
 

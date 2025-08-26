@@ -195,6 +195,9 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        log.info("------------------- Reunion updated ---------------- {} ",reunionToUpdate.getId());
+
+        log.info("**********************************,{}",reunionToUpdate.getStatus());
         Calendar nowCal = Calendar.getInstance();
         nowCal.set(Calendar.HOUR_OF_DAY, 0);
         nowCal.set(Calendar.MINUTE, 0);
@@ -384,6 +387,8 @@ public class ReunionServiceImpl implements ReunionService{
         Map<ReunionPpmId, ReunionPpm> currentLinks = reunion.getReunionPpms().stream()
                 .collect(Collectors.toMap(link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()), Function.identity()));
 
+        log.info("------------------------------------------ {}",reunion.getStatus());
+
         Set<ReunionPpmId> requestLinkIds = new HashSet<>();
 
         if (request.getReunionPpms() != null) {
@@ -400,8 +405,15 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setProcessInstanceId(ppmReq.getProcessInstanceId());
                 link.setTaskId(ppmReq.getTaskId());
                 if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
-                link.setDecision(ppmReq.getDecision());
-                link.setObservation(ppmReq.getObservation());
+
+                        if(ppmReq.getDecision() != null){
+                            link.setDecision(ppmReq.getDecision());
+                        }
+                        if(ppmReq.getObservation()!= null){
+
+                            link.setObservation(ppmReq.getObservation());
+
+                        }
                 }
                 reunionPpmRepository.save(link);
                 reunion.getReunionPpms().add(link);
@@ -431,8 +443,13 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setProcessInstanceId(dacReq.getProcessInstanceId());
                 link.setTaskId(dacReq.getTaskId());
                 if(reunion.getStatus().equals(ReunionStatus.EN_COURS)) {
-                    link.setDecision(dacReq.getDecision());
-                    link.setObservation(dacReq.getObservation());
+                    if(dacReq.getDecision() != null){
+                        link.setDecision(dacReq.getDecision());
+                    }
+                    if(dacReq.getObservation() != null){
+                        link.setObservation(dacReq.getObservation());
+                    }
+
                 }
                 reunionDacRepository.save(link);
                 reunion.getReunionDacs().add(link);
@@ -481,6 +498,21 @@ public class ReunionServiceImpl implements ReunionService{
             repository.save(reunion);
 
         });
+    }
+
+    @Override
+    public Reunion startReunion(Integer id) throws ReunionNotFound {
+        Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        reunion.getReunionDacs().size();
+        reunion.getReunionPpms().size();
+        if(reunion.getStatus().equals(ReunionStatus.EN_RETARD)||reunion.getStatus().equals(ReunionStatus.PLANIFIER)){
+            reunion.setStatus(ReunionStatus.EN_COURS);
+            repository.save(reunion);
+            return reunion;
+        }
+        else {
+            throw new ReunionStatusException("",reunion.getStatus());
+        }
     }
 
 }
