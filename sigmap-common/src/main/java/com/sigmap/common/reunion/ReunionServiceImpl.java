@@ -16,6 +16,7 @@ import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ppms.Ppm;
@@ -67,12 +68,13 @@ public class ReunionServiceImpl implements ReunionService{
     private final ReunionPpmRepository reunionPpmRepository;
     private final ReunionDacRepository reunionDacRepository;
     private final MailService mailService;
+    private final CurrentUserService currentUserService;
     @Autowired
     EntityManager entityManager;
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -83,11 +85,12 @@ public class ReunionServiceImpl implements ReunionService{
         this.reunionPpmRepository = reunionPpmRepository;
         this.reunionDacRepository = reunionDacRepository;
         this.mailService = mailService;
+        this.currentUserService = currentUserService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
-        Specification<Reunion> finalSpec = Specification.where(spec).and(ReunionSpecifications.deleted(false));
-        return repository.findAll(finalSpec, pageable);
+
+              return repository.findAll(reunionSpecificationRoleAndComIds(spec), pageable);
     }
 
     @Override
@@ -109,7 +112,7 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public Optional<Reunion> findOne(Specification<Reunion> spec) {
-        return repository.findOne(spec);
+        return repository.findOne(reunionSpecificationRoleAndComIds(spec));
     }
 
     @Override
@@ -153,14 +156,14 @@ public class ReunionServiceImpl implements ReunionService{
         createAndSetParticipantsFromUsers(savedReunion, request);
         synchronizePpms(request, savedReunion);
         synchronizeDacs(request, savedReunion);
-        log.info("-------------- Reunion created -------------- {} ",savedReunion);
         return reunion;
     }
 
     @Override
     @Transactional
     public Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
-        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        Reunion reunionToUpdate=findById(id);
+
         if(reunionToUpdate.getStatus() == ReunionStatus.BROUILLON) {
             if(request.getReunionDate() != null) {
                 Calendar nowCal = Calendar.getInstance();
@@ -178,8 +181,7 @@ public class ReunionServiceImpl implements ReunionService{
                     throw new ReunionDate("Reunion date cannot be before now");
                 }
             }
-            reunionToUpdate.getReunionDacs().size();
-            reunionToUpdate.getReunionPpms().size();
+
             ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
             reunionToUpdate.setStatus(status);
             synchronizeParticipants(request, reunionToUpdate);
@@ -194,18 +196,14 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     @Transactional
     public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
-        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
-        log.info("------------------- Reunion updated ---------------- {} ",reunionToUpdate.getId());
-
-        log.info("**********************************,{}",reunionToUpdate.getStatus());
+        Reunion reunionToUpdate=findById(id);
         Calendar nowCal = Calendar.getInstance();
         nowCal.set(Calendar.HOUR_OF_DAY, 0);
         nowCal.set(Calendar.MINUTE, 0);
         nowCal.set(Calendar.SECOND, 0);
         nowCal.set(Calendar.MILLISECOND, 0);
         if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)){
-        reunionToUpdate.getReunionDacs().size();
-        reunionToUpdate.getReunionPpms().size();
+
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
             synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
@@ -273,15 +271,17 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     @Transactional
     public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
-        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+       // Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        Reunion reunionToUpdate=findById(id);
+
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
                 reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
                 reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER &&
                 reunionToUpdate.getStatus()!=ReunionStatus.EN_RETARD){
             throw new ReunionStatusException("",reunionToUpdate.getStatus());
         }
-        reunionToUpdate.getReunionDacs().size();
-        reunionToUpdate.getReunionPpms().size();
+        /*reunionToUpdate.getReunionDacs().size();
+        reunionToUpdate.getReunionPpms().size();*/
         reunionToUpdate.setStatus(ReunionStatus.ANNULER);
         return save(reunionToUpdate);
     }
@@ -333,14 +333,21 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
-    private void synchronizeParticipants(ReunionRequest request, Reunion reunion) {
+    @Transactional
+    public void synchronizeParticipants(ReunionRequest request, Reunion reunionReq) {
+        Reunion reunion = repository.findByIdWithParticipants(reunionReq.getId())
+                .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
         Map<Integer, Participant> currentParticipantsMap = reunion.getParticipants().stream()
                 .collect(Collectors.toMap(Participant::getId, Function.identity()));
 
         Set<Integer> participantIdsToKeep = new HashSet<>();
         List<ParticipantRequest> participantsInRequest = request.getParticipants() != null ? request.getParticipants() : Collections.emptyList();
         List<Participant> participantsToSave = new ArrayList<>();
-
+    if (reunion.getParticipants() == null) {
+        reunion.setParticipants(new ArrayList<>());
+    } else if (!(reunion.getParticipants() instanceof ArrayList)) {
+        reunion.setParticipants(new ArrayList<>(reunion.getParticipants()));
+    }
         for (ParticipantRequest participantRequest : participantsInRequest) {
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
@@ -373,7 +380,7 @@ public class ReunionServiceImpl implements ReunionService{
             }
         }
 
-        if (!participantsToDelete.isEmpty()) {
+        if (!participantsToDelete.isEmpty()&&reunion.getStatus()==ReunionStatus.BROUILLON) {
             participantsToDelete.forEach(p->p.setPresent(false));
             participantService.softDeleteAll(participantsToDelete);
         }
@@ -383,11 +390,21 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
-    private void synchronizePpms(ReunionRequest request, Reunion reunion) throws PpmNotFound, AcNotFound {
-        Map<ReunionPpmId, ReunionPpm> currentLinks = reunion.getReunionPpms().stream()
-                .collect(Collectors.toMap(link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()), Function.identity()));
+    @Transactional
+    public void synchronizePpms(ReunionRequest request, Reunion reunionReq) throws PpmNotFound, AcNotFound {
 
-        log.info("------------------------------------------ {}",reunion.getStatus());
+        Reunion reunion = repository.findByIdWithPpms(reunionReq.getId())
+                .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
+
+        // Map current links
+        Map<ReunionPpmId, ReunionPpm> currentLinks =
+                reunion.getReunionPpms().stream()
+                        .collect(Collectors.toMap(
+                                link -> new ReunionPpmId(link.getReunionId(),
+                                        link.getPpmId(),
+                                        link.getPpmVer()),
+                                Function.identity()
+                        ));
 
         Set<ReunionPpmId> requestLinkIds = new HashSet<>();
 
@@ -423,9 +440,20 @@ public class ReunionServiceImpl implements ReunionService{
 
     }
 
-    private void synchronizeDacs(ReunionRequest request, Reunion reunion) {
-        Map<ReunionDacId, ReunionDac> currentLinks = reunion.getReunionDacs().stream()
-                .collect(Collectors.toMap(link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()), Function.identity()));
+    @Transactional
+    public void synchronizeDacs(ReunionRequest request, Reunion reunionReq) {
+
+        Reunion reunion = repository.findByIdWithDacs(reunionReq.getId())
+                .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
+        // Map current links
+        Map<ReunionDacId, ReunionDac> currentLinks =
+                reunion.getReunionDacs().stream()
+                        .collect(Collectors.toMap(
+                                link -> new ReunionDacId(link.getReunionId(),
+                                        link.getDacId(),
+                                        link.getDacVer()),
+                                Function.identity()
+                        ));
 
         Set<ReunionDacId> requestDacIds = new HashSet<>();
 
@@ -483,7 +511,10 @@ public class ReunionServiceImpl implements ReunionService{
 
         // Iterate over participants and send emails
         for (Participant participant : reunion.getParticipants()) {
-            mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
+
+           if(participant.getMail()!=null){
+               mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
+           }
         }
     }
 
@@ -512,6 +543,17 @@ public class ReunionServiceImpl implements ReunionService{
         }
         else {
             throw new ReunionStatusException("",reunion.getStatus());
+        }
+    }
+
+    private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
+        boolean superAdmin= Authentication.hasRole("SUPER_ADMIN");
+        if(!superAdmin){
+            List<Integer> comIds= currentUserService.getCurrentUserComIds();
+            return  Specification.where(spec).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.comIdSpec(comIds));
+        }
+        else{
+            return  Specification.where(spec).and(ReunionSpecifications.deleted(false));
         }
     }
 
