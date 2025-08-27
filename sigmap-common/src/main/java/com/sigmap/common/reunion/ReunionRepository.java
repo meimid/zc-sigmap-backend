@@ -27,9 +27,20 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithRelations(@Param("id") Integer id);
     @Query("SELECT DISTINCT r FROM Reunion r " +
-            "LEFT JOIN FETCH r.participants p " +
+            "LEFT JOIN FETCH r.participants " +
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithParticipantsFetched(@Param("id") Integer id);
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.participants WHERE r.id = :id and r.isDeleted = false ")
+    Optional<Reunion> findByIdWithParticipants(@Param("id") Integer id);
+
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.reunionPpms WHERE r.id = :id and r.isDeleted = false")
+    Optional<Reunion> findByIdWithPpms(@Param("id") Integer id);
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.reunionDacs WHERE r.id = :id and r.isDeleted = false")
+    Optional<Reunion> findByIdWithDacs(@Param("id") Integer id);
+
     List<Reunion> findAllByReunionDateBeforeAndStatus(Calendar date, ReunionStatus status);
 }
 

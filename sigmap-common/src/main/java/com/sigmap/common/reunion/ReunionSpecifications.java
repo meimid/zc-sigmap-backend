@@ -9,6 +9,7 @@ import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Calendar;
+import java.util.List;
 
 public class ReunionSpecifications {
     public static Specification<Reunion> search(String search) {
@@ -102,6 +103,13 @@ public class ReunionSpecifications {
                     criteriaBuilder.isNull(root.get("isDeleted")),
                     criteriaBuilder.isFalse(root.get("isDeleted"))
             );
+        };
+    }
+
+    public static Specification<Reunion> comIdSpec(List<Integer> comIds) {
+        return (root, query, cb) -> {
+            Join<Reunion, Com> comJoin = root.join("com");
+            return comJoin.get("id").in(comIds);
         };
     }
 }
