@@ -400,6 +400,10 @@ public class AcServiceImpl implements AcService{
         if (hasAssociatedAc) {
             throw new AcHasAssociatedAc("" , id);
         }
+        List<UserAc> users=userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
+        if(!users.isEmpty()) {
+            throw new AcHasAssociatedUser("",id);
+        }
 
         repository.softDelete(id);
     }

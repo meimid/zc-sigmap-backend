@@ -701,12 +701,13 @@ public class PpmServiceImpl implements PpmService {
      * @throws RuntimeException if the PPM is not found or is deleted
      */
     @Transactional
-    @Override
     public Ppm updateWithVersioning(Integer ppmId, Integer ppmVer, PpmBaseRequestDto request) {
         // Log the request for debugging
         logUpdateRequest(ppmId, ppmVer, request);
-        for (RealisationBaseRequestDto re : request.getRealisations()) {
-            System.out.println("doc realisation" + re.getRealisationFiles());
+        if (request.getRealisations() != null) {
+            for (RealisationBaseRequestDto re : request.getRealisations()) {
+                System.out.println("doc realisation" + re.getRealisationFiles());
+            }
         }
 
         // Validate lot budget consistency in the request if it's a PpmWithLotsRequestDto
@@ -718,7 +719,9 @@ public class PpmServiceImpl implements PpmService {
         Ppm existingPpm = getExistingPpm(ppmId, ppmVer);
 
         // Determine acId for seuilApplicable
-        Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPpm.getAc().getId();
+        Integer requestAcId = request.getAcId() != null
+                ? request.getAcId()
+                : (existingPpm.getAc() != null ? existingPpm.getAc().getId() : null);
 
         // Create a temporary PPM with the new data for comparison
         Ppm tempPpm = buildTempPpm(existingPpm, request);
@@ -727,20 +730,17 @@ public class PpmServiceImpl implements PpmService {
         boolean directFieldsChanged = !arePpmFieldsIdentical(existingPpm, tempPpm);
         System.out.println("Direct field changes detected: " + directFieldsChanged);
 
-        // Process realisations
+
         List<Realisation> updatedRealisations = new ArrayList<>();
 
-        // Process lots first
         boolean lotsChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
 
-        // Process financements on the SAME realisation versions (don't create new versions)
         boolean financementsChanged = false;
         if (request.getRealisations() != null) {
             for (int i = 0; i < updatedRealisations.size(); i++) {
                 Realisation realisation = updatedRealisations.get(i);
                 RealisationBaseRequestDto realisationRequest = request.getRealisations().get(i);
 
-                // Process financements on the CURRENT realisation version
                 boolean realisationFinancementsChanged = processFinancementsOnExistingVersion(realisation, realisationRequest);
                 if (realisationFinancementsChanged) {
                     financementsChanged = true;
@@ -748,9 +748,6 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-        boolean realisationsChanged = lotsChanged || financementsChanged;
-
-        // ===== ADDED: Recompute budget from financements and apply PPM seuil control
         for (Realisation realisation : updatedRealisations) {
             BigDecimal rb = (realisation.getFinancements() == null) ? BigDecimal.ZERO
                     : realisation.getFinancements().stream()
@@ -762,27 +759,261 @@ public class PpmServiceImpl implements PpmService {
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             realisation.setBudgetEstime(rb);
-
-            // PPM-specific control: throws if budget < seuil
             setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
         }
-        // ===== END ADDED
 
-        // Process documents if present
+        List<RealisationBaseRequestDto> reqReals = null;
+        if (request instanceof PpmWithLotsRequestDto) {
+            PpmWithLotsRequestDto lotsReq = (PpmWithLotsRequestDto) request;
+            if (lotsReq.getRealisationsWithLots() != null && !lotsReq.getRealisationsWithLots().isEmpty()) {
+                reqReals = new ArrayList<>(lotsReq.getRealisationsWithLots());
+            } else if (request.getRealisations() != null) {
+                reqReals = new ArrayList<>(request.getRealisations());
+            }
+        } else if (request.getRealisations() != null) {
+            reqReals = new ArrayList<>(request.getRealisations());
+        }
+
+        if (reqReals != null && !reqReals.isEmpty()) {
+            Map<String, Lot> newLotsMap = new HashMap<>();
+
+            for (int i = 0; i < updatedRealisations.size(); i++) {
+                Realisation real = updatedRealisations.get(i);
+                RealisationBaseRequestDto realReq = (i < reqReals.size()) ? reqReals.get(i) : null;
+                if (realReq == null) continue;
+
+                if (realReq.getDocIds() != null && !realReq.getDocIds().isEmpty()) {
+                    Set<Integer> requestDocIds = new HashSet<>(realReq.getDocIds());
+                    Set<Integer> existingDocIds = real.getDocs() != null
+                            ? real.getDocs().stream().map(Docs::getId).collect(Collectors.toSet())
+                            : new HashSet<>();
+
+                    Set<Integer> docsToAdd = new HashSet<>(requestDocIds);
+                    docsToAdd.removeAll(existingDocIds);
+
+                    Set<Integer> docsToRemove = new HashSet<>(existingDocIds);
+                    docsToRemove.removeAll(requestDocIds);
+
+                    List<Docs> docs = real.getDocs() != null ? new ArrayList<>(real.getDocs()) : new ArrayList<>();
+
+                    if (!docsToRemove.isEmpty()) {
+                        docs.removeIf(doc -> docsToRemove.contains(doc.getId()));
+                        final Realisation realRef = real;
+                        for (Integer docId : docsToRemove) {
+                            docsRepository.findById(docId).ifPresent(doc -> {
+                                if (doc.getRealisations() != null) {
+                                    doc.getRealisations().remove(realRef);
+                                    docsRepository.save(doc);
+                                }
+                            });
+                        }
+                    }
+
+                    for (Integer docId : docsToAdd) {
+                        Docs doc = docsRepository.findById(docId)
+                                .orElseThrow(() -> new RuntimeException("Document with ID " + docId + " not found"));
+                        if (doc.getRealisations() == null) {
+                            doc.setRealisations(new ArrayList<>());
+                        }
+                        if (!doc.getRealisations().contains(real)) {
+                            doc.getRealisations().add(real);
+                        }
+                        doc.setIsDeleted(false);
+                        docsRepository.save(doc);
+                        docs.add(doc);
+                    }
+
+                    real.setDocs(docs);
+                    real = realisationRepository.save(real);
+                    System.out.println("Updated docs for realisation ID " + real.getId() + ": " + docs.size() + " total docs");
+                } else if (real.getDocs() != null && !real.getDocs().isEmpty()) {
+                    for (Docs doc : real.getDocs()) {
+                        if (doc.getRealisations() != null) {
+                            doc.getRealisations().remove(real);
+                            docsRepository.save(doc);
+                        }
+                    }
+                    real.setDocs(new ArrayList<>());
+                    real = realisationRepository.save(real);
+                    System.out.println("Cleared docs for realisation ID " + real.getId());
+                }
+
+                if (realReq.getRealisationFiles() != null && !realReq.getRealisationFiles().isEmpty()) {
+                    try {
+                        System.out.println("Processing " + realReq.getRealisationFiles().size() +
+                                " files for realisation ID: " + real.getId());
+
+                        documentCommuneService.processAndSaveDocuments(
+                                realReq.getRealisationFiles(),
+                                real,
+                                Constants.PATH_ENTREPOT_GED_PPM + "/" + existingPpm.getId() + Constants.PATH_ENTREPOT_GED_REALISATION
+                        );
+
+                        real = realisationRepository.findById(new CompositeId(real.getId(), real.getVersion()))
+                                .orElseThrow(() -> new RuntimeException("Could not find realisation after file upload"));
+
+                        if (real.getDocs() != null && !real.getDocs().isEmpty()) {
+                            for (Docs d : real.getDocs()) {
+                                if (d.getRealisations() == null) d.setRealisations(new ArrayList<>());
+                                if (!d.getRealisations().contains(real)) d.getRealisations().add(real);
+                                if (d.getIsDeleted() == null || Boolean.TRUE.equals(d.getIsDeleted())) d.setIsDeleted(false);
+                                docsRepository.save(d);
+                            }
+                            real = realisationRepository.save(real);
+                        }
+
+                        System.out.println("After file processing, realisation has " +
+                                (real.getDocs() != null ? real.getDocs().size() : 0) + " documents");
+                    } catch (IOException e) {
+                        System.err.println("Error processing realisation files: " + e.getMessage());
+                        e.printStackTrace();
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                List<LotResponse> lotDtos = null;
+                if (realReq instanceof RealisationWithLotsRequestDto) {
+                    RealisationWithLotsRequestDto rl = (RealisationWithLotsRequestDto) realReq;
+                    if (rl.getLots() != null && !rl.getLots().isEmpty()) {
+                        lotDtos = rl.getLots();
+                    }
+                }
+
+                if (lotDtos != null && !lotDtos.isEmpty()) {
+                    List<Lot> updatedLots = new ArrayList<>();
+                    Set<Integer> processedLotIds = new HashSet<>();
+                    Set<Integer> existingLotIds = real.getLots() != null
+                            ? real.getLots().stream().map(Lot::getId).collect(Collectors.toSet())
+                            : new HashSet<>();
+
+                    for (LotResponse lotDto : lotDtos) {
+                        if (lotDto.getId() == null) {
+                            String lotHash = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+
+                            if (newLotsMap.containsKey(lotHash)) {
+                                updatedLots.add(newLotsMap.get(lotHash));
+                                processedLotIds.add(newLotsMap.get(lotHash).getId());
+                                continue;
+                            }
+
+                            Lot newLot = new Lot();
+                            newLot.setDescription(lotDto.getDescription());
+                            newLot.setVersion(1);
+                            newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
+                            newLot.setIsDeleted(false);
+
+                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                            newLot.setId(lotId);
+
+                            Lot savedLot = lotRepository.save(newLot);
+                            updatedLots.add(savedLot);
+                            processedLotIds.add(savedLot.getId());
+                            newLotsMap.put(lotHash, savedLot);
+                            lotsChanged = true;
+                            System.out.println("Created new Lot with ID: " + savedLot.getId() + ", Budget: " + savedLot.getBudget());
+                        } else {
+                            if (processedLotIds.contains(lotDto.getId())) continue;
+
+                            Integer lotId = lotDto.getId();
+                            Integer lotVersion = lotDto.getVersion();
+
+                            if (lotVersion == null) {
+                                lotVersion = lotRepository.findMaxVersionById(lotId);
+                                if (lotVersion == null) {
+                                    System.out.println("Lot ID " + lotId + " not found, creating new lot");
+                                    Lot newLot = new Lot();
+                                    newLot.setId(lotId);
+                                    newLot.setVersion(1);
+                                    newLot.setDescription(lotDto.getDescription());
+                                    newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
+                                    newLot.setIsDeleted(false);
+                                    Lot savedLot = lotRepository.save(newLot);
+                                    updatedLots.add(savedLot);
+                                    processedLotIds.add(savedLot.getId());
+                                    lotsChanged = true;
+                                    continue;
+                                }
+                            }
+
+                            Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
+                            if (existingLotOpt.isPresent()) {
+                                Lot existingLot = existingLotOpt.get();
+                                String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
+                                String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
+
+                                if (lotDto.getBudget() != null && !lotDto.getBudget().equals(existingLot.getBudget())) {
+                                    existingLot.setBudget(lotDto.getBudget());
+                                    existingLot = lotRepository.save(existingLot);
+                                    updatedLots.add(existingLot);
+                                    processedLotIds.add(existingLot.getId());
+                                    lotsChanged = true;
+                                    System.out.println("Updated existing Lot: " + existingLot.getId() + ", Version: " + existingLot.getVersion() + ", Budget: " + existingLot.getBudget());
+                                } else if (!requestDesc.equals(existingDesc)) {
+                                    Lot newLot = new Lot();
+                                    newLot.setId(existingLot.getId());
+                                    newLot.setVersion(existingLot.getVersion() + 1);
+                                    newLot.setDescription(lotDto.getDescription());
+                                    newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : existingLot.getBudget());
+                                    newLot.setIsDeleted(false);
+
+                                    Lot savedLot = lotRepository.save(newLot);
+                                    updatedLots.add(savedLot);
+                                    processedLotIds.add(savedLot.getId());
+                                    lotsChanged = true;
+                                    System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion() + ", Budget: " + savedLot.getBudget());
+                                } else {
+                                    updatedLots.add(existingLot);
+                                    processedLotIds.add(existingLot.getId());
+                                    System.out.println("Using existing Lot: " + existingLot.getId() + ", Version: " + existingLot.getVersion() + ", Budget: " + existingLot.getBudget());
+                                }
+                            } else {
+                                Lot newLot = new Lot();
+                                newLot.setId(lotId);
+                                newLot.setVersion(1);
+                                newLot.setDescription(lotDto.getDescription());
+                                newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
+                                newLot.setIsDeleted(false);
+                                Lot savedLot = lotRepository.save(newLot);
+                                updatedLots.add(savedLot);
+                                processedLotIds.add(savedLot.getId());
+                                lotsChanged = true;
+                                System.out.println("Created new Lot with provided ID: " + savedLot.getId() + ", Budget: " + savedLot.getBudget());
+                            }
+                        }
+                    }
+
+                    real.setLots(updatedLots);
+                    real = realisationRepository.save(real);
+
+                    Realisation verifyRealisation = realisationRepository.findById(new CompositeId(real.getId(), real.getVersion()))
+                            .orElseThrow(() -> new RuntimeException("Could not find realisation after saving lots"));
+
+                    System.out.println("After saving, realisation ID: " + verifyRealisation.getId() +
+                            " has " + (verifyRealisation.getLots() != null ? verifyRealisation.getLots().size() : 0) +
+                            " lots");
+                } else if (real.getLots() != null && !real.getLots().isEmpty()) {
+                    real.setLots(new ArrayList<>());
+                    real = realisationRepository.save(real);
+                    lotsChanged = true;
+                    System.out.println("Cleared lots for realisation ID: " + real.getId());
+                }
+            }
+        }
+
+        boolean realisationsChanged = lotsChanged || financementsChanged;
+
         List<Docs> updatedDocs = new ArrayList<>();
         boolean documentsChanged = processDocuments(existingPpm, request, updatedDocs);
 
-        // Get hash for the current request
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(ppmId, ppmVer);
 
-        // Check if files are present - if so, we'll always create a new version
         boolean hasFiles = false;
         if (request instanceof PpmWithLotsRequestDto) {
             PpmWithLotsRequestDto lotsRequest = (PpmWithLotsRequestDto) request;
             hasFiles = lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty();
 
-            // Check for files in realisations
             if (!hasFiles && lotsRequest.getRealisationsWithLots() != null) {
                 for (RealisationWithLotsRequestDto realisation : lotsRequest.getRealisationsWithLots()) {
                     if (realisation.getRealisationFiles() != null && !realisation.getRealisationFiles().isEmpty()) {
@@ -796,11 +1027,9 @@ public class PpmServiceImpl implements PpmService {
         if (hasFiles) {
             System.out.println("Files detected in request - will create new version regardless of other changes");
         } else {
-            // Only check hash if no files are present
             System.out.println("Current request hash: " + requestHash);
             System.out.println("Previous request hash: " + previousRequestHash);
 
-            // If this is the exact same request as the previous one, return the existing PPM without changes
             if (requestHash != null && requestHash.equals(previousRequestHash)) {
                 System.out.println("Duplicate request detected, returning existing PPM without changes");
 
@@ -820,7 +1049,6 @@ public class PpmServiceImpl implements PpmService {
                 // Also filter realisation documents and lots
                 if (copyForResponse.getRealisations() != null) {
                     for (Realisation real : copyForResponse.getRealisations()) {
-                        // Filter out deleted documents
                         if (real.getDocs() != null) {
                             real.setDocs(
                                     real.getDocs().stream()
@@ -829,7 +1057,6 @@ public class PpmServiceImpl implements PpmService {
                             );
                         }
 
-                        // Filter out deleted lots
                         if (real.getLots() != null) {
                             real.setLots(
                                     real.getLots().stream()
@@ -838,7 +1065,6 @@ public class PpmServiceImpl implements PpmService {
                             );
                         }
 
-                        // Validate seuilApplicable
                         if (real.getSeuilApplicable() != null && real.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
                             log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", real.getId());
                             real.setSeuilApplicable(BigDecimal.ZERO);
@@ -850,113 +1076,91 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-        // Determine if we need to create a new version
         boolean shouldCreateNewVersion = directFieldsChanged || realisationsChanged || documentsChanged || hasFiles;
         logVersionDecision(shouldCreateNewVersion, directFieldsChanged, realisationsChanged, documentsChanged);
 
-        // If no changes, return the existing PPM
         if (!shouldCreateNewVersion) {
             System.out.println("No changes detected, returning existing PPM without creating new version");
             return existingPpm;
         }
 
-        // Store the request hash for the current version
         storePreviousRequestHash(ppmId, ppmVer, requestHash);
 
-        // Process document IDs for the new version
         if (request.getDocIds() != null) {
             updatedDocs = new ArrayList<>();
             Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
 
-            // Process existing documents first
             if (existingPpm.getDocs() != null) {
                 for (Docs existingDoc : existingPpm.getDocs()) {
-                    // Get a fresh copy of the document to avoid stale data
                     Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (docToProcess == null) {
                         System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
                         continue;
                     }
-
                     if (requestedDocIds.contains(docToProcess.getId())) {
-                        // This doc is in the request, ensure it's not marked as deleted
                         docToProcess.setIsDeleted(false);
                         docToProcess = docsRepository.save(docToProcess);
                         updatedDocs.add(docToProcess);
-                        System.out.println("Keeping document with ID " + docToProcess.getId() + " active for new version");
-
-                        // Remove from requested IDs since we've handled it
                         requestedDocIds.remove(docToProcess.getId());
                     } else {
-                        // This doc is not in the request, mark it as deleted
                         docToProcess.setIsDeleted(true);
                         docToProcess = docsRepository.save(docToProcess);
-                        updatedDocs.add(docToProcess); // Keep it in the collection but as deleted
-                        System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted for new version");
+                        updatedDocs.add(docToProcess);
                     }
                 }
             }
 
-            // Now process any new documents in the request
             for (Integer docId : requestedDocIds) {
-                // Skip if we've already processed this document
                 if (updatedDocs.stream().anyMatch(doc -> doc.getId().equals(docId))) {
                     continue;
                 }
-
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-
-                // Ensure it's active
                 doc.setIsDeleted(false);
                 doc = docsRepository.save(doc);
-
                 updatedDocs.add(doc);
-                System.out.println("Added new document with ID " + doc.getId() + " for new version");
             }
         } else if (existingPpm.getDocs() != null && !existingPpm.getDocs().isEmpty()) {
-            // No document IDs provided, but existing docs exist - mark all as deleted
             updatedDocs = new ArrayList<>();
             for (Docs existingDoc : existingPpm.getDocs()) {
-                // Get a fresh copy of the document
                 Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                 if (docToProcess == null) continue;
-
-                // Mark as deleted
                 docToProcess.setIsDeleted(true);
                 docToProcess = docsRepository.save(docToProcess);
                 updatedDocs.add(docToProcess);
                 System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
             }
-            // Keep the existing docs list to preserve relationships (just all marked as deleted)
         } else {
-            // No docs in request or existing PPM
             updatedDocs = new ArrayList<>();
         }
 
-        // Validate realisations for budget consistency
         Ppm tempPpmForValidation = new Ppm();
         tempPpmForValidation.setRealisations(updatedRealisations);
         validateRealisations(tempPpmForValidation);
 
-        // Create a new PPM version
         System.out.println("Creating new PPM version: " + (ppmVer + 1));
         Ppm newPpm = createAndSaveNewPpmVersion(ppmId, ppmVer, tempPpm, updatedRealisations, updatedDocs, existingPpm);
 
         newPpm.setRef(existingPpm.getRef());
         newPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
 
-        // Process new files if present (for PpmWithLotsRequestDto)
         if (request instanceof PpmWithLotsRequestDto) {
             PpmWithLotsRequestDto lotsRequest = (PpmWithLotsRequestDto) request;
             if (lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty()) {
                 try {
                     System.out.println("Processing " + lotsRequest.getPpmFiles().size() + " new files for PPM");
                     documentCommuneService.processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm, Constants.PATH_ENTREPOT_GED_PPM);
-
-                    // Save the PPM again after adding documents
                     newPpm = repository.save(newPpm);
-                    System.out.println("Saved PPM after processing files");
+
+                    if (newPpm.getDocs() != null && !newPpm.getDocs().isEmpty()) {
+                        for (Docs d : newPpm.getDocs()) {
+                            if (d.getPpms() == null) d.setPpms(new ArrayList<>());
+                            if (!d.getPpms().contains(newPpm)) d.getPpms().add(newPpm);
+                            if (d.getIsDeleted() == null || Boolean.TRUE.equals(d.getIsDeleted())) d.setIsDeleted(false);
+                            docsRepository.save(d);
+                        }
+                        newPpm = repository.save(newPpm);
+                    }
                 } catch (IOException e) {
                     System.err.println("Error processing PPM files: " + e.getMessage());
                     throw new RuntimeException("Error processing PPM files: " + e.getMessage(), e);
@@ -964,14 +1168,11 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-        // Update the hash for the new version
         storePreviousRequestHash(ppmId, newPpm.getVersion(), requestHash);
 
-        // Create a filtered copy for the response to exclude deleted items
         Ppm responseVersion = new Ppm();
         BeanUtils.copyProperties(newPpm, responseVersion);
 
-        // Filter out any deleted docs in the response
         if (responseVersion.getDocs() != null) {
             List<Docs> filteredDocs = newPpm.getDocs().stream()
                     .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
@@ -983,7 +1184,6 @@ public class PpmServiceImpl implements PpmService {
             responseVersion.setDocs(filteredDocs);
         }
 
-        // Filter out any deleted items in realisations and validate seuilApplicable
         if (responseVersion.getRealisations() != null) {
             for (Realisation real : responseVersion.getRealisations()) {
                 if (real.getDocs() != null) {
@@ -1002,7 +1202,6 @@ public class PpmServiceImpl implements PpmService {
                     );
                 }
 
-                // Validate seuilApplicable
                 if (real.getSeuilApplicable() != null && real.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
                     log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", real.getId());
                     real.setSeuilApplicable(BigDecimal.ZERO);
@@ -1010,7 +1209,6 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-        // Apply final filtering to show only latest versions
         if (responseVersion.getRealisations() != null && !responseVersion.getRealisations().isEmpty()) {
             List<Realisation> latestRealisations = filterLatestRealisationVersions(responseVersion.getRealisations());
             responseVersion.setRealisations(latestRealisations);
@@ -1021,10 +1219,12 @@ public class PpmServiceImpl implements PpmService {
         }
 
         System.out.println("Returning filtered PPM version: " + responseVersion.getVersion());
-
         System.out.println("Returning filtered new PPM version: " + responseVersion.getVersion());
         return responseVersion;
     }
+
+
+
     /**
      * Updates a PPM with versioning by automatically finding and using the latest version.
      * <p>
@@ -3901,28 +4101,25 @@ public class PpmServiceImpl implements PpmService {
      * @return The newly created PPM version
      */
     private Ppm createAndSaveNewPpmVersion(Integer ppmId, Integer ppmVer, Ppm tempPpm,
-                                           List<Realisation> updatedRealisations, List<Docs> updatedDocs, Ppm existingPpm) {
+                                           List<Realisation> updatedRealisations,
+                                           List<Docs> updatedDocs,
+                                           Ppm existingPpm) {
         System.out.println("Creating new PPM version: " + (ppmVer + 1));
 
-        // Create new PPM
         Ppm newPpm = new Ppm();
         BeanUtils.copyProperties(tempPpm, newPpm, "id", "version");
         newPpm.setId(ppmId);
         newPpm.setVersion(ppmVer + 1);
 
-        // If the PPM has a created date, keep it
         if (existingPpm.getCreatedAt() != null) {
             newPpm.setCreatedAt(existingPpm.getCreatedAt());
             newPpm.setCreatedBy(existingPpm.getCreatedBy());
         }
 
-        // Log document statuses before saving
         if (updatedDocs != null) {
             System.out.println("Documents before saving new PPM version:");
             for (Docs doc : updatedDocs) {
                 System.out.println("  - Doc ID: " + doc.getId() + ", isDeleted: " + doc.getIsDeleted());
-
-                // Ensure isDeleted is properly set
                 if (doc.getIsDeleted() == null) {
                     doc.setIsDeleted(false);
                     docsRepository.save(doc);
@@ -3934,35 +4131,45 @@ public class PpmServiceImpl implements PpmService {
         newPpm = repository.save(newPpm);
         System.out.println("Saved new PPM: " + newPpm.getId() + " version " + newPpm.getVersion());
 
-        // Link realisations
+
         if (updatedRealisations != null && !updatedRealisations.isEmpty()) {
             newPpm.setRealisations(updatedRealisations);
             for (Realisation realisation : updatedRealisations) {
-                // Ensure bidirectional relationship is maintained
-                realisation.setPpms(realisation.getPpms() != null ? realisation.getPpms() : new ArrayList<>());
+                if (realisation.getPpms() == null) realisation.setPpms(new ArrayList<>());
                 if (!realisation.getPpms().contains(newPpm)) {
                     realisation.getPpms().add(newPpm);
                 }
             }
         }
 
-        // Set updated document list ensuring proper filtering
         if (updatedDocs != null) {
             newPpm.setDocs(new ArrayList<>(updatedDocs));
-            // Make sure to maintain bidirectional relationships
             for (Docs doc : updatedDocs) {
-                if (doc.getPpms() == null) {
-                    doc.setPpms(new ArrayList<>());
-                }
+                if (doc.getPpms() == null) doc.setPpms(new ArrayList<>());
                 if (!doc.getPpms().contains(newPpm)) {
                     doc.getPpms().add(newPpm);
-                    docsRepository.save(doc);
                 }
             }
         }
 
+
+        System.out.println("Saved new PPM: " + newPpm.getId() + " version " + newPpm.getVersion());
+
+        if (updatedRealisations != null && !updatedRealisations.isEmpty()) {
+            for (Realisation realisation : updatedRealisations) {
+                realisationRepository.save(realisation);
+            }
+        }
+        if (updatedDocs != null && !updatedDocs.isEmpty()) {
+            for (Docs doc : updatedDocs) {
+                docsRepository.save(doc);
+            }
+        }
+
+
         return newPpm;
     }
+
 
     /**
      * Maps a RealisationBaseRequestDto to a RealisationRequest.

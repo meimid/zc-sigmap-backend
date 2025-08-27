@@ -714,4 +714,19 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ComHasAssociatedUser.class)
+    public ResponseEntity<ErrorResponse> ComHasAssociatedUserException(ComHasAssociatedUser ex) {
+        String message = messageSource.getMessage("com.hasAssociatedUser",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(AcHasAssociatedUser.class)
+    public ResponseEntity<ErrorResponse> AcHasAssociatedUserException(AcHasAssociatedUser ex) {
+        String message = messageSource.getMessage("ac.hasAssociatedUser",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
 }
+
