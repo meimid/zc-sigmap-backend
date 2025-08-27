@@ -1,6 +1,7 @@
 package com.sigmap.common.Participant;
 
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
+import com.sigmap.common.Participant.request.ParticipantInvitedRequest;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.reunion.Reunion;
@@ -28,4 +29,5 @@ public interface ParticipantService {
     List<Participant> saveAll( List<Participant> members);
     List<Participant> findByReunionId(Integer reunionId);
     List<Participant> synchronizeCommissionParticipants(Integer reunionId) throws ReunionNotFound, ComNotFound;
+    Participant createInvitedParticipant(Integer reunionId, ParticipantInvitedRequest request);
 }

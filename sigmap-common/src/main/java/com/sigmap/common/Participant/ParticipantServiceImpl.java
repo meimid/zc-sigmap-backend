@@ -2,6 +2,7 @@ package com.sigmap.common.Participant;
 
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.Participant.mapper.ParticipantMapper;
+import com.sigmap.common.Participant.request.ParticipantInvitedRequest;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
@@ -202,6 +203,22 @@ public class ParticipantServiceImpl implements ParticipantService {
 
         // Return the updated list of all participants
         return new ArrayList<>(updatedParticipants);
+    }
+
+    @Override
+    public Participant createInvitedParticipant(Integer reunionId, ParticipantInvitedRequest request) {
+        Optional<Reunion> reunionOptional = reunionRepository.findById(reunionId);
+        if (reunionOptional.isEmpty()) {
+            throw new ReunionNotFound("",reunionId);
+        }
+        if(!reunionOptional.get().getStatus().equals(ReunionStatus.EN_COURS)){
+            throw new ReunionStatusException("",reunionOptional.get().getStatus());
+        }
+        Participant participant = ParticipantMapper.INSTANCE.mapFromInvitedRequest(request);
+        participant.setId(sequenceGeneratorService.getNextId("participant_id_seq"));
+        participant.setReunionId(reunionId);
+        participant.setType(ParticipantType.INVITE);
+        return repository.save(participant);
     }
 
 }
