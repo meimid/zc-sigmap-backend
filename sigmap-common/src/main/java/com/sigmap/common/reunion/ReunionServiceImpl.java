@@ -387,7 +387,7 @@ public class ReunionServiceImpl implements ReunionService{
             }
         }
 
-        if (!participantsToDelete.isEmpty()) {
+        if (!participantsToDelete.isEmpty()&&reunion.getStatus()==ReunionStatus.BROUILLON) {
             participantsToDelete.forEach(p->p.setPresent(false));
             participantService.softDeleteAll(participantsToDelete);
         }

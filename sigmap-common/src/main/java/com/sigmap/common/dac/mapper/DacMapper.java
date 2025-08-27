@@ -12,7 +12,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = { AcMapper.class })
 public interface DacMapper {
 
     DacMapper INSTANCE = Mappers.getMapper(DacMapper.class);
