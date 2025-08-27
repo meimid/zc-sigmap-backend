@@ -15,6 +15,7 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
+import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
@@ -727,6 +728,14 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("ac.hasAssociatedUser",new Object[] {ex.getId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ExceptionHandler(UserDoesNotHavePermission.class)
+    public ResponseEntity<ErrorResponse> UserDoesNotHavePermissionException(UserDoesNotHavePermission ex) {
+        String message = messageSource.getMessage("user.doesNotHavePermission",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 }
 
