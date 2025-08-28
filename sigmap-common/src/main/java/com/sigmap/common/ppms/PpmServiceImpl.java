@@ -3597,11 +3597,10 @@ public class PpmServiceImpl implements PpmService {
             existingPpm.setAc(ac);
         }
 
-        // ADDED: determine acId to use for seuil control (keep logic intact)
+        // determine acId to use for seuil control
         Integer requestAcId = request.getAcId() != null
                 ? request.getAcId()
                 : (existingPpm.getAc() != null ? existingPpm.getAc().getId() : null);
-        // END ADDED
 
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
@@ -3709,7 +3708,7 @@ public class PpmServiceImpl implements PpmService {
 
                     realisation.setBeneficiaire(realisationRequest.getBeneficiaire() != null ?
                             realisationRequest.getBeneficiaire() : realisation.getBeneficiaire());
-                    // ... (unchanged scalar setters omitted for brevity)
+                    // unchanged scalar setters omitted for brevity
                     realisation.setTypeMarcher(realisationRequest.getTypeMarcher() != null ?
                             realisationRequest.getTypeMarcher() : realisation.getTypeMarcher());
                     realisation.setModePassation(realisationRequest.getModePassation() != null ?
@@ -3849,10 +3848,6 @@ public class PpmServiceImpl implements PpmService {
                 realisation = realisationRepository.save(realisation);
                 System.out.println("Saved realisation ID: " + realisation.getId() + " version: " + realisation.getVersion());
 
-                // =========================
-                // FIX (minimal, no logic changes):
-                // 1) make sure every saved realisation is considered "processed"
-                // 2) enforce the bidirectional link and persist it immediately
                 processedRealisationIds.add(realisation.getId());
                 if (existingPpm.getRealisations() == null) {
                     existingPpm.setRealisations(new ArrayList<>());
@@ -3867,15 +3862,12 @@ public class PpmServiceImpl implements PpmService {
                     realisation.getPpms().add(existingPpm);
                 }
                 realisation = realisationRepository.save(realisation);
-                // =========================
 
                 System.out.println("the relisations request are");
                 System.out.println(realisationRequest.getFinancements());
 
-                // Process financements using helper method
                 processFinancementsForRealisation(realisation, realisationRequest.getFinancements());
 
-                // ---------- ADDED: set budget from Σ(budgetEstimer × Monnaie.taux) right after first processing
                 if (realisation.getFinancements() != null) {
                     BigDecimal fxSumAfterFirstProcess = realisation.getFinancements().stream()
                             .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
@@ -3888,7 +3880,6 @@ public class PpmServiceImpl implements PpmService {
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     realisation.setBudgetEstime(fxSumAfterFirstProcess);
                 }
-                // ---------- END ADDED
 
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     try {
@@ -3977,28 +3968,31 @@ public class PpmServiceImpl implements PpmService {
                                 String requestDesc = lotDto.getDescription() != null ? lotDto.getDescription() : "";
                                 String existingDesc = existingLot.getDescription() != null ? existingLot.getDescription() : "";
 
-                                if (lotDto.getBudget() != null && !lotDto.getBudget().equals(existingLot.getBudget())) {
-                                    existingLot.setBudget(lotDto.getBudget());
-                                    existingLot = lotRepository.save(existingLot);
-                                    updatedLots.add(existingLot); // Add updated lot to the list
-                                    processedLotIds.add(existingLot.getId());
-                                    System.out.println("Updated existing Lot: " + existingLot.getId() + ", Version: " + existingLot.getVersion() + ", Budget: " + existingLot.getBudget());
-                                } else if (!requestDesc.equals(existingDesc)) {
-                                    Lot newLot = new Lot();
-                                    newLot.setId(existingLot.getId());
-                                    newLot.setVersion(existingLot.getVersion() + 1);
-                                    newLot.setDescription(lotDto.getDescription());
-                                    newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : existingLot.getBudget());
-                                    newLot.setIsDeleted(false);
+                                boolean budgetProvided = (lotDto.getBudget() != null);
+                                boolean budgetChanged = budgetProvided && (existingLot.getBudget() == null
+                                        || lotDto.getBudget().compareTo(existingLot.getBudget()) != 0);
+                                boolean descChanged = !requestDesc.equals(existingDesc);
 
-                                    Lot savedLot = lotRepository.save(newLot);
-                                    updatedLots.add(savedLot);
-                                    processedLotIds.add(savedLot.getId());
-                                    System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion() + ", Budget: " + savedLot.getBudget());
+                                if (budgetChanged || descChanged) {
+                                    if (descChanged) {
+                                        existingLot.setDescription(requestDesc);
+                                    }
+                                    if (budgetChanged) {
+                                        existingLot.setBudget(lotDto.getBudget());
+                                    }
+                                    existingLot = lotRepository.save(existingLot);
+                                    updatedLots.add(existingLot);
+                                    processedLotIds.add(existingLot.getId());
+                                    System.out.println("Updated existing Lot (in place): " + existingLot.getId()
+                                            + ", Version: " + existingLot.getVersion()
+                                            + ", Desc: " + existingLot.getDescription()
+                                            + ", Budget: " + existingLot.getBudget());
                                 } else {
                                     updatedLots.add(existingLot);
                                     processedLotIds.add(existingLot.getId());
-                                    System.out.println("Using existing Lot: " + existingLot.getId() + ", Version: " + existingLot.getVersion() + ", Budget: " + existingLot.getBudget());
+                                    System.out.println("Using existing Lot: " + existingLot.getId()
+                                            + ", Version: " + existingLot.getVersion()
+                                            + ", Budget: " + existingLot.getBudget());
                                 }
                             } else {
                                 Lot newLot = new Lot();
@@ -4032,10 +4026,9 @@ public class PpmServiceImpl implements PpmService {
                     System.out.println("Cleared lots for realisation ID: " + realisation.getId());
                 }
 
-                // Process financements using helper method (again as in original logic)
+
                 processFinancementsForRealisation(realisation, realisationRequest.getFinancements());
 
-                // ===== MODIFIED: Recompute budget from financements using Σ(budgetEstimer × Monnaie.taux)
                 BigDecimal recalculatedBudget = (realisation.getFinancements() == null)
                         ? BigDecimal.ZERO
                         : realisation.getFinancements().stream()
@@ -4049,9 +4042,7 @@ public class PpmServiceImpl implements PpmService {
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 realisation.setBudgetEstime(recalculatedBudget);
 
-                // PPM-specific rule: seuil control must use converted amounts
                 setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
-                // ===== END MODIFIED
 
                 updatedRealisations.add(realisation);
             }
@@ -4088,6 +4079,7 @@ public class PpmServiceImpl implements PpmService {
 
         return existingPpm;
     }
+
 
     /**
      * Creates and saves a new PPM version with all relationships established.
