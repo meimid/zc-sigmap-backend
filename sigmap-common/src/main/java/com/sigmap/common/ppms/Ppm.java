@@ -56,7 +56,7 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
 
     @Enumerated(EnumType.STRING)
     private ProcessStatus status;
-
+//to be delete
     @ManyToOne
     @JoinColumn(name = "mode_passation_id")
     private RefParam modePassation;
