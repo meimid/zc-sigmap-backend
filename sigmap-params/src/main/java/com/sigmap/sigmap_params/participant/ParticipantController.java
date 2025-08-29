@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/participant")
@@ -39,10 +40,10 @@ public class ParticipantController {
 
     @PostMapping("/{reunionId}/add_new_invited_participant")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
-    public ResponseEntity<ParticipantResponseDto> createNewParticipants(@PathVariable Integer reunionId, @RequestBody ParticipantInvitedRequest request
+    public ResponseEntity<List<ParticipantResponseDto>> createNewParticipants(@PathVariable Integer reunionId, @RequestBody ParticipantInvitedRequest request
     ) throws  ReunionNotFound {
-        Participant participant = service.createInvitedParticipant(reunionId,request);
-        ParticipantResponseDto response = ParticipantMapper.INSTANCE.toDto(participant);
+       List <Participant> participants = service.createInvitedParticipant(reunionId,request);
+        List <ParticipantResponseDto> response = participants.stream().map(ParticipantMapper.INSTANCE::toDto).collect(Collectors.toList());
         return ResponseEntity.ok().body(response);
     }
 

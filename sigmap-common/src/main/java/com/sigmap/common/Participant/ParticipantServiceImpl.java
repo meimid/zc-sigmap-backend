@@ -217,7 +217,7 @@ public class ParticipantServiceImpl implements ParticipantService {
     }
 
     @Override
-    public Participant createInvitedParticipant(Integer reunionId, ParticipantInvitedRequest request) {
+    public List<Participant> createInvitedParticipant(Integer reunionId, ParticipantInvitedRequest request) {
         Optional<Reunion> reunionOptional = reunionRepository.findById(reunionId);
         if (reunionOptional.isEmpty()) {
             throw new ReunionNotFound("",reunionId);
@@ -229,7 +229,8 @@ public class ParticipantServiceImpl implements ParticipantService {
         participant.setId(sequenceGeneratorService.getNextId("participant_id_seq"));
         participant.setReunionId(reunionId);
         participant.setType(ParticipantType.INVITE);
-        return repository.save(participant);
+         repository.save(participant);
+        return reunionOptional.get().getParticipants();
     }
     public void sendReunionInvitations(Integer id,List<Participant> participants) throws MessagingException, IOException {
         // Get the current Admin ID
