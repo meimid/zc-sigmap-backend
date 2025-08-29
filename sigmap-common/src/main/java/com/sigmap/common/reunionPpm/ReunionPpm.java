@@ -2,8 +2,12 @@ package com.sigmap.common.reunionPpm;
 
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -43,4 +47,7 @@ public class ReunionPpm {
     private String decision;
 
     private String observation;
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "reunionPpm", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReunionPpmDoc> reunionPpmDocs = new ArrayList<>();
 }

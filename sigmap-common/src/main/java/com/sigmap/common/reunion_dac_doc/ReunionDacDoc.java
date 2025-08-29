@@ -45,5 +45,13 @@ public class ReunionDacDoc  {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id", insertable = false, updatable = false)
-    private Docs doc;
+    private Docs docs;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+            @JoinColumn(name = "reunion_id", referencedColumnName = "reunion_id", insertable = false, updatable = false),
+            @JoinColumn(name = "dac_id", referencedColumnName = "dac_id", insertable = false, updatable = false),
+            @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver", insertable = false, updatable = false)
+    })
+    private ReunionDac reunionDac;
+
 }

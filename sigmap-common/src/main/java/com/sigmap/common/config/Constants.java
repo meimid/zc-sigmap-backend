@@ -26,6 +26,9 @@ public class Constants {
   public static final String PATH_ENTREPOT_GED_COM="/SIGMAP-DEV/ARCHIVE/COM";
   public static final String PATH_ENTREPOT_GED_LOT =
           "/LOT";
+  public static final String PATH_ENTREPOT_GED_REUNION_PMM="/SIGMAP-DEV/ARCHIVE/REUNION/PPM";
+  public static final String PATH_ENTREPOT_GED_REUNION_DAC="/SIGMAP-DEV/ARCHIVE/REUNION/DAC";
+
   // public static final Integer SERVICE = 16;
   // public static final Integer TYPE_MARCHER = 17;
   // public static final Integer SOURCE_FINANCEMENT = 18;

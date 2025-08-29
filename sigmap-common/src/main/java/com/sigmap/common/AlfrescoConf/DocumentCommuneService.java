@@ -14,6 +14,10 @@ import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.reunionDac.ReunionDac;
+import com.sigmap.common.reunionPpm.ReunionPpm;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
+import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import jakarta.transaction.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -394,6 +398,80 @@ public class DocumentCommuneService {
             } catch (Exception e) {
                 log.error("Error processing document ID {}: {}", docId, e.getMessage(), e);
                 throw new RuntimeException("Failed to process soft deletion for document ID: " + docId, e);
+            }
+        }
+    }
+
+    public void processAndSaveDocumentsForReunionPpm(List<MultipartFile> files, ReunionPpm entity, String path) throws IOException {
+
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d/%d",
+                path, entity.getReunionId(), entity.getPpmId());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue;
+            }
+
+            try {
+                // 1. Map & save the Docs entity
+                Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+                docsRepository.save(document);
+
+                // 2. Create the join entity (ReunionPpmDoc)
+                ReunionPpmDoc joinEntity = new ReunionPpmDoc();
+                joinEntity.setReunionId(entity.getReunionId());
+                joinEntity.setPpmId(entity.getPpmId());
+                joinEntity.setPpmVer(entity.getPpmVer());
+                joinEntity.setDocId(document.getId());
+                joinEntity.setDocs(document);
+                joinEntity.setReunionPpm(entity);
+
+                // 3. Add to ReunionPpm
+                entity.getReunionPpmDocs().add(joinEntity);
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}",
+                        file.getOriginalFilename(), e.getMessage(), e);
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public void processAndSaveDocumentsForReunionDac(List<MultipartFile> files, ReunionDac entity, String path) throws IOException {
+
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d/%d",
+                path, entity.getReunionId(), entity.getDacId());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue;
+            }
+
+            try {
+                // 1. Map & save the Docs entity
+                Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+                docsRepository.save(document);
+
+                // 2. Create the join entity (ReunionPpmDoc)
+                ReunionDacDoc joinEntity = new ReunionDacDoc();
+                joinEntity.setReunionId(entity.getReunionId());
+                joinEntity.setDacId(entity.getDacId());
+                joinEntity.setDacVer(entity.getDacVer());
+                joinEntity.setDocId(document.getId());
+                joinEntity.setDocs(document);
+                joinEntity.setReunionDac(entity);
+
+                // 3. Add to ReunionDac
+                entity.getReunionDacDocs().add(joinEntity);
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}",
+                        file.getOriginalFilename(), e.getMessage(), e);
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
             }
         }
     }

@@ -10,10 +10,12 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
+import jakarta.mail.MessagingException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,16 +23,14 @@ import java.util.Optional;
 @RequestMapping("/api/participant")
 public class ParticipantController {
     private final ParticipantService service;
-    private final ReunionRepository reunionRepository;
 
-    public ParticipantController(ParticipantService service, ReunionRepository reunionRepository) {
+    public ParticipantController(ParticipantService service) {
         this.service = service;
-        this.reunionRepository = reunionRepository;
     }
 
     @PutMapping("/{reunionId}/synchronize-participants")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
-    public ResponseEntity<List<ParticipantResponseDto>> synchronizeCommissionParticipants(@PathVariable Integer reunionId) throws  ComNotFound {
+    public ResponseEntity<List<ParticipantResponseDto>> synchronizeCommissionParticipants(@PathVariable Integer reunionId) throws ComNotFound, MessagingException, IOException {
 
         List<com.sigmap.common.Participant.Participant> updatedParticipants = service.synchronizeCommissionParticipants(reunionId);
         List<ParticipantResponseDto> response = ParticipantMapper.INSTANCE.toDtos(updatedParticipants);

@@ -3,6 +3,7 @@ package com.sigmap.common.reunion;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
@@ -24,9 +25,9 @@ public interface ReunionService {
     Optional<Reunion> findOne(Specification<Reunion> spec);
     Reunion findById(Integer id) throws ReunionNotFound;
     Reunion save(Reunion reunion);
-    Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound;
-    Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound;
-    Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
+    Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
+    Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
+    Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound;
     Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound;
 
     void delete(Integer id) throws ReunionNotFound;
@@ -34,6 +35,7 @@ public interface ReunionService {
     void sendReunionInvitations(Integer id) throws MessagingException, IOException;
     void updateReunionStatusToEnRetard();
     Reunion startReunion(Integer id) throws ReunionNotFound;
+    Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
 
 
 

@@ -3,6 +3,7 @@ package com.sigmap.common.reunion_ppm_doc;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -46,5 +47,13 @@ public class ReunionPpmDoc {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id", insertable = false, updatable = false)
-    private Docs doc;
+    private Docs docs;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumns({
+            @JoinColumn(name = "reunion_id", referencedColumnName = "reunion_id", insertable = false, updatable = false),
+            @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id", insertable = false, updatable = false),
+            @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver", insertable = false, updatable = false)
+    })
+    private ReunionPpm reunionPpm;
 }

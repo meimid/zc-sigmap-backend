@@ -46,11 +46,14 @@ public class Reunion extends BaseEntity {
     @OneToMany(
             mappedBy = "reunion"
     )
+    @EqualsAndHashCode.Exclude
     private List<ReunionPpm> reunionPpms = new ArrayList<>();
 
     @OneToMany(
             mappedBy = "reunion"
     )
+    @EqualsAndHashCode.Exclude
+
     private List<ReunionDac> reunionDacs = new ArrayList<>();
 
     @OneToMany(

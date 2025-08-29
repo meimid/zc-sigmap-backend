@@ -8,19 +8,23 @@ import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.mail.MailService;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.exception.ReunionStatusException;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import jakarta.mail.MessagingException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -33,13 +37,16 @@ public class ParticipantServiceImpl implements ParticipantService {
     private final UserComRepository userComRepository;
     private final KeycloakAdminService keycloakAdminService;
     private final ReunionRepository reunionRepository;
+    private final MailService mailService;
 
-    public ParticipantServiceImpl(ParticipantRepository repository, SequenceGeneratorService sequenceGeneratorService, UserComRepository userComRepository, KeycloakAdminService keycloakAdminService, ReunionRepository reunionRepository) {
+
+    public ParticipantServiceImpl(ParticipantRepository repository, SequenceGeneratorService sequenceGeneratorService, UserComRepository userComRepository, KeycloakAdminService keycloakAdminService, ReunionRepository reunionRepository, MailService mailService) {
         this.repository = repository;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.userComRepository = userComRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.reunionRepository = reunionRepository;
+        this.mailService = mailService;
     }
 
     @Override
@@ -122,7 +129,7 @@ public class ParticipantServiceImpl implements ParticipantService {
 
     @Override
     @Transactional
-    public List<Participant> synchronizeCommissionParticipants(Integer reunionId) {
+    public List<Participant> synchronizeCommissionParticipants(Integer reunionId) throws MessagingException, IOException {
         Optional<Reunion> reunionOptional = reunionRepository.findById(reunionId);
         if (reunionOptional.isEmpty()) {
             throw new ReunionNotFound("",reunionId);
@@ -195,7 +202,11 @@ public class ParticipantServiceImpl implements ParticipantService {
 
         // Save updated and new participants
         if (!participantsToSave.isEmpty()) {
-            repository.saveAll(participantsToSave);
+            Set<String> existingUserIds = reunion.getParticipants().stream()
+                    .map(Participant::getUserId)
+                    .collect(Collectors.toSet());
+            List<Participant> savedParticpents=  repository.saveAll(participantsToSave);
+            sendReunionInvitations(reunionId,savedParticpents.stream().filter(p->!existingUserIds.contains(p.getUserId())).collect(Collectors.toList()));
         }
 
         // Update reunion's participants list
@@ -220,5 +231,20 @@ public class ParticipantServiceImpl implements ParticipantService {
         participant.setType(ParticipantType.INVITE);
         return repository.save(participant);
     }
+    public void sendReunionInvitations(Integer id,List<Participant> participants) throws MessagingException, IOException {
+        // Get the current Admin ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String connectedUserId = currentUserId.orElse("System");
 
+        // Fetch the Reunion entity by ID
+        Reunion reunion = reunionRepository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+
+        // Iterate over participants and send emails
+        for (Participant participant : participants) {
+
+            if(participant.getMail()!=null){
+                mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
+            }
+        }
+    }
 }

@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.ParticipantId;
 import com.sigmap.common.Participant.ParticipantService;
@@ -11,10 +12,13 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
@@ -36,6 +40,7 @@ import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
@@ -69,12 +74,13 @@ public class ReunionServiceImpl implements ReunionService{
     private final ReunionDacRepository reunionDacRepository;
     private final MailService mailService;
     private final CurrentUserService currentUserService;
+    private final DocumentCommuneService documentCommuneService;
     @Autowired
     EntityManager entityManager;
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -86,6 +92,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.reunionDacRepository = reunionDacRepository;
         this.mailService = mailService;
         this.currentUserService = currentUserService;
+        this.documentCommuneService = documentCommuneService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -131,7 +138,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
     @Override
     @Transactional
-    public Reunion create(ReunionRequest request) throws PpmNotFound, AcNotFound, ComNotFound {
+    public Reunion create(ReunionRequest request) throws PpmNotFound, AcNotFound, ComNotFound, IOException, DocNotFound {
         Com com = comService.findById(request.getComId());
         if(request.getReunionDate() != null) {
         Calendar nowCal = Calendar.getInstance();
@@ -161,7 +168,7 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     @Transactional
-    public Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
         Reunion reunionToUpdate=findById(id);
 
         if(reunionToUpdate.getStatus() == ReunionStatus.BROUILLON) {
@@ -195,7 +202,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
     @Override
     @Transactional
-    public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
+    public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound {
         Reunion reunionToUpdate=findById(id);
         Calendar nowCal = Calendar.getInstance();
         nowCal.set(Calendar.HOUR_OF_DAY, 0);
@@ -391,7 +398,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Transactional
-    public void synchronizePpms(ReunionRequest request, Reunion reunionReq) throws PpmNotFound, AcNotFound {
+    public void synchronizePpms(ReunionRequest request, Reunion reunionReq) throws PpmNotFound, AcNotFound, IOException {
 
         Reunion reunion = repository.findByIdWithPpms(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
@@ -406,6 +413,14 @@ public class ReunionServiceImpl implements ReunionService{
                                 Function.identity()
                         ));
 
+        Map<ReunionDacId, List<Integer>> cachedDocIds = reunion.getReunionDacs().stream()
+                .collect(Collectors.toMap(
+                        link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()),
+                        link -> link.getReunionDacDocs() != null
+                                ? link.getReunionDacDocs().stream().map(ReunionDacDoc::getDocId).toList()
+                                : new ArrayList<>()
+                ));
+        List<Integer> documentsIdsToDelete = new ArrayList<>();
         Set<ReunionPpmId> requestLinkIds = new HashSet<>();
 
         if (request.getReunionPpms() != null) {
@@ -431,9 +446,32 @@ public class ReunionServiceImpl implements ReunionService{
                             link.setObservation(ppmReq.getObservation());
 
                         }
+                        //delete the document
+                    List<Integer> requestedDocIds = ppmReq.getDocsPpm() != null
+                            ? ppmReq.getDocsPpm().stream().map(Docs::getId).toList()
+                            : new ArrayList<>();
+                    List<Integer> existingDocIds = cachedDocIds.getOrDefault(id, new ArrayList<>());
+                    documentsIdsToDelete.addAll(
+                            existingDocIds.stream()
+                                    .filter(docId -> !requestedDocIds.contains(docId))
+                                    .toList()
+                    );
                 }
-                reunionPpmRepository.save(link);
+
+
+               ReunionPpm reunionPpm= reunionPpmRepository.save(link);
+                if(reunion.getStatus().equals(ReunionStatus.EN_COURS)) {
+                    if (ppmReq.getFiles() != null && !ppmReq.getFiles().isEmpty()) {
+                        documentCommuneService.processAndSaveDocumentsForReunionPpm(
+                                ppmReq.getFiles(),
+                                reunionPpm,
+                                Constants.PATH_ENTREPOT_GED_REUNION_PMM
+                        );
+                    }
+                }
+
                 reunion.getReunionPpms().add(link);
+
             }
 
         }
@@ -441,7 +479,8 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Transactional
-    public void synchronizeDacs(ReunionRequest request, Reunion reunionReq) {
+    public void synchronizeDacs(ReunionRequest request, Reunion reunionReq) throws IOException, DocNotFound {
+
 
         Reunion reunion = repository.findByIdWithDacs(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
@@ -457,8 +496,17 @@ public class ReunionServiceImpl implements ReunionService{
 
         Set<ReunionDacId> requestDacIds = new HashSet<>();
 
+        Map<ReunionDacId, List<Integer>> cachedDocIds = reunion.getReunionDacs().stream()
+                .collect(Collectors.toMap(
+                        link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()),
+                        link -> link.getReunionDacDocs() != null
+                                ? link.getReunionDacDocs().stream().map(ReunionDacDoc::getDocId).toList()
+                                : new ArrayList<>()
+                ));
+        List<Integer> documentsIdsToDelete = new ArrayList<>();
         if (request.getReunionDacs() != null) {
             for (ReunionDacRequest dacReq : request.getReunionDacs()) {
+
                 ReunionDacId id = new ReunionDacId(reunion.getId(), dacReq.getDacId(), dacReq.getDacVer());
                 requestDacIds.add(id);
 
@@ -467,6 +515,7 @@ public class ReunionServiceImpl implements ReunionService{
                 link.setDacId(dacReq.getDacId());
                 link.setDacVer(dacReq.getDacVer());
                 link.setReunion(reunion);
+
                 link.setDac(dacService.findById(dacReq.getDacId(), dacReq.getDacVer()).orElseThrow(()->new RuntimeException("DAC not found")));
                 link.setProcessInstanceId(dacReq.getProcessInstanceId());
                 link.setTaskId(dacReq.getTaskId());
@@ -477,9 +526,33 @@ public class ReunionServiceImpl implements ReunionService{
                     if(dacReq.getObservation() != null){
                         link.setObservation(dacReq.getObservation());
                     }
+                    //delete the document
+                    List<Integer> requestedDocIds = dacReq.getDocs() != null
+                            ? dacReq.getDocs().stream().map(Docs::getId).toList()
+                            : new ArrayList<>();
+                    List<Integer> existingDocIds = cachedDocIds.getOrDefault(id, new ArrayList<>());
+                    documentsIdsToDelete.addAll(
+                            existingDocIds.stream()
+                                    .filter(docId -> !requestedDocIds.contains(docId))
+                                    .toList()
+                    );
 
+                    if (!documentsIdsToDelete.isEmpty()) {
+                        documentCommuneService.deleteDocuments(documentsIdsToDelete);
+                    }
                 }
-                reunionDacRepository.save(link);
+
+               ReunionDac reunionDac= reunionDacRepository.save(link);
+                if(reunion.getStatus().equals(ReunionStatus.EN_COURS)) {
+
+                    if (dacReq.getFiles() != null && !dacReq.getFiles().isEmpty()) {
+                        documentCommuneService.processAndSaveDocumentsForReunionDac(
+                                dacReq.getFiles(),
+                                reunionDac,
+                                Constants.PATH_ENTREPOT_GED_REUNION_DAC
+                        );
+                    }
+                }
                 reunion.getReunionDacs().add(link);
             }
 
@@ -543,6 +616,22 @@ public class ReunionServiceImpl implements ReunionService{
         }
         else {
             throw new ReunionStatusException("",reunion.getStatus());
+        }
+    }
+
+    @Override
+    public Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+        Reunion reunionToUpdate=findById(id);
+
+        if(reunionToUpdate.getStatus() == ReunionStatus.EN_COURS) {
+          //  ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
+            synchronizeParticipants(request, reunionToUpdate);
+            synchronizePpms(request, reunionToUpdate);
+            synchronizeDacs(request, reunionToUpdate);
+            return save(reunionToUpdate);
+        }
+        else {
+            throw new ReunionStatusException("", reunionToUpdate.getStatus());
         }
     }
 
