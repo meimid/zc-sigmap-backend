@@ -258,4 +258,31 @@ public class MailService {
         }
     }
 
+    public void sendReunionAnnulerEmail(Reunion reunion, Participant participant, String adminId) throws MessagingException, IOException {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            // Set email details
+            helper.setTo(participant.getMail());
+            helper.setSubject("SIGMAP - Annulation du réunion");
+            helper.setFrom(fromEmail);
+
+            // Render HTML template
+            // String htmlContent = templateEngine.process("email/reunionInvitationEmail", context);
+            helper.setText(reunionInvitationEmailContext(reunion, participant), true);
+
+            // Send email
+            javaMailSender.send(mimeMessage);
+
+            // Save email trace
+            emailService.saveEmailTrace(adminId,TypeEmail.REUNION_ANNULER,reunion.getObject(), reunionInvitationEmailContext(reunion, participant),participant.getMail(),true,LocalDateTime.now());
+
+            log.debug("Email sent successfully to : {} ", participant.getMail());
+        } catch (Exception e) {
+            emailService.saveEmailTrace(adminId,TypeEmail.REUNION_ANNULER, reunion.getObject() ,reunionInvitationEmailContext(reunion, participant),participant.getMail(),false,LocalDateTime.now());
+            throw new MessagingException("Failed to send reunion annuler email", e);
+        }
+    }
+
 }

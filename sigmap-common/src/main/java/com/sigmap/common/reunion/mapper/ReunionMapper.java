@@ -58,6 +58,13 @@ public interface ReunionMapper {
 
     void updateFromRequest(ReunionRequest request, @MappingTarget Reunion reunion);
     ParticipantResponseDto toDto(Participant participant);
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     ReunionResponseDto mapToDto(Reunion reunion);
 
 }

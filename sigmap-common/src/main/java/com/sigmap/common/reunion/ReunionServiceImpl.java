@@ -277,9 +277,9 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     @Transactional
-    public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
-       // Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
-        Reunion reunionToUpdate=findById(id);
+    public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
+        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+       // Reunion reunionToUpdate=findById(id);
 
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
                 reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
@@ -287,8 +287,9 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.getStatus()!=ReunionStatus.EN_RETARD){
             throw new ReunionStatusException("",reunionToUpdate.getStatus());
         }
-        /*reunionToUpdate.getReunionDacs().size();
-        reunionToUpdate.getReunionPpms().size();*/
+       if(reunionToUpdate.getStatus() == ReunionStatus.PLANIFIER){
+           sendReunionAnnulerInvitations(id);
+       }
         reunionToUpdate.setStatus(ReunionStatus.ANNULER);
         return save(reunionToUpdate);
     }
@@ -645,5 +646,20 @@ public class ReunionServiceImpl implements ReunionService{
             return  Specification.where(spec).and(ReunionSpecifications.deleted(false));
         }
     }
+    public void sendReunionAnnulerInvitations(Integer id) throws MessagingException, IOException {
+        // Get the current Admin ID
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        String connectedUserId = currentUserId.orElse("System");
 
+        // Fetch the Reunion entity by ID
+        Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+
+        // Iterate over participants and send emails
+        for (Participant participant : reunion.getParticipants()) {
+
+            if(participant.getMail()!=null){
+                mailService.sendReunionAnnulerEmail(reunion, participant, connectedUserId);
+            }
+        }
+    }
 }

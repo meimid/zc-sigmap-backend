@@ -28,7 +28,7 @@ public interface ReunionService {
     Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound;
-    Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound;
+    Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
 
     void delete(Integer id) throws ReunionNotFound;
 

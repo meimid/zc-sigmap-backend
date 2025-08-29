@@ -22,6 +22,7 @@ import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
+import com.sigmap.common.reunion.response.ReunionResponseDto;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -53,13 +54,12 @@ public class ReunionController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
-    public ResponseEntity<Page<ReunionResponse>> findAll(ReunionQuery query, Pageable pageable) {
+    public ResponseEntity<Page<ReunionResponseDto>> findAll(ReunionQuery query, Pageable pageable) {
         Page<Reunion> page = reunionService.findAll(query.toSpecification(), pageable);
-        return ResponseEntity.ok(page.map(r -> {
-            ReunionResponse response = ReunionMapper.INSTANCE.map(r);
+        return ResponseEntity.ok(page.map(r ->
+                ReunionMapper.INSTANCE.mapToDto(r)
 
-            return response;
-        }));
+        ));
     }
 
    /* @GetMapping("/deleted")
@@ -120,7 +120,7 @@ public class ReunionController {
 
     @PutMapping("/{id}/annuler")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
-    public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound {
+    public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion updatedReunion = reunionService.updateAnnule(id);
         List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
         List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);

@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal_reunion.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import com.sigmap.common.process_verbal_reunion_doc.request.ProcessVerbalReunionDocRequest;
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -15,7 +16,7 @@ public class ProcessVerbalReunionRequest {
     private Integer id;
     private String observation;
     @JsonIgnore
-    private Set<ProcessVerbalReunionDoc> documents = new HashSet<>();
+    private Set<ProcessVerbalReunionDocRequest> documents = new HashSet<>();
     private List<MultipartFile> files= new ArrayList<>();
 
 }
