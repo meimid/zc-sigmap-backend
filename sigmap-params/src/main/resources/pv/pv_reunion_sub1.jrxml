@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="pv_reunion_sub1" pageWidth="595" pageHeight="842" whenNoDataType="NoPages" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="2744d72f-c430-4eed-b8f6-c08977855c76">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="324"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="671"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+	<subDataset name="Dataset1" uuid="47231b59-41d6-470f-b689-8e36900a955f">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<parameter name="reunion" class="java.lang.Integer"/>
+		<parameter name="ac_id" class="java.lang.Integer"/>
+		<queryString language="SQL">
+			<![CDATA[SELECT
+    r.reunion_id,
+    r.ppm_id,
+    r.ppm_ver,
+    r.observation,
+    r.decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
+    a.ac_id,
+    a.nom as acnom, 'PPM' as type
+FROM reunion_ppm r
+INNER JOIN ppm p
+       ON r.ppm_id = p.ppm_id
+      AND r.ppm_ver = p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+WHERE r.reunion_id = $P{reunion} 
+  and p.ac_id= $P{ac_id} 
+union
+SELECT
+    r.reunion_id,
+    r.dac_id,
+    r.dac_ver,
+    r.observation,
+    r.decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime, DATE_FORMAT(d.created_at, '%d/%m/%Y')  as createddate,
+    a.ac_id,
+    a.nom as acnom, 'DAC' as type
+FROM reunion_dac r
+INNER JOIN dac d
+       ON r.dac_id = d.dac_id
+      AND r.dac_ver = d.dac_ver
+    INNER JOIN ppm p on d.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+WHERE r.reunion_id =  $P{reunion} 
+       and p.ac_id= $P{ac_id}]]>
+		</queryString>
+		<field name="reunion_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+		</field>
+		<field name="ppm_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="ppm_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="ppm_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+		</field>
+		<field name="ppm_ver" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="ppm_ver"/>
+			<property name="com.jaspersoft.studio.field.label" value="ppm_ver"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+		</field>
+		<field name="observation" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="observation"/>
+			<property name="com.jaspersoft.studio.field.label" value="observation"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+		</field>
+		<field name="decision" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="decision"/>
+			<property name="com.jaspersoft.studio.field.label" value="decision"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+		</field>
+		<field name="ref" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="ref"/>
+			<property name="com.jaspersoft.studio.field.label" value="ref"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="nom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="nom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="annee" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="annee"/>
+			<property name="com.jaspersoft.studio.field.label" value="annee"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="budget_estime" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.name" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.label" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="createddate" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="createddate"/>
+			<property name="com.jaspersoft.studio.field.label" value="createddate"/>
+		</field>
+		<field name="ac_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="ac_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="ac_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+		</field>
+		<field name="acnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.label" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+		</field>
+		<field name="type" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="type"/>
+			<property name="com.jaspersoft.studio.field.label" value="type"/>
+		</field>
+		<sortField name="ac_id"/>
+		<group name="ac_id">
+			<groupExpression><![CDATA[$F{ac_id}]]></groupExpression>
+		</group>
+	</subDataset>
+	<parameter name="reunion" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT
+    r.reunion_id,
+    r.ppm_id,
+    r.ppm_ver,
+    r.observation,
+    r.decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime,
+    a.ac_id,
+    a.nom as acnom, 'PPM' as type
+FROM reunion_ppm r
+INNER JOIN ppm p
+       ON r.ppm_id = p.ppm_id
+      AND r.ppm_ver = p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+WHERE r.reunion_id = $P{reunion} 
+union
+SELECT
+    r.reunion_id,
+    r.dac_id,
+    r.dac_ver,
+    r.observation,
+    r.decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime,
+    a.ac_id,
+    a.nom as acnom, 'DAC' as type
+FROM reunion_dac r
+INNER JOIN dac d
+       ON r.dac_id = d.dac_id
+      AND r.dac_ver = d.dac_ver
+    INNER JOIN ppm p on d.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+WHERE r.reunion_id =  $P{reunion}]]>
+	</queryString>
+	<field name="reunion_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+	</field>
+	<field name="ppm_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="ppm_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="ppm_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+	</field>
+	<field name="ppm_ver" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="ppm_ver"/>
+		<property name="com.jaspersoft.studio.field.label" value="ppm_ver"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+	</field>
+	<field name="observation" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="observation"/>
+		<property name="com.jaspersoft.studio.field.label" value="observation"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+	</field>
+	<field name="decision" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="decision"/>
+		<property name="com.jaspersoft.studio.field.label" value="decision"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
+	</field>
+	<field name="ref" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ref"/>
+		<property name="com.jaspersoft.studio.field.label" value="ref"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+	</field>
+	<field name="nom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+	</field>
+	<field name="annee" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="annee"/>
+		<property name="com.jaspersoft.studio.field.label" value="annee"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+	</field>
+	<field name="budget_estime" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="budget_estime"/>
+		<property name="com.jaspersoft.studio.field.label" value="budget_estime"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+	</field>
+	<field name="ac_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="ac_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="ac_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="acnom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="acnom"/>
+		<property name="com.jaspersoft.studio.field.label" value="acnom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="type" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="type"/>
+		<property name="com.jaspersoft.studio.field.label" value="type"/>
+	</field>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{ac_id}]]></groupExpression>
+		<groupHeader>
+			<band height="32">
+				<textField>
+					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="30" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true" isUnderline="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{acnom}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="83">
+				<componentElement>
+					<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="82" isRemoveLineWhenBlank="true" uuid="18765838-f9d0-4fc3-992b-f251b2a6347e">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+					</reportElement>
+					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
+						<datasetRun subDataset="Dataset1" uuid="284e34ae-b97d-4979-8dad-26917114de2f">
+							<datasetParameter name="reunion">
+								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ac_id">
+								<datasetParameterExpression><![CDATA[$F{ac_id}]]></datasetParameterExpression>
+							</datasetParameter>
+						</datasetRun>
+						<jr:listContents height="82" width="550">
+							<textField>
+								<reportElement x="0" y="0" width="550" height="30" uuid="4bb3fffa-5587-45af-be8c-b3aad6dbd41e">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " + $F{acnom}+" au litre de l'année "+$F{annee}+", Réf : "+$F{ref}+" du "+$F{createddate}]]></textFieldExpression>
+							</textField>
+							<textField>
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="32" width="520" height="15" uuid="441d3a29-f7d8-43a8-a615-c498756d54fe">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement>
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
+							</textField>
+							<textField>
+								<reportElement stretchType="RelativeToTallestObject" x="30" y="47" width="520" height="35" uuid="be077b31-b286-4396-a55e-0e7bb2e658a3">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+						</jr:listContents>
+					</jr:list>
+				</componentElement>
+			</band>
+		</groupFooter>
+	</group>
+</jasperReport>
