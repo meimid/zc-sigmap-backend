@@ -383,11 +383,13 @@ public class ReunionServiceImpl implements ReunionService{
                     }
                 }
             } else {
-                participantRequest.setReunionId(reunion.getId());
-                participantRequest.setType(ParticipantType.INVITE);
-                Participant newInvitedParticipant = participantService.create(participantRequest);
-                participantsToSave.add(newInvitedParticipant);
-                reunion.getParticipants().add(newInvitedParticipant);
+                if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
+                    participantRequest.setReunionId(reunion.getId());
+                    participantRequest.setType(ParticipantType.INVITE);
+                    Participant newInvitedParticipant = participantService.create(participantRequest);
+                    participantsToSave.add(newInvitedParticipant);
+                    reunion.getParticipants().add(newInvitedParticipant);
+                }
             }
         }
 
