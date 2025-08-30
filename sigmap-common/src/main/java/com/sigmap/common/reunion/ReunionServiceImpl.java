@@ -569,7 +569,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
 
                     reunion.getReunionDacs().add(link);
-                }it
+                    }
             }
 
         }
