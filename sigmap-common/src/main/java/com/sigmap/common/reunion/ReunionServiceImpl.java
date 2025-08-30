@@ -482,9 +482,9 @@ public class ReunionServiceImpl implements ReunionService{
                         );
                     }
                 }
-
+                if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
                 reunion.getReunionPpms().add(link);
-
+                }
             }
 
         }
@@ -566,7 +566,10 @@ public class ReunionServiceImpl implements ReunionService{
                         );
                     }
                 }
-                reunion.getReunionDacs().add(link);
+                if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
+
+                    reunion.getReunionDacs().add(link);
+                }it
             }
 
         }

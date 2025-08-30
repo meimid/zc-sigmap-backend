@@ -485,9 +485,7 @@ public class DocumentCommuneService {
 
         try {
 
-            List<Integer> oldDocIds=entity.getDocuments()!=null?entity.getDocuments().stream().filter(e -> !e.getDoc().getIsDeleted()).map(doc->doc.getDoc().getId()).collect(Collectors.toList()):new ArrayList<>();
 
-            deleteDocuments(oldDocIds);
             // Map the MultipartFile to a Docs entity
             Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
 
