@@ -161,12 +161,10 @@ public class ReunionServiceImpl implements ReunionService{
             throw new ReunionDate("Reunion date cannot be before now");
         }
         }
-        ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
         Reunion reunion = ReunionMapper.INSTANCE.map(request);
         reunion.setCom(com);
         reunion.setStatus(ReunionStatus.BROUILLON);
-        ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
-        reunion.setProcessVerbal(processVerbalReunion);
+
         Reunion savedReunion = repository.save(reunion);
         createAndSetParticipantsFromUsers(savedReunion, request);
         synchronizePpms(request, savedReunion);
@@ -647,8 +645,10 @@ public class ReunionServiceImpl implements ReunionService{
             if(reunionToUpdate.getProcessVerbal()!=null&&request.getProcessVerbal()!=null){
             processVerbalReunionService.update(reunionToUpdate.getProcessVerbal().getId(),request.getProcessVerbal());
             }
-            else if(request.getProcessVerbal()!=null){
-                processVerbalReunionService.create(request.getProcessVerbal());
+            else {
+                ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
+                ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
+                reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
             return save(reunionToUpdate);
         }
