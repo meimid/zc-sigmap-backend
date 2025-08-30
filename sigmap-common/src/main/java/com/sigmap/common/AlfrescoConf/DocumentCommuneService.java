@@ -10,6 +10,8 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
@@ -30,6 +32,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -475,5 +478,44 @@ public class DocumentCommuneService {
             }
         }
     }
+
+    public void processAndSaveDocumentsForPV(MultipartFile file, ProcessVerbalReunion entity, String path) throws IOException {
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d", path, entity.getId());
+
+        try {
+
+            List<Integer> oldDocIds=entity.getDocuments()!=null?entity.getDocuments().stream().filter(e -> !e.getDoc().getIsDeleted()).map(doc->doc.getDoc().getId()).collect(Collectors.toList()):new ArrayList<>();
+
+            deleteDocuments(oldDocIds);
+            // Map the MultipartFile to a Docs entity
+            Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+
+            // Save the Docs entity to generate a doc_id
+            Docs savedDocument = docsRepository.save(document);
+
+            // Create a ProcessVerbalReunionDoc to link ProcessVerbalReunion and Docs
+            ProcessVerbalReunionDoc pvDoc = new ProcessVerbalReunionDoc();
+            pvDoc.setPvId(entity.getId());
+            pvDoc.setDocId(savedDocument.getId());
+            pvDoc.setProcessVerbal(entity);
+            pvDoc.setDoc(savedDocument);
+            pvDoc.setPv(true);
+
+            // Initialize the documents list if null
+            if (entity.getDocuments() == null) {
+                entity.setDocuments(new ArrayList<>());
+            }
+
+            // Add the ProcessVerbalReunionDoc to the documents list
+            entity.getDocuments().add(pvDoc);
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+
 }
 

@@ -63,7 +63,7 @@ public class Reunion extends BaseEntity {
     private List<Participant> participants = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "pv_id", referencedColumnName = "pv_id", insertable = false, updatable = false)
+    @JoinColumn(name = "pv_id", referencedColumnName = "pv_id", updatable = false)
     private ProcessVerbalReunion processVerbal;
 
 }

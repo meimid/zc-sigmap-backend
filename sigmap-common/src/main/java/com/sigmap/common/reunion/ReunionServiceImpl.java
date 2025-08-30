@@ -27,6 +27,9 @@ import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
+import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.reunion.exception.ReunionDate;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.exception.ReunionStatusException;
@@ -75,12 +78,13 @@ public class ReunionServiceImpl implements ReunionService{
     private final MailService mailService;
     private final CurrentUserService currentUserService;
     private final DocumentCommuneService documentCommuneService;
+    private final ProcessVerbalReunionService processVerbalReunionService;
     @Autowired
     EntityManager entityManager;
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -93,6 +97,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.mailService = mailService;
         this.currentUserService = currentUserService;
         this.documentCommuneService = documentCommuneService;
+        this.processVerbalReunionService = processVerbalReunionService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -156,9 +161,12 @@ public class ReunionServiceImpl implements ReunionService{
             throw new ReunionDate("Reunion date cannot be before now");
         }
         }
+        ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
         Reunion reunion = ReunionMapper.INSTANCE.map(request);
         reunion.setCom(com);
         reunion.setStatus(ReunionStatus.BROUILLON);
+        ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
+        reunion.setProcessVerbal(processVerbalReunion);
         Reunion savedReunion = repository.save(reunion);
         createAndSetParticipantsFromUsers(savedReunion, request);
         synchronizePpms(request, savedReunion);
@@ -365,11 +373,13 @@ public class ReunionServiceImpl implements ReunionService{
                     }else{
                         participantToUpdate.setPresent(false);
                     }
+                    if(reunion.getStatus().equals(ReunionStatus.BROUILLON)){
                     participantsToSave.add(participantToUpdate);
                     participantIdsToKeep.add(participantToUpdate.getId());
                     if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
                         participantToUpdate.setOrganisme(participantRequest.getOrganisme());
                         participantToUpdate.setFonction(participantRequest.getFonction());
+                    }
                     }
                 }
             } else {
@@ -629,6 +639,12 @@ public class ReunionServiceImpl implements ReunionService{
             synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
+            if(reunionToUpdate.getProcessVerbal()!=null&&request.getProcessVerbal()!=null){
+            processVerbalReunionService.update(reunionToUpdate.getProcessVerbal().getId(),request.getProcessVerbal());
+            }
+            else if(request.getProcessVerbal()!=null){
+                processVerbalReunionService.create(request.getProcessVerbal());
+            }
             return save(reunionToUpdate);
         }
         else {

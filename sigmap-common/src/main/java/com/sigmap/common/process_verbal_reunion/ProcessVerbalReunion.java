@@ -6,7 +6,9 @@ import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import lombok.*;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 
@@ -29,5 +31,5 @@ public class ProcessVerbalReunion extends BaseEntity {
 
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
     @EqualsAndHashCode.Exclude
-    private Set<ProcessVerbalReunionDoc> documents = new HashSet<>();
+    private List<ProcessVerbalReunionDoc> documents = new ArrayList<>();
 }
