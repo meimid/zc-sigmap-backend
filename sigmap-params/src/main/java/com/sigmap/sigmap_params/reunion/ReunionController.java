@@ -9,11 +9,14 @@ import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.response.DacResponseReunion;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionService;
@@ -37,6 +40,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -76,7 +80,20 @@ public class ReunionController {
         ReunionResponse response=ReunionMapper.INSTANCE.map(reunion);
         response.setReunionDacs(mapReunionDacs(reunion.getReunionDacs()));
         response.setReunionPpms(mapReunionPpms(reunion.getReunionPpms()));
+      if(response.getProcessVerbal()!=null){
+          DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
 
+          response.getProcessVerbal().setDocument(
+                  pvDocDto != null
+                          ? new ProcessVerbalReunionDocResponse(
+                          reunion.getProcessVerbal().getId(),
+                          pvDocDto.getId(),
+                          pvDocDto,
+                          true
+                  )
+                          : null
+          );
+      }
         return ResponseEntity.ok(response);
     }
 
@@ -180,7 +197,21 @@ public class ReunionController {
         response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
         response.setParticipants(responseDtos);
         response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
-        return ResponseEntity.ok(response);
+
+
+        DocsResponseDTO pvDocDto = mapPvmDocs(updatedReunion.getProcessVerbal().getDocuments());
+
+        response.getProcessVerbal().setDocument(
+                pvDocDto != null
+                        ? new ProcessVerbalReunionDocResponse(
+                        updatedReunion.getProcessVerbal().getId(),
+                        pvDocDto.getId(),
+                        pvDocDto,
+                        true
+                )
+                        : null
+        );
+                return ResponseEntity.ok(response);
     }
 
    /* private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
@@ -305,4 +336,16 @@ public class ReunionController {
                 .map(DocMapper.INSTANCE::mapToDto) // map to DTO using DocsMapper
                 .collect(Collectors.toList());
     }
+
+    private DocsResponseDTO mapPvmDocs(List<ProcessVerbalReunionDoc> pvDocs) {
+        if (pvDocs == null) return null;
+
+        return pvDocs.stream()
+                .filter(pvDoc -> pvDoc.isPv() && pvDoc.getDoc() != null && !pvDoc.getDoc().getIsDeleted())
+                .map(ProcessVerbalReunionDoc::getDoc)
+                .map(DocMapper.INSTANCE::mapToDto)
+                .findFirst()
+                .orElse(null);
+    }
+
 }

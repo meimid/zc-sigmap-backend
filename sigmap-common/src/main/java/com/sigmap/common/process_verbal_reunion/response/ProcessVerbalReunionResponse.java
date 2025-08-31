@@ -17,7 +17,7 @@ import java.util.Set;
 public class ProcessVerbalReunionResponse {
     private Integer id;
     private String observation;
-    private List<ProcessVerbalReunionDocResponse> documents = new ArrayList<>();
+    private ProcessVerbalReunionDocResponse document;
     private BaseEntityResponse metadata;
 
 }
