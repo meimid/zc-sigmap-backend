@@ -25,6 +25,7 @@ import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
+import com.sigmap.sigmap_ppm.services.dto.request.ModeleRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
@@ -33,13 +34,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Ppm entities.
@@ -444,4 +447,24 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
         return ResponseEntity.ok(ppmFlowableService.getTasksByComId(comId));
     }
+
+    @PostMapping("/modele-ppm")
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele )  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "Modele_PPM" + modele.getPpmId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+
 }
