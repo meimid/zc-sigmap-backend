@@ -491,7 +491,6 @@ public class ReunionServiceImpl implements ReunionService{
             }
 
         }
-
     }
 
     @Transactional
