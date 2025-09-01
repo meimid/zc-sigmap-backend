@@ -25,6 +25,9 @@ import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperExportManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
@@ -43,6 +46,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -74,6 +82,7 @@ public class PpmFlowableService {
     @Autowired private AcServiceImpl acServiceImpl;
     @Autowired private RealisationService realisationService;
     @Autowired private EntityManager entityManager;
+    @Autowired private DataSource dataSource;
 
     /* ======================= small helpers ======================= */
 
@@ -1740,4 +1749,25 @@ public class PpmFlowableService {
         response.setStatus("Tasks retrieved successfully for comId " + comId);
         return response;
     }
+
+
+    public byte[] generateModelePpm(Integer ppmId,Integer ppmVers, String signataire,  String reportsPath) throws Exception {
+
+        File reportFile = new File(reportsPath, "ppm.jasper");
+        InputStream mainReportStream = new FileInputStream(reportFile);
+        if (mainReportStream == null) {
+            throw new FileNotFoundException("Fichier ppm.jasper introuvable !");
+        }
+
+        Map<String, Object> parametres = new HashMap<>();
+        parametres.put("ppm_id", ppmId);
+        parametres.put("ppm_ver", ppmVers);
+        parametres.put("nom", signataire);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(
+                mainReportStream, parametres, dataSource.getConnection());
+
+        // Export PDF
+        return JasperExportManager.exportReportToPdf(jasperPrint);
+    }
+
 }
