@@ -267,16 +267,17 @@ public class ReunionController {
             consumes = {"multipart/form-data"}
     )
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    public ResponseEntity<ProcessVerbalReunionResponse> injectPv(
+    public ResponseEntity<DocsResponseDTO> injectPv(
             @PathVariable Integer reunionId,
             @RequestParam("file") MultipartFile file
     ) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
 
         ProcessVerbalReunion pv = reunionService.injectPv(reunionId, file);
 
-        ProcessVerbalReunionResponse response = ProcessVerbalReunionMapper.INSTANCE.map(pv);
+        DocsResponseDTO pvDocDto = mapPvmDocs(pv.getDocuments());
 
-        return ResponseEntity.ok(response);
+
+        return ResponseEntity.ok(pvDocDto);
     }
 
 

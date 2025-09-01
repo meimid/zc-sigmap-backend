@@ -689,12 +689,12 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound {
         Reunion reunionToUpdate=findById(reunionId);
-        if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
+      /*  if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {*/
         return processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
-        }
-        else {
+      //  }
+       /* else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());
-        }
+        }*/
     }
 
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){

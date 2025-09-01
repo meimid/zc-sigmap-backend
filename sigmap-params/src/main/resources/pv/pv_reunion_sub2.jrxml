@@ -246,9 +246,9 @@ WHERE r.reunion_id =   $P{reunion}]]>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au litre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
 							</textField>
-							<textField>
+							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="6a197a74-30a7-4621-993c-20c6237acac4">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
 								</reportElement>
@@ -257,7 +257,7 @@ WHERE r.reunion_id =   $P{reunion}]]>
 								</textElement>
 								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
 							</textField>
-							<textField>
+							<textField isBlankWhenNull="true">
 								<reportElement x="30" y="45" width="526" height="35" uuid="58165fd5-0956-42d4-b117-842044a4e5be">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
 								</reportElement>
