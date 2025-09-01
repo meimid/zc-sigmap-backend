@@ -212,6 +212,9 @@ public class ReunionServiceImpl implements ReunionService{
     @Transactional
     public Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound {
         Reunion reunionToUpdate=findById(id);
+        reunionToUpdate.setParticipants(new ArrayList<>(reunionToUpdate.getParticipants()));
+        reunionToUpdate.setReunionPpms(new ArrayList<>(reunionToUpdate.getReunionPpms()));
+        reunionToUpdate.setReunionDacs(new ArrayList<>(reunionToUpdate.getReunionDacs()));
         Calendar nowCal = Calendar.getInstance();
         nowCal.set(Calendar.HOUR_OF_DAY, 0);
         nowCal.set(Calendar.MINUTE, 0);
@@ -240,6 +243,7 @@ public class ReunionServiceImpl implements ReunionService{
             sendReunionInvitations(id);
 
         }else{
+            reunionToUpdate.setReunionDate(null);
             reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
         }
 
@@ -263,6 +267,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if(!request.getReunionDate().equals(reunionToUpdate.getReunionDate())
                     ||!request.getEmplacement().equals(reunionToUpdate.getEmplacement())
                     ||!request.getObject().equals(reunionToUpdate.getObject())){
+
                     reunionToUpdate.setReunionDate(request.getReunionDate());
                     reunionToUpdate.setEmplacement(request.getEmplacement());
                     reunionToUpdate.setObject(request.getObject());
@@ -276,6 +281,11 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setObject(request.getObject());
                 reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
             }
+
+
+
+
+
             return save(reunionToUpdate);
         }
         else {
