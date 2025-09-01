@@ -145,7 +145,7 @@ public class AgpmFlowableController {
     public ResponseEntity<TaskDTO> validateTaskWithModel(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestPart(value = "modelPaaFile", required = false) MultipartFile modelAgpmFile
+            @RequestPart(value = "modelAgpmFile", required = false) MultipartFile modelAgpmFile
     ) throws IOException, AcNotFound, DocNotFound, AgpmNotFound {
 
         if (modelAgpmFile == null || modelAgpmFile.isEmpty()) {
