@@ -12,18 +12,22 @@ import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsExcepti
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.sigmap_paa.service.dto.request.ModelePaaRequest;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -318,4 +322,22 @@ public class PaaFlowableController {
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return paaFlowableService.loadHistoricTasks(procInstId);
     }
+    @PostMapping("/modele-paa")
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModelePaaRequest modele )  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = paaFlowableService.generateModelePaa(modele.getPaaId(),modele.getPaaVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "Modele_PAA" + modele.getPaaId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
 }
