@@ -444,5 +444,26 @@ public class DocumentCommuneService {
             throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
         }
     }
+    public  Integer processAndSaveDocumentsForModelAgpm(MultipartFile file, Integer agpmId,Integer agpmVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , agpmId,agpmVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Agpm",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
 }
 
