@@ -15,7 +15,7 @@ public class FileCheckServices {
 
     private final FileSizeConversion fileSizeConversion;
 
-    public void chechFileUpload(List<MultipartFile> files , long maxFileUploadSize ) throws MaxUploadSizeFile {
+    public void checkFileUpload(List<MultipartFile> files , long maxFileUploadSize ) throws MaxUploadSizeFile {
         if(files!=null && !files.isEmpty()) {
 
         long totalSizeInBytes = 0;

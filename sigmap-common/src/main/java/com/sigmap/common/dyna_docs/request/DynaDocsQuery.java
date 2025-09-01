@@ -18,7 +18,7 @@ public class DynaDocsQuery {
 
   private ActiveStatus status;
 
-  private Integer categorieId;
+  private Integer typeMarcheId;
 
   public Specification<DynaDocs> toSpecification() {
     Specification<DynaDocs> spec = Specification.where(null);
@@ -39,8 +39,8 @@ public class DynaDocsQuery {
       spec = spec.and(DynaDocsSpecifications.guideFileName(guideFileName));
     }
 
-    if (categorieId != null) {
-      spec = spec.and(DynaDocsSpecifications.categoryId(categorieId));
+    if (typeMarcheId != null) {
+      spec = spec.and(DynaDocsSpecifications.typeMarcheId(typeMarcheId));
     }
 
     if (status != null) {

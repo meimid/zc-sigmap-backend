@@ -15,11 +15,11 @@ public interface DynaDocsRepository
     extends JpaRepository<DynaDocs, CompositeId>, JpaSpecificationExecutor<DynaDocs> {
 
   @Query(
-      "SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.categorieId.id = :categorieId AND"
+      "SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.typeMarche.id = :typeMarcheId AND"
           + " d.version = (SELECT MAX(d2.version) FROM DynaDocs d2 WHERE d2.id ="
-          + " d.id AND d2.categorieId.id = :categorieId AND d2.status = 'ACTIF')")
+          + " d.id AND d2.typeMarche.id = :typeMarcheId AND d2.status = 'ACTIF')")
 
-  List<DynaDocs> findAllActifForCategorie(@Param("categorieId") Integer categorieId);
+  List<DynaDocs> findAllActifForTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
 
   @Query("SELECT d FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")
   java.util.Optional<DynaDocs> findByIdDynaDocsIdAndDynaDocsVer(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
@@ -39,16 +39,16 @@ public interface DynaDocsRepository
   @Query("""
     SELECT d FROM DynaDocs d
     WHERE d.status = 'ACTIF'
-      AND d.categorieId.id = :categorieId
+      AND d.typeMarche.id = :typeMarcheId
       AND d.version = (
         SELECT MAX(d2.version)
         FROM DynaDocs d2
         WHERE d2.id = d.id
-          AND d2.categorieId.id = :categorieId
+          AND d2.typeMarche.id = :typeMarcheId
           AND d2.status = 'ACTIF'
       )
 """)
-  List<DynaDocs> findAllLastVersionByCategorieId(@Param("categorieId") Integer categorieId);
+  List<DynaDocs> findAllLastVersionByTypeMarcheId(@Param("typeMarcheId") Integer typeMarcheId);
 
 
 }

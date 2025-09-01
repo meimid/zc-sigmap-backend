@@ -79,8 +79,8 @@ public class DynaDocsServiceImpl implements DynaDocsService {
     dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
     dynaDocs.setVersion(1);
 
-    RefParam refParam = refParamService.findById(request.getCategorieId());
-    dynaDocs.setCategorieId(refParam);
+    RefParam refParam = refParamService.findById(request.getTypeMarcheId());
+    dynaDocs.setTypeMarche(refParam);
 
     return save(dynaDocs);
   }
@@ -92,9 +92,9 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
     DynaDocsMapper.INSTANCE.map(request, dynaDoc);
 
-    Specification<RefParam> refParamSpec = RefParamSpecifications.id(request.getCategorieId());
+    Specification<RefParam> refParamSpec = RefParamSpecifications.id(request.getTypeMarcheId());
     RefParam refParam = refParamService.findOne(refParamSpec).orElseThrow();
-    dynaDoc.setCategorieId(refParam);
+    dynaDoc.setTypeMarche(refParam);
 
     return save(dynaDoc);
   }

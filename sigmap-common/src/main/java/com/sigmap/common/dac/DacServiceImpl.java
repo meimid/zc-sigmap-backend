@@ -91,7 +91,7 @@ public class DacServiceImpl implements DacService {
         log.debug("Dac Ppm: {}", dac.getPpm());
 
         // Step 2: Get all active documents by Dac categoryId, sorted by dynaDocOrder
-        List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dac.getCategory().getId());
+        List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dac.getTypeMarche().getId());
         if (dynaDocsList.isEmpty()) {
             log.warn("No active documents found for Dac ID: {}, Version: {}", dacId, dacVersion);
             throw new RuntimeException("No active documents found for Dac ID: " + dacId + ", Version: " + dacVersion);
@@ -186,7 +186,7 @@ public class DacServiceImpl implements DacService {
     }
 
     private List<DynaDocs> getActiveDynaDocsForDac(Integer categoryId) {
-        return dynaDocsRepository.findAllActifForCategorie(categoryId)
+        return dynaDocsRepository.findAllActifForTypeMarche(categoryId)
                 .stream()
                 .sorted(Comparator.comparing(DynaDocs::getDynaDocOrder))
                 .collect(Collectors.toList());
@@ -496,8 +496,8 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
-        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getCategoryId() == null ) {
-            throw new IllegalArgumentException("All fields (ppmId, ppmVer, categoryId) are required");
+        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getTypeMarcheId() == null ) {
+            throw new IllegalArgumentException("All fields (ppmId, ppmVer, typeMarcheId) are required");
         }
         // Fetch related Ppm
         CompositeId ppmKey = new CompositeId();
@@ -519,16 +519,16 @@ public class DacServiceImpl implements DacService {
         Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
 
         // Fetch related RefParam (category)
-        RefParam category = refParamRepository.findById(request.getCategoryId()).orElseThrow(() -> new RefParamNotFound("",List.of(request.getCategoryId())));
-        if (category == null) {
-            throw new IllegalArgumentException("Category not found");
+        RefParam typeMarche = refParamRepository.findById(request.getTypeMarcheId()).orElseThrow(() -> new RefParamNotFound("",List.of(request.getTypeMarcheId())));
+        if (typeMarche == null) {
+            throw new IllegalArgumentException("Type marche not found");
         }
         // Create DAC
         Dac dac = new Dac();
         dac.setDacVer(1);
         dac.setPpm(ppm);
         dac.setRealisation(realisation);
-        dac.setCategory(category);
+        dac.setTypeMarche(typeMarche);
         dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
 
@@ -568,7 +568,7 @@ public class DacServiceImpl implements DacService {
         }
         Dac dac = dacOpt.get();
 
-        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllLastVersionByCategorieId(dac.getCategory().getId());
+        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllLastVersionByTypeMarcheId(dac.getTypeMarche().getId());
         if (dynaDocsList.isEmpty()) {
             return null;
         }

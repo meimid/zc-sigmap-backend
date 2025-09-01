@@ -21,7 +21,7 @@ public class DacResponce {
     private Integer dacVer;
     private PpmResponseDto ppm;
     private RealisationResponseDTO realisation;
-    private RefParam category;
+    private RefParam typeMarche;
     private ProcessStatus status;
     private BaseEntityResponse metadata;
 }
