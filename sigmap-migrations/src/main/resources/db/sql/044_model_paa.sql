@@ -24,5 +24,5 @@ CREATE TABLE model_paa (
                                FOREIGN KEY (doc_id) REFERENCES docs (doc_id) ON DELETE CASCADE,
 
                            CONSTRAINT FK_MODEL_PAA_PAA
-                               FOREIGN KEY (paa_id, paa_ver) REFERENCES ppm (paa_id, paa_ver) ON DELETE CASCADE
+                               FOREIGN KEY (paa_id, paa_ver) REFERENCES paa (paa_id, paa_ver) ON DELETE CASCADE
 );
