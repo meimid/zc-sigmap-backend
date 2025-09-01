@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="agpm" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="08764829-d4c5-4a53-b05e-75c31e8fd10c">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+	<parameter name="agpm_id" class="java.lang.Integer"/>
+	<parameter name="agpm_ver" class="java.lang.Integer"/>
+	<parameter name="nom" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[SELECT d.adresse,
+	 a.nom,
+	 p.ac_id,
+	 p.agpm_ver,
+	 p.agpm_id,
+	 p.ref,
+	 p.nom as nomagpm,
+	 p.contenu, 
+	 p.annee
+FROM  agpm p
+	INNER JOIN  ac a ON 
+	 p.ac_id = a.ac_id 
+	LEFT JOIN adresse d ON 
+	 a.adresse_id = d.adresse_id
+	 where  p.agpm_id= $P{agpm_id} 
+	 and p.agpm_ver= $P{agpm_ver}]]>
+	</queryString>
+	<field name="adresse" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="adresse"/>
+		<property name="com.jaspersoft.studio.field.label" value="adresse"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="adresse"/>
+	</field>
+	<field name="nom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="ac_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="ac_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="ac_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="agpm_ver" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="agpm_ver"/>
+		<property name="com.jaspersoft.studio.field.label" value="agpm_ver"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="agpm_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="agpm_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="agpm_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="ref" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ref"/>
+		<property name="com.jaspersoft.studio.field.label" value="ref"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="nomagpm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nomagpm"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="contenu" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="contenu"/>
+		<property name="com.jaspersoft.studio.field.label" value="contenu"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<field name="annee" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="annee"/>
+		<property name="com.jaspersoft.studio.field.label" value="annee"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="agpm"/>
+	</field>
+	<title>
+		<band height="109" splitType="Stretch">
+			<staticText>
+				<reportElement style="ArialBold" x="180" y="2" width="430" height="30" uuid="9a3ec4f2-6da8-4dde-9e2e-d7bf102be47b"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="13" isBold="true"/>
+				</textElement>
+				<text><![CDATA[REPUBLIQUE ISLAMIQUE DE MAURITANIE]]></text>
+			</staticText>
+			<textField>
+				<reportElement stretchType="RelativeToTallestObject" x="80" y="36" width="620" height="30" uuid="fb58505e-4a80-4fcd-ace8-ff634385e61b"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nom} + ($F{adresse} != null ? " - " + $F{adresse} : "")]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="false">
+				<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="164" y="70" width="500" height="30" uuid="23393395-85c9-46ad-ace7-1147f991fe67"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="13" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["AVIS GENERAL DE PASSATION DES MARCHES "+$F{annee}]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<detail>
+		<band height="112" splitType="Stretch">
+			<textField>
+				<reportElement stretchType="RelativeToTallestObject" x="80" y="0" width="700" height="112" uuid="ce291622-a2d3-49fa-9116-bade68554c0c"/>
+				<textElement textAlignment="Left" verticalAlignment="Top" markup="html">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{contenu}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<lastPageFooter>
+		<band height="59">
+			<staticText>
+				<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="480" y="9" width="320" height="30" uuid="3ad1fc97-29ba-42ab-b5db-61f35b45b9bb"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Signature ]]></text>
+			</staticText>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="480" y="28" width="320" height="30" uuid="b584df95-06be-4987-af84-6b1f442ffd3a"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{nom}]]></textFieldExpression>
+			</textField>
+		</band>
+	</lastPageFooter>
+</jasperReport>
