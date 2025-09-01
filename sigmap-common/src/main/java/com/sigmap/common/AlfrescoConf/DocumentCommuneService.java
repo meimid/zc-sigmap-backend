@@ -369,6 +369,7 @@ public class DocumentCommuneService {
 
     @Transactional
     public void deleteDocuments(List<Integer> documentsIdsToDelete) throws DocNotFound {
+        log.info("Deleting documentsIdsToDelete={}", documentsIdsToDelete.size());
         for (Integer docId : documentsIdsToDelete) {
             log.info("Processing document ID: {}", docId);
             try {

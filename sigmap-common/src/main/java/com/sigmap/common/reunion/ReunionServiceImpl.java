@@ -411,11 +411,10 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Transactional
-    public void synchronizePpms(ReunionRequest request, Reunion reunionReq) throws PpmNotFound, AcNotFound, IOException {
+    public void synchronizePpms(ReunionRequest request, Reunion reunionReq) throws PpmNotFound, AcNotFound, IOException, DocNotFound {
 
         Reunion reunion = repository.findByIdWithPpms(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
-
 
         // Map current links
         Map<ReunionPpmId, ReunionPpm> currentLinks =
@@ -462,8 +461,9 @@ public class ReunionServiceImpl implements ReunionService{
                         }
                         //delete the document
                     List<Integer> requestedDocIds = ppmReq.getDocsPpm() != null
-                            ? ppmReq.getDocsPpm().stream().map(Docs::getId).toList()
+                            ? ppmReq.getDocsPpm().stream().filter(el->!el.getIsDeleted()).map(Docs::getId).toList()
                             : new ArrayList<>();
+                        log.info("requestedDocIds: {}", requestedDocIds.size());
                     List<Integer> existingDocIds = cachedDocIds.getOrDefault(id, new ArrayList<>());
                     documentsIdsToDelete.addAll(
                             existingDocIds.stream()
@@ -471,7 +471,9 @@ public class ReunionServiceImpl implements ReunionService{
                                     .toList()
                     );
                 }
-
+                if (!documentsIdsToDelete.isEmpty()) {
+                    documentCommuneService.deleteDocuments(documentsIdsToDelete);
+                }
 
                ReunionPpm reunionPpm= reunionPpmRepository.save(link);
                 if(reunion.getStatus().equals(ReunionStatus.EN_COURS)) {
