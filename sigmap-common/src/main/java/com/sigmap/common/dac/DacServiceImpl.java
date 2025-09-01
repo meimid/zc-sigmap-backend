@@ -15,6 +15,8 @@ import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import java.io.*;
 
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,6 +51,8 @@ import org.springframework.stereotype.Service;
 
 import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+
+import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
 
 @Slf4j
 @Service
@@ -526,9 +530,15 @@ public class DacServiceImpl implements DacService {
         if (typeMarche == null) {
             throw new IllegalArgumentException("Type marche not found");
         }
+
+        // Generate DAC reference
+        String nom_ac = ppm.getAc().getNom();
+        Integer sequenceNumber = dacRepository.findMaxDacNumber() + 1;
+
         // Create DAC
         Dac dac = new Dac();
         dac.setDacVer(1);
+        dac.setReference(generateDacRef(sequenceNumber, nom_ac));
         dac.setPpm(ppm);
         dac.setRealisation(realisation);
         dac.setTypeMarche(typeMarche);
@@ -536,6 +546,10 @@ public class DacServiceImpl implements DacService {
         Dac savedCdac = dacRepository.save(dac);
 
         return savedCdac;
+    }
+    public String generateDacRef(Integer sequenceNumber, String nom_ac) {
+        String year = String.valueOf(Year.now().getValue());
+        return String.format("%s/%d/%s", year, sequenceNumber, nom_ac);
     }
 
     @Override

@@ -19,6 +19,7 @@ import lombok.Setter;
 public class DacResponce {
     private Integer dacId;
     private Integer dacVer;
+    private String reference;
     private PpmResponseDto ppm;
     private RealisationResponseDTO realisation;
     private RefParam typeMarche;

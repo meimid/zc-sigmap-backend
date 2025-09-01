@@ -47,4 +47,7 @@ public class Dac extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   private ProcessStatus status;
+
+  @Column(name = "ref_dac")
+  private String reference;
 }
