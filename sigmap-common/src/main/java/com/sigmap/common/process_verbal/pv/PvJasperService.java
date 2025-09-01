@@ -43,7 +43,9 @@ public class PvJasperService {
 
             // Fetch ProcessVerbal entity to get observation
             var processVerbal = processVerbalRepository.findTopByPpmIdAndPpmVersionAndTaskIdAndProcessInstanceIdAndIsDeletedFalse(ppmId, ppmVersion,taskId,processInstanceId).get();
+/*
             String observation = processVerbal != null ? processVerbal.getObservation() : null;
+*/
 
             // Fetch ProcessVerbal entity to get dateDebutReunion and heureDebutReunion
             LocalDateTime dateDebutReunion = processVerbal != null ? processVerbal.getDateDebutReunion() : null;
@@ -62,8 +64,12 @@ public class PvJasperService {
             }
 
             //fetch décision
+/*
             boolean decision = processVerbal != null && processVerbal.isDecision();
+*/
+/*
             String decisionStr = decision ? "Approuvé" : "Rejeté";
+*/
 
             // Fetch ProcessVerbal entity to get acNom
             String acNom = pvService.getAcName(ppmId, ppmVersion);
@@ -78,12 +84,16 @@ public class PvJasperService {
             // set the report parameters
             Map<String, Object> parametres = new HashMap<>();
             parametres.put("processVerbalNum", processVerbalNum);
+/*
             parametres.put("observation", observation);
+*/
             parametres.put("date", date);
             parametres.put("acNom", nomAutorite);
+/*
             parametres.put("decision", decision);
+*/
             parametres.put("dateCloture", dateCloturestrg);
-            parametres.put("decisionStr", decisionStr);
+            /*parametres.put("decisionStr", decisionStr);*/
 
             List<String> docNames = pvService.getPvDocsNames(ppmId, ppmVersion, processVerbalId);
             JRBeanCollectionDataSource docNamesDataSource = new JRBeanCollectionDataSource(docNames);

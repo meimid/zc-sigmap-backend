@@ -25,8 +25,8 @@ public class ProcessVerbalResponse {
     private PpmResponseDto ppm;
     private Set<PvMembrePresentResponseDto> membres;
     private LocalDateTime dateDebutReunion;
-    private String observation;
-    private boolean decision;
+   private String observation;
+    /*  private boolean decision;*/
     private RefParamResponseDto typeId;
     private ProcessStatus status;
     private Set<PvDocsResponseDto> documents;

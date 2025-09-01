@@ -2,11 +2,13 @@ package com.sigmap.common.reunionDac;
 
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
+import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -45,4 +47,13 @@ public class ReunionDac {
 
     @Column(name = "task_id")
     private String taskId;
+
+    private String decision;
+
+    private String observation;
+
+    @EqualsAndHashCode.Exclude
+    @OneToMany(mappedBy = "reunionDac", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReunionDacDoc> reunionDacDocs = new ArrayList<>();
+
 }

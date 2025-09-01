@@ -9,7 +9,5 @@ import java.util.Optional;
 
 @Repository
 public interface ReunionDacRepository extends JpaRepository<ReunionDac, ReunionDacId>, JpaSpecificationExecutor<ReunionDac> {
-    Optional<ReunionDac> findReunionDacByReunionIdAndDacIdAndDacVer(Integer reunionId, Integer DacId, Integer DacVer);
-    Optional<ReunionDac> findReunionDacByReunionIdAndDacIdAndDacVerAndProcessInstanceIdAndTaskId(Integer reunionId, Integer DacId, Integer DacVer, String processInstanceId, String taskId);
-    List<ReunionDac> findByReunionId(Integer reunionId);
+
 }
