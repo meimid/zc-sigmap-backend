@@ -22,6 +22,9 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperExportManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
@@ -44,7 +47,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
+import javax.sql.DataSource;
+import java.io.*;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -89,6 +93,9 @@ public class AgpmFlowableService {
 
     @Autowired
     private CurrentUserService currentUserService;
+
+    @Autowired
+    private DataSource dataSource;
 
     /**
      * Checks if the user has the specified role based on their JWT authentication token.
@@ -1065,6 +1072,25 @@ public class AgpmFlowableService {
                     return h;
                 })
                 .collect(Collectors.toList());
+    }
+
+    public byte[] generateModeleAgpm(Integer agpmId,Integer agpmVers, String signataire,  String reportsPath) throws Exception {
+
+        File reportFile = new File(reportsPath, "agpm.jasper");
+        InputStream mainReportStream = new FileInputStream(reportFile);
+        if (mainReportStream == null) {
+            throw new FileNotFoundException("Fichier agpm.jasper introuvable !");
+        }
+
+        Map<String, Object> parametres = new HashMap<>();
+        parametres.put("agpm_id", agpmId);
+        parametres.put("agpm_ver", agpmVers);
+        parametres.put("nom", signataire);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(
+                mainReportStream, parametres, dataSource.getConnection());
+
+        // Export PDF
+        return JasperExportManager.exportReportToPdf(jasperPrint);
     }
 
 }

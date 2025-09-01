@@ -22,6 +22,8 @@ public class Constants {
       "/REALISATION";
   public static final String PATH_ENTREPOT_GED_PPM =
       "/SIGMAP-DEV/ARCHIVE/PPM/" + LocalDate.now().getYear();
+  public static final String PATH_ENTREPOT_GED_AGPM =
+          "/SIGMAP-DEV/ARCHIVE/AGPM/" + LocalDate.now().getYear();
   public static final String PATH_ENTREPOT_GED_PV="/PV";
   public static final String PATH_ENTREPOT_GED_COM="/SIGMAP-DEV/ARCHIVE/COM";
   public static final String PATH_ENTREPOT_GED_LOT =
@@ -31,6 +33,8 @@ public class Constants {
   public static final String PATH_ENTREPOT_GED_REUNION_PV="/SIGMAP-DEV/ARCHIVE/REUNION/"+ LocalDate.now().getYear()+"/PV";
 
 
+  public static final String PATH_ENTREPOT_GED_MODEL =
+          "/MODEL" ;
   // public static final Integer SERVICE = 16;
   // public static final Integer TYPE_MARCHER = 17;
   // public static final Integer SOURCE_FINANCEMENT = 18;

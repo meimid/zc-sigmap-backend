@@ -22,6 +22,9 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JasperExportManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RepositoryService;
@@ -39,7 +42,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
+import javax.sql.DataSource;
+import java.io.*;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -82,6 +86,9 @@ public class PaaFlowableService {
 
     @Autowired
     private CurrentUserService currentUserService;
+
+    @Autowired
+    private DataSource dataSource;
 
     /**
      * Checks if the user has the specified role.
@@ -1098,4 +1105,24 @@ public class PaaFlowableService {
                 })
                 .collect(Collectors.toList());
     }
+    public byte[] generateModelePaa(Integer paaId,Integer paaVer, String signataire,  String reportsPath) throws Exception {
+
+        File reportFile = new File(reportsPath, "paa.jasper");
+        InputStream mainReportStream = new FileInputStream(reportFile);
+        if (mainReportStream == null) {
+            throw new FileNotFoundException("Fichier paa.jasper introuvable !");
+        }
+
+        Map<String, Object> parametres = new HashMap<>();
+        parametres.put("paa_id", paaId);
+        parametres.put("paa_ver", paaVer);
+        parametres.put("nom", signataire);
+        JasperPrint jasperPrint = JasperFillManager.fillReport(
+                mainReportStream, parametres, dataSource.getConnection());
+
+        // Export PDF
+        return JasperExportManager.exportReportToPdf(jasperPrint);
+    }
+
+
 }

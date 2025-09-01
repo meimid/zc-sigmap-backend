@@ -7,6 +7,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.model_ppm.ModelPpm;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
@@ -524,5 +525,72 @@ public class DocumentCommuneService {
         }
     }
 
+
+
+    public  Integer processAndSaveDocumentsForModelPpm(MultipartFile file, Integer ppmId,Integer ppmVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , ppmId,ppmVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+            try {
+                Docs document = mapperDocument(file,"Model_PPm",baseFolderPath);
+
+
+                docsRepository.save(document);
+
+                return document.getId();
+
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                // Re-throw as IOException for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+    }
+
+
+    public  Integer processAndSaveDocumentsForModelPaa(MultipartFile file, Integer paaId,Integer paaVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , paaId,paaVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Paa",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+    public  Integer processAndSaveDocumentsForModelAgpm(MultipartFile file, Integer agpmId,Integer agpmVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , agpmId,agpmVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Agpm",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
 }
 

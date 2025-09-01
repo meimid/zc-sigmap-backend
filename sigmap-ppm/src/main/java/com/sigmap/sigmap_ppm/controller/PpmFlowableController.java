@@ -2,12 +2,16 @@ package com.sigmap.sigmap_ppm.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.model_ppm.ModelPpmService;
+import com.sigmap.common.model_ppm.exceptions.PpmModelShouldExiste;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -24,20 +28,30 @@ import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.sigmap_ppm.exeptions.GlobalExceptionHandler;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
+import com.sigmap.sigmap_ppm.services.dto.request.ModeleRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
-import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
+import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -54,14 +68,26 @@ public class PpmFlowableController {
     private PpmFlowableService ppmFlowableService;
     private final ProcessVerbalService processVerbalService;
     private final ObjectMapper objectMapper;
+    private final DocumentCommuneService documentCommuneService;
+    private final ModelPpmService modelPpmService;
+    private final TaskService taskService;
+    private final RuntimeService runtimeService;
 
 
 
 
 
-    public PpmFlowableController(ProcessVerbalService processVerbalService,ObjectMapper objectMapper) {
+    public PpmFlowableController(ProcessVerbalService processVerbalService,ObjectMapper objectMapper,
+                                 DocumentCommuneService documentCommuneService,
+                                 ModelPpmService modelPpmService,
+                                 TaskService taskService,
+                                 RuntimeService runtimeService) {
         this.processVerbalService = processVerbalService;
         this.objectMapper = objectMapper;
+        this.documentCommuneService = documentCommuneService;
+        this.modelPpmService = modelPpmService;
+        this.taskService = taskService;
+        this.runtimeService = runtimeService;
     }
 
     /**
@@ -443,5 +469,82 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     @GetMapping("/tasks/by_com/{comId}")
     public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
         return ResponseEntity.ok(ppmFlowableService.getTasksByComId(comId));
+    }
+
+    @PostMapping("/modele-ppm")
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele )  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "Modele_PPM" + modele.getPpmId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+
+
+    @PreAuthorize("hasRole('VALIDATEUR_AC')")
+    @Transactional(rollbackFor = {
+            Exception.class
+    })
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate_with_model")
+    public ResponseEntity<TaskDTO> validateTaskWithModel(
+            @PathVariable String taskId,
+            @ModelAttribute("request") ValidationRequest request,
+            @RequestPart(value = "modelPpmFile", required = false) MultipartFile modelPpmFile,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+    ) throws IOException, PpmNotFound, AcNotFound, ComNotFound, DocNotFound {
+
+        if (modelPpmFile == null || modelPpmFile.isEmpty()) {
+            throw new PpmModelShouldExiste("Le fichier Model PPM est requis.");
+        }
+
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        if (task == null) {
+            throw new IllegalArgumentException("Task not found: " + taskId);
+        }
+        Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+        Integer ppmId = (Integer) vars.get("id");
+        Integer ppmVer = (Integer) vars.get("version");
+        if (ppmId == null || ppmVer == null) {
+            throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
+        }
+
+        String rootPath = Constants.PATH_ENTREPOT_GED_PPM;
+        Integer docId = documentCommuneService.processAndSaveDocumentsForModelPpm(
+                modelPpmFile, ppmId,ppmVer, rootPath
+        );
+
+        modelPpmService.setModel(ppmId, ppmVer, docId);
+      //  modelPpmService.setModel(ppmId, ppmVer, docId);
+
+        if (realisationsLotsJson != null && !realisationsLotsJson.isBlank()) {
+            try {
+                processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse lots JSON before validate: {}", e.getMessage());
+            }
+        }
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isBlank()) {
+            try {
+                processRealisationFinancementsFromJson(request.getPpm(), realisationsFinancementsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse financements JSON before validate: {}", e.getMessage());
+            }
+        }
+
+        request.setFromMeeting(false);
+        TaskDTO response = ppmFlowableService.validateTask(taskId, request);
+
+        return ResponseEntity.ok(response);
     }
 }
