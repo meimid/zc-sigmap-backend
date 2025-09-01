@@ -8,16 +8,20 @@ package com.sigmap.sigmap_agpm.controller;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.sigmap_agpm.service.dto.request.ModeleAgpmRequest;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.service.dto.response.*;
 import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 
 /**
@@ -107,5 +111,23 @@ public class AgpmFlowableController {
     @GetMapping("/task-history/{procInstId}")
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return agpmFlowableService.loadHistoricTasks(procInstId);
+    }
+
+    @PostMapping("/modele-agpm")
+    public ResponseEntity<byte[]> generateReportPv(@RequestBody ModeleAgpmRequest  modele)  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = agpmFlowableService.generateModeleAgpm(modele.getAgpmId(),modele.getAgpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "modele_agpm_" + modele.getAgpmId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }
