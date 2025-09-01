@@ -44,6 +44,7 @@ import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
+import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
@@ -57,6 +58,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.*;
@@ -79,8 +81,8 @@ public class ReunionServiceImpl implements ReunionService{
     private final CurrentUserService currentUserService;
     private final DocumentCommuneService documentCommuneService;
     private final ProcessVerbalReunionService processVerbalReunionService;
-    @Autowired
-    EntityManager entityManager;
+
+
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
@@ -414,6 +416,7 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunion = repository.findByIdWithPpms(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
 
+
         // Map current links
         Map<ReunionPpmId, ReunionPpm> currentLinks =
                 reunion.getReunionPpms().stream()
@@ -424,11 +427,11 @@ public class ReunionServiceImpl implements ReunionService{
                                 Function.identity()
                         ));
 
-        Map<ReunionDacId, List<Integer>> cachedDocIds = reunion.getReunionDacs().stream()
+        Map<ReunionPpmId, List<Integer>> cachedDocIds = reunion.getReunionPpms().stream()
                 .collect(Collectors.toMap(
-                        link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()),
-                        link -> link.getReunionDacDocs() != null
-                                ? link.getReunionDacDocs().stream().map(ReunionDacDoc::getDocId).toList()
+                        link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()),
+                        link -> link.getReunionPpmDocs() != null
+                                ? link.getReunionPpmDocs().stream().map(ReunionPpmDoc::getDocId).toList()
                                 : new ArrayList<>()
                 ));
         List<Integer> documentsIdsToDelete = new ArrayList<>();
@@ -651,6 +654,42 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
             return save(reunionToUpdate);
+        }
+        else {
+            throw new ReunionStatusException("", reunionToUpdate.getStatus());
+        }
+    }
+
+    @Override
+    public Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+        Reunion reunionToUpdate=findById(id);
+
+        if(reunionToUpdate.getStatus() == ReunionStatus.EN_COURS) {
+            reunionToUpdate.setStatus(ReunionStatus.VALIDER);
+            synchronizeParticipants(request, reunionToUpdate);
+            synchronizePpms(request, reunionToUpdate);
+            synchronizeDacs(request, reunionToUpdate);
+            if(reunionToUpdate.getProcessVerbal()!=null&&request.getProcessVerbal()!=null){
+                processVerbalReunionService.update(reunionToUpdate.getProcessVerbal().getId(),request.getProcessVerbal());
+            }
+            else {
+                ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
+                ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
+                reunionToUpdate.setProcessVerbal(processVerbalReunion);
+            }
+
+            return save(reunionToUpdate);
+        }
+        else {
+            throw new ReunionStatusException("", reunionToUpdate.getStatus());
+        }
+    }
+
+    @Override
+    public ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound {
+        Reunion reunionToUpdate=findById(reunionId);
+        if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
+        return processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
         }
         else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());

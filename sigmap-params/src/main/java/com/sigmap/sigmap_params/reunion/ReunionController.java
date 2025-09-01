@@ -11,10 +11,16 @@ import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
+import com.sigmap.common.docs.Response.DocsResponse;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.process_verbal.ProcessVerbal;
+import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMapper;
+import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
@@ -38,6 +44,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -214,33 +221,63 @@ public class ReunionController {
                 return ResponseEntity.ok(response);
     }
 
-   /* private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
-        if (reunionDacs == null) return List.of();
+    @PutMapping(
+            value = "/{id}/validate",
+            consumes = {"multipart/form-data"}
+    )
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    public ResponseEntity<ReunionResponse> validateReunion(
+            @PathVariable Integer id,
+            @ModelAttribute ReunionRequest request
+    ) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
 
-        return reunionDacs.stream()
-                .map(rd -> {
-                    var dac = rd.getDac();
-                    var dacResponse = new com.sigmap.common.dac.response.DacResponseReunion();
-                    if (dac != null) {
-                        dacResponse.setDacId(dac.getDacId());
-                        dacResponse.setDacVer(dac.getDacVer());
-                        dacResponse.setStatus(dac.getStatus());
-                        dacResponse.setCategory(RefParamMapper.INSTANCE.mapToDto(dac.getCategory()));
-                        if (dac.getPpm() != null) {
-                            dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
-                        }
-                    }
+        Reunion updatedReunion = reunionService.validateReunion(id, request);
 
-                    var rdResponse = new com.sigmap.common.reunionDac.response.ReunionDacResponse();
-                    rdResponse.setDac(dacResponse);
-                    rdResponse.setProcessInstanceId(rd.getProcessInstanceId());
-                    rdResponse.setTaskId(rd.getTaskId());
-                    rdResponse.setDecision(rd.getDecision());
-                    rdResponse.setObservation(rd.getObservation());
-                    return rdResponse;
-                })
+        // filter participants
+        List<Participant> participantList = updatedReunion.getParticipants()
+                .stream()
+                .filter(el -> !el.getIsDeleted())
                 .toList();
-    }*/
+
+        List<ParticipantResponseDto> responseDtos = ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response = ReunionMapper.INSTANCE.map(updatedReunion);
+
+        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
+        response.setParticipants(responseDtos);
+        response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
+
+
+        DocsResponseDTO pvDocDto = mapPvmDocs(updatedReunion.getProcessVerbal().getDocuments());
+
+        response.getProcessVerbal().setDocument(
+                pvDocDto != null
+                        ? new ProcessVerbalReunionDocResponse(
+                        updatedReunion.getProcessVerbal().getId(),
+                        pvDocDto.getId(),
+                        pvDocDto,
+                        true
+                )
+                        : null
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping(
+            value = "/{reunionId}/upload-pv",
+            consumes = {"multipart/form-data"}
+    )
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    public ResponseEntity<ProcessVerbalReunionResponse> injectPv(
+            @PathVariable Integer reunionId,
+            @RequestParam("file") MultipartFile file
+    ) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+
+        ProcessVerbalReunion pv = reunionService.injectPv(reunionId, file);
+
+        ProcessVerbalReunionResponse response = ProcessVerbalReunionMapper.INSTANCE.map(pv);
+
+        return ResponseEntity.ok(response);
+    }
 
 
     @PostMapping("/{id}/send-email-reuinion")

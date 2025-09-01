@@ -9,6 +9,7 @@ import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequ
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -58,15 +59,22 @@ public class ProcessVerbalReunionServiceImpl  implements ProcessVerbalReunionSer
         // Update fields from the request using the mapper
         ProcessVerbalReunionMapper.INSTANCE.updateFromRequest(request, processVerbalReunion);
 
-        // Handle file upload if provided
-        if (request.getFile() != null && !request.getFile().isEmpty()) {
+
+        return respository.save(processVerbalReunion);
+    }
+
+    @Override
+    public ProcessVerbalReunion injectPvForReunion(Integer pvId, MultipartFile file) {
+        ProcessVerbalReunion processVerbalReunion = findById(pvId);
+
+        if (file != null && !file.isEmpty()) {
             try {
-                documentCommuneService.processAndSaveDocumentsForPV(request.getFile(), processVerbalReunion, Constants.PATH_ENTREPOT_GED_REUNION_PV);
+                documentCommuneService.processAndSaveDocumentsForPV(file, processVerbalReunion, Constants.PATH_ENTREPOT_GED_REUNION_PV);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to process uploaded file: " + e.getMessage(), e);
             }
         }
-
         return respository.save(processVerbalReunion);
+
     }
 }
