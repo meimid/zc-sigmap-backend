@@ -496,8 +496,8 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
-        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getTypeMarcheId() == null ) {
-            throw new IllegalArgumentException("All fields (ppmId, ppmVer, typeMarcheId) are required");
+        if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
+            throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
         }
         // Fetch related Ppm
         CompositeId ppmKey = new CompositeId();
@@ -518,8 +518,11 @@ public class DacServiceImpl implements DacService {
 
         Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
 
+        // get type marche from realisation
+        Integer typeMarcheId = realisation.getTypeMarcher().getId();
+
         // Fetch related RefParam (category)
-        RefParam typeMarche = refParamRepository.findById(request.getTypeMarcheId()).orElseThrow(() -> new RefParamNotFound("",List.of(request.getTypeMarcheId())));
+        RefParam typeMarche = refParamRepository.findById(typeMarcheId).orElseThrow(() -> new RefParamNotFound("",List.of(typeMarcheId)));
         if (typeMarche == null) {
             throw new IllegalArgumentException("Type marche not found");
         }
