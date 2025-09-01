@@ -12,7 +12,7 @@ public interface ModelPaaRepository extends JpaRepository<ModelPaa, ModelPaaId> 
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("update model_paa m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.name}where m.paaId  = :paaId and m.paaVer = :paaVer")
+    @Query("update ModelPaa m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.name}where m.paaId  = :paaId and m.paaVer = :paaVer")
     void deleteByPaaIdAndPaaVer(Integer paaId, Integer paaVer);
 
     boolean existsByPaaIdAndPaaVer(Integer paaId, Integer paaVer);
