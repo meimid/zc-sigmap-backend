@@ -30,6 +30,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.sigmap_ppm.exeptions.GlobalExceptionHandler;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
+import com.sigmap.sigmap_ppm.services.dto.request.ModeleRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
@@ -40,6 +41,8 @@ import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +51,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -466,6 +470,26 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
         return ResponseEntity.ok(ppmFlowableService.getTasksByComId(comId));
     }
+
+    @PostMapping("/modele-ppm")
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele )  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "Modele_PPM" + modele.getPpmId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+
 
     @PreAuthorize("hasRole('VALIDATEUR_AC')")
     @Transactional(rollbackFor = {
