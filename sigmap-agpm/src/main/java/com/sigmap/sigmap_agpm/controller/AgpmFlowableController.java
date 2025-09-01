@@ -159,8 +159,8 @@ public class AgpmFlowableController {
             throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
         }
 
-        String rootPath = Constants.PATH_ENTREPOT_GED_PAA;
-        Integer docId = documentCommuneService.processAndSaveDocumentsForModelPaa(
+        String rootPath = Constants.PATH_ENTREPOT_GED_AGPM;
+        Integer docId = documentCommuneService.processAndSaveDocumentsForModelAgpm(
                 modelAgpmFile, agpmId,agpmVer, rootPath
         );
 
