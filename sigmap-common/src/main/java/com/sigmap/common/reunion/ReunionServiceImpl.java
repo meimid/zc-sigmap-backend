@@ -298,6 +298,9 @@ public class ReunionServiceImpl implements ReunionService{
     public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
        // Reunion reunionToUpdate=findById(id);
+        reunionToUpdate.setParticipants(new ArrayList<>(reunionToUpdate.getParticipants()));
+        reunionToUpdate.setReunionPpms(new ArrayList<>(reunionToUpdate.getReunionPpms()));
+        reunionToUpdate.setReunionDacs(new ArrayList<>(reunionToUpdate.getReunionDacs()));
 
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
                 reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
@@ -635,8 +638,9 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public Reunion startReunion(Integer id) throws ReunionNotFound {
         Reunion reunion = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
-        reunion.getReunionDacs().size();
-        reunion.getReunionPpms().size();
+        reunion.setParticipants(new ArrayList<>(reunion.getParticipants()));
+        reunion.setReunionPpms(new ArrayList<>(reunion.getReunionPpms()));
+        reunion.setReunionDacs(new ArrayList<>(reunion.getReunionDacs()));
         if(reunion.getStatus().equals(ReunionStatus.EN_RETARD)||reunion.getStatus().equals(ReunionStatus.PLANIFIER)){
             reunion.setStatus(ReunionStatus.EN_COURS);
             repository.save(reunion);
@@ -676,10 +680,10 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunionToUpdate=findById(id);
 
         if(reunionToUpdate.getStatus() == ReunionStatus.EN_COURS) {
-            reunionToUpdate.setStatus(ReunionStatus.VALIDER);
             synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
+            reunionToUpdate.setStatus(ReunionStatus.VALIDER);
             if(reunionToUpdate.getProcessVerbal()!=null&&request.getProcessVerbal()!=null){
                 processVerbalReunionService.update(reunionToUpdate.getProcessVerbal().getId(),request.getProcessVerbal());
             }
@@ -699,6 +703,9 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound {
         Reunion reunionToUpdate=findById(reunionId);
+        reunionToUpdate.setParticipants(new ArrayList<>(reunionToUpdate.getParticipants()));
+        reunionToUpdate.setReunionPpms(new ArrayList<>(reunionToUpdate.getReunionPpms()));
+        reunionToUpdate.setReunionDacs(new ArrayList<>(reunionToUpdate.getReunionDacs()));
         if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
          ProcessVerbalReunion pv= processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
         reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
