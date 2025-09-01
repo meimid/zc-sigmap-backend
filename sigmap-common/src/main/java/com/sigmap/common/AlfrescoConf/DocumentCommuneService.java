@@ -421,5 +421,28 @@ public class DocumentCommuneService {
                 throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
             }
     }
+
+
+    public  Integer processAndSaveDocumentsForModelPaa(MultipartFile file, Integer paaId,Integer paaVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , paaId,paaVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Paa",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
 }
 
