@@ -24,5 +24,5 @@ CREATE TABLE model_agpm (
                                FOREIGN KEY (doc_id) REFERENCES docs (doc_id) ON DELETE CASCADE,
 
                            CONSTRAINT FK_MODEL_AGPM_AGPM
-                               FOREIGN KEY (agpm_id, agpm_ver) REFERENCES paa (agpm_id, agpm_ver) ON DELETE CASCADE
+                               FOREIGN KEY (agpm_id, agpm_ver) REFERENCES agpm (agpm_id, agpm_ver) ON DELETE CASCADE
 );
