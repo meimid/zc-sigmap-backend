@@ -20,7 +20,6 @@ import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMapper;
-import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
@@ -270,9 +269,10 @@ public class ReunionController {
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     public ResponseEntity<ProcessVerbalReunionResponse> injectPv(
             @PathVariable Integer reunionId,
-            @ModelAttribute ProcessVerbalReunionRequest request    ) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+            @RequestParam("file") MultipartFile file
+    ) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
 
-        ProcessVerbalReunion pv = reunionService.injectPv(reunionId, request.getFile());
+        ProcessVerbalReunion pv = reunionService.injectPv(reunionId, file);
 
         ProcessVerbalReunionResponse response = ProcessVerbalReunionMapper.INSTANCE.map(pv);
 

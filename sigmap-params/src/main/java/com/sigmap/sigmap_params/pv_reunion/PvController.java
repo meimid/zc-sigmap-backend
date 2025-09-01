@@ -17,7 +17,7 @@ import java.net.URL;
 
 
 @RestController
-@RequestMapping("/api/reunion")
+@RequestMapping("/api/reunions")
 @Slf4j
 public class PvController {
 
@@ -28,7 +28,7 @@ public class PvController {
         this.pvJasperReunionService = pvJasperReunionService;
     }
 
-    @GetMapping("/proces-verbal_reunion/{reunionId}")
+    @GetMapping("/pv/{reunionId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
 
     public ResponseEntity<byte[]> generateReportPv(@PathVariable  Integer reunionId )  throws Exception {
@@ -54,7 +54,7 @@ public class PvController {
                 .body(pdfBytes);
     }
 
-    @GetMapping("/proces-verbal_reunion/{reunionId}/download")
+    @GetMapping("/pv/{reunionId}/download")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
 
     public ResponseEntity<Resource> downloadProcessVerbal(@PathVariable Integer reunionId) throws Exception {
