@@ -1076,21 +1076,24 @@ public class AgpmFlowableService {
 
     public byte[] generateModeleAgpm(Integer agpmId,Integer agpmVers, String signataire,  String reportsPath) throws Exception {
 
-        File reportFile = new File(reportsPath, "agpm.jasper");
-        InputStream mainReportStream = new FileInputStream(reportFile);
-        if (mainReportStream == null) {
-            throw new FileNotFoundException("Fichier agpm.jasper introuvable !");
+        try (InputStream mainReportStream = getClass()
+                .getClassLoader()
+                .getResourceAsStream("modele/agpm.jasper")) {
+
+            if (mainReportStream == null) {
+                throw new FileNotFoundException("Fichier agpm.jasper introuvable !");
+            }
+
+            Map<String, Object> parametres = new HashMap<>();
+            parametres.put("agpm_id", agpmId);
+            parametres.put("agpm_ver", agpmVers);
+            parametres.put("nom", signataire);
+
+            JasperPrint jasperPrint = JasperFillManager.fillReport(
+                    mainReportStream, parametres, dataSource.getConnection());
+
+            return JasperExportManager.exportReportToPdf(jasperPrint);
         }
-
-        Map<String, Object> parametres = new HashMap<>();
-        parametres.put("agpm_id", agpmId);
-        parametres.put("agpm_ver", agpmVers);
-        parametres.put("nom", signataire);
-        JasperPrint jasperPrint = JasperFillManager.fillReport(
-                mainReportStream, parametres, dataSource.getConnection());
-
-        // Export PDF
-        return JasperExportManager.exportReportToPdf(jasperPrint);
     }
 
 }

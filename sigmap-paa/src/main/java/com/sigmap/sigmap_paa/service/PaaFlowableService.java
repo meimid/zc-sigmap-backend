@@ -1106,22 +1106,24 @@ public class PaaFlowableService {
                 .collect(Collectors.toList());
     }
     public byte[] generateModelePaa(Integer paaId,Integer paaVer, String signataire,  String reportsPath) throws Exception {
+        try (InputStream mainReportStream = getClass()
+                .getClassLoader()
+                .getResourceAsStream("modele/paa.jasper")) {
 
-        File reportFile = new File(reportsPath, "paa.jasper");
-        InputStream mainReportStream = new FileInputStream(reportFile);
-        if (mainReportStream == null) {
-            throw new FileNotFoundException("Fichier paa.jasper introuvable !");
+            if (mainReportStream == null) {
+                throw new FileNotFoundException("Fichier paa.jasper introuvable !");
+            }
+
+            Map<String, Object> parametres = new HashMap<>();
+            parametres.put("paa_id", paaId);
+            parametres.put("paa_ver", paaVer);
+            parametres.put("nom", signataire);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(
+                    mainReportStream, parametres, dataSource.getConnection());
+
+            // Export PDF
+            return JasperExportManager.exportReportToPdf(jasperPrint);
         }
-
-        Map<String, Object> parametres = new HashMap<>();
-        parametres.put("paa_id", paaId);
-        parametres.put("paa_ver", paaVer);
-        parametres.put("nom", signataire);
-        JasperPrint jasperPrint = JasperFillManager.fillReport(
-                mainReportStream, parametres, dataSource.getConnection());
-
-        // Export PDF
-        return JasperExportManager.exportReportToPdf(jasperPrint);
     }
 
 

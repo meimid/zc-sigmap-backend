@@ -32,18 +32,8 @@ public class PvController {
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
 
     public ResponseEntity<byte[]> generateReportPv(@PathVariable  Integer reunionId )  throws Exception {
-        URL pvFolderUrl = getClass().getClassLoader().getResource("pv/");
-        String reportsPath = pvFolderUrl.getPath();
-        /*String projectRoot = Paths.get("").toAbsolutePath().toString();
-        String reportsPath = projectRoot  + File.separator + "sigmap-params"
-                + File.separator + "src"
-                + File.separator + "main"
-                + File.separator + "resources"
-                + File.separator + "pv"
-                + File.separator;*/
-        log.info("reportsPath {} ", reportsPath);
 
-        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunion(reunionId, reportsPath);
+        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunion(reunionId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -58,18 +48,53 @@ public class PvController {
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
 
     public ResponseEntity<Resource> downloadProcessVerbal(@PathVariable Integer reunionId) throws Exception {
-        URL pvFolderUrl = getClass().getClassLoader().getResource("pv/");
-        if (pvFolderUrl == null) {
-            throw new FileNotFoundException("The 'pv' folder could not be found in resources.");
-        }
-        String reportsPath = pvFolderUrl.getPath();
 
-        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunion(reunionId, reportsPath);
+
+        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunion(reunionId);
 
         ByteArrayResource resource = new ByteArrayResource(pdfBytes);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"pv_reunion_" + reunionId + ".pdf\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentLength(pdfBytes.length)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
+    }
+
+    @GetMapping("/pv-draft/{reunionId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+
+    public ResponseEntity<byte[]> generateReportPvDraft(@PathVariable  Integer reunionId )  throws Exception {
+
+        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunionDraft(reunionId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "pv_reunion_draft_" + reunionId + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+    @GetMapping("/pv-draft/{reunionId}/download")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+
+    public ResponseEntity<Resource> downloadProcessVerbalDraft(@PathVariable Integer reunionId) throws Exception {
+
+
+        byte[] pdfBytes = pvJasperReunionService.generateProcesVerbalReunionDraft(reunionId);
+
+        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"pv_reunion_draft" + reunionId + ".pdf\"");
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");
