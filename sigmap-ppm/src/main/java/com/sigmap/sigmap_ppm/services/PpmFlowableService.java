@@ -1752,22 +1752,24 @@ public class PpmFlowableService {
 
 
     public byte[] generateModelePpm(Integer ppmId,Integer ppmVers, String signataire,  String reportsPath) throws Exception {
+        try (InputStream mainReportStream = getClass()
+                .getClassLoader()
+                .getResourceAsStream("modele/ppm.jasper")) {
 
-        File reportFile = new File(reportsPath, "ppm.jasper");
-        InputStream mainReportStream = new FileInputStream(reportFile);
-        if (mainReportStream == null) {
-            throw new FileNotFoundException("Fichier ppm.jasper introuvable !");
+            if (mainReportStream == null) {
+                throw new FileNotFoundException("Fichier ppm.jasper introuvable !");
+            }
+
+            Map<String, Object> parametres = new HashMap<>();
+            parametres.put("ppm_id", ppmId);
+            parametres.put("ppm_ver", ppmVers);
+            parametres.put("nom", signataire);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(
+                    mainReportStream, parametres, dataSource.getConnection());
+
+            // Export PDF
+            return JasperExportManager.exportReportToPdf(jasperPrint);
         }
-
-        Map<String, Object> parametres = new HashMap<>();
-        parametres.put("ppm_id", ppmId);
-        parametres.put("ppm_ver", ppmVers);
-        parametres.put("nom", signataire);
-        JasperPrint jasperPrint = JasperFillManager.fillReport(
-                mainReportStream, parametres, dataSource.getConnection());
-
-        // Export PDF
-        return JasperExportManager.exportReportToPdf(jasperPrint);
     }
 
 }

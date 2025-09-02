@@ -72,13 +72,12 @@ and type ='MEMBRE']]>
 		</group>
 	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
-	<parameter name="pathImg" class="java.lang.String">
-		<defaultValueExpression><![CDATA["E:\\SIGMAP\\zc-sigmap-backend\\sigmap-params\\src\\main\\resources\\pv\\logo.png"]]></defaultValueExpression>
-	</parameter>
+	<parameter name="pathImg" class="java.io.InputStream"/>
 	<parameter name="president" class="java.lang.String"/>
-	<parameter name="SUBREPORT_DIR" class="java.lang.String">
-		<defaultValueExpression><![CDATA["E:\\SIGMAP\\zc-sigmap-backend\\sigmap-params\\src\\main\\resources\\pv\\"]]></defaultValueExpression>
-	</parameter>
+	<parameter name="SUBREPORT_DIR1" class="java.io.InputStream"/>
+	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
+	<parameter name="SUBREPORT_DIR3" class="java.io.InputStream"/>
+	<parameter name="SUBREPORT_DIR4" class="java.io.InputStream"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
 	 reunion.com_id,
@@ -300,7 +299,7 @@ FROM com
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"pv_reunion_presents.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR1}]]></subreportExpression>
 			</subreport>
 		</band>
 		<band height="100" splitType="Stretch">
@@ -313,7 +312,7 @@ FROM com
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"pv_reunion_absents.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR2}]]></subreportExpression>
 			</subreport>
 		</band>
 		<band height="148" splitType="Stretch">
@@ -326,7 +325,7 @@ FROM com
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"pv_reunion_sub2.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR4}]]></subreportExpression>
 			</subreport>
 			<subreport overflowType="Stretch">
 				<reportElement stretchType="RelativeToTallestObject" x="-7" y="0" width="559" height="146" isRemoveLineWhenBlank="true" uuid="7c19e01d-7bf9-43dd-82ac-3fe4fb65c119">
@@ -337,7 +336,7 @@ FROM com
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"pv_reunion_sub1.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR3}]]></subreportExpression>
 			</subreport>
 		</band>
 	</detail>
