@@ -120,4 +120,8 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
         return this.coms;
     }
     private String processInstanceId;
+
+    @Transient
+    private String modelAlfrescoId;
+
 }

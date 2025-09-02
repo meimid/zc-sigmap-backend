@@ -23,6 +23,8 @@ import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.model_agpm.ModelAgpm;
+import com.sigmap.common.model_agpm.ModelAgpmService;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -67,6 +69,8 @@ public class AgpmServiceImpl implements AgpmService {
     private final AcService acService;
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final ModelAgpmService modelAgpmService;
+
     /**
      * Constructor for AgpmServiceImpl with dependency injection.
      *
@@ -87,7 +91,7 @@ public class AgpmServiceImpl implements AgpmService {
                            AlfrescoService alfrescoService,
                            DocumentCommuneService documentCommuneService,
                            AcService acService,
-                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService) {
+                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService, ModelAgpmService modelAgpmService) {
         this.repository = repository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
@@ -98,6 +102,7 @@ public class AgpmServiceImpl implements AgpmService {
         this.acService = acService;
         this.currentUserService = currentUserService;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.modelAgpmService = modelAgpmService;
     }
 
     /**
