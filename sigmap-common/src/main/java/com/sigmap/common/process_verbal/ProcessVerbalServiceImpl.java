@@ -115,7 +115,7 @@ public class ProcessVerbalServiceImpl implements ProcessVerbalService {
         }
 
         processVerbal.setObservation(request.getObservation());
-        processVerbal.setDecision(request.isDecision());
+       // processVerbal.setDecision(request.isDecision());
         processVerbal.setTypeId(typeId);
         if (request.getStatus() != null) {
             processVerbal.setStatus(request.getStatus());
@@ -215,7 +215,7 @@ public void createAndSetMembersFromUsers(ProcessVerbalRequest request, String pr
 
         // --- 2. Update Simple Fields on the Main Entity ---
         pvToUpdate.setObservation(request.getObservation());
-        pvToUpdate.setDecision(request.isDecision());
+ //       pvToUpdate.setDecision(request.isDecision());
         pvToUpdate.setStatus(request.getStatus());
         if (request.getTypeId() != null) {
             pvToUpdate.setTypeId(refParamService.findById(request.getTypeId()));

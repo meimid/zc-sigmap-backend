@@ -23,13 +23,13 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
+import com.sigmap.common.user_ac.UserAcSpecifications;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -400,6 +400,10 @@ public class AcServiceImpl implements AcService{
         if (hasAssociatedAc) {
             throw new AcHasAssociatedAc("" , id);
         }
+        List<UserAc> users=userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
+        if(!users.isEmpty()) {
+            throw new AcHasAssociatedUser("",id);
+        }
 
         repository.softDelete(id);
     }
@@ -457,6 +461,14 @@ public class AcServiceImpl implements AcService{
         }
     }
 
+    @Override
+    public List<Ac> getAcsByUserId(String userId) {
+        Specification<UserAc> specification= UserAcSpecifications.activeAcsByUserId(userId);
+        List<UserAc> userAcs = userAcRepository.findAll(specification);
+
+        return userAcs.stream().map(UserAc::getAc).toList();
+    }
+
     // This private method now takes the basePath as an argument
     private byte[] readPhotoFromFileSystem(Integer acId, String logoPath, String basePath) {
         if (basePath == null || basePath.trim().isEmpty()) {
@@ -481,7 +493,11 @@ public class AcServiceImpl implements AcService{
         }
     }
 
-
-
+    @Override
+    public Integer getComIdByAcId(Integer acId) throws AcNotAssociatedCom {
+        return repository.findById(acId)
+                .map(ac -> ac.getCom() != null ? ac.getCom().getId() : null)
+                .orElseThrow(() -> new AcNotAssociatedCom ("Aucune commission n’est liée à cet AC. "));
+    }
 
 }

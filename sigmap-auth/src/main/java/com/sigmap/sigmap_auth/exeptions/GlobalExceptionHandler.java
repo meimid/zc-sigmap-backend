@@ -1,7 +1,10 @@
 package com.sigmap.sigmap_auth.exeptions;
 
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
+import java.util.stream.Collectors;
+
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
 import org.springframework.context.MessageSource;
@@ -59,5 +62,14 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleAuthorizationDeniedException(AuthorizationDeniedException ex) {
     ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), "Accès refusé (autorisation manquante)");
     return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+  }
+
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(ComNotFound.class)
+  public ResponseEntity<ErrorResponse> handleComNotFoundException(ComNotFound ex) {
+
+    String message = messageSource.getMessage("com.notfound", new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
 }

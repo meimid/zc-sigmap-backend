@@ -22,7 +22,7 @@ public interface ProcessVerbalRepository extends JpaRepository<ProcessVerbal, Pr
      * @param ppmVersion The 'ppm_ver' part of the key.
      * @param processVerbalId The 'process_verbal_id' part of the key.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true,flushAutomatically = true)
     @Transactional
     @Query("UPDATE ProcessVerbal pv SET pv.isDeleted = true, pv.deletedAt = CURRENT_TIMESTAMP, pv.deletedBy = :#{principal.subject} " +
             "WHERE pv.ppmId = :ppmId AND pv.ppmVersion = :ppmVersion AND pv.processVerbalId = :processVerbalId")

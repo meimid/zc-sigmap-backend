@@ -7,13 +7,20 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.Request.DocumentHolder;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.model_ppm.ModelPpm;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.pv_docs.PvDocs;
 import com.sigmap.common.pv_docs.PvDocsRepository;
 import com.sigmap.common.pv_docs.request.PvDocRequest;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.reunionDac.ReunionDac;
+import com.sigmap.common.reunionPpm.ReunionPpm;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
+import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import jakarta.transaction.Transactional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +33,7 @@ import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -362,6 +370,7 @@ public class DocumentCommuneService {
 
     @Transactional
     public void deleteDocuments(List<Integer> documentsIdsToDelete) throws DocNotFound {
+        log.info("Deleting documentsIdsToDelete={}", documentsIdsToDelete.size());
         for (Integer docId : documentsIdsToDelete) {
             log.info("Processing document ID: {}", docId);
             try {
@@ -395,6 +404,192 @@ public class DocumentCommuneService {
                 log.error("Error processing document ID {}: {}", docId, e.getMessage(), e);
                 throw new RuntimeException("Failed to process soft deletion for document ID: " + docId, e);
             }
+        }
+    }
+
+    public void processAndSaveDocumentsForReunionPpm(List<MultipartFile> files, ReunionPpm entity, String path) throws IOException {
+
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d/%d",
+                path, entity.getReunionId(), entity.getPpmId());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue;
+            }
+
+            try {
+                // 1. Map & save the Docs entity
+                Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+                docsRepository.save(document);
+
+                // 2. Create the join entity (ReunionPpmDoc)
+                ReunionPpmDoc joinEntity = new ReunionPpmDoc();
+                joinEntity.setReunionId(entity.getReunionId());
+                joinEntity.setPpmId(entity.getPpmId());
+                joinEntity.setPpmVer(entity.getPpmVer());
+                joinEntity.setDocId(document.getId());
+                joinEntity.setDocs(document);
+                joinEntity.setReunionPpm(entity);
+
+                // 3. Add to ReunionPpm
+                entity.getReunionPpmDocs().add(joinEntity);
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}",
+                        file.getOriginalFilename(), e.getMessage(), e);
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public void processAndSaveDocumentsForReunionDac(List<MultipartFile> files, ReunionDac entity, String path) throws IOException {
+
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d/%d",
+                path, entity.getReunionId(), entity.getDacId());
+
+        for (MultipartFile file : files) {
+            if (file == null || file.isEmpty()) {
+                log.warn("Skipping null or empty file in the list.");
+                continue;
+            }
+
+            try {
+                // 1. Map & save the Docs entity
+                Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+                docsRepository.save(document);
+
+                // 2. Create the join entity (ReunionPpmDoc)
+                ReunionDacDoc joinEntity = new ReunionDacDoc();
+                joinEntity.setReunionId(entity.getReunionId());
+                joinEntity.setDacId(entity.getDacId());
+                joinEntity.setDacVer(entity.getDacVer());
+                joinEntity.setDocId(document.getId());
+                joinEntity.setDocs(document);
+                joinEntity.setReunionDac(entity);
+
+                // 3. Add to ReunionDac
+                entity.getReunionDacDocs().add(joinEntity);
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}",
+                        file.getOriginalFilename(), e.getMessage(), e);
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    public void processAndSaveDocumentsForPV(MultipartFile file, ProcessVerbalReunion entity, String path) throws IOException {
+        String entityTypeName = entity.getClass().getSimpleName().toLowerCase();
+        String baseFolderPath = String.format("%s/%d", path, entity.getId());
+
+        try {
+
+            List<Integer> oldDocIds = entity.getDocuments() != null
+                    ? entity.getDocuments().stream()
+                    .filter(e -> !e.getDoc().getIsDeleted())
+                    .peek(doc -> doc.setPv(false))
+                    .map(doc -> doc.getDoc().getId())
+                    .collect(Collectors.toList())
+                    : new ArrayList<>();
+
+            deleteDocuments(oldDocIds);
+            // Map the MultipartFile to a Docs entity
+            Docs document = mapperDocument(file, entityTypeName, baseFolderPath);
+
+            // Save the Docs entity to generate a doc_id
+            Docs savedDocument = docsRepository.save(document);
+
+            // Create a ProcessVerbalReunionDoc to link ProcessVerbalReunion and Docs
+            ProcessVerbalReunionDoc pvDoc = new ProcessVerbalReunionDoc();
+            pvDoc.setPvId(entity.getId());
+            pvDoc.setDocId(savedDocument.getId());
+            pvDoc.setProcessVerbal(entity);
+            pvDoc.setDoc(savedDocument);
+            pvDoc.setPv(true);
+
+            // Initialize the documents list if null
+            if (entity.getDocuments() == null) {
+                entity.setDocuments(new ArrayList<>());
+            }
+
+            // Add the ProcessVerbalReunionDoc to the documents list
+            entity.getDocuments().add(pvDoc);
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+
+
+
+    public  Integer processAndSaveDocumentsForModelPpm(MultipartFile file, Integer ppmId,Integer ppmVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , ppmId,ppmVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+            try {
+                Docs document = mapperDocument(file,"Model_PPm",baseFolderPath);
+
+
+                docsRepository.save(document);
+
+                return document.getId();
+
+
+            } catch (Exception e) {
+                log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+                // Re-throw as IOException for upstream handling
+                throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+            }
+    }
+
+
+    public  Integer processAndSaveDocumentsForModelPaa(MultipartFile file, Integer paaId,Integer paaVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , paaId,paaVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Paa",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+    public  Integer processAndSaveDocumentsForModelAgpm(MultipartFile file, Integer agpmId,Integer agpmVer, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s",path  , agpmId,agpmVer,Constants.PATH_ENTREPOT_GED_MODEL);
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Model_Agpm",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
         }
     }
 }

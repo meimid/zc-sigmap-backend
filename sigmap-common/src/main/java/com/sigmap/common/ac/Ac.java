@@ -44,7 +44,7 @@ public class Ac extends BaseEntity {
   private boolean istTutel;
   @ManyToOne
   @JoinColumn(name = "com_id")
-  private Com com;
+  private Com com; //CPMP AC
   @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;

@@ -348,4 +348,16 @@ public class AcController {
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/acs_by_userId")
+
+    public ResponseEntity<List<AcWebsiteResponse>> findAllAcsByUserId(@RequestParam String userId) {
+        List<Ac> acList = acService.getAcsByUserId(userId);
+        List<AcWebsiteResponse> acs = acList.stream()
+                .map(ac -> {
+                    AcWebsiteResponse response = AcMapper.INSTANCE.mapToWebsiteResponse(ac);
+                    return response;
+                })
+                .toList();
+        return ResponseEntity.ok(acs);
+    }
 }

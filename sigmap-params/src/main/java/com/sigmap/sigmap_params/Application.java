@@ -16,6 +16,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.data.repository.query.SecurityEvaluationContextExtension;
 
 import javax.net.ssl.SSLContext;
@@ -28,6 +29,7 @@ import java.security.cert.X509Certificate;
 @EntityScan({"com.sigmap.common"})
 @SpringBootApplication
 @EnableJpaAuditing
+@EnableScheduling
 @SecurityScheme(
         name = "Keycloak",
         openIdConnectUrl = "${spring.security.oauth2.resourceserver.jwt.issuer-uri}/.well-known/openid-configuration",

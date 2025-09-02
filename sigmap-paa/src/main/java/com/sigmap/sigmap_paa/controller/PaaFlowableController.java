@@ -2,28 +2,43 @@ package com.sigmap.sigmap_paa.controller;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.model_paa.ModelPaaService;
+import com.sigmap.common.model_paa.exceptions.PaaModelShouldExiste;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.sigmap_paa.service.dto.request.ModelePaaRequest;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
+import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URL;
 import java.util.*;
 
 /**
@@ -35,10 +50,23 @@ public class PaaFlowableController {
     private final ObjectMapper objectMapper;
     @Autowired
     private PaaFlowableService paaFlowableService;
+    private final DocumentCommuneService documentCommuneService;
+    private final ModelPaaService modelPaaService;
+    private final TaskService taskService;
+    private final RuntimeService runtimeService;
 
-    public PaaFlowableController(ObjectMapper objectMapper, PaaFlowableService paaFlowableService) {
+    public PaaFlowableController(ObjectMapper objectMapper, PaaFlowableService paaFlowableService,
+                                 DocumentCommuneService documentCommuneService,
+                                 ModelPaaService modelPaaService,
+                                 TaskService taskService,
+                                 RuntimeService runtimeService) {
         this.objectMapper = objectMapper;
         this.paaFlowableService = paaFlowableService;
+        this.documentCommuneService = documentCommuneService;
+        this.modelPaaService = modelPaaService;
+        this.taskService = taskService;
+        this.runtimeService = runtimeService;
+
     }
 
     private final Logger log = LoggerFactory.getLogger(PaaFlowableController.class);
@@ -318,4 +346,79 @@ public class PaaFlowableController {
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return paaFlowableService.loadHistoricTasks(procInstId);
     }
+    @PostMapping("/modele-paa")
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModelePaaRequest modele )  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = paaFlowableService.generateModelePaa(modele.getPaaId(),modele.getPaaVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "Modele_PAA" + modele.getPaaId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+
+    @PreAuthorize("hasRole('VALIDATEUR_AC')")
+    @Transactional(rollbackFor = {
+            Exception.class
+    })
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate_with_model")
+    public ResponseEntity<TaskDTO> validateTaskWithModel(
+            @PathVariable String taskId,
+            @ModelAttribute("request") ValidationRequest request,
+            @RequestPart(value = "modelPaaFile", required = false) MultipartFile modelPaaFile,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+    ) throws IOException, PaaNotFound, AcNotFound, ComNotFound, DocNotFound, PpmNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
+
+        if (modelPaaFile == null || modelPaaFile.isEmpty()) {
+            throw new PaaModelShouldExiste("Le fichier Model PAA est requis.");
+        }
+
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        if (task == null) {
+            throw new IllegalArgumentException("Task not found: " + taskId);
+        }
+        Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+        Integer paaId = (Integer) vars.get("id");
+        Integer paaVer = (Integer) vars.get("version");
+        if (paaId == null || paaVer == null) {
+            throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
+        }
+
+        String rootPath = Constants.PATH_ENTREPOT_GED_PAA;
+        Integer docId = documentCommuneService.processAndSaveDocumentsForModelPaa(
+                modelPaaFile, paaId,paaVer, rootPath
+        );
+
+        modelPaaService.setModel(paaId, paaVer, docId);
+
+        if (realisationsLotsJson != null && !realisationsLotsJson.isBlank()) {
+            try {
+                processRealisationLotsFromJson(request.getPaa(), realisationsLotsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse lots JSON before validate: {}", e.getMessage());
+            }
+        }
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isBlank()) {
+            try {
+                processRealisationFinancementsFromJson(request.getPaa(), realisationsFinancementsJson);
+            } catch (Exception e) {
+                log.warn("Failed to parse financements JSON before validate: {}", e.getMessage());
+            }
+        }
+
+
+        TaskDTO response = paaFlowableService.validateTask(taskId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
 }

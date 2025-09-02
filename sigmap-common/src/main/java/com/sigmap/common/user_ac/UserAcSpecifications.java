@@ -33,4 +33,12 @@ public class UserAcSpecifications {
             return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
+    public static Specification<UserAc> activeAcsByUserId(String userId) {
+        return (root, query, cb) -> {
+            Join<UserAc, Ac> acJoin = root.join("ac");
+            Predicate userPredicate = cb.equal(root.get("userId"), userId);
+            Predicate acNotDeleted = cb.isFalse(acJoin.get("isDeleted"));
+            return cb.and(userPredicate, acNotDeleted);
+        };
+    }
 }
