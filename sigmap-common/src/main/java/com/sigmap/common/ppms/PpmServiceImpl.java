@@ -50,13 +50,11 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -317,9 +315,9 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public Page<Ppm> findAllForDac(Specification<Ppm> spec, Pageable pageable) {
-        log.info("Recherche de tous les PPMs avec spécification: {}", spec);
+        log.info("Recherche des PPMs publiés pour DAC avec spécification: {}", spec);
 
-        // Get user's AC IDs and COM IDs
+        // Fetch user access scopes
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         List<Integer> userComIds = currentUserService.getCurrentUserComIds();
 
@@ -328,19 +326,19 @@ public class PpmServiceImpl implements PpmService {
             return Page.empty(pageable);
         }
 
-        // Validate ACs
+        // Validate ACs (if any)
         if (userAcIds != null && !userAcIds.isEmpty()) {
             for (Integer acId : userAcIds) {
                 try {
                     acService.findById(acId);
                 } catch (Exception e) {
                     log.info("AC non trouvé avec ID: {}", acId);
-                    return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+                    return Page.empty(pageable);
                 }
             }
         }
 
-        // Base specification: non-deleted and latest version
+        // Base specification: non-deleted, latest version, status published
         Specification<Ppm> deletedSpec = (root, query, cb) -> cb.isFalse(root.get("isDeleted"));
         Specification<Ppm> latestVersionSpec = (root, query, cb) -> {
             Subquery<Integer> subquery = query.subquery(Integer.class);
@@ -351,76 +349,70 @@ public class PpmServiceImpl implements PpmService {
         };
         // Add status = PUBLIE filter
         Specification<Ppm> publishedSpec = (root, query, cb) -> cb.equal(root.get("status"), ProcessStatus.PUBLIE);
+
         Specification<Ppm> baseSpec = deletedSpec.and(latestVersionSpec).and(publishedSpec);
         if (spec != null) {
             baseSpec = baseSpec.and(spec);
         }
 
-        // Check if any non-deleted, published PPMs exist
-        Page<Ppm> allPpmsWithoutAcFilter = repository.findAll(baseSpec, pageable);
-        if (allPpmsWithoutAcFilter.isEmpty()) {
-            log.info("Aucun PPM non supprimé et publié trouvé dans la base de données");
-            return Page.empty(pageable); // Return empty page instead of throwing PpmNotFound
-        }
-
-        // AC filter (only if user has ACs)
+        // Access filters
         Specification<Ppm> acFilterSpec = null;
         if (userAcIds != null && !userAcIds.isEmpty()) {
             acFilterSpec = (root, query, cb) -> cb.in(root.get("ac").get("id")).value(userAcIds);
         }
 
-        // COM filter via association table (only if user has COMs)
         Specification<Ppm> comFilterSpec = null;
         if (userComIds != null && !userComIds.isEmpty()) {
             comFilterSpec = (root, query, cb) -> {
-                // Joining coms; distinct to avoid duplicates
                 query.distinct(true);
-                return root.join("coms", LEFT)
-                        .get("id").in(userComIds);
+                return root.join("coms", LEFT).get("id").in(userComIds);
             };
         }
 
-        // Combine access filters with OR (AC OR COM)
         Specification<Ppm> accessSpec;
         if (acFilterSpec != null && comFilterSpec != null) {
             accessSpec = acFilterSpec.or(comFilterSpec);
         } else if (acFilterSpec != null) {
             accessSpec = acFilterSpec;
         } else {
-            accessSpec = comFilterSpec; // user has only COMs
+            accessSpec = comFilterSpec;
         }
 
-        // Filter for PPMs with at least one Realisation not linked to a Dac
-        Specification<Ppm> realisationNotInDacSpec = (root, query, cb) -> {
-            query.distinct(true);
-            Join<Ppm, Realisation> realisationJoin = root.join("realisations", LEFT);
-            Subquery<Long> dacSubquery = query.subquery(Long.class);
-            Root<Dac> dacRoot = dacSubquery.from(Dac.class);
-            dacSubquery.select(cb.count(dacRoot))
-                    .where(
-                            cb.equal(dacRoot.get("ppm").get("id"), root.get("id")),
-                            cb.equal(dacRoot.get("ppm").get("version"), root.get("version")),
-                            cb.equal(dacRoot.get("realisation").get("id"), realisationJoin.get("id")),
-                            cb.equal(dacRoot.get("realisation").get("version"), realisationJoin.get("version"))
-                    );
-            return cb.equal(dacSubquery, 0);
-        };
+        Specification<Ppm> combinedSpec = baseSpec.and(accessSpec);
 
-        // Combine all specifications
-        Specification<Ppm> combinedSpec = baseSpec.and(accessSpec).and(realisationNotInDacSpec);
-        Page<Ppm> allPpms = repository.findAll(combinedSpec, pageable);
-
-        if (allPpms.isEmpty()) {
-            log.info("Aucun PPM publié associé aux ACs/COMs de l'utilisateur avec des réalisations non rattachées à un DAC. ACs: {}, COMs: {}", userAcIds, userComIds);
+        Page<Ppm> publishedPpms = repository.findAll(combinedSpec, pageable);
+        if (publishedPpms.isEmpty()) {
             return Page.empty(pageable);
         }
 
-        // Map the results to filter Docs
-        Page<Ppm> ppmResponse = allPpms.map(this::createFilteredResponsePpm);
-        log.info("Récupération de {} PPMs publiés pour l'utilisateur avec des réalisations non rattachées à un DAC. ACs: {}, COMs: {}",
-                ppmResponse.getContent().size(), userAcIds, userComIds);
+        // Build a set of realisation keys already attached to a DAC
+        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
+        Set<String> realisationsWithDac = realisationKeysWithDac.stream()
+                .map(o -> o[0] + ":" + o[1])
+                .collect(Collectors.toSet());
 
-        return ppmResponse;
+        // For each PPM, keep only unattached realisations; drop PPMs with none
+        List<Ppm> filteredPpms = publishedPpms.getContent().stream()
+                .map(ppm -> {
+                    Ppm copy = createFilteredResponsePpm(ppm);
+                    if (copy.getRealisations() != null) {
+                        List<Realisation> unattached = copy.getRealisations().stream()
+                                .filter(r -> r != null)
+                                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                                .filter(r -> !realisationsWithDac.contains(r.getId() + ":" + r.getVersion()))
+                                .collect(Collectors.toList());
+                        copy.setRealisations(unattached);
+                    }
+                    return copy;
+                })
+                .filter(ppm -> ppm.getRealisations() != null && !ppm.getRealisations().isEmpty())
+                .collect(Collectors.toList());
+
+        if (filteredPpms.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return new PageImpl<>(filteredPpms, pageable, filteredPpms.size());
     }
 
 
