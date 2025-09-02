@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_ppm.exeptions;
 
+import com.sigmap.common.ac.exception.AcNotAssociatedCom;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.MaxUploadSizeFile;
 import com.sigmap.common.globalExceptions.BadRequest;
@@ -7,16 +8,11 @@ import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
-import com.sigmap.common.paas.exceptions.AllAcsHavePaaException;
-import com.sigmap.common.paas.exceptions.PaaCreationLimitExceededException;
-import com.sigmap.common.paas.exceptions.PaaIdNotFound;
+import com.sigmap.common.model_ppm.exceptions.PpmModelShouldExiste;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.process_verbal.exception.ProcessVerbalNotFound;
-import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
-import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
-import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
-import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
+import com.sigmap.common.realisations.exceptions.*;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
@@ -60,6 +56,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePpmNotAssociatedWithUserAc(PpmNotAssociatedWithUserAcException ex) {
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RealisationBudgetBelowAcSeuilForPpmException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationBudgetBelowAcSeuilForPpmException(
+            RealisationBudgetBelowAcSeuilForPpmException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(PpmCreationLimitExceededException.class)
@@ -276,4 +280,23 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(AcNotAssociatedCom.class)
+    public ResponseEntity<ErrorResponse> handleAcNotAssociatedCom(AcNotAssociatedCom ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(PpmModelShouldExiste.class)
+    public ResponseEntity<ErrorResponse> handlePpmModelShouldExist(PpmModelShouldExiste ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+
+
 }

@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Getter
@@ -43,11 +44,15 @@ public class Ac extends BaseEntity {
   private boolean istTutel;
   @ManyToOne
   @JoinColumn(name = "com_id")
-  private Com com;
+  private Com com; //CPMP AC
   @OneToOne(cascade = CascadeType.ALL)
   @JoinColumn(name = "adresse_id")
   private Adresse adresse;
 
+  @Override
+  public int hashCode() {
+    return Objects.hash(id); // Only use simple fields, not related entities
+  }
   @Enumerated(EnumType.STRING)
   @Column(name = "type_com")
   private TypeAffCommission typeAffCommission;

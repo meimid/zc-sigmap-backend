@@ -34,10 +34,9 @@ import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Controller to manage ac.
@@ -167,6 +166,62 @@ public class AcController {
 
         return ResponseEntity.ok(response);
     }
+
+
+
+    @GetMapping("/batch/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    public ResponseEntity<AcResponse> findByIdForBatch(@PathVariable Integer id) throws AcNotFound {
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            List<Integer> allowedAcIds = currentUserService.getCurrentUserAcIds();
+            if (!allowedAcIds.contains(id)) {
+                throw new AcAccessDeniedException("Accès refusé à cette autorité contractante.", id);
+            }
+        }
+
+        Ac param = acService.findById(id);
+        AcResponse response = AcMapper.INSTANCE.map(param);
+
+        // Fetch all UserAc non-deleted entries
+        List<UserAc> userAcs = userAcRepository.findAllByAcIdAndIsDeletedFalse(id);
+
+        // Collect unique user IDs (userId and createdBy)
+        Set<String> userIds = userAcs.stream()
+                .flatMap(userAc -> Stream.of(userAc.getUserId(), userAc.getCreatedBy()))
+                .collect(Collectors.toSet());
+
+        // Batch fetch users from Keycloak
+        Map<String, UserDTO> keycloakUsers = keycloakAdminService.fetchUsersInBatch(userIds);
+
+        // Map UserAc to AcMemberDTO
+        List<AcMemberDTO> users = userAcs.stream().map(userAc -> {
+            UserDTO keycloakUser = keycloakUsers.get(userAc.getUserId());
+            if (keycloakUser == null) {
+                logger.warn("Utilisateur {} introuvable dans Keycloak", userAc.getUserId());
+                return null;
+            }
+            AcMemberDTO dto = new AcMemberDTO();
+            dto.setId(keycloakUser.getId());
+            dto.setFirstName(keycloakUser.getFirstName());
+            dto.setLastName(keycloakUser.getLastName());
+            dto.setEmail(keycloakUser.getEmail());
+            dto.setMobile(keycloakUser.getMobile());
+            dto.setAcPilote(userAc.getAcPilote());
+            dto.setCreatedAt(userAc.getCreatedAt());
+            UserDTO createdByUser = keycloakUsers.get(userAc.getCreatedBy());
+            dto.setCreatedBy(createdByUser != null ? createdByUser.getUsername() : "system");
+            return dto;
+        }).filter(Objects::nonNull).toList();
+
+        response.setUsers(users);
+        return ResponseEntity.ok(response);
+    }
+
+
     @GetMapping("/user/{userId}/acs")
     public ResponseEntity<List<AcResponse>> getAcsByUserId(@PathVariable String userId) {
         List<UserAc> userAcs = userAcRepository.findByUserIdAndIsDeletedFalse(userId);
@@ -292,5 +347,17 @@ public class AcController {
     public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/acs_by_userId")
+
+    public ResponseEntity<List<AcWebsiteResponse>> findAllAcsByUserId(@RequestParam String userId) {
+        List<Ac> acList = acService.getAcsByUserId(userId);
+        List<AcWebsiteResponse> acs = acList.stream()
+                .map(ac -> {
+                    AcWebsiteResponse response = AcMapper.INSTANCE.mapToWebsiteResponse(ac);
+                    return response;
+                })
+                .toList();
+        return ResponseEntity.ok(acs);
     }
 }

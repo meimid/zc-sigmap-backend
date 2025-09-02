@@ -125,5 +125,10 @@ public class ComSpecifications {
       return criteriaBuilder.and(comNotDeleted, tutelNotDeleted, isTutelAuthority);
     };
   }
+/*special*/
+  public static Specification<Com> special() {
+    return (root, query, criteriaBuilder) ->
+      criteriaBuilder.equal(root.get("comType").get("code"), "CNCMP-S");
+  }
 
 }

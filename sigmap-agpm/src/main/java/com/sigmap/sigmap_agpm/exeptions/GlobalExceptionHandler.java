@@ -6,6 +6,8 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
+import com.sigmap.common.model_agpm.exceptions.AgpmModelShouldExiste;
+import com.sigmap.common.model_paa.exceptions.PaaModelShouldExiste;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -175,6 +177,13 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("security.unauthorized", new Object[] { ex.getMessage() }, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AgpmModelShouldExiste.class)
+    public ResponseEntity<ErrorResponse> handleAgpmModelShouldExist(AgpmModelShouldExiste ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 

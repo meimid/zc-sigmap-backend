@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.repository.SoftDeleteRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Calendar;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -24,9 +27,21 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithRelations(@Param("id") Integer id);
     @Query("SELECT DISTINCT r FROM Reunion r " +
-            "LEFT JOIN FETCH r.participants p " +
+            "LEFT JOIN FETCH r.participants " +
             "WHERE r.id = :id AND r.isDeleted = false")
     Optional<Reunion> findByIdWithParticipantsFetched(@Param("id") Integer id);
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.participants WHERE r.id = :id and r.isDeleted = false ")
+    Optional<Reunion> findByIdWithParticipants(@Param("id") Integer id);
+
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.reunionPpms WHERE r.id = :id and r.isDeleted = false")
+    Optional<Reunion> findByIdWithPpms(@Param("id") Integer id);
+
+    @Query("SELECT r FROM Reunion r LEFT JOIN FETCH r.reunionDacs WHERE r.id = :id and r.isDeleted = false")
+    Optional<Reunion> findByIdWithDacs(@Param("id") Integer id);
+
+    List<Reunion> findAllByReunionDateBeforeAndStatus(Calendar date, ReunionStatus status);
 }
 
 

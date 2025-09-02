@@ -5,20 +5,36 @@
  */
 package com.sigmap.sigmap_agpm.controller;
 
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.model_agpm.exceptions.AgpmModelShouldExiste;
+import com.sigmap.common.model_paa.ModelPaaService;
+import com.sigmap.sigmap_agpm.service.dto.request.ModeleAgpmRequest;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.service.dto.response.*;
 import com.sigmap.sigmap_agpm.service.AgpmFlowableService;
+import org.springframework.transaction.annotation.Transactional;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
+import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to Agpm entities.
@@ -29,8 +45,19 @@ public class AgpmFlowableController {
 
     @Autowired
     private AgpmFlowableService agpmFlowableService;
+    private final DocumentCommuneService documentCommuneService;
+    private final ModelAgpmService modelAgpmService;
+    private final TaskService taskService;
+    private final RuntimeService runtimeService;
 
     private final Logger log = LoggerFactory.getLogger(AgpmFlowableController.class);
+
+    public AgpmFlowableController(DocumentCommuneService documentCommuneService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, TaskService taskService, RuntimeService runtimeService) {
+        this.documentCommuneService = documentCommuneService;
+        this.modelAgpmService = modelAgpmService;
+        this.taskService = taskService;
+        this.runtimeService = runtimeService;
+    }
 
     /**
      * Starts a Flowable process instance for an Agpm entity using its ID.
@@ -107,5 +134,63 @@ public class AgpmFlowableController {
     @GetMapping("/task-history/{procInstId}")
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return agpmFlowableService.loadHistoricTasks(procInstId);
+    }
+
+
+    @PreAuthorize("hasRole('VALIDATEUR_AC')")
+    @Transactional(rollbackFor = {
+            Exception.class
+    })
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate_with_model")
+    public ResponseEntity<TaskDTO> validateTaskWithModel(
+            @PathVariable String taskId,
+            @ModelAttribute("request") ValidationRequest request,
+            @RequestPart(value = "modelAgpmFile", required = false) MultipartFile modelAgpmFile
+    ) throws IOException, AcNotFound, DocNotFound, AgpmNotFound {
+
+        if (modelAgpmFile == null || modelAgpmFile.isEmpty()) {
+            throw new AgpmModelShouldExiste("Le fichier Model AGPM est requis.");
+        }
+
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        if (task == null) {
+            throw new IllegalArgumentException("Task not found: " + taskId);
+        }
+        Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+        Integer agpmId = (Integer) vars.get("id");
+        Integer agpmVer = (Integer) vars.get("version");
+        if (agpmId == null || agpmVer == null) {
+            throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
+        }
+
+        String rootPath = Constants.PATH_ENTREPOT_GED_AGPM;
+        Integer docId = documentCommuneService.processAndSaveDocumentsForModelAgpm(
+                modelAgpmFile, agpmId,agpmVer, rootPath
+        );
+
+        modelAgpmService.setModel(agpmId, agpmVer, docId);
+
+
+        TaskDTO response = agpmFlowableService.validateTask(taskId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/modele-agpm")
+    public ResponseEntity<byte[]> generateReportPv(@RequestBody ModeleAgpmRequest  modele)  throws Exception {
+        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
+        String reportsPath = pvFolderUrl.getPath();
+
+        log.info("reportsPath {} ", reportsPath);
+
+        byte[] pdfBytes = agpmFlowableService.generateModeleAgpm(modele.getAgpmId(),modele.getAgpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("filename", "modele_agpm_" + modele.getAgpmId() + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }

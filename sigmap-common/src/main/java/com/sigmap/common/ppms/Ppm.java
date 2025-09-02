@@ -51,12 +51,12 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "ac_id")
     private Ac ac;
 
-    @Column(name = "budget_estime", precision = 10, scale = 2)
+    @Column(name = "budget_estime", precision = 20, scale = 3)
     private BigDecimal budgetEstime;
 
     @Enumerated(EnumType.STRING)
     private ProcessStatus status;
-
+//to be delete
     @ManyToOne
     @JoinColumn(name = "mode_passation_id")
     private RefParam modePassation;

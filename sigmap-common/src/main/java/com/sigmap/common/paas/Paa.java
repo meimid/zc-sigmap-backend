@@ -13,6 +13,7 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = true)
 @IdClass(CompositeId.class)
 @EntityListeners(AuditingEntityListener.class)
+@ToString(exclude = {"realisations"})
 public class Paa extends BaseEntity implements DocumentHolder {
     @Id
     @Column(name = "paa_id")
@@ -48,7 +50,7 @@ public class Paa extends BaseEntity implements DocumentHolder {
     @JoinColumn(name = "ac_id")
     private Ac ac;
 
-    @Column(name = "budget_estime", precision = 10, scale = 2)
+    @Column(name = "budget_estime", precision = 20, scale = 3)
     private BigDecimal budgetEstime;
 
     @Enumerated(EnumType.STRING)

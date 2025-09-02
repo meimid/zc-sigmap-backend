@@ -1,6 +1,7 @@
 package com.sigmap.common.com;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
+import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
@@ -107,4 +108,8 @@ public interface ComService {
 
     Com getCommissionPrivee(Integer acId) throws ComNotFound,AcNotFound;
     List<Com>getAllCommissionsDeTutelles(Integer acId);
+    List<Com> getAllSpecialCommissions();
+    Com findCNCMPP() throws CNCMPPNotFound;
+
+
 }

@@ -5,6 +5,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcResponseDto;
 
+import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.paas.Paa;
@@ -28,9 +29,12 @@ import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.ppms.response.*;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
+import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
 import lombok.extern.slf4j.Slf4j;
@@ -491,7 +495,9 @@ public class PpmController {
     public ResponseEntity<PpmResponseDto> updateWithVersioningMultipart(
             @PathVariable Integer ppmId,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+            ) {
         logger.info("Updating PPM ID: {} with versioning (multipart)", ppmId);
 
         // Process lots from JSON string if provided
@@ -501,6 +507,15 @@ public class PpmController {
                 logger.info("Successfully processed lots from JSON string");
             } catch (Exception e) {
                 logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
             }
         }
 
@@ -574,11 +589,12 @@ public class PpmController {
                 copiedRealisation.setId(originalRealisation.getId());
                 copiedRealisation.setVersion(originalRealisation.getVersion());
                 copiedRealisation.setRealisationEnvisagees(originalRealisation.getRealisationEnvisagees());
-                copiedRealisation.setService(originalRealisation.getService());
-                copiedRealisation.setDirection(originalRealisation.getDirection());
-                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
+                copiedRealisation.setBeneficiaire(originalRealisation.getBeneficiaire());
+//                copiedRealisation.setService(originalRealisation.getService());
+//                copiedRealisation.setDirection(originalRealisation.getDirection());
+//                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
 //                copiedRealisation.setMonais(originalRealisation.getMonais());
-                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
+//                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
                 copiedRealisation.setTypeMarcher(originalRealisation.getTypeMarcher());
 //                copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
                 copiedRealisation.setModePassation(originalRealisation.getModePassation());
@@ -1056,7 +1072,8 @@ public class PpmController {
             @PathVariable Integer ppmId,
             @PathVariable Integer ppmVer,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
     ) {
         logger.info("Updating PPM ID: {}, Version: {} with relationships (documents, realisations, and lots)", ppmId, ppmVer);
 
@@ -1137,6 +1154,17 @@ public class PpmController {
             }
         }
 
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+//            log.info(realisationsFinancementsJson);
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
+            }
+        }
+
+
         Ppm updatedPpm = ppmService.updateWithRelationships(ppmId, ppmVer, request);
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
@@ -1146,7 +1174,9 @@ public class PpmController {
     @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
     public ResponseEntity<PpmResponseDto> createPpmPerAc(
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
+            )
             throws AcNotFound, IOException {
         logger.info("Creating PPM per AC with relationships using PpmWithLotsRequestDto");
 
@@ -1157,6 +1187,16 @@ public class PpmController {
                 logger.info("Successfully processed lots from JSON string");
             } catch (Exception e) {
                 logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
+        }
+
+        // ADDED THIS: Process financements from JSON string if provided
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
             }
         }
 
@@ -1247,6 +1287,112 @@ public class PpmController {
             TaskDetailsDTO errorResponse = new TaskDetailsDTO();
             errorResponse.setStatus(e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+    }
+
+
+    private void processRealisationFinancementsFromJson(PpmWithLotsRequestDto request, String financementsJson) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            logger.info("Processing financements JSON: {}", financementsJson);
+
+            // Validate input
+            if (financementsJson == null || financementsJson.trim().isEmpty()) {
+                logger.warn("Financements JSON is empty or null, skipping processing");
+                return;
+            }
+
+            // Parse JSON into a map of realisation indices to lists of financement data
+            Map<String, List<Map<String, Object>>> financementsMap = objectMapper.readValue(financementsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+            logger.info("Parsed {} realisation indices from financements JSON", financementsMap.size());
+
+            // Ensure realisations list exists
+            if (request.getRealisations() == null) {
+                request.setRealisations(new ArrayList<>());
+                logger.warn("Realisations list was null, initialized as empty");
+            }
+
+            // Process each realisation's financements
+            for (Map.Entry<String, List<Map<String, Object>>> entry : financementsMap.entrySet()) {
+                int realisationIndex = Integer.parseInt(entry.getKey());
+
+                // Skip if index is out of bounds
+                if (realisationIndex >= request.getRealisations().size()) {
+                    logger.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})",
+                            realisationIndex, request.getRealisations().size());
+                    continue;
+                }
+
+                // Get the target realisation
+                RealisationBaseRequestDto realisation = request.getRealisations().get(realisationIndex);
+                if (realisation == null) {
+                    logger.warn("Realisation at index {} is null, skipping", realisationIndex);
+                    continue;
+                }
+
+                // CORRECTED: Use FinancementBaseRequestDto for input processing
+                List<FinancementRequest> financements = new ArrayList<>();
+
+                // Process financements for this realisation
+                for (Map<String, Object> financementData : entry.getValue()) {
+                    FinancementRequest financement = new FinancementRequest();
+
+                    // ADD THE MISSING MAPPING CODE HERE ↓
+                    if (financementData.containsKey("id")) {
+                        Object idVal = financementData.get("id");
+                        if (idVal instanceof Number) {
+                            financement.setFinancementId(((Number) idVal).intValue());
+                            logger.debug("Set financementId to {} for financement", financement.getFinancementId());
+                        }
+                    }
+                    if (financementData.containsKey("monnaieId")) {
+                        financement.setMonnaieId(((Number) financementData.get("monnaieId")).intValue());
+                        logger.debug("Set monnaieId to {} for financement", financement.getMonnaieId());
+                    } else {
+                        logger.warn("Financement data missing monnaieId, skipping financement");
+                        continue;
+                    }
+
+                    if (financementData.containsKey("sourceFinancement")) {
+                        Map<String, Object> sourceFinancementObj = (Map<String, Object>) financementData.get("sourceFinancement");
+                        Integer sourceId = ((Number) sourceFinancementObj.get("id")).intValue(); // Use .get("id")
+
+                        // Create RefParam object from ID
+                        RefParam sourceFinancement = new RefParam();
+                        sourceFinancement.setId(sourceId);
+
+                        financement.setSourceFinancement(sourceFinancement);
+                        logger.debug("Set sourceFinancement ID to {} for financement", sourceId);
+                    } else {
+                        logger.debug("Financement data missing sourceFinancement, setting to null");
+                    }
+
+                    if (financementData.containsKey("budgetEstimer")) {
+                        Object budgetObj = financementData.get("budgetEstimer");
+                        if (budgetObj instanceof Number) {
+                            financement.setBudgetEstimer(new BigDecimal(budgetObj.toString()));
+                            logger.debug("Set budgetEstimer to {} for financement with monnaieId: {}",
+                                    financement.getBudgetEstimer(), financement.getMonnaieId());
+                        } else {
+                            logger.warn("Invalid budgetEstimer format for financement with monnaieId: {}, setting to null",
+                                    financement.getMonnaieId());
+                        }
+                    } else {
+                        logger.debug("Financement data missing budgetEstimer, setting to null");
+                    }
+
+                    financements.add(financement);
+                }
+
+                // Set the processed financements on the realisation
+                realisation.setFinancements(financements); // Changed method name
+                logger.info("Added {} financements to realisation at index {}", financements.size(), realisationIndex);
+                logger.info(financements.toString());
+            }
+        } catch (Exception e) {
+            logger.error("Failed to parse financements JSON: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to parse financements JSON: " + e.getMessage(), e);
         }
     }
 
