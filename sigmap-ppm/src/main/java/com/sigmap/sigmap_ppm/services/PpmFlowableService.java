@@ -375,6 +375,7 @@ public class PpmFlowableService {
                     taskInfo.setVersion(version);
                     taskInfo.setNom(ppm.getNom());
                     taskInfo.setRef(ppm.getRef());
+                    taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                 });
             }
             Map<String, Object> variables = new HashMap<>();
