@@ -87,4 +87,7 @@ public class Agpm extends BaseEntity implements DocumentHolder {
         }
         return this.docs;
     }
+
+    @Transient
+    private String modelAlfrescoId;
 }

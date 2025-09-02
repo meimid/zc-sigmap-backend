@@ -26,6 +26,7 @@ public interface PaaDetailedMapper {
     /**
      * Maps a Paa entity to a PaaResponseWithRealisations DTO
      */
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

@@ -1412,6 +1412,7 @@ public class PpmFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(ppm.getNom());
                         taskInfo.setRef(ppm.getRef());
+                        taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                     });
                 } catch (AcNotFound | PpmNotFound e) {
                     log.warn("PPM not found for id: {}, version: {} in task: {}, error: {}", id, version, task.getId(), e.getMessage());
@@ -1719,6 +1720,7 @@ public class PpmFlowableService {
                             taskInfo.setVersion(version);
                             taskInfo.setNom(ppm.getNom());
                             taskInfo.setRef(ppm.getRef());
+                            taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                         });
                     } catch (Exception e) {
                         log.warn("Failed loading PPM for id {}, version {} in task {}: {}",

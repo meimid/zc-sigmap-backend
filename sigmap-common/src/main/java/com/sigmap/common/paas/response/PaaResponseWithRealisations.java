@@ -29,6 +29,7 @@ public class PaaResponseWithRealisations {
     private RefParam modePassation;
     private String remarque;
     private List<DocsResponseDTO> docs;
+    private String modelAlfrescoId;
     // Using the specialized Realisation DTO to avoid circular references
     private List<RealisationResponseDtoForPaa> realisations;
     private String processInstanceId;
