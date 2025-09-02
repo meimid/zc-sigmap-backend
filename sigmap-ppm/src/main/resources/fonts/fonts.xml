@@ -1,0 +1,16 @@
+<fontFamilies>
+    <fontFamily name="Arial">
+        <normal><![CDATA[fonts/arial.ttf]]></normal>
+        <bold><![CDATA[fonts/arialbd.ttf]]></bold>
+        <italic><![CDATA[fonts/ariali.ttf]]></italic>
+        <boldItalic><![CDATA[fonts/arialbi.ttf]]></boldItalic>
+        <pdfEncoding>Identity-H</pdfEncoding>
+        <pdfEmbedded>true</pdfEmbedded>
+    </fontFamily>
+    <fontFamily name="Tahoma">
+        <normal><![CDATA[fonts/tahoma.ttf]]></normal>
+        <bold><![CDATA[fonts/tahomabd.ttf]]></bold>
+        <pdfEncoding>Identity-H</pdfEncoding>
+        <pdfEmbedded>true</pdfEmbedded>
+    </fontFamily>
+</fontFamilies>

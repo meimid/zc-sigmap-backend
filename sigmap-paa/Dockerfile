@@ -22,6 +22,17 @@ FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y \
+    fontconfig \
+    ttf-mscorefonts-installer \
+    fonts-dejavu \
+ && rm -rf /var/lib/apt/lists/*
+
+COPY sigmap-paa/src/main/resources/fonts/tahoma.ttf /usr/share/fonts/truetype/tahoma.ttf
+COPY sigmap-paa/src/main/resources/fonts/tahomabd.ttf /usr/share/fonts/truetype/tahomabd.ttf
+
+RUN fc-cache -f -v
+
 COPY --from=builder /app/sigmap-paa/target/sigmap-paa*.jar /app.jar
 
 ENTRYPOINT ["java","-jar","/app.jar"]
