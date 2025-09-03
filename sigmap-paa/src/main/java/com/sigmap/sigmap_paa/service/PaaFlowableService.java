@@ -448,6 +448,7 @@ public class PaaFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(paa.getNom());
                         taskInfo.setRef(paa.getRef());
+                        taskInfo.setModelAlfrescoId(paa.getModelAlfrescoId());
                     });
                 } catch (PaaNotFound | AcNotFound e) {
                     log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
@@ -898,6 +899,7 @@ public class PaaFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(paa.getNom());
                         taskInfo.setRef(paa.getRef());
+                        taskInfo.setModelAlfrescoId(paa.getModelAlfrescoId());
                     });
                 } catch (AcNotFound | PaaNotFound e) {
                     log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);

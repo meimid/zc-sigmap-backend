@@ -57,6 +57,7 @@ public interface PpmMapper {
     @Mapping(target = "budgetEstime", source = "budgetEstime")
     @Mapping(target = "status", source = "status")
     @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     @Mapping(target = "remarque", source = "remarque")
     @Mapping(target = "realisations", expression = "java(mapRealisations(source.getRealisations()))")
     @Mapping(target = "processInstanceId", source = "processInstanceId")

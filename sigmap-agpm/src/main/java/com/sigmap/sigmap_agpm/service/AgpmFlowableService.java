@@ -867,6 +867,7 @@ public class AgpmFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(agpm.getNom());
                         taskInfo.setRef(agpm.getRef());
+                        taskInfo.setModelAlfrescoId(agpm.getModelAlfrescoId());
                     });
                 } catch (AgpmNotFound | AcNotFound e) {
                     log.warn("Agpm not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);

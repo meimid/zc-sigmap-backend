@@ -33,6 +33,7 @@ public interface AgpmMapper {
     @Mapping(source = "status", target = "status")
     @Mapping(target = "ac", source = "ac")
     @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -64,6 +65,7 @@ public interface AgpmMapper {
     @Mapping(target = "processInstanceId",source = "processInstanceId")
     @Mapping(target = "ac", source = "ac")
     @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     AgpmResponseDto mapToDto(Agpm source);
 
     @Mapping(target = "id", ignore = true)
@@ -83,6 +85,7 @@ public interface AgpmMapper {
     @Mapping(target = "version", source = "version")
     @Mapping(target = "ref", source = "ref")
     @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     @Mapping(source = "status", target = "status")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
