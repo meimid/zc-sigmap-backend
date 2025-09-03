@@ -1,6 +1,7 @@
 package com.sigmap.common.Participant.mapper;
 
 import com.sigmap.common.Participant.Participant;
+import com.sigmap.common.Participant.request.ParticipantInvitedRequest;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.Participant.response.ParticipantResponse;
 import com.sigmap.common.Participant.response.ParticipantResponseDto;
@@ -40,4 +41,5 @@ public interface ParticipantMapper {
      */
     void updateFromRequest(ParticipantRequest request, @MappingTarget Participant participant);
     List<ParticipantResponseDto> toDtos(List<Participant> participants);
+    Participant mapFromInvitedRequest(ParticipantInvitedRequest request);
 }

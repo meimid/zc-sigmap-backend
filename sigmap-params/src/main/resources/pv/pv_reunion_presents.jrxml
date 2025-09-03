@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="pv_reunion_presents" pageWidth="595" pageHeight="842" whenNoDataType="NoPages" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="663d28e4-64d3-4978-acb0-f0f5b26871b5">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+	<parameter name="reunion" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT reunion_id,
+	participant_id,
+	type,
+	nom,
+	prenom,
+	organisme,
+	fonction,
+	present
+FROM  participant
+where present=1
+and reunion_id=  $P{reunion}  
+and type <> 'RESPONSABLE']]>
+	</queryString>
+	<field name="reunion_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="participant_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="participant_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="participant_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="type" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="type"/>
+		<property name="com.jaspersoft.studio.field.label" value="type"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="nom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="prenom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="prenom"/>
+		<property name="com.jaspersoft.studio.field.label" value="prenom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="organisme" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="organisme"/>
+		<property name="com.jaspersoft.studio.field.label" value="organisme"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="fonction" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="fonction"/>
+		<property name="com.jaspersoft.studio.field.label" value="fonction"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<field name="present" class="java.lang.Boolean">
+		<property name="com.jaspersoft.studio.field.name" value="present"/>
+		<property name="com.jaspersoft.studio.field.label" value="present"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+	</field>
+	<columnHeader>
+		<band height="24" splitType="Stretch">
+			<staticText>
+				<reportElement style="ArialBold" x="3" y="1" width="176" height="23" uuid="93ae9e4a-5ab0-452e-9d67-152692178a0f"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="10" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Etaient présents:]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="20" splitType="Stretch">
+			<textField>
+				<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="3" y="0" width="547" height="20" isRemoveLineWhenBlank="true" uuid="068746a1-7260-48fc-bb8e-0ce7ad9de5cc"/>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["- "+$F{prenom}+" "+$F{nom}+", "+$F{fonction}+" du "+$F{organisme}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

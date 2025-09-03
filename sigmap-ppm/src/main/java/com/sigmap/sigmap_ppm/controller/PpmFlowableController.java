@@ -473,12 +473,8 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
 
     @PostMapping("/modele-ppm")
     public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele )  throws Exception {
-        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
-        String reportsPath = pvFolderUrl.getPath();
 
-        log.info("reportsPath {} ", reportsPath);
-
-        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
