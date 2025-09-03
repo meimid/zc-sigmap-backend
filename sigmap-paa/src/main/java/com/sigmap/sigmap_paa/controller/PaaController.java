@@ -161,7 +161,7 @@ public class PaaController {
 
 
     @GetMapping("/{paaId}")
-    public ResponseEntity<PaaResponseWithRealisations> getPaaById(@PathVariable Integer paaId) throws  PaaNotFound {
+    public ResponseEntity<PaaResponseWithRealisations> getPaaById(@PathVariable Integer paaId) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findByIdPaa(paaId, null);
         PaaResponseWithRealisations paaResponse = PaaDetailedMapper.INSTANCE.mapDetailed(paa);
         return ResponseEntity.ok(paaResponse);

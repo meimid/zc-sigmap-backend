@@ -178,12 +178,9 @@ public class AgpmFlowableController {
 
     @PostMapping("/modele-agpm")
     public ResponseEntity<byte[]> generateReportPv(@RequestBody ModeleAgpmRequest  modele)  throws Exception {
-        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
-        String reportsPath = pvFolderUrl.getPath();
 
-        log.info("reportsPath {} ", reportsPath);
 
-        byte[] pdfBytes = agpmFlowableService.generateModeleAgpm(modele.getAgpmId(),modele.getAgpmVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+        byte[] pdfBytes = agpmFlowableService.generateModeleAgpm(modele.getAgpmId(),modele.getAgpmVer(),modele.getFonction()+" - "+ modele.getSignataire());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

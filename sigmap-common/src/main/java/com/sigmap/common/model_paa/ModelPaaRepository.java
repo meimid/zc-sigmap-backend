@@ -3,6 +3,7 @@ package com.sigmap.common.model_paa;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -16,5 +17,9 @@ public interface ModelPaaRepository extends JpaRepository<ModelPaa, ModelPaaId> 
     void deleteByPaaIdAndPaaVer(Integer paaId, Integer paaVer);
 
     boolean existsByPaaIdAndPaaVer(Integer paaId, Integer paaVer);
+
+    @Query("select d.alfresco_id from ModelPaa mp join mp.doc d where mp.paaId = :paaId and mp.paaVer = :paaVer and (d.isDeleted = false)")
+    Optional<String> findModelAlfrescoId(@Param("paaId") Integer paaId,
+                                         @Param("paaVer") Integer paaVer);
 }
 

@@ -100,4 +100,7 @@ public class Paa extends BaseEntity implements DocumentHolder {
         }
         return this.docs;
     }
+
+    @Transient
+    private String modelAlfrescoId;
 }

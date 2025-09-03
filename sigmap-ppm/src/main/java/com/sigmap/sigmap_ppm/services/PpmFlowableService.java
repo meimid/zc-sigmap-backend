@@ -25,6 +25,7 @@ import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
@@ -51,6 +52,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -375,6 +377,7 @@ public class PpmFlowableService {
                     taskInfo.setVersion(version);
                     taskInfo.setNom(ppm.getNom());
                     taskInfo.setRef(ppm.getRef());
+                    taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                 });
             }
             Map<String, Object> variables = new HashMap<>();
@@ -1411,6 +1414,7 @@ public class PpmFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(ppm.getNom());
                         taskInfo.setRef(ppm.getRef());
+                        taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                     });
                 } catch (AcNotFound | PpmNotFound e) {
                     log.warn("PPM not found for id: {}, version: {} in task: {}, error: {}", id, version, task.getId(), e.getMessage());
@@ -1718,6 +1722,7 @@ public class PpmFlowableService {
                             taskInfo.setVersion(version);
                             taskInfo.setNom(ppm.getNom());
                             taskInfo.setRef(ppm.getRef());
+                            taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
                         });
                     } catch (Exception e) {
                         log.warn("Failed loading PPM for id {}, version {} in task {}: {}",
@@ -1751,10 +1756,10 @@ public class PpmFlowableService {
     }
 
 
-    public byte[] generateModelePpm(Integer ppmId,Integer ppmVers, String signataire,  String reportsPath) throws Exception {
+    public byte[] generateModelePpm(Integer ppmId,Integer ppmVers, String signataire) throws Exception {
         try (InputStream mainReportStream = getClass()
                 .getClassLoader()
-                .getResourceAsStream("modele/ppm.jasper")) {
+                .getResourceAsStream("modele/ppm.jasper"); Connection conn = dataSource.getConnection()) {
 
             if (mainReportStream == null) {
                 throw new FileNotFoundException("Fichier ppm.jasper introuvable !");
@@ -1764,11 +1769,16 @@ public class PpmFlowableService {
             parametres.put("ppm_id", ppmId);
             parametres.put("ppm_ver", ppmVers);
             parametres.put("nom", signataire);
+            parametres.put("REPORT_CONNECTION", conn);
             JasperPrint jasperPrint = JasperFillManager.fillReport(
-                    mainReportStream, parametres, dataSource.getConnection());
+                    mainReportStream, parametres, conn);
 
             // Export PDF
             return JasperExportManager.exportReportToPdf(jasperPrint);
+        }catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper : " + e.getMessage(), e);
+        }catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du modèle ppm : " + e.getMessage(), e);
         }
     }
 
