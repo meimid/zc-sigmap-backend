@@ -2978,9 +2978,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     private final Object folderCreationLock = new Object();
 
 
-    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound {
+    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound {
         Integer latestVersion = findLatestVersionById(paaId).orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of(paaVer)));
-        Paa paa = repository.findById(new CompositeId(paaId, latestVersion)).orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
+        Paa paa = findById(paaId, latestVersion).orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
 
 
         return paa;

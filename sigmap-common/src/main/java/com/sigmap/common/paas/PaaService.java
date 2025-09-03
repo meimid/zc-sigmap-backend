@@ -168,7 +168,7 @@ public interface PaaService {
 
     Paa updateStatus(Integer paaId, Integer paaVer, ProcessStatus status) throws PaaNotFound;
 
-    Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound;
+    Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound;
 
     void deleteTest(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete;
 
