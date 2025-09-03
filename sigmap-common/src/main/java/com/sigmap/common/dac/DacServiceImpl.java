@@ -5,7 +5,12 @@ import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.DacDocsSpecifications;
+import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
@@ -13,16 +18,9 @@ import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
-import java.io.*;
-
-import java.time.Year;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
-
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
+import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
-import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
@@ -37,6 +35,7 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
@@ -44,15 +43,20 @@ import org.apache.poi.xwpf.usermodel.*;
 
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
-import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import java.io.*;
 
-import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Year;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -71,7 +75,6 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsMapper dynaDocsMapper;
     private final DynaFieldsMapper dynaFieldsMapper;
     private final DacDocsMapper dacDocsMapper;
-
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -578,6 +581,7 @@ public class DacServiceImpl implements DacService {
 
 
     @Override
+    @Transactional
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
         Optional<Dac> dacOpt = dacRepository.findById(new DacId(dacId, dacVer));
         if (dacOpt.isEmpty()) {
@@ -600,6 +604,13 @@ public class DacServiceImpl implements DacService {
                             .map(field -> {
                                 DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
                                 fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
+
+                                if (field.getType() == DynaFieldType.SYSTEM) {
+                                    // Resolve and upsert into dac_docs.field_value for this field
+                                    String resolved = resolveSystemFieldValue(field, dac);
+                                    upsertSystemFieldValue(dac, dynaDocs, field, resolved);
+                                }
+
                                 return fieldDTO;
                             })
                             .collect(Collectors.toList());
@@ -612,5 +623,90 @@ public class DacServiceImpl implements DacService {
         return dacResponse;
     }
 
+    //Update if exists or insert a system field if it doesnt exist
+    private void upsertSystemFieldValue(Dac dac, DynaDocs dynaDocs, DynaFields field, String value) {
+        DacDocsId id = new DacDocsId();
+        id.setDacId(dac.getDacId());
+        id.setDacVer(dac.getDacVer());
+        id.setDynaDocsId(dynaDocs.getId());
+        id.setDynaDocsVer(dynaDocs.getVersion());
+        id.setDynaFieldsId(field.getDynaFieldsId());
+
+        // Prefer updating any existing row for this dac + field id, regardless of dynaDoc version
+        List<DacDocs> byField = dacDocsRepository.findByDacAndField(id.getDacId(), id.getDacVer(), id.getDynaFieldsId());
+        if (!byField.isEmpty()) {
+            DacDocs doc = byField.get(0);
+            doc.setFieldValue(value);
+            if (doc.getSourceId() == null) doc.setSourceId("");
+            dacDocsRepository.save(doc);
+            return;
+        }
+
+        Optional<DacDocs> existing = dacDocsRepository.findDacDocsBYPKs(
+                id.getDacId(), id.getDacVer(), id.getDynaDocsId(), id.getDynaDocsVer(), id.getDynaFieldsId());
+
+        if (existing.isPresent()) {
+            DacDocs doc = existing.get();
+            doc.setFieldValue(value);
+            if (doc.getSourceId() == null) doc.setSourceId("");
+            dacDocsRepository.save(doc);
+        } else {
+            DacDocs doc = new DacDocs();
+            doc.setId(id);
+            doc.setDac(dac);
+            doc.setDynaField(field);
+            doc.setSourceId("");
+            doc.setFieldValue(value);
+            dacDocsRepository.save(doc);
+        }
+    }
+
+    private String resolveSystemFieldValue(DynaFields field, Dac dac) {
+        String source = field.getSource();
+        String sourceField = field.getSourceField();
+        if (source == null || sourceField == null) {
+            return null;
+        }
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_DATE;
+        switch (source) {
+            case "ppm": {
+                if (dac.getPpm() == null) return null;
+                return switch (sourceField) {
+                    case "nom" -> dac.getPpm().getNom();
+                    case "created_at" -> dac.getPpm().getCreatedAt() != null ? String.valueOf(dac.getPpm().getCreatedAt().getTimeInMillis()) : null;
+                    default -> null;
+                };
+            }
+            case "ac": {
+                if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
+                return switch (sourceField) {
+                    case "nom" -> dac.getPpm().getAc().getNom();
+                    case "adresse" -> dac.getPpm().getAc().getAdresse() != null ? dac.getPpm().getAc().getAdresse().getAdresse() : null;
+                    default -> null;
+                };
+            }
+            case "realisation": {
+                if (dac.getRealisation() == null) return null;
+                return switch (sourceField) {
+                    case "realisationEnvisagees", "realisation_envisagees" -> dac.getRealisation().getRealisationEnvisagees();
+                    case "beneficiaire" -> dac.getRealisation().getBeneficiaire();
+                    case "typeMarcher", "type_marcher" -> dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
+                    case "modeSelection", "mode_selection" -> dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                    case "budgetEstime", "budget_estime" -> toString(dac.getRealisation().getBudgetEstime());
+                    case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
+                    case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
+                    case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
+                    case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
+                    default -> null;
+                };
+            }
+            default:
+                return null;
+        }
+    }
+
+    private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
+    private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
+    private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }
 
 }
