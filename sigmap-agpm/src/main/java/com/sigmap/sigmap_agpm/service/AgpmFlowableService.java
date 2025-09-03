@@ -22,6 +22,7 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_agpm.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_agpm.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
@@ -49,6 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.io.*;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
@@ -1074,11 +1076,13 @@ public class AgpmFlowableService {
                 .collect(Collectors.toList());
     }
 
-    public byte[] generateModeleAgpm(Integer agpmId,Integer agpmVers, String signataire,  String reportsPath) throws Exception {
-
+    public byte[] generateModeleAgpm(Integer agpmId,Integer agpmVers, String signataire) throws Exception {
+        if (agpmId == null || agpmVers == null) {
+            throw new IllegalArgumentException("Les paramètres agpmId et agpmVers ne peuvent pas être null");
+        }
         try (InputStream mainReportStream = getClass()
                 .getClassLoader()
-                .getResourceAsStream("modele/agpm.jasper")) {
+                .getResourceAsStream("modele/agpm.jasper"); Connection conn = dataSource.getConnection()) {
 
             if (mainReportStream == null) {
                 throw new FileNotFoundException("Fichier agpm.jasper introuvable !");
@@ -1088,11 +1092,16 @@ public class AgpmFlowableService {
             parametres.put("agpm_id", agpmId);
             parametres.put("agpm_ver", agpmVers);
             parametres.put("nom", signataire);
+            parametres.put("REPORT_CONNECTION", conn);
 
             JasperPrint jasperPrint = JasperFillManager.fillReport(
-                    mainReportStream, parametres, dataSource.getConnection());
+                    mainReportStream, parametres, conn);
 
             return JasperExportManager.exportReportToPdf(jasperPrint);
+        }catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper : " + e.getMessage(), e);
+        }catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du modèle AGPM : " + e.getMessage(), e);
         }
     }
 

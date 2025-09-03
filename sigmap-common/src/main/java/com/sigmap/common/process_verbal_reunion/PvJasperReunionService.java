@@ -14,6 +14,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,159 +34,128 @@ public class PvJasperReunionService {
     @Autowired
     private KeycloakAdminService keycloakAdminService;
     public byte[] generateProcesVerbalReunion(Integer reunionId) throws Exception {
+        // Validation initiale
+        if (reunionId == null) {
+            throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
+        }
+        // Récupération de la réunion
         Reunion reunion = reunionRepository.findById(reunionId)
-                .orElseThrow(() -> new IllegalArgumentException("Reunion introuvable : " + reunionId));
+                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + reunionId));
 
+        // Récupération du président
         String idPresedent = reunion.getCom().getResponsableId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 
-        try (InputStream mainReportStream = getClass()
-                .getClassLoader()
-                .getResourceAsStream("pv/pv_reunion.jasper")) {
+        // Map des paramètres
+        Map<String, Object> parameters = new HashMap<>();
 
-            if (mainReportStream == null) {
-                throw new FileNotFoundException("Fichier pv_reunion.jasper introuvable !");
-            }
+        // Gestion des ressources avec try-with-resources
+        try (Connection conn = dataSource.getConnection();
+             InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion.jasper");
+             InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
+             InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
+             InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
+             InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1.jasper");
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper")) {
 
-            // logo
-            InputStream logoStream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/logo.png");
+            // Vérification des ressources
+            validateResource(mainReportStream, "pv_reunion.jasper");
+            validateResource(logoStream, "logo.png");
+            validateResource(sub1Stream, "pv_reunion_presents.jasper");
+            validateResource(sub2Stream, "pv_reunion_absents.jasper");
+            validateResource(sub3Stream, "pv_reunion_sub1.jasper");
+            validateResource(sub4Stream, "pv_reunion_sub2.jasper");
 
-            if (logoStream == null) {
-                throw new FileNotFoundException("Logo introuvable !");
-            }
+            // Configuration des paramètres
+            parameters.put("reunion", reunionId);
+            parameters.put("president", fullNamePres);
+            parameters.put("pathImg", logoStream);
+            parameters.put("SUBREPORT_DIR1", sub1Stream);
+            parameters.put("SUBREPORT_DIR2", sub2Stream);
+            parameters.put("SUBREPORT_DIR3", sub3Stream);
+            parameters.put("SUBREPORT_DIR4", sub4Stream);
+            parameters.put("REPORT_CONNECTION", conn);
 
-            InputStream sub1Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_presents.jasper");
-
-            if (sub1Stream == null) {
-                throw new FileNotFoundException("pv_reunion_presents.jasper introuvable !");
-            }
-
-            InputStream sub2Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_absents.jasper");
-
-            if (sub2Stream == null) {
-                throw new FileNotFoundException("pv_reunion_absents introuvable !");
-            }
-
-            InputStream sub3Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_sub1.jasper");
-
-            if (sub3Stream == null) {
-                throw new FileNotFoundException("pv_reunion_sub1 introuvable !");
-            }
-
-            InputStream sub4Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_sub2.jasper");
-
-            if (sub4Stream == null) {
-                throw new FileNotFoundException("pv_reunion_sub2.jasper introuvable !");
-            }
-
-            Map<String, Object> parametres = new HashMap<>();
-            parametres.put("pathImg", logoStream);  // si .jasper attend InputStream
-            parametres.put("reunion", reunionId);
-            parametres.put("president", fullNamePres);
-            parametres.put("SUBREPORT_DIR1", sub1Stream);
-            parametres.put("SUBREPORT_DIR2", sub2Stream);
-            parametres.put("SUBREPORT_DIR3", sub3Stream);
-            parametres.put("SUBREPORT_DIR4", sub4Stream);
-
-            JasperPrint jasperPrint = JasperFillManager.fillReport(
-                    mainReportStream, parametres, dataSource.getConnection());
-
+            // Génération du rapport
+            JasperPrint jasperPrint = JasperFillManager.fillReport(mainReportStream, parameters, conn);
             return JasperExportManager.exportReportToPdf(jasperPrint);
+
+        } catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur de connexion à la base de données: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du PV: " + e.getMessage(), e);
         }
     }
 
     public byte[] generateProcesVerbalReunionDraft(Integer reunionId) throws Exception {
+        // Validation initiale
+        if (reunionId == null) {
+            throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
+        }
+        // Récupération de la réunion
         Reunion reunion = reunionRepository.findById(reunionId)
-                .orElseThrow(() -> new IllegalArgumentException("Reunion introuvable : " + reunionId));
+                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + reunionId));
 
+        // Récupération du président
         String idPresedent = reunion.getCom().getResponsableId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 
-        try (InputStream mainReportStream = getClass()
-                .getClassLoader()
-                .getResourceAsStream("pv/pv_reunion_draft.jasper")) {
+        // Map des paramètres
+        Map<String, Object> parameters = new HashMap<>();
 
-            if (mainReportStream == null) {
-                throw new FileNotFoundException("Fichier pv_reunion_draft.jasper introuvable !");
-            }
+        // Gestion des ressources avec try-with-resources
+        try (Connection conn = dataSource.getConnection();
+             InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_draft.jasper");
+             InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
+             InputStream logoStream2 = getClass().getClassLoader().getResourceAsStream("pv/draft.png");
+             InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
+             InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
+             InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1.jasper");
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper")) {
 
-            // logo
-            InputStream logoStream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/logo.png");
+            // Vérification des ressources
+            validateResource(mainReportStream, "pv_reunion_draft.jasper");
+            validateResource(logoStream, "logo.png");
+            validateResource(logoStream2, "draft.png");
+            validateResource(sub1Stream, "pv_reunion_presents.jasper");
+            validateResource(sub2Stream, "pv_reunion_absents.jasper");
+            validateResource(sub3Stream, "pv_reunion_sub1.jasper");
+            validateResource(sub4Stream, "pv_reunion_sub2.jasper");
 
-            if (logoStream == null) {
-                throw new FileNotFoundException("Logo introuvable !");
-            }
+            // Configuration des paramètres
+            parameters.put("reunion", reunionId);
+            parameters.put("president", fullNamePres);
+            parameters.put("pathImg", logoStream);
+            parameters.put("pathImgDraft", logoStream2);
+            parameters.put("SUBREPORT_DIR1", sub1Stream);
+            parameters.put("SUBREPORT_DIR2", sub2Stream);
+            parameters.put("SUBREPORT_DIR3", sub3Stream);
+            parameters.put("SUBREPORT_DIR4", sub4Stream);
+            parameters.put("REPORT_CONNECTION", conn);
 
-            InputStream logoStream2 = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/draft.png");
 
-            if (logoStream2 == null) {
-                throw new FileNotFoundException("Logo draft introuvable !");
-            }
-
-            InputStream sub1Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_presents.jasper");
-
-            if (sub1Stream == null) {
-                throw new FileNotFoundException("pv_reunion_presents.jasper introuvable !");
-            }
-
-            InputStream sub2Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_absents.jasper");
-
-            if (sub2Stream == null) {
-                throw new FileNotFoundException("pv_reunion_absents introuvable !");
-            }
-
-            InputStream sub3Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_sub1.jasper");
-
-            if (sub3Stream == null) {
-                throw new FileNotFoundException("pv_reunion_sub1 introuvable !");
-            }
-
-            InputStream sub4Stream = getClass()
-                    .getClassLoader()
-                    .getResourceAsStream("pv/pv_reunion_sub2.jasper");
-
-            if (sub4Stream == null) {
-                throw new FileNotFoundException("pv_reunion_sub2.jasper introuvable !");
-            }
-
-            Map<String, Object> parametres = new HashMap<>();
-            parametres.put("pathImg", logoStream);  // si .jasper attend InputStream
-            parametres.put("reunion", reunionId);
-            parametres.put("president", fullNamePres);
-            parametres.put("SUBREPORT_DIR1", sub1Stream);
-            parametres.put("SUBREPORT_DIR2", sub2Stream);
-            parametres.put("SUBREPORT_DIR3", sub3Stream);
-            parametres.put("SUBREPORT_DIR4", sub4Stream);
-            parametres.put("pathImgDraft", logoStream2);
-
-            JasperPrint jasperPrint = JasperFillManager.fillReport(
-                    mainReportStream, parametres, dataSource.getConnection());
-
+            // Génération du rapport
+            JasperPrint jasperPrint = JasperFillManager.fillReport(mainReportStream, parameters, conn);
             return JasperExportManager.exportReportToPdf(jasperPrint);
-        }
 
+        } catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur de connexion à la base de données: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du PV: " + e.getMessage(), e);
+        }
+    }
+
+    // Méthode utilitaire pour valider les ressources
+    private void validateResource(InputStream stream, String resourceName) throws FileNotFoundException {
+        if (stream == null) {
+            throw new FileNotFoundException("Resource introuvable : " + resourceName);
+        }
     }
 
 }
