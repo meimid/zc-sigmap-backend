@@ -20,6 +20,8 @@ import com.sigmap.common.financement.request.FinancementRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
+import com.sigmap.common.model_paa.ModelPaaRepository;
+import com.sigmap.common.model_ppm.ModelPpmRepository;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.exceptions.*;
@@ -84,12 +86,13 @@ public class PaaServiceImpl implements PaaService {
     private final FinancementRepository financementRepository;
     private final RefParamRepository refParamRepository;
     private final EntityManager entityManager;
+    private final ModelPaaRepository modelPaaRepository;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
-    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, EntityManager entityManager,RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
-                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1) {
+    public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, EntityManager entityManager, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
+                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1, ModelPaaRepository modelPaaRepository) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -105,6 +108,7 @@ public class PaaServiceImpl implements PaaService {
         this.financementRepository = financementRepository;
         this.refParamRepository = refParamRepository1;
         this.entityManager = entityManager;
+        this.modelPaaRepository = modelPaaRepository;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -197,6 +201,7 @@ public class PaaServiceImpl implements PaaService {
 
     @Override
     public Optional<Paa> findOne(Specification<Paa> specification) {
+
         return repository.findOne(specification);
     }
 
@@ -284,6 +289,13 @@ public class PaaServiceImpl implements PaaService {
             );
         }
 
+        String modelAlfrescoId = modelPaaRepository
+                .findModelAlfrescoId(paaId, paaVer)
+                .orElse(null);
+        if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
+            paa.setModelAlfrescoId(modelAlfrescoId);
+        }
+
         // Step 7: Final validation before return
         if (paa.getAc() == null || !userAcIds.contains(paa.getAc().getId())) {
             log.warn("Validation finale échouée: PAA avec ID {} et version {} n'est pas associé à un AC de l'utilisateur. AC du PAA: {}, ACs de l'utilisateur: {}",
@@ -315,6 +327,7 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setNom(paa.getNom());
         filteredPaa.setBudgetEstime(paa.getBudgetEstime());
         filteredPaa.setDocs(paa.getDocs());
+        filteredPaa.setModelAlfrescoId(paa.getModelAlfrescoId());
         filteredPaa.setModePassation(paa.getModePassation());
         filteredPaa.setRemarque(paa.getRemarque());
         filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
@@ -2965,9 +2978,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     private final Object folderCreationLock = new Object();
 
 
-    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound {
+    public Paa findByIdPaa(Integer paaId, Integer paaVer) throws PaaNotFound, AcNotFound {
         Integer latestVersion = findLatestVersionById(paaId).orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of(paaVer)));
-        Paa paa = repository.findById(new CompositeId(paaId, latestVersion)).orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
+        Paa paa = findById(paaId, latestVersion).orElseThrow(() -> new PaaNotFound("No PAA found for ID and version", List.of(paaId), List.of(latestVersion)));
 
 
         return paa;

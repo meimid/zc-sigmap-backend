@@ -348,12 +348,8 @@ public class PaaFlowableController {
     }
     @PostMapping("/modele-paa")
     public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModelePaaRequest modele )  throws Exception {
-        URL pvFolderUrl = getClass().getClassLoader().getResource("modele/");
-        String reportsPath = pvFolderUrl.getPath();
 
-        log.info("reportsPath {} ", reportsPath);
-
-        byte[] pdfBytes = paaFlowableService.generateModelePaa(modele.getPaaId(),modele.getPaaVer(),modele.getFonction()+" - "+ modele.getSignataire(), reportsPath);
+        byte[] pdfBytes = paaFlowableService.generateModelePaa(modele.getPaaId(),modele.getPaaVer(),modele.getFonction()+" - "+ modele.getSignataire());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);

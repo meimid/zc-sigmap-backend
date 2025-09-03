@@ -23,6 +23,7 @@ public class PpmResponseDto {
     private RefParamResponseDto modePassation;
     private String remarque;
     private List<DocsResponseDTO> docs;
+    private String modelAlfrescoId;
     private List<RealisationResponseDTO> realisations;
     private String processInstanceId;
     private BaseEntityResponse metadata;

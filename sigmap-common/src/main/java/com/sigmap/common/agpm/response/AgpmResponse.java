@@ -26,6 +26,7 @@ public class AgpmResponse {
     private String annee;
     private AcResponseDto ac;
     private List<DocsResponseDTO> docs;
+    private String modelAlfrescoId;
     private String processInstanceId;
     private BaseEntityResponse metadata;
 
