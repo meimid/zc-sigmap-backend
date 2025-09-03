@@ -239,7 +239,7 @@ public class AgpmServiceImpl implements AgpmService {
             );
         }
         String modelAlfrescoId = modelAgpmRepository
-                .findModelAlfrescoId(agpmId, agpmVer)
+                .findModelAlfrescoId(agpmId, latestVersion)
                 .orElse(null);
         if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
             agpm.setModelAlfrescoId(modelAlfrescoId);
