@@ -51,4 +51,8 @@ public interface DynaDocsRepository
   List<DynaDocs> findAllLastVersionByTypeMarcheId(@Param("typeMarcheId") Integer typeMarcheId);
 
 
+  @Query("SELECT d.name FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")
+  String getDynaDocName(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
+
+
 }

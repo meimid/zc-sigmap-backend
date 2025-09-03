@@ -10,10 +10,12 @@ import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemQuery;
@@ -57,6 +59,7 @@ public class DacController {
 
   private final DacService dacService;
   private final DacDocsService dacDocsService;
+  private final DynaDocsRepository dynaDocsRepository;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
@@ -67,9 +70,10 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService, DacDocsService dacDocsService) {
+  public DacController(DacService dacService, DacDocsService dacDocsService, DynaDocsRepository dynaDocsRepository) {
     this.dacService = dacService;
     this.dacDocsService = dacDocsService;
+    this.dynaDocsRepository = dynaDocsRepository;
 
   }
 
@@ -185,10 +189,13 @@ public class DacController {
       // 5. Convert PDF bytes to base64 for Angular visualization
       String base64Pdf = Base64.getEncoder().encodeToString(response.getBody());
 
+      // get file name from data base
+      String fileName = dynaDocsRepository.getDynaDocName(request.getDynaDocsId(), request.getDynaDocsVer());
+
       // 6. Prepare JSON response with base64 string
       Map<String, String> responseBody = new HashMap<>();
       responseBody.put("pdfBase64", base64Pdf);
-      responseBody.put("filename", "document.pdf");
+      responseBody.put("filename", fileName + ".pdf");
       responseBody.put("extension", "PDF");
 
       return new ResponseEntity<>(responseBody, HttpStatus.OK);
