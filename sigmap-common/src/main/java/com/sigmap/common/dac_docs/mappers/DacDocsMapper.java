@@ -75,7 +75,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
     @Mapping(target = "ppm", source = "ppm")
-    @Mapping(target = "category", source = "category")
+    @Mapping(target = "typeMarche", source = "typeMarche")
     @Mapping(target = "realisation", source = "realisation")
     DacResponseDTO toDacResponse(Dac dac);
 
@@ -84,7 +84,7 @@ public interface DacDocsMapper {
     @Mapping(target = "name", source = "dynaField.dynaDocs.name")
     @Mapping(target = "templateFileName", source = "dynaField.dynaDocs.templateFileName")
     @Mapping(target = "guideFileName", source = "dynaField.dynaDocs.guideFileName")
-    @Mapping(target = "categorieId", source = "dynaField.dynaDocs.categorieId")
+    @Mapping(target = "typeMarche", source = "dynaField.dynaDocs.typeMarche")
     @Mapping(target = "dynaDocOrder", source = "dynaField.dynaDocs.dynaDocOrder")
     @Mapping(target = "status", source = "dynaField.dynaDocs.status")
     DynaDocsResponseDTO toDynaDocsResponse(DacDocs dacDocs);

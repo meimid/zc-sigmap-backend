@@ -97,15 +97,15 @@ public class DacSpecifications {
     }
 
     /**
-     * Filter by Category
+     * Filter by TypeMarche
      */
-    public static Specification<Dac> searchByCategory(Integer categoryId) {
+    public static Specification<Dac> searchByTypeMarche(Integer typeMarcheId) {
         return (root, query, criteriaBuilder) -> {
-            if (categoryId == null) {
+            if (typeMarcheId == null) {
                 return criteriaBuilder.conjunction();
             }
-            Join<Dac, RefParam> categoryJoin = root.join("category");
-            return criteriaBuilder.equal(categoryJoin.get("refParamId"), categoryId);
+            Join<Dac, RefParam> typeMarcheJoin = root.join("typeMarche");
+            return criteriaBuilder.equal(typeMarcheJoin.get("refParamId"), typeMarcheId);
         };
     }
 

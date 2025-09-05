@@ -18,8 +18,9 @@ public interface DacMapper {
     DacMapper INSTANCE = Mappers.getMapper(DacMapper.class);
 
     @Mapping(target = "ppm", source = "ppm")
-    @Mapping(target = "category", source = "category")
+    @Mapping(target = "typeMarche", source = "typeMarche")
     @Mapping(target = "realisation", source = "realisation")
+    @Mapping(target = "reference", source = "reference")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

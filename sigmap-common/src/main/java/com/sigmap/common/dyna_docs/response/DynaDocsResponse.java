@@ -20,7 +20,7 @@ public class DynaDocsResponse {
 
   private String guideFileName;
 
-  private RefParam categorie;
+  private RefParam typeMarche;
 
   private Integer dynaDocOrder;
 

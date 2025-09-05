@@ -6,6 +6,7 @@ import java.util.Locale;
 
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.docs.exeptions.MaxSizeFileExeption;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -120,5 +121,13 @@ public class GlobalExceptionHandler {
     String message = messageSource.getMessage("realisation.associated",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(MaxSizeFileExeption.class)
+  public ResponseEntity<ErrorResponse> handleMaxSizeFileException(MaxSizeFileExeption ex) {
+    String message = messageSource.getMessage("doc.maxSize", new Object[]{}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
 }

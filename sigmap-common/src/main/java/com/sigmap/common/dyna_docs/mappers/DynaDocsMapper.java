@@ -20,15 +20,15 @@ public interface DynaDocsMapper {
 
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "version", ignore = true)
-  @Mapping(target = "categorieId", ignore = true)
+  @Mapping(target = "typeMarche", ignore = true)
   DynaDocs map(DynaDocsRequest source);
 
-  @Mapping(target = "categorieId", ignore = true)
+  @Mapping(target = "typeMarche", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "version", ignore = true)
   void map(DynaDocsRequest source, @MappingTarget DynaDocs target);
 
-  @Mapping(target = "categorie", source = "categorieId")
+  @Mapping(target = "typeMarche", source = "typeMarche")
   DynaDocsResponse map(DynaDocs source);
 
   @Mapping(target = "id", source = "id")
@@ -36,7 +36,7 @@ public interface DynaDocsMapper {
   @Mapping(target = "name", source = "name")
   @Mapping(target = "templateFileName", source = "templateFileName")
   @Mapping(target = "guideFileName", source = "guideFileName")
-  @Mapping(target = "categorieId", source = "categorieId")
+  @Mapping(target = "typeMarche", source = "typeMarche")
   @Mapping(target = "dynaDocOrder", source = "dynaDocOrder")
   @Mapping(target = "status", source = "status")
   DynaDocsResponseDTO toDynaDocsResponse(DynaDocs dynaDocs);

@@ -13,7 +13,7 @@ public class DynaDocsResponseDTO {
     private String name;
     private String templateFileName;
     private String guideFileName;
-    private RefParam categorieId;
+    private RefParam typeMarche;
     private Integer dynaDocOrder;
     private String status;
     private List<DynaFieldsDTO> dynaFields;
