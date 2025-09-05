@@ -50,6 +50,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reunions")
@@ -306,7 +307,7 @@ public class ReunionController {
                         dacResponse.setDacId(dac.getDacId());
                         dacResponse.setDacVer(dac.getDacVer());
                         dacResponse.setStatus(dac.getStatus());
-                        dacResponse.setCategory(RefParamMapper.INSTANCE.mapToDto(dac.getCategory()));
+                        dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getTypeMarche()));
                         if (dac.getPpm() != null) {
                             dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
                         }
