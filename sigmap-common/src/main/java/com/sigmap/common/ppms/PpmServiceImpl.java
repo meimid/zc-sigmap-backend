@@ -29,6 +29,7 @@ import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.exception.LotBudgetConsistencyException;
 import com.sigmap.common.lots.exception.LotBudgetExceedsRealisationException;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.model_ppm.ModelPpmRepository;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
@@ -92,6 +93,7 @@ public class PpmServiceImpl implements PpmService {
     private final AcSeuilService acSeuilService;
     private final MonnaieRepository monnaieRepository;
     private final FinancementRepository financementRepository;
+    private final ModelPpmRepository modelPpmRepository;
 
     /**
      * Constructor.
@@ -105,7 +107,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -123,6 +125,7 @@ public class PpmServiceImpl implements PpmService {
         this.acSeuilService = acSeuilService;
         this.monnaieRepository = monnaieRepository;
         this.financementRepository = financementRepository;
+        this.modelPpmRepository = modelPpmRepository;
     }
 
     @Override
@@ -251,6 +254,14 @@ public class PpmServiceImpl implements PpmService {
         }
         log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
+        Integer effectiveVer = targetVersion;
+        String modelAlfrescoId = modelPpmRepository
+                .findModelAlfrescoId(ppmId, effectiveVer)
+                .orElse(null);
+        if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
+            ppm.setModelAlfrescoId(modelAlfrescoId);
+        }
+
         if (ppm.getRealisations() != null) {
             ppm.getRealisations().forEach(realisation -> {
                 if (realisation.getFinancements() != null) {
@@ -293,6 +304,7 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setBudgetEstime(ppm.getBudgetEstime());
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
+        filteredPpm.setModelAlfrescoId(ppm.getModelAlfrescoId());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
         filteredPpm.setUpdatedAt(ppm.getUpdatedAt());

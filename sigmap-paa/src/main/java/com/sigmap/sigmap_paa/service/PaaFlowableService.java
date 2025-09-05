@@ -22,6 +22,7 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_paa.service.dto.request.ValidationRequest;
 import com.sigmap.sigmap_paa.service.dto.response.*;
 import lombok.extern.slf4j.Slf4j;
+import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
@@ -44,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
 import java.io.*;
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -446,6 +448,7 @@ public class PaaFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(paa.getNom());
                         taskInfo.setRef(paa.getRef());
+                        taskInfo.setModelAlfrescoId(paa.getModelAlfrescoId());
                     });
                 } catch (PaaNotFound | AcNotFound e) {
                     log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
@@ -896,6 +899,7 @@ public class PaaFlowableService {
                         taskInfo.setVersion(version);
                         taskInfo.setNom(paa.getNom());
                         taskInfo.setRef(paa.getRef());
+                        taskInfo.setModelAlfrescoId(paa.getModelAlfrescoId());
                     });
                 } catch (AcNotFound | PaaNotFound e) {
                     log.warn("Paa not found for id: {}, version: {} in task: {}", id, version, task.getId(), e);
@@ -1105,23 +1109,33 @@ public class PaaFlowableService {
                 })
                 .collect(Collectors.toList());
     }
-    public byte[] generateModelePaa(Integer paaId,Integer paaVer, String signataire,  String reportsPath) throws Exception {
-
-        File reportFile = new File(reportsPath, "paa.jasper");
-        InputStream mainReportStream = new FileInputStream(reportFile);
-        if (mainReportStream == null) {
-            throw new FileNotFoundException("Fichier paa.jasper introuvable !");
+    public byte[] generateModelePaa(Integer paaId,Integer paaVer, String signataire) throws Exception {
+        if (paaId == null || paaVer == null) {
+            throw new IllegalArgumentException("Les paramètres paaId et paaVer ne peuvent pas être null");
         }
+        try (InputStream mainReportStream = getClass()
+                .getClassLoader()
+                .getResourceAsStream("modele/paa.jasper"); Connection conn = dataSource.getConnection()) {
 
-        Map<String, Object> parametres = new HashMap<>();
-        parametres.put("paa_id", paaId);
-        parametres.put("paa_ver", paaVer);
-        parametres.put("nom", signataire);
-        JasperPrint jasperPrint = JasperFillManager.fillReport(
-                mainReportStream, parametres, dataSource.getConnection());
+            if (mainReportStream == null) {
+                throw new FileNotFoundException("Fichier paa.jasper introuvable !");
+            }
 
-        // Export PDF
-        return JasperExportManager.exportReportToPdf(jasperPrint);
+            Map<String, Object> parametres = new HashMap<>();
+            parametres.put("paa_id", paaId);
+            parametres.put("paa_ver", paaVer);
+            parametres.put("nom", signataire);
+            parametres.put("REPORT_CONNECTION", conn);
+            JasperPrint jasperPrint = JasperFillManager.fillReport(
+                    mainReportStream, parametres, conn);
+
+            // Export PDF
+            return JasperExportManager.exportReportToPdf(jasperPrint);
+        }catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper : " + e.getMessage(), e);
+        }catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du modèle PAA : " + e.getMessage(), e);
+        }
     }
 
 

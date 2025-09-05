@@ -14,6 +14,7 @@ public class AgpmMinimalResponseDto {
     private Integer version;
     private String ref;
     private String nom;
+    private String modelAlfrescoId;
     private ProcessStatus status;
     private BaseEntityResponse metadata;
 }

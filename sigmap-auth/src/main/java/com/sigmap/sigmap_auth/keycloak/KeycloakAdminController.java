@@ -231,7 +231,7 @@ public class KeycloakAdminController {
     }
 
     @GetMapping("/users/com")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public List<UserDTO> getAllUsersExcptetTheUsersCom(@RequestParam Integer comId) throws ComNotFound {
 
         String currentUserId = Authentication.getCurrentUserId()

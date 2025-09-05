@@ -258,4 +258,79 @@ public class MailService {
         }
     }
 
+    public void sendReunionAnnulerEmail(Reunion reunion, Participant participant, String adminId) throws MessagingException, IOException {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            // Set email details
+            helper.setTo(participant.getMail());
+            helper.setSubject("SIGMAP - Annulation du réunion");
+            helper.setFrom(fromEmail);
+
+            // Render HTML template
+            // String htmlContent = templateEngine.process("email/reunionInvitationEmail", context);
+            helper.setText(reunionInvitationAnnulerEmailContext(reunion, participant), true);
+
+            // Send email
+            javaMailSender.send(mimeMessage);
+
+            // Save email trace
+            emailService.saveEmailTrace(adminId,TypeEmail.REUNION_ANNULER,reunion.getObject(), reunionInvitationAnnulerEmailContext(reunion, participant),participant.getMail(),true,LocalDateTime.now());
+
+            log.debug("Email sent successfully to : {} ", participant.getMail());
+        } catch (Exception e) {
+            emailService.saveEmailTrace(adminId,TypeEmail.REUNION_ANNULER, reunion.getObject() ,reunionInvitationAnnulerEmailContext(reunion, participant),participant.getMail(),false,LocalDateTime.now());
+            throw new MessagingException("Failed to send reunion annuler email", e);
+        }
+    }
+
+    private String reunionInvitationAnnulerEmailContext(Reunion reunion, Participant participant) throws MessagingException, IOException {
+        // Load and encode logo
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo.png");
+        byte[] sourceLogo = IOUtils.toByteArray(logo);
+        String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
+        encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
+
+
+        // Sanitize HTML to preserve formatting and allow additional attributes
+        Safelist safelist = Safelist.relaxed()
+                .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "ol", "ul", "li", "span") // Explicitly allow necessary tags
+                .addAttributes("span", "style", "class", "id", "title")
+                .addAttributes("h1", "style", "class", "id", "title")
+                .addAttributes("h2", "style", "class", "id", "title")
+                .addAttributes("h3", "style", "class", "id", "title")
+                .addAttributes("h4", "style", "class", "id", "title")
+                .addAttributes("h5", "style", "class", "id", "title")
+                .addAttributes("h6", "style", "class", "id", "title")
+                .addAttributes("p", "style", "class", "id", "title")
+                .addAttributes("li", "style", "class", "id", "title")
+                .addProtocols("span", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h1", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h2", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h3", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h4", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h5", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("h6", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("p", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration")
+                .addProtocols("li", "style", "color", "font-size", "font-weight", "font-family", "text-align", "margin", "padding", "text-decoration");
+        String safeHtml = Jsoup.clean(reunion.getObject(), safelist);
+
+        // Prepare Thymeleaf context
+        Context context = new Context();
+        context.setVariable("name", participant.getPrenom() + " " + participant.getNom());
+        context.setVariable("organisme", participant.getOrganisme());
+        context.setVariable("fonction", participant.getFonction());
+        context.setVariable("reunionDate", reunion.getReunionDate().getTime());
+        context.setVariable("emplacement", reunion.getEmplacement());
+        context.setVariable("object", safeHtml); // Use cleaned text
+        context.setVariable("logo", encodedStringLogo);
+        context.setVariable("from", fromEmail);
+
+        // log.info("....................... {} ", encodedStringLogo);
+
+        // Render HTML template
+        return templateEngine.process("email/reunionAnnulationEmail", context);
+    }
+
 }

@@ -9,6 +9,7 @@ import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
 
+import com.sigmap.common.reunion.response.ReunionResponseDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
@@ -37,6 +38,7 @@ public interface ReunionMapper {
     @Mapping(source = "reunionPpms", target = "reunionPpms")
     @Mapping(source = "reunionDacs", target = "reunionDacs")
     @Mapping(source = "participants", target = "participants")
+    @Mapping(source = "processVerbal",target = "processVerbal")
 
 
     ReunionResponse map(Reunion reunion);
@@ -51,7 +53,18 @@ public interface ReunionMapper {
     @Mapping(target = "participants", ignore = true)
     @Mapping(target = "reunionPpms", ignore = true)
     @Mapping(target = "reunionDacs", ignore = true)
+    @Mapping(target ="status", ignore = true )
+    @Mapping(source = "processVerbal",target = "processVerbal")
+
     void updateFromRequest(ReunionRequest request, @MappingTarget Reunion reunion);
     ParticipantResponseDto toDto(Participant participant);
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    ReunionResponseDto mapToDto(Reunion reunion);
 
 }

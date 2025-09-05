@@ -25,7 +25,9 @@ public class ProcessVerbalRequest {
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime dateDebutReunion;
     private String observation;
+/*
     private boolean decision;
+*/
     private Integer typeId;
     private ProcessStatus status;
     private List<PvDocRequest> documents;

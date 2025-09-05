@@ -23,6 +23,10 @@ import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.model_agpm.ModelAgpm;
+import com.sigmap.common.model_agpm.ModelAgpmRepository;
+import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.model_paa.ModelPaaRepository;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -67,6 +71,10 @@ public class AgpmServiceImpl implements AgpmService {
     private final AcService acService;
     private final CurrentUserService currentUserService;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final ModelAgpmService modelAgpmService;
+    private final ModelAgpmRepository modelAgpmRepository;
+
+
     /**
      * Constructor for AgpmServiceImpl with dependency injection.
      *
@@ -87,7 +95,7 @@ public class AgpmServiceImpl implements AgpmService {
                            AlfrescoService alfrescoService,
                            DocumentCommuneService documentCommuneService,
                            AcService acService,
-                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService) {
+                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService, ModelAgpmService modelAgpmService, ModelAgpmRepository modelAgpmRepository) {
         this.repository = repository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
@@ -98,6 +106,8 @@ public class AgpmServiceImpl implements AgpmService {
         this.acService = acService;
         this.currentUserService = currentUserService;
         this.sequenceGeneratorService = sequenceGeneratorService;
+        this.modelAgpmService = modelAgpmService;
+        this.modelAgpmRepository = modelAgpmRepository;
     }
 
     /**
@@ -219,6 +229,7 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm agpm = repository.findById(new CompositeId(agpmId, latestVersion))
                 .orElseThrow(() -> new AgpmNotFound("Aucun AGPM trouvé pour l'ID et la version", List.of(agpmId), List.of(latestVersion)));
 
+
         if (agpm.getAc() == null || !userAcIds.contains(agpm.getAc().getId())) {
             log.warn("AGPM avec ID {} n'est pas associé à un AC de l'utilisateur", agpmId);
             throw new AgpmNotAssociatedWithUserAcException(
@@ -226,6 +237,12 @@ public class AgpmServiceImpl implements AgpmService {
                     List.of(agpmId),
                     List.of(latestVersion)
             );
+        }
+        String modelAlfrescoId = modelAgpmRepository
+                .findModelAlfrescoId(agpmId, latestVersion)
+                .orElse(null);
+        if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
+            agpm.setModelAlfrescoId(modelAlfrescoId);
         }
 
         Agpm responseAgpm = createFilteredResponseAgpm(agpm);
@@ -943,6 +960,7 @@ public class AgpmServiceImpl implements AgpmService {
         responseAgpm.setNom(source.getNom());
         responseAgpm.setContenu(source.getContenu());
         responseAgpm.setRemarque(source.getRemarque());
+        responseAgpm.setModelAlfrescoId(source.getModelAlfrescoId());
         responseAgpm.setAnnee(source.getAnnee());
         responseAgpm.setProcessInstanceId(source.getProcessInstanceId());
         responseAgpm.setAc(source.getAc());

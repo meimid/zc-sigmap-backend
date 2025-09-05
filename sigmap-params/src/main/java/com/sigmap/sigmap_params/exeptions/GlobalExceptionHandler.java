@@ -26,6 +26,7 @@ import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.process_verbal_reunion.exception.ProcessVerbalReunionNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -736,6 +737,14 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("user.doesNotHavePermission",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), message);
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ProcessVerbalReunionNotFound.class)
+    public ResponseEntity<ErrorResponse> ProcessVerbalReunionNotFoundException(ProcessVerbalReunionNotFound ex) {
+        String message = messageSource.getMessage("pv.pvnotfound",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 }
 

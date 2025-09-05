@@ -50,7 +50,8 @@
 		<queryString language="SQL">
 			<![CDATA[SELECT  p.paa_id,
 	 p.paa_ver,
-	 r.realisation_envisagees,
+	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
+	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
 	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
@@ -70,9 +71,15 @@ FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.imputation_budgetaire_id =  rf.ref_param_id
 	  LEFT JOIN finacement fin
     ON r.realisation_id= fin.realisation_id  and r.realisation_ver=fin.realisation_ver
+    LEFT JOIN lots_realisation l
+        ON r.realisation_id = l.realisation_id
+        AND r.realisation_ver = l.realisation_ver
+    LEFT JOIN lots ls
+        ON l.lots_id = ls.lots_id
+        AND l.lots_ver = ls.lots_ver
 LEFT JOIN ref_param rp
     ON fin.source_de_financement_id = rp.ref_param_id
-where p.paa_id= $P{paa_id}   and p.paa_ver= $P{paa_ver}
+where p.paa_id= $P{paa_id}     and p.paa_ver=  $P{paa_ver} 
 GROUP BY
     p.paa_id,
     p.paa_ver,
@@ -83,7 +90,7 @@ GROUP BY
     r.date_prev_dp,
     r.date_prev_ap,
     m.libelle,
-    f.description;]]>
+    f.description]]>
 		</queryString>
 		<field name="paa_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="paa_id"/>
@@ -99,6 +106,10 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.name" value="realisation_envisagees"/>
 			<property name="com.jaspersoft.studio.field.label" value="realisation_envisagees"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
+		</field>
+		<field name="lots" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="lots"/>
+			<property name="com.jaspersoft.studio.field.label" value="lots"/>
 		</field>
 		<field name="beneficiaire" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="beneficiaire"/>
@@ -297,7 +308,7 @@ FROM  paa p
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$F{realisation_envisagees}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$F{realisation_envisagees}+" : "+$F{lots}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
@@ -317,7 +328,7 @@ Direction Autorité Contractante
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="86" height="59" uuid="71f5cdfd-b621-42fd-a8b3-cc8dbafe18eb"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="86" height="59" uuid="71f5cdfd-b621-42fd-a8b3-cc8dbafe18eb"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -361,7 +372,7 @@ Direction Autorité Contractante
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
-							<textField>
+							<textField isBlankWhenNull="true">
 								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="59" uuid="1c346563-4665-4244-a676-60a306223f8f"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
@@ -384,7 +395,7 @@ Direction Autorité Contractante
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="76" height="59" uuid="7668a16b-c879-4673-8b09-e5e5eee463e7"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="76" height="59" uuid="7668a16b-c879-4673-8b09-e5e5eee463e7"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -405,7 +416,7 @@ Direction Autorité Contractante
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="72" height="59" uuid="02e4c7f0-307d-48a6-908f-850ea49fd7f7"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="72" height="59" uuid="02e4c7f0-307d-48a6-908f-850ea49fd7f7"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -428,7 +439,7 @@ lancement de la procédure de sélection
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="73" height="59" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="73" height="59" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -450,7 +461,7 @@ d’attribution du contrat]]></text>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="73" height="59" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="73" height="59" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -472,7 +483,7 @@ de démarrage des prestations]]></text>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="71" height="59" uuid="d393a1ff-8188-44d5-8668-a01358b62cee"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="71" height="59" uuid="d393a1ff-8188-44d5-8668-a01358b62cee"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -495,7 +506,7 @@ d’achèvement des prestations
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="59">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="68" height="59" uuid="d33c07d8-28d8-4106-ba69-baa70cf5b307"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="68" height="59" uuid="d33c07d8-28d8-4106-ba69-baa70cf5b307"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
