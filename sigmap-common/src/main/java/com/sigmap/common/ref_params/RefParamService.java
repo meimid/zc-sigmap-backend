@@ -1,6 +1,9 @@
 package com.sigmap.common.ref_params;
 
+import com.sigmap.common.config.RefTypes;
+import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_params.request.RefParamRequest;
+import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -74,7 +77,7 @@ public interface RefParamService {
    * @param id the id of the RefParam to return
    * @return the RefParam with the given id
    */
-  Optional<RefParam> findById(Integer id);
+  RefParam findById(Integer id)throws RefParamNotFound;
 
   /** 
    * Save a RefParam.
@@ -90,12 +93,34 @@ public interface RefParamService {
    * @param request the request to create the RefParam from
    * @return the created RefParam
    */
-  RefParam create(RefParamRequest request);
+  RefParam create(RefParamRequest request) throws RefTypeNotFound;
+  /**
+   * update RefParam.
+   *
+   * @param request the request to update the RefParam from
+   * @return the updated RefParam
+   */
+  RefParam update(Integer id,RefParamRequest request)throws RefParamNotFound, RefTypeNotFound ;
 
   /**
    * Delete a RefParam.
    *
    * @param id the id of the RefParam to delete
    */
-  void delete(Integer id);
+  void delete(Integer id) throws RefParamHasAssociatedCom,
+          RefParamHasAssociatedCompteBancaire,
+          RefParamHasAssociatedSociete,
+          RefParamHasAssociatedSocieteAddress, RefParamNotFound;
+
+  List<RefParam> findByRefType( RefTypes refTypeCode);
+
+ RefParam findByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound;
+  RefParam UpdateRefParamByRefTypeId(Integer refParamId, RefTypes refTypeCode,RefParamRequest request) throws RefParamNotFound;
+  void deleteByIdAndRefTypeId(Integer refPramId, RefTypes refTypeCode) throws RefParamNotFound;
+  RefParam createUnderRefType(RefTypes refTypeCode,RefParamRequest request) throws RefTypeNotFound;
+  List<RefParam> findListRefParamSpecification(Specification<RefParam> refParamSpecification);
+  List<RefParam> findByRefTypeWithoutSystemType( RefTypes refTypeCode);
+  RefParam findByIdWithoutSystemType(Integer id)  throws RefParamNotFound;
+    Optional<RefParam> findOneWithoutSystemType(Specification<RefParam> specification);
+
 }

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>SIGMAP - Invitation à la réunion</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #2F3044; line-height: 1.5; background-color: #D5D9E2;">
+<table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 800px; background-color: #ffffff; margin: 40px auto; padding: 45px 0 34px 0;">
+    <tr>
+        <td style="padding: 0 15px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                    <td  style="padding-bottom: 10px;">
+                        <p style="margin: 0 0 3px 0;">Mr/Mme: <strong th:text="${name}"></strong> Vous êtes invité à une réunion </p>
+                        <p style="margin: 0 0 3px 0;">Organisme: <strong th:text="${organisme}"></strong></p>
+                        <p style="margin: 0 0 3px 0;">Fonction: <strong th:text="${fonction}"></strong></p>
+                        <p style="margin: 0 0 3px 0;">Date: <strong th:text="${#dates.format(reunionDate, 'dd/MM/yyyy HH:mm')}"></strong></p>
+                        <p style="margin: 0 0 3px 0;">Emplacement: <strong th:text="${emplacement}"></strong></p>
+                    </td>
+                </tr>
+                <tr style="padding-bottom: 10px;">
+                    <td>
+                        <p style="color: #5E6278; font-size: 13px; font-weight: 500; margin: 0 0 3px 0;">Objet: </p>
+                        <p width="80%" th:utext="${object}"></p>
+                    </td>
+
+                </tr>
+                <tr>
+                    <td align="center" style="font-size: 13px; padding: 0 10px 10px 10px; color: #A1A5B7;">
+                        <p style="color: #181C32; font-size: 16px; font-weight: 600; margin-bottom: 9px;">Problèmes?</p>
+                        <p style="margin-bottom: 4px;">Contactez <a href="mailto:dev.sigmap@siga-bc.com" style="font-weight: 600; color: #009ef7;">dev.sigmap@siga-bc.com</a>.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" style="font-size: 13px; padding: 0 15px; color: #A1A5B7;">
+                        <p>Envoyé depuis SIGMAP.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" style="font-size: 13px; padding: 0 15px; color: #A1A5B7;">
+                        <p>&copy; SIGMAP team.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center" style="font-size: 13px; padding: 0 15px;">
+                        <img th:src="${logo}" alt="Logo" style="height: 75px; display: block; margin: 0 auto;" />
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

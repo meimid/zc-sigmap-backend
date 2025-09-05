@@ -1,0 +1,12 @@
+package com.sigmap.common.email_trace;
+
+public enum TypeEmail {
+    ACTIVATION_COMPTE,
+    MODIFICATION_MOT_DE_PASSE,
+    VALIDATION_AGPM,
+    VALIDATION_PAA,
+    VALIDATION_PPM,
+    VALIDATION_DAC,
+    REUNION_INVITATION,
+    REUNION_ANNULER
+}

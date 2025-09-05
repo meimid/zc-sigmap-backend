@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import jakarta.annotation.PostConstruct;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -15,13 +16,20 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.data.repository.query.SecurityEvaluationContextExtension;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
 
 @ComponentScan({"com.sigmap.common", "com.sigmap.sigmap_params"})
 @EnableJpaRepositories({"com.sigmap.common"})
 @EntityScan({"com.sigmap.common"})
 @SpringBootApplication
 @EnableJpaAuditing
+@EnableScheduling
 @SecurityScheme(
         name = "Keycloak",
         openIdConnectUrl = "${spring.security.oauth2.resourceserver.jwt.issuer-uri}/.well-known/openid-configuration",
@@ -47,6 +55,30 @@ public class Application {
   @Bean
   public SecurityEvaluationContextExtension securityEvaluationContextExtension() {
     return new SecurityEvaluationContextExtension();
+  }
+
+
+  @PostConstruct
+  void bypassCert() throws  Exception {
+    //Create a TrustManager that accepts all certificates
+    TrustManager[] trustAllCertificates = new TrustManager[]{
+            new X509TrustManager() {
+              public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[]{};
+              }
+              public void checkClientTrusted(X509Certificate[] certs, String authType) {
+                // Trust all client certificates
+              }
+              public void checkServerTrusted(X509Certificate[] certs, String authType) {
+                // Trust all server certificates
+              }
+            }
+    };
+
+    // Initialize SSLContext to accept all certificates
+    SSLContext sslContext = SSLContext.getInstance("TLS");
+    sslContext.init(null, trustAllCertificates, new java.security.SecureRandom());
+    SSLContext.setDefault(sslContext);
   }
 
 }

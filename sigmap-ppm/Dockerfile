@@ -10,7 +10,10 @@ COPY sigmap-params ./sigmap-params
 COPY sigmap-agpm ./sigmap-agpm
 COPY sigmap-ppm ./sigmap-ppm
 COPY sigmap-paa ./sigmap-paa
-
+COPY sigmap-dac ./sigmap-dac
+COPY sigmap-auth ./sigmap-auth
+COPY sigmap-dac ./sigmap-dac
+COPY sigmap-webmaster ./sigmap-webmaster
 
 COPY pom.xml .
 

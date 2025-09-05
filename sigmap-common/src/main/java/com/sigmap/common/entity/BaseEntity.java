@@ -1,8 +1,10 @@
 package com.sigmap.common.entity;
 
+import com.sigmap.common.security.Authentication;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -23,13 +25,14 @@ import java.util.Calendar;
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
+//@Where(clause = "is_deleted = false")
 public abstract class BaseEntity {
     @CreatedDate
-    @Column(name = "created_at")
+    @Column(name = "created_at",updatable = false)
     private Calendar createdAt;
 
     @CreatedBy
-    @Column(name = "created_by")
+    @Column(name = "created_by",updatable = false)
     private String createdBy;
 
     @LastModifiedDate
@@ -44,8 +47,10 @@ public abstract class BaseEntity {
     private Calendar deletedAt;
 
     @Column(name = "deleted_by")
-    private  String deletedBy;
+    private String deletedBy;
 
     @Column(name = "is_deleted")
-    private Boolean isDeleted;
+    private Boolean isDeleted = false;
+
+
 }

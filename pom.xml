@@ -6,14 +6,18 @@
     <packaging>pom</packaging>
 
     <modules>
-<!--    Libraries    -->
+        <!--    Libraries    -->
         <module>sigmap-migrations</module>
         <module>sigmap-common</module>
-<!--    Application    -->
+        <!--    Application    -->
         <module>sigmap-params</module>
         <module>sigmap-agpm</module>
         <module>sigmap-paa</module>
         <module>sigmap-ppm</module>
+        <module>sigmap-dac</module>
+        <module>sigmap-auth</module>
+        <module>sigmap-webmaster</module>
+
     </modules>
 
     <properties>
