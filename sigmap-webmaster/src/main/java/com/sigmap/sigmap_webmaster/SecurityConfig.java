@@ -53,10 +53,11 @@ public class SecurityConfig {
                         "/api/docs/*",
                         "/api/docs-ui.html",
                         "/v3/api-docs/**",
-                        "/web/api/**")
+                        "/api/**")
                 .permitAll()
                 .anyRequest()
                 .permitAll())
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/download/**"))
         .sessionManagement(
             management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(

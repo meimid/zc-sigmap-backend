@@ -123,11 +123,11 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping ("/download/{id}/{ver}/doc/{docId}")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id,@PathVariable Integer ver,@PathVariable Integer docId) throws DocsNotFoundException, IOException {
-        Docs docInfo = docsService.findById(docId);
-
-        byte[] fileContent = webMasterService.downloadDocument(docInfo.getAlfresco_id(),id,ver);
+    @PostMapping("/download/{id}/{ver}")
+    public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id,@PathVariable Integer ver,@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocument(alfrescoId.getId(),id,ver);
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -139,4 +139,6 @@ public class WebMasterController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
+
+
 }
