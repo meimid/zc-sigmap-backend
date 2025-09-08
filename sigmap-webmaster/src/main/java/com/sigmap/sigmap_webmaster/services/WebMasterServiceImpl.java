@@ -168,29 +168,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
     @Override
-    public byte[] downloadDocument(String alfrescoId,Integer id, Integer ver) throws IOException {
-        if (alfrescoId == null || alfrescoId.isBlank()) {
-            throw new IOException("Alfresco ID cannot be null or empty.");
-        }
-        Optional<String> optionalAlfrescoIdPpm=modelPpmRepository.findModelAlfrescoId(id,ver);
-        Optional<String> optionalAlfrescoIdPaa=modelPaaRepository.findModelAlfrescoId(id,ver);
-        Optional<String> optionalAlfrescoIdAgpm=modelAgpmRepository.findModelAlfrescoId(id,ver);
-        if (optionalAlfrescoIdPpm.isPresent()&&optionalAlfrescoIdPpm.get().equals(alfrescoId)
-        ||optionalAlfrescoIdPaa.isPresent()&&optionalAlfrescoIdPaa.get().equals(alfrescoId)
-        ||optionalAlfrescoIdAgpm.isPresent()&&optionalAlfrescoIdAgpm.get().equals(alfrescoId)) {
+    public byte[] downloadDocument(String alfrescoId, Integer id, Integer ver) throws IOException {
 
-            DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
-            if (dummyContent.getFile()!=null) {
-                return dummyContent.getFile();
-            }
-            else {
-                throw new IOException("Error while downloading document.");
-            }
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile()!=null) {
+            return dummyContent.getFile();
         }
         else {
-            throw new DocsNotFoundException("document not found.");
+            throw new IOException("Error while downloading document.");
         }
-
 
     }
 }
