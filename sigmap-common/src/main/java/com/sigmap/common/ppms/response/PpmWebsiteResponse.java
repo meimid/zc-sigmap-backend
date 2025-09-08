@@ -34,6 +34,8 @@ public class PpmWebsiteResponse implements Serializable {
     private Integer nombreActivite;
     private DocsResponseDTO doc;
     private String logo;
+    private Integer acId;
+
 
     public PpmWebsiteResponse(Ppm ppm) {
         // --- Direct Mappings ---
@@ -42,6 +44,7 @@ public class PpmWebsiteResponse implements Serializable {
 
         // --- Logic from "title" mapping ---
         if (ppm.getAc() != null) {
+            this.acId = ppm.getAc().getId();
             this.title = ppm.getAc().getNom();
                 if (ppm.getAc().getLogo() != null) {
                     this.logo = ppm.getAc().getLogo();

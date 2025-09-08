@@ -29,6 +29,7 @@ public class PaaWebsiteResponse {
     private Integer nombreActivite;
     private String logo;
     private DocsResponseDTO doc;
+    private Integer acId;
 
     public PaaWebsiteResponse(Paa paa) {
         // --- Direct Mappings ---
@@ -37,6 +38,7 @@ public class PaaWebsiteResponse {
 
         // --- Logic from "title" mapping ---
         if (paa.getAc() != null) {
+            this.acId = paa.getAc().getId();
             this.title = paa.getAc().getNom();
             if(paa.getAc().getLogo() != null) {
                 this.logo = paa.getAc().getLogo();

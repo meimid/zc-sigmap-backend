@@ -27,6 +27,7 @@ public class AgpmWebsiteResponse {
     private Integer year;
     private String logo;
     private DocsResponseDTO doc;
+    private Integer acId;
 
     public AgpmWebsiteResponse(Agpm agpm) {
         // --- Direct Mappings ---
@@ -35,6 +36,7 @@ public class AgpmWebsiteResponse {
 
         // --- Logic from "title" mapping ---
         if (agpm.getAc() != null) {
+            this.acId = agpm.getAc().getId();
             this.title = agpm.getAc().getNom();
             if (agpm.getAc().getLogo() != null) {
                 this.logo = agpm.getAc().getLogo();
