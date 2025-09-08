@@ -2,6 +2,7 @@ package com.sigmap.common.agpm.response;
 
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +25,8 @@ public class AgpmWebsiteResponse {
     private String title;
     private String publicationDate;
     private Integer year;
-    private List<String> docs;
+    private String logo;
+    private DocsResponseDTO doc;
 
     public AgpmWebsiteResponse(Agpm agpm) {
         // --- Direct Mappings ---
@@ -34,10 +36,13 @@ public class AgpmWebsiteResponse {
         // --- Logic from "title" mapping ---
         if (agpm.getAc() != null) {
             this.title = agpm.getAc().getNom();
+            if (agpm.getAc().getLogo() != null) {
+                this.logo = agpm.getAc().getLogo();
+            }
         }
 
-        // --- Logic from "formatDateToString" and "getYearFromCalendar" ---
-        Calendar updatedAt = agpm.getUpdatedAt(); // Assumes getUpdatedAt() is inherited
+
+        Calendar updatedAt = agpm.getUpdatedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
@@ -59,14 +64,5 @@ public class AgpmWebsiteResponse {
         }
         this.code = codeBuilder.toString();
 
-        // --- Logic from "mapDocsToAlfrescoIds" ---
-        List<Docs> sourceDocs = agpm.getDocs();
-        if (sourceDocs == null || sourceDocs.isEmpty()) {
-            this.docs = Collections.emptyList();
-        } else {
-            this.docs = sourceDocs.stream()
-                    .map(Docs::getAlfresco_id) // Assumes getAlfresco_id() method
-                    .collect(Collectors.toList());
-        }
     }
 }

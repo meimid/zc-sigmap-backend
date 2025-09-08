@@ -1,6 +1,7 @@
 package com.sigmap.common.paas.response;
 
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
@@ -26,7 +27,8 @@ public class PaaWebsiteResponse {
     private String publicationDate;
     private Integer year;
     private Integer nombreActivite;
-    private List<String> docs;
+    private String logo;
+    private DocsResponseDTO doc;
 
     public PaaWebsiteResponse(Paa paa) {
         // --- Direct Mappings ---
@@ -36,10 +38,12 @@ public class PaaWebsiteResponse {
         // --- Logic from "title" mapping ---
         if (paa.getAc() != null) {
             this.title = paa.getAc().getNom();
+            if(paa.getAc().getLogo() != null) {
+                this.logo = paa.getAc().getLogo();
+            }
         }
 
-        // --- Logic from "formatDateToString" and "getYearFromCalendar" ---
-        Calendar updatedAt = paa.getUpdatedAt(); // Assumes getUpdatedAt() is inherited
+        Calendar updatedAt = paa.getUpdatedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
@@ -61,15 +65,6 @@ public class PaaWebsiteResponse {
         }
         this.code = codeBuilder.toString();
 
-        // --- Logic from "mapDocsToAlfrescoIds" ---
-        List<Docs> sourceDocs = paa.getDocs();
-        if (sourceDocs == null || sourceDocs.isEmpty()) {
-            this.docs = Collections.emptyList();
-        } else {
-            this.docs = sourceDocs.stream()
-                    .map(Docs::getAlfresco_id) // Assumes getAlfresco_id() method
-                    .collect(Collectors.toList());
-        }
         List<Realisation> sourceRealisations = paa.getRealisations();
         if (sourceRealisations == null) {
             this.nombreActivite = 0;

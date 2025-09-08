@@ -1,11 +1,25 @@
 package com.sigmap.sigmap_webmaster.services;
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.model_agpm.ModelAgpm;
+import com.sigmap.common.model_agpm.ModelAgpmRepository;
+import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.model_paa.ModelPaa;
+import com.sigmap.common.model_paa.ModelPaaRepository;
+import com.sigmap.common.model_paa.ModelPaaService;
+import com.sigmap.common.model_ppm.ModelPpm;
+import com.sigmap.common.model_ppm.ModelPpmRepository;
+import com.sigmap.common.model_ppm.ModelPpmService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.paas.PaaService;
@@ -32,7 +46,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,19 +58,36 @@ public class WebMasterServiceImpl implements WebMasterService {
     private final PpmRepository ppmRepository;
     private final PaaRepository paaRepository;
     private final AgpmRepository agpmRepository;
+    private final ModelPpmService modelPpmService;
+    private final ModelPaaService modelPaaService;
+    private final ModelAgpmService modelAgpmService;
+    private final AlfrescoService alfrescoService;
+    private final ModelPaaRepository modelPaaRepository;
+    private final ModelAgpmRepository modelAgpmRepository;
+    private final ModelPpmRepository modelPpmRepository;
 
-    public WebMasterServiceImpl( PpmRepository ppmRepository, PaaRepository paaRepository, AgpmRepository agpmRepository) {
+
+    public WebMasterServiceImpl(PpmRepository ppmRepository, PaaRepository paaRepository, AgpmRepository agpmRepository, ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, ModelPaaRepository modelPaaRepository, ModelAgpmRepository modelAgpmRepository, ModelPpmRepository modelPpmRepository) {
 
         this.ppmRepository = ppmRepository;
         this.paaRepository = paaRepository;
         this.agpmRepository = agpmRepository;
+        this.modelPpmService = modelPpmService;
+        this.modelPaaService = modelPaaService;
+        this.modelAgpmService = modelAgpmService;
+        this.alfrescoService = alfrescoService;
+        this.modelPaaRepository = modelPaaRepository;
+        this.modelAgpmRepository = modelAgpmRepository;
+        this.modelPpmRepository = modelPpmRepository;
     }
 
     @Override
     public PpmDetailsWebsite getPpmById(Integer ppmId, Pageable pageable) throws PpmNotFound {
-        Integer ppmVer=ppmRepository.findMaxVersionById(ppmId);
+        Integer ppmVer = ppmRepository.findMaxVersionById(ppmId);
         Specification<Ppm> spec = PpmSpecifications.id(new CompositeId(ppmId, ppmVer)).and(PpmSpecifications.deleted(false)).and(PpmSpecifications.isPublished());
-        Ppm ppm = ppmRepository.findOne(spec).orElseThrow(()-> new PpmIdNotFound("",ppmId));
+        Ppm ppm = ppmRepository.findOne(spec).orElseThrow(() -> new PpmIdNotFound("", ppmId));
+        Optional<ModelPpm> modelPpm = modelPpmService.getModel(ppmId, ppmVer);
+
         PpmWebsiteResponse ppmResponse = new PpmWebsiteResponse(ppm);
         List<RealisationPpmWebsite> allRealisationsDto = ppm.getRealisations().stream()
                 .map(RealisationPpmWebsite::new).skip(pageable.getOffset())
@@ -63,17 +96,28 @@ public class WebMasterServiceImpl implements WebMasterService {
         PpmDetailsWebsite ppmDetailsWebsite = new PpmDetailsWebsite();
         ppmDetailsWebsite.setPpm(ppmResponse);
         ppmDetailsWebsite.setRealisations(realisationPage);
+        if (modelPpm.isPresent()) {
+            if (modelPpm.get().getDoc() != null && !modelPpm.get().getDoc().getIsDeleted()) {
+                DocsResponseDTO docResponseDTO = new DocsResponseDTO();
+                docResponseDTO.setId(modelPpm.get().getDoc().getId());
+                docResponseDTO.setName(modelPpm.get().getDoc().getName());
+                docResponseDTO.setAlfresco_id(modelPpm.get().getDoc().getAlfresco_id());
+                docResponseDTO.setContentType(modelPpm.get().getDoc().getContentType());
+                docResponseDTO.setFileExtension(modelPpm.get().getDoc().getFileExtension());
+                ppmResponse.setDoc(docResponseDTO);
+
+            }
+        }
         return ppmDetailsWebsite;
     }
 
 
-
-
     @Override
     public PaaDetailsWebsite getPaaById(Integer paaId, Pageable pageable) throws PaaNotFound {
-        Integer paaVer=paaRepository.findMaxVersionById(paaId);
+        Integer paaVer = paaRepository.findMaxVersionById(paaId);
         Specification<Paa> spec = PaaSpecifications.id(new CompositeId(paaId, paaVer)).and(PaaSpecifications.deleted(false)).and(PaaSpecifications.isPublished());
-        Paa paa = paaRepository.findOne(spec).orElseThrow(()-> new PaaIdNotFound("",paaId));
+        Paa paa = paaRepository.findOne(spec).orElseThrow(() -> new PaaIdNotFound("", paaId));
+        Optional<ModelPaa> modelPaa = modelPaaService.getModel(paaId, paaVer);
         PaaWebsiteResponse paaResponse = new PaaWebsiteResponse(paa);
         List<RealisationPaaWebSite> allRealisationsDto = paa.getRealisations().stream()
                 .map(RealisationPaaWebSite::new).skip(pageable.getOffset())
@@ -82,18 +126,71 @@ public class WebMasterServiceImpl implements WebMasterService {
         PaaDetailsWebsite paaDetailsWebsite = new PaaDetailsWebsite();
         paaDetailsWebsite.setPaa(paaResponse);
         paaDetailsWebsite.setRealisations(realisationPage);
+        if (modelPaa.isPresent()) {
+            if (modelPaa.get().getDoc() != null && !modelPaa.get().getDoc().getIsDeleted()) {
+                DocsResponseDTO docResponseDTO = new DocsResponseDTO();
+                docResponseDTO.setId(modelPaa.get().getDoc().getId());
+                docResponseDTO.setName(modelPaa.get().getDoc().getName());
+                docResponseDTO.setAlfresco_id(modelPaa.get().getDoc().getAlfresco_id());
+                docResponseDTO.setContentType(modelPaa.get().getDoc().getContentType());
+                docResponseDTO.setFileExtension(modelPaa.get().getDoc().getFileExtension());
+                paaResponse.setDoc(docResponseDTO);
+            }
+        }
         return paaDetailsWebsite;
 
     }
 
 
     @Override
-    public Agpm getAgpmById (Integer agpmId) throws AgpmNotFound {
-        Integer agpmVer=agpmRepository.findMaxVersionById(agpmId);
+    public AgpmWebsiteResponse getAgpmById(Integer agpmId) throws AgpmNotFound {
+        Integer agpmVer = agpmRepository.findMaxVersionById(agpmId);
         Specification<Agpm> spec = AgpmSpecifications.id(new CompositeId(agpmId, agpmVer)).and(AgpmSpecifications.deleted(false)).and(AgpmSpecifications.isPublished());
-        Agpm agpmOpt = agpmRepository.findOne(spec).orElseThrow(()->new AgpmNotFound("",List.of(agpmId),List.of(agpmVer)));
-            return agpmOpt;
+        Agpm agpmOpt = agpmRepository.findOne(spec).orElseThrow(() -> new AgpmNotFound("", List.of(agpmId), List.of(agpmVer)));
+        Optional<ModelAgpm> modelAgpm = modelAgpmService.getModel(agpmId, agpmVer);
+        AgpmWebsiteResponse agpmResponse = new AgpmWebsiteResponse(agpmOpt);
+        if (modelAgpm.isPresent()) {
+            if (modelAgpm.get().getDoc() != null && !modelAgpm.get().getDoc().getIsDeleted()) {
+                DocsResponseDTO docResponseDTO = new DocsResponseDTO();
+                docResponseDTO.setId(modelAgpm.get().getDoc().getId());
+                docResponseDTO.setName(modelAgpm.get().getDoc().getName());
+                docResponseDTO.setAlfresco_id(modelAgpm.get().getDoc().getAlfresco_id());
+                docResponseDTO.setContentType(modelAgpm.get().getDoc().getContentType());
+                docResponseDTO.setFileExtension(modelAgpm.get().getDoc().getFileExtension());
+                agpmResponse.setDoc(docResponseDTO);
+            }
+        }
+
+        return agpmResponse;
     }
+    @Override
+    public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
+        return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
+    }
+    @Override
+    public byte[] downloadDocument(String alfrescoId,Integer id, Integer ver) throws IOException {
+        if (alfrescoId == null || alfrescoId.isBlank()) {
+            throw new IOException("Alfresco ID cannot be null or empty.");
+        }
+        Optional<String> optionalAlfrescoIdPpm=modelPpmRepository.findModelAlfrescoId(id,ver);
+        Optional<String> optionalAlfrescoIdPaa=modelPaaRepository.findModelAlfrescoId(id,ver);
+        Optional<String> optionalAlfrescoIdAgpm=modelAgpmRepository.findModelAlfrescoId(id,ver);
+        if (optionalAlfrescoIdPpm.isPresent()&&optionalAlfrescoIdPpm.get().equals(alfrescoId)
+        ||optionalAlfrescoIdPaa.isPresent()&&optionalAlfrescoIdPaa.get().equals(alfrescoId)
+        ||optionalAlfrescoIdAgpm.isPresent()&&optionalAlfrescoIdAgpm.get().equals(alfrescoId)) {
+
+            DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+            if (dummyContent.getFile()!=null) {
+                return dummyContent.getFile();
+            }
+            else {
+                throw new IOException("Error while downloading document.");
+            }
+        }
+        else {
+            throw new DocsNotFoundException("document not found.");
+        }
 
 
+    }
 }

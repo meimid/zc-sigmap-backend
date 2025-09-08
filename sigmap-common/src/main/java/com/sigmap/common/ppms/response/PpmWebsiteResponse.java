@@ -1,6 +1,10 @@
 package com.sigmap.common.ppms.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Response.DocsResponse;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
@@ -8,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import javax.print.Doc;
+import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Collections;
@@ -18,7 +24,7 @@ import java.util.stream.Collectors;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class PpmWebsiteResponse {
+public class PpmWebsiteResponse implements Serializable {
     private Integer id;
     private Integer version;
     private String code;
@@ -26,7 +32,8 @@ public class PpmWebsiteResponse {
     private String publicationDate;
     private Integer year;
     private Integer nombreActivite;
-    private List<String> docs;
+    private DocsResponseDTO doc;
+    private String logo;
 
     public PpmWebsiteResponse(Ppm ppm) {
         // --- Direct Mappings ---
@@ -36,10 +43,12 @@ public class PpmWebsiteResponse {
         // --- Logic from "title" mapping ---
         if (ppm.getAc() != null) {
             this.title = ppm.getAc().getNom();
+                if (ppm.getAc().getLogo() != null) {
+                    this.logo = ppm.getAc().getLogo();
+                }
         }
 
-        // --- Logic from "formatDateToString" and "getYearFromCalendar" ---
-        Calendar updatedAt = ppm.getUpdatedAt(); // Assumes getUpdatedAt() is inherited
+        Calendar updatedAt = ppm.getUpdatedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
@@ -60,16 +69,6 @@ public class PpmWebsiteResponse {
             codeBuilder.append(this.year);
         }
         this.code = codeBuilder.toString();
-
-        // --- Logic from "mapDocsToAlfrescoIds" ---
-        List<Docs> sourceDocs = ppm.getDocs();
-        if (sourceDocs == null || sourceDocs.isEmpty()) {
-            this.docs = Collections.emptyList();
-        } else {
-            this.docs = sourceDocs.stream()
-                    .map(Docs::getAlfresco_id) // Assumes getAlfresco_id() method
-                    .collect(Collectors.toList());
-        }
 
         List<Realisation> sourceRealisations = ppm.getRealisations();
         if (sourceRealisations == null) {
