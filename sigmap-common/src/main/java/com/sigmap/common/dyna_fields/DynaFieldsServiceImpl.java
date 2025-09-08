@@ -180,12 +180,19 @@ public class DynaFieldsServiceImpl implements DynaFieldsService {
   /**
    * Delete DynaField.
    *
-   * <p>WARNING : ....
+   * <p>Deletes the specified DynaField by its ID.
    *
-   * @param dynaFieldId ID
+   * @param dynaFieldId ID of the field to delete
    */
   @Override
   public void delete(Integer dynaFieldId) {
-    throw new UnsupportedOperationException();
+    // Find the field first to ensure it exists
+    Optional<DynaFields> dynaField = findById(dynaFieldId);
+    if (dynaField.isPresent()) {
+      dynaFieldsRepository.delete(dynaField.get());
+      log.info("DynaField deleted with ID: {}", dynaFieldId);
+    } else {
+      log.warn("Attempted to delete non-existent DynaField with ID: {}", dynaFieldId);
+    }
   }
 }

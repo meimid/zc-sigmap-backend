@@ -9,7 +9,7 @@ import lombok.Data;
 public class DacResponseReunion {
     private Integer dacId;
     private Integer dacVer;
-    private RefParamResponseDto category;
+    private RefParamResponseDto typeMarche;
     private ProcessStatus status;
     private AcWebsiteResponse ac;
 }

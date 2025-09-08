@@ -43,8 +43,11 @@ public class Dac extends BaseEntity {
 
   @ManyToOne
   @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
-  private RefParam category;
+  private RefParam typeMarche;
 
   @Enumerated(EnumType.STRING)
   private ProcessStatus status;
+
+  @Column(name = "ref_dac")
+  private String reference;
 }

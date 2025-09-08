@@ -47,6 +47,7 @@ public interface PpmService {
      * @return a page of Ppms
      */
     Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) throws AcNotFound, PpmNotFound;
+    Page<Ppm> findAllForDac(Specification<Ppm> spec, Pageable pageable) throws AcNotFound, PpmNotFound;
 
     /**
      * Return a page of deleted Ppms based on the given specification and pageable.

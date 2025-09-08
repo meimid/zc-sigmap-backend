@@ -102,6 +102,17 @@ public class PpmController {
         logger.info("User {}", user.getSubject());
 
         Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
+        logger.debug("Found -------------- {} ppms", ppms.getTotalElements());
+        Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/for-dac")
+    public ResponseEntity<Page<PpmResponseDto>> findAllPubliee(
+            PpmQuery query, Pageable pageable) throws PpmNotFound, AcNotFound {
+
+        Page<Ppm> ppms = ppmService.findAllForDac (query.toSpecification(), pageable);
+        logger.debug("Found for dac ------------------  {} ppms", ppms.getTotalElements());
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
     }

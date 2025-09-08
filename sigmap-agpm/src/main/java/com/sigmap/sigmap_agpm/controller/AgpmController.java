@@ -133,7 +133,7 @@ public class AgpmController {
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<AgpmResponse> createAgpm(@ModelAttribute("request") AgpmRequest request)
             throws AgpmAlreadyExistsException, AgpmNotNull, AcNotFound, DocNotFound, AgpmDefaultStatus, IOException, MaxUploadSizeFile {
-        fileCheckServices.chechFileUpload(request.getFiles(), maxFileUploadSize);
+        fileCheckServices.checkFileUpload(request.getFiles(), maxFileUploadSize);
         Agpm createdAgpm = agpmService.create(request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(createdAgpm);
         return ResponseEntity.ok(agpmResponse);
@@ -156,7 +156,7 @@ public class AgpmController {
     public ResponseEntity<AgpmResponse> updateAgpm(@PathVariable Integer agpmId,
                                                    @ModelAttribute("request") AgpmRequest request)
             throws AgpmNotFound, DocNotFound, IOException, InvalidIdAndVersionAgpm, MaxUploadSizeFile, AgpmInvalidStateException {
-        fileCheckServices.chechFileUpload(request.getFiles(), maxFileUploadSize);
+        fileCheckServices.checkFileUpload(request.getFiles(), maxFileUploadSize);
         Agpm updatedAgpm = agpmService.updateWithoutVersioning(agpmId, null, request);
         AgpmResponse agpmResponse = AgpmMapper.INSTANCE.map(updatedAgpm);
         return new ResponseEntity<>(agpmResponse, HttpStatus.OK);

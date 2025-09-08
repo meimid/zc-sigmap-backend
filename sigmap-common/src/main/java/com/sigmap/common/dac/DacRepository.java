@@ -48,4 +48,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT d FROM Dac d WHERE d.realisation.id = :id and d.realisation.version = :version and d.isDeleted = false")
   Optional<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
 
+  @Query("SELECT COUNT (*) FROM Dac d")
+  Integer findMaxDacNumber () ;
+
 }

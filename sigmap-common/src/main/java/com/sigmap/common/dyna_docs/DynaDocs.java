@@ -41,7 +41,7 @@ public class DynaDocs {
 
   @ManyToOne
   @JoinColumn(name = "category_id")
-  private RefParam categorieId;
+  private RefParam typeMarche;
 
   @Column(name = "dyna_doc_order")
   private Integer dynaDocOrder;

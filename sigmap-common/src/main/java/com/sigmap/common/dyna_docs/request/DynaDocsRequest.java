@@ -11,7 +11,7 @@ public class DynaDocsRequest {
 
   private String guideFileName;
 
-  private Integer categorieId;
+  private Integer typeMarcheId;
 
   private Integer dynaDocOrder;
 

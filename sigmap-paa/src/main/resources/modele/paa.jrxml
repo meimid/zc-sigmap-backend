@@ -50,7 +50,8 @@
 		<queryString language="SQL">
 			<![CDATA[SELECT  p.paa_id,
 	 p.paa_ver,
-	 r.realisation_envisagees,
+	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
+	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
 	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
@@ -70,9 +71,15 @@ FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.imputation_budgetaire_id =  rf.ref_param_id
 	  LEFT JOIN finacement fin
     ON r.realisation_id= fin.realisation_id  and r.realisation_ver=fin.realisation_ver
+    LEFT JOIN lots_realisation l
+        ON r.realisation_id = l.realisation_id
+        AND r.realisation_ver = l.realisation_ver
+    LEFT JOIN lots ls
+        ON l.lots_id = ls.lots_id
+        AND l.lots_ver = ls.lots_ver
 LEFT JOIN ref_param rp
     ON fin.source_de_financement_id = rp.ref_param_id
-where p.paa_id= $P{paa_id}   and p.paa_ver= $P{paa_ver}
+where p.paa_id= $P{paa_id}     and p.paa_ver=  $P{paa_ver} 
 GROUP BY
     p.paa_id,
     p.paa_ver,
@@ -83,7 +90,7 @@ GROUP BY
     r.date_prev_dp,
     r.date_prev_ap,
     m.libelle,
-    f.description;]]>
+    f.description]]>
 		</queryString>
 		<field name="paa_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="paa_id"/>
@@ -99,6 +106,10 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.name" value="realisation_envisagees"/>
 			<property name="com.jaspersoft.studio.field.label" value="realisation_envisagees"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
+		</field>
+		<field name="lots" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="lots"/>
+			<property name="com.jaspersoft.studio.field.label" value="lots"/>
 		</field>
 		<field name="beneficiaire" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="beneficiaire"/>
@@ -297,7 +308,7 @@ FROM  paa p
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$F{realisation_envisagees}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$F{realisation_envisagees}+" : "+$F{lots}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
