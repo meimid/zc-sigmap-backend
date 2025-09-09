@@ -430,21 +430,39 @@ public class ReunionServiceImpl implements ReunionService{
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
 
         // Map current links
-        Map<ReunionPpmId, ReunionPpm> currentLinks =
+ /*       Map<ReunionPpmId, ReunionPpm> currentLinks =
                 reunion.getReunionPpms().stream()
                         .collect(Collectors.toMap(
                                 link -> new ReunionPpmId(link.getReunionId(),
                                         link.getPpmId(),
                                         link.getPpmVer()),
                                 Function.identity()
-                        ));
+                        ));*/
+       Map<ReunionPpmId, ReunionPpm> currentLinks = new HashMap<>();
+        for (ReunionPpm link : reunion.getReunionPpms()) {
+            ReunionPpmId id = new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer());
+            currentLinks.put(id, link);
+        }
+
+      /*  Map<ReunionPpmId, List<Integer>> cachedDocIds = reunion.getReunionPpms().stream()
+                .collect(Collectors.toMap(
+                        link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()),
+                        link -> link.getReunionPpmDocs() != null
+                                ? link.getReunionPpmDocs().stream().map(ReunionPpmDoc::getDocId).toList()
+                                : new ArrayList<>()
+                ));*/
 
         Map<ReunionPpmId, List<Integer>> cachedDocIds = reunion.getReunionPpms().stream()
                 .collect(Collectors.toMap(
                         link -> new ReunionPpmId(link.getReunionId(), link.getPpmId(), link.getPpmVer()),
                         link -> link.getReunionPpmDocs() != null
                                 ? link.getReunionPpmDocs().stream().map(ReunionPpmDoc::getDocId).toList()
-                                : new ArrayList<>()
+                                : new ArrayList<>(),
+                        (existing, replacement) -> {
+                            List<Integer> merged = new ArrayList<>(existing);
+                            merged.addAll(replacement);
+                            return merged;
+                        }
                 ));
         List<Integer> documentsIdsToDelete = new ArrayList<>();
         Set<ReunionPpmId> requestLinkIds = new HashSet<>();
@@ -513,24 +531,45 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunion = repository.findByIdWithDacs(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
         // Map current links
-        Map<ReunionDacId, ReunionDac> currentLinks =
+     /*   Map<ReunionDacId, ReunionDac> currentLinks =
                 reunion.getReunionDacs().stream()
                         .collect(Collectors.toMap(
                                 link -> new ReunionDacId(link.getReunionId(),
                                         link.getDacId(),
                                         link.getDacVer()),
                                 Function.identity()
-                        ));
+                        ));*/
 
         Set<ReunionDacId> requestDacIds = new HashSet<>();
+
+      /*  Map<ReunionDacId, List<Integer>> cachedDocIds = reunion.getReunionDacs().stream()
+                .collect(Collectors.toMap(
+                        link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()),
+                        link -> link.getReunionDacDocs() != null
+                                ? link.getReunionDacDocs().stream().map(ReunionDacDoc::getDocId).toList()
+                                : new ArrayList<>()
+                ));*/
+
+        Map<ReunionDacId, ReunionDac> currentLinks = new HashMap<>();
+        for (ReunionDac link : reunion.getReunionDacs()) {
+            ReunionDacId id = new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer());
+            currentLinks.put(id, link);
+        }
+
 
         Map<ReunionDacId, List<Integer>> cachedDocIds = reunion.getReunionDacs().stream()
                 .collect(Collectors.toMap(
                         link -> new ReunionDacId(link.getReunionId(), link.getDacId(), link.getDacVer()),
                         link -> link.getReunionDacDocs() != null
                                 ? link.getReunionDacDocs().stream().map(ReunionDacDoc::getDocId).toList()
-                                : new ArrayList<>()
+                                : new ArrayList<>(),
+                        (existing, replacement) -> {
+                            List<Integer> merged = new ArrayList<>(existing);
+                            merged.addAll(replacement);
+                            return merged;
+                        }
                 ));
+
         List<Integer> documentsIdsToDelete = new ArrayList<>();
         if (request.getReunionDacs() != null) {
             for (ReunionDacRequest dacReq : request.getReunionDacs()) {
