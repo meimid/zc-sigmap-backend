@@ -6,8 +6,10 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
@@ -26,6 +28,8 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.PpmService;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -35,10 +39,14 @@ import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -49,6 +57,7 @@ import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+
 
 @Service
 @Slf4j
@@ -83,6 +92,56 @@ public class RealisationServiceImpl implements RealisationService {
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.monnaieRepository = monnaieRepository;
         this.modeDePassationSelectionRepository = modeDePassationSelectionRepository;
+    }
+
+    @Override
+    public List<Realisation> findRealisationsNotAttachedToDac(Integer ppmId, Integer ppmVersion) throws PpmNotFound {
+        log.info("Recherche des réalisations non attachées à un DAC pour le PPM ID: {}, Version: {}", ppmId, ppmVersion);
+
+        // Validate input
+        if (ppmId == null|| ppmVersion == null) {
+            log.error("ID ou version du PPM non fourni");
+            throw new IllegalArgumentException("PPM ID and version must not be null");
+        }
+
+        // Verify PPM exists
+        if (!ppmRepository.existsById(new CompositeId(ppmId, ppmVersion))) {
+            log.error("PPM non trouvé avec ID: {}, Version: {}", ppmId, ppmVersion);
+            throw new PpmNotFound("PPM non trouvé avec ID: " , List.of(ppmId), List.of(ppmVersion));
+        }
+
+        // Create specification to filter Realisations not attached to a Dac
+        Specification<Realisation> realisationNotInDacSpec = (root, query, cb) -> {
+            query.distinct(true);
+            // Join with ppm_realisation to ensure the Realisation is linked to the given PPM
+            Join<Realisation, Ppm> ppmJoin = root.join("ppms", jakarta.persistence.criteria.JoinType.INNER);
+            // Subquery to check if Realisation is linked to any Dac
+            Subquery<Long> dacSubquery = query.subquery(Long.class);
+            Root<Dac> dacRoot = dacSubquery.from(Dac.class);
+            dacSubquery.select(cb.count(dacRoot))
+                    .where(
+                            cb.equal(dacRoot.get("realisation").get("id"), root.get("id")),
+                            cb.equal(dacRoot.get("realisation").get("version"), root.get("version"))
+                    );
+            // Filter Realisations linked to the specific PPM and not linked to any Dac
+            return cb.and(
+                    cb.equal(ppmJoin.get("id"), ppmId),
+                    cb.equal(ppmJoin.get("version"), ppmVersion),
+                    cb.equal(dacSubquery, 0)
+            );
+        };
+
+        // Fetch Realisations using the specification
+        List<Realisation> realisations = repository.findAll(realisationNotInDacSpec);
+
+        if (realisations.isEmpty()) {
+            log.info("Aucune réalisation non attachée à un DAC trouvée pour le PPM ID: {}, Version: {}", ppmId, ppmVersion);
+        } else {
+            log.info("Récupération de {} réalisations non attachées à un DAC pour le PPM ID: {}, Version: {}",
+                    realisations.size(), ppmId, ppmVersion);
+        }
+
+        return realisations;
     }
 
     @Override
@@ -1827,5 +1886,7 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
 
         return copiedFinancements;
     }
+
+
 
 }

@@ -1,6 +1,8 @@
 package com.sigmap.common.realisations;
 
 
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.request.RealisationRequest; // Assuming a DTO exists
@@ -151,4 +153,6 @@ public interface RealisationService {
      * @param realisationVer the second part of the composite ID (realisation_ver)
      */
     void delete(Integer realisationId, Integer realisationVer);
+
+    List<Realisation> findRealisationsNotAttachedToDac(Integer ppmId, Integer ppmVer) throws PpmNotFound;
 }

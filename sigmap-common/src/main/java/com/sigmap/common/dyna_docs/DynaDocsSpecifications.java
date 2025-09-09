@@ -46,10 +46,13 @@ public class DynaDocsSpecifications {
     };
   }
 
-  public static Specification<DynaDocs> categoryId(Integer categorieId) {
+  /**
+   * Filter by TypeMarche ID
+   */
+  public static Specification<DynaDocs> typeMarcheId(Integer typeMarcheId) {
     return (root, query, criteriaBuilder) -> {
-      Join<DynaDocs, RefParam> join = root.join("categorieId");
-      return criteriaBuilder.equal(join.get("id"), categorieId);
+      Join<DynaDocs, RefParam> join = root.join("typeMarche");
+      return criteriaBuilder.equal(join.get("id"), typeMarcheId);
     };
   }
 

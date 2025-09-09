@@ -317,7 +317,8 @@ public class DynaDocsVersionsAop {
     log.info("Found {} dynafields", dynaFields.size());
 
     for (DynaFields item : dynaFields) {
-      DynaFields newDynaField = DynaFieldsMapper.INSTANCE.mapWithoutId(dynaField);
+      // Fix: Use 'item' (the current field being copied) instead of 'dynaField' (the deleted field)
+      DynaFields newDynaField = DynaFieldsMapper.INSTANCE.mapWithoutId(item);
       newDynaField.setDynaFieldsId(item.getDynaFieldsId());
       newDynaField.setDynaDocsId(dynaDocId);
       newDynaField.setDynaDocsVer(newDynaDocsVer);

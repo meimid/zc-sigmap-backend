@@ -4,15 +4,18 @@ import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacListRequest;
 import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.menu_item.mappers.MenuItemMapper;
 import com.sigmap.common.menu_item.request.MenuItemQuery;
@@ -42,10 +45,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +59,7 @@ public class DacController {
 
   private final DacService dacService;
   private final DacDocsService dacDocsService;
+  private final DynaDocsRepository dynaDocsRepository;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
@@ -69,9 +70,10 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService, DacDocsService dacDocsService) {
+  public DacController(DacService dacService, DacDocsService dacDocsService, DynaDocsRepository dynaDocsRepository) {
     this.dacService = dacService;
     this.dacDocsService = dacDocsService;
+    this.dynaDocsRepository = dynaDocsRepository;
 
   }
 
@@ -154,8 +156,58 @@ public class DacController {
     }
   }
 
+  @PostMapping("/previsualiser-specific-pdf")
+  public ResponseEntity<Map<String, String>> generatePdfForVisualise(@RequestBody DacRequest request) {
+    try {
+      // 1. Generate DOCX file
+      String generatedFile = dacService.generateDocumentWithBookmarks(
+              request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
+
+      log.info("Generated DOCX file: {}", generatedFile);
+
+      // 2. Prepare the file for upload
+      FileSystemResource docxResource = new FileSystemResource(new java.io.File(generatedFile));
+
+      // 3. Prepare the multipart request
+      MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+      body.add("files", docxResource);
+
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+      // 4. Send request to Gotenberg API and get the PDF response
+      RestTemplate restTemplate = new RestTemplate();
+      ResponseEntity<byte[]> response = restTemplate.exchange(
+              convertUrl + "/forms/libreoffice/convert",
+              HttpMethod.POST,
+              requestEntity,
+              byte[].class
+      );
+
+      // 5. Convert PDF bytes to base64 for Angular visualization
+      String base64Pdf = Base64.getEncoder().encodeToString(response.getBody());
+
+      // get file name from data base
+      String fileName = dynaDocsRepository.getDynaDocName(request.getDynaDocsId(), request.getDynaDocsVer());
+
+      // 6. Prepare JSON response with base64 string
+      Map<String, String> responseBody = new HashMap<>();
+      responseBody.put("pdfBase64", base64Pdf);
+      responseBody.put("filename", fileName + ".pdf");
+      responseBody.put("extension", "PDF");
+
+      return new ResponseEntity<>(responseBody, HttpStatus.OK);
+
+    } catch (Exception e) {
+      log.error("Error generating PDF: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+    }
+  }
+
   @PostMapping("/generate-list-pdf")
-  public ResponseEntity<byte[]> replaceBookmarksAndGenerateListDOCpdf(@RequestBody DacRequest request) {
+  public ResponseEntity<byte[]> replaceBookmarksAndGenerateListDOCpdf(@RequestBody DacListRequest request) {
     try {
       // . Generate multiple DOCX files as before
       List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(request.getDacId(), request.getDacVer(), basePath, customDirPath);

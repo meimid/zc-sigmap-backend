@@ -16,7 +16,7 @@ public class DacQuery {
     private Integer ppmVer;
     private Integer realisationId;
     private Integer realisationVer;
-    private Integer categoryId;
+    private Integer typeMarcheId;
     private ProcessStatus status;
     private boolean deleted;
 
@@ -35,8 +35,8 @@ public class DacQuery {
             spec = spec.and(DacSpecifications.searchByPpm(ppmId, ppmVer));
         }
 
-        if (categoryId != null) {
-            spec = spec.and(DacSpecifications.searchByCategory(categoryId));
+        if (typeMarcheId != null) {
+            spec = spec.and(DacSpecifications.searchByTypeMarche(typeMarcheId));
         }
 
         if (status != null) {

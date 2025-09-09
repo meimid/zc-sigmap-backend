@@ -12,6 +12,7 @@ import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
@@ -50,12 +51,11 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
+import jakarta.persistence.criteria.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -70,6 +70,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static jakarta.persistence.criteria.JoinType.LEFT;
+
 @Slf4j
 @Service
 public class PpmServiceImpl implements PpmService {
@@ -323,6 +326,109 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
+    public Page<Ppm> findAllForDac(Specification<Ppm> spec, Pageable pageable) {
+        log.info("Recherche des PPMs publiés pour DAC avec spécification: {}", spec);
+
+        // Fetch user access scopes
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+
+        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+            log.info("Aucun ID AC ou COM trouvé pour l'utilisateur connecté");
+            return Page.empty(pageable);
+        }
+
+        // Validate ACs (if any)
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            for (Integer acId : userAcIds) {
+                try {
+                    acService.findById(acId);
+                } catch (Exception e) {
+                    log.info("AC non trouvé avec ID: {}", acId);
+                    return Page.empty(pageable);
+                }
+            }
+        }
+
+        // Base specification: non-deleted, latest version, status published
+        Specification<Ppm> deletedSpec = (root, query, cb) -> cb.isFalse(root.get("isDeleted"));
+        Specification<Ppm> latestVersionSpec = (root, query, cb) -> {
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(cb.equal(subRoot.get("id"), root.get("id")));
+            return cb.equal(root.get("version"), subquery);
+        };
+        // Add status = PUBLIE filter
+        Specification<Ppm> publishedSpec = (root, query, cb) -> cb.equal(root.get("status"), ProcessStatus.PUBLIE);
+
+        Specification<Ppm> baseSpec = deletedSpec.and(latestVersionSpec).and(publishedSpec);
+        if (spec != null) {
+            baseSpec = baseSpec.and(spec);
+        }
+
+        // Access filters
+        Specification<Ppm> acFilterSpec = null;
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            acFilterSpec = (root, query, cb) -> cb.in(root.get("ac").get("id")).value(userAcIds);
+        }
+
+        Specification<Ppm> comFilterSpec = null;
+        if (userComIds != null && !userComIds.isEmpty()) {
+            comFilterSpec = (root, query, cb) -> {
+                query.distinct(true);
+                return root.join("coms", LEFT).get("id").in(userComIds);
+            };
+        }
+
+        Specification<Ppm> accessSpec;
+        if (acFilterSpec != null && comFilterSpec != null) {
+            accessSpec = acFilterSpec.or(comFilterSpec);
+        } else if (acFilterSpec != null) {
+            accessSpec = acFilterSpec;
+        } else {
+            accessSpec = comFilterSpec;
+        }
+
+        Specification<Ppm> combinedSpec = baseSpec.and(accessSpec);
+
+        Page<Ppm> publishedPpms = repository.findAll(combinedSpec, pageable);
+        if (publishedPpms.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // Build a set of realisation keys already attached to a DAC
+        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
+        Set<String> realisationsWithDac = realisationKeysWithDac.stream()
+                .map(o -> o[0] + ":" + o[1])
+                .collect(Collectors.toSet());
+
+        // For each PPM, keep only unattached realisations; drop PPMs with none
+        List<Ppm> filteredPpms = publishedPpms.getContent().stream()
+                .map(ppm -> {
+                    Ppm copy = createFilteredResponsePpm(ppm);
+                    if (copy.getRealisations() != null) {
+                        List<Realisation> unattached = copy.getRealisations().stream()
+                                .filter(r -> r != null)
+                                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                                .filter(r -> !realisationsWithDac.contains(r.getId() + ":" + r.getVersion()))
+                                .collect(Collectors.toList());
+                        copy.setRealisations(unattached);
+                    }
+                    return copy;
+                })
+                .filter(ppm -> ppm.getRealisations() != null && !ppm.getRealisations().isEmpty())
+                .collect(Collectors.toList());
+
+        if (filteredPpms.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return new PageImpl<>(filteredPpms, pageable, filteredPpms.size());
+    }
+
+
+    @Override
     public Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) {
         log.info("Recherche de tous les PPMs avec spécification: {}", spec);
 
@@ -380,7 +486,7 @@ public class PpmServiceImpl implements PpmService {
             comFilterSpec = (root, query, cb) -> {
                 // Joining coms; distinct to avoid duplicates
                 query.distinct(true);
-                return root.join("coms", jakarta.persistence.criteria.JoinType.LEFT)
+                return root.join("coms", LEFT)
                         .get("id").in(userComIds);
             };
         }

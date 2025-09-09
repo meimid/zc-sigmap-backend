@@ -27,6 +27,11 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
+
   liquibase:
     change-log: classpath:/db/db.changelog-master.yml
 
@@ -70,7 +75,7 @@ springdoc:
     displayRequestDuration: true
 
 cors:
-  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:5000}
+  origins: ${CORS_ALLOWED_ORIGINS:http://sigmap-bo.zedneycreative.com,http://localhost:4200}
 
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
@@ -106,8 +111,8 @@ alfresco:
 
 templateDac:
   dac:
-    inputDocPath: ${INPUT_DAC_PATH:E:\\word\\templates\\}
-    outputDocPath: ${OUTPUT_DAC_PATH:E:\\word\\temp\\}
+    inputDocPath: ${INPUT_DAC_PATH:C:\\word\\templates\\}
+    outputDocPath: ${OUTPUT_DAC_PATH:C:\\word\\temp\\}
 
 documents:
   convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}
@@ -117,3 +122,7 @@ file:
     parent-path: ${FILE_UPLOAD_PARENT:C:\\uploads}
     user-profile-path: ${FILE_UPLOAD_USER_PROFILE:${file.upload.parent-path}\\users}
     ac-logo-path: ${FILE_UPLOAD_AC_LOGO:${file.upload.parent-path}\\acs}
+
+# Application-level file size limits (for business validation)
+max-file-size: ${UPLOAD_MAX_FILE_SIZE:30MB}
+

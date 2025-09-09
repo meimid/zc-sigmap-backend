@@ -25,6 +25,11 @@ public interface DacDocsRepository extends JpaRepository<DacDocs, DacDocsId>, Jp
                                             @Param("dynaDocsVer") Integer dynaDocsVer,
                                             @Param("dynaFieldsId") Integer dynaFieldsId);
 
+    @Query(" SELECT d FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer AND d.id.dynaFieldsId = :dynaFieldsId ")
+    List<DacDocs> findByDacAndField(@Param("dacId") Integer dacId,
+                                    @Param("dacVer") Integer dacVer,
+                                    @Param("dynaFieldsId") Integer dynaFieldsId);
+
     @Query(" SELECT d FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer ")
     List<DacDocs> findDacByID (@Param("dacId") Integer dacId,
                          @Param("dacVer") Integer dacVer);
