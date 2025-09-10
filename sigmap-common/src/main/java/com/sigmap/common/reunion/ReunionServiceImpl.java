@@ -167,8 +167,8 @@ public class ReunionServiceImpl implements ReunionService{
         if(request.getEmplacement() != null) {
             reunion.setEmplacement(request.getEmplacement());
         }
-        if(reunion.getObject()!=null) {
-            reunion.setObject(reunion.getObject());
+        if(request.getObject()!=null) {
+            reunion.setObject(request.getObject());
         }
         reunion.setStatus(ReunionStatus.BROUILLON);
 
