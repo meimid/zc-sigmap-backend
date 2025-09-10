@@ -51,4 +51,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT COUNT (*) FROM Dac d")
   Integer findMaxDacNumber () ;
 
+  @Query("SELECT d FROM Dac d WHERE d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
+  org.springframework.data.domain.Page<Dac> findLatestPerDac(org.springframework.data.domain.Pageable pageable);
+
 }

@@ -81,7 +81,8 @@ public class DacController {
   @GetMapping
   public ResponseEntity<Page<DacResponce>> findAll(DacQuery query, Pageable pageable) {
     log.debug("API for get All dac .... ");
-    Page<Dac> dac = dacService.findAll(query.toSpecification(), pageable);
+    // Return only latest version per DAC id
+    Page<Dac> dac = dacService.findAllLatest(pageable);
     Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
     return ResponseEntity.ok(dacResponse);
   }
@@ -106,6 +107,13 @@ public class DacController {
     } else {
       return ResponseEntity.notFound().build();
     }
+  }
+
+  @PostMapping("/sync/{dacId}/{dacVer}")
+  public ResponseEntity<DacResponseDTO> synchronizeDacToLatest(@PathVariable Integer dacId,
+                                                               @PathVariable Integer dacVer) {
+    DacResponseDTO response = dacService.synchronizeToLatestDynaDocs(dacId, dacVer);
+    return ResponseEntity.ok(response);
   }
 
 

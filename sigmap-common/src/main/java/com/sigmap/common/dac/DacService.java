@@ -26,4 +26,16 @@ public interface DacService {
 
     String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath);
 
+    /**
+     * Create a new DAC version synchronized to the latest active DynaDocs (and their fields) for the DAC's category.
+     * Copies over existing field values by matching dynaFieldsId when possible.
+     *
+     * @param dacId the dac id
+     * @param dacVer the dac version to base from
+     * @return response describing the new DAC version and its documents
+     */
+    DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer);
+
+    org.springframework.data.domain.Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
+
 }
