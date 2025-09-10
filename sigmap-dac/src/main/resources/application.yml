@@ -97,6 +97,7 @@ flowable:
     url: ${FLOWABLE_DB_URL:jdbc:mariadb://localhost:3307/flowable_db?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
     username: ${FLOWABLE_DB_USERNAME:root}
     password: ${FLOWABLE_DB_PASSWORD:root}
+    driver-class-name: org.mariadb.jdbc.Driver
 
 tenant:
   id: ${TENANT_ID:DAC}

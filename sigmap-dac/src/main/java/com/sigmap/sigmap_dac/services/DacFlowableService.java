@@ -157,7 +157,7 @@ public class DacFlowableService {
             return r;
         }
 
-        Optional<Dac> dacOpt = dacService.findById(id, null); // latest
+        Optional<Dac> dacOpt = dacService.findById(id, 1); // latest
         if (dacOpt.isEmpty()) {
             var r = new ProcessStartResponseDTO();
             r.setStatus("DAC not found for id " + id);
@@ -171,7 +171,6 @@ public class DacFlowableService {
         String effectiveTaskKey = (initialTaskKeyOverride != null && !initialTaskKeyOverride.isEmpty())
                 ? initialTaskKeyOverride : this.initialTaskKey;
 
-        // Check model + first task candidate groups dynamically
         BpmnModel bpmnModel = repositoryService.getBpmnModel(
                 repositoryService.createProcessDefinitionQuery()
                         .processDefinitionKey(effectiveProcessKey)
@@ -202,7 +201,6 @@ public class DacFlowableService {
 
         ProcessInstance pi = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, vars, TENANT_ID);
 
-        // persist processInstanceId on DAC latest version
         dac.setProcessInstanceId(pi.getProcessInstanceId());
         dacService.save(dac);
 
@@ -272,7 +270,7 @@ public class DacFlowableService {
 
         List<DacDocResponseDTO> dacDocs = Collections.emptyList();
         if (dacId != null && dacVer != null) {
-            dacDocs = dacDocsService.findByDacIdAndVer(dacId, dacVer); // <<<<<<<<<< ADDED: use rich DAC docs snapshot
+            dacDocs = dacDocsService.findByDacIdAndVer(dacId, dacVer);
         }
 
         Map<String, Boolean> props = getTaskProperties(task);
@@ -317,7 +315,7 @@ public class DacFlowableService {
                         for (SequenceFlow gf : gw.getOutgoingFlows()) {
                             String cond = gf.getConditionExpression();
                             String var = extractVariableName(cond);
-                            String rhs = extractConditionValue(cond); // "true"/"false" or string
+                            String rhs = extractConditionValue(cond);
                             FlowElement then = model.getFlowElement(gf.getTargetRef());
                             String name = (then != null && then.getName() != null && !then.getName().isEmpty())
                                     ? then.getName() : (then != null ? then.getId() : "Unknown");
@@ -483,7 +481,6 @@ public class DacFlowableService {
         boolean isUpdatable = Boolean.TRUE.equals(props.get("isUpdatable"));
         boolean isPublishable = Boolean.TRUE.equals(props.get("isPublishable"));
 
-        /* -------- Rectification (single version for all changes) -------- */
         if (isUpdatable) {
             List<DacDocsRequest> updates = request.getDacDocsRequest();
             if (updates == null || updates.isEmpty()) {
@@ -506,7 +503,6 @@ public class DacFlowableService {
         Boolean validate = request.getValidate();
         DecisionResolution decision = resolveDecision(task, validate);
 
-        // Status updates (dynamic, like PPM)
         ProcessStatus newStatus = null;
         if (isPublishable) {
             newStatus = ProcessStatus.PUBLIE;
