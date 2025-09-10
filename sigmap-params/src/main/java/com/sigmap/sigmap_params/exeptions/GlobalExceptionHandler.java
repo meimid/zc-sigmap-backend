@@ -12,6 +12,7 @@ import com.sigmap.common.com.exception.*;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
@@ -33,6 +34,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
+import com.sigmap.common.reunion.exception.DuplicationData;
 import com.sigmap.common.reunion.exception.ReunionDate;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.exception.ReunionStatusException;
@@ -743,6 +745,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ProcessVerbalReunionNotFound.class)
     public ResponseEntity<ErrorResponse> ProcessVerbalReunionNotFoundException(ProcessVerbalReunionNotFound ex) {
         String message = messageSource.getMessage("pv.pvnotfound",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DuplicationData.class)
+    public ResponseEntity<ErrorResponse> DuplicationDataException() {
+        String message = messageSource.getMessage("reunion.duplicationData",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DacNotFound.class)
+    public ResponseEntity<ErrorResponse> DacNotFoundException(DacNotFound ex) {
+        String message = messageSource.getMessage("dac.notfound",new Object[] {ex.getDacId(),ex.getDacVersion()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
