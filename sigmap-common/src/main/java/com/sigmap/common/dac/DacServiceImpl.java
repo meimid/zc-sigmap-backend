@@ -396,7 +396,8 @@ public class DacServiceImpl implements DacService {
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
-            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
+            // Fetch ONLY the columns of the requested snapshot version
+            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findAllByDocAndField(dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
             if (DynaFieldType.TABLE.equals(typeCode)) {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
@@ -805,6 +806,8 @@ public class DacServiceImpl implements DacService {
 
                     // Pull prior details rows if a prior snapshot existed for this field
                     List<DacDocsDetails> priorDetails = Collections.emptyList();
+                    List<DynaFieldsDetails> priorColumns = Collections.emptyList();
+                    Map<Integer, String> priorColNameById = Collections.emptyMap();
                     if (prior != null) {
                         priorDetails = dacDocsDetailsRepository.findAll(
                                 Specification.where(DacDocsDetailsSpecification.byDacId(prior.getId().getDacId()))
@@ -813,6 +816,9 @@ public class DacServiceImpl implements DacService {
                                         .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
                                         .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
                         );
+                        // Also load prior column definitions to enable name-based matching when IDs changed
+                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(prior.getId().getDynaDocsId(), prior.getId().getDynaDocsVer(), prior.getId().getDynaFieldsId());
+                        priorColNameById = priorColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, DynaFieldsDetails::getColumnName, (a,b)->a));
                     }
 
                     // Group prior details by rowId
@@ -824,8 +830,25 @@ public class DacServiceImpl implements DacService {
                             Integer rowId = e.getKey();
                             Map<Integer, DacDocsDetails> priorByCol = e.getValue().stream().collect(Collectors.toMap(DacDocsDetails::getDynaFieldsDetailsId, d -> d, (a,b)->a));
 
-                            for (Integer targetColId : targetColumnsById.keySet()) {
+                            for (Map.Entry<Integer, DynaFieldsDetails> targetEntry : targetColumnsById.entrySet()) {
+                                Integer targetColId = targetEntry.getKey();
+                                DynaFieldsDetails targetCol = targetEntry.getValue();
+
+                                // Prefer exact ID match
                                 DacDocsDetails old = priorByCol.get(targetColId);
+                                if (old == null && !priorColNameById.isEmpty()) {
+                                    // Fallback to name-based matching if IDs changed between versions
+                                    String targetName = targetCol.getColumnName();
+                                    Integer priorMatchedId = priorColNameById.entrySet().stream()
+                                            .filter(p -> Objects.equals(p.getValue(), targetName))
+                                            .map(Map.Entry::getKey)
+                                            .findFirst()
+                                            .orElse(null);
+                                    if (priorMatchedId != null) {
+                                        old = priorByCol.get(priorMatchedId);
+                                    }
+                                }
+
                                 DacDocsDetails copy = new DacDocsDetails();
                                 copy.setDynaFieldsDetailsId(targetColId);
                                 copy.setRowId(rowId);
