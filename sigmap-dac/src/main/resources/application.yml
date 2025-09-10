@@ -99,9 +99,10 @@ flowable:
     password: ${FLOWABLE_DB_PASSWORD:root}
 
 tenant:
-  id: ${TENANT_ID:dac}
+  id: ${TENANT_ID:DAC}
 process:
   definition:
+    location: ${PROCESS_DEFINITION_LOCATION:processes/}
 
 
 alfresco:
