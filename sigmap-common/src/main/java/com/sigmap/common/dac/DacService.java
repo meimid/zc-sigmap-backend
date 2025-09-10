@@ -1,7 +1,11 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
@@ -36,6 +40,6 @@ public interface DacService {
      */
     DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer);
 
-    org.springframework.data.domain.Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
-
+    Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
+    Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
 }

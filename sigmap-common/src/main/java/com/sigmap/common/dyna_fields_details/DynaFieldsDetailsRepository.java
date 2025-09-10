@@ -22,4 +22,9 @@ public interface DynaFieldsDetailsRepository
   Optional<DynaFieldsDetails> findAllDynaFieldsDetails(@Param("dynaDocsId")Integer dynaDocsId,
                                                        @Param("dynaDocsVer")Integer dynaDocsVer,
                                                        @Param("dynaFieldsId")Integer dynaFieldsId);
+
+  @Query("SELECT dfd FROM DynaFieldsDetails dfd WHERE dfd.dynaDocsId = :dynaDocsId AND dfd.dynaDocsVer = :dynaDocsVer AND dfd.dynaFieldsId = :dynaFieldsId")
+  List<DynaFieldsDetails> findAllByDocAndField(@Param("dynaDocsId") Integer dynaDocsId,
+                                               @Param("dynaDocsVer") Integer dynaDocsVer,
+                                               @Param("dynaFieldsId") Integer dynaFieldsId);
 }

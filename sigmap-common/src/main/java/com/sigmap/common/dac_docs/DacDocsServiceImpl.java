@@ -410,10 +410,9 @@ public class DacDocsServiceImpl implements DacDocsService{
                 }
             } else {
                 // Versioning for non-BROUILLON status
-                int nextVer = existingDac.getDacVer() + 1;
                 Dac newDac = new Dac();
                 newDac.setDacId(existingDac.getDacId());
-                newDac.setDacVer(nextVer);
+                newDac.setDacVer(existingDac.getDacVer());
                 newDac.setPpm(existingDac.getPpm());
                 newDac.setRealisation(existingDac.getRealisation());
                 newDac.setTypeMarche(existingDac.getTypeMarche());
@@ -451,12 +450,14 @@ public class DacDocsServiceImpl implements DacDocsService{
                         throw new RuntimeException("DynaField not found with id: " + req.getDynaFieldsId());
                     }
 
+                    //find all dacDocs with ids
                     Optional<DacDocs> targetInNew = dacDocsRepository.findDacDocsBYPKs(
                             newDac.getDacId(), newDac.getDacVer(), existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(), req.getDynaFieldsId());
 
+
                     DacDocs currentDacDoc = targetInNew.orElse(null);
                     // No-op check: If existing and new values are the same, skip update
-                    if (currentDacDoc != null && Objects.equals(currentDacDoc.getFieldValue(), req.getFieldValue()) && Objects.equals(currentDacDoc.getSourceId(), req.getSourceId())) {
+                    if (currentDacDoc != null && !Objects.equals(currentDacDoc.getFieldValue(), req.getFieldValue()) ) {
                         allUpdatedDacDocs.add(currentDacDoc); // Add the existing one to the result
                         continue;
                     }
@@ -479,12 +480,11 @@ public class DacDocsServiceImpl implements DacDocsService{
                     log.info("saved row is .......................... {}",savedRow);
                     
                     // Handle DacDocsDetails for TABLE/LIST fields
-                    log.info("Processing details for field: dynaFieldsId={}, fieldType={}, detailsCount={}", 
+                    log.info("*************** ****************** ********** ************* {}, {}",
                              req.getDynaFieldsId(), 
-                             targetField != null ? targetField.getType() : "null", 
-                             req.getDetails() != null ? req.getDetails().size() : 0);
+                            targetField.getType());
                     
-                    if (targetField != null && (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE)) {
+                    if (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE) {
                         log.info("Field type is TABLE/LIST, processing details... .......................................................");
                         if (req.getDetails() != null && !req.getDetails().isEmpty()) {
                             log.info("Creating {} details for field {} ..............................", req.getDetails().size(), req.getDynaFieldsId());

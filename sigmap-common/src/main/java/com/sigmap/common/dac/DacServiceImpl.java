@@ -2,7 +2,10 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
@@ -59,6 +62,9 @@ import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.sigmap.common.dac_docs_details.DacDocsDetails;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsSpecification;
 
 @Slf4j
 @Service
@@ -77,6 +83,7 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsMapper dynaDocsMapper;
     private final DynaFieldsMapper dynaFieldsMapper;
     private final DacDocsMapper dacDocsMapper;
+    private final DacDocsDetailsRepository dacDocsDetailsRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -748,9 +755,9 @@ public class DacServiceImpl implements DacService {
 
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
-        java.util.Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
+        Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
                 .collect(Collectors.toMap(d -> d.getId().getDynaFieldsId(), d -> d, (a,b)->a));
-        java.util.Set<Integer> priorDocIds = priorDocs.stream()
+        Set<Integer> priorDocIds = priorDocs.stream()
                 .map(d -> d.getId().getDynaDocsId())
                 .collect(Collectors.toSet());
 
@@ -768,17 +775,16 @@ public class DacServiceImpl implements DacService {
 
                 String value = null;
                 String sourceId = "";
+                DacDocs prior = null;
                 if (isNewDocForDac) {
-                    // For newly added DynaDocs, initialize all fields with null value
                     value = null;
                     sourceId = "";
                 } else {
-                    DacDocs prior = priorByFieldId.get(f.getDynaFieldsId());
+                    prior = priorByFieldId.get(f.getDynaFieldsId());
                     if (prior != null) {
                         value = prior.getFieldValue();
                         sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
                     } else if (f.getType() == DynaFieldType.SYSTEM) {
-                        // Only resolve system fields for existing docs when there was no prior value
                         value = resolveSystemFieldValue(f, newDac);
                     }
                 }
@@ -790,6 +796,54 @@ public class DacServiceImpl implements DacService {
                 row.setSourceId(sourceId);
                 row.setFieldValue(value);
                 dacDocsRepository.save(row);
+
+                // Handle LIST/TABLE snapshot for dac_docs_details
+                if (f.getType() == DynaFieldType.LIST || f.getType() == DynaFieldType.TABLE) {
+                    // Determine target columns in latest design
+                    List<DynaFieldsDetails> targetColumns = dynaFieldsDetailsRepository.findAllByDocAndField(dd.getId(), dd.getVersion(), f.getDynaFieldsId());
+                    Map<Integer, DynaFieldsDetails> targetColumnsById = targetColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, c -> c, (a,b)->a));
+
+                    // Pull prior details rows if a prior snapshot existed for this field
+                    List<DacDocsDetails> priorDetails = Collections.emptyList();
+                    if (prior != null) {
+                        priorDetails = dacDocsDetailsRepository.findAll(
+                                Specification.where(DacDocsDetailsSpecification.byDacId(prior.getId().getDacId()))
+                                        .and(DacDocsDetailsSpecification.byDacVer(prior.getId().getDacVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsId(prior.getId().getDynaDocsId()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
+                        );
+                    }
+
+                    // Group prior details by rowId
+                    Map<Integer, List<DacDocsDetails>> priorByRow = priorDetails.stream().collect(Collectors.groupingBy(DacDocsDetails::getRowId));
+
+                    // For each prior row (or none if new doc), materialize details for each target column
+                    if (!priorByRow.isEmpty()) {
+                        for (Map.Entry<Integer, List<DacDocsDetails>> e : priorByRow.entrySet()) {
+                            Integer rowId = e.getKey();
+                            Map<Integer, DacDocsDetails> priorByCol = e.getValue().stream().collect(Collectors.toMap(DacDocsDetails::getDynaFieldsDetailsId, d -> d, (a,b)->a));
+
+                            for (Integer targetColId : targetColumnsById.keySet()) {
+                                DacDocsDetails old = priorByCol.get(targetColId);
+                                DacDocsDetails copy = new DacDocsDetails();
+                                copy.setDynaFieldsDetailsId(targetColId);
+                                copy.setRowId(rowId);
+                                copy.setDacId(newDac.getDacId());
+                                copy.setDacVer(newDac.getDacVer());
+                                copy.setDynaDocsId(dd.getId());
+                                copy.setDynaDocsVer(dd.getVersion());
+                                copy.setDynaFieldsId(f.getDynaFieldsId());
+                                copy.setSourceId(old != null ? old.getSourceId() : "");
+                                copy.setFieldValue(old != null ? old.getFieldValue() : "");
+                                copy.setDac(row);
+                                dacDocsDetailsRepository.save(copy);
+                            }
+                        }
+                    } else {
+                        // No prior rows: do nothing (empty snapshot). Rows will be created when user inputs data.
+                    }
+                }
             }
         }
 
@@ -870,6 +924,18 @@ public class DacServiceImpl implements DacService {
         }
     }
 
+    @Override
+    @Transactional
+    public Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound {
+        Dac dac = dacRepository.findDacByDacIdAndDacVer(dacId,dacVer)
+                .orElseThrow(() -> new DacNotFound("DAC not found", dacId, dacVer));
+
+
+        dac.setStatus(status);
+
+        dac.setUpdatedAt(Calendar.getInstance());
+        return dacRepository.save(dac);
+    }
     private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
     private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
     private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }
