@@ -3984,20 +3984,6 @@ public class PpmServiceImpl implements PpmService {
                 System.out.println("the relisations request are");
                 System.out.println(realisationRequest.getFinancements());
 
-                processFinancementsForRealisation(realisation, realisationRequest.getFinancements());
-
-                if (realisation.getFinancements() != null) {
-                    BigDecimal fxSumAfterFirstProcess = realisation.getFinancements().stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .map(f -> {
-                                BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0;
-
-                                return amt.multiply(BigDecimal.valueOf(taux));
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    realisation.setBudgetEstime(fxSumAfterFirstProcess);
-                }
 
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     try {
@@ -4197,7 +4183,6 @@ public class PpmServiceImpl implements PpmService {
 
         return existingPpm;
     }
-
 
     /**
      * Creates and saves a new PPM version with all relationships established.
