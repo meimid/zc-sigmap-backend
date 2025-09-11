@@ -399,17 +399,19 @@ public class DacServiceImpl implements DacService {
 
             // Fetch ONLY the columns of the requested snapshot version
             List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findAllByDocAndField(dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-            if (DynaFieldType.TABLE.equals(typeCode)) {
+            if (DynaFieldType.TABLE.equals(typeCode) || DynaFieldType.LIST.equals(typeCode)) {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
                     // Treat as list (single column)
                     List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     List<String> values = new ArrayList<>();
-                    String colName = columns.get(0).getColumnName();
-                    for (Map<String, String> row : rows) {
-                        values.add(row.getOrDefault(colName, ""));
+                    if (!columns.isEmpty()) {
+                        String colName = columns.get(0).getColumnName();
+                        for (Map<String, String> row : rows) {
+                            values.add(row.getOrDefault(colName, ""));
+                        }
                     }
-                    insertSingleColumnTableAtBookmark(document, bookmarkName,columns, values);
+                    insertSingleColumnTableAtBookmark(document, bookmarkName, columns, values);
 
                 // in table case when there is more than one column
                 } else {
