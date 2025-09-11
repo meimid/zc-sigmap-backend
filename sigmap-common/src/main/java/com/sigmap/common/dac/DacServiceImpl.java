@@ -57,6 +57,7 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
@@ -915,7 +916,13 @@ public class DacServiceImpl implements DacService {
                 if (dac.getPpm() == null) return null;
                 return switch (sourceField) {
                     case "nom" -> dac.getPpm().getNom();
-                    case "created_at" -> dac.getPpm().getCreatedAt() != null ? String.valueOf(dac.getPpm().getCreatedAt().getTimeInMillis()) : null;
+                    case "created_at" -> {
+                        if (dac.getPpm().getUpdatedAt() != null) {
+                            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+                            yield sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        }
+                        yield null;
+                    }
                     default -> null;
                 };
             }
