@@ -48,4 +48,7 @@ public class Dac extends BaseEntity {
 
   @Column(name = "ref_dac")
   private String reference;
+
+  private String processInstanceId;
+
 }
