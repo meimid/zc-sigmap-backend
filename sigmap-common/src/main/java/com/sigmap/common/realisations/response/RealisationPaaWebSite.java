@@ -15,7 +15,6 @@ public class RealisationPaaWebSite {
     private String selectionMode;
     private String launchDate;
     private String awardDate;
-    private String modeSelection;
 
     /**
      * Constructs and maps a Realisation entity to this DTO.
@@ -35,8 +34,11 @@ public class RealisationPaaWebSite {
         }
 
         if(realisation.getModeSelection() != null) {
-            this.modeSelection=realisation.getModeSelection().getDescription();
+            this.selectionMode=realisation.getModeSelection().getDescription();
+            System.out.println("----------------------------"+selectionMode);
+
         }
+        System.out.println("----------------------------"+realisation.getModeSelection());
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
         }
