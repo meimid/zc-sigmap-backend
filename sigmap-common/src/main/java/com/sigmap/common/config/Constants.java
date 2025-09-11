@@ -67,7 +67,7 @@ public class Constants {
   public static final String PV_MEMEBER_PRESENT = "pv_membre_present_seq";
   public static final String PQRTICIPANT_SEQ = "participant_id_seq";
   public static final String DIRECTION_SEQ = "direction_id_seq";
-
+  public static final String DAC_ID_SEQ = "dac_id_seq";
   public static final String VAR_DECISION          = "cncmpDecision";
   public static final String VAR_PERMANENT_COM_ID  = "permanentComId";
   public static final String VAR_SCS_COM_ID        = "scsComId";
