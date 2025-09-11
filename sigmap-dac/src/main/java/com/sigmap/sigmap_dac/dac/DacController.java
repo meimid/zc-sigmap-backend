@@ -268,5 +268,58 @@ public class DacController {
     }
   }
 
+  @GetMapping("/get-dac-pdf/{dacId}/{dacVer}")
+  public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId,Integer dacVer) {
+    try {
+      Optional<Dac> dacOpt = dacService.findById(dacId, dacVer);
+      if (dacOpt.isEmpty()) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+      }
+      Dac dac = dacOpt.get();
+
+      List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+
+      RestTemplate restTemplate = new RestTemplate();
+      List<InputStream> pdfStreams = new ArrayList<>();
+      for (String docxPath : generatedFiles) {
+        FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("files", docxResource);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        ResponseEntity<byte[]> response = restTemplate.exchange(
+                convertUrl + "/forms/libreoffice/convert",
+                HttpMethod.POST,
+                requestEntity,
+                byte[].class
+        );
+        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+          pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
+        } else {
+          throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
+        }
+      }
+
+      byte[] mergedPdf;
+      try {
+        ByteArrayOutputStream mergedOut = DacServiceImpl.merge(pdfStreams);
+        mergedPdf = mergedOut.toByteArray();
+      } finally {
+        for (java.io.InputStream is : pdfStreams) {
+          try { is.close(); } catch (Exception ignore) {}
+        }
+      }
+
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.setContentType(MediaType.APPLICATION_PDF);
+      responseHeaders.setContentDispositionFormData("attachment", "dac-" + dac.getDacId() + "-v" + dac.getDacVer() + ".pdf");
+
+      return new ResponseEntity<>(mergedPdf, responseHeaders, HttpStatus.OK);
+    } catch (Exception e) {
+      log.error("Failed to generate latest merged PDF for dacId={}: {}", dacId, e.getMessage());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+    }
+  }
 
 }
