@@ -1704,7 +1704,7 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setId(realisationId);
                     realisation.setVersion(existingRealisation.getVersion() + 1);
                     updateRealisationFields(realisation, realisationDto);
-                    realisation.setPpms(new ArrayList<>(existingRealisation.getPpms()));
+                    realisation.setPpms(new ArrayList<>());
                     realisation.setIsDeleted(false);
 
                     // Process lots
