@@ -4,6 +4,7 @@ import com.sigmap.common.realisations.Realisation;
 import lombok.Data;
 
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 
 @Data
 public class RealisationPaaWebSite {
@@ -11,9 +12,9 @@ public class RealisationPaaWebSite {
     private String expenseObject;
     private String budgetAllocation;
     private String contractType;
-    private String selectionMode;
     private String launchDate;
     private String awardDate;
+    private String modePassation;
 
     /**
      * Constructs and maps a Realisation entity to this DTO.
@@ -25,9 +26,12 @@ public class RealisationPaaWebSite {
         this.expenseObject = realisation.getRealisationEnvisagees();
 
 //        // --- Mappings from related RefParam entities (assuming getNom() exists) ---
-//        if (realisation.getSourceFinancement() != null) {
-//            this.budgetAllocation = realisation.getSourceFinancement().getCode();
-//        }
+        if (realisation.getFinancements() != null) {
+            this.budgetAllocation = realisation.getFinancements().stream().map(el->el.getSourceFinancement().getDescription()).collect(Collectors.joining(", "));
+       }
+        if(realisation.getModePassation() != null) {
+            this.modePassation=realisation.getModePassation().getLibelle();
+        }
 
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
@@ -37,9 +41,6 @@ public class RealisationPaaWebSite {
 //            this.selectionMode = realisation.getModeSelection().getCode();
 //        }
 
-        if (realisation.getModePassation() != null) {
-            this.selectionMode = realisation.getModePassation().getLibelle();
-        }
 
         // --- Date Mappings (formatting LocalDate to String "dd/MM/yyyy") ---
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
