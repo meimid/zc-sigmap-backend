@@ -133,6 +133,94 @@ public class DacDocsServiceImpl implements DacDocsService{
             return entity;
     }
 
+
+    @Override
+    @Transactional
+    public List<DacDocs> createDacDocsList(List<DacDocsRequest> requests) {
+        List<DacDocs> result = new ArrayList<>();
+
+        for (DacDocsRequest request : requests) {
+            // 1- get the DynaDocs with last version
+            Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
+
+            // 2- test if the existingDynaDocs is empty
+            if (existingDynaDocs.isEmpty()) {
+                throw new RuntimeException("DynaDocs not found with id: " + request.getDynaDocsId());
+            }
+
+            // 3- get the DynaFields with last dynaDocs version for the given id
+            List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndVer(existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
+            if (existingDynaFields.isEmpty()) {
+                throw new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId());
+            }
+            log.debug("existingDynaFields............. : {}", existingDynaFields);
+
+            // 4-get the last dac (id and version) with the given id
+            Dac existingDac = dacRepository.findDacWithLatestVersionByDacId(request.getDacId());
+            log.debug("existingDac............. : {}", existingDac);
+
+            // 5- verifier l'existence du dac
+            if (existingDac == null) {
+                throw new RuntimeException("Dac not found with id: " + request.getDacId());
+            }
+
+            //6- create DacDocs and save
+            DacDocs entity = dacDocsMapper.toEntity(request);
+            log.debug("entity............. : {}", entity);
+
+            // Set scalar fields
+            entity.setSourceId(request.getSourceId());
+            entity.setFieldValue(request.getFieldValue());
+
+            // Set composite key
+            DacDocsId id = new DacDocsId();
+            id.setDacId(existingDac.getDacId());
+            id.setDacVer(existingDac.getDacVer());
+            id.setDynaDocsId(existingDynaDocs.get().getId());
+            id.setDynaDocsVer(existingDynaDocs.get().getVersion());
+
+            // Find the matching DynaFields by dynaFieldsId
+            DynaFields matchedDynaField = existingDynaFields.stream()
+                    .filter(field -> field.getDynaFieldsId().equals(request.getDynaFieldsId()))
+                    .findFirst()
+                    .map(field -> {
+                        id.setDynaFieldsId(field.getDynaFieldsId());
+                        return field;
+                    })
+                    .orElse(null);
+            if (matchedDynaField == null) {
+                throw new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId());
+            }
+            entity.setId(id);
+
+            // Set relationships
+            entity.setDac(existingDac);
+            entity.setDynaField(matchedDynaField);
+
+            entity = dacDocsRepository.save(entity);
+
+            // test if there are any details and if the field type is list or table
+            log.debug("Dac Docs created with ID: {}", entity.getId());
+            if (matchedDynaField.getType() == DynaFieldType.LIST || matchedDynaField.getType() == DynaFieldType.TABLE) {
+                if (request.getDetails() != null && !request.getDetails().isEmpty()) {
+                    List<DacDocsDetailsRequest> detailsReq =
+                            DacDocsMapper.INSTANCE.mapDetails(request.getDetails());
+
+                    List<DacDocsDetails> detailsList =
+                            dacDocsDetailsService.createAll(entity, detailsReq);
+
+                    Set<DacDocsDetails> details = DacDocsMapper.INSTANCE.detailsToSet(detailsList);
+
+                    entity.setDacDocsDetails(details);
+                }
+            }
+
+            result.add(entity);
+        }
+
+        return result;
+    }
+
     @Override
     @Transactional
     public DacDocs updateDacDocs( DacDocsRequest request) {
