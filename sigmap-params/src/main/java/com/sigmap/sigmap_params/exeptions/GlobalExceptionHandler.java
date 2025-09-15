@@ -26,6 +26,7 @@ import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
 import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.parametrage_process_dac.exeptions.ParametrageProcessDacNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.exception.ProcessVerbalReunionNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -760,6 +761,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DacNotFound.class)
     public ResponseEntity<ErrorResponse> DacNotFoundException(DacNotFound ex) {
         String message = messageSource.getMessage("dac.notfound",new Object[] {ex.getDacId(),ex.getDacVersion()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ParametrageProcessDacNotFound.class)
+    public ResponseEntity<ErrorResponse> parametrageProcessDacNotFoundException(ParametrageProcessDacNotFound ex) {
+        String message = messageSource.getMessage("parametrage.process.dac",new Object[] {ex.getTypeMarcherId(),ex.getModePassationId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }

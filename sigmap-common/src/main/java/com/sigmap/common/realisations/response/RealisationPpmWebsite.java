@@ -4,6 +4,9 @@ import com.sigmap.common.realisations.Realisation;
 import lombok.Data;
 
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 public class RealisationPpmWebsite {
@@ -16,6 +19,7 @@ public class RealisationPpmWebsite {
     private String awardDate;
     private String startDate;
     private String completionDate;
+    private String modePassation;
 
     /**
      * Constructs and maps a Realisation entity to this DTO.
@@ -25,11 +29,14 @@ public class RealisationPpmWebsite {
         this.id = realisation.getId();
         this.envisionedDeliverables = realisation.getRealisationEnvisagees();
 
-//        if (realisation.getSourceFinancement() != null) {
-//            this.fundingSource = realisation.getSourceFinancement().getCode();
-//        }
+       if (realisation.getFinancements() != null) {
+           this.fundingSource = realisation.getFinancements().stream().map(el->el.getSourceFinancement().getDescription()).collect(Collectors.joining(", "));
+       }
         if (realisation.getTypeMarcher() != null) {
-            this.contractType = realisation.getTypeMarcher().getCode();
+            this.contractType = realisation.getTypeMarcher().getDescription();
+        }
+        if(realisation.getModePassation() != null) {
+            this.modePassation=realisation.getModePassation().getLibelle();
         }
 
         // --- Date and Time Mappings ---
