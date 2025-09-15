@@ -26,10 +26,7 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
-import com.sigmap.common.reunion.exception.DuplicationData;
-import com.sigmap.common.reunion.exception.ReunionDate;
-import com.sigmap.common.reunion.exception.ReunionNotFound;
-import com.sigmap.common.reunion.exception.ReunionStatusException;
+import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunionDac.ReunionDac;
@@ -946,11 +943,16 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+        boolean check=checkParticipantPresence(request.getParticipants());
+        if(!check){
+            throw new ParticipantPresenceConflict("");
+        }
         Reunion reunionToUpdate=findById(id);
 
         if(reunionToUpdate.getStatus() == ReunionStatus.EN_COURS) {
           //  ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
             synchronizeParticipants(request, reunionToUpdate);
+
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
             if(reunionToUpdate.getProcessVerbal()!=null&&request.getProcessVerbal()!=null){
@@ -970,6 +972,10 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
+        boolean check=checkParticipantPresence(request.getParticipants());
+        if(!check){
+            throw new ParticipantPresenceConflict("");
+        }
         Reunion reunionToUpdate=findById(id);
 
         if(reunionToUpdate.getStatus() == ReunionStatus.EN_COURS) {
@@ -1035,5 +1041,10 @@ public class ReunionServiceImpl implements ReunionService{
                 mailService.sendReunionAnnulerEmail(reunion, participant, connectedUserId);
             }
         }
+    }
+    private boolean checkParticipantPresence(List<ParticipantRequest> participantRequests) {
+        List<ParticipantRequest> Participants= participantRequests.stream().filter(ParticipantRequest::isPresent).collect(Collectors.toList());
+        return !Participants.isEmpty();
+
     }
 }
