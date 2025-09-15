@@ -344,4 +344,12 @@ public class ComController {
         ComResponse response = ComMapper.INSTANCE.map(com);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN', 'VALIDATEUR_AC', 'CPMP', 'ADMIN_AC')")
+    public ResponseEntity<List<ComSelectResponseDto>> findAllList() {
+        List<Com> coms = comService.findAll();
+        List<ComSelectResponseDto> response = coms.stream().map(ComMapper.INSTANCE::mapToSelectDto).toList();
+        return ResponseEntity.ok(response);
+    }
 }
