@@ -32,9 +32,16 @@ public class DacDocsController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/batch")
-    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatch(@RequestBody List<DacDocsRequest> requests) {
+    @PostMapping("/batch-versionning")
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody List<DacDocsRequest> requests) {
         List<DacDocs> dacDocsList = dacDocsService.createDacDocsBatch(requests);
+        List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithoutVersionning(@RequestBody List<DacDocsRequest> requests) {
+        List<DacDocs> dacDocsList = dacDocsService.createDacDocsList(requests);
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
     }

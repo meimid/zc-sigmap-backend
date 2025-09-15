@@ -18,6 +18,9 @@ public interface DacDocsService {
     List<DacDocResponseDTO> findByDacIdAndVer(Integer dacId, Integer dacVer);
     List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
 
+    // save dacDocLis without versionning
+    List<DacDocs> createDacDocsList(List<DacDocsRequest> requests);
+
     // New explicit methods
     DacDocs updateDacDocsWithVersioning(DacDocsRequest request);
     DacDocs updateDacDocsInPlace(DacDocsRequest request);
