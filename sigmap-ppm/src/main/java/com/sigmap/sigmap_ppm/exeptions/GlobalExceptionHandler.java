@@ -16,6 +16,7 @@ import com.sigmap.common.realisations.exceptions.*;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
+import com.sigmap.common.reunion.exception.ParticipantPresenceConflict;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -296,6 +297,14 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ParticipantPresenceConflict.class)
+    public ResponseEntity<ErrorResponse> ParticipantPresenceConflictException() {
+        String message = messageSource.getMessage("reunion.participants_absense",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
 
 
 
