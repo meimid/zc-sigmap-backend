@@ -3122,7 +3122,6 @@ public class PpmServiceImpl implements PpmService {
                 boolean notDeleted = !Boolean.TRUE.equals(existingRealisation.getIsDeleted());
                 if (missingFromRequest && notDeleted) {
                     System.out.println("Detaching existing realisation id=" + existingRealisation.getId() + " from current PPM (not present in request).");
-                    existingRealisation.getPpms().remove(existingPpm);
                     realisationRepository.save(existingRealisation);
                     realisationsChanged = true;
                 }
