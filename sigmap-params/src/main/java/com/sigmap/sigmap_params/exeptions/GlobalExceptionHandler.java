@@ -35,10 +35,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
-import com.sigmap.common.reunion.exception.DuplicationData;
-import com.sigmap.common.reunion.exception.ReunionDate;
-import com.sigmap.common.reunion.exception.ReunionNotFound;
-import com.sigmap.common.reunion.exception.ReunionStatusException;
+import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -771,6 +768,14 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("parametrage.process.dac",new Object[] {ex.getTypeMarcherId(),ex.getModePassationId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ParticipantPresenceConflict.class)
+    public ResponseEntity<ErrorResponse> ParticipantPresenceConflictException() {
+        String message = messageSource.getMessage("reunion.participants_absense",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
 
