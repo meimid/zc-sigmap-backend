@@ -28,6 +28,9 @@ import com.sigmap.common.realisations.request.RealisationRequestForPaa;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.reunion.ReunionService;
+import com.sigmap.common.reunion.ReunionServiceImpl;
+import com.sigmap.common.reunion.exception.ParticipantPresenceConflict;
 import com.sigmap.sigmap_ppm.exeptions.GlobalExceptionHandler;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ModeleRequest;
@@ -72,22 +75,24 @@ public class PpmFlowableController {
     private final ModelPpmService modelPpmService;
     private final TaskService taskService;
     private final RuntimeService runtimeService;
+    private final ReunionService reunionService;
 
 
 
 
 
-    public PpmFlowableController(ProcessVerbalService processVerbalService,ObjectMapper objectMapper,
+    public PpmFlowableController(ProcessVerbalService processVerbalService, ObjectMapper objectMapper,
                                  DocumentCommuneService documentCommuneService,
                                  ModelPpmService modelPpmService,
                                  TaskService taskService,
-                                 RuntimeService runtimeService) {
+                                 RuntimeService runtimeService, ReunionService reunionService) {
         this.processVerbalService = processVerbalService;
         this.objectMapper = objectMapper;
         this.documentCommuneService = documentCommuneService;
         this.modelPpmService = modelPpmService;
         this.taskService = taskService;
         this.runtimeService = runtimeService;
+        this.reunionService = reunionService;
     }
 
     /**
@@ -272,11 +277,14 @@ public class PpmFlowableController {
      * @throws IOException if an error occurs during file processing
      * @throws ComNotFound if a commission is not found
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group")
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group/{idReu}")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
             @RequestParam("requestsJson") String requestsJson,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @PathVariable Integer idReu)
             throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
+        if (present) {
         log.info("Validating group of tasks with requests JSON");
 
         // Deserialize requestsJson into List<GroupValidationRequest>
@@ -301,6 +309,11 @@ public class PpmFlowableController {
         }
         List<TaskDTO> response = ppmFlowableService.validateTaskGroup(requests);
         return ResponseEntity.ok(response);
+        }
+        else
+        {
+        throw new ParticipantPresenceConflict("");
+        }
     }
 
     private void processRealisationLotsFromJson(PpmBaseRequestDto request, String lotsJson) {
