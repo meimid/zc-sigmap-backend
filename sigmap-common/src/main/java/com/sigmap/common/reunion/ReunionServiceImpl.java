@@ -944,6 +944,7 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
         boolean check=checkParticipantPresence(request.getParticipants());
+        checkParticipantPresenceWithReunionId(id);
         if(!check){
             throw new ParticipantPresenceConflict("");
         }
@@ -1016,6 +1017,18 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
+    @Override
+    public boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound {
+        Optional <Reunion> reunionToUpdate=repository.findByIdWithParticipantsFetched(id);
+        if(reunionToUpdate.isPresent()){
+            List<Participant> participants=reunionToUpdate.get().getParticipants().stream().filter(Participant::isPresent).collect(Collectors.toList());
+            return !participants.isEmpty();
+        }
+        else {
+            throw new ReunionNotFound("",id);
+        }
+    }
+
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
         boolean superAdmin= Authentication.hasRole("SUPER_ADMIN");
         if(!superAdmin){
@@ -1047,4 +1060,5 @@ public class ReunionServiceImpl implements ReunionService{
         return !Participants.isEmpty();
 
     }
+
 }
