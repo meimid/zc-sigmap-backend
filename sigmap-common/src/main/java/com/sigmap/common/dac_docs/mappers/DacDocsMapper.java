@@ -9,6 +9,7 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
+import com.sigmap.common.dac_docs_details.response.DacDocsDetailsResponse;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
@@ -53,6 +54,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
     @Mapping(target = "sourceId", source = "sourceId")
     @Mapping(target = "fieldValue", source = "fieldValue")
+    @Mapping(target = "dacDocsDetails", source = "dacDocsDetails")
     List<DacDocsResponseFullEntities> entityToResponse (List<DacDocs> entity);
 
     @Mapping(target = "dacId", source = "id.dacId")
@@ -62,6 +64,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
     @Mapping(target = "sourceId", source = "sourceId")
     @Mapping(target = "fieldValue", source = "fieldValue")
+    @Mapping(target = "dacDocsDetails", source = "dacDocsDetails")
     DacDocsResponseFullEntities entityToResponseMap (DacDocs entity);
 
      Set<DynaFieldsDetailsDTO> dynaFieldsDetailsToDTO (Set<DynaFieldsDetails> dynaFieldsDetails);
@@ -75,6 +78,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
     @Mapping(target = "ppm", source = "ppm")
+    @Mapping(target = "ppm.acId", source = "ppm.ac.id")
     @Mapping(target = "typeMarche", source = "typeMarche")
     @Mapping(target = "realisation", source = "realisation")
     DacResponseDTO toDacResponse(Dac dac);
@@ -117,5 +121,15 @@ public interface DacDocsMapper {
     @Mapping(target = "status", source = "status")
     DynaFieldsDTO toDynaFieldsDTO(DynaFields dynaFields);
 
+    @Mapping(target = "dynaFieldsDetailsId", source = "dynaFieldsDetailsId")
+    @Mapping(target = "rowId", source = "rowId")
+    @Mapping(target = "dacId", source = "dacId")
+    @Mapping(target = "dacVer", source = "dacVer")
+    @Mapping(target = "dynaDocsId", source = "dynaDocsId")
+    @Mapping(target = "dynaDocsVer", source = "dynaDocsVer")
+    @Mapping(target = "dynaFieldsId", source = "dynaFieldsId")
+    @Mapping(target = "sourceId", source = "sourceId")
+    @Mapping(target = "fieldValue", source = "fieldValue")
+    DacDocsDetailsResponse toDacDocsDetailsResponse(DacDocsDetails dacDocsDetails);
 
 } 

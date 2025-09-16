@@ -4,6 +4,7 @@ import com.sigmap.common.realisations.Realisation;
 import lombok.Data;
 
 import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 
 @Data
 public class RealisationPaaWebSite {
@@ -28,7 +29,16 @@ public class RealisationPaaWebSite {
 //        if (realisation.getSourceFinancement() != null) {
 //            this.budgetAllocation = realisation.getSourceFinancement().getCode();
 //        }
+        if (realisation.getImputationBudgetaire() != null) {
+            this.budgetAllocation = realisation.getImputationBudgetaire().getDescription();
+        }
 
+        if(realisation.getModeSelection() != null) {
+            this.selectionMode=realisation.getModeSelection().getDescription();
+            System.out.println("----------------------------"+selectionMode);
+
+        }
+        System.out.println("----------------------------"+realisation.getModeSelection());
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
         }

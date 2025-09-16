@@ -8,4 +8,5 @@ public class DacPpmResponseDTO {
     private Integer version;
     private String ref;
     private String nom;
+    private Integer acId;
 }

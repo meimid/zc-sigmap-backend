@@ -12,6 +12,7 @@ import com.sigmap.common.com.exception.*;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
@@ -25,6 +26,7 @@ import com.sigmap.common.menu_item.exception.MenuItemUpdateExeption;
 import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.parametrage_process_dac.exeptions.ParametrageProcessDacNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.exception.ProcessVerbalReunionNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
@@ -33,9 +35,7 @@ import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
 import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
-import com.sigmap.common.reunion.exception.ReunionDate;
-import com.sigmap.common.reunion.exception.ReunionNotFound;
-import com.sigmap.common.reunion.exception.ReunionStatusException;
+import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -745,6 +745,37 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("pv.pvnotfound",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DuplicationData.class)
+    public ResponseEntity<ErrorResponse> DuplicationDataException() {
+        String message = messageSource.getMessage("reunion.duplicationData",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DacNotFound.class)
+    public ResponseEntity<ErrorResponse> DacNotFoundException(DacNotFound ex) {
+        String message = messageSource.getMessage("dac.notfound",new Object[] {ex.getDacId(),ex.getDacVersion()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ParametrageProcessDacNotFound.class)
+    public ResponseEntity<ErrorResponse> parametrageProcessDacNotFoundException(ParametrageProcessDacNotFound ex) {
+        String message = messageSource.getMessage("parametrage.process.dac",new Object[] {ex.getTypeMarcherId(),ex.getModePassationId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ParticipantPresenceConflict.class)
+    public ResponseEntity<ErrorResponse> ParticipantPresenceConflictException() {
+        String message = messageSource.getMessage("reunion.participants_absense",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
 
