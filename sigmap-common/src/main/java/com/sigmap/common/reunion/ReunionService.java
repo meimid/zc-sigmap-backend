@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
@@ -40,7 +41,7 @@ public interface ReunionService {
     Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
-
+     boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
 
 
 
