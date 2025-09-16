@@ -944,7 +944,6 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public Reunion updateReunionAfterStart(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
         boolean check=checkParticipantPresence(request.getParticipants());
-        checkParticipantPresenceWithReunionId(id);
         if(!check){
             throw new ParticipantPresenceConflict("");
         }
