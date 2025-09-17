@@ -1007,6 +1007,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             for (Realisation ex : existingPaa.getRealisations()) {
                 if (!processedRealisationIds.contains(ex.getId()) && !Boolean.TRUE.equals(ex.getIsDeleted())) {
                     ex.setIsDeleted(true);
+                    // to be verified
                     ex.setBudgetEstime(BigDecimal.ZERO);
                     realisationRepository.save(ex);
                     log.info("Marked Realisation {} as deleted (not in request)", ex.getId());
@@ -3457,15 +3458,26 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     /**
      * Validates all realisations associated with a PAA.
      */
-    private void validateRealisations(Paa paa) {
-        if (paa.getRealisations() != null) {
-            for (Realisation realisation : paa.getRealisations()) {
-                if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
-                    validateLotBudgetConsistency(realisation);
-                    validateLotBudgetSum(realisation);
-                }
+    private void validateRealisations(Paa paa, Set<Integer> onlyRealisationIds) {
+        if (paa == null || paa.getRealisations() == null) return;
+
+        for (Realisation realisation : paa.getRealisations()) {
+            if (Boolean.TRUE.equals(realisation.getIsDeleted())) continue;
+
+            if (onlyRealisationIds != null && !onlyRealisationIds.isEmpty()) {
+                Integer rid = realisation.getId();
+                if (rid == null || !onlyRealisationIds.contains(rid)) continue;
+            }
+
+            if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+                validateLotBudgetConsistency(realisation);
+                validateLotBudgetSum(realisation);
             }
         }
+    }
+
+    private void validateRealisations(Paa paa) {
+        validateRealisations(paa, null);
     }
 
     private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
