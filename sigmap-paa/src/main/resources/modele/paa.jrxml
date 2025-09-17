@@ -49,9 +49,11 @@
 		<parameter name="paa_ver" class="java.lang.Integer"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT  p.paa_id,
-	 p.paa_ver,p.realisation_id,p.realisation_ver,
+	 p.paa_ver,
+	 p.realisation_id,
+	 p.realisation_ver,
 	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
-	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
+	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
 	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
@@ -83,6 +85,8 @@ where p.paa_id= $P{paa_id}     and p.paa_ver=  $P{paa_ver}
 GROUP BY
     p.paa_id,
     p.paa_ver,
+    p.realisation_id,
+    p.realisation_ver,
     r.realisation_envisagees,
     r.beneficiaire,
     r.date_prev_lps,
