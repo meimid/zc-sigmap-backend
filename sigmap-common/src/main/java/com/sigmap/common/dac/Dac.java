@@ -18,8 +18,6 @@ import lombok.*;
 public class Dac extends BaseEntity {
 
   @Id
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "dac_id_seq")
-  @SequenceGenerator(name = "dac_id_seq", sequenceName = "dac_id_seq", allocationSize = 1)
   @Column(name = "dac_id")
   private Integer dacId;
 
@@ -50,4 +48,7 @@ public class Dac extends BaseEntity {
 
   @Column(name = "ref_dac")
   private String reference;
+
+  private String processInstanceId;
+
 }

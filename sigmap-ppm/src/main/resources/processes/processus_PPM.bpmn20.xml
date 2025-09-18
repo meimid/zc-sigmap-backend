@@ -16,7 +16,7 @@
 
     <userTask id="saisieTask" name="Saisie PPM (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="true"></flowable:formProperty>
+        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" defgitault="true"></flowable:formProperty>
       </extensionElements>
     </userTask>
 

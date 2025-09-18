@@ -28,7 +28,7 @@ public class Constants {
   public static final String PATH_ENTREPOT_GED_COM="/SIGMAP-DEV/ARCHIVE/COM";
   public static final String PATH_ENTREPOT_GED_LOT =
           "/LOT";
-  public static final String PATH_ENTREPOT_GED_REUNION_PMM="/SIGMAP-DEV/ARCHIVE/REUNION"+ LocalDate.now().getYear()+"/PPM" ;
+  public static final String PATH_ENTREPOT_GED_REUNION_PMM="/SIGMAP-DEV/ARCHIVE/REUNION/"+ LocalDate.now().getYear()+"/PPM" ;
   public static final String PATH_ENTREPOT_GED_REUNION_DAC="/SIGMAP-DEV/ARCHIVE/REUNION/"+ LocalDate.now().getYear()+"/DAC";
   public static final String PATH_ENTREPOT_GED_REUNION_PV="/SIGMAP-DEV/ARCHIVE/REUNION/"+ LocalDate.now().getYear()+"/PV";
 
@@ -67,7 +67,7 @@ public class Constants {
   public static final String PV_MEMEBER_PRESENT = "pv_membre_present_seq";
   public static final String PQRTICIPANT_SEQ = "participant_id_seq";
   public static final String DIRECTION_SEQ = "direction_id_seq";
-
+  public static final String DAC_ID_SEQ = "dac_id_seq";
   public static final String VAR_DECISION          = "cncmpDecision";
   public static final String VAR_PERMANENT_COM_ID  = "permanentComId";
   public static final String VAR_SCS_COM_ID        = "scsComId";

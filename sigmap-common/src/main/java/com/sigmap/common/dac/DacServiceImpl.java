@@ -2,6 +2,10 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
@@ -24,8 +28,11 @@ import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.lots.Lot;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -35,6 +42,7 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,18 +60,22 @@ import org.springframework.stereotype.Service;
 import java.io.*;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.sigmap.common.dac_docs_details.DacDocsDetails;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
+import com.sigmap.common.dac_docs_details.DacDocsDetailsSpecification;
 
 @Slf4j
 @Service
 @AllArgsConstructor
 public class DacServiceImpl implements DacService {
 
-
+    private final SequenceGeneratorService sequenceGeneratorService;
     private final DacDocsRepository dacDocsRepository;
     private final DynaDocsRepository dynaDocsRepository;
     private final DacRepository dacRepository;
@@ -75,6 +87,7 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsMapper dynaDocsMapper;
     private final DynaFieldsMapper dynaFieldsMapper;
     private final DacDocsMapper dacDocsMapper;
+    private final DacDocsDetailsRepository dacDocsDetailsRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -97,17 +110,46 @@ public class DacServiceImpl implements DacService {
         }
         log.debug("Dac Ppm: {}", dac.getPpm());
 
-        // Step 2: Get all active documents by Dac categoryId, sorted by dynaDocOrder
-        List<DynaDocs> dynaDocsList = getActiveDynaDocsForDac(dac.getTypeMarche().getId());
-        if (dynaDocsList.isEmpty()) {
-            log.warn("No active documents found for Dac ID: {}, Version: {}", dacId, dacVersion);
-            throw new RuntimeException("No active documents found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        // Step 2: Determine the exact snapshot of DynaDocs (id + version) used for this DAC version from dac_docs
+        List<DacDocs> dacDocsSnapshot = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
+        if (dacDocsSnapshot.isEmpty()) {
+            log.warn("No dac_docs data found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new RuntimeException("No dac_docs data found for Dac ID: " + dacId + ", Version: " + dacVersion);
         }
+
+        // Group by (dynaDocsId, dynaDocsVer) and compute the order using the related DynaDocs.dynaDocOrder
+        java.util.Map<String, Integer> docKeyToOrder = new java.util.HashMap<>();
+        java.util.LinkedHashMap<String, int[]> docKeyPairs = new java.util.LinkedHashMap<>();
+        for (DacDocs doc : dacDocsSnapshot) {
+            Integer ddId = doc.getId().getDynaDocsId();
+            Integer ddVer = doc.getId().getDynaDocsVer();
+            String key = ddId + ":" + ddVer;
+            if (!docKeyPairs.containsKey(key)) {
+                docKeyPairs.put(key, new int[]{ddId, ddVer});
+                // Use the relation via field -> dynaDocs to get order when available
+                Integer order = null;
+                try {
+                    if (doc.getDynaField() != null && doc.getDynaField().getDynaDocs() != null) {
+                        order = doc.getDynaField().getDynaDocs().getDynaDocOrder();
+                    }
+                } catch (Exception ignore) {}
+                // Fallback to a large number to avoid NPEs; ordering will still be stable
+                docKeyToOrder.put(key, order != null ? order : Integer.MAX_VALUE);
+            }
+        }
+
+        // Load the exact DynaDocs versions and sort by their intended order
+        List<DynaDocs> dynaDocsList = docKeyPairs.values().stream()
+                .map(pair -> dynaDocsRepository
+                        .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
+                        .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + pair[0] + ", Version: " + pair[1])))
+                .sorted(java.util.Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
+                .toList();
 
         List<String> generatedFilePaths = new ArrayList<>();
 
         int docOreder = 0;
-        // Step 3: Process each document in order
+        // Step 3: Process each snapshot document in order
         for (DynaDocs dynaDoc : dynaDocsList) {
             docOreder = docOreder + 1;
             String templateFileName = dynaDoc.getTemplateFileName();
@@ -123,10 +165,10 @@ public class DacServiceImpl implements DacService {
             try (FileInputStream fis = new FileInputStream(templateFile);
                  XWPFDocument document = new XWPFDocument(fis)) {
 
-                // Create bookmark map with values from DacDocs, respecting field order
+                // Create bookmark map with values from DacDocs, respecting field order and using the snapshot version
                 Map<String, String> bookmarks = createBookmarkMap(dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
-                // Handle multi-value fields (table and list bookmarks)
+                // Handle multi-value fields (table and list bookmarks) using the snapshot version
                 processTableAndListBookmarks(document, dacId, dacVersion, dynaDoc.getId(), dynaDoc.getVersion());
 
                 // Replace bookmarks in the document
@@ -213,6 +255,7 @@ public class DacServiceImpl implements DacService {
                                 dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
 
                 )
+                .filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
@@ -222,7 +265,7 @@ public class DacServiceImpl implements DacService {
         dacDocsList.stream()
                 .filter(dacDoc -> {
                     DynaFields field = dacDoc.getDynaField();
-                    return field != null &&
+                    return field != null && !"__DEFAULT__".equals(field.getName()) &&
                             field.getDynaDocs().getId().equals(dynaDocsId) &&
                             field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
@@ -353,25 +396,31 @@ public class DacServiceImpl implements DacService {
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
         for (DynaFields dynaField : dynaFieldsList) {
+            if ("__DEFAULT__".equals(dynaField.getName())) {
+                continue;
+            }
             DynaFieldType typeCode = dynaField.getType();
 
             // Get the bookmark name for this field
             String bookmarkName = dynaField.getName();
 
-            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findByDynaFieldsId(dynaField.getDynaFieldsId());
-            if (DynaFieldType.TABLE.equals(typeCode)) {
+            // Fetch ONLY the columns of the requested snapshot version
+            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findAllByDocAndField(dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+            if (DynaFieldType.TABLE.equals(typeCode) || DynaFieldType.LIST.equals(typeCode)) {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
                     // Treat as list (single column)
                     List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     List<String> values = new ArrayList<>();
-                    String colName = columns.get(0).getColumnName();
-                    for (Map<String, String> row : rows) {
-                        values.add(row.getOrDefault(colName, ""));
+                    if (!columns.isEmpty()) {
+                        String colName = columns.get(0).getColumnName();
+                        for (Map<String, String> row : rows) {
+                            values.add(row.getOrDefault(colName, ""));
+                        }
                     }
-                    insertSingleColumnTableAtBookmark(document, bookmarkName,columns, values);
+                    insertSingleColumnTableAtBookmark(document, bookmarkName, columns, values);
 
-                // in table case when there is more than one column
+                    // in table case when there is more than one column
                 } else {
                     List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     insertMultiColumnTableAtBookmark(document, bookmarkName, columns, rows);
@@ -379,6 +428,7 @@ public class DacServiceImpl implements DacService {
             }
         }
     }
+
 
     /**
      * Inserts a single-column table at the location of the given bookmark, with each value in a new row.
@@ -497,11 +547,7 @@ public class DacServiceImpl implements DacService {
 
 
     @Override
-    public Dac save(Dac dac) {
-        return dacRepository.save(dac);
-    }
-
-    @Override
+    @Transactional(rollbackOn = Throwable.class)
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
         if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
             throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
@@ -540,6 +586,7 @@ public class DacServiceImpl implements DacService {
 
         // Create DAC
         Dac dac = new Dac();
+        dac.setDacId(sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ));
         dac.setDacVer(1);
         dac.setReference(generateDacRef(sequenceNumber, nom_ac));
         dac.setPpm(ppm);
@@ -547,6 +594,50 @@ public class DacServiceImpl implements DacService {
         dac.setTypeMarche(typeMarche);
         dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
+
+        // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche
+        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
+        for (DynaDocs dd : latestDocs) {
+            List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
+            if (fields.isEmpty()) {
+                // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
+                Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                DynaFields placeholder = new DynaFields();
+                placeholder.setDynaFieldsId(maxId + 1);
+                placeholder.setDynaDocsId(dd.getId());
+                placeholder.setDynaDocsVer(dd.getVersion());
+                placeholder.setName("__DEFAULT__");
+                placeholder.setRef("__DEFAULT__");
+                placeholder.setLabel("__DEFAULT__");
+                placeholder.setType(DynaFieldType.SYSTEM);
+                placeholder.setSource(null);
+                placeholder.setSourceField(null);
+                placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                placeholder.setStatus(ActiveStatus.ACTIF);
+                placeholder = dynaFieldsRepository.save(placeholder);
+                fields = List.of(placeholder);
+            }
+            for (DynaFields f : fields) {
+                DacDocsId id = new DacDocsId();
+                id.setDacId(savedCdac.getDacId());
+                id.setDacVer(savedCdac.getDacVer());
+                id.setDynaDocsId(dd.getId());
+                id.setDynaDocsVer(dd.getVersion());
+                id.setDynaFieldsId(f.getDynaFieldsId());
+
+                // Avoid duplicates if any pre-existing rows
+                Optional<DacDocs> exists = dacDocsRepository.findDacDocsBYPKs(id.getDacId(), id.getDacVer(), id.getDynaDocsId(), id.getDynaDocsVer(), id.getDynaFieldsId());
+                if (exists.isPresent()) continue;
+
+                DacDocs row = new DacDocs();
+                row.setId(id);
+                row.setDac(savedCdac);
+                row.setDynaField(f);
+                row.setSourceId("");
+                row.setFieldValue(null);
+                dacDocsRepository.save(row);
+            }
+        }
 
         return savedCdac;
     }
@@ -567,6 +658,10 @@ public class DacServiceImpl implements DacService {
         return dacRepository.findAll(specification, pageable);
     }
 
+    public Page<Dac> findAllLatest(Pageable pageable) {
+        return dacRepository.findLatestPerDac(pageable);
+    }
+
     @Override
     public Optional<Dac> findOne(Specification<Dac> specification) {
         return dacRepository.findOne(specification);
@@ -579,6 +674,10 @@ public class DacServiceImpl implements DacService {
         return findOne(specification);
     }
 
+    @Override
+    public Dac save(Dac dac) {
+        return dacRepository.save(dac);
+    }
 
     @Override
     @Transactional
@@ -589,24 +688,61 @@ public class DacServiceImpl implements DacService {
         }
         Dac dac = dacOpt.get();
 
-        List<DynaDocs> dynaDocsList = dynaDocsRepository.findAllLastVersionByTypeMarcheId(dac.getTypeMarche().getId());
-        if (dynaDocsList.isEmpty()) {
-            return null;
+        // Build the snapshot of DynaDocs (id + version) used when this DAC version was created
+        List<DacDocs> dacDocsSnapshot = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
+
+        boolean noSnapshot = dacDocsSnapshot.isEmpty();
+
+        // Distinct (dynaDocsId, dynaDocsVer) keys preserving relative order by dynaDocOrder when resolvable
+        java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
+        java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
+        if (noSnapshot) {
+            // New DAC without snapshot: return latest docs for its typeMarche (do not persist)
+            List<DynaDocs> latestByCategory = dynaDocsRepository.findAllLastVersionByTypeMarcheId(dac.getTypeMarche().getId());
+            for (DynaDocs dd : latestByCategory) {
+                String key = dd.getId() + ":" + dd.getVersion();
+                if (!docPairs.containsKey(key)) {
+                    docPairs.put(key, new int[]{dd.getId(), dd.getVersion()});
+                    orderByKey.put(key, dd.getDynaDocOrder() != null ? dd.getDynaDocOrder() : Integer.MAX_VALUE);
+                }
+            }
+        } else {
+            for (DacDocs dd : dacDocsSnapshot) {
+                int id = dd.getId().getDynaDocsId();
+                int ver = dd.getId().getDynaDocsVer();
+                String key = id + ":" + ver;
+                if (!docPairs.containsKey(key)) {
+                    docPairs.put(key, new int[]{id, ver});
+                    Integer ord = null;
+                    try {
+                        if (dd.getDynaField() != null && dd.getDynaField().getDynaDocs() != null) {
+                            ord = dd.getDynaField().getDynaDocs().getDynaDocOrder();
+                        }
+                    } catch (Exception ignore) {}
+                    orderByKey.put(key, ord != null ? ord : Integer.MAX_VALUE);
+                }
+            }
         }
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
 
-        List<DynaDocsResponseDTO> dynaDocsResponses = dynaDocsList.stream()
+        List<DynaDocsResponseDTO> dynaDocsResponses = docPairs.values().stream()
+                .map(pair -> dynaDocsRepository
+                        .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
+                        .orElse(null))
+                .filter(java.util.Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
                 .map(dynaDocs -> {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
                     List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
+                            .filter(field -> !"__DEFAULT__".equals(field.getName()))
                             .map(field -> {
                                 DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
                                 fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
 
-                                if (field.getType() == DynaFieldType.SYSTEM) {
-                                    // Resolve and upsert into dac_docs.field_value for this field
+                                if (!noSnapshot && field.getType() == DynaFieldType.SYSTEM) {
+                                    // Resolve and upsert into dac_docs.field_value for this exact snapshot version only when snapshot exists
                                     String resolved = resolveSystemFieldValue(field, dac);
                                     upsertSystemFieldValue(dac, dynaDocs, field, resolved);
                                 }
@@ -623,6 +759,168 @@ public class DacServiceImpl implements DacService {
         return dacResponse;
     }
 
+    @Override
+    @Transactional
+    public DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer) {
+        // Load base DAC
+        Dac base = dacRepository.findDacByDacIdAndDacVer(dacId, dacVer)
+                .orElseThrow(() -> new RuntimeException("Dac not found with id: " + dacId + " and version: " + dacVer));
+
+        // Compute next version
+        Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        int nextVer = latest.getDacVer() + 1;
+
+        // Create new DAC version as a snapshot clone
+        Dac newDac = new Dac();
+        newDac.setDacId(base.getDacId());
+        newDac.setDacVer(nextVer);
+        newDac.setPpm(base.getPpm());
+        newDac.setRealisation(base.getRealisation());
+        newDac.setTypeMarche(base.getTypeMarche());
+        newDac.setStatus(base.getStatus());
+        newDac.setReference(base.getReference());
+        newDac = dacRepository.save(newDac);
+
+        // Load latest active DynaDocs for DAC category
+        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheId(newDac.getTypeMarche().getId());
+
+        // Index prior values by dynaFieldsId for quick mapping
+        List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
+        Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
+                .collect(Collectors.toMap(d -> d.getId().getDynaFieldsId(), d -> d, (a,b)->a));
+        Set<Integer> priorDocIds = priorDocs.stream()
+                .map(d -> d.getId().getDynaDocsId())
+                .collect(Collectors.toSet());
+
+        // For each latest doc and its fields, create dac_docs rows for new DAC version, copying value if field id matches
+        for (DynaDocs dd : latestDocs) {
+            boolean isNewDocForDac = !priorDocIds.contains(dd.getId());
+            List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndVer(dd.getId(), dd.getVersion());
+            if (fields.isEmpty()) {
+                Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                DynaFields placeholder = new DynaFields();
+                placeholder.setDynaFieldsId(maxId + 1);
+                placeholder.setDynaDocsId(dd.getId());
+                placeholder.setDynaDocsVer(dd.getVersion());
+                placeholder.setName("__DEFAULT__");
+                placeholder.setRef("__DEFAULT__");
+                placeholder.setLabel("__DEFAULT__");
+                placeholder.setType(DynaFieldType.SYSTEM);
+                placeholder.setSource(null);
+                placeholder.setSourceField(null);
+                placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                placeholder.setStatus(ActiveStatus.ACTIF);
+                placeholder = dynaFieldsRepository.save(placeholder);
+                fields = java.util.List.of(placeholder);
+            }
+            for (DynaFields f : fields) {
+                DacDocsId id = new DacDocsId();
+                id.setDacId(newDac.getDacId());
+                id.setDacVer(newDac.getDacVer());
+                id.setDynaDocsId(dd.getId());
+                id.setDynaDocsVer(dd.getVersion());
+                id.setDynaFieldsId(f.getDynaFieldsId());
+
+                String value = null;
+                String sourceId = "";
+                DacDocs prior = null;
+                if (isNewDocForDac) {
+                    value = null;
+                    sourceId = "";
+                } else {
+                    prior = priorByFieldId.get(f.getDynaFieldsId());
+                    if (prior != null) {
+                        value = prior.getFieldValue();
+                        sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
+                    } else if (f.getType() == DynaFieldType.SYSTEM) {
+                        value = resolveSystemFieldValue(f, newDac);
+                    }
+                }
+
+                DacDocs row = new DacDocs();
+                row.setId(id);
+                row.setDac(newDac);
+                row.setDynaField(f);
+                row.setSourceId(sourceId);
+                row.setFieldValue(value);
+                dacDocsRepository.save(row);
+
+                // Handle LIST/TABLE snapshot for dac_docs_details
+                if (f.getType() == DynaFieldType.LIST || f.getType() == DynaFieldType.TABLE) {
+                    // Determine target columns in latest design
+                    List<DynaFieldsDetails> targetColumns = dynaFieldsDetailsRepository.findAllByDocAndField(dd.getId(), dd.getVersion(), f.getDynaFieldsId());
+                    Map<Integer, DynaFieldsDetails> targetColumnsById = targetColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, c -> c, (a,b)->a));
+
+                    // Pull prior details rows if a prior snapshot existed for this field
+                    List<DacDocsDetails> priorDetails = Collections.emptyList();
+                    List<DynaFieldsDetails> priorColumns = Collections.emptyList();
+                    Map<Integer, String> priorColNameById = Collections.emptyMap();
+                    if (prior != null) {
+                        priorDetails = dacDocsDetailsRepository.findAll(
+                                Specification.where(DacDocsDetailsSpecification.byDacId(prior.getId().getDacId()))
+                                        .and(DacDocsDetailsSpecification.byDacVer(prior.getId().getDacVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsId(prior.getId().getDynaDocsId()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
+                        );
+                        // Also load prior column definitions to enable name-based matching when IDs changed
+                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(prior.getId().getDynaDocsId(), prior.getId().getDynaDocsVer(), prior.getId().getDynaFieldsId());
+                        priorColNameById = priorColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, DynaFieldsDetails::getColumnName, (a,b)->a));
+                    }
+
+                    // Group prior details by rowId
+                    Map<Integer, List<DacDocsDetails>> priorByRow = priorDetails.stream().collect(Collectors.groupingBy(DacDocsDetails::getRowId));
+
+                    // For each prior row (or none if new doc), materialize details for each target column
+                    if (!priorByRow.isEmpty()) {
+                        for (Map.Entry<Integer, List<DacDocsDetails>> e : priorByRow.entrySet()) {
+                            Integer rowId = e.getKey();
+                            Map<Integer, DacDocsDetails> priorByCol = e.getValue().stream().collect(Collectors.toMap(DacDocsDetails::getDynaFieldsDetailsId, d -> d, (a,b)->a));
+
+                            for (Map.Entry<Integer, DynaFieldsDetails> targetEntry : targetColumnsById.entrySet()) {
+                                Integer targetColId = targetEntry.getKey();
+                                DynaFieldsDetails targetCol = targetEntry.getValue();
+
+                                // Prefer exact ID match
+                                DacDocsDetails old = priorByCol.get(targetColId);
+                                if (old == null && !priorColNameById.isEmpty()) {
+                                    // Fallback to name-based matching if IDs changed between versions
+                                    String targetName = targetCol.getColumnName();
+                                    Integer priorMatchedId = priorColNameById.entrySet().stream()
+                                            .filter(p -> Objects.equals(p.getValue(), targetName))
+                                            .map(Map.Entry::getKey)
+                                            .findFirst()
+                                            .orElse(null);
+                                    if (priorMatchedId != null) {
+                                        old = priorByCol.get(priorMatchedId);
+                                    }
+                                }
+
+                                DacDocsDetails copy = new DacDocsDetails();
+                                copy.setDynaFieldsDetailsId(targetColId);
+                                copy.setRowId(rowId);
+                                copy.setDacId(newDac.getDacId());
+                                copy.setDacVer(newDac.getDacVer());
+                                copy.setDynaDocsId(dd.getId());
+                                copy.setDynaDocsVer(dd.getVersion());
+                                copy.setDynaFieldsId(f.getDynaFieldsId());
+                                copy.setSourceId(old != null ? old.getSourceId() : "");
+                                copy.setFieldValue(old != null ? old.getFieldValue() : "");
+                                copy.setDac(row);
+                                dacDocsDetailsRepository.save(copy);
+                            }
+                        }
+                    } else {
+                        // No prior rows: do nothing (empty snapshot). Rows will be created when user inputs data.
+                    }
+                }
+            }
+        }
+
+        // Return the assembled response for the new version using snapshot assembly
+        return findByDacIdAndVer(newDac.getDacId(), newDac.getDacVer());
+    }
+
     //Update if exists or insert a system field if it doesnt exist
     private void upsertSystemFieldValue(Dac dac, DynaDocs dynaDocs, DynaFields field, String value) {
         DacDocsId id = new DacDocsId();
@@ -632,16 +930,7 @@ public class DacServiceImpl implements DacService {
         id.setDynaDocsVer(dynaDocs.getVersion());
         id.setDynaFieldsId(field.getDynaFieldsId());
 
-        // Prefer updating any existing row for this dac + field id, regardless of dynaDoc version
-        List<DacDocs> byField = dacDocsRepository.findByDacAndField(id.getDacId(), id.getDacVer(), id.getDynaFieldsId());
-        if (!byField.isEmpty()) {
-            DacDocs doc = byField.get(0);
-            doc.setFieldValue(value);
-            if (doc.getSourceId() == null) doc.setSourceId("");
-            dacDocsRepository.save(doc);
-            return;
-        }
-
+        // Only upsert for the exact snapshot version (avoid cross-version updates)
         Optional<DacDocs> existing = dacDocsRepository.findDacDocsBYPKs(
                 id.getDacId(), id.getDacVer(), id.getDynaDocsId(), id.getDynaDocsVer(), id.getDynaFieldsId());
 
@@ -667,13 +956,19 @@ public class DacServiceImpl implements DacService {
         if (source == null || sourceField == null) {
             return null;
         }
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_DATE;
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
             case "ppm": {
                 if (dac.getPpm() == null) return null;
                 return switch (sourceField) {
                     case "nom" -> dac.getPpm().getNom();
-                    case "created_at" -> dac.getPpm().getCreatedAt() != null ? String.valueOf(dac.getPpm().getCreatedAt().getTimeInMillis()) : null;
+                    case "created_at" -> {
+                        if (dac.getPpm().getUpdatedAt() != null) {
+                            yield sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        }
+                        yield null;
+                    }
                     default -> null;
                 };
             }
@@ -681,7 +976,16 @@ public class DacServiceImpl implements DacService {
                 if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
                 return switch (sourceField) {
                     case "nom" -> dac.getPpm().getAc().getNom();
-                    case "adresse" -> dac.getPpm().getAc().getAdresse() != null ? dac.getPpm().getAc().getAdresse().getAdresse() : null;
+                    case "email" ->dac.getPpm().getAc().getEmail();
+                    case "adresse" -> {
+                        if (dac.getPpm().getAc().getAdresse() != null) {
+                            yield dac.getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getPpm().getAc().getAdresse().getVille();
+                            }
+                        yield null;
+                    }
                     default -> null;
                 };
             }
@@ -690,13 +994,75 @@ public class DacServiceImpl implements DacService {
                 return switch (sourceField) {
                     case "realisationEnvisagees", "realisation_envisagees" -> dac.getRealisation().getRealisationEnvisagees();
                     case "beneficiaire" -> dac.getRealisation().getBeneficiaire();
+                    case "sourceFinancement", "source_financement" -> {
+                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) yield null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new java.util.LinkedHashSet<>();
+                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                            // Skip soft-deleted financements
+                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
+                            String label = getRefParamLabel(fin.getSourceFinancement());
+                            if (label == null) continue;
+                            String trimmed = label.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue; // skip duplicates
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        yield sb.isEmpty() ? null : sb.toString();
+                    }
+
                     case "typeMarcher", "type_marcher" -> dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
                     case "modeSelection", "mode_selection" -> dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                    case "modePassation", "mode_passation" -> dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                    case "nomLot", "nom_lot" -> {
+                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) yield null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new LinkedHashSet<>();
+                        for (Lot lot : dac.getRealisation().getLots()) {
+                            if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
+                            String name = lot.getDescription();
+                            if (name == null) continue;
+                            String trimmed = name.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue;
+                            if (!sb.isEmpty()) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        yield sb.isEmpty() ? null : sb.toString();
+                    }
                     case "budgetEstime", "budget_estime" -> toString(dac.getRealisation().getBudgetEstime());
-                    case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
-                    case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
-                    case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
-                    case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
+                   // case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
+                    //case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
+                    // case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
+                    //case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
+                    case "date_prev_lps" -> {
+                        if (dac.getRealisation().getDatePrevLps() != null) {
+                            yield dac.getRealisation().getDatePrevLps().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_ac" -> {
+                        if (dac.getRealisation().getDatePrevAc() != null) {
+                            yield dac.getRealisation().getDatePrevAc().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_dp" -> {
+                        if (dac.getRealisation().getDatePrevDp() != null) {
+                            yield dac.getRealisation().getDatePrevDp().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_ap" -> {
+                        if (dac.getRealisation().getDatePrevAp() != null) {
+                            yield dac.getRealisation().getDatePrevAp().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+
                     default -> null;
                 };
             }
@@ -705,6 +1071,18 @@ public class DacServiceImpl implements DacService {
         }
     }
 
+    @Override
+    @Transactional
+    public Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound {
+        Dac dac = dacRepository.findDacByDacIdAndDacVer(dacId,dacVer)
+                .orElseThrow(() -> new DacNotFound("DAC not found", dacId, dacVer));
+
+
+        dac.setStatus(status);
+
+        dac.setUpdatedAt(Calendar.getInstance());
+        return dacRepository.save(dac);
+    }
     private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
     private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
     private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }

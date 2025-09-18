@@ -34,6 +34,14 @@ public interface DacDocsRepository extends JpaRepository<DacDocs, DacDocsId>, Jp
     List<DacDocs> findDacByID (@Param("dacId") Integer dacId,
                          @Param("dacVer") Integer dacVer);
 
+  @Query("SELECT d FROM DacDocs d WHERE d.id.dynaDocsId = :dynaDocsId AND d.id.dynaDocsVer = :dynaDocsVer")
+  List<DacDocs> findByDynaDoc(@Param("dynaDocsId") Integer dynaDocsId,
+                               @Param("dynaDocsVer") Integer dynaDocsVer);
+
+  @Query("SELECT DISTINCT d.id.dacId, d.id.dacVer FROM DacDocs d WHERE d.id.dynaDocsId = :dynaDocsId AND d.id.dynaDocsVer = :dynaDocsVer")
+  List<Object[]> findDistinctDacKeysByDynaDoc(@Param("dynaDocsId") Integer dynaDocsId,
+                                              @Param("dynaDocsVer") Integer dynaDocsVer);
+
   @Query(value = "SELECT ddd.row_id, dfd.column_name, ddd.field_value FROM dac_docs_details ddd JOIN dyna_fields_details dfd ON ddd.dyna_fields_details_id = dfd.dyna_fields_details_id WHERE ddd.dac_id = :dacId AND ddd.dac_ver = :dacVer AND ddd.dyna_docs_id = :dynaDocsId AND ddd.dyna_docs_ver = :dynaDocsVer AND ddd.dyna_fields_id = :dynaFieldsId ORDER BY ddd.row_id, dfd.column_pos", nativeQuery = true)
   List<Object[]> findTableRowsRaw(@Param("dacId") Integer dacId,
                                   @Param("dacVer") Integer dacVer,
