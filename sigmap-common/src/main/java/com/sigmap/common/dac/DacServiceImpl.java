@@ -30,6 +30,8 @@ import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.lots.Lot;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -913,7 +915,8 @@ public class DacServiceImpl implements DacService {
         if (source == null || sourceField == null) {
             return null;
         }
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_DATE;
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
             case "ppm": {
                 if (dac.getPpm() == null) return null;
@@ -921,7 +924,6 @@ public class DacServiceImpl implements DacService {
                     case "nom" -> dac.getPpm().getNom();
                     case "created_at" -> {
                         if (dac.getPpm().getUpdatedAt() != null) {
-                            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
                             yield sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
                         }
                         yield null;
@@ -933,7 +935,16 @@ public class DacServiceImpl implements DacService {
                 if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
                 return switch (sourceField) {
                     case "nom" -> dac.getPpm().getAc().getNom();
-                    case "adresse" -> dac.getPpm().getAc().getAdresse() != null ? dac.getPpm().getAc().getAdresse().getAdresse() : null;
+                    case "email" ->dac.getPpm().getAc().getEmail();
+                    case "adresse" -> {
+                        if (dac.getPpm().getAc().getAdresse() != null) {
+                            yield dac.getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getPpm().getAc().getAdresse().getVille();
+                            }
+                        yield null;
+                    }
                     default -> null;
                 };
             }
@@ -942,13 +953,75 @@ public class DacServiceImpl implements DacService {
                 return switch (sourceField) {
                     case "realisationEnvisagees", "realisation_envisagees" -> dac.getRealisation().getRealisationEnvisagees();
                     case "beneficiaire" -> dac.getRealisation().getBeneficiaire();
+                    case "sourceFinancement", "source_financement" -> {
+                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) yield null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new java.util.LinkedHashSet<>();
+                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                            // Skip soft-deleted financements
+                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
+                            String label = getRefParamLabel(fin.getSourceFinancement());
+                            if (label == null) continue;
+                            String trimmed = label.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue; // skip duplicates
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        yield sb.isEmpty() ? null : sb.toString();
+                    }
+
                     case "typeMarcher", "type_marcher" -> dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
                     case "modeSelection", "mode_selection" -> dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                    case "modePassation", "mode_passation" -> dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                    case "nomLot", "nom_lot" -> {
+                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) yield null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new LinkedHashSet<>();
+                        for (Lot lot : dac.getRealisation().getLots()) {
+                            if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
+                            String name = lot.getDescription();
+                            if (name == null) continue;
+                            String trimmed = name.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue;
+                            if (!sb.isEmpty()) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        yield sb.isEmpty() ? null : sb.toString();
+                    }
                     case "budgetEstime", "budget_estime" -> toString(dac.getRealisation().getBudgetEstime());
-                    case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
-                    case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
-                    case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
-                    case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
+                   // case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
+                    //case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
+                    // case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
+                    //case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
+                    case "date_prev_lps" -> {
+                        if (dac.getRealisation().getDatePrevLps() != null) {
+                            yield dac.getRealisation().getDatePrevLps().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_ac" -> {
+                        if (dac.getRealisation().getDatePrevAc() != null) {
+                            yield dac.getRealisation().getDatePrevAc().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_dp" -> {
+                        if (dac.getRealisation().getDatePrevDp() != null) {
+                            yield dac.getRealisation().getDatePrevDp().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+                    case "date_prev_ap" -> {
+                        if (dac.getRealisation().getDatePrevAp() != null) {
+                            yield dac.getRealisation().getDatePrevAp().format(localDateFormatter);
+                        }
+                        yield null;
+                    }
+
                     default -> null;
                 };
             }
