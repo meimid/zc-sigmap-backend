@@ -263,7 +263,7 @@ public class RealisationServiceImpl implements RealisationService {
             log.info("Associated PPMs: {}", ppms);
         }
 
-        // Handle Lots (ensure budget is persisted for brand-new lots)
+        // Handle Lots
         if (request.getLots() != null && !request.getLots().isEmpty()) {
             Set<Lot> lots = new HashSet<>();
             for (LotResponse lotResponse : request.getLots()) {
@@ -276,7 +276,7 @@ public class RealisationServiceImpl implements RealisationService {
                     newLot.setVersion(1);
                     Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
-                    // >>> FIX: persist the provided budget if any
+
                     if (lotResponse.getBudget() != null) {
                         BigDecimal bd = (lotResponse.getBudget() instanceof BigDecimal)
                                 ? (BigDecimal) lotResponse.getBudget()
@@ -296,7 +296,7 @@ public class RealisationServiceImpl implements RealisationService {
         Realisation savedRealisation = repository.save(realisation);
         log.info("Saved Realisation: {}", savedRealisation);
 
-        // Create financements for the saved realisation (unchanged flow)
+        // Create financements for the saved realisation
         if (request.getFinancementRequests() != null && !request.getFinancementRequests().isEmpty()) {
             log.info("Creating {} Financements for saved Realisation", request.getFinancementRequests().size());
 
@@ -389,31 +389,12 @@ public class RealisationServiceImpl implements RealisationService {
                     "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,realisationId, realisationVer);
         }
 
-//        // Update RefParam associations if provided
-//        if (request.getService() != null) {
-//            existingRealisation.setService(refParamRepository.findById(request.getService().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
-//        }
-//        if (request.getDirection() != null) {
-//            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
-//        }
-//        if (request.getSourceFinancement() != null) {
-//            existingRealisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
-//        }
+
         if (request.getImputationBudgetaire() != null) {
             existingRealisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
-//        if (request.getMonais() != null) {
-//            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-//        }
-//        if (request.getMonnaie() != null) {
-//            existingRealisation.setMonnaie(monnaieRepository.findById(request.getMonnaie().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-//        }
+
         if (request.getBeneficiaire() != null) {
             existingRealisation.setBeneficiaire(request.getBeneficiaire());
         }
@@ -421,10 +402,6 @@ public class RealisationServiceImpl implements RealisationService {
             existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
         }
-//        if (request.getModeSelection() != null) {
-//            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
-//        }
 
         if (request.getModePassation() != null) {
             existingRealisation.setModePassation(modeDePassationSelectionRepository.findById(request.getModePassation().getId())
@@ -590,7 +567,6 @@ public class RealisationServiceImpl implements RealisationService {
                     System.out.println("Marked lot with ID " + lot.getId() + " as deleted (no lots provided)");
                 }
             }
-            // Keep the existing lots set to preserve relationships (just all marked as deleted)
         }
 
         Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request, existingRealisation);
@@ -640,7 +616,6 @@ public class RealisationServiceImpl implements RealisationService {
         log.info("Updating Realisation ID: {}, Current Version: {}", realisationId, realisationVer);
         log.info("Request data: {}", request);
 
-        // Build a probe for field-diff (no collections)
         Realisation probe = new Realisation();
         probe.setRealisationEnvisagees(request.getRealisationEnvisagees() != null ? request.getRealisationEnvisagees() : existing.getRealisationEnvisagees());
         probe.setBeneficiaire(request.getBeneficiaire() != null ? request.getBeneficiaire() : existing.getBeneficiaire());
@@ -669,7 +644,6 @@ public class RealisationServiceImpl implements RealisationService {
         probe.setPublishedAt(request.getPublishedAt() != null ? request.getPublishedAt() : existing.getPublishedAt());
         probe.setSort(request.getSort() != null ? request.getSort() : existing.getSort());
 
-        // LOT changes (include budget)
         boolean lotChangesDetected = false;
         if (request.getLots() != null) {
             Map<Integer, Lot> byId = Optional.ofNullable(existing.getLots())
@@ -740,7 +714,6 @@ public class RealisationServiceImpl implements RealisationService {
             return resp;
         }
 
-        // Create new version
         log.info("Creating new Realisation version: {}", realisationVer + 1);
         Realisation created = new Realisation();
         created.setId(realisationId);
@@ -771,13 +744,11 @@ public class RealisationServiceImpl implements RealisationService {
         final Realisation finalNew = created;
         log.info("Persisted new Realisation {},{}", finalNew.getId(), finalNew.getVersion());
 
-        // Copy PPMs
         if (existing.getPpms() != null && !existing.getPpms().isEmpty()) {
             finalNew.setPpms(new ArrayList<>(existing.getPpms()));
             log.info("Copied {} PPM relationships", existing.getPpms().size());
         }
 
-        // Lots: attach only what request provides, and carry/set budget properly (no isDeleted flip)
         List<Lot> newLots = new ArrayList<>();
         if (request.getLots() != null && !request.getLots().isEmpty()) {
             log.info("Processing {} lots from request", request.getLots().size());

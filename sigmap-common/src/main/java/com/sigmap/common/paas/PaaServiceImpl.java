@@ -1159,11 +1159,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         }
 
-        // Get hash for the current request
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
 
-        // Check for new lots without IDs to force versioning (kept)
+
         boolean hasNewLotsWithoutIds = false;
         if (request.getRealisations() != null) {
             for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
@@ -1173,7 +1172,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         }
 
-        // Check if files are present
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
             System.out.println("Files detected in request - will create new version regardless of other changes");
@@ -1230,7 +1228,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         }
 
-        // Create a temporary PAA to check for changes in direct fields
         Paa tempPaa = new Paa();
         tempPaa.setRef(existingPaa.getRef());
         tempPaa.setNom(request.getNom() != null ? request.getNom() : existingPaa.getNom());
@@ -1255,7 +1252,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         List<Realisation> updatedRealisations = new ArrayList<>();
         List<Docs> updatedDocs = new ArrayList<>();
 
-        // Process Realisation DTOs (delegate to RealisationService)
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             System.out.println("Processing " + request.getRealisations().size() + " realisations");
             for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
@@ -1319,7 +1315,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 }
             }
 
-            // >>> FIX: Do NOT soft-delete missing realisations. Just mark set as changed.
             if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
                 Set<Integer> existingActiveIds = existingPaa.getRealisations().stream()
                         .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
@@ -1352,11 +1347,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
             System.out.println("Realisations removed from PAA");
-            // >>> FIX: Do NOT soft-delete existing realisations; just mark changed.
             realisationsChanged = true;
         }
 
-        // Process PAA-level document IDs (unchanged logic)
         if (request.getDocIds() != null) {
             Set<Integer> requestDocIds = new HashSet<>(request.getDocIds());
             Set<Integer> activeExistingDocIds =
@@ -1423,7 +1416,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             updatedDocs = new ArrayList<>();
         }
 
-        // Determine if we need to create a new PAA version
         boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
 
         System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
@@ -1503,7 +1495,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         }
 
-        // Create a new PAA version
         System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
         storePreviousRequestHash(paaId, paaVer, requestHash);
 
@@ -1558,7 +1549,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         paaList.add(finalNewPaa);
                     }
 
-                    // >>> FIX: compute budgetEstime for the Realisation here (FX-converted)
+
                     try {
                         BigDecimal rbFx = Optional.ofNullable(confirmedRealisation.getFinancements())
                                 .orElseGet(List::of).stream()
@@ -1597,7 +1588,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             newPaa.setRealisations(confirmedRealisations);
             System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
 
-            // PAA budget from child realisations
             BigDecimal totalBudget = newPaa.getRealisations().stream()
                     .map(Realisation::getBudgetEstime)
                     .filter(Objects::nonNull)
@@ -1608,7 +1598,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     ", budgetEstime: " + totalBudget);
 
 
-            // Validate realisations before saving
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
@@ -1699,7 +1688,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             newPaa.setBudgetEstime(totalBudget);
 
-            // Validate realisations before saving
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
@@ -1779,11 +1767,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
         }
 
-        // Final save after setting up all relationships
         newPaa = repository.save(newPaa);
         System.out.println("Final save of PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
 
-        // Handle PAA files if provided
         if (request.getPaaFiles() != null) {
             try {
                 System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
@@ -1796,7 +1782,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
         }
 
-        // Update the hash for the new version
         storePreviousRequestHash(paaId, newPaa.getVersion(), requestHash);
         Paa copyForReturn = new Paa();
         BeanUtils.copyProperties(newPaa, copyForReturn);
