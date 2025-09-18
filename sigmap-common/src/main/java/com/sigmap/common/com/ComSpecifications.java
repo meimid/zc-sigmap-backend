@@ -14,13 +14,13 @@ public class ComSpecifications {
   public static Specification<Com> search(String search) {
     return (root, query, criteriaBuilder) -> {
       Join<Com, RefParam> joinParams = root.join("comType");
-      Join<Com, Adresse> joinAdresses = joinParams.join("theAdresse");
+      Join<Com, Adresse> joinAdresses = root.join("theAdresse");
 
 
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
           criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
-          criteriaBuilder.like(root.get("responsable"), "%" + search + "%"),
+          criteriaBuilder.like(root.get("responsableId"), "%" + search + "%"),
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("contact"), "%" + search + "%"),
           criteriaBuilder.like(root.get("adresse"), "%" + search + "%"),

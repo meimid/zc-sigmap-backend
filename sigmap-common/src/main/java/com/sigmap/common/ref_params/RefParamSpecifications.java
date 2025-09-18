@@ -15,8 +15,7 @@ public class RefParamSpecifications {
           criteriaBuilder.like(root.get("code"), "%" + search + "%"),
           criteriaBuilder.like(root.get("description"), "%" + search + "%"),
           criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-          criteriaBuilder.like(root.get("codeColor"), "%" + search + "%"),
-          criteriaBuilder.like(join.get("systemType"), "%" + search + "%"));
+          criteriaBuilder.like(root.get("codeColor"), "%" + search + "%"));
     };
   }
 

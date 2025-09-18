@@ -66,7 +66,8 @@ public class WebMasterController {
     private final ModelPaaRepository modelPaaRepository;
     private final ModelAgpmRepository modelAgpmRepository;
     private final ModelPpmRepository modelPpmRepository;
-
+    @Value("${file.upload.ac-logo-path}")
+    private String acLogoPath;
     public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService, WebMasterService webMasterService, DocsService docsService, ModelPaaRepository modelPaaRepository, ModelAgpmRepository modelAgpmRepository, ModelPpmRepository modelPpmRepository) {
         this.ppmService = ppmService;
         this.paaService = paaService;
@@ -162,6 +163,10 @@ public class WebMasterController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
-
+    @GetMapping("/{acId}/photo/display")
+    public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
+        LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
+        return ResponseEntity.ok(response);
+    }
 
 }

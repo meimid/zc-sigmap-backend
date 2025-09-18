@@ -44,7 +44,7 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
 
     @Override
     public Page<ModeDePassationSelection> findAll(Specification<ModeDePassationSelection> modeDePassationSelection, Pageable pageable) {
-     modeDePassationSelection=ModeDePassationSelectionSpecifications.deleted(false);
+     modeDePassationSelection=modeDePassationSelection.and(ModeDePassationSelectionSpecifications.deleted(false));
      return repository.findAll(modeDePassationSelection, pageable);
     }
 

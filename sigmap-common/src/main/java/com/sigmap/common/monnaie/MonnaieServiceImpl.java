@@ -38,8 +38,9 @@ public class MonnaieServiceImpl implements MonnaieService {
 
     @Override
     public Page<Monnaie> findAll(Specification<Monnaie> spec, Pageable pageable) {
-        Specification<Monnaie> response = MonnaieSpecifications.deleted(false);
-        return repository.findAll(response, pageable);
+        Specification<Monnaie> base = MonnaieSpecifications.deleted(false);
+        Specification<Monnaie> combined = (spec != null) ? base.and(spec) : base;
+        return repository.findAll(combined, pageable);
 
     }
 
@@ -58,8 +59,9 @@ public class MonnaieServiceImpl implements MonnaieService {
 
     @Override
     public Page<Monnaie> findAllDeleted(Specification<Monnaie> spec, Pageable pageable) {
-        spec = MonnaieSpecifications.deleted(true);
-        return repository.findAll(spec, pageable);
+        Specification<Monnaie> base = MonnaieSpecifications.deleted(true);
+        Specification<Monnaie> combined = (spec != null) ? base.and(spec) : base;
+        return repository.findAll(combined, pageable);
     }
 
     @Override

@@ -1,5 +1,12 @@
 package com.sigmap.common.delais_reglementaires;
 
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.authority.Authority;
+import com.sigmap.common.menu_item.MenuItem;
+import com.sigmap.common.ref_params.RefParam;
+import jakarta.persistence.Query;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -7,6 +14,42 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DelaisReglementairesSpecifications {
+
+    public static Specification<DelaisReglementaires> search(String search) {
+        return (root, query, criteriaBuilder) -> {
+
+            // If search is null or empty, return no results
+            if (search == null || search.trim().isBlank()) {
+                return criteriaBuilder.conjunction();
+            }
+
+            String like = "%" + search.trim().toLowerCase() + "%";
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Numeric fields: try equals when search is a number
+            try {
+                Integer value = Integer.valueOf(search.trim());
+                predicates.add(criteriaBuilder.equal(root.get("delaiPublicationLancement"), value));
+                predicates.add(criteriaBuilder.equal(root.get("delaiLancementAttribution"), value));
+                predicates.add(criteriaBuilder.equal(root.get("delaiAttributionDemarrage"), value));
+            } catch (NumberFormatException ignored) { }
+
+            // Join via embedded id for associated entities
+            Join<?, RefParam> typeMarcherJoin = root.join("id").join("typeMarcher", JoinType.LEFT);
+            Join<?, ModeDePassationSelection> modePassationJoin = root.join("id").join("modePassation", JoinType.LEFT);
+
+            predicates.add(
+                criteriaBuilder.like(criteriaBuilder.lower(typeMarcherJoin.get("code")), like)
+            );
+            predicates.add(
+                criteriaBuilder.like(criteriaBuilder.lower(modePassationJoin.get("libelle")), like)
+            );
+
+            return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+
 
     public static Specification<DelaisReglementaires> findById(Integer typeMarcherId, Integer modePassationId) {
         return (root, query, criteriaBuilder) -> {
@@ -95,6 +138,18 @@ public class DelaisReglementairesSpecifications {
                 return null;
             }
             return criteriaBuilder.lessThanOrEqualTo(root.get("delaiAttributionDemarrage"), delaiMax);
+        };
+    }
+
+    public static Specification<DelaisReglementaires> deleted(boolean deleted) {
+        return (root, query, criteriaBuilder) -> {
+            if (!deleted) {
+                return criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("isDeleted")),
+                        criteriaBuilder.isFalse(root.get("isDeleted"))
+                );
+            }
+            return criteriaBuilder.isTrue(root.get("isDeleted"));
         };
     }
 } 
