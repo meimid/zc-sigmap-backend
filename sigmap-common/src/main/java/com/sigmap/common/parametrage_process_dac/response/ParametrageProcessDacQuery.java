@@ -12,9 +12,14 @@ public class ParametrageProcessDacQuery {
     private Integer modePassationId;
     private String processExact;
     private String processLike;
+    private String search;
 
     public Specification<ParametrageProcessDac> toSpecification() {
         Specification<ParametrageProcessDac> spec = Specification.where(null);
+
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(ParametrageProcessDacSpecification.search(search));
+        }
 
         if (typeMarcherId != null) {
             spec = spec.and(ParametrageProcessDacSpecification.typeMarcherId(typeMarcherId));
