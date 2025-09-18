@@ -50,9 +50,11 @@
 		<queryString language="SQL">
 			<![CDATA[SELECT
     p.ppm_id,
-    p.ppm_ver,p.realisation_id,p.realisation_ver,
+    p.ppm_ver,
+    p.realisation_id,
+    p.realisation_ver,
     COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
-      GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
+    GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
     r.beneficiaire,
     r.date_prev_lps,
     r.date_prev_ac,
@@ -87,6 +89,8 @@ WHERE
 GROUP BY
     p.ppm_id,
     p.ppm_ver,
+    p.realisation_id,
+    p.realisation_ver,
     r.realisation_envisagees,
     r.beneficiaire,
     r.date_prev_lps,
