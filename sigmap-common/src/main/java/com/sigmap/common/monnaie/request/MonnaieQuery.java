@@ -64,8 +64,8 @@ public class MonnaieQuery {
             spec = spec.and(MonnaieSpecifications.description(description));
         }
 
-        if(taux!= null && !taux.isNaN()){
-            spec=spec.and(MonnaieSpecifications.taux(taux));
+        if (taux != null) {
+            spec = spec.and(MonnaieSpecifications.taux(taux));
         }
 
         return spec;

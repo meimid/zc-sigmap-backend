@@ -8,15 +8,13 @@ public class ModeDePassationSelectionSpecifications{
     /** search. */
     public static Specification<ModeDePassationSelection> search(String search) {
         return (root, query, criteriaBuilder) -> {
-Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
-
-      return criteriaBuilder.or(
-        criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
-        criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-        criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"),
-        criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
-        };
-        }
+        Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
+            return criteriaBuilder.or(
+                criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
+                criteriaBuilder.like(join.get("description"), "%" + search + "%"),
+                criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
+            };
+    }
 
 /** id. */
 public static Specification<ModeDePassationSelection> id(Integer id) {

@@ -15,9 +15,15 @@ public class DelaisReglementairesQuery {
     private Integer delaiLancementAttributionMax;
     private Integer delaiAttributionDemarrageMin;
     private Integer delaiAttributionDemarrageMax;
+    private boolean deleted;
+    private String search;
 
     public Specification<DelaisReglementaires> toSpecification() {
-        Specification<DelaisReglementaires> spec = Specification.where(null);
+        Specification<DelaisReglementaires> spec = Specification.where(DelaisReglementairesSpecifications.deleted(deleted));
+
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(DelaisReglementairesSpecifications.search(search));
+        }
 
         if (typeMarcherId != null) {
             spec = spec.and(DelaisReglementairesSpecifications.typeMarcherId(typeMarcherId));
