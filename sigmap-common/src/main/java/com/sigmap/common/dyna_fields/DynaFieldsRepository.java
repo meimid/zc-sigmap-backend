@@ -16,4 +16,7 @@ public interface DynaFieldsRepository
   @Query(
           "SELECT d FROM DynaFields d WHERE d.dynaDocsId = :dynaDocsId AND d.dynaDocsVer = :dynaDocsVer AND d.status = 'ACTIF'")
   List<DynaFields> findByDynaDocsIdAndVer(@Param("dynaDocsId")Integer dynaDocsId,@Param("dynaDocsVer") Integer dynaDocsVer);
+
+  @Query("SELECT COALESCE(MAX(d.dynaFieldsId), 0) FROM DynaFields d WHERE d.dynaDocsId = :dynaDocsId AND d.dynaDocsVer = :dynaDocsVer")
+  Integer findMaxFieldIdForDoc(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
 }

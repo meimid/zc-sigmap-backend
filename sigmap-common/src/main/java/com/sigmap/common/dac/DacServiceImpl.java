@@ -28,6 +28,7 @@ import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
@@ -254,6 +255,7 @@ public class DacServiceImpl implements DacService {
                                 dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
 
                 )
+                .filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
@@ -263,7 +265,7 @@ public class DacServiceImpl implements DacService {
         dacDocsList.stream()
                 .filter(dacDoc -> {
                     DynaFields field = dacDoc.getDynaField();
-                    return field != null &&
+                    return field != null && !"__DEFAULT__".equals(field.getName()) &&
                             field.getDynaDocs().getId().equals(dynaDocsId) &&
                             field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
@@ -394,6 +396,9 @@ public class DacServiceImpl implements DacService {
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
         for (DynaFields dynaField : dynaFieldsList) {
+            if ("__DEFAULT__".equals(dynaField.getName())) {
+                continue;
+            }
             DynaFieldType typeCode = dynaField.getType();
 
             // Get the bookmark name for this field
@@ -594,6 +599,24 @@ public class DacServiceImpl implements DacService {
         List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
         for (DynaDocs dd : latestDocs) {
             List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
+            if (fields.isEmpty()) {
+                // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
+                Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                DynaFields placeholder = new DynaFields();
+                placeholder.setDynaFieldsId(maxId + 1);
+                placeholder.setDynaDocsId(dd.getId());
+                placeholder.setDynaDocsVer(dd.getVersion());
+                placeholder.setName("__DEFAULT__");
+                placeholder.setRef("__DEFAULT__");
+                placeholder.setLabel("__DEFAULT__");
+                placeholder.setType(DynaFieldType.SYSTEM);
+                placeholder.setSource(null);
+                placeholder.setSourceField(null);
+                placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                placeholder.setStatus(ActiveStatus.ACTIF);
+                placeholder = dynaFieldsRepository.save(placeholder);
+                fields = List.of(placeholder);
+            }
             for (DynaFields f : fields) {
                 DacDocsId id = new DacDocsId();
                 id.setDacId(savedCdac.getDacId());
@@ -713,6 +736,7 @@ public class DacServiceImpl implements DacService {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
                     List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
+                            .filter(field -> !"__DEFAULT__".equals(field.getName()))
                             .map(field -> {
                                 DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
                                 fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
@@ -772,6 +796,23 @@ public class DacServiceImpl implements DacService {
         for (DynaDocs dd : latestDocs) {
             boolean isNewDocForDac = !priorDocIds.contains(dd.getId());
             List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndVer(dd.getId(), dd.getVersion());
+            if (fields.isEmpty()) {
+                Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                DynaFields placeholder = new DynaFields();
+                placeholder.setDynaFieldsId(maxId + 1);
+                placeholder.setDynaDocsId(dd.getId());
+                placeholder.setDynaDocsVer(dd.getVersion());
+                placeholder.setName("__DEFAULT__");
+                placeholder.setRef("__DEFAULT__");
+                placeholder.setLabel("__DEFAULT__");
+                placeholder.setType(DynaFieldType.SYSTEM);
+                placeholder.setSource(null);
+                placeholder.setSourceField(null);
+                placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                placeholder.setStatus(ActiveStatus.ACTIF);
+                placeholder = dynaFieldsRepository.save(placeholder);
+                fields = java.util.List.of(placeholder);
+            }
             for (DynaFields f : fields) {
                 DacDocsId id = new DacDocsId();
                 id.setDacId(newDac.getDacId());
