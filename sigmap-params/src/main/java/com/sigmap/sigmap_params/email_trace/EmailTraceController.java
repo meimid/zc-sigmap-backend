@@ -60,7 +60,7 @@ public class EmailTraceController {
 
     @PostMapping("/{id}/resend-email")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    public ResponseEntity<Void> sendEmailManually (@PathVariable Integer id) throws MessagingException, EmailTraceNotFound {
+    public ResponseEntity<Void> sendEmailManually (@PathVariable Long id) throws MessagingException, EmailTraceNotFound {
         log.debug("API for sending email by user for email trace id: {}", id);
 
         // Get the current Admin ID

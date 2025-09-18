@@ -22,9 +22,14 @@ public class EmailTraceQuery {
     private LocalDateTime dateSend;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String search;
 
     public Specification<EmailTrace> toSpecification() {
         Specification<EmailTrace> spec = Specification.where(EmailTraceSpecification.deleted(deleted));
+
+        if (search != null && !search.isBlank()) {
+            spec = spec.and(EmailTraceSpecification.search(search));
+        }
 
         if (id != null ) {
             spec = spec.and(EmailTraceSpecification.id(id));
