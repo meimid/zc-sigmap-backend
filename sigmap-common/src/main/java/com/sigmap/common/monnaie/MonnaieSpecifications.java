@@ -3,15 +3,31 @@ package com.sigmap.common.monnaie;
 import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Specification for managing {@link Monnaie}. */
 public class MonnaieSpecifications {
   /** search. */
   public static Specification<Monnaie> search(String search) {
     return (root, query, criteriaBuilder) -> {
-      return criteriaBuilder.or(
-          criteriaBuilder.like(root.get("code"), "%" + search + "%"),
-          criteriaBuilder.like(root.get("description"), "%" + search + "%"),
-          criteriaBuilder.like(root.get("taux"), "%" + search + "%"));
+      if (search == null || search.isBlank()) {
+        return criteriaBuilder.conjunction();
+      }
+      String like = "%" + search.trim().toLowerCase() + "%";
+      List<Predicate> predicates = new ArrayList<>();
+
+      // text fields
+      predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), like));
+      predicates.add(criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), like));
+
+      // numeric field: taux
+      try {
+        Double value = Double.valueOf(search.trim());
+        predicates.add(criteriaBuilder.equal(root.get("taux"), value));
+      } catch (NumberFormatException ignored) {}
+
+      return criteriaBuilder.or(predicates.toArray(new Predicate[0]));
     };
   }
 
@@ -45,7 +61,7 @@ public class MonnaieSpecifications {
   /** code. */
   public static Specification<Monnaie> code(String code) {
     return (root, query, criteriaBuilder) -> {
-      return criteriaBuilder.like(root.get("code"), code );
+      return criteriaBuilder.like(root.get("code"), "%" + code + "%" );
     };
   }
   /** taux. */

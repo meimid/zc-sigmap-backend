@@ -103,6 +103,7 @@ public class DelaisReglementairesServiceImpl implements DelaisReglementairesServ
 
     @Override
     public Page<DelaisReglementaires> getAllDelaisReglementaires(Specification<DelaisReglementaires> spec, Pageable pageable) {
+        //spec= spec.and(DelaisReglementairesSpecifications.deleted(false));
         log.debug("Fetching all DelaisReglementaires entities with pagination: {}", pageable);
         return delaisReglementairesRepository.findAll(spec, pageable);
     }

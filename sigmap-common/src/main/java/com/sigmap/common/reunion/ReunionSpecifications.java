@@ -4,6 +4,7 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
@@ -15,7 +16,8 @@ public class ReunionSpecifications {
     public static Specification<Reunion> search(String search) {
         return (root, query, criteriaBuilder) -> {
             Join<Reunion, Com> comJoin = root.join("com", JoinType.LEFT);
-            Join<Reunion, Ppm> ppmJoin = root.join("ppms", JoinType.LEFT);
+            Join<Reunion, ReunionPpm> reunionPpmJoin = root.join("reunionPpms", JoinType.LEFT);
+            Join<ReunionPpm, Ppm> ppmJoin = reunionPpmJoin.join("ppm", JoinType.LEFT);
 
             query.distinct(true);
 

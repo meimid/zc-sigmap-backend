@@ -95,7 +95,9 @@ public class DynaDocsController {
         dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
         List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
-        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(
+                dynaFields.stream().filter(f -> !"__DEFAULT__".equals(f.getName())).toList()
+        );
 
         dynaDocsResponse.setFields(dynaFieldsResponse);
       }
@@ -113,7 +115,9 @@ public class DynaDocsController {
       dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
       List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
-      List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+      List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(
+              dynaFields.stream().filter(f -> !"__DEFAULT__".equals(f.getName())).toList()
+      );
 
       dynaDocsResponse.setFields(dynaFieldsResponse);
     }

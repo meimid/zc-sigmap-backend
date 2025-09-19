@@ -50,14 +50,16 @@
 		<queryString language="SQL">
 			<![CDATA[SELECT  p.paa_id,
 	 p.paa_ver,
+	 p.realisation_id,
+	 p.realisation_ver,
 	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
-	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
+	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
 	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
 	 r.date_prev_dp,
 	 r.date_prev_ap,
-	GROUP_CONCAT(DISTINCT rp.description SEPARATOR ' - ' ) AS sources_financement,
+	 GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
 	 m.libelle,
 	 f.description, rf.description as imputbudg
 FROM  realisation r INNER JOIN  paa_realisation p ON
@@ -83,6 +85,8 @@ where p.paa_id= $P{paa_id}     and p.paa_ver=  $P{paa_ver}
 GROUP BY
     p.paa_id,
     p.paa_ver,
+    p.realisation_id,
+    p.realisation_ver,
     r.realisation_envisagees,
     r.beneficiaire,
     r.date_prev_lps,
@@ -100,6 +104,16 @@ GROUP BY
 		<field name="paa_ver" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="paa_ver"/>
 			<property name="com.jaspersoft.studio.field.label" value="paa_ver"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
+		</field>
+		<field name="realisation_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="realisation_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="realisation_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
+		</field>
+		<field name="realisation_ver" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="realisation_ver"/>
+			<property name="com.jaspersoft.studio.field.label" value="realisation_ver"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
 		</field>
 		<field name="realisation_envisagees" class="java.lang.String">
@@ -159,6 +173,8 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.label" value="imputbudg"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 		</field>
+		<sortField name="realisation_id"/>
+		<sortField name="realisation_ver"/>
 		<group name="paa_id">
 			<groupExpression><![CDATA[$F{paa_id}]]></groupExpression>
 		</group>
@@ -351,7 +367,7 @@ Direction Autorité Contractante
 						<jr:detailCell style="Table_TD" height="75">
 							<textField isBlankWhenNull="true">
 								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="103" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
-								<textElement textAlignment="Left" verticalAlignment="Middle" markup="none">
+								<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
 									<font fontName="Arial" size="8"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{sources_financement}]]></textFieldExpression>

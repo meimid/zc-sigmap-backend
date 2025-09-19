@@ -50,14 +50,17 @@
 		<queryString language="SQL">
 			<![CDATA[SELECT
     p.ppm_id,
-    p.ppm_ver,COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
-      GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') SEPARATOR ' - ') AS lots,
+    p.ppm_ver,
+    p.realisation_id,
+    p.realisation_ver,
+    COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
+    GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
     r.beneficiaire,
     r.date_prev_lps,
     r.date_prev_ac,
     r.date_prev_dp,
     r.date_prev_ap,
-    GROUP_CONCAT(DISTINCT COALESCE(rp.description, '') SEPARATOR ' - ') AS sources_financement,
+    GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
     m.libelle,
     f.description
 FROM
@@ -86,6 +89,8 @@ WHERE
 GROUP BY
     p.ppm_id,
     p.ppm_ver,
+    p.realisation_id,
+    p.realisation_ver,
     r.realisation_envisagees,
     r.beneficiaire,
     r.date_prev_lps,
@@ -103,6 +108,16 @@ GROUP BY
 		<field name="ppm_ver" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="ppm_ver"/>
 			<property name="com.jaspersoft.studio.field.label" value="ppm_ver"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm_realisation"/>
+		</field>
+		<field name="realisation_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="realisation_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="realisation_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm_realisation"/>
+		</field>
+		<field name="realisation_ver" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="realisation_ver"/>
+			<property name="com.jaspersoft.studio.field.label" value="realisation_ver"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ppm_realisation"/>
 		</field>
 		<field name="realisation_envisagees" class="java.lang.String">
@@ -157,6 +172,8 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.label" value="description"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 		</field>
+		<sortField name="realisation_id"/>
+		<sortField name="realisation_ver"/>
 		<group name="ppm_id">
 			<groupExpression><![CDATA[$F{ppm_id}]]></groupExpression>
 		</group>
@@ -340,7 +357,7 @@ Direction Autorité Contractante
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="110" height="50" uuid="8c96aa4f-447b-4522-a057-9bc33f3d2089"/>
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="110" height="50" uuid="8c96aa4f-447b-4522-a057-9bc33f3d2089"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9" isBold="true"/>
 								</textElement>
@@ -349,9 +366,10 @@ Direction Autorité Contractante
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<textField isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="110" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
-								<textElement textAlignment="Left" verticalAlignment="Middle" markup="none">
+							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement stretchType="ContainerHeight" x="0" y="0" width="110" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
 									<font fontName="Arial" size="8"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{sources_financement}]]></textFieldExpression>
