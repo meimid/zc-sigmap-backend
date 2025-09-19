@@ -6,5 +6,5 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface EmailTraceRepository extends JpaRepository<EmailTrace, Integer>, JpaSpecificationExecutor<EmailTrace> {
+public interface EmailTraceRepository extends JpaRepository<EmailTrace, Long>, JpaSpecificationExecutor<EmailTrace> {
 }
