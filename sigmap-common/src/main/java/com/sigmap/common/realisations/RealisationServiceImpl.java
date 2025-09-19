@@ -267,25 +267,48 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getLots() != null && !request.getLots().isEmpty()) {
             Set<Lot> lots = new HashSet<>();
             for (LotResponse lotResponse : request.getLots()) {
-                if (lotResponse.getId() != null) {
-                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
-                            .ifPresent(lots::add);
-                } else {
-                    Lot newLot = new Lot();
-                    newLot.setDescription(lotResponse.getDescription());
-                    newLot.setVersion(1);
-                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
-                    newLot.setId(lotId);
 
-                    if (lotResponse.getBudget() != null) {
-                        BigDecimal bd = (lotResponse.getBudget() instanceof BigDecimal)
-                                ? (BigDecimal) lotResponse.getBudget()
-                                : new BigDecimal(lotResponse.getBudget().toString());
-                        newLot.setBudget(bd);
-                    }
-                    Lot savedLot = lotRepository.save(newLot);
-                    lots.add(savedLot);
+                Lot newLot = new Lot();
+                newLot.setVersion(1);
+
+                // Generate a unique Lot ID
+                Integer generatedLotId;
+                do {
+                    generatedLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
+                } while (lotRepository.existsById(new CompositeId(generatedLotId, 1)));
+                newLot.setId(generatedLotId);
+
+                // Description
+                if (lotResponse.getDescription() != null) {
+                    newLot.setDescription(lotResponse.getDescription());
+                } else if (lotResponse.getId() != null) {
+                    // If an ID was provided, try to copy description from existing lot (best-effort clone semantics)
+                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+                            .ifPresent(existing -> newLot.setDescription(existing.getDescription()));
                 }
+
+                // Budget
+                if (lotResponse.getBudget() != null) {
+                    BigDecimal bd = (lotResponse.getBudget() instanceof BigDecimal)
+                            ? (BigDecimal) lotResponse.getBudget()
+                            : new BigDecimal(lotResponse.getBudget().toString());
+                    newLot.setBudget(bd);
+                } else if (lotResponse.getId() != null) {
+                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+                            .ifPresent(existing -> newLot.setBudget(existing.getBudget()));
+                }
+
+                Lot savedLot = lotRepository.save(newLot);
+
+                if (lotResponse.getId() != null) {
+                    log.warn("Cloned existing Lot id={} (ver={}) into new Lot id={} (ver=1) for Realisation {} to avoid cross-linking",
+                            lotResponse.getId(), lotResponse.getVersion(), savedLot.getId(), realisation.getId());
+                } else {
+                    log.info("Created new Lot id={} v=1 desc='{}' budget={}",
+                            savedLot.getId(), savedLot.getDescription(), savedLot.getBudget());
+                }
+
+                lots.add(savedLot);
             }
             realisation.getLots().addAll(lots);
             log.info("Associated Lots: {}", lots);
@@ -597,6 +620,7 @@ public class RealisationServiceImpl implements RealisationService {
 
         return copyForResponse;
     }
+
     @Transactional
     public Realisation updateWithVersioning(Integer realisationId,
                                             Integer realisationVer,
@@ -1278,66 +1302,70 @@ public class RealisationServiceImpl implements RealisationService {
     /**
      * Check if financement data has changed compared to existing financements
      */
-    private boolean checkFinancementChanges(List<Financement> existingFinancements, List<FinancementRequest> updates) {
-        // If both are null/empty, no changes
-        if ((existingFinancements == null || existingFinancements.isEmpty()) &&
-                (updates == null || updates.isEmpty())) {
+    /**
+     * Check if financement data has changed compared to existing financements.
+     * Compares by financementId when present, and also detects adds/removes.
+     */
+    private boolean checkFinancementChanges(List<Financement> existingFinancements,
+                                            List<FinancementRequest> updates) {
+        // both empty => no changes
+        if ((existingFinancements == null || existingFinancements.isEmpty())
+                && (updates == null || updates.isEmpty())) {
             return false;
         }
-
-        // If one is null/empty and other isn't, there are changes
-        if ((existingFinancements == null || existingFinancements.isEmpty()) ||
-                (updates == null || updates.isEmpty())) {
+        // one empty, the other not => changes
+        if ((existingFinancements == null || existingFinancements.isEmpty())
+                || (updates == null || updates.isEmpty())) {
             return true;
         }
 
-        // If different sizes, there are changes
-        if (existingFinancements.size() != updates.size()) {
-            return true;
-        }
+        // consider only active existing financements
+        Map<Integer, Financement> existingById = existingFinancements.stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .filter(f -> f.getId() != null && f.getId().getFinancementId() != null)
+                .collect(Collectors.toMap(f -> f.getId().getFinancementId(), Function.identity(), (a, b) -> a));
 
-        // Create maps for easier comparison by monnaie
-//  Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
-//          .collect(Collectors.toMap(f -> f.getId().getMonnaie().getId(), f -> f));
-        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
-                .collect(Collectors.toMap(
-                        f -> f.getMonnaie().getId(),
-                        f -> f,
-                        (existing, replacement) -> replacement // ← Keep the newer one
-                ));
+        Set<Integer> reqIds = new HashSet<>();
 
-        Map<Integer, FinancementRequest> updatesByMonnaie = updates.stream()
-                .collect(Collectors.toMap(
-                        FinancementRequest::getMonnaieId,
-                        f -> f,
-                        (a, b) -> b
-                ));
+        for (FinancementRequest upd : updates) {
+            Integer updId = upd.getFinancementId();
+            Integer updMonnaieId = upd.getMonnaieId();
+            Integer updSourceId = (upd.getSourceFinancement() != null) ? upd.getSourceFinancement().getId() : null;
 
-        // Check if monnaie sets are different
-        if (!existingByMonnaie.keySet().equals(updatesByMonnaie.keySet())) {
-            return true;
-        }
+            BigDecimal reqAmt = BigDecimal.ZERO;
+            if (upd.getBudgetEstimer() != null) {
+                // FinancementRequest.budgetEstimer is usually a Number (Double); normalize to BigDecimal
+                reqAmt = BigDecimal.valueOf(upd.getBudgetEstimer().doubleValue());
+            }
 
-        // Compare each financement
-        for (Integer monnaieId : existingByMonnaie.keySet()) {
-            Financement existing = existingByMonnaie.get(monnaieId);
-            FinancementRequest update = updatesByMonnaie.get(monnaieId);
+            if (updId == null) {
+                // brand-new financement in the request
+                return true;
+            }
+            reqIds.add(updId);
 
-            // Compare budget
-            if (update.getBudgetEstimer() != null &&
-                    existing.getBudgetEstimer().compareTo(update.getBudgetEstimer()) != 0) {
+            Financement old = existingById.get(updId);
+            if (old == null) {
+                // refers to an ID not in current active set
                 return true;
             }
 
-            // Compare source financement
-            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                Integer existingSourceId = existing.getSourceFinancement() != null ?
-                        existing.getSourceFinancement().getId() : null;
-                if (!Objects.equals(existingSourceId, update.getSourceFinancement().getId())) {
-                    return true;
-                }
-            }
+            // monnaie change?
+            Integer oldMonnaieId = (old.getMonnaie() != null) ? old.getMonnaie().getId() : null;
+            if (!Objects.equals(oldMonnaieId, updMonnaieId)) return true;
+
+            // source change?
+            Integer oldSourceId = (old.getSourceFinancement() != null) ? old.getSourceFinancement().getId() : null;
+            if (!Objects.equals(oldSourceId, updSourceId)) return true;
+
+            // amount change?
+            BigDecimal oldAmt = (old.getBudgetEstimer() != null) ? old.getBudgetEstimer() : BigDecimal.ZERO;
+            if (oldAmt.compareTo(reqAmt) != 0) return true;
         }
+
+        // deletions? (existing active ids not all present in request)
+        Set<Integer> existingActiveIds = existingById.keySet();
+        if (!existingActiveIds.equals(reqIds)) return true;
 
         return false;
     }
@@ -1350,47 +1378,41 @@ public class RealisationServiceImpl implements RealisationService {
                                                         List<FinancementRequest> updates,
                                                         Realisation newVersionRealisation) {
         List<Financement> newFinancements = new ArrayList<>();
-
-        if (updates == null || updates.isEmpty()) {
-            return newFinancements;
-        }
+        if (updates == null || updates.isEmpty()) return newFinancements;
 
         for (FinancementRequest update : updates) {
-            // Create new FinancementId (composite key)
-            FinancementId financementId = new FinancementId();
-            financementId.setRealisation(newVersionRealisation);
-            Financement financement = new Financement();
-            // Set Monnaie
+            // Build composite id pointing to the NEW realisation version
+            FinancementId fid = new FinancementId();
+            fid.setRealisation(newVersionRealisation);
+            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            fid.setFinancementId(next);
+
+            Financement f = new Financement();
+            f.setId(fid);
+
+            // Monnaie (+ tauxApplicable from monnaie.taux, default 0.0)
             Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
-            financement.setMonnaie(monnaie);
+            f.setMonnaie(monnaie);
+            f.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
-            // ADD THIS LOGIC HERE
-            if (monnaie.getTaux() != null) {
-                financement.setTauxApplicable(monnaie.getTaux());
-                System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
-            } else {
-                financement.setTauxApplicable(0.0);
-                System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+            // Budget (normalize)
+            BigDecimal amt = BigDecimal.ZERO;
+            if (update.getBudgetEstimer() != null) {
+                amt = BigDecimal.valueOf(update.getBudgetEstimer().doubleValue());
             }
+            f.setBudgetEstimer(amt);
 
-            // Generate new financement ID
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            financementId.setFinancementId(nextFinancementId);
-
-            // Create Financement entity
-
-            financement.setId(financementId);
-            financement.setBudgetEstimer(update.getBudgetEstimer());
-
-            // Set source financement if provided
+            // Source financement (optional)
             if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                RefParam sourceFinancement = refParamRepository.findById(update.getSourceFinancement().getId())
+                RefParam src = refParamRepository.findById(update.getSourceFinancement().getId())
                         .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + update.getSourceFinancement().getId()));
-                financement.setSourceFinancement(sourceFinancement);
+                f.setSourceFinancement(src);
             }
 
-            newFinancements.add(financement);
+            // Persist row (safer if there’s no cascade from Realisation)
+            f = financementRepository.save(f);
+            newFinancements.add(f);
         }
 
         return newFinancements;
@@ -1401,33 +1423,32 @@ public class RealisationServiceImpl implements RealisationService {
      */
     private List<Financement> copyFinancementsToNewVersion(List<Financement> existingFinancements,
                                                            Realisation newVersionRealisation) {
-        List<Financement> copiedFinancements = new ArrayList<>();
+        List<Financement> copied = new ArrayList<>();
+        if (existingFinancements == null || existingFinancements.isEmpty()) return copied;
 
-        if (existingFinancements == null || existingFinancements.isEmpty()) {
-            return copiedFinancements;
+        for (Financement old : existingFinancements) {
+            if (Boolean.TRUE.equals(old.getIsDeleted())) continue;
+
+            FinancementId fid = new FinancementId();
+            fid.setRealisation(newVersionRealisation);
+            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            fid.setFinancementId(next);
+
+            Financement f = new Financement();
+            f.setId(fid);
+            f.setMonnaie(old.getMonnaie());
+            f.setBudgetEstimer(old.getBudgetEstimer());
+            f.setSourceFinancement(old.getSourceFinancement());
+            // keep taux if present, else derive from monnaie
+            f.setTauxApplicable(old.getTauxApplicable() != null
+                    ? old.getTauxApplicable()
+                    : (old.getMonnaie() != null && old.getMonnaie().getTaux() != null ? old.getMonnaie().getTaux() : 0.0));
+
+            f = financementRepository.save(f);
+            copied.add(f);
         }
 
-        for (Financement existing : existingFinancements) {
-            // Create new FinancementId for new version
-            Financement copiedFinancement = new Financement();
-            FinancementId newFinancementId = new FinancementId();
-            newFinancementId.setRealisation(newVersionRealisation);
-            copiedFinancement.setMonnaie(existing.getMonnaie());
-
-            // Generate new financement ID
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            newFinancementId.setFinancementId(nextFinancementId);
-
-            // Create copied financement
-
-            copiedFinancement.setId(newFinancementId);
-            copiedFinancement.setBudgetEstimer(existing.getBudgetEstimer());
-            copiedFinancement.setSourceFinancement(existing.getSourceFinancement());
-
-            copiedFinancements.add(copiedFinancement);
-        }
-
-        return copiedFinancements;
+        return copied;
     }
 
 

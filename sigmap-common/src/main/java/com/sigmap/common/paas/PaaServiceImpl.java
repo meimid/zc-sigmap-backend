@@ -1136,6 +1136,22 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
         System.out.println("Request data: " + request);
 
+        List<BigDecimal> reqBudgetSums = new ArrayList<>();
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            for (int i = 0; i < request.getRealisations().size(); i++) {
+                RealisationRequestForPaa rDto = request.getRealisations().get(i);
+                BigDecimal sum = null;
+                if (rDto.getFinancements() != null && !rDto.getFinancements().isEmpty()) {
+                    sum = rDto.getFinancements().stream()
+                            .map(FinancementRequest::getBudgetEstimer)
+                            .filter(Objects::nonNull)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+                reqBudgetSums.add(sum);
+                System.out.println("[REQ] Realisation index " + i + " financement sum = " + sum);
+            }
+        }
+
         // Track whether any documents have changed
         boolean documentsChanged = false;
 
@@ -1532,6 +1548,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             List<Realisation> confirmedRealisations = new ArrayList<>();
             final Paa finalNewPaa = newPaa;
 
+            int __reqIdx = 0;
             for (Realisation realisation : updatedRealisations) {
                 try {
                     Realisation confirmedRealisation =
@@ -1540,6 +1557,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         System.err.println("Warning: Realisation " + realisation.getId() +
                                 " version " + realisation.getVersion() +
                                 " not found in database. Skipping relationship setup.");
+                        __reqIdx++;
                         continue;
                     }
 
@@ -1582,6 +1600,14 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         System.err.println("[SEUIL] Failed to set seuilApplicable for Realisation " +
                                 confirmedRealisation.getId() + ": " + e.getMessage());
                     }
+
+                    BigDecimal reqSum = (reqBudgetSums != null && __reqIdx < reqBudgetSums.size()) ? reqBudgetSums.get(__reqIdx) : null;
+                    if (reqSum != null) {
+                        System.out.println("[REQ] Using request financement sum " + reqSum +
+                                " as budgetEstime for Realisation " + confirmedRealisation.getId());
+                        confirmedRealisation.setBudgetEstime(reqSum);
+                    }
+                    __reqIdx++;
 
                     confirmedRealisation = realisationRepository.save(confirmedRealisation);
                     System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
@@ -1833,7 +1859,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return copyForReturn;
     }
-
 
     /**
      * Updates a PAA with versioning by automatically finding and using the latest version.
