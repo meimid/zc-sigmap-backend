@@ -6,6 +6,9 @@ import com.sigmap.common.menu_item.MenuItem;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.criteria.Predicate;
 
 public class EmailTraceSpecification {
 
@@ -90,6 +93,40 @@ public class EmailTraceSpecification {
                 return criteriaBuilder.greaterThanOrEqualTo(root.get("date_send"), startDate);
             }
             return criteriaBuilder.lessThanOrEqualTo(root.get("date_send"), endDate);
+        };
+    }
+
+    public static Specification<EmailTrace> search(String search) {
+        return (root, query, cb) -> {
+            if (search == null || search.trim().isBlank()) {
+                return cb.conjunction();
+            }
+            String like = "%" + search.trim().toLowerCase() + "%";
+            List<Predicate> predicates = new ArrayList<>();
+
+            // Text fields
+            predicates.add(cb.like(cb.lower(root.get("contenu")), like));
+            predicates.add(cb.like(cb.lower(root.get("destinataire")), like));
+
+            // Enum TypeEmail match by name
+            try {
+                TypeEmail type = TypeEmail.valueOf(search.trim().toUpperCase());
+                predicates.add(cb.equal(root.get("type_email"), type));
+            } catch (IllegalArgumentException ignored) {}
+
+            // Boolean successSend
+            if ("true".equalsIgnoreCase(search.trim()) || "false".equalsIgnoreCase(search.trim())) {
+                boolean val = Boolean.parseBoolean(search.trim());
+                predicates.add(cb.equal(root.get("success_send"), val));
+            }
+
+            // Date-time exact match if parsable
+            try {
+                LocalDateTime dt = LocalDateTime.parse(search.trim());
+                predicates.add(cb.equal(root.get("date_send"), dt));
+            } catch (Exception ignored) {}
+
+            return cb.or(predicates.toArray(new Predicate[0]));
         };
     }
 }
