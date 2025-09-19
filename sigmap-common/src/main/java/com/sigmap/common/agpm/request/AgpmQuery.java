@@ -18,6 +18,8 @@ public class AgpmQuery {
     private boolean deleted;
     private Integer acId;
     private Integer year;
+    private Boolean actualise;
+    private Integer nbrActualisation;
 
     public Specification<Agpm> toSpecification() {
         Specification<Agpm> spec = Specification.where(AgpmSpecifications.deleted(deleted));
@@ -42,15 +44,24 @@ public class AgpmQuery {
             spec = spec.and(AgpmSpecifications.contenu(contenu));
         }
 
-       if (status != null) {
+        if (status != null) {
             spec = spec.and(AgpmSpecifications.status(status));
         }
+
         if (acId != null) {
             spec = spec.and(AgpmSpecifications.withAcId(acId));
         }
+
         if (year != null) {
-            // Corrected to call a dedicated 'withYear' specification
             spec = spec.and(AgpmSpecifications.withYear(year));
+        }
+
+        if (actualise != null) {
+            spec = spec.and(AgpmSpecifications.actualise(actualise));
+        }
+
+        if (nbrActualisation != null) {
+            spec = spec.and(AgpmSpecifications.nbrActualisation(nbrActualisation));
         }
 
         return spec;

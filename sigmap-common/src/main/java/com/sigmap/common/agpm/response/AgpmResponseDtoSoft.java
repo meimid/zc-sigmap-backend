@@ -17,4 +17,6 @@ public class AgpmResponseDtoSoft {
     private String annee;
     private AcResponseDto ac;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
 }

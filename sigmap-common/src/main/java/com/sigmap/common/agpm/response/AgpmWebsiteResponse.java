@@ -28,6 +28,8 @@ public class AgpmWebsiteResponse {
     private String logo;
     private DocsResponseDTO doc;
     private Integer acId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
 
     public AgpmWebsiteResponse(Agpm agpm) {
         // --- Direct Mappings ---
