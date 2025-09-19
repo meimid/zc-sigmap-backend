@@ -1117,7 +1117,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return false;
     }
-
     @Transactional
     @Override
     public Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
@@ -1161,7 +1160,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
-
 
         boolean hasNewLotsWithoutIds = false;
         if (request.getRealisations() != null) {
@@ -1275,7 +1273,19 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         Realisation updatedRealisation =
                                 realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
 
-                        updatedRealisations.add(updatedRealisation);
+                        realisationRepository.flush();
+
+                        Integer latestVerForThisReal = realisationRepository.findMaxVersionById(updatedRealisation.getId());
+                        Realisation refreshed = realisationRepository.findById(
+                                new CompositeId(updatedRealisation.getId(), latestVerForThisReal)
+                        ).orElseThrow(() -> new RuntimeException(
+                                "Updated Realisation not found after flush: id=" + updatedRealisation.getId()
+                                        + ", ver=" + latestVerForThisReal));
+
+                        System.out.println("[PAA:update] Refreshed Realisation id=" + refreshed.getId()
+                                + " ver=" + refreshed.getVersion());
+
+                        updatedRealisations.add(refreshed);
                     } else {
                         System.out.println("Creating new Realisation");
                         RealisationRequest newRealisationRequest = new RealisationRequest();
@@ -1549,7 +1559,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         paaList.add(finalNewPaa);
                     }
 
-
                     try {
                         BigDecimal rbFx = Optional.ofNullable(confirmedRealisation.getFinancements())
                                 .orElseGet(List::of).stream()
@@ -1597,7 +1606,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     " version: " + newPaa.getVersion() +
                     ", budgetEstime: " + totalBudget);
 
-
+            realisationRepository.flush();
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
@@ -1688,6 +1697,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             newPaa.setBudgetEstime(totalBudget);
 
+            realisationRepository.flush();
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
