@@ -1117,7 +1117,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return false;
     }
-
     @Transactional
     @Override
     public Paa updateWithVersioning(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound {
@@ -1136,6 +1135,22 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         // Log the current state and request
         System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
         System.out.println("Request data: " + request);
+
+        List<BigDecimal> reqBudgetSums = new ArrayList<>();
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            for (int i = 0; i < request.getRealisations().size(); i++) {
+                RealisationRequestForPaa rDto = request.getRealisations().get(i);
+                BigDecimal sum = null;
+                if (rDto.getFinancements() != null && !rDto.getFinancements().isEmpty()) {
+                    sum = rDto.getFinancements().stream()
+                            .map(FinancementRequest::getBudgetEstimer)
+                            .filter(Objects::nonNull)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+                reqBudgetSums.add(sum);
+                System.out.println("[REQ] Realisation index " + i + " financement sum = " + sum);
+            }
+        }
 
         // Track whether any documents have changed
         boolean documentsChanged = false;
@@ -1161,7 +1176,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         String requestHash = generateRequestHash(request);
         String previousRequestHash = getPreviousRequestHash(paaId, paaVer);
-
 
         boolean hasNewLotsWithoutIds = false;
         if (request.getRealisations() != null) {
@@ -1275,7 +1289,19 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         Realisation updatedRealisation =
                                 realisationService.updateWithVersioning(realisationDto.getId(), versionToUse, realisationDto);
 
-                        updatedRealisations.add(updatedRealisation);
+                        realisationRepository.flush();
+
+                        Integer latestVerForThisReal = realisationRepository.findMaxVersionById(updatedRealisation.getId());
+                        Realisation refreshed = realisationRepository.findById(
+                                new CompositeId(updatedRealisation.getId(), latestVerForThisReal)
+                        ).orElseThrow(() -> new RuntimeException(
+                                "Updated Realisation not found after flush: id=" + updatedRealisation.getId()
+                                        + ", ver=" + latestVerForThisReal));
+
+                        System.out.println("[PAA:update] Refreshed Realisation id=" + refreshed.getId()
+                                + " ver=" + refreshed.getVersion());
+
+                        updatedRealisations.add(refreshed);
                     } else {
                         System.out.println("Creating new Realisation");
                         RealisationRequest newRealisationRequest = new RealisationRequest();
@@ -1522,6 +1548,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             List<Realisation> confirmedRealisations = new ArrayList<>();
             final Paa finalNewPaa = newPaa;
 
+            int __reqIdx = 0;
             for (Realisation realisation : updatedRealisations) {
                 try {
                     Realisation confirmedRealisation =
@@ -1530,6 +1557,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         System.err.println("Warning: Realisation " + realisation.getId() +
                                 " version " + realisation.getVersion() +
                                 " not found in database. Skipping relationship setup.");
+                        __reqIdx++;
                         continue;
                     }
 
@@ -1548,7 +1576,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         }
                         paaList.add(finalNewPaa);
                     }
-
 
                     try {
                         BigDecimal rbFx = Optional.ofNullable(confirmedRealisation.getFinancements())
@@ -1574,6 +1601,14 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                                 confirmedRealisation.getId() + ": " + e.getMessage());
                     }
 
+                    BigDecimal reqSum = (reqBudgetSums != null && __reqIdx < reqBudgetSums.size()) ? reqBudgetSums.get(__reqIdx) : null;
+                    if (reqSum != null) {
+                        System.out.println("[REQ] Using request financement sum " + reqSum +
+                                " as budgetEstime for Realisation " + confirmedRealisation.getId());
+                        confirmedRealisation.setBudgetEstime(reqSum);
+                    }
+                    __reqIdx++;
+
                     confirmedRealisation = realisationRepository.save(confirmedRealisation);
                     System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
                             " version " + confirmedRealisation.getVersion() + " with new PAA (budget="
@@ -1597,7 +1632,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     " version: " + newPaa.getVersion() +
                     ", budgetEstime: " + totalBudget);
 
-
+            realisationRepository.flush();
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
@@ -1688,6 +1723,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             newPaa.setBudgetEstime(totalBudget);
 
+            realisationRepository.flush();
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
@@ -1823,7 +1859,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return copyForReturn;
     }
-
 
     /**
      * Updates a PAA with versioning by automatically finding and using the latest version.
@@ -2889,35 +2924,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
         }
     }
-
-//    private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
-//        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
-//            try {
-//                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-//                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-//                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
-//                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
-//                if (acSeuilOpt.isPresent()) {
-//                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
-//                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
-//                            realisation.getSeuilApplicable(), realisation.getId(), acId,
-//                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
-//                } else {
-//                    realisation.setSeuilApplicable(BigDecimal.ZERO);
-//                    log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
-//                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
-//                }
-//            } catch (Exception e) {
-//                realisation.setSeuilApplicable(BigDecimal.ZERO);
-//                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
-//                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
-//            }
-//        } else {
-//            realisation.setSeuilApplicable(BigDecimal.ZERO);
-//            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
-//        }
-//    }
-
 
     private Integer generateFinancementIdWithRetry() {
         for (int attempt = 0; attempt < 3; attempt++) {
