@@ -2925,35 +2925,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         }
     }
 
-//    private void setSeuilApplicableForRealisation(Realisation realisation, Integer acId) {
-//        if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
-//            try {
-//                Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-//                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-//                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
-//                Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
-//                if (acSeuilOpt.isPresent()) {
-//                    realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
-//                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
-//                            realisation.getSeuilApplicable(), realisation.getId(), acId,
-//                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
-//                } else {
-//                    realisation.setSeuilApplicable(BigDecimal.ZERO);
-//                    log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
-//                            acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
-//                }
-//            } catch (Exception e) {
-//                realisation.setSeuilApplicable(BigDecimal.ZERO);
-//                log.error("Failed to fetch AcSeuil for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0. Error: {}",
-//                        acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId(), e.getMessage());
-//            }
-//        } else {
-//            realisation.setSeuilApplicable(BigDecimal.ZERO);
-//            log.warn("TypeMarcher or ModePassation is null for Realisation ID: {}. Setting seuilApplicable to 0.", realisation.getId());
-//        }
-//    }
-
-
     private Integer generateFinancementIdWithRetry() {
         for (int attempt = 0; attempt < 3; attempt++) {
             try {

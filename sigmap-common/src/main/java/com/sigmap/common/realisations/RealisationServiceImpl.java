@@ -966,30 +966,6 @@ public class RealisationServiceImpl implements RealisationService {
             return true;
         }
 
-//        // Check service
-//        if (tempRealisation.getService() != existingRealisation.getService() &&
-//                (tempRealisation.getService() == null || existingRealisation.getService() == null ||
-//                        !tempRealisation.getService().getId().equals(existingRealisation.getService().getId()))) {
-//            System.out.println("Change detected in service");
-//            return true;
-//        }
-//
-//        // Check direction
-//        if (tempRealisation.getDirection() != existingRealisation.getDirection() &&
-//                (tempRealisation.getDirection() == null || existingRealisation.getDirection() == null ||
-//                        !tempRealisation.getDirection().getId().equals(existingRealisation.getDirection().getId()))) {
-//            System.out.println("Change detected in direction");
-//            return true;
-//        }
-
-//        // Check sourceFinancement
-//        if (tempRealisation.getSourceFinancement() != existingRealisation.getSourceFinancement() &&
-//                (tempRealisation.getSourceFinancement() == null || existingRealisation.getSourceFinancement() == null ||
-//                        !tempRealisation.getSourceFinancement().getId().equals(existingRealisation.getSourceFinancement().getId()))) {
-//            System.out.println("Change detected in sourceFinancement");
-//            return true;
-//        }
-
         // Check imputationBudgetaire
         if (tempRealisation.getImputationBudgetaire() != existingRealisation.getImputationBudgetaire() &&
                 (tempRealisation.getImputationBudgetaire() == null || existingRealisation.getImputationBudgetaire() == null ||
@@ -997,14 +973,6 @@ public class RealisationServiceImpl implements RealisationService {
             System.out.println("Change detected in imputationBudgetaire");
             return true;
         }
-
-//        // Check monais
-//        if (tempRealisation.getMonais() != existingRealisation.getMonais() &&
-//                (tempRealisation.getMonais() == null || existingRealisation.getMonais() == null ||
-//                        !tempRealisation.getMonais().getId().equals(existingRealisation.getMonais().getId()))) {
-//            System.out.println("Change detected in monais");
-//            return true;
-//        }
 
         // Check monnaie
         if (tempRealisation.getMonnaie() != existingRealisation.getMonnaie() &&
@@ -1021,14 +989,6 @@ public class RealisationServiceImpl implements RealisationService {
             System.out.println("Change detected in typeMarcher");
             return true;
         }
-
-//        // Check modeSelection
-//        if (tempRealisation.getModeSelection() != existingRealisation.getModeSelection() &&
-//                (tempRealisation.getModeSelection() == null || existingRealisation.getModeSelection() == null ||
-//                        !tempRealisation.getModeSelection().getId().equals(existingRealisation.getModeSelection().getId()))) {
-//            System.out.println("Change detected in modeSelection");
-//            return true;
-//        }
 
         // Check modePassation
         if (tempRealisation.getModePassation() != existingRealisation.getModePassation() &&
@@ -1123,67 +1083,6 @@ public class RealisationServiceImpl implements RealisationService {
     public void delete(Integer realisationId, Integer realisationVer) {
         repository.softDelete(realisationId, realisationVer);
     }
-
-//    /**
-//     * Compares two Realisation objects to determine if there are any changes.
-//     *
-//     * @param newRealisation The realisation with potentially new values
-//     * @param existingRealisation The existing realisation in the database
-//     * @param docIds List of document IDs in the request (if any)
-//     * @return true if there are changes, false otherwise
-//     */
-//    private boolean hasChanges(Realisation newRealisation, Realisation existingRealisation, List<Integer> docIds) {
-//        boolean fieldChanges = !Objects.equals(newRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees())
-//                || !Objects.equals(getRefParamId(newRealisation.getService()), getRefParamId(existingRealisation.getService()))
-//                || !Objects.equals(getRefParamId(newRealisation.getDirection()), getRefParamId(existingRealisation.getDirection()))
-//                || !Objects.equals(getRefParamId(newRealisation.getSourceFinancement()), getRefParamId(existingRealisation.getSourceFinancement()))
-//                || !Objects.equals(getRefParamId(newRealisation.getMonais()), getRefParamId(existingRealisation.getMonais()))
-//                || !Objects.equals(getRefParamId(newRealisation.getTypeMarcher()), getRefParamId(existingRealisation.getTypeMarcher()))
-//                || !Objects.equals(getRefParamId(newRealisation.getModeSelection()), getRefParamId(existingRealisation.getModeSelection()))
-//                || !Objects.equals(newRealisation.getDatePrevLps(), existingRealisation.getDatePrevLps())
-//                || !Objects.equals(newRealisation.getDatePrevAc(), existingRealisation.getDatePrevAc())
-//                || !Objects.equals(newRealisation.getDatePrevDp(), existingRealisation.getDatePrevDp())
-//                || !Objects.equals(newRealisation.getDatePrevAp(), existingRealisation.getDatePrevAp())
-//                || !Objects.equals(newRealisation.getBudgetEstime(), existingRealisation.getBudgetEstime())
-//                || !Objects.equals(newRealisation.getIsPublished(), existingRealisation.getIsPublished())
-//                || !Objects.equals(newRealisation.getPublishedAt(), existingRealisation.getPublishedAt())
-//                || !Objects.equals(newRealisation.getSort(), existingRealisation.getSort());
-//
-//        // Log specific field changes for debugging
-//        if (fieldChanges) {
-//            System.out.println("Field changes detected in Realisation:");
-//            if (!Objects.equals(newRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees()))
-//                System.out.println("  - RealisationEnvisagees changed: " + existingRealisation.getRealisationEnvisagees() + " -> " + newRealisation.getRealisationEnvisagees());
-//            if (!Objects.equals(getRefParamId(newRealisation.getService()), getRefParamId(existingRealisation.getService())))
-//                System.out.println("  - Service changed: " + getRefParamId(existingRealisation.getService()) + " -> " + getRefParamId(newRealisation.getService()));
-//            if (!Objects.equals(getRefParamId(newRealisation.getDirection()), getRefParamId(existingRealisation.getDirection())))
-//                System.out.println("  - Direction changed: " + getRefParamId(existingRealisation.getDirection()) + " -> " + getRefParamId(newRealisation.getDirection()));
-//            // More detailed field change reporting can be added as needed
-//        }
-//
-//        // When there are no other field changes, check if there are document changes
-//        boolean docChanges = false;
-//        if (docIds != null) {
-//            // Get active documents from existing realisation
-//            Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null ?
-//                    existingRealisation.getDocs().stream()
-//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                            .map(Docs::getId)
-//                            .collect(Collectors.toSet()) : new HashSet<>();
-//
-//            // Check if there are any differences between requested docIds and active existing docIds
-//            Set<Integer> requestedDocIdsSet = new HashSet<>(docIds);
-//            if (!requestedDocIdsSet.equals(activeExistingDocIds)) {
-//                // Document changes should trigger version increment
-//                System.out.println("Document changes detected in hasChanges method");
-//                System.out.println("  - Requested doc IDs: " + requestedDocIdsSet);
-//                System.out.println("  - Existing active doc IDs: " + activeExistingDocIds);
-//                docChanges = true;
-//            }
-//        }
-//
-//        return fieldChanges || docChanges;
-//    }
 
     /**
      * Updates the lots relationship for a Realisation without incrementing the version.
