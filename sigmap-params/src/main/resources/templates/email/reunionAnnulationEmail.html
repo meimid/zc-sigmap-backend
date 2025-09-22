@@ -17,14 +17,20 @@
                 </tr>
                 <tr style="padding-bottom: 10px;">
                     <td>
-                        <p style="color: #5E6278; font-size: 13px; font-weight: 500; margin: 0 0 3px 0;">Objet :</p>
+                        <p style="color: #5E6278; font-size: 13px; font-weight: 500; margin: 0 0 3px 0;">Objet de la réunion: </p>
                         <p width="80%" th:utext="${object}"></p>
                     </td>
                 </tr>
                 <tr>
                     <td align="center" style="font-size: 13px; padding: 0 10px 10px 10px; color: #A1A5B7;">
                         <p style="color: #181C32; font-size: 16px; font-weight: 600; margin-bottom: 9px;">Problèmes ?</p>
-                        <p style="margin-bottom: 4px;">Contactez <a href="mailto:dev.sigmap@siga-bc.com" style="font-weight: 600; color: #009ef7;">dev.sigmap@siga-bc.com</a>.</p>
+                        <p style="margin-bottom:4px">
+                            Contactez
+                            <a th:href="'mailto:' + ${from}"
+                               rel="noopener" target="_blank"
+                               style="font-weight: 600"
+                               th:text="${from}">Email</a>.
+                        </p>
                     </td>
                 </tr>
                 <tr>
