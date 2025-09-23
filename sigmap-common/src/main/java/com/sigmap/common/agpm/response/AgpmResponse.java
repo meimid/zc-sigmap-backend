@@ -28,6 +28,8 @@ public class AgpmResponse {
     private List<DocsResponseDTO> docs;
     private String modelAlfrescoId;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 
 }
