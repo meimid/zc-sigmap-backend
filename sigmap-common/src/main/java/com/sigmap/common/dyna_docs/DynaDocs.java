@@ -48,4 +48,7 @@ public class DynaDocs {
 
   @Enumerated(EnumType.STRING)
   private ActiveStatus status;
+
+  @Column(name = "is_static")
+  private Boolean isStatic;
 }
