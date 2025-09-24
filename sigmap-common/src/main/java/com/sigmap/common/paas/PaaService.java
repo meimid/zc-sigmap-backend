@@ -3,6 +3,9 @@ package com.sigmap.common.paas;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmInvalidStatusException;
+import com.sigmap.common.agpm.exceptions.AgpmNotAssociatedWithUserAcException;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -194,6 +197,20 @@ public interface PaaService {
     Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;
     Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) ;
 
+    /**
+     * Creates an actualised version of the latest PAA for the given ID.
+     * Copies core fields, resets workflow state (processInstanceId to null, status to DRAFT),
+     * sets actualise to true, and increments nbrActualisation by 1. Only non-deleted Docs are retained.
+     *
+     * @param paaId ID of the PAA to actualise (latest version is used as the source)
+     * @return The newly created PAA version
+     * @throws PaaNotFound if no PAA is found for the given ID
+     * @throws PaaInvalidStatusException if the latest PAA version is not in PUBLIE status
+     * @throws PaaNotAssociatedWithUserAcException if the PAA is not associated with one of the current user's ACs
+     */
+
+    Paa actualise(Integer paaId)
+            throws PaaNotFound, PaaInvalidStatusException, PaaNotAssociatedWithUserAcException;
 
 
 }

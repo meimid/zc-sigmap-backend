@@ -20,4 +20,6 @@ public class PaaResponseDto {
     private RefParam modePassation;
     private String remarque;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
 }
