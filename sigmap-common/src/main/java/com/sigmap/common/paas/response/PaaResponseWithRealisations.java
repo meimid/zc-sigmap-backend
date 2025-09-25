@@ -33,6 +33,8 @@ public class PaaResponseWithRealisations {
     // Using the specialized Realisation DTO to avoid circular references
     private List<RealisationResponseDtoForPaa> realisations;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 
 } 

@@ -103,4 +103,10 @@ public class Paa extends BaseEntity implements DocumentHolder {
 
     @Transient
     private String modelAlfrescoId;
+
+    @Column(name = "actualise", nullable = false)
+    private Boolean actualise = Boolean.FALSE;
+
+    @Column(name = "nbr_actualisation", nullable = false)
+    private Integer nbrActualisation = 0;
 }

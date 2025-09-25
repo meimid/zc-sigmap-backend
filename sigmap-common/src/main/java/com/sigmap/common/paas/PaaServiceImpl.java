@@ -8,6 +8,10 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmInvalidStatusException;
+import com.sigmap.common.agpm.exceptions.AgpmNotAssociatedWithUserAcException;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.entity.CompositeId;
@@ -332,6 +336,8 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setRemarque(paa.getRemarque());
         filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
         filteredPaa.setStatus(paa.getStatus());
+        filteredPaa.setActualise(paa.getActualise());
+        filteredPaa.setNbrActualisation(paa.getNbrActualisation());
         filteredPaa.setCreatedAt(paa.getCreatedAt());
         filteredPaa.setCreatedBy(paa.getCreatedBy());
         filteredPaa.setUpdatedAt(paa.getUpdatedAt());
@@ -520,9 +526,17 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
     restrictUpdatePaa(existingPaa);
 
+
+        if (existingPaa.getActualise() == null) {
+            existingPaa.setActualise(Boolean.FALSE);
+        }
+        if (existingPaa.getNbrActualisation() == null) {
+            existingPaa.setNbrActualisation(0);
+        }
+
     // === Simple fields
     existingPaa.setNom(request.getNom());
-    existingPaa.setAnnee(existingPaa.getAnnee()); // (kept as-is, per your original code)
+    existingPaa.setAnnee(existingPaa.getAnnee());
     existingPaa.setModePassation(request.getModePassation());
     existingPaa.setRemarque(request.getRemarque());
 
@@ -754,7 +768,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
                 }
 
-                // ---- Financements (UPDATE path) — safe pattern
+                // ---- Financements
                 if (rReq.getFinancements() != null) {
                     Map<Integer, Financement> existingById = (realisation.getFinancements() == null ? (Map<Integer, Financement>) List.<Financement>of()
                             : realisation.getFinancements().stream()
@@ -796,12 +810,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                             fin.setIsDeleted(false);
                             newState.add(fin);
                         } else {
-                            Integer nextId = generateFinancementIdWithRetry(); // IMPORTANT: no +1
+                            Integer nextId = generateFinancementIdWithRetry();
                             Financement fin = new Financement();
 
                             FinancementId fid = new FinancementId();
                             fid.setFinancementId(nextId);
-                            fid.setRealisation(realisation); // SAME managed instance
+                            fid.setRealisation(realisation);
                             fin.setId(fid);
 
                             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
@@ -1100,9 +1114,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     repository.save(savedPaa);
     copyForResponse.setBudgetEstime(budgetEstime);
 
-    log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
-    return copyForResponse;
-}
+        copyForResponse.setActualise(savedPaa.getActualise());
+        copyForResponse.setNbrActualisation(savedPaa.getNbrActualisation());
+
+        log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
+        return copyForResponse;
+    }
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
@@ -1131,6 +1148,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     "Cannot update a deleted PAA with ID " + paaId + " and version " + paaVer,
                     List.of(paaId), List.of(paaVer));
         }
+
+        if (existingPaa.getActualise() == null) existingPaa.setActualise(false);
+        if (existingPaa.getNbrActualisation() == null) existingPaa.setNbrActualisation(0);
 
         // Log the current state and request
         System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
@@ -1238,6 +1258,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     });
                 }
 
+                copyForResponse.setActualise(existingPaa.getActualise());
+                copyForResponse.setNbrActualisation(existingPaa.getNbrActualisation());
+
                 return copyForResponse;
             }
         }
@@ -1250,6 +1273,8 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         tempPaa.setStatus(existingPaa.getStatus());
         tempPaa.setModePassation(request.getModePassation() != null ? request.getModePassation() : existingPaa.getModePassation());
         tempPaa.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPaa.getRemarque());
+        tempPaa.setActualise(existingPaa.getActualise());
+        tempPaa.setNbrActualisation(existingPaa.getNbrActualisation());
 
         Ac requestAc = null;
         if (request.getAcId() != null) {
@@ -1513,10 +1538,13 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         .filter(Objects::nonNull)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 copyForResponse.setBudgetEstime(totalBudget);
+
+                copyForResponse.setActualise(existingPaa.getActualise());
+                copyForResponse.setNbrActualisation(existingPaa.getNbrActualisation());
+
                 System.out.println("Updated existing PAA ID: " + copyForResponse.getId() +
                         " version: " + copyForResponse.getVersion() +
                         ", budgetEstime: " + totalBudget);
-
                 return copyForResponse;
             }
         }
@@ -1536,6 +1564,16 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         newPaa.setAc(tempPaa.getAc());
         newPaa.setModePassation(tempPaa.getModePassation());
         newPaa.setRemarque(tempPaa.getRemarque());
+
+        boolean somethingChanged = hasDirectChanges || realisationsChanged || documentsChanged || hasFiles;
+        if (Boolean.TRUE.equals(existingPaa.getActualise()) && somethingChanged) {
+            newPaa.setActualise(false);
+            log.info("Flag 'actualise' toggled from true -> false due to detected changes (new version).");
+        } else {
+            newPaa.setActualise(existingPaa.getActualise());
+            log.info("Flag 'actualise' kept as {}", existingPaa.getActualise());
+        }
+        newPaa.setNbrActualisation(existingPaa.getNbrActualisation());
 
         newPaa.setRealisations(new ArrayList<>());
         newPaa.setDocs(new ArrayList<>());
@@ -1853,9 +1891,15 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         copyForReturn.setBudgetEstime(finalBudget);
+
+        copyForReturn.setActualise(newPaa.getActualise());
+        copyForReturn.setNbrActualisation(newPaa.getNbrActualisation());
+
         System.out.println("Final response PAA ID: " + copyForReturn.getId() +
                 " version: " + copyForReturn.getVersion() +
-                ", budgetEstime: " + finalBudget);
+                ", budgetEstime: " + finalBudget +
+                ", actualise: " + copyForReturn.getActualise() +
+                ", nbrActualisation: " + copyForReturn.getNbrActualisation());
 
         return copyForReturn;
     }
@@ -2603,6 +2647,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setStatus(ProcessStatus.BROUILLON);
         paa.setAc(ac);
 
+        paa.setActualise(Boolean.FALSE);
+        paa.setNbrActualisation(0);
+
         paa.setRealisations(new ArrayList<>());
         paa.setDocs(new ArrayList<>());
         log.info("Annee test check passed: {}", paa.getAnnee());
@@ -2937,6 +2984,98 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         }
         return 1; // Fallback
     }
+
+    /**
+     * Creates a new version of a PAA when the latest version is PUBLIE.
+     * - New version = latest + 1
+     * - Copies core fields (ref, nom, remarque, annee, AC, modePassation, modelAlfrescoId)
+     * - Resets processInstanceId, sets status=BROUILLON, isDeleted=false
+     * - Marks isActualisation=true and increments nbrActualisation
+     * - Copies only non-deleted Docs
+     * - Carries over active Realisations as-is (and re-links the join)
+     * - Recomputes PAA budget as the sum of carried Realisation budgets
+     */
+    @Transactional
+    @Override
+    public Paa actualise(Integer paaId)
+            throws PaaNotFound, PaaInvalidStatusException, PaaNotAssociatedWithUserAcException {
+
+        Integer latestVersion = Optional.ofNullable(repository.findMaxVersionById(paaId))
+                .orElseThrow(() -> new PaaNotFound("No PAA found for ID", List.of(paaId), List.of()));
+
+        Paa latest = repository.findById(new CompositeId(paaId, latestVersion))
+                .orElseThrow(() -> new PaaNotFound(
+                        "No PAA found for ID and version",
+                        List.of(paaId), List.of(latestVersion)));
+
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        Integer acId = latest.getAc() != null ? latest.getAc().getId() : null;
+        if (userAcIds.isEmpty() || acId == null || !userAcIds.contains(acId)) {
+            throw new PaaNotAssociatedWithUserAcException(
+                    "PAA not associated with one of the user's ACs",
+                    List.of(paaId.longValue()), List.of(latestVersion));
+        }
+
+        if (!ProcessStatus.PUBLIE.equals(latest.getStatus())) {
+            throw new PaaInvalidStatusException(
+                    "Actualisation is only allowed when status is PUBLIE",
+                    List.of(latest.getId()), List.of(latest.getVersion()), latest.getStatus());
+        }
+
+        int nextVersion = latestVersion + 1;
+
+        Paa next = new Paa();
+        next.setId(latest.getId());
+        next.setVersion(nextVersion);
+
+        next.setRef(latest.getRef());
+        next.setNom(latest.getNom());
+        next.setRemarque(latest.getRemarque());
+        next.setAnnee(latest.getAnnee());
+        next.setAc(latest.getAc());
+        next.setModePassation(latest.getModePassation());
+        next.setModelAlfrescoId(latest.getModelAlfrescoId());
+
+        next.setProcessInstanceId(null);
+        next.setStatus(ProcessStatus.BROUILLON);
+        next.setIsDeleted(false);
+
+        next.setActualise(true);
+        Integer prevNbr = latest.getNbrActualisation();
+        next.setNbrActualisation((prevNbr == null ? 0 : prevNbr) + 1);
+
+        if (latest.getDocs() != null && !latest.getDocs().isEmpty()) {
+            List<Docs> activeDocs = latest.getDocs().stream()
+                    .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                    .collect(Collectors.toList());
+            next.setDocs(new ArrayList<>(activeDocs));
+        } else {
+            next.setDocs(new ArrayList<>());
+        }
+
+        List<Realisation> activeRealisations = (latest.getRealisations() == null) ? List.of()
+                : latest.getRealisations().stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                .collect(Collectors.toList());
+        next.setRealisations(new ArrayList<>(activeRealisations));
+
+        next.setBudgetEstime(latest.getBudgetEstime());
+
+        Paa saved = repository.save(next);
+
+        for (Realisation r : activeRealisations) {
+            if (r.getPaas() == null) r.setPaas(new ArrayList<>());
+            boolean alreadyLinked = r.getPaas().stream()
+                    .anyMatch(p -> p.getId().equals(saved.getId()) && p.getVersion().equals(saved.getVersion()));
+            if (!alreadyLinked) {
+                r.getPaas().add(saved);
+                realisationRepository.save(r);
+            }
+        }
+
+        return createFilteredResponsePaa(saved);
+    }
+
 
 
 }
