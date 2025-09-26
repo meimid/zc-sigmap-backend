@@ -5,9 +5,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
-import com.sigmap.common.ppms.exception.PpmCreationLimitExceededException;
-import com.sigmap.common.ppms.exception.PpmIdNotFound;
-import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
@@ -317,4 +315,19 @@ public interface PpmService {
      List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
     Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) ;
 
-    }
+    /**
+     * Creates an actualised version of the latest PPM for the given ID.
+     * Copies core fields, resets workflow state (processInstanceId to null, status to BROUILLON),
+     * sets actualise to true, and increments nbrActualisation by 1. Only non-deleted Docs are retained.
+     * Active Realisations are re-linked to the new version and the PPM budget is recalculated.
+     *
+     * @param ppmId ID of the PPM to actualise (latest version is used as the source)
+     * @return The newly created PPM version
+     * @throws PpmNotFound if no PPM is found for the given ID
+     * @throws PpmInvalidStatusException if the latest PPM version is not in PUBLIE status
+     * @throws PpmNotAssociatedWithUserAcException if the PPM is not associated with one of the current user's ACs
+     */
+    Ppm actualise(Integer ppmId)
+            throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
+
+}

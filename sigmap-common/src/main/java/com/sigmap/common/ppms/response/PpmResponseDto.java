@@ -26,5 +26,7 @@ public class PpmResponseDto {
     private String modelAlfrescoId;
     private List<RealisationResponseDTO> realisations;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 }
