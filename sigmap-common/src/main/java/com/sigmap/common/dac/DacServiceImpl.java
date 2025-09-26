@@ -410,13 +410,14 @@ public class DacServiceImpl implements DacService {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
                     // Treat as list (single column)
-                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+                    List<String> rows = dacDocsRepository.findListRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     List<String> values = new ArrayList<>();
-                    if (!columns.isEmpty()) {
-                        String colName = columns.get(0).getColumnName();
-                        for (Map<String, String> row : rows) {
-                            values.add(row.getOrDefault(colName, ""));
-                        }
+                    if (!rows.isEmpty() && !columns.isEmpty()) {
+                        values.addAll(rows.stream()
+                                .filter(Objects::nonNull)
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty()).toList());
+
                     }
                     insertSingleColumnTableAtBookmark(document, bookmarkName, columns, values);
 
