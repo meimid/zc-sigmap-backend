@@ -26,6 +26,8 @@ public class DynaDocsResponse {
 
   private ActiveStatus status;
 
+  private Boolean isStatic;
+
   @JsonInclude(Include.NON_NULL)
   private List<DynaFieldsResponse> fields;
 }

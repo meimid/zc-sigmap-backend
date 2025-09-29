@@ -43,6 +43,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
     @Mapping(target = "sourceId", source = "sourceId")
     @Mapping(target = "fieldValue", source = "fieldValue")
+    @Mapping(target = "docs",source = "docs")
     DacDocsResponse toResponse (DacDocs entity);
 
 
@@ -54,6 +55,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaDocsVer", source = "id.dynaDocsVer")
     @Mapping(target = "sourceId", source = "sourceId")
     @Mapping(target = "fieldValue", source = "fieldValue")
+    @Mapping(target = "docId", source = "docs.id")
     @Mapping(target = "dacDocsDetails", source = "dacDocsDetails")
     List<DacDocsResponseFullEntities> entityToResponse (List<DacDocs> entity);
 
@@ -65,6 +67,7 @@ public interface DacDocsMapper {
     @Mapping(target = "sourceId", source = "sourceId")
     @Mapping(target = "fieldValue", source = "fieldValue")
     @Mapping(target = "dacDocsDetails", source = "dacDocsDetails")
+    @Mapping(target = "docs",source = "docs")
     DacDocsResponseFullEntities entityToResponseMap (DacDocs entity);
 
      Set<DynaFieldsDetailsDTO> dynaFieldsDetailsToDTO (Set<DynaFieldsDetails> dynaFieldsDetails);
@@ -91,6 +94,8 @@ public interface DacDocsMapper {
     @Mapping(target = "typeMarche", source = "dynaField.dynaDocs.typeMarche")
     @Mapping(target = "dynaDocOrder", source = "dynaField.dynaDocs.dynaDocOrder")
     @Mapping(target = "status", source = "dynaField.dynaDocs.status")
+    @Mapping(target = "isStatic", source = "dynaField.dynaDocs.isStatic")
+    @Mapping(target = "docs",source = "docs")
     DynaDocsResponseDTO toDynaDocsResponse(DacDocs dacDocs);
 
     @Mapping(target = "dynaFieldsId", source = "dynaField.dynaFieldsId")
@@ -105,6 +110,7 @@ public interface DacDocsMapper {
     @Mapping(target = "sourceField", source = "dynaField.sourceField")
     @Mapping(target = "dynaFieldsOrder", source = "dynaField.dynaFieldsOrder")
     @Mapping(target = "status", source = "dynaField.status")
+    @Mapping(target = "docId", source = "docs.id")
     DynaFieldsDTO toDynaFieldResponse(DacDocs dacDocs);
 
     @Mapping(target = "dynaFieldsId", source = "dynaFieldsId")

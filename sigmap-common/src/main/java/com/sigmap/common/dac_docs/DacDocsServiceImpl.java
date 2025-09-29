@@ -20,7 +20,11 @@ import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.config.Constants;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +33,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -48,6 +54,102 @@ public class DacDocsServiceImpl implements DacDocsService{
     DacDocsDetailsService dacDocsDetailsService;
     @Autowired
     DacDocsDetailsRepository dacDocsDetailsRepository;
+    @Autowired
+    private DocsRepository docsRepository;
+    @Autowired
+    private DocumentCommuneService documentCommuneService;
+
+    @Override
+    @Transactional
+    public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("File is required");
+        }
+        // Resolve latest DynaDocs and verify static
+        Optional<DynaDocs> dynaDocsOpt = dynaDocsRepository.findLastDynaDocsVersionById(dynaDocsId);
+        if (dynaDocsOpt.isEmpty()) {
+            throw new RuntimeException("DynaDocs not found with id: " + dynaDocsId);
+        }
+        DynaDocs dynaDocs = dynaDocsOpt.get();
+        if (!Boolean.TRUE.equals(dynaDocs.getIsStatic())) {
+            throw new RuntimeException("DynaDocs is not static: " + dynaDocsId);
+        }
+        // Resolve latest DAC
+        Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (dac == null) {
+            throw new RuntimeException("Dac not found with id: " + dacId);
+        }
+
+        // Determine target DynaField for this static document
+        List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocs.getId(), dynaDocs.getVersion());
+        DynaFields field = null;
+        if (fields != null && !fields.isEmpty()) {
+            // 1) Prefer __DEFAULT__ placeholder
+            field = fields.stream().filter(f -> "__DEFAULT__".equals(f.getName())).findFirst().orElse(null);
+            // 2) Else prefer SYSTEM type
+            if (field == null) {
+                field = fields.stream().filter(f -> f.getType() == DynaFieldType.SYSTEM).findFirst().orElse(null);
+            }
+            // 3) Else take the lowest order
+            if (field == null) {
+                field = fields.stream().min(Comparator.comparing(DynaFields::getDynaFieldsOrder, Comparator.nullsLast(Integer::compareTo))).orElse(null);
+            }
+        }
+        // 4) If still none, create a placeholder __DEFAULT__ like seeding logic
+        if (field == null) {
+            Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dynaDocs.getId(), dynaDocs.getVersion());
+            DynaFields placeholder = new DynaFields();
+            placeholder.setDynaFieldsId(maxId + 1);
+            placeholder.setDynaDocsId(dynaDocs.getId());
+            placeholder.setDynaDocsVer(dynaDocs.getVersion());
+            placeholder.setName("__DEFAULT__");
+            placeholder.setRef("__DEFAULT__");
+            placeholder.setLabel("__DEFAULT__");
+            placeholder.setType(DynaFieldType.SYSTEM);
+            placeholder.setSource(null);
+            placeholder.setSourceField(null);
+            placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+            placeholder.setStatus(com.sigmap.common.entity.ActiveStatus.ACTIF);
+            field = dynaFieldsRepository.save(placeholder);
+        }
+
+        // Upsert row for (dacId, latest dacVer, dynaDocsId, latest dynaDocsVer, chosen dynaFieldsId)
+        Optional<DacDocs> existingOpt = dacDocsRepository.findDacDocsBYPKs(
+                dac.getDacId(),
+                dac.getDacVer(),
+                dynaDocs.getId(),
+                dynaDocs.getVersion(),
+                field.getDynaFieldsId());
+        DacDocs row = existingOpt.orElseGet(DacDocs::new);
+        if (row.getId() == null) {
+            DacDocsId id = new DacDocsId();
+            id.setDacId(dac.getDacId());
+            id.setDacVer(dac.getDacVer());
+            id.setDynaDocsId(dynaDocs.getId());
+            id.setDynaDocsVer(dynaDocs.getVersion());
+            id.setDynaFieldsId(field.getDynaFieldsId());
+            row.setId(id);
+            row.setDac(dac);
+            row.setDynaField(field);
+            row.setSourceId(row.getSourceId() == null ? "" : row.getSourceId());
+        }
+        // Persist to ensure ID fields present when saving file path
+        row = dacDocsRepository.save(row);
+
+        try {
+            Integer newDocId = documentCommuneService.processAndSaveDocumentsForDacDocs(file, row, Constants.PATH_ENTREPOT_GED_DAC_DOCS);
+            // Link doc
+            Optional<Docs> docOpt = docsRepository.findById(newDocId);
+            if (docOpt.isEmpty()) {
+                throw new RuntimeException("Saved document not found with id: " + newDocId);
+            }
+            row.setDocs(docOpt.get());
+            row = dacDocsRepository.save(row);
+            return row;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
 
     @Override
     @Transactional

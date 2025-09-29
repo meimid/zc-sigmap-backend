@@ -4,14 +4,16 @@ import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
-import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
+import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.List;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/dac-docs")
@@ -81,5 +83,15 @@ public class DacDocsController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping(path = "/upload-static", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<DacDocsResponseFullEntities> uploadStaticDoc(
+            @RequestParam Integer dacId,
+            @RequestParam Integer dynaDocsId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        DacDocs dacDocs = dacDocsService.uploadStaticDoc(dacId, dynaDocsId, file);
+        DacDocsResponseFullEntities response = DacDocsMapper.INSTANCE.entityToResponseMap(dacDocs);
+        return ResponseEntity.ok(response);
+    }
 
 } 

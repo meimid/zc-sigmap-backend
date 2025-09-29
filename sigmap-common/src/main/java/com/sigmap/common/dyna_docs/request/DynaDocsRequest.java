@@ -16,4 +16,6 @@ public class DynaDocsRequest {
   private Integer dynaDocOrder;
 
   private ActiveStatus status = ActiveStatus.NON_ACTIF;
+
+  private Boolean isStatic;
 }

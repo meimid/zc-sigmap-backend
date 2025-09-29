@@ -596,7 +596,7 @@ public class DocumentCommuneService {
 
     public  Integer processAndSaveDocumentsForDacDocs(MultipartFile file, DacDocs dacDocs, String path) throws IOException {
 
-        String baseFolderPath = String.format("%s/%d/%d/%d/%d/%s",path  , dacDocs.getId().getDacId(),dacDocs.getId().getDacVer(),dacDocs.getId().getDynaDocsId(),dacDocs.getId().getDynaDocsVer(),Constants.PATH_ENTREPOT_GED_DAC_DOCS);
+        String baseFolderPath = String.format("%s/%d/%d/%d/%s",path  , dacDocs.getId().getDacId(),dacDocs.getId().getDacVer(),dacDocs.getId().getDynaDocsId(),dacDocs.getId().getDynaDocsVer());
 
 
 

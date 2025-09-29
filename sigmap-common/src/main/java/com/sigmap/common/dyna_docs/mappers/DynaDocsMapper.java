@@ -29,6 +29,7 @@ public interface DynaDocsMapper {
   void map(DynaDocsRequest source, @MappingTarget DynaDocs target);
 
   @Mapping(target = "typeMarche", source = "typeMarche")
+  @Mapping(target = "isStatic", source = "isStatic")
   DynaDocsResponse map(DynaDocs source);
 
   @Mapping(target = "id", source = "id")
@@ -39,5 +40,6 @@ public interface DynaDocsMapper {
   @Mapping(target = "typeMarche", source = "typeMarche")
   @Mapping(target = "dynaDocOrder", source = "dynaDocOrder")
   @Mapping(target = "status", source = "status")
+  @Mapping(target = "isStatic", source = "isStatic")
   DynaDocsResponseDTO toDynaDocsResponse(DynaDocs dynaDocs);
 }
