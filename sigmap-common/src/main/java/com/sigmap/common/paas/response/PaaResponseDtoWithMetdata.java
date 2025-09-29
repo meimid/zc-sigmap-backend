@@ -22,5 +22,7 @@ public class PaaResponseDtoWithMetdata {
     private RefParam modePassation;
     private String remarque;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 }

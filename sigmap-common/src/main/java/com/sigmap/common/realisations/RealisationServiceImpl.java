@@ -55,7 +55,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
@@ -202,7 +204,6 @@ public class RealisationServiceImpl implements RealisationService {
 
         // Generate ID if not provided
         if (id == null) {
-//            id = repository.findMaxId() + 1;
             id = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ) + 1;
             log.info("Generated Realisation ID: {}", id);
         }
@@ -230,94 +231,14 @@ public class RealisationServiceImpl implements RealisationService {
         realisation.setDocs(new ArrayList<>());
         realisation.setFinancements(new ArrayList<>());
 
-//        // Fetch and set RefParam associations
-//        if (request.getService() != null) {
-//            log.info("Fetching Service with ID: {}", request.getService().getId());
-//            realisation.setService(refParamRepository.findById(request.getService().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
-//        }
-//        if (request.getDirection() != null) {
-//            log.info("Fetching Direction with ID: {}", request.getDirection().getId());
-//            realisation.setDirection(refParamRepository.findById(request.getDirection().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
-//        }
-//        if (request.getSourceFinancement() != null) {
-//            log.info("Fetching SourceFinancement with ID: {}", request.getSourceFinancement().getId());
-//            realisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
-//        }
-
-        // Handle MULTIPLE Financements creation after realisation is saved
-//        if (request.getFinancementRequests() != null && !request.getFinancementRequests().isEmpty()) {
-//            log.info("Creating {} Financements", request.getFinancementRequests().size());
-//
-//            List<Financement> createdFinancements = new ArrayList<>();
-//
-//            for (FinancementBaseRequestDto financementRequest : request.getFinancementRequests()) {
-//                log.info("Processing Financement request: {}", financementRequest);
-//
-//                // Create FinancementId (composite key)
-//                FinancementId financementId = new FinancementId();
-////                financementId.setRealisation(savedRealisation);
-//                Financement financement = new Financement();
-//                // Set Monnaie from individual financement request
-//                if (financementRequest.getMonnaieId() != null) {
-//                    log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
-//                    Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-//                            .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-//                    // ADD THIS LOGIC HERE
-//                    if (monnaie.getTaux() != null) {
-//                        financement.setTauxApplicable(monnaie.getTaux());
-//                        System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
-//                    } else {
-//                        financement.setTauxApplicable(0.0);
-//                        System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
-//                    }
-//                    financement.setMonnaie(monnaie);
-//                } else {
-//                    throw new IllegalArgumentException("Monnaie ID is required for each Financement");
-//                }
-//
-//                // Generate unique financement ID for each financement
-//                Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-//                financementId.setFinancementId(nextFinancementId);
-//
-//                log.info("Generated Financement ID: {}", nextFinancementId);
-//
-//                // Create Financement entity
-//
-//                financement.setId(financementId);
-//                financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-//
-//                // Set source financement if provided
-//                if (financementRequest.getSourceFinancement().getId() != null) {
-//                    log.info("Fetching SourceFinancement with ID: {}", financementRequest.getSourceFinancement().getId());
-//                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-//                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
-//                    financement.setSourceFinancement(sourceFinancement);
-//                }
-//
-//                // Save individual financement
-//                Financement savedFinancement = financementRepository.save(financement);
-//                log.info("Created and saved Financement: {}", savedFinancement);
-//
-//                createdFinancements.add(savedFinancement);
-//            }
-//
-//            // Associate ALL created financements with the realisation (bidirectional)
-//            realisation.setFinancements(createdFinancements);
-//            log.info("Associated {} financements with realisation", createdFinancements.size());
-//        }
-
         if (request.getImputationBudgetaire() != null) {
             log.info("Fetching ImputationBudgetaire with ID: {}", request.getImputationBudgetaire().getId());
             realisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
         if (request.getBeneficiaire() != null) {
-       realisation.setBeneficiaire(request.getBeneficiaire());
+            realisation.setBeneficiaire(request.getBeneficiaire());
         }
-        // Similar logging for monais, typeMarcher, modeSelection
 
         // Fetch associated PAAs if needed
         if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
@@ -346,19 +267,48 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getLots() != null && !request.getLots().isEmpty()) {
             Set<Lot> lots = new HashSet<>();
             for (LotResponse lotResponse : request.getLots()) {
-                if (lotResponse.getId() != null) {
-                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
-                            .ifPresent(lots::add);
-                } else {
-                    Lot newLot = new Lot();
+
+                Lot newLot = new Lot();
+                newLot.setVersion(1);
+
+                // Generate a unique Lot ID
+                Integer generatedLotId;
+                do {
+                    generatedLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
+                } while (lotRepository.existsById(new CompositeId(generatedLotId, 1)));
+                newLot.setId(generatedLotId);
+
+                // Description
+                if (lotResponse.getDescription() != null) {
                     newLot.setDescription(lotResponse.getDescription());
-                    newLot.setVersion(1);
-//                    Integer lotId = lotRepository.findMaxId() + 1;
-                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
-                    newLot.setId(lotId);
-                    Lot savedLot = lotRepository.save(newLot);
-                    lots.add(savedLot);
+                } else if (lotResponse.getId() != null) {
+                    // If an ID was provided, try to copy description from existing lot (best-effort clone semantics)
+                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+                            .ifPresent(existing -> newLot.setDescription(existing.getDescription()));
                 }
+
+                // Budget
+                if (lotResponse.getBudget() != null) {
+                    BigDecimal bd = (lotResponse.getBudget() instanceof BigDecimal)
+                            ? (BigDecimal) lotResponse.getBudget()
+                            : new BigDecimal(lotResponse.getBudget().toString());
+                    newLot.setBudget(bd);
+                } else if (lotResponse.getId() != null) {
+                    lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
+                            .ifPresent(existing -> newLot.setBudget(existing.getBudget()));
+                }
+
+                Lot savedLot = lotRepository.save(newLot);
+
+                if (lotResponse.getId() != null) {
+                    log.warn("Cloned existing Lot id={} (ver={}) into new Lot id={} (ver=1) for Realisation {} to avoid cross-linking",
+                            lotResponse.getId(), lotResponse.getVersion(), savedLot.getId(), realisation.getId());
+                } else {
+                    log.info("Created new Lot id={} v=1 desc='{}' budget={}",
+                            savedLot.getId(), savedLot.getDescription(), savedLot.getBudget());
+                }
+
+                lots.add(savedLot);
             }
             realisation.getLots().addAll(lots);
             log.info("Associated Lots: {}", lots);
@@ -369,6 +319,7 @@ public class RealisationServiceImpl implements RealisationService {
         Realisation savedRealisation = repository.save(realisation);
         log.info("Saved Realisation: {}", savedRealisation);
 
+        // Create financements for the saved realisation
         if (request.getFinancementRequests() != null && !request.getFinancementRequests().isEmpty()) {
             log.info("Creating {} Financements for saved Realisation", request.getFinancementRequests().size());
 
@@ -394,7 +345,7 @@ public class RealisationServiceImpl implements RealisationService {
                 financement.setId(financementId);
                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                // Set Monnaie from individual financement request
+                // Set Monnaie
                 if (financementRequest.getMonnaieId() != null) {
                     log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
                     Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
@@ -420,24 +371,28 @@ public class RealisationServiceImpl implements RealisationService {
                     financement.setSourceFinancement(sourceFinancement);
                 }
 
-//                financement.setRealisation(savedRealisation);
-
-                // Save individual financement
                 Financement savedFinancement = financementRepository.save(financement);
                 log.info("Created and saved Financement: {}", savedFinancement);
 
                 createdFinancements.add(savedFinancement);
             }
 
-//            savedRealisation.setStatut(RealisationStatus.NON_PUBLIE);
             savedRealisation.setFinancements(createdFinancements);
+
+            BigDecimal totalFx = createdFinancements.stream()
+                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                    .map(f -> {
+                        BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                        double taux = (f.getTauxApplicable() != null) ? f.getTauxApplicable()
+                                : ((f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0);
+                        return amt.multiply(BigDecimal.valueOf(taux));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            savedRealisation.setBudgetEstime(totalFx);
+
             savedRealisation = repository.save(savedRealisation);
             log.info("Updated Realisation with {} financements", createdFinancements.size());
         }
-
-        // Save entity with all associations
-//        Realisation savedRealisation = repository.save(realisation);
-//        log.info("Saved Realisation: {}", savedRealisation);
 
         return savedRealisation;
     }
@@ -457,31 +412,12 @@ public class RealisationServiceImpl implements RealisationService {
                     "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,realisationId, realisationVer);
         }
 
-//        // Update RefParam associations if provided
-//        if (request.getService() != null) {
-//            existingRealisation.setService(refParamRepository.findById(request.getService().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Service not found")));
-//        }
-//        if (request.getDirection() != null) {
-//            existingRealisation.setDirection(refParamRepository.findById(request.getDirection().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Direction not found")));
-//        }
-//        if (request.getSourceFinancement() != null) {
-//            existingRealisation.setSourceFinancement(refParamRepository.findById(request.getSourceFinancement().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found")));
-//        }
+
         if (request.getImputationBudgetaire() != null) {
             existingRealisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
-//        if (request.getMonais() != null) {
-//            existingRealisation.setMonais(refParamRepository.findById(request.getMonais().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-//        }
-//        if (request.getMonnaie() != null) {
-//            existingRealisation.setMonnaie(monnaieRepository.findById(request.getMonnaie().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Monais not found")));
-//        }
+
         if (request.getBeneficiaire() != null) {
             existingRealisation.setBeneficiaire(request.getBeneficiaire());
         }
@@ -489,10 +425,6 @@ public class RealisationServiceImpl implements RealisationService {
             existingRealisation.setTypeMarcher(refParamRepository.findById(request.getTypeMarcher().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Type Marcher not found")));
         }
-//        if (request.getModeSelection() != null) {
-//            existingRealisation.setModeSelection(refParamRepository.findById(request.getModeSelection().getId())
-//                    .orElseThrow(() -> new EntityNotFoundException("Mode Selection not found")));
-//        }
 
         if (request.getModePassation() != null) {
             existingRealisation.setModePassation(modeDePassationSelectionRepository.findById(request.getModePassation().getId())
@@ -658,7 +590,6 @@ public class RealisationServiceImpl implements RealisationService {
                     System.out.println("Marked lot with ID " + lot.getId() + " as deleted (no lots provided)");
                 }
             }
-            // Keep the existing lots set to preserve relationships (just all marked as deleted)
         }
 
         Realisation realisation = RealisationMapper.INSTANCE.updateRealisationFromRequest(request, existingRealisation);
@@ -690,712 +621,339 @@ public class RealisationServiceImpl implements RealisationService {
         return copyForResponse;
     }
 
-@Transactional
-public Realisation updateWithVersioning(Integer realisationId, Integer realisationVer, RealisationBaseRequestDto request) throws RealisationNotFoundException {
-    // Find the existing realisation
-    CompositeId compositeId = new CompositeId(realisationId, realisationVer);
-    Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
+    @Transactional
+    public Realisation updateWithVersioning(Integer realisationId,
+                                            Integer realisationVer,
+                                            RealisationBaseRequestDto request) throws RealisationNotFoundException {
+        CompositeId compositeId = new CompositeId(realisationId, realisationVer);
+        Realisation existing = repository.findById(compositeId)
+                .orElseThrow(() -> new RealisationNotFoundException(
+                        "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.",
+                        realisationId, realisationVer));
 
-    if (existingRealisationOpt.isEmpty()) {
-        throw new RealisationNotFoundException(
-                "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.",
-                realisationId, realisationVer);
-    }
+        if (Boolean.TRUE.equals(existing.getIsDeleted())) {
+            throw new RealisationNotFoundException(
+                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,
+                    realisationId, realisationVer);
+        }
 
-    Realisation existingRealisation = existingRealisationOpt.get();
-    if (Boolean.TRUE.equals(existingRealisation.getIsDeleted())) {
-        throw new RealisationNotFoundException(
-                "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,
-                realisationId, realisationVer);
-    }
+        log.info("Updating Realisation ID: {}, Current Version: {}", realisationId, realisationVer);
+        log.info("Request data: {}", request);
 
-    // Log the current state and request
-    System.out.println("Updating Realisation ID: " + realisationId + ", Current Version: " + realisationVer);
-    System.out.println("Request data: " + request);
-    System.out.println("Current realisationEnvisagees: " + existingRealisation.getRealisationEnvisagees());
-    System.out.println("New realisationEnvisagees: " + request.getRealisationEnvisagees());
-    System.out.println("Current Beneficiaire: " + existingRealisation.getBeneficiaire());
-    System.out.println("new Beneficiaire: " + request.getBeneficiaire());
-    System.out.println("Current budgetEstime: " + existingRealisation.getBudgetEstime());
-    System.out.println("New budgetEstime: " + request.getBudgetEstime());
+        Realisation probe = new Realisation();
+        probe.setRealisationEnvisagees(request.getRealisationEnvisagees() != null ? request.getRealisationEnvisagees() : existing.getRealisationEnvisagees());
+        probe.setBeneficiaire(request.getBeneficiaire() != null ? request.getBeneficiaire() : existing.getBeneficiaire());
 
-    // Check for Lot changes - if lots are provided, consider it a change
-    boolean lotChangesDetected = request.getLots() != null && !request.getLots().isEmpty();
+        RefParam imput = request.getImputationBudgetaire() != null
+                ? refParamRepository.findById(request.getImputationBudgetaire().getId()).orElse(existing.getImputationBudgetaire())
+                : existing.getImputationBudgetaire();
+        probe.setImputationBudgetaire(imput);
 
-    // Create a temporary Realisation to check for changes
-    Realisation tempRealisation = new Realisation();
+        RefParam typeMarcher = request.getTypeMarcher() != null
+                ? refParamRepository.findById(request.getTypeMarcher().getId()).orElse(existing.getTypeMarcher())
+                : existing.getTypeMarcher();
+        probe.setTypeMarcher(typeMarcher);
 
-    // Set all fields from request or existing realisation
-    tempRealisation.setRealisationEnvisagees(request.getRealisationEnvisagees() != null ?
-            request.getRealisationEnvisagees() : existingRealisation.getRealisationEnvisagees());
+        ModeDePassationSelection modePassation = request.getModePassation() != null
+                ? modeDePassationSelectionRepository.findById(request.getModePassation().getId()).orElse(existing.getModePassation())
+                : existing.getModePassation();
+        probe.setModePassation(modePassation);
 
-    tempRealisation.setBeneficiaire(request.getBeneficiaire() != null ?
-            request.getBeneficiaire() : existingRealisation.getBeneficiaire());
+        probe.setDatePrevLps(request.getDatePrevLps() != null ? request.getDatePrevLps() : existing.getDatePrevLps());
+        probe.setDatePrevAc(request.getDatePrevAc() != null ? request.getDatePrevAc() : existing.getDatePrevAc());
+        probe.setDatePrevDp(request.getDatePrevDp() != null ? request.getDatePrevDp() : existing.getDatePrevDp());
+        probe.setDatePrevAp(request.getDatePrevAp() != null ? request.getDatePrevAp() : existing.getDatePrevAp());
+        probe.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existing.getBudgetEstime());
+        probe.setIsPublished(request.getIsPublished() != null ? request.getIsPublished() : existing.getIsPublished());
+        probe.setPublishedAt(request.getPublishedAt() != null ? request.getPublishedAt() : existing.getPublishedAt());
+        probe.setSort(request.getSort() != null ? request.getSort() : existing.getSort());
 
-//    // Handle RefParam fields
-//    RefParam serviceParam = null;
-//    if (request.getService() != null) {
-//        serviceParam = refParamRepository.findById(request.getService().getId())
-//                .orElse(existingRealisation.getService());
-//    } else {
-//        serviceParam = existingRealisation.getService();
-//    }
-//    tempRealisation.setService(serviceParam);
-//
-//    RefParam directionParam = null;
-//    if (request.getDirection() != null) {
-//        directionParam = refParamRepository.findById(request.getDirection().getId())
-//                .orElse(existingRealisation.getDirection());
-//    } else {
-//        directionParam = existingRealisation.getDirection();
-//    }
-//    tempRealisation.setDirection(directionParam);
+        boolean lotChangesDetected = false;
+        if (request.getLots() != null) {
+            Map<Integer, Lot> byId = Optional.ofNullable(existing.getLots())
+                    .orElseGet(List::of).stream()
+                    .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                    .collect(Collectors.toMap(Lot::getId, Function.identity(), (a, b) -> a));
 
-//    RefParam sourceFinancementParam = null;
-//    if (request.getSourceFinancement() != null) {
-//        sourceFinancementParam = refParamRepository.findById(request.getSourceFinancement().getId())
-//                .orElse(existingRealisation.getSourceFinancement());
-//    } else {
-//        sourceFinancementParam = existingRealisation.getSourceFinancement();
-//    }
-//    tempRealisation.setSourceFinancement(sourceFinancementParam);
+            for (LotResponse lr : request.getLots()) {
+                if (lr.getId() == null) { // brand-new
+                    lotChangesDetected = true;
+                    break;
+                }
+                Lot old = byId.get(lr.getId());
+                if (old == null) {
+                    lotChangesDetected = true;
+                    break;
+                }
+                String newDesc = lr.getDescription();
+                boolean descChanged = newDesc != null && !newDesc.equals(old.getDescription());
 
-    RefParam imputationBudgetaireParam = null;
-    if (request.getImputationBudgetaire() != null) {
-        imputationBudgetaireParam = refParamRepository.findById(request.getImputationBudgetaire().getId())
-                .orElse(existingRealisation.getImputationBudgetaire());
-    } else {
-        imputationBudgetaireParam = existingRealisation.getImputationBudgetaire();
-    }
-    tempRealisation.setImputationBudgetaire(imputationBudgetaireParam);
+                BigDecimal reqBudget = null;
+                if (lr.getBudget() != null) {
+                    reqBudget = (lr.getBudget() instanceof BigDecimal)
+                            ? (BigDecimal) lr.getBudget()
+                            : new BigDecimal(lr.getBudget().toString());
+                }
+                BigDecimal oldBudget = old.getBudget();
+                boolean budgetChanged = (reqBudget != null) && (oldBudget == null || oldBudget.compareTo(reqBudget) != 0);
 
-//    RefParam monaisParam = null;
-//    if (request.getMonais() != null) {
-//        monaisParam = refParamRepository.findById(request.getMonais().getId())
-//                .orElse(existingRealisation.getMonais());
-//    } else {
-//        monaisParam = existingRealisation.getMonais();
-//    }
-//    tempRealisation.setMonais(monaisParam);
-
-//    Monnaie monaisParam = null;
-//    if (request.getMonnaie() != null) {
-//        log.info("*************************monnaie :" + request.getMonnaie());
-//                monaisParam = monnaieRepository.findById(request.getMonnaie().getId())
-//                .orElse(existingRealisation.getMonnaie());
-//    } else {
-//        monaisParam = existingRealisation.getMonnaie();
-//    }
-//    tempRealisation.setMonnaie(monaisParam);
-
-    RefParam typeMarcherParam = null;
-    if (request.getTypeMarcher() != null) {
-        typeMarcherParam = refParamRepository.findById(request.getTypeMarcher().getId())
-                .orElse(existingRealisation.getTypeMarcher());
-    } else {
-        typeMarcherParam = existingRealisation.getTypeMarcher();
-    }
-    tempRealisation.setTypeMarcher(typeMarcherParam);
-
-//    RefParam modeSelectionParam = null;
-//    if (request.getModeSelection() != null) {
-//        modeSelectionParam = refParamRepository.findById(request.getModeSelection().getId())
-//                .orElse(existingRealisation.getModeSelection());
-//    } else {
-//        modeSelectionParam = existingRealisation.getModeSelection();
-//    }
-//    tempRealisation.setModeSelection(modeSelectionParam);
-
-    ModeDePassationSelection modePassationParam = null;
-    if (request.getModePassation() != null) {
-        modePassationParam = modeDePassationSelectionRepository.findById(request.getModePassation().getId())
-                .orElse(existingRealisation.getModePassation());
-    } else {
-        modePassationParam = existingRealisation.getModePassation();
-    }
-    tempRealisation.setModePassation(modePassationParam);
-
-    // FINANCEMENT HANDLING HERE:
-// Handle financements - create temporary list for comparison
-    List<Financement> tempFinancements = new ArrayList<>();
-
-    if (request.getFinancements() != null && !request.getFinancements().isEmpty()) {
-        for (FinancementRequest financementUpdate : request.getFinancements()) {
-            // Create temporary financement for comparison purposes only
-            Financement tempFinancement = new Financement();
-
-            // Set basic properties for comparison
-            if (financementUpdate.getBudgetEstimer() != null) {
-                tempFinancement.setBudgetEstimer(financementUpdate.getBudgetEstimer());
-            }
-
-            // Set monnaie for comparison
-            if (financementUpdate.getMonnaieId() != null) {
-                Monnaie monnaie = monnaieRepository.findById(financementUpdate.getMonnaieId()).orElse(null);
-
-                if (monnaie != null) {
-                    FinancementId tempId = new FinancementId();
-                    tempFinancement.setMonnaie(monnaie);
-                    tempFinancement.setId(tempId);
+                if (descChanged || budgetChanged) {
+                    lotChangesDetected = true;
+                    break;
                 }
             }
-
-            // Set source financement for comparison
-            if (financementUpdate.getSourceFinancement() != null && financementUpdate.getSourceFinancement().getId() != null) {
-                RefParam sourceFinancement = refParamRepository.findById(financementUpdate.getSourceFinancement().getId()).orElse(null);
-                tempFinancement.setSourceFinancement(sourceFinancement);
-            }
-
-            tempFinancements.add(tempFinancement);
-        }
-    }
-    tempRealisation.setFinancements(tempFinancements);
-
-    // Set other properties
-    tempRealisation.setDatePrevLps(request.getDatePrevLps() != null ?
-            request.getDatePrevLps() : existingRealisation.getDatePrevLps());
-    tempRealisation.setDatePrevAc(request.getDatePrevAc() != null ?
-            request.getDatePrevAc() : existingRealisation.getDatePrevAc());
-    tempRealisation.setDatePrevDp(request.getDatePrevDp() != null ?
-            request.getDatePrevDp() : existingRealisation.getDatePrevDp());
-    tempRealisation.setDatePrevAp(request.getDatePrevAp() != null ?
-            request.getDatePrevAp() : existingRealisation.getDatePrevAp());
-    tempRealisation.setBudgetEstime(request.getBudgetEstime() != null ?
-            request.getBudgetEstime() : existingRealisation.getBudgetEstime());
-    tempRealisation.setIsPublished(request.getIsPublished() != null ?
-            request.getIsPublished() : existingRealisation.getIsPublished());
-    tempRealisation.setPublishedAt(request.getPublishedAt() != null ?
-            request.getPublishedAt() : existingRealisation.getPublishedAt());
-    tempRealisation.setSort(request.getSort() != null ?
-            request.getSort() : existingRealisation.getSort());
-
-    // Track document changes
-    boolean documentsChanged = false;
-    List<Docs> updatedDocs = new ArrayList<>();
-
-    // Handle document management by comparing existing docs with requested docIds
-    if (request.getDocIds() != null) {
-        Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
-
-        // Get only the active (non-deleted) existing document IDs
-        Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null ?
-                existingRealisation.getDocs().stream()
-                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                        .map(Docs::getId)
-                        .collect(Collectors.toSet()) : new HashSet<>();
-
-        // Check if there are document changes between active docs and request
-        documentsChanged = !requestedDocIds.equals(activeExistingDocIds);
-
-        // Log document changes for clarity
-        if (documentsChanged) {
-            System.out.println("Document changes detected for Realisation ID: " + realisationId);
-
-            // Find new documents (in request but not existing)
-            Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
-            newDocIds.removeAll(activeExistingDocIds);
-            if (!newDocIds.isEmpty()) {
-                System.out.println("  - New documents added: " + newDocIds);
-            }
-
-            // Find removed documents (existing but not in request)
-            Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
-            removedDocIds.removeAll(requestedDocIds);
-            if (!removedDocIds.isEmpty()) {
-                System.out.println("  - Documents marked as deleted: " + removedDocIds);
-            }
         }
 
-        // If preparing for a new version, prepare the document collection
-        if (documentsChanged) {
-            // Start with all existing documents (both active and deleted)
-            updatedDocs = new ArrayList<>(existingRealisation.getDocs());
+        // DOC changes by ID set
+        boolean documentsChanged = false;
+        if (request.getDocIds() != null) {
+            Set<Integer> reqSet = new HashSet<>(request.getDocIds());
+            Set<Integer> existingActive = Optional.ofNullable(existing.getDocs()).orElseGet(List::of).stream()
+                    .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                    .map(Docs::getId)
+                    .collect(Collectors.toSet());
+            documentsChanged = !existingActive.equals(reqSet);
+        }
 
-            // Process each existing document
-            for (Docs doc : updatedDocs) {
-                if (requestedDocIds.contains(doc.getId())) {
-                    // Document is in the request, ensure it's not marked as deleted
-                    if (Boolean.TRUE.equals(doc.getIsDeleted())) {
-                        doc.setIsDeleted(false);
-                        docsRepository.save(doc);
-                        System.out.println("Activated document with ID " + doc.getId() + " for new Realisation version");
-                        documentsChanged = true;
-                    }
-                    // Remove from request since we've handled it
-                    requestedDocIds.remove(doc.getId());
+        // FINANCEMENT changes
+        boolean financementChangesDetected = checkFinancementChanges(existing.getFinancements(), request.getFinancements());
+        log.info("Financement changes detected: {}", financementChangesDetected);
+
+        boolean fieldChanges = hasChanges(probe, existing, request.getDocIds());
+        boolean hasChanges = fieldChanges || lotChangesDetected || documentsChanged || financementChangesDetected;
+
+        log.info("Change summary -> fields: {}, lots: {}, docs: {}, fins: {}, overall: {}",
+                fieldChanges, lotChangesDetected, documentsChanged, financementChangesDetected, hasChanges);
+
+        if (!hasChanges) {
+            log.info("No changes detected, returning existing version {}", realisationVer);
+            Realisation resp = new Realisation();
+            BeanUtils.copyProperties(existing, resp);
+            if (existing.getDocs() != null) {
+                resp.setDocs(existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList()));
+            }
+            if (existing.getLots() != null) {
+                resp.setLots(existing.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted())).collect(Collectors.toList()));
+            }
+            return resp;
+        }
+
+        log.info("Creating new Realisation version: {}", realisationVer + 1);
+        Realisation created = new Realisation();
+        created.setId(realisationId);
+        created.setVersion(realisationVer + 1);
+
+        created.setRealisationEnvisagees(probe.getRealisationEnvisagees());
+        created.setBeneficiaire(probe.getBeneficiaire());
+        created.setImputationBudgetaire(probe.getImputationBudgetaire());
+        created.setMonnaie(probe.getMonnaie());
+        created.setTypeMarcher(probe.getTypeMarcher());
+        created.setModePassation(probe.getModePassation());
+        created.setDatePrevLps(probe.getDatePrevLps());
+        created.setDatePrevAc(probe.getDatePrevAc());
+        created.setDatePrevDp(probe.getDatePrevDp());
+        created.setDatePrevAp(probe.getDatePrevAp());
+        created.setBudgetEstime(probe.getBudgetEstime());
+        created.setIsPublished(probe.getIsPublished());
+        created.setPublishedAt(probe.getPublishedAt());
+        created.setSort(probe.getSort());
+
+        created.setPaas(new ArrayList<>());
+        created.setPpms(new ArrayList<>());
+        created.setDocs(new ArrayList<>());
+        created.setLots(new ArrayList<>());
+        created.setFinancements(new ArrayList<>());
+
+        created = repository.save(created);
+        final Realisation finalNew = created;
+        log.info("Persisted new Realisation {},{}", finalNew.getId(), finalNew.getVersion());
+
+        if (existing.getPpms() != null && !existing.getPpms().isEmpty()) {
+            finalNew.setPpms(new ArrayList<>(existing.getPpms()));
+            log.info("Copied {} PPM relationships", existing.getPpms().size());
+        }
+
+        List<Lot> newLots = new ArrayList<>();
+        if (request.getLots() != null && !request.getLots().isEmpty()) {
+            log.info("Processing {} lots from request", request.getLots().size());
+            for (LotResponse lr : request.getLots()) {
+                String newDesc = lr.getDescription();
+                BigDecimal reqBudget = null;
+                if (lr.getBudget() != null) {
+                    reqBudget = (lr.getBudget() instanceof BigDecimal)
+                            ? (BigDecimal) lr.getBudget()
+                            : new BigDecimal(lr.getBudget().toString());
+                }
+
+                if (lr.getId() == null) {
+                    // brand-new lot
+                    Lot nl = new Lot();
+                    Integer newLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
+                    nl.setId(newLotId);
+                    nl.setVersion(1);
+                    nl.setDescription(newDesc != null ? newDesc : "");
+                    if (reqBudget != null) nl.setBudget(reqBudget); // <<< persist budget
+                    nl = lotRepository.save(nl);
+                    newLots.add(nl);
+                    log.info("Created new Lot id={}, v=1, budget={}", nl.getId(), nl.getBudget());
                 } else {
-                    // Document is not in the request, mark it as deleted
-                    if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-                        doc.setIsDeleted(true);
-                        docsRepository.save(doc);
-                        System.out.println("Marked document with ID " + doc.getId() + " as deleted (not in request)");
-                        documentsChanged = true;
-                    }
-                }
-            }
-
-            // Add any new documents from the request
-            for (Integer docId : requestedDocIds) {
-                try {
-                    Docs doc = docsRepository.findById(docId)
-                            .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-
-                    // Set up bidirectional relationship if this is a new document for this realisation
-                    if (!updatedDocs.contains(doc)) {
-                        if (doc.getRealisations() == null) {
-                            doc.setRealisations(new ArrayList<>());
-                        }
-
-                        // Ensure it's active
-                        doc.setIsDeleted(false);
-                        docsRepository.save(doc);
-                        updatedDocs.add(doc);
-                        System.out.println("Added new document with ID " + doc.getId() + " for new Realisation version");
-                        documentsChanged = true;
-                    }
-                } catch (Exception e) {
-                    System.err.println("Error processing document ID " + docId + ": " + e.getMessage());
-                    continue;
-                }
-            }
-        } else {
-            // No existing docs, just add the requested ones
-            for (Integer docId : requestedDocIds) {
-                try {
-                    Docs doc = docsRepository.findById(docId)
-                            .orElseThrow(() -> new RuntimeException("Document not found with ID: " + docId));
-
-                    if (doc.getRealisations() == null) {
-                        doc.setRealisations(new ArrayList<>());
-                    }
-
-                    doc.setIsDeleted(false);
-                    docsRepository.save(doc);
-                    updatedDocs.add(doc);
-                    System.out.println("Added new document with ID " + doc.getId() + " for new Realisation version");
-                } catch (Exception e) {
-                    System.err.println("Error processing document ID " + docId + ": " + e.getMessage());
-                    continue;
-                }
-            }
-            documentsChanged = !requestedDocIds.isEmpty();
-        }
-    } else if (existingRealisation.getDocs() != null && !existingRealisation.getDocs().isEmpty()) {
-        // No document IDs provided, but existing docs exist - mark all as deleted
-        updatedDocs = new ArrayList<>(existingRealisation.getDocs());
-        boolean anyActive = false;
-        for (Docs doc : updatedDocs) {
-            if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
-                doc.setIsDeleted(true);
-                docsRepository.save(doc);
-                anyActive = true;
-            }
-        }
-        // Only consider this a change if we had to mark any active docs as deleted
-        if (anyActive) {
-            documentsChanged = true;
-            System.out.println("All documents marked as deleted (empty docIds in request)");
-        }
-    } else {
-        // No docs in request or existing realisation
-        updatedDocs = new ArrayList<>();
-    }
-
-    // Check for Financement changes - ADD THIS SECTION
-    boolean financementChangesDetected = checkFinancementChanges(
-            existingRealisation.getFinancements(),
-            request.getFinancements()
-    );
-
-    System.out.println("Financement changes detected: " + financementChangesDetected);
-
-    // Check if there are actual changes
-    boolean hasChanges = hasChanges(tempRealisation, existingRealisation, request.getDocIds()) ||
-            lotChangesDetected || documentsChanged | financementChangesDetected;
-
-    System.out.println("Has changes: " + hasChanges);
-    System.out.println("  - Field changes: " + hasChanges(tempRealisation, existingRealisation, request.getDocIds()));
-    System.out.println("  - Lot changes: " + lotChangesDetected);
-    System.out.println("  - Document changes: " + documentsChanged);
-    System.out.println("  - Financement changes: " + financementChangesDetected);
-    if (!hasChanges) {
-        System.out.println("No changes detected, returning existing version: " + realisationVer);
-
-        // Create a filtered copy for response even when returning existing version
-        Realisation copyForResponse = new Realisation();
-        BeanUtils.copyProperties(existingRealisation, copyForResponse);
-
-        // Filter out deleted documents for the response
-        if (existingRealisation.getDocs() != null) {
-            copyForResponse.setDocs(
-                    existingRealisation.getDocs().stream()
-                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                            .collect(Collectors.toList())
-            );
-        }
-
-        // Also filter lot documents if there are any
-        if (copyForResponse.getLots() != null) {
-            copyForResponse.setLots(
-                    copyForResponse.getLots().stream()
-                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                            .collect(Collectors.toList())
-            );
-        }
-
-        return copyForResponse;
-    }
-
-    // If there are changes, create a new version
-    System.out.println("Changes detected, creating new version: " + (realisationVer + 1));
-
-    Realisation newRealisation = new Realisation();
-    newRealisation.setId(realisationId);
-    newRealisation.setVersion(realisationVer + 1);
-
-    // Copy all properties from the temp realisation
-    newRealisation.setRealisationEnvisagees(tempRealisation.getRealisationEnvisagees());
-    newRealisation.setBeneficiaire(tempRealisation.getBeneficiaire());
-//    newRealisation.setService(tempRealisation.getService());
-//    newRealisation.setDirection(tempRealisation.getDirection());
-//    newRealisation.setSourceFinancement(tempRealisation.getSourceFinancement());
-    newRealisation.setImputationBudgetaire(tempRealisation.getImputationBudgetaire());
-//    newRealisation.setMonais(tempRealisation.getMonais());
-    newRealisation.setMonnaie(tempRealisation.getMonnaie());
-    newRealisation.setTypeMarcher(tempRealisation.getTypeMarcher());
-//    newRealisation.setModeSelection(tempRealisation.getModeSelection());
-    newRealisation.setModePassation(tempRealisation.getModePassation());
-    newRealisation.setDatePrevLps(tempRealisation.getDatePrevLps());
-    newRealisation.setDatePrevAc(tempRealisation.getDatePrevAc());
-    newRealisation.setDatePrevDp(tempRealisation.getDatePrevDp());
-    newRealisation.setDatePrevAp(tempRealisation.getDatePrevAp());
-    newRealisation.setBudgetEstime(tempRealisation.getBudgetEstime());
-    newRealisation.setIsPublished(tempRealisation.getIsPublished());
-    newRealisation.setPublishedAt(tempRealisation.getPublishedAt());
-    newRealisation.setSort(tempRealisation.getSort());
-
-    // Initialize empty collections to avoid null pointer exceptions
-    newRealisation.setPaas(new ArrayList<>());
-    newRealisation.setPpms(new ArrayList<>());
-    newRealisation.setDocs(new ArrayList<>());
-    newRealisation.setLots(new ArrayList<>());
-    newRealisation.setFinancements(new ArrayList<>());
-    // IMPORTANT CHANGE: Save the new realisation FIRST to ensure it exists in the database
-    // before establishing any relationships
-    System.out.println("Saving new Realisation entity to database before setting up relationships");
-    // Create a final reference to newRealisation that can be used in lambda expressions
-    final Realisation finalNewRealisation = repository.save(newRealisation);
-
-    // Now it's safe to set up relationships
-    System.out.println("Setting up relationships for persisted Realisation entity");
-
-    // Copy relationships
-    if (existingRealisation.getPaas() != null && !existingRealisation.getPaas().isEmpty()) {
-        System.out.println("Copying PAA relationships to new Realisation version");
-        List<Paa> paas = new ArrayList<>();
-
-        // For each PAA, ensure we use the latest version
-        for (Paa existingPaa : existingRealisation.getPaas()) {
-            try {
-                // Find the latest version of this PAA
-                Integer latestPaaVersion = paaRepository.findMaxVersionById(existingPaa.getId());
-                if (latestPaaVersion == null) {
-                    System.err.println("Warning: No versions found for PAA ID " + existingPaa.getId());
-                    // Use the existing version as fallback
-                    latestPaaVersion = existingPaa.getVersion();
-                }
-
-                // Retrieve the latest PAA version
-                Paa latestPaa = paaRepository.findById(new CompositeId(existingPaa.getId(), latestPaaVersion))
-                        .orElse(null);
-
-                if (latestPaa == null) {
-                    System.err.println("Warning: Latest PAA " + existingPaa.getId() +
-                            " version " + latestPaaVersion +
-                            " not found in database. Using existing version.");
-                    paas.add(existingPaa); // Use existing as fallback
-                } else {
-                    paas.add(latestPaa);
-
-                    // Update the PAA's relationship to the new Realisation version
-                    if (latestPaa.getRealisations() == null) {
-                        latestPaa.setRealisations(new ArrayList<>());
-                    }
-
-                    // Check if we need to update the PAA's realisations list
-                    boolean alreadyContainsNewRealisation = latestPaa.getRealisations().stream()
-                            .anyMatch(r -> r.getId().equals(finalNewRealisation.getId()) &&
-                                    r.getVersion().equals(finalNewRealisation.getVersion()));
-
-                    if (!alreadyContainsNewRealisation) {
-                        // Add the new realisation version to the PAA
-                        latestPaa.getRealisations().add(finalNewRealisation);
-                        paaRepository.save(latestPaa);
-                        System.out.println("Updated PAA " + latestPaa.getId() +
-                                " version " + latestPaa.getVersion() +
-                                " to reference new Realisation version");
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error handling PAA relationship: " + e.getMessage());
-                paas.add(existingPaa); // Use existing as fallback
-            }
-        }
-
-        finalNewRealisation.setPaas(paas);
-        System.out.println("Associated " + paas.size() + " PAAs with new Realisation version");
-    }
-
-    // Copy relationships with PPMs
-    if (existingRealisation.getPpms() != null) {
-        finalNewRealisation.setPpms(new ArrayList<>(existingRealisation.getPpms()));
-        System.out.println("Copied " + existingRealisation.getPpms().size() + " PPM relationships");
-    }
-
-    // Handle Lots - create/update lots properly
-    List<Lot> newLots = new ArrayList<>();
-    Map<String, Lot> newLotByDescription = new HashMap<>(); // Track new lots by description
-
-    // Process new or updated lots from request - only add the lots explicitly in the request
-    Set<Integer> processedLotIds = new HashSet<>();
-    if (request.getLots() != null && !request.getLots().isEmpty()) {
-        System.out.println("Processing " + request.getLots().size() + " lots from request");
-
-        for (LotResponse lotDto : request.getLots()) {
-            String lotDescription = lotDto.getDescription() != null ? lotDto.getDescription() : "";
-            if (lotDto.getId() == null) {
-                // Create new Lot
-                if (newLotByDescription.containsKey(lotDescription)) {
-                    System.out.println("Using existing new lot for description: " + lotDescription);
-                    newLots.add(newLotByDescription.get(lotDescription));
-                    processedLotIds.add(newLotByDescription.get(lotDescription).getId());
-                } else {
-                    Lot newLot = new Lot();
-                    newLot.setDescription(lotDescription);
-
-                    // Generate new ID
-                    Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
-                    newLot.setId(lotId);
-                    newLot.setVersion(1); // First version
-
-                    // Save the Lot
-                    try {
-                        Lot savedLot = lotRepository.save(newLot);
-                        newLots.add(savedLot);
-                        processedLotIds.add(savedLot.getId());
-                        newLotByDescription.put(lotDescription, savedLot);
-                        System.out.println("Created new Lot with ID: " + savedLot.getId());
-                    } catch (Exception e) {
-                        System.err.println("Error saving new lot: " + e.getMessage());
-                        continue;
-                    }
-                }
-            } else {
-                // Skip if we've already processed a lot with this ID
-                if (processedLotIds.contains(lotDto.getId())) {
-                    System.out.println("Skipping duplicate lot ID: " + lotDto.getId());
-                    continue;
-                }
-
-                // Process existing Lot - check if description changed
-                Integer lotId = lotDto.getId();
-                Integer lotVersion = lotDto.getVersion();
-
-                // If version not specified, find latest version
-                if (lotVersion == null) {
-                    lotVersion = lotRepository.findMaxVersionById(lotId);
-                    if (lotVersion == null) {
-                        System.out.println("Lot ID " + lotId + " not found, skipping");
-                        continue;
-                    }
-                }
-
-                Optional<Lot> existingLotOpt = lotRepository.findById(new CompositeId(lotId, lotVersion));
-                if (existingLotOpt.isPresent()) {
-                    Lot existingLot = existingLotOpt.get();
-
-                    // Check if the description changed
-                    if (lotDescription != null && !lotDescription.equals(existingLot.getDescription())) {
-                        // Create a new version of the Lot
-                        Lot newLot = new Lot();
-                        newLot.setId(existingLot.getId());
-                        newLot.setVersion(existingLot.getVersion() + 1);
-                        newLot.setDescription(lotDescription);
-
-                        // Save the new version
-                        try {
-                            Lot savedLot = lotRepository.save(newLot);
-                            newLots.add(savedLot);
-                            processedLotIds.add(savedLot.getId());
-                            System.out.println("Created new version of Lot: " + savedLot.getId() + ", Version: " + savedLot.getVersion());
-                        } catch (Exception e) {
-                            System.err.println("Error saving new lot version: " + e.getMessage());
+                    Integer lotId = lr.getId();
+                    Integer version = lr.getVersion();
+                    if (version == null) {
+                        version = lotRepository.findMaxVersionById(lotId);
+                        if (version == null) {
+                            log.warn("Lot {} has no versions; skipping attachment", lotId);
                             continue;
                         }
+                    }
+                    Lot base = lotRepository.findById(new CompositeId(lotId, version)).orElse(null);
+                    if (base == null) {
+                        log.warn("Lot {},v{} not found; skipping", lotId, version);
+                        continue;
+                    }
+
+                    boolean descChanged = newDesc != null && !newDesc.equals(base.getDescription());
+                    boolean budgetChanged = (reqBudget != null) && (base.getBudget() == null || base.getBudget().compareTo(reqBudget) != 0);
+
+                    if (descChanged || budgetChanged) {
+                        Lot nl = new Lot();
+                        nl.setId(base.getId());
+                        nl.setVersion(base.getVersion() + 1);
+                        nl.setDescription(descChanged ? newDesc : base.getDescription());
+                        nl.setBudget(budgetChanged ? reqBudget : base.getBudget()); // keep budget when DTO not providing one
+                        nl = lotRepository.save(nl);
+                        newLots.add(nl);
+                        log.info("Created new Lot version id={}, v={}, budget={}", nl.getId(), nl.getVersion(), nl.getBudget());
                     } else {
-                        // No changes, use existing lot
-                        newLots.add(existingLot);
-                        processedLotIds.add(existingLot.getId());
+                        newLots.add(base);
                     }
                 }
             }
         }
+        finalNew.setLots(newLots);
+        log.info("Attached {} lots to Realisation {},{}", newLots.size(), finalNew.getId(), finalNew.getVersion());
 
-        System.out.println("Final lot count: " + newLots.size());
-    } else {
-        // If no lots provided, use empty set (remove all previous lots)
-        System.out.println("No lots provided in request, using empty set");
-    }
-
-    // Handle existing lots not in the request - mark them as deleted
-    if (existingRealisation.getLots() != null) {
-        for (Lot existingLot : existingRealisation.getLots()) {
-            if (!processedLotIds.contains(existingLot.getId())) {
-                // Lot not included in request, mark as deleted
-                existingLot.setIsDeleted(true);
-                try {
-                    lotRepository.save(existingLot);
-                    System.out.println("Marked Lot ID " + existingLot.getId() + " as deleted");
-
-                    // Add to the new lots collection to maintain association
-                    newLots.add(existingLot);
-                } catch (Exception e) {
-                    System.err.println("Error marking lot as deleted: " + e.getMessage());
-                }
-            }
+        // Financements
+        List<Financement> newFins;
+        if (financementChangesDetected) {
+            log.info("Creating updated financements for new version");
+            newFins = createUpdatedFinancements(existing.getFinancements(), request.getFinancements(), finalNew);
+            log.info("Created {} updated financements", newFins.size());
+        } else if (existing.getFinancements() != null && !existing.getFinancements().isEmpty()) {
+            log.info("Copying existing financements to new version");
+            newFins = copyFinancementsToNewVersion(existing.getFinancements(), finalNew);
+            log.info("Copied {} existing financements", newFins.size());
+        } else {
+            newFins = new ArrayList<>();
         }
-    }
 
-    // Set the new/updated lots on the new Realisation
-    finalNewRealisation.setLots(newLots);
-
-    // ADD THIS SECTION - This is likely what's missing:
-// Handle Financements for new version
-    List<Financement> newFinancements = new ArrayList<>();
-
-    if (financementChangesDetected) {
-        System.out.println("Creating updated financements for new version");
-        newFinancements = createUpdatedFinancements(
-                existingRealisation.getFinancements(),
-                request.getFinancements(),
-                finalNewRealisation
-        );
-        log.info("Created {} updated financements", newFinancements.size());
-    } else if (existingRealisation.getFinancements() != null && !existingRealisation.getFinancements().isEmpty()) {
-        System.out.println("Copying existing financements to new version");
-        newFinancements = copyFinancementsToNewVersion(
-                existingRealisation.getFinancements(),
-                finalNewRealisation
-        );
-        log.info("Copied {} existing financements", newFinancements.size());
-    }
-    finalNewRealisation.setFinancements(newFinancements);
-   log.info("Associated {} financements with new Realisation version", newFinancements.size());
-    // Handle documents - establish bidirectional relationships
-    if (!updatedDocs.isEmpty()) {
-        System.out.println("Setting up document relationships for new Realisation version");
-        List<Docs> confirmedDocs = new ArrayList<>();
-
-        for (Docs doc : updatedDocs) {
-            try {
-                // Verify the document still exists in the database
-                Docs confirmedDoc = docsRepository.findById(doc.getId()).orElse(null);
-                if (confirmedDoc == null) {
-                    System.err.println("Warning: Document " + doc.getId() + " not found in database. Skipping.");
-                    continue;
-                }
-
-                // Update the bidirectional relationship
-                List<Realisation> realisationList = confirmedDoc.getRealisations();
-                if (realisationList == null) {
-                    realisationList = new ArrayList<>();
-                    confirmedDoc.setRealisations(realisationList);
-                }
-
-                // Add the new realisation if not already present
-                if (realisationList.stream().noneMatch(r ->
-                        r.getId().equals(finalNewRealisation.getId()) && r.getVersion().equals(finalNewRealisation.getVersion()))) {
-                    realisationList.add(finalNewRealisation);
-                    confirmedDoc = docsRepository.save(confirmedDoc);
-                    System.out.println("Updated Document " + confirmedDoc.getId() + " to reference new Realisation version");
-                }
-
-                confirmedDocs.add(confirmedDoc);
-            } catch (Exception e) {
-                System.err.println("Error setting up document relationship: " + e.getMessage());
-                e.printStackTrace();
+        for (Financement f : newFins) {
+            if (f.getTauxApplicable() == null) {
+                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                        ? f.getMonnaie().getTaux()
+                        : 0.0;
+                f.setTauxApplicable(taux);
+                financementRepository.save(f);
+                log.info("Backfilled tauxApplicable={} for Financement {}", taux, f.getId());
             }
         }
 
-        finalNewRealisation.setDocs(confirmedDocs);
-        System.out.println("Associated " + confirmedDocs.size() + " documents with new Realisation version");
-    } else if (existingRealisation.getDocs() != null && !existingRealisation.getDocs().isEmpty()) {
-        System.out.println("Copying " + existingRealisation.getDocs().size() + " document relationships from existing Realisation");
-        List<Docs> confirmedDocs = new ArrayList<>();
+        finalNew.setFinancements(newFins);
 
-        for (Docs existingDoc : existingRealisation.getDocs()) {
-            try {
-                // Verify the document still exists
-                Docs confirmedDoc = docsRepository.findById(existingDoc.getId()).orElse(null);
-                if (confirmedDoc == null) {
-                    System.err.println("Warning: Document " + existingDoc.getId() + " not found. Skipping.");
-                    continue;
-                }
+        BigDecimal totalFx = Optional.ofNullable(newFins).orElseGet(List::of).stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .map(f -> {
+                    BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                    double taux = (f.getTauxApplicable() != null) ? f.getTauxApplicable()
+                            : ((f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0);
+                    return amt.multiply(BigDecimal.valueOf(taux));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        finalNew.setBudgetEstime(totalFx);
 
-                // Update the bidirectional relationship
-                List<Realisation> realisationList = confirmedDoc.getRealisations();
-                if (realisationList == null) {
-                    realisationList = new ArrayList<>();
-                    confirmedDoc.setRealisations(realisationList);
-                }
-
-                // Add the new realisation if not already present
-                if (realisationList.stream().noneMatch(r ->
-                        r.getId().equals(finalNewRealisation.getId()) && r.getVersion().equals(finalNewRealisation.getVersion()))) {
-                    realisationList.add(finalNewRealisation);
-                    confirmedDoc = docsRepository.save(confirmedDoc);
-                    System.out.println("Updated Document " + confirmedDoc.getId() + " to reference new Realisation version");
-                }
-
-                confirmedDocs.add(confirmedDoc);
-            } catch (Exception e) {
-                System.err.println("Error handling document relationship: " + e.getMessage());
-                e.printStackTrace();
+        // Documents: attach by request or copy active
+        List<Docs> docsToAttach = new ArrayList<>();
+        if (request.getDocIds() != null) {
+            for (Integer id : request.getDocIds()) {
+                Docs d = docsRepository.findById(id).orElse(null);
+                if (d != null) docsToAttach.add(d);
             }
+        } else if (existing.getDocs() != null && !existing.getDocs().isEmpty()) {
+            docsToAttach = existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList());
+        }
+        finalNew.setDocs(docsToAttach);
+        log.info("Attached {} documents to Realisation {},{}", docsToAttach.size(), finalNew.getId(), finalNew.getVersion());
+
+        Realisation saved = repository.save(finalNew);
+        log.info("Final save Realisation {},{} with {} lots and {} financements",
+                saved.getId(), saved.getVersion(),
+                Optional.ofNullable(saved.getLots()).map(List::size).orElse(0),
+                Optional.ofNullable(saved.getFinancements()).map(List::size).orElse(0));
+
+        Realisation resp = new Realisation();
+        BeanUtils.copyProperties(saved, resp);
+        if (saved.getDocs() != null) {
+            resp.setDocs(saved.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList()));
+        }
+        if (saved.getLots() != null) {
+            resp.setLots(saved.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted())).collect(Collectors.toList()));
+        }
+        return resp;
+    }
+
+    private boolean hasLotChangesForPaa(Realisation existingReal, List<LotResponse> incomingDtos) {
+        // Current active lots
+        List<Lot> existingActive = (existingReal.getLots() == null)
+                ? Collections.emptyList()
+                : existingReal.getLots().stream()
+                .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                .collect(Collectors.toList());
+
+        // If request provides no lots, that means "clear them" -> change iff any exist
+        if (incomingDtos == null || incomingDtos.isEmpty()) {
+            return !existingActive.isEmpty();
         }
 
-        finalNewRealisation.setDocs(confirmedDocs);
-        System.out.println("Associated " + confirmedDocs.size() + " documents with new Realisation version");
+        // Normalize incoming
+        List<LotResponse> incoming = incomingDtos.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        // Quick add/delete signals
+        // 1) Any brand-new lot (no id)  -> add
+        if (incoming.stream().anyMatch(lr -> lr.getId() == null)) return true;
+
+        // 2) Count mismatch (after filtering deleted) -> add or delete
+        if (incoming.size() != existingActive.size()) return true;
+
+        // 3) Missing existing ids in the request -> delete
+        Set<Integer> existingIds = existingActive.stream().map(Lot::getId).collect(Collectors.toSet());
+        Set<Integer> incomingIds = incoming.stream().map(LotResponse::getId).collect(Collectors.toSet());
+        if (!incomingIds.containsAll(existingIds)) return true;
+
+        // 4) Compare content (budget/description) for the same ids -> update
+        Map<Integer, Lot> byId = existingActive.stream()
+                .collect(Collectors.toMap(Lot::getId, x -> x, (a, b) -> a));
+
+        for (LotResponse lr : incoming) {
+            Lot ex = byId.get(lr.getId());
+            if (ex == null) return true; // references an id not on this realisation
+
+            BigDecimal reqBudget = defaultZero(lr.getBudget());
+            BigDecimal exBudget  = defaultZero(ex.getBudget());
+            if (reqBudget.compareTo(exBudget) != 0) return true;
+
+            String reqDesc = defaultEmpty(lr.getDescription());
+            String exDesc  = defaultEmpty(ex.getDescription());
+            if (!reqDesc.equals(exDesc)) return true;
+        }
+
+        // No add/update/delete detected
+        return false;
     }
 
-    // Final save after setting up all relationships
-    Realisation updatedRealisation = repository.save(finalNewRealisation);
-    System.out.println("Final save of Realisation with all relationships: ID=" + updatedRealisation.getId() + ", Version=" + updatedRealisation.getVersion() + ", BudgetEstime=" + updatedRealisation.getBudgetEstime());
-
-    // Create a copy for the response with only non-deleted documents
-    Realisation copyForResponse = new Realisation();
-    BeanUtils.copyProperties(updatedRealisation, copyForResponse);
-
-    // Filter out deleted documents for the response
-    if (updatedRealisation.getDocs() != null) {
-        copyForResponse.setDocs(
-                updatedRealisation.getDocs().stream()
-                        .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                        .collect(Collectors.toList())
-        );
-    }
-
-    // Also filter lot documents if there are any
-    if (copyForResponse.getLots() != null) {
-        copyForResponse.setLots(
-                copyForResponse.getLots().stream()
-                        .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                        .collect(Collectors.toList())
-        );
-    }
-
-    return copyForResponse;
-}
+    private static BigDecimal defaultZero(BigDecimal x) { return x == null ? BigDecimal.ZERO : x; }
+    private static String defaultEmpty(String s) { return s == null ? "" : s; }
 
     private boolean hasChanges(Realisation tempRealisation, Realisation existingRealisation, List<Integer> requestDocIds) {
         // Check realisationEnvisagees
@@ -1408,30 +966,6 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
-//        // Check service
-//        if (tempRealisation.getService() != existingRealisation.getService() &&
-//                (tempRealisation.getService() == null || existingRealisation.getService() == null ||
-//                        !tempRealisation.getService().getId().equals(existingRealisation.getService().getId()))) {
-//            System.out.println("Change detected in service");
-//            return true;
-//        }
-//
-//        // Check direction
-//        if (tempRealisation.getDirection() != existingRealisation.getDirection() &&
-//                (tempRealisation.getDirection() == null || existingRealisation.getDirection() == null ||
-//                        !tempRealisation.getDirection().getId().equals(existingRealisation.getDirection().getId()))) {
-//            System.out.println("Change detected in direction");
-//            return true;
-//        }
-
-//        // Check sourceFinancement
-//        if (tempRealisation.getSourceFinancement() != existingRealisation.getSourceFinancement() &&
-//                (tempRealisation.getSourceFinancement() == null || existingRealisation.getSourceFinancement() == null ||
-//                        !tempRealisation.getSourceFinancement().getId().equals(existingRealisation.getSourceFinancement().getId()))) {
-//            System.out.println("Change detected in sourceFinancement");
-//            return true;
-//        }
-
         // Check imputationBudgetaire
         if (tempRealisation.getImputationBudgetaire() != existingRealisation.getImputationBudgetaire() &&
                 (tempRealisation.getImputationBudgetaire() == null || existingRealisation.getImputationBudgetaire() == null ||
@@ -1439,14 +973,6 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             System.out.println("Change detected in imputationBudgetaire");
             return true;
         }
-
-//        // Check monais
-//        if (tempRealisation.getMonais() != existingRealisation.getMonais() &&
-//                (tempRealisation.getMonais() == null || existingRealisation.getMonais() == null ||
-//                        !tempRealisation.getMonais().getId().equals(existingRealisation.getMonais().getId()))) {
-//            System.out.println("Change detected in monais");
-//            return true;
-//        }
 
         // Check monnaie
         if (tempRealisation.getMonnaie() != existingRealisation.getMonnaie() &&
@@ -1463,14 +989,6 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             System.out.println("Change detected in typeMarcher");
             return true;
         }
-
-//        // Check modeSelection
-//        if (tempRealisation.getModeSelection() != existingRealisation.getModeSelection() &&
-//                (tempRealisation.getModeSelection() == null || existingRealisation.getModeSelection() == null ||
-//                        !tempRealisation.getModeSelection().getId().equals(existingRealisation.getModeSelection().getId()))) {
-//            System.out.println("Change detected in modeSelection");
-//            return true;
-//        }
 
         // Check modePassation
         if (tempRealisation.getModePassation() != existingRealisation.getModePassation() &&
@@ -1504,9 +1022,11 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
-        // Check budgetEstime
-        if (!Objects.equals(tempRealisation.getBudgetEstime(), existingRealisation.getBudgetEstime())) {
-            System.out.println("Change detected in budgetEstime: " + existingRealisation.getBudgetEstime() + " -> " + tempRealisation.getBudgetEstime());
+        BigDecimal oldB = existingRealisation.getBudgetEstime();
+        BigDecimal newB = tempRealisation.getBudgetEstime();
+
+        if (!equalByValue(newB, oldB)) {
+            System.out.println("Change detected in budgetEstime: " + oldB + " -> " + newB);
             return true;
         }
 
@@ -1522,15 +1042,17 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
             return true;
         }
 
-        // Check sort
-        if (!Objects.equals(tempRealisation.getSort(), existingRealisation.getSort())) {
-            System.out.println("Change detected in sort");
-            return true;
-        }
 
         System.out.println("No field changes detected for Realisation ID: " + existingRealisation.getId());
         return false;
     }
+
+    private static boolean equalByValue(BigDecimal a, BigDecimal b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.compareTo(b) == 0;   // ignores scale
+    }
+
     private Integer getRefParamId(RefParam refParam) {
         return refParam != null ? refParam.getId() : null;
     }
@@ -1561,67 +1083,6 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     public void delete(Integer realisationId, Integer realisationVer) {
         repository.softDelete(realisationId, realisationVer);
     }
-
-//    /**
-//     * Compares two Realisation objects to determine if there are any changes.
-//     *
-//     * @param newRealisation The realisation with potentially new values
-//     * @param existingRealisation The existing realisation in the database
-//     * @param docIds List of document IDs in the request (if any)
-//     * @return true if there are changes, false otherwise
-//     */
-//    private boolean hasChanges(Realisation newRealisation, Realisation existingRealisation, List<Integer> docIds) {
-//        boolean fieldChanges = !Objects.equals(newRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees())
-//                || !Objects.equals(getRefParamId(newRealisation.getService()), getRefParamId(existingRealisation.getService()))
-//                || !Objects.equals(getRefParamId(newRealisation.getDirection()), getRefParamId(existingRealisation.getDirection()))
-//                || !Objects.equals(getRefParamId(newRealisation.getSourceFinancement()), getRefParamId(existingRealisation.getSourceFinancement()))
-//                || !Objects.equals(getRefParamId(newRealisation.getMonais()), getRefParamId(existingRealisation.getMonais()))
-//                || !Objects.equals(getRefParamId(newRealisation.getTypeMarcher()), getRefParamId(existingRealisation.getTypeMarcher()))
-//                || !Objects.equals(getRefParamId(newRealisation.getModeSelection()), getRefParamId(existingRealisation.getModeSelection()))
-//                || !Objects.equals(newRealisation.getDatePrevLps(), existingRealisation.getDatePrevLps())
-//                || !Objects.equals(newRealisation.getDatePrevAc(), existingRealisation.getDatePrevAc())
-//                || !Objects.equals(newRealisation.getDatePrevDp(), existingRealisation.getDatePrevDp())
-//                || !Objects.equals(newRealisation.getDatePrevAp(), existingRealisation.getDatePrevAp())
-//                || !Objects.equals(newRealisation.getBudgetEstime(), existingRealisation.getBudgetEstime())
-//                || !Objects.equals(newRealisation.getIsPublished(), existingRealisation.getIsPublished())
-//                || !Objects.equals(newRealisation.getPublishedAt(), existingRealisation.getPublishedAt())
-//                || !Objects.equals(newRealisation.getSort(), existingRealisation.getSort());
-//
-//        // Log specific field changes for debugging
-//        if (fieldChanges) {
-//            System.out.println("Field changes detected in Realisation:");
-//            if (!Objects.equals(newRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees()))
-//                System.out.println("  - RealisationEnvisagees changed: " + existingRealisation.getRealisationEnvisagees() + " -> " + newRealisation.getRealisationEnvisagees());
-//            if (!Objects.equals(getRefParamId(newRealisation.getService()), getRefParamId(existingRealisation.getService())))
-//                System.out.println("  - Service changed: " + getRefParamId(existingRealisation.getService()) + " -> " + getRefParamId(newRealisation.getService()));
-//            if (!Objects.equals(getRefParamId(newRealisation.getDirection()), getRefParamId(existingRealisation.getDirection())))
-//                System.out.println("  - Direction changed: " + getRefParamId(existingRealisation.getDirection()) + " -> " + getRefParamId(newRealisation.getDirection()));
-//            // More detailed field change reporting can be added as needed
-//        }
-//
-//        // When there are no other field changes, check if there are document changes
-//        boolean docChanges = false;
-//        if (docIds != null) {
-//            // Get active documents from existing realisation
-//            Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null ?
-//                    existingRealisation.getDocs().stream()
-//                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-//                            .map(Docs::getId)
-//                            .collect(Collectors.toSet()) : new HashSet<>();
-//
-//            // Check if there are any differences between requested docIds and active existing docIds
-//            Set<Integer> requestedDocIdsSet = new HashSet<>(docIds);
-//            if (!requestedDocIdsSet.equals(activeExistingDocIds)) {
-//                // Document changes should trigger version increment
-//                System.out.println("Document changes detected in hasChanges method");
-//                System.out.println("  - Requested doc IDs: " + requestedDocIdsSet);
-//                System.out.println("  - Existing active doc IDs: " + activeExistingDocIds);
-//                docChanges = true;
-//            }
-//        }
-//
-//        return fieldChanges || docChanges;
-//    }
 
     /**
      * Updates the lots relationship for a Realisation without incrementing the version.
@@ -1740,65 +1201,74 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
     /**
      * Check if financement data has changed compared to existing financements
      */
-    private boolean checkFinancementChanges(List<Financement> existingFinancements, List<FinancementRequest> updates) {
-        // If both are null/empty, no changes
-        if ((existingFinancements == null || existingFinancements.isEmpty()) &&
-                (updates == null || updates.isEmpty())) {
+    /**
+     * Check if financement data has changed compared to existing financements.
+     * Compares by financementId when present, and also detects adds/removes.
+     */
+    private boolean checkFinancementChanges(List<Financement> existingFinancements,
+                                            List<FinancementRequest> updates) {
+        // both empty => no changes
+        if ((existingFinancements == null || existingFinancements.isEmpty())
+                && (updates == null || updates.isEmpty())) {
             return false;
         }
-
-        // If one is null/empty and other isn't, there are changes
-        if ((existingFinancements == null || existingFinancements.isEmpty()) ||
-                (updates == null || updates.isEmpty())) {
+        // one empty, the other not => changes
+        if ((existingFinancements == null || existingFinancements.isEmpty())
+                || (updates == null || updates.isEmpty())) {
             return true;
         }
 
-        // If different sizes, there are changes
-        if (existingFinancements.size() != updates.size()) {
-            return true;
-        }
+        // consider only active existing financements
+        Map<Integer, Financement> existingById = existingFinancements.stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .filter(f -> f.getId() != null && f.getId().getFinancementId() != null)
+                .collect(Collectors.toMap(f -> f.getId().getFinancementId(), Function.identity(), (a, b) -> a));
 
-        // Create maps for easier comparison by monnaie
-//        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
-//                .collect(Collectors.toMap(f -> f.getId().getMonnaie().getId(), f -> f));
-        Map<Integer, Financement> existingByMonnaie = existingFinancements.stream()
-                .collect(Collectors.toMap(
-                        f -> f.getMonnaie().getId(),
-                        f -> f,
-                        (existing, replacement) -> replacement // ← Keep the newer one
-                ));
+        Set<Integer> reqIds = new HashSet<>();
 
-        Map<Integer, FinancementRequest> updatesByMonnaie = updates.stream()
-                .collect(Collectors.toMap(FinancementRequest::getMonnaieId, f -> f));
+        for (FinancementRequest upd : updates) {
+            Integer updId = upd.getFinancementId();
+            Integer updMonnaieId = upd.getMonnaieId();
+            Integer updSourceId = (upd.getSourceFinancement() != null) ? upd.getSourceFinancement().getId() : null;
 
-        // Check if monnaie sets are different
-        if (!existingByMonnaie.keySet().equals(updatesByMonnaie.keySet())) {
-            return true;
-        }
+            BigDecimal reqAmt = BigDecimal.ZERO;
+            if (upd.getBudgetEstimer() != null) {
+                // FinancementRequest.budgetEstimer is usually a Number (Double); normalize to BigDecimal
+                reqAmt = BigDecimal.valueOf(upd.getBudgetEstimer().doubleValue());
+            }
 
-        // Compare each financement
-        for (Integer monnaieId : existingByMonnaie.keySet()) {
-            Financement existing = existingByMonnaie.get(monnaieId);
-            FinancementRequest update = updatesByMonnaie.get(monnaieId);
+            if (updId == null) {
+                // brand-new financement in the request
+                return true;
+            }
+            reqIds.add(updId);
 
-            // Compare budget
-            if (update.getBudgetEstimer() != null &&
-                    existing.getBudgetEstimer().compareTo(update.getBudgetEstimer()) != 0) {
+            Financement old = existingById.get(updId);
+            if (old == null) {
+                // refers to an ID not in current active set
                 return true;
             }
 
-            // Compare source financement
-            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                Integer existingSourceId = existing.getSourceFinancement() != null ?
-                        existing.getSourceFinancement().getId() : null;
-                if (!Objects.equals(existingSourceId, update.getSourceFinancement().getId())) {
-                    return true;
-                }
-            }
+            // monnaie change?
+            Integer oldMonnaieId = (old.getMonnaie() != null) ? old.getMonnaie().getId() : null;
+            if (!Objects.equals(oldMonnaieId, updMonnaieId)) return true;
+
+            // source change?
+            Integer oldSourceId = (old.getSourceFinancement() != null) ? old.getSourceFinancement().getId() : null;
+            if (!Objects.equals(oldSourceId, updSourceId)) return true;
+
+            // amount change?
+            BigDecimal oldAmt = (old.getBudgetEstimer() != null) ? old.getBudgetEstimer() : BigDecimal.ZERO;
+            if (oldAmt.compareTo(reqAmt) != 0) return true;
         }
+
+        // deletions? (existing active ids not all present in request)
+        Set<Integer> existingActiveIds = existingById.keySet();
+        if (!existingActiveIds.equals(reqIds)) return true;
 
         return false;
     }
+
 
     /**
      * Create updated financements for new realisation version
@@ -1807,47 +1277,41 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
                                                         List<FinancementRequest> updates,
                                                         Realisation newVersionRealisation) {
         List<Financement> newFinancements = new ArrayList<>();
-
-        if (updates == null || updates.isEmpty()) {
-            return newFinancements;
-        }
+        if (updates == null || updates.isEmpty()) return newFinancements;
 
         for (FinancementRequest update : updates) {
-            // Create new FinancementId (composite key)
-            FinancementId financementId = new FinancementId();
-            financementId.setRealisation(newVersionRealisation);
-            Financement financement = new Financement();
-            // Set Monnaie
+            // Build composite id pointing to the NEW realisation version
+            FinancementId fid = new FinancementId();
+            fid.setRealisation(newVersionRealisation);
+            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            fid.setFinancementId(next);
+
+            Financement f = new Financement();
+            f.setId(fid);
+
+            // Monnaie (+ tauxApplicable from monnaie.taux, default 0.0)
             Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
-            financement.setMonnaie(monnaie);
+            f.setMonnaie(monnaie);
+            f.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
-            // ADD THIS LOGIC HERE
-            if (monnaie.getTaux() != null) {
-                financement.setTauxApplicable(monnaie.getTaux());
-                System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
-            } else {
-                financement.setTauxApplicable(0.0);
-                System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
+            // Budget (normalize)
+            BigDecimal amt = BigDecimal.ZERO;
+            if (update.getBudgetEstimer() != null) {
+                amt = BigDecimal.valueOf(update.getBudgetEstimer().doubleValue());
             }
+            f.setBudgetEstimer(amt);
 
-            // Generate new financement ID
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            financementId.setFinancementId(nextFinancementId);
-
-            // Create Financement entity
-
-            financement.setId(financementId);
-            financement.setBudgetEstimer(update.getBudgetEstimer());
-
-            // Set source financement if provided
+            // Source financement (optional)
             if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                RefParam sourceFinancement = refParamRepository.findById(update.getSourceFinancement().getId())
+                RefParam src = refParamRepository.findById(update.getSourceFinancement().getId())
                         .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + update.getSourceFinancement().getId()));
-                financement.setSourceFinancement(sourceFinancement);
+                f.setSourceFinancement(src);
             }
 
-            newFinancements.add(financement);
+            // Persist row (safer if there’s no cascade from Realisation)
+            f = financementRepository.save(f);
+            newFinancements.add(f);
         }
 
         return newFinancements;
@@ -1858,33 +1322,32 @@ public Realisation updateWithVersioning(Integer realisationId, Integer realisati
      */
     private List<Financement> copyFinancementsToNewVersion(List<Financement> existingFinancements,
                                                            Realisation newVersionRealisation) {
-        List<Financement> copiedFinancements = new ArrayList<>();
+        List<Financement> copied = new ArrayList<>();
+        if (existingFinancements == null || existingFinancements.isEmpty()) return copied;
 
-        if (existingFinancements == null || existingFinancements.isEmpty()) {
-            return copiedFinancements;
+        for (Financement old : existingFinancements) {
+            if (Boolean.TRUE.equals(old.getIsDeleted())) continue;
+
+            FinancementId fid = new FinancementId();
+            fid.setRealisation(newVersionRealisation);
+            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
+            fid.setFinancementId(next);
+
+            Financement f = new Financement();
+            f.setId(fid);
+            f.setMonnaie(old.getMonnaie());
+            f.setBudgetEstimer(old.getBudgetEstimer());
+            f.setSourceFinancement(old.getSourceFinancement());
+            // keep taux if present, else derive from monnaie
+            f.setTauxApplicable(old.getTauxApplicable() != null
+                    ? old.getTauxApplicable()
+                    : (old.getMonnaie() != null && old.getMonnaie().getTaux() != null ? old.getMonnaie().getTaux() : 0.0));
+
+            f = financementRepository.save(f);
+            copied.add(f);
         }
 
-        for (Financement existing : existingFinancements) {
-            // Create new FinancementId for new version
-            Financement copiedFinancement = new Financement();
-            FinancementId newFinancementId = new FinancementId();
-            newFinancementId.setRealisation(newVersionRealisation);
-            copiedFinancement.setMonnaie(existing.getMonnaie());
-
-            // Generate new financement ID
-            Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            newFinancementId.setFinancementId(nextFinancementId);
-
-            // Create copied financement
-
-            copiedFinancement.setId(newFinancementId);
-            copiedFinancement.setBudgetEstimer(existing.getBudgetEstimer());
-            copiedFinancement.setSourceFinancement(existing.getSourceFinancement());
-
-            copiedFinancements.add(copiedFinancement);
-        }
-
-        return copiedFinancements;
+        return copied;
     }
 
 

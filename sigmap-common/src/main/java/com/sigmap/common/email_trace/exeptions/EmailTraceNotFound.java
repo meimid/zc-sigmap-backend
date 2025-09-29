@@ -4,9 +4,9 @@ import lombok.Data;
 
 @Data
 public class EmailTraceNotFound extends Exception {
-    private Integer id;
+    private Long id;
 
-    public EmailTraceNotFound(String message, Integer id) {
+    public EmailTraceNotFound(String message, Long id) {
         super(message);
         this.id = id;
     }

@@ -15,10 +15,10 @@ spring:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE_DEFAULT:1GB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE_DEFAULT:2GB}
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         jdbc:
           time_zone: "UTC"
     hibernate:

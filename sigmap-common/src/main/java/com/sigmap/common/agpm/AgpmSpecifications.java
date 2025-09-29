@@ -73,10 +73,8 @@ public class AgpmSpecifications {
     }
 
     public static Specification<Agpm> status(ProcessStatus status) {
-        return (root, query, criteriaBuilder) -> {
-
-            return criteriaBuilder.equal(root.get("status"), status);
-        };
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), status);
     }
 
     public static Specification<Agpm> deleted(boolean deleted) {
@@ -123,6 +121,7 @@ public class AgpmSpecifications {
             return criteriaBuilder.equal(root.get("version"), subquery);
         };
     }
+
     public static Specification<Agpm> isPublished() {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("status"), "PUBLIE");
@@ -163,4 +162,58 @@ public class AgpmSpecifications {
                 );
     }
 
+    /**
+     * Filters AGPMs by the boolean 'actualise' flag.
+     * If {@code actualise} is null, no predicate is applied.
+     *
+     * @param actualise whether the AGPM is marked as actualised
+     * @return a Specification matching the given flag or a conjunction when null
+     */
+    public static Specification<Agpm> actualise(Boolean actualise) {
+        return (root, query, cb) -> {
+            if (actualise == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("actualise"), actualise);
+        };
+    }
+
+    /**
+     * Filters AGPMs by an exact 'nbrActualisation' value.
+     * If {@code value} is null, no predicate is applied.
+     *
+     * @param value exact number of actualisations to match
+     * @return a Specification matching the given value or a conjunction when null
+     */
+    public static Specification<Agpm> nbrActualisation(Integer value) {
+        return (root, query, cb) -> {
+            if (value == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("nbrActualisation"), value);
+        };
+    }
+
+    /**
+     * Filters AGPMs by a range of 'nbrActualisation' values (inclusive).
+     * Any null bound is ignored (i.e., treated as unbounded on that side).
+     *
+     * @param min minimum value inclusive (nullable)
+     * @param max maximum value inclusive (nullable)
+     * @return a Specification matching the given range or a conjunction when both bounds are null
+     */
+    public static Specification<Agpm> nbrActualisationBetween(Integer min, Integer max) {
+        return (root, query, cb) -> {
+            if (min == null && max == null) {
+                return cb.conjunction();
+            }
+            if (min != null && max != null) {
+                return cb.between(root.get("nbrActualisation"), min, max);
+            }
+            if (min != null) {
+                return cb.greaterThanOrEqualTo(root.get("nbrActualisation"), min);
+            }
+            return cb.lessThanOrEqualTo(root.get("nbrActualisation"), max);
+        };
+    }
 }

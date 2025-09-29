@@ -19,6 +19,7 @@
     r.observation,
     CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Rejeté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
@@ -47,6 +48,7 @@ SELECT
     r.observation,
     CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Rejeté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'

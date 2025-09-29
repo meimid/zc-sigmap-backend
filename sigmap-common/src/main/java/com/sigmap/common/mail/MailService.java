@@ -81,7 +81,7 @@ public class MailService {
     }
     private String activationEmailContext(UserResquestDTO user, String GenericPassword) throws IOException {
         // Load and encode logo
-        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo.png");
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
         byte[] sourceLogo = IOUtils.toByteArray(logo);
         String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
         encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
@@ -133,7 +133,7 @@ public class MailService {
 
     private String editPasswordForAdminEmailContext(UserDTO user, String GenericPassword) throws IOException {
         // Load and encode logo
-        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo.png");
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
         byte[] sourceLogo = IOUtils.toByteArray(logo);
         String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
         encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
@@ -184,7 +184,7 @@ public class MailService {
 
     private String reunionInvitationEmailContext(Reunion reunion, Participant participant) throws MessagingException, IOException {
         // Load and encode logo
-        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo.png");
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
         byte[] sourceLogo = IOUtils.toByteArray(logo);
         String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
         encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
@@ -287,7 +287,7 @@ public class MailService {
 
     private String reunionInvitationAnnulerEmailContext(Reunion reunion, Participant participant) throws MessagingException, IOException {
         // Load and encode logo
-        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo.png");
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
         byte[] sourceLogo = IOUtils.toByteArray(logo);
         String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
         encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);

@@ -10,17 +10,14 @@
         <td style="padding: 0 15px;">
             <table border="0" cellpadding="0" cellspacing="0" width="100%">
                 <tr>
-                    <td  style="padding-bottom: 10px;">
-                        <p style="margin: 0 0 3px 0;">Mr/Mme: <strong th:text="${name}"></strong> Vous êtes invité à une réunion </p>
-                        <p style="margin: 0 0 3px 0;">Organisme: <strong th:text="${organisme}"></strong></p>
-                        <p style="margin: 0 0 3px 0;">Fonction: <strong th:text="${fonction}"></strong></p>
-                        <p style="margin: 0 0 3px 0;">Date: <strong th:text="${#dates.format(reunionDate, 'dd/MM/yyyy HH:mm')}"></strong></p>
-                        <p style="margin: 0 0 3px 0;">Emplacement: <strong th:text="${emplacement}"></strong></p>
+                    <td style="padding-bottom: 10px;">
+                        <p style="margin: 0 0 3px 0;">Bonjour Mr/Mme : <strong th:text="${name}"></strong>,</p>
+                        <p style="margin: 0 0 3px 0;">En tant que <strong th:text="${fonction}"></strong> du <strong th:text="${organisme}"></strong>, nous vous informons que vous êtes invité à la réunion prévue le <strong th:text="${#dates.format(reunionDate, 'dd/MM/yyyy HH:mm')}"></strong> à <strong th:text="${emplacement}"></strong>.</p>
                     </td>
                 </tr>
                 <tr style="padding-bottom: 10px;">
                     <td>
-                        <p style="color: #5E6278; font-size: 13px; font-weight: 500; margin: 0 0 3px 0;">Objet: </p>
+                        <p style="color: #5E6278; font-size: 13px; font-weight: 500; margin: 0 0 3px 0;">Objet de la réunion: </p>
                         <p width="80%" th:utext="${object}"></p>
                     </td>
 
@@ -28,7 +25,13 @@
                 <tr>
                     <td align="center" style="font-size: 13px; padding: 0 10px 10px 10px; color: #A1A5B7;">
                         <p style="color: #181C32; font-size: 16px; font-weight: 600; margin-bottom: 9px;">Problèmes?</p>
-                        <p style="margin-bottom: 4px;">Contactez <a href="mailto:dev.sigmap@siga-bc.com" style="font-weight: 600; color: #009ef7;">dev.sigmap@siga-bc.com</a>.</p>
+                        <p style="margin-bottom:4px">
+                            Contactez
+                            <a th:href="'mailto:' + ${from}"
+                               rel="noopener" target="_blank"
+                               style="font-weight: 600"
+                               th:text="${from}">Email</a>.
+                        </p>
                     </td>
                 </tr>
                 <tr>

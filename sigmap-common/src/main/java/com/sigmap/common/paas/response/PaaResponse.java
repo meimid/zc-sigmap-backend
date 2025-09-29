@@ -25,5 +25,7 @@ public class PaaResponse {
     private String remarque;
     private List<Realisation> realisations;
     private String processInstanceId;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 }

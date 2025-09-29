@@ -165,4 +165,20 @@ public interface AgpmService {
     Page<Agpm> findAgpmsByAcId(Integer acId, Pageable pageable) throws AcNotFound;
 
     Page<Agpm> findAllForWebsite(Specification<Agpm> spec, Pageable pageable) ;
+
+    /**
+     * Creates an actualised version of the latest AGPM for the given ID.
+     * Copies core fields, resets workflow state (processInstanceId to null, status to DRAFT),
+     * sets actualise to true, and increments nbrActualisation by 1. Only non-deleted Docs are retained.
+     *
+     * @param agpmId ID of the AGPM to actualise (latest version is used as the source)
+     * @return The newly created AGPM version
+     * @throws AgpmNotFound if no AGPM is found for the given ID
+     * @throws AgpmInvalidStatusException if the latest AGPM version is not in PUBLIE status
+     * @throws AgpmNotAssociatedWithUserAcException if the AGPM is not associated with one of the current user's ACs
+     */
+
+    Agpm actualise(Integer agpmId)
+            throws AgpmNotFound, AgpmInvalidStatusException, AgpmNotAssociatedWithUserAcException;
+
 }
