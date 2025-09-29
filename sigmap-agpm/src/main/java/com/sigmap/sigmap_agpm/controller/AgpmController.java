@@ -235,5 +235,25 @@ public class AgpmController {
         }
     }
 
+    /**
+     * Creates a new version from the latest PUBLIE AGPM (actualisation).
+     * The new version has version = latest + 1, inherits core data and non-deleted docs,
+     * resets processInstanceId to null, sets status to BROUILLON, marks actualise = true,
+     * and increments nbrActualisation by 1.
+     *
+     * @param agpmId ID of the AGPM to actualise
+     * @return ResponseEntity with the new AgpmResponse and HTTP 200 (OK)
+     * @throws AgpmNotFound if no AGPM exists for the given ID
+     * @throws AgpmInvalidStatusException if the latest AGPM is not in PUBLIE status
+     * @throws AgpmNotAssociatedWithUserAcException if the AGPM’s AC is not one of the current user’s ACs
+     */
+    @PostMapping("/actualise/{agpmId}")
+    public ResponseEntity<AgpmResponse> actualiseAgpm(@PathVariable Integer agpmId)
+            throws AgpmNotFound, AgpmInvalidStatusException, AgpmNotAssociatedWithUserAcException {
+        Agpm newVersion = agpmService.actualise(agpmId);
+        AgpmResponse response = AgpmMapper.INSTANCE.map(newVersion);
+        return ResponseEntity.ok(response);
+    }
+
 
 }

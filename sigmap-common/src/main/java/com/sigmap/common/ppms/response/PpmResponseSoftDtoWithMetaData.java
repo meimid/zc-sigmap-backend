@@ -23,5 +23,7 @@ public class PpmResponseSoftDtoWithMetaData {
     private String status;
     private RefParamResponseDto modePassation;
     private String remarque;
+    private Boolean actualise;
+    private Integer nbrActualisation;
     private BaseEntityResponse metadata;
 }

@@ -1,7 +1,6 @@
 package com.sigmap.common.dac_docs;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -61,4 +60,26 @@ public interface DacDocsRepository extends JpaRepository<DacDocs, DacDocsId>, Jp
       }
       return new java.util.ArrayList<>(rowMap.values());
   }
+
+    // Lightweight list fetch: does not require dyna_fields_details rows
+    @Query(value = "SELECT ddd.row_id, ddd.field_value FROM dac_docs_details ddd WHERE ddd.dac_id = :dacId AND ddd.dac_ver = :dacVer AND ddd.dyna_docs_id = :dynaDocsId AND ddd.dyna_docs_ver = :dynaDocsVer AND ddd.dyna_fields_id = :dynaFieldsId ORDER BY ddd.row_id", nativeQuery = true)
+    List<Object[]> findListRowsRaw(@Param("dacId") Integer dacId,
+                                   @Param("dacVer") Integer dacVer,
+                                   @Param("dynaDocsId") Integer dynaDocsId,
+                                   @Param("dynaDocsVer") Integer dynaDocsVer,
+                                   @Param("dynaFieldsId") Integer dynaFieldsId);
+
+    default List<String> findListRowsForField(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId) {
+        List<Object[]> rawRows = findListRowsRaw(dacId, dacVer, dynaDocsId, dynaDocsVer, dynaFieldsId);
+        Map<Integer, String> byRow = new TreeMap<>();
+        for (Object[] row : rawRows) {
+            Integer rowId = ((Number) row[0]).intValue();
+            String fieldValue = (String) row[1];
+            if (fieldValue != null) {
+                byRow.put(rowId, fieldValue);
+            }
+        }
+        return new ArrayList<>(byRow.values());
+    }
+
 }

@@ -32,5 +32,5 @@ public class Financement extends BaseEntity {
     private BigDecimal budgetEstimer;
 
     @Column(name = "taux_applicable")
-    private double tauxApplicable;
+    private Double tauxApplicable;
 }

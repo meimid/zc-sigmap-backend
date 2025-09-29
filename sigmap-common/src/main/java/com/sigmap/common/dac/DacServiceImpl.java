@@ -1,5 +1,9 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
@@ -7,7 +11,10 @@ import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.DacDocsSpecifications;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
@@ -20,6 +27,7 @@ import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -40,13 +48,17 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
+
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+
 import java.io.*;
+
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -400,49 +412,14 @@ public class DacServiceImpl implements DacService {
                 // in liste case when there is only one column
                 if (columns.size() < 2) {
                     // Treat as list (single column)
-                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+                    List<String> rows = dacDocsRepository.findListRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
                     List<String> values = new ArrayList<>();
                     if (!rows.isEmpty() && !columns.isEmpty()) {
-                        String colName = columns.get(0).getColumnName();
-                        for (Map<String, String> row : rows) {
-                            values.add(row.getOrDefault(colName, ""));
-                        }
-                    } else {
-                        // Fallback 1: pull values from dac_docs_details grouped by rowId (first column per row)
-                        List<DacDocsDetails> details = dacDocsDetailsRepository.findAll(
-                                Specification.where(DacDocsDetailsSpecification.byDacId(dacId))
-                                        .and(DacDocsDetailsSpecification.byDacVer(dacVersion))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsId(dynaDocsId))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(dynaDocsVer))
-                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(dynaField.getDynaFieldsId()))
-                        );
-                        if (details != null && !details.isEmpty()) {
-                            details.stream()
-                                    .collect(Collectors.groupingBy(DacDocsDetails::getRowId, TreeMap::new, Collectors.toList()))
-                                    .forEach((rowId, list) -> {
-                                        String v = list.get(0).getFieldValue();
-                                        if (v != null && !v.trim().isEmpty()) {
-                                            values.add(v.trim());
-                                        }
-                                    });
-                        } else {
-                            // Fallback 2: use dac_docs.field_value (multi-line or semicolon-separated)
-                            Optional<DacDocs> singleRow = dacDocsRepository.findDacDocsBYPKs(
-                                    dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-                            if (singleRow.isPresent() && singleRow.get().getFieldValue() != null) {
-                                String fv = singleRow.get().getFieldValue();
-                                if (fv != null) {
-                                    fv = fv.replace("\r\n", "\n");
-                                    String[] lines = fv.contains("\n") ? fv.split("\n") : fv.split(";");
-                                    for (String line : lines) {
-                                        String trimmed = line.trim();
-                                        if (!trimmed.isEmpty()) {
-                                            values.add(trimmed);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        values.addAll(rows.stream()
+                                .filter(Objects::nonNull)
+                                .map(String::trim)
+                                .filter(s -> !s.isEmpty()).toList());
+
                     }
                     insertSingleColumnTableAtBookmark(document, bookmarkName, columns, values);
 
@@ -476,41 +453,14 @@ public class DacServiceImpl implements DacService {
                         if (table == null) {
                             throw new RuntimeException("Failed to insert table: table is null. Check cursor position.");
                         }
+                        // Create the header row and set the column names
                         // For each value, create a new row and set the cell text
                         for (String value : values) {
                             XWPFTableRow row = table.createRow();
                             row.getCell(0).setText(value);
                         }
-                        // Remove the automatically created first empty row
                         table.removeRow(0);
                         return;
-                    }
-                }
-            }
-        }
-        // Fallback: search bookmark inside table cells and insert table there
-        for (XWPFTable tableHost : document.getTables()) {
-            for (XWPFTableRow rowHost : tableHost.getRows()) {
-                for (XWPFTableCell cellHost : rowHost.getTableCells()) {
-                    for (XWPFParagraph paragraph : cellHost.getParagraphs()) {
-                        if (paragraph.getCTP().getBookmarkStartList() != null) {
-                            for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
-                                if (bookmarkName.equals(bookmark.getName())) {
-                                    bookmark.setName("");
-                                    XmlCursor cursor = paragraph.getCTP().newCursor();
-                                    XWPFTable table = document.insertNewTbl(cursor);
-                                    if (table == null) {
-                                        throw new RuntimeException("Failed to insert table: table is null. Check cursor position.");
-                                    }
-                                    for (String value : values) {
-                                        XWPFTableRow row = table.createRow();
-                                        row.getCell(0).setText(value);
-                                    }
-                                    table.removeRow(0);
-                                    return;
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -789,7 +739,7 @@ public class DacServiceImpl implements DacService {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
                     List<DynaFieldsDTO> dynaFieldsDTOs = dynaFieldsList.stream()
-                            .filter(field -> "__DEFAULT__".equals(field.getName()) == false)
+                            .filter(field -> !"__DEFAULT__".equals(field.getName()))
                             .map(field -> {
                                 DynaFieldsDTO fieldDTO = dynaFieldsMapper.toDynaFieldsDTO(field);
                                 fieldDTO.setDynaFieldsDetails(dacDocsMapper.dynaFieldsDetailsToDTO(field.getDynaFieldsDetails()));
