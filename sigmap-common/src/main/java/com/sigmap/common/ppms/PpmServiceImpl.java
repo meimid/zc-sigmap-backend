@@ -304,6 +304,8 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setAnnee(ppm.getAnnee());
         filteredPpm.setNom(ppm.getNom());
         filteredPpm.setRef(ppm.getRef());
+        filteredPpm.setActualise(ppm.getActualise());
+        filteredPpm.setNbrActualisation(ppm.getNbrActualisation());
         filteredPpm.setBudgetEstime(ppm.getBudgetEstime());
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
