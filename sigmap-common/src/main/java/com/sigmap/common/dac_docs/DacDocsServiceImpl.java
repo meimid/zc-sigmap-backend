@@ -62,9 +62,6 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new RuntimeException("File is required");
-        }
         // Resolve latest DynaDocs and verify static
         Optional<DynaDocs> dynaDocsOpt = dynaDocsRepository.findLastDynaDocsVersionById(dynaDocsId);
         if (dynaDocsOpt.isEmpty()) {
@@ -133,8 +130,17 @@ public class DacDocsServiceImpl implements DacDocsService{
             row.setDynaField(field);
             row.setSourceId(row.getSourceId() == null ? "" : row.getSourceId());
         }
-        // Persist to ensure ID fields present when saving file path
+        // Persist to ensure ID fields present when saving/unlinking
         row = dacDocsRepository.save(row);
+
+        // If no file provided: unlink existing doc (set docId = null) and return
+        if (file == null || file.isEmpty()) {
+            if (row.getDocs() != null) {
+                row.setDocs(null);
+                row = dacDocsRepository.save(row);
+            }
+            return row;
+        }
 
         try {
             Integer newDocId = documentCommuneService.processAndSaveDocumentsForDacDocs(file, row, Constants.PATH_ENTREPOT_GED_DAC_DOCS);

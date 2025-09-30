@@ -87,7 +87,7 @@ public class DacDocsController {
     public ResponseEntity<DacDocsResponseFullEntities> uploadStaticDoc(
             @RequestParam Integer dacId,
             @RequestParam Integer dynaDocsId,
-            @RequestPart("file") MultipartFile file
+            @RequestPart(value = "file", required = false) MultipartFile file
     ) {
         DacDocs dacDocs = dacDocsService.uploadStaticDoc(dacId, dynaDocsId, file);
         DacDocsResponseFullEntities response = DacDocsMapper.INSTANCE.entityToResponseMap(dacDocs);
