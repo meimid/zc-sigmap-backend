@@ -80,6 +80,7 @@ public interface DacDocsMapper {
     // costum responce
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
+    @Mapping(target = "status", source = "status")
     @Mapping(target = "ppm", source = "ppm")
     @Mapping(target = "ppm.acId", source = "ppm.ac.id")
     @Mapping(target = "typeMarche", source = "typeMarche")
