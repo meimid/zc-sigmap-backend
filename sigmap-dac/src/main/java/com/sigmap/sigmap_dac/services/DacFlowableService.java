@@ -269,9 +269,9 @@ public class DacFlowableService {
         Integer dacId = (Integer) pvars.get("id");
         Integer dacVer = (Integer) pvars.get("version");
 
-        List<DacDocResponseDTO> dacDocs = Collections.emptyList();
+        List<DacResponseDTO> dacDocs = Collections.emptyList();
         if (dacId != null && dacVer != null) {
-            dacDocs = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+            dacDocs = Collections.singletonList(dacService.findByDacIdAndVer(dacId, dacVer));
         }
 
         Map<String, Boolean> props = getTaskProperties(task);
