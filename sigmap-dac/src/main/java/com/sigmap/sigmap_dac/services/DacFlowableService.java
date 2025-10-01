@@ -269,9 +269,9 @@ public class DacFlowableService {
         Integer dacId = (Integer) pvars.get("id");
         Integer dacVer = (Integer) pvars.get("version");
 
-        List<DacResponseDTO> dacDocs = Collections.emptyList();
+        DacResponseDTO dacDocs = null;
         if (dacId != null && dacVer != null) {
-            dacDocs = Collections.singletonList(dacService.findByDacIdAndVer(dacId, dacVer));
+            dacDocs = dacService.findByDacIdAndVer(dacId, dacVer);
         }
 
         Map<String, Boolean> props = getTaskProperties(task);
@@ -663,7 +663,7 @@ public class DacFlowableService {
 
         // Attach full DAC docs/details snapshot for latest version
         DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
-        resp.setDacDocs((List<DacResponseDTO>) dacDocs);
+        resp.setDacDocs(dacDocs);
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {

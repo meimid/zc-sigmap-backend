@@ -22,7 +22,7 @@ public class TaskDetailsDTO {
     private String candidateGroup;
     private Map<String, Object> traceability;
     
-    private List<DacResponseDTO> dacDocs;
+    private DacResponseDTO dacDocs;
 
     // Status information
     private String status;
