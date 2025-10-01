@@ -940,6 +940,10 @@ public class DacServiceImpl implements DacService {
                 row.setDynaField(f);
                 row.setSourceId(sourceId);
                 row.setFieldValue(value);
+                // Preserve linked document if exists on prior row (carry over docId)
+                if (!isNewDocForDac && prior != null && prior.getDocs() != null) {
+                    row.setDocs(prior.getDocs());
+                }
                 dacDocsRepository.save(row);
 
                 // Handle LIST/TABLE snapshot for dac_docs_details
