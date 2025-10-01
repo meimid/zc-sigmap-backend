@@ -7,6 +7,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -661,8 +662,8 @@ public class DacFlowableService {
         TaskDetailsDTO resp = new TaskDetailsDTO();
 
         // Attach full DAC docs/details snapshot for latest version
-        List<DacDocResponseDTO> dacDocs = dacDocsService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
-        resp.setDacDocs(dacDocs);
+        DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
+        resp.setDacDocs((List<DacResponseDTO>) dacDocs);
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {
