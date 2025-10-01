@@ -9,3 +9,6 @@ ALTER TABLE dac_docs ADD CONSTRAINT fk_dac_docs_docId
 
 -- changeset sigmap:1757950256-3
 ALTER TABLE dyna_docs ADD COLUMN IF NOT EXISTS is_static TINYINT(1) DEFAULT 0 NOT NULL;
+
+-- changeset sigmap:1757950256-4
+UPDATE dyna_docs SET is_static = 0 WHERE is_static IS NULL;

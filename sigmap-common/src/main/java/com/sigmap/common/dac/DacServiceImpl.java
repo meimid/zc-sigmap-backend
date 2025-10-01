@@ -71,6 +71,8 @@ import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsSpecification;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
+import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
 
 @Slf4j
 @Service
@@ -90,6 +92,7 @@ public class DacServiceImpl implements DacService {
     private final DynaFieldsMapper dynaFieldsMapper;
     private final DacDocsMapper dacDocsMapper;
     private final DacDocsDetailsRepository dacDocsDetailsRepository;
+    private final AlfrescoService alfrescoService;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -154,6 +157,34 @@ public class DacServiceImpl implements DacService {
         // Step 3: Process each snapshot document in order
         for (DynaDocs dynaDoc : dynaDocsList) {
             docOreder = docOreder + 1;
+            // If static doc: fetch linked Docs and integrate as-is (pdf/image)
+            if (Boolean.TRUE.equals(dynaDoc.getIsStatic())) {
+                try {
+                    Optional<DacDocs> linked = dacDocsSnapshot.stream()
+                            .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getId())
+                                    && Objects.equals(dd.getId().getDynaDocsVer(), dynaDoc.getVersion())
+                                    && dd.getDocs() != null)
+                            .findFirst();
+                    if (linked.isPresent()) {
+                        Docs staticDoc = linked.get().getDocs();
+                        if (staticDoc.getAlfresco_id() != null && !staticDoc.getAlfresco_id().isBlank()) {
+                            DocumentResponseDTO content = alfrescoService.getDocumentById(staticDoc.getAlfresco_id());
+                            if (content != null && !Boolean.TRUE.equals(content
+                                    .isErreur()) && content.getFile() != null) {
+                                String ext = safeExtension(staticDoc.getFileExtension());
+                                String baseName = safeFileName(dynaDoc.getName() != null ? dynaDoc.getName() : "static_doc");
+                                String outputFilePath = saveBinaryDocument(content.getFile(), baseName + "_" + docOreder + (ext.isEmpty() ? "" : "." + ext), customDirPath);
+                                generatedFilePaths.add(outputFilePath);
+                                continue; // next doc
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to integrate static doc for DynaDocs {} v{}: {}", dynaDoc.getId(), dynaDoc.getVersion(), e.getMessage());
+                    // fallback: skip static doc on error
+                }
+            }
+
             String templateFileName = dynaDoc.getTemplateFileName();
             log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}",
                     dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
@@ -206,6 +237,29 @@ public class DacServiceImpl implements DacService {
         }
         DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer)
                 .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + dynaDocsId + ", Version: " + dynaDocsVer));
+
+        // Handle static doc directly
+        if (Boolean.TRUE.equals(dynaDoc.getIsStatic())) {
+            List<DacDocs> dacDocsSnapshot = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
+            Optional<DacDocs> linked = dacDocsSnapshot.stream()
+                    .filter(dd -> Objects.equals(dd.getId().getDynaDocsId(), dynaDoc.getId())
+                            && Objects.equals(dd.getId().getDynaDocsVer(), dynaDoc.getVersion())
+                            && dd.getDocs() != null)
+                    .findFirst();
+            if (linked.isPresent()) {
+                Docs staticDoc = linked.get().getDocs();
+                if (staticDoc.getAlfresco_id() != null && !staticDoc.getAlfresco_id().isBlank()) {
+                    DocumentResponseDTO content = alfrescoService.getDocumentById(staticDoc.getAlfresco_id());
+                    if (content != null && !Boolean.TRUE.equals(content.isErreur()) && content.getFile() != null) {
+                        String ext = safeExtension(staticDoc.getFileExtension());
+                        String baseName = safeFileName(dynaDoc.getName() != null ? dynaDoc.getName() : "static_doc");
+                        return saveBinaryDocument(content.getFile(), baseName + "_1" + (ext.isEmpty() ? "" : "." + ext), customDirPath);
+                    }
+                }
+            }
+            throw new IllegalArgumentException("Static DynaDoc has no linked document");
+        }
+
         String templateFileName = dynaDoc.getTemplateFileName();
         File templateFile = new File(basePath, templateFileName);
         if (!templateFile.exists()) {
@@ -225,6 +279,31 @@ public class DacServiceImpl implements DacService {
             log.error("Error processing document {}: {}", templateFileName, e.getMessage());
             throw new RuntimeException("Error processing document: " + e.getMessage());
         }
+    }
+
+    private String safeExtension(String ext) {
+        if (ext == null) return "";
+        String cleaned = ext.trim().replaceAll("[^A-Za-z0-9]", "").toLowerCase();
+        return cleaned;
+    }
+
+    private String safeFileName(String name) {
+        if (name == null) return "doc";
+        return name.replaceAll("[^A-Za-z0-9-_]", "_");
+    }
+
+    private String saveBinaryDocument(byte[] content, String fileName, String customDirPath) {
+        File customDir = new File(customDirPath);
+        if (!customDir.exists()) {
+            customDir.mkdirs();
+        }
+        File out = new File(customDir, fileName);
+        try (FileOutputStream fos = new FileOutputStream(out)) {
+            fos.write(content);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to save static document: " + e.getMessage());
+        }
+        return out.getAbsolutePath();
     }
 
     private void validateParams(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
