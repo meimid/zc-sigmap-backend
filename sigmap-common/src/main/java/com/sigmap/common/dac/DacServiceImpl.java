@@ -1188,4 +1188,9 @@ public class DacServiceImpl implements DacService {
     private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
     private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }
 
+    @Override
+    public Integer findLatestVersionById(Integer dacId) {
+        return dacRepository.findMaxVersionById(dacId);
+    }
+
 }

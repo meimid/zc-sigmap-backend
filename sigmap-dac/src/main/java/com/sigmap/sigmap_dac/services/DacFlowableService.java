@@ -650,7 +650,8 @@ public class DacFlowableService {
             return r;
         }
 
-        Dac dac = dacService.findById(dacId, null).orElse(null); // latest
+        Integer latestVersion = dacService.findLatestVersionById(dacId);
+        Dac dac = dacService.findById(dacId, latestVersion).orElse(null);
         if (dac == null) {
             var r = new TaskDetailsDTO();
             r.setStatus("DAC not found for id " + dacId);
