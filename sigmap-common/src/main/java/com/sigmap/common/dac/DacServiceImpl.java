@@ -1214,15 +1214,10 @@ public class DacServiceImpl implements DacService {
      */
     private void validateActiveAAOExists(Integer typeMarcheId, Integer modePassationId) {
         boolean hasActiveAAO;
-        if (modePassationId != null) {
+        if (modePassationId != null && typeMarcheId != null) {
             hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
             if (!hasActiveAAO) {
                 throw new NoActiveAAOException(typeMarcheId, modePassationId);
-            }
-        } else {
-            hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarche(typeMarcheId);
-            if (!hasActiveAAO) {
-                throw new NoActiveAAOException(typeMarcheId);
             }
         }
     }
