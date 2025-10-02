@@ -1,5 +1,6 @@
 package com.sigmap.common.dac.response;
 
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
@@ -23,6 +24,7 @@ public class DacResponce {
     private PpmResponseDto ppm;
     private RealisationResponseDTO realisation;
     private RefParam typeMarche;
+    private ModeDePassationSelection modePassation;
     private ProcessStatus status;
     private BaseEntityResponse metadata;
 }

@@ -1,5 +1,6 @@
 package com.sigmap.common.dac_docs.response.customResponceDTO;
 
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 
@@ -12,6 +13,7 @@ public class DacResponseDTO {
     private ProcessStatus status;
     private DacPpmResponseDTO ppm;
     private DacTypeMarcheResponseDTO typeMarche;
+    private ModeDePassationSelection modePassation;
     private DacRealisationResponseDTO realisation;
     private List<DynaDocsResponseDTO> dynaDocs;
 }

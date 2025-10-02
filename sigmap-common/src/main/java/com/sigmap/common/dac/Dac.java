@@ -1,5 +1,6 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -42,6 +43,10 @@ public class Dac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
   private RefParam typeMarche;
+
+  @ManyToOne
+  @JoinColumn(name = "mode_passation_id")
+  private ModeDePassationSelection modePassation;
 
   @Enumerated(EnumType.STRING)
   private ProcessStatus status;

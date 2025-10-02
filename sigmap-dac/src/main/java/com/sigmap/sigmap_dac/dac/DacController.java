@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_dac.dac;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
@@ -118,7 +119,7 @@ public class DacController {
 
 
   @PostMapping("/create")
-  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
+  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);

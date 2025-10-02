@@ -19,6 +19,7 @@ public interface DacMapper {
 
     @Mapping(target = "ppm", source = "ppm")
     @Mapping(target = "typeMarche", source = "typeMarche")
+    @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "realisation", source = "realisation")
     @Mapping(target = "reference", source = "reference")
     @Mapping(target = "metadata.createdAt", source = "createdAt")

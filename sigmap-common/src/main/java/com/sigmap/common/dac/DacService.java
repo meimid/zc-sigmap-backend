@@ -1,5 +1,6 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -25,7 +26,7 @@ public interface DacService {
     public Optional<Dac> findOne(Specification<Dac> specification);
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
     Dac save(Dac dac);
-    Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException;
+    Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound;
     List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String basePath, String customDirPath) ;
 
     String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath);

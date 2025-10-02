@@ -21,6 +21,12 @@ public interface DynaDocsRepository
 
   List<DynaDocs> findAllActifForTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
 
+  @Query(
+      "SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId AND"
+          + " d.version = (SELECT MAX(d2.version) FROM DynaDocs d2 WHERE d2.id ="
+          + " d.id AND d2.typeMarche.id = :typeMarcheId AND d2.modePassation.id = :modePassationId AND d2.status = 'ACTIF')")
+  List<DynaDocs> findAllActifForTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
+
   @Query("SELECT d FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")
   java.util.Optional<DynaDocs> findByIdDynaDocsIdAndDynaDocsVer(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
 
@@ -50,9 +56,24 @@ public interface DynaDocsRepository
 """)
   List<DynaDocs> findAllLastVersionByTypeMarcheId(@Param("typeMarcheId") Integer typeMarcheId);
 
+  @Query("""
+    SELECT d FROM DynaDocs d
+    WHERE d.status = 'ACTIF'
+      AND d.typeMarche.id = :typeMarcheId
+      AND d.modePassation.id = :modePassationId
+      AND d.version = (
+        SELECT MAX(d2.version)
+        FROM DynaDocs d2
+        WHERE d2.id = d.id
+          AND d2.typeMarche.id = :typeMarcheId
+          AND d2.modePassation.id = :modePassationId
+          AND d2.status = 'ACTIF'
+      )
+""")
+  List<DynaDocs> findAllLastVersionByTypeMarcheIdAndModePassationId(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
+
 
   @Query("SELECT d.name FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")
   String getDynaDocName(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
-
 
 }

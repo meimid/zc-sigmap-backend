@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_docs;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -67,7 +68,7 @@ public interface DynaDocsService {
    * @param request The Dyna doc DTO containing the data to create the DynaDoc entity
    * @return The created DynaDoc entity
    */
-  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound;
+  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound;
 
   /**
    * Update dynadoc
@@ -75,7 +76,7 @@ public interface DynaDocsService {
    * @param dynaDocId ID
    * @param request dynaDoc request
    */
-  DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound;
+  DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound, ModeDePassationSelectionNotFound;
 
   // /**
   //  * Soft deletes an Agpm entity by its ID and version.

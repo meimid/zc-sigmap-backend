@@ -13,6 +13,8 @@ public class DynaDocsRequest {
 
   private Integer typeMarcheId;
 
+  private Integer modePassationId;
+
   private Integer dynaDocOrder;
 
   private ActiveStatus status = ActiveStatus.NON_ACTIF;

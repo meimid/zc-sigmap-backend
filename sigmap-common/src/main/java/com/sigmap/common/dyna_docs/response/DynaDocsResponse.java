@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import java.util.List;
 import lombok.Data;
 
@@ -21,6 +22,8 @@ public class DynaDocsResponse {
   private String guideFileName;
 
   private RefParam typeMarche;
+
+  private ModeDePassationSelection modePassation;
 
   private Integer dynaDocOrder;
 
