@@ -2,8 +2,10 @@ package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
+import com.sigmap.common.dyna_docs.exception.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
@@ -20,6 +22,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +101,11 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDocs.setModePassation(null);
     }
 
+    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
+    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
+      validateAAOUniqueness(request.getTypeMarcheId(), request.getModePassationId());
+    }
+
     return save(dynaDocs);
   }
 
@@ -118,6 +127,62 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDoc.setModePassation(null);
     }
 
+    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
+    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
+      validateAAOUniquenessForUpdate(dynaDocId, request.getTypeMarcheId(), request.getModePassationId());
+    }
+
     return save(dynaDoc);
+  }
+
+  @Override
+  @Transactional(rollbackFor = Throwable.class)
+  public DynaDocs updateInPlace(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound, ModeDePassationSelectionNotFound {
+    DynaDocs dynaDoc = findLatestById(dynaDocId).orElseThrow(() -> new DynaDocNotFound(dynaDocId));
+
+    DynaDocsMapper.INSTANCE.map(request, dynaDoc);
+
+    Specification<RefParam> refParamSpec = RefParamSpecifications.id(request.getTypeMarcheId());
+    RefParam refParam = refParamService.findOne(refParamSpec).orElseThrow();
+    dynaDoc.setTypeMarche(refParam);
+
+    if (request.getModePassationId() != null) {
+      ModeDePassationSelection mp = modeDePassationSelectionService.findById(request.getModePassationId());
+      dynaDoc.setModePassation(mp);
+    } else {
+      dynaDoc.setModePassation(null);
+    }
+
+    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
+    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
+      validateAAOUniquenessForUpdate(dynaDocId, request.getTypeMarcheId(), request.getModePassationId());
+    }
+
+    return save(dynaDoc);
+  }
+
+  /**
+   * Validates that no active AAO DynaDocs exists for the given typeMarche and modePassation
+   */
+  private void validateAAOUniqueness(Integer typeMarcheId, Integer modePassationId) {
+    if (modePassationId != null && typeMarcheId != null) {
+      var exists = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+      if (exists) {
+        throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
+      }
+    }
+  }
+
+  /**
+   * Validates that no other active AAO DynaDocs exists for the given typeMarche and modePassation (excluding current document)
+   */
+  private void validateAAOUniquenessForUpdate(Integer currentDynaDocId, Integer typeMarcheId, Integer modePassationId) {
+     var existingAAOs = dynaDocsRepository.findActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+    // Check if any existing AAO is different from the current document being updated
+    boolean hasOtherAAO = existingAAOs.stream()
+        .anyMatch(aao -> !aao.getId().equals(currentDynaDocId));
+    if (hasOtherAAO) {
+        throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
+    }
   }
 }

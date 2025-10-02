@@ -20,6 +20,7 @@ public class DynaDocsResponseDTO {
     private Integer dynaDocOrder;
     private String status;
     private Boolean isStatic;
+    private Boolean isAAO;
     private List<DynaFieldsDTO> dynaFields;
     private DocsResponseDTO docs;
 }

@@ -20,4 +20,6 @@ public class DynaDocsRequest {
   private ActiveStatus status = ActiveStatus.NON_ACTIF;
 
   private Boolean isStatic;
+
+  private Boolean isAAO;
 }

@@ -31,6 +31,8 @@ public class DynaDocsResponse {
 
   private Boolean isStatic;
 
+  private Boolean isAAO;
+
   @JsonInclude(Include.NON_NULL)
   private List<DynaFieldsResponse> fields;
 }

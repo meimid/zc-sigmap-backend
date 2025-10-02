@@ -2,6 +2,7 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
+import com.sigmap.common.dac.exception.NoActiveAAOException;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
@@ -658,6 +659,9 @@ public class DacServiceImpl implements DacService {
             modePassation = modeDePassationSelectionRepository.findById(modePassationId)
                     .orElseThrow(()-> new ModeDePassationSelectionNotFound("",modePassationId));
         }
+
+        // AAO validation: ensure at least one active AAO DynaDocs exists for this typeMarche and modePassation
+        validateActiveAAOExists(typeMarcheId, modePassationId);
         // Generate DAC reference
         String nom_ac = ppm.getAc().getNom();
         Integer sequenceNumber = dacRepository.findMaxDacNumber() + 1;
@@ -1204,5 +1208,23 @@ public class DacServiceImpl implements DacService {
     private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
     private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
     private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }
+
+    /**
+     * Validates that at least one active AAO DynaDocs exists for the given typeMarche and modePassation
+     */
+    private void validateActiveAAOExists(Integer typeMarcheId, Integer modePassationId) {
+        boolean hasActiveAAO;
+        if (modePassationId != null) {
+            hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+            if (!hasActiveAAO) {
+                throw new NoActiveAAOException(typeMarcheId, modePassationId);
+            }
+        } else {
+            hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarche(typeMarcheId);
+            if (!hasActiveAAO) {
+                throw new NoActiveAAOException(typeMarcheId);
+            }
+        }
+    }
 
 }

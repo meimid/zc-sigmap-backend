@@ -56,4 +56,7 @@ public class DynaDocs {
 
   @Column(name = "is_static")
   private Boolean isStatic;
+
+  @Column(name = "is_aao")
+  private Boolean isAAO;
 }

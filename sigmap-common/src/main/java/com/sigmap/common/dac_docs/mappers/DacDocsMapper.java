@@ -98,6 +98,7 @@ public interface DacDocsMapper {
     @Mapping(target = "dynaDocOrder", source = "dynaField.dynaDocs.dynaDocOrder")
     @Mapping(target = "status", source = "dynaField.dynaDocs.status")
     @Mapping(target = "isStatic", source = "dynaField.dynaDocs.isStatic")
+    @Mapping(target = "isAAO", source = "dynaField.dynaDocs.isAAO")
     @Mapping(target = "docs",source = "docs")
     DynaDocsResponseDTO toDynaDocsResponse(DacDocs dacDocs);
 

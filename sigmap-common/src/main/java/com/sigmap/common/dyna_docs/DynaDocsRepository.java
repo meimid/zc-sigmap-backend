@@ -76,4 +76,28 @@ public interface DynaDocsRepository
   @Query("SELECT d.name FROM DynaDocs d WHERE d.id = :dynaDocsId AND d.version = :dynaDocsVer")
   String getDynaDocName(@Param("dynaDocsId") Integer dynaDocsId, @Param("dynaDocsVer") Integer dynaDocsVer);
 
+  /**
+   * Check if there exists an active AAO DynaDocs for the given typeMarche and modePassation
+   */
+  @Query("SELECT COUNT(d) > 0 FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId")
+  boolean existsActiveAAOByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
+
+  /**
+   * Check if there exists an active AAO DynaDocs for the given typeMarche (when modePassation is null)
+   */
+  @Query("SELECT COUNT(d) > 0 FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation IS NULL")
+  boolean existsActiveAAOByTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
+
+  /**
+   * Find active AAO DynaDocs for the given typeMarche and modePassation
+   */
+  @Query("SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId")
+  List<DynaDocs> findActiveAAOByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
+
+  /**
+   * Find active AAO DynaDocs for the given typeMarche (when modePassation is null)
+   */
+  @Query("SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation IS NULL")
+  List<DynaDocs> findActiveAAOByTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
+
 }
