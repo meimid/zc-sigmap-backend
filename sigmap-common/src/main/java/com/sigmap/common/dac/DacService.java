@@ -44,4 +44,5 @@ public interface DacService {
 
     Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
+    public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
 }
