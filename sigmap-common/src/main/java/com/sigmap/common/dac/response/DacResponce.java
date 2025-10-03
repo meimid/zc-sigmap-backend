@@ -24,5 +24,6 @@ public class DacResponce {
     private RealisationResponseDTO realisation;
     private RefParam typeMarche;
     private ProcessStatus status;
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 }
