@@ -26,5 +26,6 @@ public class DacResponce {
     private RefParam typeMarche;
     private ModeDePassationSelection modePassation;
     private ProcessStatus status;
+    private String processInstanceId;
     private BaseEntityResponse metadata;
 }

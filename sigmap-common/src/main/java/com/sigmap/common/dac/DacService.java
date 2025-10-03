@@ -44,4 +44,6 @@ public interface DacService {
 
     Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
+    Integer findLatestVersionById(Integer ppmId);
+
 }

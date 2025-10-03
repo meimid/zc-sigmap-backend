@@ -679,7 +679,7 @@ public class DacServiceImpl implements DacService {
         Dac savedCdac = dacRepository.save(dac);
 
         // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche
-        List<DynaDocs> latestDocs = modePassation != null 
+        List<DynaDocs> latestDocs = modePassation != null
             ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId())
             : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
         for (DynaDocs dd : latestDocs) {
@@ -882,14 +882,14 @@ public class DacServiceImpl implements DacService {
         newDac.setPpm(base.getPpm());
         newDac.setRealisation(base.getRealisation());
         newDac.setTypeMarche(base.getTypeMarche());
-        
+
         // Set modePassation from base DAC, or from realisation if base doesn't have it
         if (base.getModePassation() != null) {
             newDac.setModePassation(base.getModePassation());
         } else if (base.getRealisation() != null && base.getRealisation().getModePassation() != null) {
             newDac.setModePassation(base.getRealisation().getModePassation());
         }
-        
+
         newDac.setStatus(base.getStatus());
         newDac.setReference(base.getReference());
         newDac = dacRepository.save(newDac);
@@ -897,7 +897,7 @@ public class DacServiceImpl implements DacService {
         // Load latest active DynaDocs for DAC category
         Integer typeMarcheIdForNew = newDac.getTypeMarche().getId();
         Integer modePassationIdForNew = newDac.getModePassation() != null ? newDac.getModePassation().getId() : null;
-        List<DynaDocs> latestDocs = modePassationIdForNew != null 
+        List<DynaDocs> latestDocs = modePassationIdForNew != null
             ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew)
             : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForNew);
 
@@ -1220,6 +1220,11 @@ public class DacServiceImpl implements DacService {
                 throw new NoActiveAAOException(typeMarcheId, modePassationId);
             }
         }
+    }
+
+    @Override
+    public Integer findLatestVersionById(Integer dacId) {
+        return dacRepository.findMaxVersionById(dacId);
     }
 
 }
