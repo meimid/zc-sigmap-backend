@@ -84,6 +84,7 @@ public interface DacDocsMapper {
     @Mapping(target = "ppm", source = "ppm")
     @Mapping(target = "ppm.acId", source = "ppm.ac.id")
     @Mapping(target = "typeMarche", source = "typeMarche")
+    @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "realisation", source = "realisation")
     DacResponseDTO toDacResponse(Dac dac);
 
@@ -93,9 +94,11 @@ public interface DacDocsMapper {
     @Mapping(target = "templateFileName", source = "dynaField.dynaDocs.templateFileName")
     @Mapping(target = "guideFileName", source = "dynaField.dynaDocs.guideFileName")
     @Mapping(target = "typeMarche", source = "dynaField.dynaDocs.typeMarche")
+    @Mapping(target = "modePassation", source = "dynaField.dynaDocs.modePassation")
     @Mapping(target = "dynaDocOrder", source = "dynaField.dynaDocs.dynaDocOrder")
     @Mapping(target = "status", source = "dynaField.dynaDocs.status")
     @Mapping(target = "isStatic", source = "dynaField.dynaDocs.isStatic")
+    @Mapping(target = "isAAO", source = "dynaField.dynaDocs.isAAO")
     @Mapping(target = "docs",source = "docs")
     DynaDocsResponseDTO toDynaDocsResponse(DacDocs dacDocs);
 

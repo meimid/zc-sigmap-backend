@@ -1,9 +1,10 @@
 package com.sigmap.common.dac;
 
-import com.sigmap.common.ac.Ac;
-import com.sigmap.common.ac.AcSpecifications;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
+import com.sigmap.common.dac.exception.NoActiveAAOException;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
@@ -11,10 +12,7 @@ import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
-import com.sigmap.common.dac_docs.DacDocsSpecifications;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocs;
@@ -27,7 +25,6 @@ import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
-import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -48,17 +45,13 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
-
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
 import java.io.*;
-
 import java.math.BigDecimal;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -93,7 +86,7 @@ public class DacServiceImpl implements DacService {
     private final DacDocsMapper dacDocsMapper;
     private final DacDocsDetailsRepository dacDocsDetailsRepository;
     private final AlfrescoService alfrescoService;
-
+    private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
@@ -123,8 +116,8 @@ public class DacServiceImpl implements DacService {
         }
 
         // Group by (dynaDocsId, dynaDocsVer) and compute the order using the related DynaDocs.dynaDocOrder
-        java.util.Map<String, Integer> docKeyToOrder = new java.util.HashMap<>();
-        java.util.LinkedHashMap<String, int[]> docKeyPairs = new java.util.LinkedHashMap<>();
+        Map<String, Integer> docKeyToOrder = new HashMap<>();
+        LinkedHashMap<String, int[]> docKeyPairs = new LinkedHashMap<>();
         for (DacDocs doc : dacDocsSnapshot) {
             Integer ddId = doc.getId().getDynaDocsId();
             Integer ddVer = doc.getId().getDynaDocsVer();
@@ -630,7 +623,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     @Transactional(rollbackOn = Throwable.class)
-    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
+    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
         if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
             throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
         }
@@ -655,13 +648,20 @@ public class DacServiceImpl implements DacService {
 
         // get type marche from realisation
         Integer typeMarcheId = realisation.getTypeMarcher().getId();
-
+        Integer modePassationId = realisation.getModePassation() != null ? realisation.getModePassation().getId() : null;
         // Fetch related RefParam (category)
         RefParam typeMarche = refParamRepository.findById(typeMarcheId).orElseThrow(() -> new RefParamNotFound("",List.of(typeMarcheId)));
         if (typeMarche == null) {
             throw new IllegalArgumentException("Type marche not found");
         }
+        ModeDePassationSelection modePassation = null;
+        if (modePassationId != null) {
+            modePassation = modeDePassationSelectionRepository.findById(modePassationId)
+                    .orElseThrow(()-> new ModeDePassationSelectionNotFound("",modePassationId));
+        }
 
+        // AAO validation: ensure at least one active AAO DynaDocs exists for this typeMarche and modePassation
+        validateActiveAAOExists(typeMarcheId, modePassationId);
         // Generate DAC reference
         String nom_ac = ppm.getAc().getNom();
         Integer sequenceNumber = dacRepository.findMaxDacNumber() + 1;
@@ -674,11 +674,14 @@ public class DacServiceImpl implements DacService {
         dac.setPpm(ppm);
         dac.setRealisation(realisation);
         dac.setTypeMarche(typeMarche);
+        dac.setModePassation( modePassation);
         dac.setStatus(ProcessStatus.BROUILLON);
         Dac savedCdac = dacRepository.save(dac);
 
         // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche
-        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
+        List<DynaDocs> latestDocs = modePassation != null
+            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId())
+            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
         for (DynaDocs dd : latestDocs) {
             List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
             if (fields.isEmpty()) {
@@ -780,8 +783,13 @@ public class DacServiceImpl implements DacService {
         java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
         if (noSnapshot) {
             // New DAC without snapshot: return latest docs for its typeMarche (do not persist)
-            List<DynaDocs> latestByCategory = dynaDocsRepository.findAllLastVersionByTypeMarcheId(dac.getTypeMarche().getId());
-            for (DynaDocs dd : latestByCategory) {
+            Integer typeMarcheIdForDac = dac.getTypeMarche().getId();
+            Integer modePassationIdForDac = dac.getModePassation() != null ? dac.getModePassation().getId() : null;
+            List<DynaDocs> latestByCategoryAndModePassation = modePassationIdForDac != null
+                ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac)
+                : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForDac);
+
+            for (DynaDocs dd : latestByCategoryAndModePassation) {
                 String key = dd.getId() + ":" + dd.getVersion();
                 if (!docPairs.containsKey(key)) {
                     docPairs.put(key, new int[]{dd.getId(), dd.getVersion()});
@@ -874,13 +882,26 @@ public class DacServiceImpl implements DacService {
         newDac.setPpm(base.getPpm());
         newDac.setRealisation(base.getRealisation());
         newDac.setTypeMarche(base.getTypeMarche());
+
+        // Set modePassation from base DAC, or from realisation if base doesn't have it
+        if (base.getModePassation() != null) {
+            newDac.setModePassation(base.getModePassation());
+        } else if (base.getRealisation() != null && base.getRealisation().getModePassation() != null) {
+            newDac.setModePassation(base.getRealisation().getModePassation());
+        }
+
         newDac.setStatus(base.getStatus());
         newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac.setReference(base.getReference());
         newDac = dacRepository.save(newDac);
 
         // Load latest active DynaDocs for DAC category
-        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheId(newDac.getTypeMarche().getId());
+        Integer typeMarcheIdForNew = newDac.getTypeMarche().getId();
+        Integer modePassationIdForNew = newDac.getModePassation() != null ? newDac.getModePassation().getId() : null;
+        List<DynaDocs> latestDocs = modePassationIdForNew != null
+            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew)
+            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForNew);
+
 
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
@@ -1189,9 +1210,100 @@ public class DacServiceImpl implements DacService {
     private String toString(BigDecimal number) { return number != null ? number.toPlainString() : null; }
     private String getRefParamLabel(RefParam ref) { return ref == null ? null : ref.getDescription(); }
 
+    /**
+     * Validates that at least one active AAO DynaDocs exists for the given typeMarche and modePassation
+     */
+    private void validateActiveAAOExists(Integer typeMarcheId, Integer modePassationId) {
+        boolean hasActiveAAO;
+        if (modePassationId != null && typeMarcheId != null) {
+            hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+            if (!hasActiveAAO) {
+                throw new NoActiveAAOException(typeMarcheId, modePassationId);
+            }
+        }
+    }
+
     @Override
     public Integer findLatestVersionById(Integer dacId) {
         return dacRepository.findMaxVersionById(dacId);
+    }
+
+    private Map<String, String> createBookmarkMapForAAO(Integer dacId, Integer dacVersion, String signataire, String fonction) {
+        Map<String, String> bookmarks = new HashMap<>();
+
+        // retrive DAC for the given DAC ID and DAC Version
+        Dac dac = dacRepository.findDacByDacIdAndDacVer(dacId, dacVersion)
+                .orElseThrow(() -> new DacNotFound("DAC not found", dacId, dacVersion));
+
+        if (dac != null) {
+            log.info("The Dac found with ID : ' {} ' and Version: ' {} ' is ' {} '  ", dacId, dacVersion,  dac);
+        }
+
+        if (!signataire.isEmpty() && !fonction.isEmpty()) {
+            bookmarks.put("signataire", signataire);
+            bookmarks.put("fonction", fonction);
+        }
+        return bookmarks;
+
+    }
+
+    @Override
+    public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath) {
+        log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
+        validateParams(dacId, dacVersion, basePath, customDirPath);
+        DacId dacIdObj = new DacId(dacId, dacVersion);
+
+        // retrive DAC for the given DAC ID and DAC Version
+        Dac dac = dacRepository.findById(dacIdObj)
+                .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
+
+        // retrive dacdocs for the given DAC ID and DAC Version
+        List<DacDocs> dacDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
+
+        // fetch the AAO file from the liste of dacDocs that contain mutiple files
+        DacDocs dacDocsAAO = dacDocs.stream()
+                .filter(dacDoc -> dacDoc.getDynaField().getDynaDocs().getIsAAO())
+                .findFirst()
+                .orElse(null);
+
+        // get the dyna doc from dynaDoc table
+        if (dacDocsAAO == null) {
+            log.error("No Dac Docs found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new IllegalArgumentException("No AAO found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        }
+
+        // get dynamic document AAO from Dac Docs with dac ID and Version
+        DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dacDocsAAO.getDynaField().getDynaDocs().getId(), dacDocsAAO.getDynaField().getDynaDocs().getVersion()).orElse(null);
+
+        if (dynaDoc == null) {
+            log.error("No AAO document found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new IllegalArgumentException("No AAO found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        }
+
+        // retrive propreties for dyna doc
+        Integer dynaDocsId = dynaDoc.getId();
+        Integer dynaDocsVer = dynaDoc.getVersion();
+        String templateFileName = dynaDoc.getTemplateFileName();
+
+        // create output directory
+        File templateFile = new File(basePath, templateFileName);
+        if (!templateFile.exists()) {
+            log.error("Template file not found: {}", templateFile.getAbsolutePath());
+            throw new IllegalArgumentException("Template file not found: " + templateFile.getAbsolutePath());
+        }
+        try (
+                FileInputStream fis = new FileInputStream(templateFile);
+                XWPFDocument document = new XWPFDocument(fis)) {
+            Map<String, String> bookmarks = createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction);
+            processTableAndListBookmarks(document, dacId, dacVersion, dynaDocsId, dynaDocsVer);
+            replaceBookmarks(document, bookmarks);
+            String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, 1);
+            log.debug("Generated document: {}", outputFilePath);
+            return outputFilePath;
+        } catch (IOException e) {
+            log.error("Error processing document {}: {}", templateFileName, e.getMessage());
+            throw new RuntimeException("Error processing document: " + e.getMessage());
+        }
     }
 
 }
