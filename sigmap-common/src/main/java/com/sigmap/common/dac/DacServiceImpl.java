@@ -623,7 +623,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     @Transactional(rollbackOn = Throwable.class)
-    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
+    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException {
         if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
             throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
         }
@@ -1235,7 +1235,7 @@ public class DacServiceImpl implements DacService {
         boolean hasActiveAAO;
         if (modePassationId != null && typeMarcheId != null) {
             hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
-            if (!hasActiveAAO) {
+            if (hasActiveAAO) {
                 throw new NoActiveAAOException(typeMarcheId, modePassationId);
             }
         }
