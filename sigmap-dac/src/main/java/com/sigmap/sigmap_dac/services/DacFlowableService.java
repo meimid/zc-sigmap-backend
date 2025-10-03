@@ -157,7 +157,8 @@ public class DacFlowableService {
             r.setStatus("ID must not be null");
             return r;
         }
-        Optional<Dac> dacOpt = dacService.findById(id, 1); // latest
+        Integer latestVersion = dacService.findLatestVersionById(id);
+        Optional<Dac> dacOpt = dacService.findById(id, latestVersion);
         if (dacOpt.isEmpty()) {
             var r = new ProcessStartResponseDTO();
             r.setStatus("DAC not found for id " + id);
