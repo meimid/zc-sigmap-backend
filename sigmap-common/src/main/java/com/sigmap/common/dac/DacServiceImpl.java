@@ -1227,4 +1227,82 @@ public class DacServiceImpl implements DacService {
         return dacRepository.findMaxVersionById(dacId);
     }
 
+    private Map<String, String> createBookmarkMapForAAO(Integer dacId, Integer dacVersion, String signataire, String fonction) {
+        Map<String, String> bookmarks = new HashMap<>();
+
+        // retrive DAC for the given DAC ID and DAC Version
+        Dac dac = dacRepository.findDacByDacIdAndDacVer(dacId, dacVersion)
+                .orElseThrow(() -> new DacNotFound("DAC not found", dacId, dacVersion));
+
+        if (dac != null) {
+            log.info("The Dac found with ID : ' {} ' and Version: ' {} ' is ' {} '  ", dacId, dacVersion,  dac);
+        }
+
+        if (!signataire.isEmpty() && !fonction.isEmpty()) {
+            bookmarks.put("signataire", signataire);
+            bookmarks.put("fonction", fonction);
+        }
+        return bookmarks;
+
+    }
+
+    @Override
+    public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath) {
+        log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
+        validateParams(dacId, dacVersion, basePath, customDirPath);
+        DacId dacIdObj = new DacId(dacId, dacVersion);
+
+        // retrive DAC for the given DAC ID and DAC Version
+        Dac dac = dacRepository.findById(dacIdObj)
+                .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
+
+        // retrive dacdocs for the given DAC ID and DAC Version
+        List<DacDocs> dacDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
+
+        // fetch the AAO file from the liste of dacDocs that contain mutiple files
+        DacDocs dacDocsAAO = dacDocs.stream()
+                .filter(dacDoc -> dacDoc.getDynaField().getDynaDocs().getIsAAO())
+                .findFirst()
+                .orElse(null);
+
+        // get the dyna doc from dynaDoc table
+        if (dacDocsAAO == null) {
+            log.error("No Dac Docs found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new IllegalArgumentException("No AAO found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        }
+
+        // get dynamic document AAO from Dac Docs with dac ID and Version
+        DynaDocs dynaDoc = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dacDocsAAO.getDynaField().getDynaDocs().getId(), dacDocsAAO.getDynaField().getDynaDocs().getVersion()).orElse(null);
+
+        if (dynaDoc == null) {
+            log.error("No AAO document found for Dac ID: {}, Version: {}", dacId, dacVersion);
+            throw new IllegalArgumentException("No AAO found for Dac ID: " + dacId + ", Version: " + dacVersion);
+        }
+
+        // retrive propreties for dyna doc
+        Integer dynaDocsId = dynaDoc.getId();
+        Integer dynaDocsVer = dynaDoc.getVersion();
+        String templateFileName = dynaDoc.getTemplateFileName();
+
+        // create output directory
+        File templateFile = new File(basePath, templateFileName);
+        if (!templateFile.exists()) {
+            log.error("Template file not found: {}", templateFile.getAbsolutePath());
+            throw new IllegalArgumentException("Template file not found: " + templateFile.getAbsolutePath());
+        }
+        try (
+                FileInputStream fis = new FileInputStream(templateFile);
+                XWPFDocument document = new XWPFDocument(fis)) {
+            Map<String, String> bookmarks = createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction);
+            processTableAndListBookmarks(document, dacId, dacVersion, dynaDocsId, dynaDocsVer);
+            replaceBookmarks(document, bookmarks);
+            String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, 1);
+            log.debug("Generated document: {}", outputFilePath);
+            return outputFilePath;
+        } catch (IOException e) {
+            log.error("Error processing document {}: {}", templateFileName, e.getMessage());
+            throw new RuntimeException("Error processing document: " + e.getMessage());
+        }
+    }
+
 }
