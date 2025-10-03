@@ -929,7 +929,7 @@ public class DacServiceImpl implements DacService {
                 placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
                 placeholder.setStatus(ActiveStatus.ACTIF);
                 placeholder = dynaFieldsRepository.save(placeholder);
-                fields = java.util.List.of(placeholder);
+                fields = List.of(placeholder);
             }
             for (DynaFields f : fields) {
                 DacDocsId id = new DacDocsId();
@@ -947,8 +947,17 @@ public class DacServiceImpl implements DacService {
                     sourceId = "";
                 } else {
                     prior = priorByFieldId.get(f.getDynaFieldsId());
+                    // Fallback: if field id changed between versions, match by field name within same dynaDoc
+                    if (prior == null) {
+                        prior = priorDocs.stream()
+                                .filter(p -> Objects.equals(p.getId().getDynaDocsId(), dd.getId()))
+                                .filter(p -> p.getDynaField() != null && Objects.equals(p.getDynaField().getName(), f.getName()))
+                                .findFirst()
+                                .orElse(null);
+                    }
                     if (prior != null) {
                         value = prior.getFieldValue();
+                        log.info("priooooor {}", value);
                         sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
                     } else if (f.getType() == DynaFieldType.SYSTEM) {
                         value = resolveSystemFieldValue(f, newDac);
@@ -977,16 +986,25 @@ public class DacServiceImpl implements DacService {
                     List<DacDocsDetails> priorDetails = Collections.emptyList();
                     List<DynaFieldsDetails> priorColumns = Collections.emptyList();
                     Map<Integer, String> priorColNameById = Collections.emptyMap();
-                    if (prior != null) {
+                    DacDocs priorForDetails = prior;
+                    if (priorForDetails == null && !isNewDocForDac) {
+                        // Fallback by field name within same dynaDoc for details as well
+                        priorForDetails = priorDocs.stream()
+                                .filter(p -> Objects.equals(p.getId().getDynaDocsId(), dd.getId()))
+                                .filter(p -> p.getDynaField() != null && Objects.equals(p.getDynaField().getName(), f.getName()))
+                                .findFirst()
+                                .orElse(null);
+                    }
+                    if (priorForDetails != null) {
                         priorDetails = dacDocsDetailsRepository.findAll(
-                                Specification.where(DacDocsDetailsSpecification.byDacId(prior.getId().getDacId()))
-                                        .and(DacDocsDetailsSpecification.byDacVer(prior.getId().getDacVer()))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsId(prior.getId().getDynaDocsId()))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
-                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
+                                Specification.where(DacDocsDetailsSpecification.byDacId(priorForDetails.getId().getDacId()))
+                                        .and(DacDocsDetailsSpecification.byDacVer(priorForDetails.getId().getDacVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsId(priorForDetails.getId().getDynaDocsId()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(priorForDetails.getId().getDynaDocsVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(priorForDetails.getId().getDynaFieldsId()))
                         );
                         // Also load prior column definitions to enable name-based matching when IDs changed
-                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(prior.getId().getDynaDocsId(), prior.getId().getDynaDocsVer(), prior.getId().getDynaFieldsId());
+                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(priorForDetails.getId().getDynaDocsId(), priorForDetails.getId().getDynaDocsVer(), priorForDetails.getId().getDynaFieldsId());
                         priorColNameById = priorColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, DynaFieldsDetails::getColumnName, (a,b)->a));
                     }
 
