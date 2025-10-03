@@ -893,6 +893,7 @@ public class DacServiceImpl implements DacService {
         newDac.setStatus(base.getStatus());
         newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac.setReference(base.getReference());
+        newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
         // Load latest active DynaDocs for DAC category
