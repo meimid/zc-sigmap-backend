@@ -19,8 +19,13 @@ import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.config.Constants;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +34,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Service
@@ -48,6 +55,109 @@ public class DacDocsServiceImpl implements DacDocsService{
     DacDocsDetailsService dacDocsDetailsService;
     @Autowired
     DacDocsDetailsRepository dacDocsDetailsRepository;
+    @Autowired
+    private DocsRepository docsRepository;
+    @Autowired
+    private DocumentCommuneService documentCommuneService;
+    @Autowired
+    private DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
+    @Override
+    @Transactional
+    public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
+        // Resolve latest DynaDocs and verify static
+        Optional<DynaDocs> dynaDocsOpt = dynaDocsRepository.findLastDynaDocsVersionById(dynaDocsId);
+        if (dynaDocsOpt.isEmpty()) {
+            throw new RuntimeException("DynaDocs not found with id: " + dynaDocsId);
+        }
+        DynaDocs dynaDocs = dynaDocsOpt.get();
+        if (!Boolean.TRUE.equals(dynaDocs.getIsStatic())) {
+            throw new RuntimeException("DynaDocs is not static: " + dynaDocsId);
+        }
+        // Resolve latest DAC
+        Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (dac == null) {
+            throw new RuntimeException("Dac not found with id: " + dacId);
+        }
+
+        // Determine target DynaField for this static document
+        List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocs.getId(), dynaDocs.getVersion());
+        DynaFields field = null;
+        if (fields != null && !fields.isEmpty()) {
+            // 1) Prefer __DEFAULT__ placeholder
+            field = fields.stream().filter(f -> "__DEFAULT__".equals(f.getName())).findFirst().orElse(null);
+            // 2) Else prefer SYSTEM type
+            if (field == null) {
+                field = fields.stream().filter(f -> f.getType() == DynaFieldType.SYSTEM).findFirst().orElse(null);
+            }
+            // 3) Else take the lowest order
+            if (field == null) {
+                field = fields.stream().min(Comparator.comparing(DynaFields::getDynaFieldsOrder, Comparator.nullsLast(Integer::compareTo))).orElse(null);
+            }
+        }
+        // 4) If still none, create a placeholder __DEFAULT__ like seeding logic
+        if (field == null) {
+            Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dynaDocs.getId(), dynaDocs.getVersion());
+            DynaFields placeholder = new DynaFields();
+            placeholder.setDynaFieldsId(maxId + 1);
+            placeholder.setDynaDocsId(dynaDocs.getId());
+            placeholder.setDynaDocsVer(dynaDocs.getVersion());
+            placeholder.setName("__DEFAULT__");
+            placeholder.setRef("__DEFAULT__");
+            placeholder.setLabel("__DEFAULT__");
+            placeholder.setType(DynaFieldType.SYSTEM);
+            placeholder.setSource(null);
+            placeholder.setSourceField(null);
+            placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+            placeholder.setStatus(com.sigmap.common.entity.ActiveStatus.ACTIF);
+            field = dynaFieldsRepository.save(placeholder);
+        }
+
+        // Upsert row for (dacId, latest dacVer, dynaDocsId, latest dynaDocsVer, chosen dynaFieldsId)
+        Optional<DacDocs> existingOpt = dacDocsRepository.findDacDocsBYPKs(
+                dac.getDacId(),
+                dac.getDacVer(),
+                dynaDocs.getId(),
+                dynaDocs.getVersion(),
+                field.getDynaFieldsId());
+        DacDocs row = existingOpt.orElseGet(DacDocs::new);
+        if (row.getId() == null) {
+            DacDocsId id = new DacDocsId();
+            id.setDacId(dac.getDacId());
+            id.setDacVer(dac.getDacVer());
+            id.setDynaDocsId(dynaDocs.getId());
+            id.setDynaDocsVer(dynaDocs.getVersion());
+            id.setDynaFieldsId(field.getDynaFieldsId());
+            row.setId(id);
+            row.setDac(dac);
+            row.setDynaField(field);
+            row.setSourceId(row.getSourceId() == null ? "" : row.getSourceId());
+        }
+        // Persist to ensure ID fields present when saving/unlinking
+        row = dacDocsRepository.save(row);
+
+        // If no file provided: unlink existing doc (set docId = null) and return
+        if (file == null || file.isEmpty()) {
+            if (row.getDocs() != null) {
+                row.setDocs(null);
+                row = dacDocsRepository.save(row);
+            }
+            return row;
+        }
+
+        try {
+            Integer newDocId = documentCommuneService.processAndSaveDocumentsForDacDocs(file, row, Constants.PATH_ENTREPOT_GED_DAC_DOCS);
+            // Link doc
+            Optional<Docs> docOpt = docsRepository.findById(newDocId);
+            if (docOpt.isEmpty()) {
+                throw new RuntimeException("Saved document not found with id: " + newDocId);
+            }
+            row.setDocs(docOpt.get());
+            row = dacDocsRepository.save(row);
+            return row;
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
 
     @Override
     @Transactional
@@ -120,6 +230,20 @@ public class DacDocsServiceImpl implements DacDocsService{
                 List<DacDocsDetailsRequest> detailsReq =
                         DacDocsMapper.INSTANCE.mapDetails(request.getDetails());
 
+                // Normalize dynaFieldsDetailsId for LIST fields: ensure it references the single column id
+                if (matchedDynaField.getType() == DynaFieldType.LIST) {
+                    List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
+                            entity.getId().getDynaDocsId(), entity.getId().getDynaDocsVer(), matchedDynaField.getDynaFieldsId());
+                    Integer singleColId = cols != null && !cols.isEmpty() ? cols.get(0).getDynaFieldsDetailsId() : null;
+                    if (singleColId != null) {
+                        for (DacDocsDetailsRequest dr : detailsReq) {
+                            if (dr.getDynaFieldsDetailsId() == null || dr.getDynaFieldsDetailsId().equals(matchedDynaField.getDynaFieldsId())) {
+                                dr.setDynaFieldsDetailsId(singleColId);
+                            }
+                        }
+                    }
+                }
+
                 List<DacDocsDetails> detailsList =
                         dacDocsDetailsService.createAll(entity, detailsReq);
 
@@ -140,72 +264,97 @@ public class DacDocsServiceImpl implements DacDocsService{
         List<DacDocs> result = new ArrayList<>();
 
         for (DacDocsRequest request : requests) {
-            // 1- get the DynaDocs with last version
+            // 1- Get the DynaDocs with the last version
             Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
-
-            // 2- test if the existingDynaDocs is empty
             if (existingDynaDocs.isEmpty()) {
                 throw new RuntimeException("DynaDocs not found with id: " + request.getDynaDocsId());
             }
+            log.debug("existingDynaDocs: {}", existingDynaDocs.get());
 
-            // 3- get the DynaFields with last dynaDocs version for the given id
-            List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
+            // 2- Get the DynaFields with the last DynaDocs version for the given id
+            List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndVer(
+                    existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
             if (existingDynaFields.isEmpty()) {
                 throw new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId());
             }
-            log.debug("existingDynaFields............. : {}", existingDynaFields);
+            log.debug("existingDynaFields: {}", existingDynaFields);
 
-            // 4-get the last dac (id and version) with the given id
+            // 3- Get the last Dac (id and version) with the given id
             Dac existingDac = dacRepository.findDacWithLatestVersionByDacId(request.getDacId());
-            log.debug("existingDac............. : {}", existingDac);
-
-            // 5- verifier l'existence du dac
             if (existingDac == null) {
                 throw new RuntimeException("Dac not found with id: " + request.getDacId());
             }
+            log.debug("existingDac: {}", existingDac);
 
-            // Upsert DacDocs for latest DAC version
-            Optional<DacDocs> existingRowOpt = dacDocsRepository.findDacDocsBYPKs(
-                    existingDac.getDacId(), existingDac.getDacVer(), existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(), request.getDynaFieldsId());
+            // 4- Create or update DacDocs
+            DacDocs entity = dacDocsMapper.toEntity(request);
+            log.debug("entity: {}", entity);
 
-            DacDocs row = existingRowOpt.orElseGet(DacDocs::new);
+            // Set scalar fields
+            entity.setSourceId(request.getSourceId());
+            entity.setFieldValue(request.getFieldValue());
+
+            // Set composite key
             DacDocsId id = new DacDocsId();
             id.setDacId(existingDac.getDacId());
             id.setDacVer(existingDac.getDacVer());
             id.setDynaDocsId(existingDynaDocs.get().getId());
             id.setDynaDocsVer(existingDynaDocs.get().getVersion());
-            id.setDynaFieldsId(request.getDynaFieldsId());
-            row.setId(id);
-            row.setDac(existingDac);
-            DynaFields targetField = existingDynaFields.stream()
-                    .filter(f -> f.getDynaFieldsId().equals(request.getDynaFieldsId()))
-                    .findFirst().orElse(null);
-            if (targetField == null) {
-                throw new RuntimeException("DynaField not found with id: " + request.getDynaFieldsId());
-            }
-            row.setDynaField(targetField);
-            row.setSourceId(request.getSourceId());
-            row.setFieldValue(request.getFieldValue());
-            DacDocs savedRow = dacDocsRepository.save(row);
 
-            // Always refresh details for LIST/TABLE: delete existing then recreate from request
-            if (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE) {
-                dacDocsDetailsRepository.deleteAll(
-                        dacDocsDetailsRepository.findAll(Specification.where(DacDocsDetailsSpecification.byDacId(existingDac.getDacId()))
-                                .and(DacDocsDetailsSpecification.byDacVer(existingDac.getDacVer()))
-                                .and(DacDocsDetailsSpecification.byDynaDocsId(existingDynaDocs.get().getId()))
-                                .and(DacDocsDetailsSpecification.byDynaDocsVer(existingDynaDocs.get().getVersion()))
-                                .and(DacDocsDetailsSpecification.byDynaFieldsId(request.getDynaFieldsId()))
-                        )
-                );
+            // Find the matching DynaFields by dynaFieldsId
+            DynaFields matchedDynaField = existingDynaFields.stream()
+                    .filter(field -> field.getDynaFieldsId().equals(request.getDynaFieldsId()))
+                    .findFirst()
+                    .map(field -> {
+                        id.setDynaFieldsId(field.getDynaFieldsId());
+                        return field;
+                    })
+                    .orElseThrow(() -> new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId()));
+            entity.setId(id);
+
+            // Set relationships
+            entity.setDac(existingDac);
+            entity.setDynaField(matchedDynaField);
+
+            // Save the DacDocs entity
+            entity = dacDocsRepository.save(entity);
+            log.debug("DacDocs created with ID: {}", entity.getId());
+
+            // 5- Handle LIST/TABLE fields
+            if (matchedDynaField.getType() == DynaFieldType.LIST || matchedDynaField.getType() == DynaFieldType.TABLE) {
                 if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                    List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedRow, DacDocsMapper.INSTANCE.mapDetails(request.getDetails()));
-                    savedRow.setDacDocsDetails(new HashSet<>(detailsList));
-                    savedRow = dacDocsRepository.save(savedRow);
+                    List<DacDocsDetailsRequest> detailsReq = DacDocsMapper.INSTANCE.mapDetails(request.getDetails());
+
+                    // Normalize dynaFieldsDetailsId for LIST fields: ensure it references the single column id
+                    if (matchedDynaField.getType() == DynaFieldType.LIST) {
+                        List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
+                                entity.getId().getDynaDocsId(), entity.getId().getDynaDocsVer(), matchedDynaField.getDynaFieldsId());
+                        Integer singleColId = cols != null && !cols.isEmpty() ? cols.get(0).getDynaFieldsDetailsId() : null;
+                        if (singleColId != null) {
+                            for (DacDocsDetailsRequest dr : detailsReq) {
+                                if (dr.getDynaFieldsDetailsId() == null || dr.getDynaFieldsDetailsId().equals(matchedDynaField.getDynaFieldsId())) {
+                                    dr.setDynaFieldsDetailsId(singleColId);
+                                }
+                            }
+                        }
+                    }
+
+                    // Delete existing details only if new details are provided
+                    dacDocsDetailsRepository.deleteAll(
+                            dacDocsDetailsRepository.findAll(Specification.where(DacDocsDetailsSpecification.byDacId(existingDac.getDacId()))
+                                    .and(DacDocsDetailsSpecification.byDacVer(existingDac.getDacVer()))
+                                    .and(DacDocsDetailsSpecification.byDynaDocsId(existingDynaDocs.get().getId()))
+                                    .and(DacDocsDetailsSpecification.byDynaDocsVer(existingDynaDocs.get().getVersion()))
+                                    .and(DacDocsDetailsSpecification.byDynaFieldsId(request.getDynaFieldsId())))
+                    );
+
+                    List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(entity, detailsReq);
+                    entity.setDacDocsDetails(new HashSet<>(detailsList));
+                    entity = dacDocsRepository.save(entity);
                 }
             }
 
-            result.add(savedRow);
+            result.add(entity);
         }
 
         return result;
@@ -293,7 +442,20 @@ public class DacDocsServiceImpl implements DacDocsService{
         // Handle DacDocsDetails for the newly created DacDocs
         if (targetField != null && (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE)) {
             if (request.getDetails() != null && !request.getDetails().isEmpty()) {
-                List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedDacDocs, DacDocsMapper.INSTANCE.mapDetails(request.getDetails()));
+                List<DacDocsDetailsRequest> mapped = DacDocsMapper.INSTANCE.mapDetails(request.getDetails());
+                if (targetField.getType() == DynaFieldType.LIST) {
+                    List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
+                            savedDacDocs.getId().getDynaDocsId(), savedDacDocs.getId().getDynaDocsVer(), targetField.getDynaFieldsId());
+                    Integer singleColId = cols != null && !cols.isEmpty() ? cols.get(0).getDynaFieldsDetailsId() : null;
+                    if (singleColId != null) {
+                        for (DacDocsDetailsRequest dr : mapped) {
+                            if (dr.getDynaFieldsDetailsId() == null || dr.getDynaFieldsDetailsId().equals(targetField.getDynaFieldsId())) {
+                                dr.setDynaFieldsDetailsId(singleColId);
+                            }
+                        }
+                    }
+                }
+                List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedDacDocs, mapped);
                 savedDacDocs.setDacDocsDetails(new HashSet<>(detailsList));
                     // Save the entity again to ensure the details association is persisted
                     savedDacDocs = dacDocsRepository.save(savedDacDocs);
@@ -566,7 +728,20 @@ public class DacDocsServiceImpl implements DacDocsService{
                         log.info("Field type is TABLE/LIST, processing details... .......................................................");
                         if (req.getDetails() != null && !req.getDetails().isEmpty()) {
                             log.info("Creating {} details for field {} ..............................", req.getDetails().size(), req.getDynaFieldsId());
-                            List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedRow, DacDocsMapper.INSTANCE.mapDetails(req.getDetails()));
+                            List<DacDocsDetailsRequest> mapped = DacDocsMapper.INSTANCE.mapDetails(req.getDetails());
+                            if (targetField.getType() == DynaFieldType.LIST) {
+                                List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
+                                        savedRow.getId().getDynaDocsId(), savedRow.getId().getDynaDocsVer(), targetField.getDynaFieldsId());
+                                Integer singleColId = cols != null && !cols.isEmpty() ? cols.get(0).getDynaFieldsDetailsId() : null;
+                                if (singleColId != null) {
+                                    for (DacDocsDetailsRequest dr : mapped) {
+                                        if (dr.getDynaFieldsDetailsId() == null || dr.getDynaFieldsDetailsId().equals(targetField.getDynaFieldsId())) {
+                                            dr.setDynaFieldsDetailsId(singleColId);
+                                        }
+                                    }
+                                }
+                            }
+                            List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedRow, mapped);
                             savedRow.setDacDocsDetails(new HashSet<>(detailsList));
                             // Save the entity again to ensure the details association is persisted
                             savedRow = dacDocsRepository.save(savedRow);

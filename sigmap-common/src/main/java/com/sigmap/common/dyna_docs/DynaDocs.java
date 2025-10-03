@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 
 @Getter
 @Setter
@@ -43,9 +44,19 @@ public class DynaDocs {
   @JoinColumn(name = "category_id")
   private RefParam typeMarche;
 
+  @ManyToOne
+  @JoinColumn(name = "mode_passation_id")
+  private ModeDePassationSelection modePassation;
+
   @Column(name = "dyna_doc_order")
   private Integer dynaDocOrder;
 
   @Enumerated(EnumType.STRING)
   private ActiveStatus status;
+
+  @Column(name = "is_static")
+  private Boolean isStatic;
+
+  @Column(name = "is_aao")
+  private Boolean isAAO;
 }

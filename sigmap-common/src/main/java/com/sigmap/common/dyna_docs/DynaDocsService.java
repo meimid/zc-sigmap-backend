@@ -1,6 +1,8 @@
 package com.sigmap.common.dyna_docs;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
+import com.sigmap.common.dyna_docs.exception.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.Optional;
@@ -67,7 +69,7 @@ public interface DynaDocsService {
    * @param request The Dyna doc DTO containing the data to create the DynaDoc entity
    * @return The created DynaDoc entity
    */
-  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound;
+  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound, ActiveAAOAlreadyExistsException;
 
   /**
    * Update dynadoc
@@ -75,7 +77,15 @@ public interface DynaDocsService {
    * @param dynaDocId ID
    * @param request dynaDoc request
    */
-  DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound;
+  DynaDocs update(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound, ModeDePassationSelectionNotFound, ActiveAAOAlreadyExistsException;
+
+  /**
+   * Update dynadoc in place (without versioning)
+   *
+   * @param dynaDocId ID
+   * @param request dynaDoc request
+   */
+  DynaDocs updateInPlace(Integer dynaDocId, DynaDocsRequest request) throws DynaDocNotFound, ModeDePassationSelectionNotFound, ActiveAAOAlreadyExistsException;
 
   // /**
   //  * Soft deletes an Agpm entity by its ID and version.

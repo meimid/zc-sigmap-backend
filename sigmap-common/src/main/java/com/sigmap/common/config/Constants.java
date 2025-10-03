@@ -35,6 +35,7 @@ public class Constants {
 
   public static final String PATH_ENTREPOT_GED_MODEL =
           "/MODEL" ;
+    public static final String PATH_ENTREPOT_GED_DAC_DOCS="/SIGMAP-DEV/ARCHIVE/DAC_DOCS/"+ LocalDate.now().getYear();
   // public static final Integer SERVICE = 16;
   // public static final Integer TYPE_MARCHER = 17;
   // public static final Integer SOURCE_FINANCEMENT = 18;

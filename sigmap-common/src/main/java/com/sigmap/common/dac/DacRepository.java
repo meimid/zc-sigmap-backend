@@ -54,4 +54,13 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT d FROM Dac d WHERE d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
   org.springframework.data.domain.Page<Dac> findLatestPerDac(org.springframework.data.domain.Pageable pageable);
 
+  /**
+   * Find the maximum version for a given DAC ID.
+   *
+   * @param id the DAC ID
+   * @return the maximum version number for the specified ID, or null if not found
+   */
+  @Query("SELECT MAX(d.dacVer) FROM Dac d WHERE d.dacId = :id AND d.isDeleted = false")
+  Integer findMaxVersionById(@Param("id") Integer id);
+
 }
