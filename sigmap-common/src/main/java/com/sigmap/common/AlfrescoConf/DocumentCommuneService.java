@@ -3,6 +3,7 @@ package com.sigmap.common.AlfrescoConf;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.Request.DocumentHolder;
@@ -579,6 +580,28 @@ public class DocumentCommuneService {
 
         try {
             Docs document = mapperDocument(file,"Model_Agpm",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+
+    public  Integer processAndSaveDocumentsForDacDocs(MultipartFile file, DacDocs dacDocs, String path) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%d/%s",path  , dacDocs.getId().getDacId(),dacDocs.getId().getDacVer(),dacDocs.getId().getDynaDocsId(),dacDocs.getId().getDynaDocsVer());
+
+
+
+        try {
+            Docs document = mapperDocument(file,"Dac_doc",baseFolderPath);
 
 
             docsRepository.save(document);

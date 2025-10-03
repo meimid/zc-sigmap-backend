@@ -2,6 +2,7 @@ package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import jakarta.persistence.*;
@@ -66,4 +67,8 @@ public class DacDocs {
 
   @OneToMany(mappedBy = "dac")
   private Set<DacDocsDetails> dacDocsDetails = new HashSet<>();
+
+    @OneToOne
+    @JoinColumn(name = "doc_id", referencedColumnName = "doc_id", nullable = true)
+    private Docs docs;
 }

@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_dac.dynaDocs;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsService;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
@@ -147,12 +148,14 @@ public class DynaDocsController {
       return ResponseEntity.ok(dynaDocsResponse);
     } catch (RefParamNotFound e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category ID", e);
+    } catch (ModeDePassationSelectionNotFound e) {
+        throw new RuntimeException(e);
     }
   }
 
   @PutMapping("/{dynaDocId}")
   public ResponseEntity<DynaDocsResponse> updateDynaDoc(
-      @PathVariable Integer dynaDocId, @RequestBody DynaDocsRequest dynaDocsRequest) {
+      @PathVariable Integer dynaDocId, @RequestBody DynaDocsRequest dynaDocsRequest) throws ModeDePassationSelectionNotFound {
     boolean templateExists = templateService.exists(dynaDocsRequest.getTemplateFileName());
     if (!templateExists) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template file not found");

@@ -8,6 +8,8 @@ import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.web.multipart.MultipartFile;
+
 public interface DacDocsService {
     DacDocs createDacDocs(DacDocsRequest request);
     DacDocs updateDacDocs(DacDocsRequest request);
@@ -24,4 +26,7 @@ public interface DacDocsService {
     // New explicit methods
     DacDocs updateDacDocsWithVersioning(DacDocsRequest request);
     DacDocs updateDacDocsInPlace(DacDocsRequest request);
+
+    // Upload static file and link docId to dac_docs
+    DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file);
 }

@@ -115,6 +115,8 @@ public class Realisation extends BaseEntity implements DocumentHolder {
             joinColumns = {
                     @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
                     @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
+
+
             },
             inverseJoinColumns = {
                     @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
