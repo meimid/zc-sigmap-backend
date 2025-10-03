@@ -875,6 +875,7 @@ public class DacServiceImpl implements DacService {
         newDac.setRealisation(base.getRealisation());
         newDac.setTypeMarche(base.getTypeMarche());
         newDac.setStatus(base.getStatus());
+        newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac.setReference(base.getReference());
         newDac = dacRepository.save(newDac);
 
