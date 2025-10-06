@@ -2,7 +2,7 @@ package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
-import com.sigmap.common.dyna_docs.exception.ActiveAAOAlreadyExistsException;
+import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.entity.ActiveStatus;
@@ -22,8 +22,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +86,11 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
 
+    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
+    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
+      validateAAOUniqueness(request.getTypeMarcheId(), request.getModePassationId());
+    }
+
     dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
     dynaDocs.setVersion(1);
 
@@ -99,11 +102,6 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDocs.setModePassation(mp);
     } else {
       dynaDocs.setModePassation(null);
-    }
-
-    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
-    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
-      validateAAOUniqueness(request.getTypeMarcheId(), request.getModePassationId());
     }
 
     return save(dynaDocs);
@@ -167,7 +165,8 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   private void validateAAOUniqueness(Integer typeMarcheId, Integer modePassationId) {
     if (modePassationId != null && typeMarcheId != null) {
       var exists = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
-      if (exists <1 ) {
+      log.debug("Found {} active AAOs for typeMarcheId {} and modePassationId {}", exists, typeMarcheId, modePassationId);
+      if (exists > 0) {
         throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
       }
     }

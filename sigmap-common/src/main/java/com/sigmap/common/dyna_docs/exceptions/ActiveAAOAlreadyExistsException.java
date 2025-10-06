@@ -1,4 +1,4 @@
-package com.sigmap.common.dyna_docs.exception;
+package com.sigmap.common.dyna_docs.exceptions;
 
 import lombok.Getter;
 
