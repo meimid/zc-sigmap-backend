@@ -35,11 +35,11 @@ public class ActiviteController {
      * @return a list of of mode de passation selection
      */
     @GetMapping("/categories_activite/{categoriesActiviteId}")
-    public ResponseEntity<List<ActiviteResponse>> findAllBycategoriesActiviteId(
+    public ResponseEntity<List<ActiviteResponseDto>> findAllBycategoriesActiviteId(
             @PathVariable Integer categoriesActiviteId) throws RefParamNotFound {
         List<Activite> params=service.findByCategoriesActiviteId(categoriesActiviteId);
-        List<ActiviteResponse> response = params.stream()
-                .map(ActiviteMapper.INSTANCE::map)
+        List<ActiviteResponseDto> response = params.stream()
+                .map(ActiviteMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
@@ -51,18 +51,18 @@ public class ActiviteController {
      * @return a page of Contact
      */
     @GetMapping
-    public ResponseEntity<Page<ActiviteResponse>> findAll(
+    public ResponseEntity<Page<ActiviteResponseDto>> findAll(
             ActiviteQuery query, Pageable pageable) {
         Page<Activite> params = service.findAll(query.toSpecification(), pageable);
-        Page<ActiviteResponse> response =
-                params.map(ActiviteMapper.INSTANCE::map);
+        Page<ActiviteResponseDto> response =
+                params.map(ActiviteMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(response);
     }
     @GetMapping("/deleted")
-    public ResponseEntity<Page<ActiviteResponse>> findAllDeleted(
+    public ResponseEntity<Page<ActiviteResponseDto>> findAllDeleted(
             ActiviteQuery query, Pageable pageable) {
         Page<Activite> params = service.findAllDeleted(query.toSpecification(), pageable);
-        Page<ActiviteResponse> response = params.map(ActiviteMapper.INSTANCE::map);
+        Page<ActiviteResponseDto> response = params.map(ActiviteMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(response);
     }
 
