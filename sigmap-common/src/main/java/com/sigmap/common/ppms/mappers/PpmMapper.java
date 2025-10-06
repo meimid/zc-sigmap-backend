@@ -38,6 +38,8 @@ public interface PpmMapper {
     @Mapping(target = "budgetEstime", source = "budgetEstime")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "status", source = "status")
+    @Mapping(target = "actualise", source = "actualise")
+    @Mapping(target = "nbrActualisation", source = "nbrActualisation")
     PpmResponse map(Ppm source);
 
     @Mapping(target = "id", source = "id")
@@ -61,6 +63,8 @@ public interface PpmMapper {
     @Mapping(target = "remarque", source = "remarque")
     @Mapping(target = "realisations", expression = "java(mapRealisations(source.getRealisations()))")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
+    @Mapping(target = "actualise", source = "actualise")
+    @Mapping(target = "nbrActualisation", source = "nbrActualisation")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
@@ -71,6 +75,8 @@ public interface PpmMapper {
     PpmResponseDto mapToDto(Ppm source);
 
     PpmResponseSoftDto toDto(Ppm ppm);
+    @Mapping(target = "actualise", source = "actualise")
+    @Mapping(target = "nbrActualisation", source = "nbrActualisation")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

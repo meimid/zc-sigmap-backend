@@ -58,6 +58,14 @@ public class MonnaieController {
     return ResponseEntity.ok(MonnaieResponses);
   }
 
+  @GetMapping("/all")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+  public ResponseEntity<Page<MonnaieResponse>> search(MonnaieQuery query, Pageable pageable) {
+    Page<Monnaie> page = MonnaieService.findAll(query.toSpecification(), pageable);
+    Page<MonnaieResponse> responses = page.map(MonnaieMapper.INSTANCE::map);
+    return ResponseEntity.ok(responses);
+  }
+
   @PutMapping("/{id}")
   @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<MonnaieResponse> update(@PathVariable Integer id,@RequestBody MonnaieRequest request) throws MonnaieNotFound {

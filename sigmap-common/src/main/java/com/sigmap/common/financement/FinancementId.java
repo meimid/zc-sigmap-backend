@@ -9,11 +9,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+
 @Embeddable
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class FinancementId {
+public class FinancementId implements Serializable {
     @ManyToOne
     @JoinColumns({
             @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),

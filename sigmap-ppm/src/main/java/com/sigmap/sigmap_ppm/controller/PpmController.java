@@ -20,6 +20,8 @@ import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmInvalidStatusException;
+import com.sigmap.common.ppms.exception.PpmNotAssociatedWithUserAcException;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -1405,6 +1407,28 @@ public class PpmController {
             logger.error("Failed to parse financements JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to parse financements JSON: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Creates a new version from the latest PUBLIE PPM (actualisation).
+     * The new version has version = latest + 1, inherits core data and non-deleted docs,
+     * resets processInstanceId to null, sets status to BROUILLON, marks actualise = true,
+     * and increments nbrActualisation by 1. Active Realisations are carried over.
+     * The PPM budgetEstime is kept as-is (no recomputation).
+     *
+     * @param ppmId ID of the PPM to actualise
+     * @return ResponseEntity with the new PpmResponseWithRealisations and HTTP 200 (OK)
+     * @throws PpmNotFound if no PPM exists for the given ID
+     * @throws PpmInvalidStatusException if the latest PPM is not in PUBLIE status
+     * @throws PpmNotAssociatedWithUserAcException if the PPM’s AC is not one of the current user’s ACs
+     */
+    @PostMapping("/actualise/{ppmId}")
+    public ResponseEntity<PpmResponseDto> actualisePpm(@PathVariable Integer ppmId)
+            throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException {
+
+        Ppm newVersion = ppmService.actualise(ppmId);
+        PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(newVersion);
+        return ResponseEntity.ok(response);
     }
 
 

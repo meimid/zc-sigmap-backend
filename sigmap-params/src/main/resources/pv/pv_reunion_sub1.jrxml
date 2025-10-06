@@ -17,7 +17,15 @@
     r.ppm_id,
     r.ppm_ver,
     r.observation,
-    r.decision,
+    CASE UPPER(r.decision)
+        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
+        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'TRUE' THEN 'Approuvé'
+         WHEN 'FALSE' THEN 'Rejeté' 
+        else  'Avis' 
+        end as decision,
     p.ref,
     p.nom,
     p.annee,
@@ -31,14 +39,22 @@ INNER JOIN ppm p
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 WHERE r.reunion_id = $P{reunion} 
-  and p.ac_id= $P{ac_id} 
+  and p.ac_id= $P{ac_id} and r.decision is not null
 union
 SELECT
     r.reunion_id,
     r.dac_id,
     r.dac_ver,
     r.observation,
-    r.decision,
+    CASE UPPER(r.decision)
+        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
+        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'TRUE' THEN 'Approuvé'
+         WHEN 'FALSE' THEN 'Rejeté' 
+        else  'Avis' 
+        end as decision,
     p.ref,
     p.nom,
     p.annee,
@@ -53,7 +69,7 @@ INNER JOIN dac d
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 WHERE r.reunion_id =  $P{reunion} 
-       and p.ac_id= $P{ac_id}]]>
+       and p.ac_id= $P{ac_id} and r.decision is not null]]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>

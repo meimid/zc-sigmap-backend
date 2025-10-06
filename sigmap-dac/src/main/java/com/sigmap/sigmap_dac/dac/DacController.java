@@ -1,12 +1,10 @@
 package com.sigmap.sigmap_dac.dac;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
 import com.sigmap.common.dac.mapper.DacMapper;
-import com.sigmap.common.dac.request.CreateDacRequest;
-import com.sigmap.common.dac.request.DacListRequest;
-import com.sigmap.common.dac.request.DacQuery;
-import com.sigmap.common.dac.request.DacRequest;
+import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac_docs.DacDocs;
@@ -44,6 +42,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -118,7 +117,7 @@ public class DacController {
 
 
   @PostMapping("/create")
-  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException {
+  public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
     return ResponseEntity.status(HttpStatus.CREATED).body(responce);
@@ -322,4 +321,44 @@ public class DacController {
     }
   }
 
+  @PostMapping("/generate-aao-pdf")
+  public ResponseEntity<byte[]> generatePdfforAAO(@RequestBody ModeleRequest request) {
+    try {
+      // 1. Generate DOCX file as before
+      String generatedFile = dacService.generateDAODocumentWithBookmarks(
+              request.getDacId(), request.getDacVersion(), request.getSignataire(), request.getFonction(), basePath, customDirPath);
+
+      log.info("Generated file .........: {}", generatedFile);
+      // 2. Prepare the file for upload
+      FileSystemResource docxResource = new FileSystemResource(new File(generatedFile));
+
+      // 3. Prepare the multipart request
+      MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+      body.add("files", docxResource);
+
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+      // 4. Send request to Gotenberg Api and get the response
+      RestTemplate restTemplate = new RestTemplate();
+      ResponseEntity<byte[]> response = restTemplate.exchange(
+              convertUrl + "/forms/libreoffice/convert",
+              HttpMethod.POST,
+              requestEntity,
+              byte[].class
+      );
+
+      // 5. Return the PDF as a download
+      HttpHeaders responseHeaders = new HttpHeaders();
+      responseHeaders.setContentType(MediaType.APPLICATION_PDF);
+      responseHeaders.setContentDispositionFormData("attachment", "AAO.pdf");
+
+      return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
+
+    } catch (Exception e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+    }
+  }
 }

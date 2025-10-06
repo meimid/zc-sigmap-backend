@@ -14,6 +14,7 @@ public class DacDocsRequest {
     private Integer dynaDocsId;
     private String fieldValue;
     private String sourceId;
+    private Integer docId;
     private List<DacDocsDetail> details = new ArrayList<>();
 
     @Data
