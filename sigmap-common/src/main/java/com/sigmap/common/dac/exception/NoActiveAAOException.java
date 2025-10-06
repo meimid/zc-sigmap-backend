@@ -8,8 +8,6 @@ public class NoActiveAAOException extends RuntimeException {
     private final Integer modePassationId;
 
     public NoActiveAAOException(Integer typeMarcheId, Integer modePassationId) {
-        super(String.format("No active AAO DynaDocs found for typeMarche: %d and modePassation: %d. At least one active AAO DynaDocs is required for DAC creation.", 
-              typeMarcheId, modePassationId));
         this.typeMarcheId = typeMarcheId;
         this.modePassationId = modePassationId;
     }

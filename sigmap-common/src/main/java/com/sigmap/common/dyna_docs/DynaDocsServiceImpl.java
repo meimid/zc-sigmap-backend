@@ -167,7 +167,7 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   private void validateAAOUniqueness(Integer typeMarcheId, Integer modePassationId) {
     if (modePassationId != null && typeMarcheId != null) {
       var exists = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
-      if (exists) {
+      if (exists <1 ) {
         throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
       }
     }

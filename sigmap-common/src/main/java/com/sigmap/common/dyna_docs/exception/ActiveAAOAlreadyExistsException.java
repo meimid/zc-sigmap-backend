@@ -8,8 +8,6 @@ public class ActiveAAOAlreadyExistsException extends RuntimeException {
     private final Integer modePassationId;
 
     public ActiveAAOAlreadyExistsException(Integer typeMarcheId, Integer modePassationId) {
-        super(String.format("An active AAO DynaDocs already exists for typeMarche: %d and modePassation: %d", 
-              typeMarcheId, modePassationId));
         this.typeMarcheId = typeMarcheId;
         this.modePassationId = modePassationId;
     }
