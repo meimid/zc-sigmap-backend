@@ -4,7 +4,6 @@ import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.activite.exception.ActiviteAlreadyExist;
 import com.sigmap.common.activite.exception.ActiviteNotFound;
 import com.sigmap.common.activite.exception.CategoriesActiviteRequired;
-import com.sigmap.common.activite.exception.DuplicateCategoriesActivitesException;
 import com.sigmap.common.activite.mapper.ActiviteMapper;
 import com.sigmap.common.activite.request.ActiviteRequest;
 import com.sigmap.common.ref_params.RefParam;
@@ -14,11 +13,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class ActiviteServiceImpl implements ActiviteService {
@@ -97,19 +94,9 @@ public class ActiviteServiceImpl implements ActiviteService {
         }
         RefParam categorieActivite = refParamService.findById(request.getCategorieActiviteId());
 
-       /* if(!request.getCategoriesActivitesIds().isEmpty()) {
-            getSizeList(request.getCategoriesActivitesIds());
-        }*/
         Activite activite = ActiviteMapper.INSTANCE.mapFromRequest(request);
         activite.setCategorieActivite(categorieActivite);
 
-    /*    for(Integer i : request.getCategoriesActivitesIds()) {
-            RefParam categoriesActivite = refParamService.findById(i);
-            if(Activite.getCategoriesActivites() == null) {
-                Activite.setCategoriesActivites(new ArrayList<>());
-            }
-            Activite.getCategoriesActivites().add(categoriesActivite);
-        }*/
         return save(activite);
     }
 
@@ -132,19 +119,6 @@ public class ActiviteServiceImpl implements ActiviteService {
             }
             activite.setLibelle(request.getLibelle());
         }
- /*       List<Integer> oldModeCategoriesActivitesIds=Activite.getCategoriesActivites().stream().map(c -> c.getId()).collect(Collectors.toList());
-        for(Integer i : request.getCategoriesActivitesIds()) {
-            if(!oldModeCategoriesActivitesIds.contains(i)) {
-                RefParam categoriesActivite = refParamService.findById(i);
-                Activite.getCategoriesActivites().add(categoriesActivite);
-            }
-        }
-        for(Integer i :oldModeCategoriesActivitesIds) {
-            if( !request.getCategoriesActivitesIds().contains(i)) {
-                RefParam categoriesActivite = refParamService.findById(i);
-                Activite.getCategoriesActivites().remove(categoriesActivite);
-            }
-        }*/
         RefParam categorieActivite = refParamService.findById(request.getCategorieActiviteId());
         activite.setCategorieActivite(categorieActivite);
         return save(activite);
@@ -157,24 +131,4 @@ public class ActiviteServiceImpl implements ActiviteService {
 
     }
 
-    private static int getSizeList(List<Integer> listIds) throws RefParamNotFound, DuplicateCategoriesActivitesException {
-        int size = listIds.size();
-        List<Integer> duplicateIds = new ArrayList<>();
-
-        // null check for categoriesActivitesIds elements
-        for (int i = 0; i < size; i++) {
-            if (listIds.get(i) == null ) {
-                throw new RefParamNotFound("" , List.of(listIds.get(i)));
-            }
-            for (int j = i + 1; j < size; j++) {
-                if (listIds.get(i).equals(listIds.get(j))) {
-                    duplicateIds.add(listIds.get(j));
-                }
-            }
-            if (!duplicateIds.isEmpty()) {
-                throw new DuplicateCategoriesActivitesException("", duplicateIds);
-            }
-        }
-        return size;
-    }
 }
