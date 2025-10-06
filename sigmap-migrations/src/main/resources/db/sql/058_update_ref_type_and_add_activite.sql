@@ -25,7 +25,8 @@ SELECT 'ORGANISME_DE_DELIVRANCE_AGREMENTS', 'Organisme de Délivrance Agréments
 
 CREATE TABLE IF NOT EXISTS activites (
     activite_id INT AUTO_INCREMENT NOT NULL,
-    libelle VARCHAR(20) NOT NULL,
+    libelle VARCHAR(100) NOT NULL,
+    categories_activite_id INT NOT NULL,
     created_at DATETIME DEFAULT NULL,
     created_by VARCHAR(100) DEFAULT NULL,
     updated_at DATETIME DEFAULT NULL,
@@ -33,22 +34,8 @@ CREATE TABLE IF NOT EXISTS activites (
     deleted_at DATETIME DEFAULT NULL,
     deleted_by VARCHAR(100) DEFAULT NULL,
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
-    CONSTRAINT PK_ACTIVITE PRIMARY KEY (activite_id)
+    CONSTRAINT PK_ACTIVITE PRIMARY KEY (activite_id),
+    CONSTRAINT FK_ACTIVITE_CATEGORIE FOREIGN KEY (categories_activite_id)
+    REFERENCES ref_param(ref_param_id)
     );
-
--- changeset sigmap:1757950259-5
-
-CREATE TABLE IF NOT EXISTS activites_categories_activites (
-    activite_id INT NOT NULL,
-    categories_activite_id INT NOT NULL,
-    CONSTRAINT PK_ACA PRIMARY KEY (activite_id, categories_activite_id)
-    );
-
--- changeset sigmap:1757950259-6
-
-ALTER TABLE activites_categories_activites ADD CONSTRAINT FK_ACA_ACTIVITE FOREIGN KEY (activite_id) REFERENCES activites(activite_id);
-
--- changeset sigmap:1757950259-7
-
-ALTER TABLE activites_categories_activites ADD CONSTRAINT FK_ACA_CATEGORIE FOREIGN KEY (categories_activite_id) REFERENCES ref_param(ref_param_id);
 

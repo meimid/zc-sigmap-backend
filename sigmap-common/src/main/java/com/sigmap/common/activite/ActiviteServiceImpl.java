@@ -91,28 +91,35 @@ public class ActiviteServiceImpl implements ActiviteService {
         if(findOne(specification).isPresent()) {
             throw new ActiviteAlreadyExist("", request.getLibelle());
         }
-        if(!request.getCategoriesActivitesIds().isEmpty()) {
-            getSizeList(request.getCategoriesActivitesIds());
+        if(request.getCategorieActiviteId()==null) {
+            throw new RequiredValue("categories activite is required ");
         }
-        Activite Activite = ActiviteMapper.INSTANCE.mapFromRequest(request);
-        for(Integer i : request.getCategoriesActivitesIds()) {
+        RefParam categorieActivite = refParamService.findById(request.getCategorieActiviteId());
+
+       /* if(!request.getCategoriesActivitesIds().isEmpty()) {
+            getSizeList(request.getCategoriesActivitesIds());
+        }*/
+        Activite activite = ActiviteMapper.INSTANCE.mapFromRequest(request);
+        activite.setCategorieActivite(categorieActivite);
+
+    /*    for(Integer i : request.getCategoriesActivitesIds()) {
             RefParam categoriesActivite = refParamService.findById(i);
             if(Activite.getCategoriesActivites() == null) {
                 Activite.setCategoriesActivites(new ArrayList<>());
             }
             Activite.getCategoriesActivites().add(categoriesActivite);
-        }
-        return save(Activite);
+        }*/
+        return save(activite);
     }
 
     @Override
     public Activite update(Integer id, ActiviteRequest request) throws ActiviteNotFound, RefParamNotFound {
-        Activite Activite = findById(id);
+        Activite activite = findById(id);
 
-        if(!request.getCategoriesActivitesIds().isEmpty()) {
-            getSizeList(request.getCategoriesActivitesIds());
+
+        if (request.getCategorieActiviteId() == null) {
+            throw new RequiredValue("La catégorie activité est obligatoire");
         }
-
         if(request.getLibelle()==null||request.getLibelle().isEmpty()) {
             throw new RequiredValue("");
         }
@@ -122,9 +129,9 @@ public class ActiviteServiceImpl implements ActiviteService {
             if(Activite1.isPresent()&& !Objects.equals(Activite1.get().getId(), id)) {
                 throw new ActiviteAlreadyExist("", request.getLibelle());
             }
-            Activite.setLibelle(request.getLibelle());
+            activite.setLibelle(request.getLibelle());
         }
-        List<Integer> oldModeCategoriesActivitesIds=Activite.getCategoriesActivites().stream().map(c -> c.getId()).collect(Collectors.toList());
+ /*       List<Integer> oldModeCategoriesActivitesIds=Activite.getCategoriesActivites().stream().map(c -> c.getId()).collect(Collectors.toList());
         for(Integer i : request.getCategoriesActivitesIds()) {
             if(!oldModeCategoriesActivitesIds.contains(i)) {
                 RefParam categoriesActivite = refParamService.findById(i);
@@ -136,8 +143,10 @@ public class ActiviteServiceImpl implements ActiviteService {
                 RefParam categoriesActivite = refParamService.findById(i);
                 Activite.getCategoriesActivites().remove(categoriesActivite);
             }
-        }
-        return save(Activite);
+        }*/
+        RefParam categorieActivite = refParamService.findById(request.getCategorieActiviteId());
+        activite.setCategorieActivite(categorieActivite);
+        return save(activite);
     }
 
     @Override

@@ -8,7 +8,7 @@ public class ActiviteSpecifications {
     /** search. */
     public static Specification<Activite> search(String search) {
         return (root, query, criteriaBuilder) -> {
-            Join<Activite, RefParam> join = root.join("categoriesActivites");
+            Join<Activite, RefParam> join = root.join("categorieActivite");
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
@@ -45,6 +45,6 @@ public class ActiviteSpecifications {
     }
 
     public static Specification<Activite> hasActiviteId(Integer typeActiviteId) {
-        return (root, query, cb) -> cb.equal(root.get("categoriesActivites").get("id"), typeActiviteId);
+        return (root, query, cb) -> cb.equal(root.get("categorieActivite").get("id"), typeActiviteId);
     }
 }

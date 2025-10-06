@@ -13,6 +13,6 @@ import java.util.List;
 public class ActiviteResponse {
     private Integer id;
     private String libelle;
-    private List<RefParamResponseDto> categoriesActivites;
+    private RefParamResponseDto categoriesActivites;
     private BaseEntityResponse metadata;
 }

@@ -23,12 +23,8 @@ public class Activite extends BaseEntity {
     @Column(name = "activite_id")
     private Integer id;
     private String libelle;
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "activites_categories_activites",
-            joinColumns = @JoinColumn(name = "activite_id"),
-            inverseJoinColumns = @JoinColumn(name = "categories_activite_id")
-    )
-    private List<RefParam> categoriesActivites;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categories_activite_id", nullable = false)
+    private RefParam categorieActivite;
 
 }

@@ -14,5 +14,5 @@ import java.util.List;
 @NoArgsConstructor
 public class ActiviteRequest {
     private String libelle;
-    private List<Integer> categoriesActivitesIds=new ArrayList<>();
+    private Integer categorieActiviteId;
 }
