@@ -6,10 +6,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelec
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.ac.exception.*;
-import com.sigmap.common.activite.exception.ActiviteAlreadyExist;
-import com.sigmap.common.activite.exception.ActiviteNotFound;
-import com.sigmap.common.activite.exception.DuplicateCategoriesActivitesException;
-import com.sigmap.common.activite.exception.RequiredLibelle;
+import com.sigmap.common.activite.exception.*;
 import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.*;
@@ -819,6 +816,14 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("refparam.hasAssociatedActivite",new Object[] {ex.getId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(CategoriesActiviteRequired.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleActiviteException(CategoriesActiviteRequired ex) {
+        String message = messageSource.getMessage("activite.categoriesActiviteRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
 

@@ -3,6 +3,7 @@ package com.sigmap.common.activite;
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.activite.exception.ActiviteAlreadyExist;
 import com.sigmap.common.activite.exception.ActiviteNotFound;
+import com.sigmap.common.activite.exception.CategoriesActiviteRequired;
 import com.sigmap.common.activite.exception.DuplicateCategoriesActivitesException;
 import com.sigmap.common.activite.mapper.ActiviteMapper;
 import com.sigmap.common.activite.request.ActiviteRequest;
@@ -92,7 +93,7 @@ public class ActiviteServiceImpl implements ActiviteService {
             throw new ActiviteAlreadyExist("", request.getLibelle());
         }
         if(request.getCategorieActiviteId()==null) {
-            throw new RequiredValue("categories activite is required ");
+            throw new CategoriesActiviteRequired("categories activite is required ");
         }
         RefParam categorieActivite = refParamService.findById(request.getCategorieActiviteId());
 
@@ -118,7 +119,7 @@ public class ActiviteServiceImpl implements ActiviteService {
 
 
         if (request.getCategorieActiviteId() == null) {
-            throw new RequiredValue("La catégorie activité est obligatoire");
+            throw new CategoriesActiviteRequired("La catégorie activité est obligatoire");
         }
         if(request.getLibelle()==null||request.getLibelle().isEmpty()) {
             throw new RequiredValue("");
