@@ -6,6 +6,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelec
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.ac.exception.*;
+import com.sigmap.common.activite.exception.*;
 import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.authority.exeption.AuthorityNotFound;
 import com.sigmap.common.com.exception.*;
@@ -776,6 +777,53 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("reunion.participants_absense",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(ActiviteNotFound.class)
+    public ResponseEntity<ErrorResponse> ActiviteNotFoundException(ActiviteNotFound ex) {
+        String message = messageSource.getMessage("activite.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateCategoriesActivitesException.class)
+    public ResponseEntity<ErrorResponse> DuplicateCategorieActivitesIdsException(DuplicateCategoriesActivitesException ex) {
+        String message = messageSource.getMessage("activite.duplicate",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ActiviteAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> ActiviteAlreadyExistException(ActiviteAlreadyExist ex) {
+        String message = messageSource.getMessage("activite.alreadyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(RequiredLibelle.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleActiviteException(RequiredLibelle ex) {
+        String message = messageSource.getMessage("activite.requiredlibelle",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedActivite.class)
+    public ResponseEntity<ErrorResponse> HasAssociatedRefParamsException(HasAssociatedActivite ex) {
+        String message = messageSource.getMessage("refparam.hasAssociatedActivite",new Object[] {ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(CategoriesActiviteRequired.class)
+    public ResponseEntity<ErrorResponse> RequiredLibelleActiviteException(CategoriesActiviteRequired ex) {
+        String message = messageSource.getMessage("activite.categoriesActiviteRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
 
