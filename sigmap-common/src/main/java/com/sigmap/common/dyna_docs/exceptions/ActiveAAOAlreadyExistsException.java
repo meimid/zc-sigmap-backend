@@ -1,4 +1,4 @@
-package com.sigmap.common.dyna_docs.exception;
+package com.sigmap.common.dyna_docs.exceptions;
 
 import lombok.Getter;
 
@@ -8,8 +8,6 @@ public class ActiveAAOAlreadyExistsException extends RuntimeException {
     private final Integer modePassationId;
 
     public ActiveAAOAlreadyExistsException(Integer typeMarcheId, Integer modePassationId) {
-        super(String.format("An active AAO DynaDocs already exists for typeMarche: %d and modePassation: %d", 
-              typeMarcheId, modePassationId));
         this.typeMarcheId = typeMarcheId;
         this.modePassationId = modePassationId;
     }
