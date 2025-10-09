@@ -7,6 +7,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -156,8 +157,8 @@ public class DacFlowableService {
             r.setStatus("ID must not be null");
             return r;
         }
-
-        Optional<Dac> dacOpt = dacService.findById(id, 1); // latest
+        Integer latestVersion = dacService.findLatestVersionById(id);
+        Optional<Dac> dacOpt = dacService.findById(id, latestVersion);
         if (dacOpt.isEmpty()) {
             var r = new ProcessStartResponseDTO();
             r.setStatus("DAC not found for id " + id);
@@ -268,9 +269,9 @@ public class DacFlowableService {
         Integer dacId = (Integer) pvars.get("id");
         Integer dacVer = (Integer) pvars.get("version");
 
-        List<DacDocResponseDTO> dacDocs = Collections.emptyList();
+        DacResponseDTO dacDocs = null;
         if (dacId != null && dacVer != null) {
-            dacDocs = dacDocsService.findByDacIdAndVer(dacId, dacVer);
+            dacDocs = dacService.findByDacIdAndVer(dacId, dacVer);
         }
 
         Map<String, Boolean> props = getTaskProperties(task);
@@ -650,7 +651,8 @@ public class DacFlowableService {
             return r;
         }
 
-        Dac dac = dacService.findById(dacId, null).orElse(null); // latest
+        Integer latestVersion = dacService.findLatestVersionById(dacId);
+        Dac dac = dacService.findById(dacId, latestVersion).orElse(null);
         if (dac == null) {
             var r = new TaskDetailsDTO();
             r.setStatus("DAC not found for id " + dacId);
@@ -660,7 +662,7 @@ public class DacFlowableService {
         TaskDetailsDTO resp = new TaskDetailsDTO();
 
         // Attach full DAC docs/details snapshot for latest version
-        List<DacDocResponseDTO> dacDocs = dacDocsService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
+        DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
         resp.setDacDocs(dacDocs);
 
         String piId = dac.getProcessInstanceId();

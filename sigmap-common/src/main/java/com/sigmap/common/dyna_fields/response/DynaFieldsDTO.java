@@ -25,6 +25,7 @@ public class DynaFieldsDTO {
     private String sourceField;
     private Integer dynaFieldsOrder;
     private ActiveStatus status;
+    private Integer docId;
     //private DynaDocs dynaDocs;
     private Set<DynaFieldsDetailsDTO> dynaFieldsDetails;
 }

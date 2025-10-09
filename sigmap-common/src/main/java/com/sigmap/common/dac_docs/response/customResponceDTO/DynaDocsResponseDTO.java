@@ -1,7 +1,9 @@
 package com.sigmap.common.dac_docs.response.customResponceDTO;
 
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import lombok.Data;
 
 import java.util.List;
@@ -14,7 +16,11 @@ public class DynaDocsResponseDTO {
     private String templateFileName;
     private String guideFileName;
     private RefParam typeMarche;
+    private ModeDePassationSelection modePassation;
     private Integer dynaDocOrder;
     private String status;
+    private Boolean isStatic;
+    private Boolean isAAO;
     private List<DynaFieldsDTO> dynaFields;
+    private DocsResponseDTO docs;
 }

@@ -2,6 +2,7 @@ package com.sigmap.common.dac_docs.response;
 
 
 import com.sigmap.common.dac_docs_details.response.DacDocsDetailsResponse;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.dyna_fields.DynaFields;
 
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
@@ -22,5 +23,5 @@ public class DacDocsResponseFullEntities {
     private Integer dynaDocsVer;
 
     private Set<DacDocsDetailsResponse> dacDocsDetails;
-
+    private DocsResponseDTO docs;
 }

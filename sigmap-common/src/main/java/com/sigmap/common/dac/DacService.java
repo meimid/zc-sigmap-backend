@@ -1,5 +1,7 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.dac.exception.NoActiveAAOException;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -25,7 +27,7 @@ public interface DacService {
     public Optional<Dac> findOne(Specification<Dac> specification);
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer);
     Dac save(Dac dac);
-    Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException;
+    Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException;
     List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion , String basePath, String customDirPath) ;
 
     String generateDocumentWithBookmarks(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer, String basePath, String customDirPath);
@@ -42,4 +44,7 @@ public interface DacService {
 
     Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
+    Integer findLatestVersionById(Integer ppmId);
+
+    public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
 }
