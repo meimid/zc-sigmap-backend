@@ -26,13 +26,20 @@ import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.lots.Lot;
+import com.sigmap.common.ref_params.RefParam;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.*;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -593,6 +600,20 @@ public class DacDocsServiceImpl implements DacDocsService{
             response.setSourceId(dacDoc.getSourceId());
             response.setFieldValue(dacDoc.getFieldValue());
 
+            // Ensure SYSTEM fields return their computed value even if not persisted after setFieldValue
+            try {
+                if (dacDoc.getDynaField() != null && dacDoc.getDynaField().getType() == DynaFieldType.SYSTEM) {
+                    String computed = resolveSystemFieldValue(dacDoc.getDynaField(), dacDoc.getDac());
+                    if (computed != null && (response.getFieldValue() == null || response.getFieldValue().isBlank())) {
+                        response.setFieldValue(computed);
+                    }
+                }
+            } catch (Exception ignore) {
+                log.error("Error resolving system field value {}", ignore.getMessage());
+            }
+
+            log.debug("response -------------- {}", response);
+
             String key = dacDoc.getId().getDynaDocsId() + ":" + dacDoc.getId().getDynaDocsVer() + ":" + dacDoc.getId().getDynaFieldsId();
             List<DacDocsDetails> details = detailsByDoc.getOrDefault(key, Collections.emptyList());
             List<DacDocDetailsDTO> detailsDTOs = details.stream().map(detail -> {
@@ -611,6 +632,117 @@ public class DacDocsServiceImpl implements DacDocsService{
             responseList.add(response);
         }
         return responseList;
+    }
+
+    // Helpers to compute SYSTEM field values like logic in DacServiceImpl
+    private String resolveSystemFieldValue(DynaFields field, Dac dac) {
+        String source = field.getSource();
+        String sourceField = field.getSourceField();
+        if (source == null || sourceField == null || dac == null) {
+            return null;
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        switch (source) {
+            case "ppm": {
+                if (dac.getPpm() == null) return null;
+                switch (sourceField) {
+                    case "nom": return dac.getPpm().getNom();
+                    case "created_at":
+                        if (dac.getPpm().getUpdatedAt() != null) {
+                            return sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        }
+                        return null;
+                    default: return null;
+                }
+            }
+            case "ac": {
+                if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
+                switch (sourceField) {
+                    case "nom": return dac.getPpm().getAc().getNom();
+                    case "email": return dac.getPpm().getAc().getEmail();
+                    case "adresse":
+                        if (dac.getPpm().getAc().getAdresse() != null) {
+                            return (dac.getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getPpm().getAc().getAdresse().getVille());
+                        }
+                        return null;
+                    default: return null;
+                }
+            }
+            case "realisation": {
+                if (dac.getRealisation() == null) return null;
+                switch (sourceField) {
+                    case "realisationEnvisagees", "realisation_envisagees":
+                        return dac.getRealisation().getRealisationEnvisagees();
+                    case "beneficiaire":
+                        return dac.getRealisation().getBeneficiaire();
+                    case "sourceFinancement", "source_financement": {
+                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) return null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new LinkedHashSet<>();
+                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
+                            String label = getRefParamLabel(fin.getSourceFinancement());
+                            if (label == null) continue;
+                            String trimmed = label.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue;
+                            if (sb.length() > 0) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        return sb.isEmpty() ? null : sb.toString();
+                    }
+                    case "typeMarcher", "type_marcher":
+                        return dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
+                    case "modeSelection", "mode_selection":
+                        return dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                    case "modePassation", "mode_passation":
+                        return dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                    case "nomLot", "nom_lot": {
+                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) return null;
+                        StringBuilder sb = new StringBuilder();
+                        int i = 1;
+                        Set<String> seen = new LinkedHashSet<>();
+                        for (Lot lot : dac.getRealisation().getLots()) {
+                            if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
+                            String name = lot.getDescription();
+                            if (name == null) continue;
+                            String trimmed = name.trim();
+                            if (trimmed.isEmpty()) continue;
+                            if (!seen.add(trimmed)) continue;
+                            if (!sb.isEmpty()) sb.append("\n");
+                            sb.append(i++).append("- ").append(trimmed);
+                        }
+                        return sb.isEmpty() ? null : sb.toString();
+                    }
+                    case "budgetEstime", "budget_estime":
+                        return toString(dac.getRealisation().getBudgetEstime());
+                    case "date_prev_lps":
+                        return dac.getRealisation().getDatePrevLps() != null ? dac.getRealisation().getDatePrevLps().format(localDateFormatter) : null;
+                    case "date_prev_ac":
+                        return dac.getRealisation().getDatePrevAc() != null ? dac.getRealisation().getDatePrevAc().format(localDateFormatter) : null;
+                    case "date_prev_dp":
+                        return dac.getRealisation().getDatePrevDp() != null ? dac.getRealisation().getDatePrevDp().format(localDateFormatter) : null;
+                    case "date_prev_ap":
+                        return dac.getRealisation().getDatePrevAp() != null ? dac.getRealisation().getDatePrevAp().format(localDateFormatter) : null;
+                    default:
+                        return null;
+                }
+            }
+            default:
+                return null;
+        }
+    }
+
+    private String toString(BigDecimal number) {
+        return number != null ? number.toPlainString() : null;
+    }
+    private String getRefParamLabel(RefParam ref) {
+        return ref == null ? null : ref.getDescription();
     }
 
     @Override

@@ -3,6 +3,9 @@ package com.sigmap.common.ref_params;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.activite.Activite;
+import com.sigmap.common.activite.ActiviteRepository;
+import com.sigmap.common.activite.ActiviteSpecifications;
 import com.sigmap.common.adresse.AdressSpecifications;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.AdresseRespository;
@@ -63,7 +66,7 @@ public class RefParamServiceImpl implements RefParamService {
     private final ComRepository comRepository;
     private final AcRepository acRepository;
     private final  AdresseRespository  adresseRespository;
-
+    private final ActiviteRepository activiteRepository;
 
     /**
      * Constructor.
@@ -82,7 +85,7 @@ public class RefParamServiceImpl implements RefParamService {
                                PaaRepository paaRepository,
                                SocieteAddressRepository societeAddressRepository,
                                ComRepository comRepository,
-                               AcRepository acRepository, AdresseRespository adresseRespository
+                               AcRepository acRepository, AdresseRespository adresseRespository, ActiviteRepository activiteRepository
     ) {
         this.repository = repository;
         this.refTypeService = refTypeService;
@@ -96,6 +99,7 @@ public class RefParamServiceImpl implements RefParamService {
         this.comRepository = comRepository;
         this.acRepository = acRepository;
         this.adresseRespository = adresseRespository;
+        this.activiteRepository = activiteRepository;
     }
 
 
@@ -310,6 +314,12 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAddresse = adresseRespository.count(adresseSpec) > 0;
         if (hasAddresse) {
             throw new HasAssociatedAdress("", id);
+        }
+        Specification<Activite> spec = Specification.where(ActiviteSpecifications.hasActiviteId(id).and(ActiviteSpecifications.deleted(false)));
+
+        boolean hasAssociatedActivite = activiteRepository.count(spec) > 0;
+        if (hasAssociatedActivite) {
+            throw new HasAssociatedActivite("", id);
         }
 
         repository.softDelete(id);

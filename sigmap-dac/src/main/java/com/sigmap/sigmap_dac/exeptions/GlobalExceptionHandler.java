@@ -1,6 +1,8 @@
 package com.sigmap.sigmap_dac.exeptions;
 
+import com.sigmap.common.dac.exception.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.*;
+import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
 
@@ -127,6 +129,22 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MaxSizeFileExeption.class)
   public ResponseEntity<ErrorResponse> handleMaxSizeFileException(MaxSizeFileExeption ex) {
     String message = messageSource.getMessage("doc.maxSize", new Object[]{}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(NoActiveAAOException.class)
+  public ResponseEntity<ErrorResponse> handleNoActiveAAOException(NoActiveAAOException ex) {
+    String message = messageSource.getMessage("no.active.aao", new Object[]{ex.getTypeMarcheId(),ex.getModePassationId()}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(ActiveAAOAlreadyExistsException.class)
+  public ResponseEntity<ErrorResponse> handleActiveAAOAlreadyExistsException(ActiveAAOAlreadyExistsException ex) {
+    String message = messageSource.getMessage("active.aao.already.exist", new Object[]{ex.getTypeMarcheId(),ex.getModePassationId()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
