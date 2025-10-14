@@ -15,6 +15,10 @@ import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.direction.exception.*;
+import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
+import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
+import com.sigmap.common.doc_soumission.exception.NomRequired;
+import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
@@ -787,12 +791,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 
     }
-    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(DuplicateCategoriesActivitesException.class)
     public ResponseEntity<ErrorResponse> DuplicateCategorieActivitesIdsException(DuplicateCategoriesActivitesException ex) {
         String message = messageSource.getMessage("activite.duplicate",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -822,6 +826,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CategoriesActiviteRequired.class)
     public ResponseEntity<ErrorResponse> RequiredLibelleActiviteException(CategoriesActiviteRequired ex) {
         String message = messageSource.getMessage("activite.categoriesActiviteRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DocSoumissionNotFound.class)
+    public ResponseEntity<ErrorResponse> DocSoumissionNotFoundException(DocSoumissionNotFound ex) {
+        String message = messageSource.getMessage("docSoumission.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NomRequired.class)
+    public ResponseEntity<ErrorResponse> RequiredNomDocSoumissionException() {
+        String message = messageSource.getMessage("docSoumission.nomRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TypeDossierRequired.class)
+    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException() {
+        String message = messageSource.getMessage("docSoumission.typeDossierRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidTypeDossierException.class)
+    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException(InvalidTypeDossierException ex) {
+        String message = messageSource.getMessage("docSoumission.invalidTypeDossierException",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
