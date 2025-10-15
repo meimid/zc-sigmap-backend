@@ -75,8 +75,10 @@ public class DocSoumissionController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteById(@PathVariable Integer id) throws  DocSoumissionNotFound {
+    public ResponseEntity<DocSoumissionResponse> deleteById(@PathVariable Integer id) throws  DocSoumissionNotFound {
+        DocSoumission deleted = service.findById(id);
+        DocSoumissionResponse response = DocSoumissionMapper.INSTANCE.map(deleted);
         service.delete(id);
-        return ResponseEntity.ok("doc_soumission deleted successfully");
+        return ResponseEntity.ok(response);
     }
 }
