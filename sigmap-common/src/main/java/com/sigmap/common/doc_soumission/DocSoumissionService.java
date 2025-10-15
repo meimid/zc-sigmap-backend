@@ -1,6 +1,7 @@
 package com.sigmap.common.doc_soumission;
 
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -74,7 +75,9 @@ public interface DocSoumissionService {
      */
     void delete(Integer id) throws DocSoumissionNotFound;
 
-    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
-    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
+    public List<DocSoumission> findDocSoumissionByType(TypeDossier typeDossier);
+
 
 }

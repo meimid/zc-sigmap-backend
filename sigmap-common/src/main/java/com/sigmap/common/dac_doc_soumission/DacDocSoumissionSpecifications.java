@@ -1,10 +1,29 @@
 package com.sigmap.common.dac_doc_soumission;
 
+import com.sigmap.common.config.TypeDossier;
+import com.sigmap.common.doc_soumission.DocSoumission;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Date;
 
 public class DacDocSoumissionSpecifications {
+    /** search */
+    public static Specification<DacDocSoumission> search(String search) {
+        return (root, query, criteriaBuilder) -> {
+            if (search == null || search.isBlank()) {
+                return criteriaBuilder.conjunction();
+            }
+            Join<DacDocSoumission, DocSoumission> join = root.join("docSoumission");
+            return criteriaBuilder.or(
+                    criteriaBuilder.like(root.get("dacId").as(String.class), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("dacVer").as(String.class), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("dateValidate").as(String.class), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("nom").as(String.class), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("typeDossier").as(String.class), "%" + search + "%"));
+        };
+    }
     /**
      * Creates a specification to filter DacDocSoumission by DAC ID.
      *
@@ -48,6 +67,35 @@ public class DacDocSoumissionSpecifications {
             return criteriaBuilder.equal(root.get("docSoumissionId"), docSoumissionId);
         };
     }
+
+    public static Specification<DacDocSoumission> docSoumissionNom(String nom) {
+        return (root, query, cb) -> {
+            Join<DacDocSoumission, DocSoumission> join = root.join("docSoumission");
+            return cb.like(join.get("nom"), "%" + nom + "%");
+        };
+    }
+
+    /** filter by docSoumission.typeDossier */
+    public static Specification<DacDocSoumission> typeDossier(String typeDossier) {
+        return (root, query, cb) -> {
+            if (typeDossier == null || typeDossier.isBlank()) {
+                return cb.conjunction();
+            }
+
+            // Use LEFT JOIN so it includes docs not linked to DAC
+            Join<DacDocSoumission, DocSoumission> join = root.join("docSoumission", JoinType.LEFT);
+
+            try {
+                TypeDossier dossierEnum = TypeDossier.valueOf(typeDossier.trim().toUpperCase());
+                return cb.equal(join.get("typeDossier"), dossierEnum);
+            } catch (IllegalArgumentException e) {
+                return cb.disjunction();
+            }
+        };
+    }
+
+
+
 
     /**
      * Creates a specification to filter by a specific validation date.
@@ -123,5 +171,11 @@ public class DacDocSoumissionSpecifications {
 
     public static Specification<DacDocSoumission> hasDacDocSoumission(Integer dacDocSoumissionId) {
         return (root, query, cb) -> cb.equal(root.get("docSoumissionId"), dacDocSoumissionId);
+    }
+
+    //  Filter by type_dossier
+    public static Specification<DocSoumission> hasTypeDossier(TypeDossier typeDossier) {
+        return (root, query, cb) ->
+                cb.equal(root.get("typeDossier"), typeDossier);
     }
 }

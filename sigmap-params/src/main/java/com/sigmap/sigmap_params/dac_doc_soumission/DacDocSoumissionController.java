@@ -11,6 +11,7 @@ import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateReques
 import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
+import com.sigmap.common.doc_soumission.request.DocSoumissionQuery;
 import com.sigmap.common.doc_soumission.response.DocSoumissionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -84,15 +85,15 @@ public class DacDocSoumissionController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/not-in-dac/{dacId}")
-    public ResponseEntity<List<DocSoumissionResponse>> findAllListNotInDac(@PathVariable Integer dacId) {
-        List<DocSoumission> params = service.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    public ResponseEntity<List<DocSoumissionResponse>> findAllListNotInDac(@PathVariable Integer dacId, DocSoumissionQuery query) {
+        List<DocSoumission> params = service.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId,query.toSpecification());
         List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/in-dac/{dacId}")
-    public ResponseEntity<List<DocSoumissionResponse>> findAllListInDac(@PathVariable Integer dacId) {
-        List<DocSoumission> params = service.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    public ResponseEntity<List<DocSoumissionResponse>> findAllListInDac(@PathVariable Integer dacId,DocSoumissionQuery query) {
+        List<DocSoumission> params = service.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId,query.toSpecification());
         List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }

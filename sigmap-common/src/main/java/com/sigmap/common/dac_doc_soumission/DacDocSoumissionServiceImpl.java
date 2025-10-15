@@ -1,5 +1,6 @@
 package com.sigmap.common.dac_doc_soumission;
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacIdRequired;
@@ -164,14 +165,16 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
     }
 
     @Override
-    public List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId) {
-        return docSoumissionService.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    public List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec) {
+        return docSoumissionService.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId,docSoumissionSpec);
     }
 
     @Override
-    public List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId) {
-        return docSoumissionService.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    public List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec) {
+        return docSoumissionService.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId,docSoumissionSpec);
     }
+
+
 
 
 }

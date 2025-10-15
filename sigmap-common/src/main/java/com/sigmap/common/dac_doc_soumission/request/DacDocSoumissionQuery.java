@@ -14,6 +14,8 @@ public class DacDocSoumissionQuery {
     private Integer dacId;
     private Integer dacVer;
     private Integer docSoumissionId;
+    private String typeDossier;
+    private String docSoumissionNom;
     private Date dateValidateAfter;
     private Date dateValidateBefore;
     private Date dateValidateExact;
@@ -40,6 +42,12 @@ public class DacDocSoumissionQuery {
 
         if (docSoumissionId != null) {
             spec = spec.and(DacDocSoumissionSpecifications.byDocSoumissionId(docSoumissionId));
+        }
+        if (typeDossier != null) {
+            spec= spec.and(DacDocSoumissionSpecifications.typeDossier(typeDossier));
+        }
+        if (docSoumissionNom != null) {
+            spec= spec.and(DacDocSoumissionSpecifications.docSoumissionNom(docSoumissionNom));
         }
 
         if (dateValidateExact != null) {

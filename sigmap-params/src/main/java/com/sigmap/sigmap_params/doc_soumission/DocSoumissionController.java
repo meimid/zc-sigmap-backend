@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.doc_soumission;
 
 
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionService;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
@@ -83,5 +84,24 @@ public class DocSoumissionController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/administrative")
 
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeAdministrative(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.ADMINISTRATIVE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/financer")
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeFinancer(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.FINANCIERE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/technique")
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeTechnique(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.TECHNIQUE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
 }

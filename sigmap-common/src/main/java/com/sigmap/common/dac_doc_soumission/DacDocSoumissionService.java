@@ -1,5 +1,6 @@
 package com.sigmap.common.dac_doc_soumission;
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;
@@ -72,7 +73,8 @@ public interface DacDocSoumissionService {
      * @param dacId and docSoumissionId  the ids of the DacDocSoumission to delete
      */
     void delete(Integer dacId, Integer docSoumissionId) throws DacDocSoumissionNotFound;
-    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
-    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
 
-}
+
+    }
