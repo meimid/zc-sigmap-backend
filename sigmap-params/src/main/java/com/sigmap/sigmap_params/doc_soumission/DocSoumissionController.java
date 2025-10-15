@@ -45,6 +45,7 @@ public class DocSoumissionController {
     }
 
 
+
     @GetMapping("/list")
     public ResponseEntity<List<DocSoumissionResponse>> findAllList(
             DocSoumissionQuery query) {
