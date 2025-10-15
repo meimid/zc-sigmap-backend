@@ -620,6 +620,8 @@ public class DacDocsServiceImpl implements DacDocsService{
                 DacDocDetailsDTO dto = new DacDocDetailsDTO();
                 dto.setDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
                 dto.setRowId(detail.getRowId());
+                DynaFieldsDetails dynaFieldDetails=dynaFieldsDetailsRepository.findByDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
+                dto.setColumnPos(dynaFieldDetails.getColumnPos());
                 dto.setSourceId(detail.getSourceId());
                 dto.setFieldValue(detail.getFieldValue());
                 // These are redundant at the detail level, but can be set if needed

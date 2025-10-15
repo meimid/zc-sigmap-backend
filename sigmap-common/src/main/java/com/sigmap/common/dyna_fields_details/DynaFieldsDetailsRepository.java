@@ -27,4 +27,6 @@ public interface DynaFieldsDetailsRepository
   List<DynaFieldsDetails> findAllByDocAndField(@Param("dynaDocsId") Integer dynaDocsId,
                                                @Param("dynaDocsVer") Integer dynaDocsVer,
                                                @Param("dynaFieldsId") Integer dynaFieldsId);
+
+    DynaFieldsDetails findByDynaFieldsDetailsId(Integer dynaFieldsDetailsId);
 }
