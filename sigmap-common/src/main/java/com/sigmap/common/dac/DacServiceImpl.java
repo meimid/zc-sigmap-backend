@@ -637,11 +637,24 @@ public class DacServiceImpl implements DacService {
         CompositeId realisationKey = new CompositeId();
         realisationKey.setId(request.getRealisationId());
         realisationKey.setVersion(request.getRealisationVer());
+        
 
-        // Check if a DAC already exists for this Realisation
-        Optional<Dac> existingDac = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
-        if (existingDac.isPresent()) {
-            throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+        // Enforce: a realisation can be linked to at most 2 DACs (by distinct dacId)
+        Integer dacCountForReal = dacRepository.countDistinctDacByRealisation(request.getRealisationId(), request.getRealisationVer());
+        log.info("Dac count for realisation: {} ------------------------ ", dacCountForReal);
+        if (dacCountForReal != null && dacCountForReal >= 2) {
+            throw new RuntimeException("Maximum number of DACs (2) already created for this realisation");
+        }
+
+        // Ensure if a DAC with this realisation exists -->  it must be published
+        List<Dac> dacsForRealisation = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
+        //get the last DAC by its id and max version
+        Optional<Dac> lastDacVersion = dacsForRealisation.stream().max(Comparator.comparing(Dac::getDacId).thenComparing(Dac::getDacVer));
+        if (lastDacVersion.isPresent()) {
+            Dac firstDac = lastDacVersion.get();
+            if (firstDac.getStatus() != ProcessStatus.PUBLIE) {
+                throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+            }
         }
 
         Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
