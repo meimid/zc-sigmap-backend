@@ -7,7 +7,8 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExist;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
-import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionService;
 import com.sigmap.common.reunion.exception.DateBefore;
@@ -78,7 +79,7 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
     }
 
     @Override
-    public DacDocSoumission create(DacDocSoumissionRequest request) {
+    public DacDocSoumission create(DacDocSoumissionCreateRequest request) {
         if(request.getDacId()==null) {
             throw new DacIdRequired("DAC ID is required");
         }
@@ -126,14 +127,14 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
     }
 
     @Override
-    public DacDocSoumission update(DacDocSoumissionRequest request) throws DacDocSoumissionNotFound {
-        if(request.getDacId()==null) {
+    public DacDocSoumission update(Integer dacId, Integer docSoumissionId, DacDocSoumissionUpdateRequest request) throws DacDocSoumissionNotFound {
+        if(dacId==null) {
             throw new DacIdRequired("DAC ID is required");
         }
-        if(request.getDocSoumissionId()==null) {
+        if(docSoumissionId==null) {
             throw new DocSoumissionIdRequired("Doc Soumission ID is required");
         }
-        DacDocSoumission dacDocSoumission = findByDacIdAndDocSoumissionId(request.getDacId(),request.getDocSoumissionId());
+        DacDocSoumission dacDocSoumission = findByDacIdAndDocSoumissionId(dacId,docSoumissionId);
 
         if(request.getDateValidate()!=null) {
             Calendar today = Calendar.getInstance();
@@ -161,4 +162,16 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
 
 
     }
+
+    @Override
+    public List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId) {
+        return docSoumissionService.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    }
+
+    @Override
+    public List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId) {
+        return docSoumissionService.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    }
+
+
 }

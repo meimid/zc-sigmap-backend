@@ -6,8 +6,12 @@ import com.sigmap.common.dac_doc_soumission.DacDocSoumissionService;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.mapper.DacDocSoumissionMapper;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionQuery;
-import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;
 import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
+import com.sigmap.common.doc_soumission.DocSoumission;
+import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
+import com.sigmap.common.doc_soumission.response.DocSoumissionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -59,15 +63,15 @@ public class DacDocSoumissionController {
     }
 
     @PostMapping
-    public ResponseEntity<DacDocSoumissionResponse> create(@RequestBody DacDocSoumissionRequest request)  {
+    public ResponseEntity<DacDocSoumissionResponse> create(@RequestBody DacDocSoumissionCreateRequest request)  {
         DacDocSoumission DacDocSoumission = service.create(request);
         DacDocSoumissionResponse response = DacDocSoumissionMapper.INSTANCE.map(DacDocSoumission);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping
-    public ResponseEntity<DacDocSoumissionResponse> update( @RequestBody DacDocSoumissionRequest request)throws DacDocSoumissionNotFound {
-        DacDocSoumission DacDocSoumission = service.update(request);
+    @PutMapping("/dac/{dacId}/doc-soumission/{docSoumissionId}")
+    public ResponseEntity<DacDocSoumissionResponse> update(@PathVariable Integer dacId,@PathVariable Integer docSoumissionId, @RequestBody DacDocSoumissionUpdateRequest request)throws DacDocSoumissionNotFound {
+        DacDocSoumission DacDocSoumission = service.update(dacId,docSoumissionId,request);
         DacDocSoumissionResponse response = DacDocSoumissionMapper.INSTANCE.map(DacDocSoumission);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
@@ -79,5 +83,17 @@ public class DacDocSoumissionController {
         service.delete(dacId,docSoumissionId);
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/not-in-dac/{dacId}")
+    public ResponseEntity<List<DocSoumissionResponse>> findAllListNotInDac(@PathVariable Integer dacId) {
+        List<DocSoumission> params = service.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
 
+    @GetMapping("/in-dac/{dacId}")
+    public ResponseEntity<List<DocSoumissionResponse>> findAllListInDac(@PathVariable Integer dacId) {
+        List<DocSoumission> params = service.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
 }

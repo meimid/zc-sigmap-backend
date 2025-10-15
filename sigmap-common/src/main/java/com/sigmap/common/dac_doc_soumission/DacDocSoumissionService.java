@@ -1,7 +1,9 @@
 package com.sigmap.common.dac_doc_soumission;
 
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
-import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
+import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;
+import com.sigmap.common.doc_soumission.DocSoumission;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -54,7 +56,7 @@ public interface DacDocSoumissionService {
      * @param request the request to create the DacDocSoumission from
      * @return the created DacDocSoumission
      */
-    DacDocSoumission create(DacDocSoumissionRequest request) ;
+    DacDocSoumission create(DacDocSoumissionCreateRequest request) ;
 
     /**
      * update DacDocSoumission.
@@ -62,7 +64,7 @@ public interface DacDocSoumissionService {
      * @param request the request to create the DacDocSoumission from
      * @return the updated DacDocSoumission
      */
-    DacDocSoumission update( DacDocSoumissionRequest request) throws DacDocSoumissionNotFound;
+    DacDocSoumission update(Integer dacId, Integer docSoumissionId, DacDocSoumissionUpdateRequest request) throws DacDocSoumissionNotFound;
 
     /**
      * Delete a DacDocSoumission.
@@ -70,4 +72,7 @@ public interface DacDocSoumissionService {
      * @param dacId and docSoumissionId  the ids of the DacDocSoumission to delete
      */
     void delete(Integer dacId, Integer docSoumissionId) throws DacDocSoumissionNotFound;
+    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+
 }

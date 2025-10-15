@@ -75,4 +75,6 @@ public interface DocSoumissionService {
     void delete(Integer id) throws DocSoumissionNotFound;
 
     List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
+
 }

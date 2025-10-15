@@ -82,11 +82,6 @@ public class DocSoumissionController {
         service.delete(id);
         return ResponseEntity.ok(response);
     }
-    @GetMapping("/dac/{dacId}")
-    public ResponseEntity<List<DocSoumissionResponse>> findAllList(@PathVariable Integer dacId) {
-        List<DocSoumission> params = service.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
-        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
-        return ResponseEntity.ok(response);
-    }
+
 
 }

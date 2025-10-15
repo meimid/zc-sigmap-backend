@@ -15,4 +15,8 @@ public interface DocSoumissionRepository extends JpaRepository<DocSoumission, In
 
     @Query("SELECT ds FROM DocSoumission ds WHERE ds.id NOT IN ( SELECT dds.docSoumissionId FROM DacDocSoumission dds WHERE dds.dacId = :dacId ) ")
     List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(@Param("dacId")Integer dacId);
+
+    @Query("SELECT ds FROM DocSoumission ds WHERE ds.id IN ( SELECT dds.docSoumissionId FROM DacDocSoumission dds WHERE dds.dacId = :dacId ) ")
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(@Param("dacId")Integer dacId);
+
 }

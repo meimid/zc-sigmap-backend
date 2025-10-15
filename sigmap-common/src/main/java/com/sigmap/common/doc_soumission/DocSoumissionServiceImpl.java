@@ -121,4 +121,18 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
 
         return repository.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
     }
+
+    @Override
+    public List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId) {
+        Integer dacLatestVersion;
+        try {
+            dacLatestVersion = dacService.findLatestVersionById(dacId);
+        } catch (Exception e) {
+            throw new DacNotFound("DAC not found with ID " + dacId, dacId, null);
+        }
+
+        dacService.findById(dacId,dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + dacId, dacId, null));
+
+        return repository.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    }
 }
