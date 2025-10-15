@@ -533,4 +533,14 @@ public class RefParamController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
+    @GetMapping("/organisme-de-delivrance-agrements")
+    public ResponseEntity<List<RefParamResponseDto>> findOrganismeDeDelivranceAgrements() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
 }
