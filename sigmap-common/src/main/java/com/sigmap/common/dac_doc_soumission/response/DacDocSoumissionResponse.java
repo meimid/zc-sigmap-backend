@@ -9,7 +9,7 @@ import java.util.Date;
 
 @Data
 public class DacDocSoumissionResponse {
-    private DacResponseDTO dac;
+    private Integer dacId;
     private DocSoumissionResponse docSoumission;
     private Date dateValidate;
 
