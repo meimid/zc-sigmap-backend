@@ -2,7 +2,6 @@ package com.sigmap.common.dac_doc_soumission;
 
 import org.springframework.data.jpa.domain.Specification;
 
-import java.util.Calendar;
 import java.util.Date;
 
 public class DacDocSoumissionSpecifications {
@@ -120,5 +119,9 @@ public class DacDocSoumissionSpecifications {
             }
             return cb.greaterThanOrEqualTo(root.get("dateValidate"), dateAfter);
         };
+    }
+
+    public static Specification<DacDocSoumission> hasDacDocSoumission(Integer dacDocSoumissionId) {
+        return (root, query, cb) -> cb.equal(root.get("docSoumissionId"), dacDocSoumissionId);
     }
 }

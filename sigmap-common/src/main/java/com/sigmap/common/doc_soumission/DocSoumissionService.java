@@ -7,6 +7,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -73,4 +74,5 @@ public interface DocSoumissionService {
      */
     void delete(Integer id) throws DocSoumissionNotFound;
 
+    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId);
 }

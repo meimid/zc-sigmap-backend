@@ -19,10 +19,7 @@ import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExi
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.direction.exception.*;
-import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
-import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
-import com.sigmap.common.doc_soumission.exception.NomRequired;
-import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
+import com.sigmap.common.doc_soumission.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
@@ -944,6 +941,14 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasDacDocSoumission.class)
+    public ResponseEntity<ErrorResponse> HasDacDocSoumissionException() {
+        String message = messageSource.getMessage("docSoumission.hasDacDocSoumission",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
 
