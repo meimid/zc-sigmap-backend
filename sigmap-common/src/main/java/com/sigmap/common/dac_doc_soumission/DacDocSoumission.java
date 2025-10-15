@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.Calendar;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -46,5 +47,5 @@ public class DacDocSoumission {
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "date_validate")
-    private Calendar dateValidate;
+    private Date dateValidate;
 }

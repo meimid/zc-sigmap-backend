@@ -719,7 +719,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(Date.class)
+    @ExceptionHandler(DateBefore.class)
     public ResponseEntity<ErrorResponse> ReunionDateException() {
         String message = messageSource.getMessage("reunion.date",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);

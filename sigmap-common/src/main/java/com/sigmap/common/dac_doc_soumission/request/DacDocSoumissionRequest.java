@@ -4,6 +4,7 @@ package com.sigmap.common.dac_doc_soumission.request;
 import lombok.Data;
 
 import java.util.Calendar;
+import java.util.Date;
 
 @Data
 public class DacDocSoumissionRequest {
@@ -11,5 +12,5 @@ public class DacDocSoumissionRequest {
 
     private Integer docSoumissionId;
 
-    private Calendar dateValidate;
+    private Date dateValidate;
 }

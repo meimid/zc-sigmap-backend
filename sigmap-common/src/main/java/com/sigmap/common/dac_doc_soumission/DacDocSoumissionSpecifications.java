@@ -3,6 +3,7 @@ package com.sigmap.common.dac_doc_soumission;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Calendar;
+import java.util.Date;
 
 public class DacDocSoumissionSpecifications {
     /**
@@ -55,7 +56,7 @@ public class DacDocSoumissionSpecifications {
      * @param dateValidate The date to filter by
      * @return A specification for filtering by dateValidate
      */
-    public static Specification<DacDocSoumission> byDateValidate(Calendar dateValidate) {
+    public static Specification<DacDocSoumission> byDateValidate(Date dateValidate) {
         return (root, query, cb) -> {
             if (dateValidate == null) {
                 return cb.conjunction();
@@ -71,7 +72,7 @@ public class DacDocSoumissionSpecifications {
      * @param endDate   The end of the date range
      * @return A specification for filtering by date range
      */
-    public static Specification<DacDocSoumission> byDateValidateBetween(Calendar startDate, Calendar endDate) {
+    public static Specification<DacDocSoumission> byDateValidateBetween(Date startDate, Date endDate) {
         return (root, query, cb) -> {
             if (startDate == null && endDate == null) {
                 return cb.conjunction();
@@ -88,7 +89,7 @@ public class DacDocSoumissionSpecifications {
     /**
      * Filters DacDocSoumission where dateValidate is before the given date.
      */
-    public static Specification<DacDocSoumission> dateValidateBefore(Calendar dateBefore) {
+    public static Specification<DacDocSoumission> dateValidateBefore(Date dateBefore) {
         return (root, query, cb) -> {
             if (dateBefore == null) {
                 return cb.conjunction();
@@ -100,7 +101,7 @@ public class DacDocSoumissionSpecifications {
     /**
      * Filters DacDocSoumission where dateValidate is exactly equal to the given date.
      */
-    public static Specification<DacDocSoumission> dateValidateEquals(Calendar dateExact) {
+    public static Specification<DacDocSoumission> dateValidateEquals(Date dateExact) {
         return (root, query, cb) -> {
             if (dateExact == null) {
                 return cb.conjunction();
@@ -112,7 +113,7 @@ public class DacDocSoumissionSpecifications {
     /**
      * Filters DacDocSoumission where dateValidate is after the given date.
      */
-    public static Specification<DacDocSoumission> dateValidateAfter(Calendar dateAfter) {
+    public static Specification<DacDocSoumission> dateValidateAfter(Date dateAfter) {
         return (root, query, cb) -> {
             if (dateAfter == null) {
                 return cb.conjunction();

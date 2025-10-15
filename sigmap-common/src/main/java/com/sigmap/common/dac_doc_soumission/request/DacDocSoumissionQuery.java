@@ -6,6 +6,7 @@ import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Calendar;
+import java.util.Date;
 
 @Data
 public class DacDocSoumissionQuery {
@@ -13,9 +14,9 @@ public class DacDocSoumissionQuery {
     private Integer dacId;
     private Integer dacVer;
     private Integer docSoumissionId;
-    private Calendar dateValidateAfter;
-    private Calendar dateValidateBefore;
-    private Calendar dateValidateExact;
+    private Date dateValidateAfter;
+    private Date dateValidateBefore;
+    private Date dateValidateExact;
 
 
     /**

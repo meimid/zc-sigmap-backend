@@ -10,7 +10,7 @@ import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionRequest;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionService;
-import com.sigmap.common.reunion.exception.Date;
+import com.sigmap.common.reunion.exception.DateBefore;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -114,8 +114,8 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
             today.set(Calendar.MILLISECOND, 0);
             log.info("today {}", today);
 
-            if (request.getDateValidate().before(today)) {
-                throw new Date("La date de validation ne peut pas être antérieure à aujourd’hui.");
+            if (request.getDateValidate().before(today.getTime())) {
+                throw new DateBefore("La date de validation ne peut pas être antérieure à aujourd’hui.");
             }
             else {
                 dacDocSoumission.setDateValidate(request.getDateValidate());
@@ -127,28 +127,28 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
 
     @Override
     public DacDocSoumission update(DacDocSoumissionRequest request) throws DacDocSoumissionNotFound {
-        DacDocSoumission dacDocSoumission = findByDacIdAndDocSoumissionId(request.getDacId(),request.getDocSoumissionId());
-
-    /*    if(request.getDacId()==null) {
+        if(request.getDacId()==null) {
             throw new DacIdRequired("DAC ID is required");
         }
         if(request.getDocSoumissionId()==null) {
             throw new DocSoumissionIdRequired("Doc Soumission ID is required");
         }
-        Integer dacLatestVersion;
-        try {
-            dacLatestVersion = dacService.findLatestVersionById(request.getDacId());
-        } catch (Exception e) {
-            throw new DacNotFound("DAC not found with ID " + request.getDacId(), request.getDacId(), null);
-        }
+        DacDocSoumission dacDocSoumission = findByDacIdAndDocSoumissionId(request.getDacId(),request.getDocSoumissionId());
 
-        Dac dac = dacService.findById(request.getDacId(),dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + request.getDacId(), request.getDacId(), null));
-        DocSoumission docSoumission = docSoumissionService.findById(request.getDocSoumissionId());
-
-        dacDocSoumission.setDac(dac);
-        dacDocSoumission.setDocSoumission(docSoumission);*/
         if(request.getDateValidate()!=null) {
-            dacDocSoumission.setDateValidate(request.getDateValidate());
+            Calendar today = Calendar.getInstance();
+            today.set(Calendar.HOUR_OF_DAY, 0);
+            today.set(Calendar.MINUTE, 0);
+            today.set(Calendar.SECOND, 0);
+            today.set(Calendar.MILLISECOND, 0);
+            log.info("today {}", today);
+
+            if (request.getDateValidate().before(today.getTime())) {
+                throw new DateBefore("La date de validation ne peut pas être antérieure à aujourd’hui.");
+            }
+            else {
+                dacDocSoumission.setDateValidate(request.getDateValidate());
+            }
         }
         return save(dacDocSoumission);
     }
