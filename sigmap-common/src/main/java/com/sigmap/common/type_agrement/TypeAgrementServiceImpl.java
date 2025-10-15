@@ -3,6 +3,9 @@ package com.sigmap.common.type_agrement;
 import com.sigmap.common.activite.exception.ActiviteAlreadyExist;
 import com.sigmap.common.activite.exception.RequiredLibelle;
 import com.sigmap.common.config.RefTypes;
+import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.ref_params.RefParamService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.RefType;
 import com.sigmap.common.ref_types.RefTypeService;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
@@ -23,11 +26,11 @@ import java.util.Optional;
 @Service
 public class TypeAgrementServiceImpl implements TypeAgrementService {
     private final TypeAgrementRepository repository;
-    private final RefTypeService refTypeService;
+    private final RefParamService refParamService;
 
-    public TypeAgrementServiceImpl(TypeAgrementRepository repository, RefTypeService refTypeService) {
+    public TypeAgrementServiceImpl(TypeAgrementRepository repository, RefParamService refParamService) {
         this.repository = repository;
-        this.refTypeService = refTypeService;
+        this.refParamService = refParamService;
     }
 
     @Override
@@ -74,7 +77,7 @@ public class TypeAgrementServiceImpl implements TypeAgrementService {
         return repository.save(typeAgrement);     }
 
     @Override
-    public TypeAgrement create(TypeAgrementRequest request) throws RefTypeNotFound {
+    public TypeAgrement create(TypeAgrementRequest request) throws RefTypeNotFound, RefParamNotFound {
         if(request.getLibelle()==null||request.getLibelle().isEmpty()) {
             throw new RequiredLibelle("");
         }
@@ -86,8 +89,8 @@ public class TypeAgrementServiceImpl implements TypeAgrementService {
         if(request.getOrganismeDeDeliveranceAgrementsId()==null) {
             throw new OrganismeDeDeliveranceAgrementsRequired("Organisme de Deliverance Agrements is required ");
         }
-        RefType organismeDeDeliveranceAgrements=refTypeService.findById(request.getOrganismeDeDeliveranceAgrementsId());
-        if (!organismeDeDeliveranceAgrements.getRefCode().equals(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS.name())) {
+        RefParam organismeDeDeliveranceAgrements=refParamService.findById(request.getOrganismeDeDeliveranceAgrementsId());
+        if (!organismeDeDeliveranceAgrements.getRefType().getRefCode().equals(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS.name())) {
             throw new WrongType("");
         }
         TypeAgrement typeAgrement= TypeAgrementMapper.INSTANCE.mapFromRequest(request);
@@ -96,7 +99,7 @@ public class TypeAgrementServiceImpl implements TypeAgrementService {
     }
 
     @Override
-    public TypeAgrement update(Integer id, TypeAgrementRequest request) throws TypeAgrementNotFound, RefTypeNotFound {
+    public TypeAgrement update(Integer id, TypeAgrementRequest request) throws TypeAgrementNotFound, RefTypeNotFound, RefParamNotFound {
         TypeAgrement typeAgrement=findById(id);
 
         if(request.getOrganismeDeDeliveranceAgrementsId()==null) {
@@ -113,8 +116,8 @@ public class TypeAgrementServiceImpl implements TypeAgrementService {
             }
             typeAgrement.setLibelle(request.getLibelle());
         }
-        RefType organismeDeDeliveranceAgrements=refTypeService.findById(request.getOrganismeDeDeliveranceAgrementsId());
-        if (!organismeDeDeliveranceAgrements.getRefCode().equals(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS.name())) {
+        RefParam organismeDeDeliveranceAgrements=refParamService.findById(request.getOrganismeDeDeliveranceAgrementsId());
+        if (!organismeDeDeliveranceAgrements.getRefType().getRefCode().equals(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS.name())) {
             throw new WrongType("");
         }
         typeAgrement.setOrganismeDeDeliveranceAgrements(organismeDeDeliveranceAgrements);

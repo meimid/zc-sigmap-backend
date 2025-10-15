@@ -1,5 +1,6 @@
 package com.sigmap.common.type_agrement;
 
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
@@ -8,11 +9,14 @@ public class TypeAgrementSpecifications {
     /** search. */
     public static Specification<TypeAgrement> search(String search) {
         return (root, query, criteriaBuilder) -> {
-            Join<TypeAgrement, RefType> join = root.join("organismeDeDeliveranceAgrements");
+            Join<TypeAgrement, RefParam> join = root.join("organismeDeDeliveranceAgrements");
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("refCode"), "%" + search + "%"));
+                    criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("code"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("refType").get("description"), "%" + search + "%"),
+                    criteriaBuilder.like(join.get("refType").get("refCode"), "%" + search + "%"));
         };
     }
 

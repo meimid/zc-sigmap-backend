@@ -20,5 +20,5 @@ CREATE TABLE IF NOT EXISTS type_agrement (
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     CONSTRAINT PK_TYPE_AGREMENT PRIMARY KEY (type_agrement_id),
     CONSTRAINT FK_ORGANISME_DE_DELIVRANCE_AGREMENTS FOREIGN KEY (organisme_de_delivrance_agrements_id)
-    REFERENCES ref_type(ref_type_id)
+    REFERENCES ref_param(ref_param_id)
     );

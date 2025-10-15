@@ -1,6 +1,7 @@
 package com.sigmap.common.type_agrement;
 
 
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.request.TypeAgrementRequest;
@@ -78,7 +79,7 @@ public interface TypeAgrementService {
      * @param request the request to create the TypeAgrement from
      * @return the created TypeAgrement
      */
-    TypeAgrement create(TypeAgrementRequest request) throws RefTypeNotFound;
+    TypeAgrement create(TypeAgrementRequest request) throws RefTypeNotFound, RefParamNotFound;
 
     /**
      * update TypeAgrement.
@@ -86,7 +87,7 @@ public interface TypeAgrementService {
      * @param request the request to create the TypeAgrement from
      * @return the updated TypeAgrement
      */
-    TypeAgrement update(Integer id,TypeAgrementRequest request) throws TypeAgrementNotFound, RefTypeNotFound;
+    TypeAgrement update(Integer id,TypeAgrementRequest request) throws TypeAgrementNotFound, RefTypeNotFound, RefParamNotFound;
 
     /**
      * Delete a TypeAgrement.

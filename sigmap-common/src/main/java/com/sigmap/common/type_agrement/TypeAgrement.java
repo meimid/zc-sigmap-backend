@@ -1,6 +1,7 @@
 package com.sigmap.common.type_agrement;
 
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_types.RefType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -23,5 +24,5 @@ public class TypeAgrement extends BaseEntity {
     private String libelle;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organisme_de_delivrance_agrements_id", nullable = false)
-    private RefType organismeDeDeliveranceAgrements;
+    private RefParam organismeDeDeliveranceAgrements;
 }

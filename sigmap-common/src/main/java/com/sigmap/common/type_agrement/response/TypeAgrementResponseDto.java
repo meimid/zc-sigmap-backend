@@ -1,5 +1,6 @@
 package com.sigmap.common.type_agrement.response;
 
+import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.ref_types.response.RefTypeResponseDto;
 import lombok.Data;
 
@@ -7,5 +8,5 @@ import lombok.Data;
 public class TypeAgrementResponseDto {
     private Integer id;
     private String libelle;
-    private RefTypeResponseDto organismeDeDeliveranceAgrements;
+    private RefParamResponseDto organismeDeDeliveranceAgrements;
 }
