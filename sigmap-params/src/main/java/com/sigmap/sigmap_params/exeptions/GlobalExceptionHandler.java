@@ -20,6 +20,10 @@ import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.doc_soumission.exception.*;
+import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
+import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
+import com.sigmap.common.doc_soumission.exception.NomRequired;
+import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
@@ -835,37 +839,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    @ExceptionHandler(DocSoumissionNotFound.class)
-    public ResponseEntity<ErrorResponse> DocSoumissionNotFoundException(DocSoumissionNotFound ex) {
-        String message = messageSource.getMessage("docSoumission.notFound", new Object[]{ex.getId()}, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
 
-    }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(NomRequired.class)
-    public ResponseEntity<ErrorResponse> RequiredNomDocSoumissionException() {
-        String message = messageSource.getMessage("docSoumission.nomRequired",new Object[] {}, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
 
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(TypeDossierRequired.class)
-    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException() {
-        String message = messageSource.getMessage("docSoumission.typeDossierRequired",new Object[] {}, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(InvalidTypeDossierException.class)
-    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException(InvalidTypeDossierException ex) {
-        String message = messageSource.getMessage("docSoumission.invalidTypeDossierException",new Object[] {}, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
+
+
+
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(DacIdRequired.class)
@@ -949,6 +928,38 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("docSoumission.hasDacDocSoumission",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DocSoumissionNotFound.class)
+    public ResponseEntity<ErrorResponse> DocSoumissionNotFoundException(DocSoumissionNotFound ex) {
+        String message = messageSource.getMessage("docSoumission.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NomRequired.class)
+    public ResponseEntity<ErrorResponse> RequiredNomDocSoumissionException() {
+        String message = messageSource.getMessage("docSoumission.nomRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TypeDossierRequired.class)
+    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException() {
+        String message = messageSource.getMessage("docSoumission.typeDossierRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidTypeDossierException.class)
+    public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException(InvalidTypeDossierException ex) {
+        String message = messageSource.getMessage("docSoumission.invalidTypeDossierException",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
 
