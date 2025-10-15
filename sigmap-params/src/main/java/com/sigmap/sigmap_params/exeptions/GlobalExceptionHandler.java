@@ -43,6 +43,10 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
+import com.sigmap.common.type_agrement.exception.OrganismeDeDeliveranceAgrementsRequired;
+import com.sigmap.common.type_agrement.exception.TypeAgrementAlreadyExist;
+import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
+import com.sigmap.common.type_agrement.exception.WrongType;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import lombok.RequiredArgsConstructor;
@@ -820,10 +824,53 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(CategoriesActiviteRequired.class)
-    public ResponseEntity<ErrorResponse> RequiredLibelleActiviteException(CategoriesActiviteRequired ex) {
+    public ResponseEntity<ErrorResponse> RequiredCategoriesActiviteException(CategoriesActiviteRequired ex) {
         String message = messageSource.getMessage("activite.categoriesActiviteRequired",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(TypeAgrementNotFound.class)
+    public ResponseEntity<ErrorResponse> TypeAgrementNotFoundFoundException(TypeAgrementNotFound ex) {
+        String message = messageSource.getMessage("typeAgrement.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TypeAgrementAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> TypeAgrementAlreadyExistException(TypeAgrementAlreadyExist ex) {
+        String message = messageSource.getMessage("typeAgrement.alreadyExist",new Object[] {ex.getLibelle()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(OrganismeDeDeliveranceAgrementsRequired.class)
+    public ResponseEntity<ErrorResponse> RequiredOrganismeDeDeliveranceAgrementsRequiredException(OrganismeDeDeliveranceAgrementsRequired ex) {
+        String message = messageSource.getMessage("typeAgrement.organismeDeDeliveranceAgrementsRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(RefTypeIdNotFound.class)
+    public ResponseEntity<ErrorResponse> RefTypeNotFoundException(RefTypeIdNotFound ex) {
+        String message = messageSource.getMessage("refType.notFound", new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(WrongType.class)
+    public ResponseEntity<ErrorResponse> WrongTypeException(WrongType ex) {
+        String message = messageSource.getMessage("refType.WrongType", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
     }
 }
 
