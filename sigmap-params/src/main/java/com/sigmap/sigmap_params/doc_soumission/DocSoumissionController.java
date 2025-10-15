@@ -10,7 +10,6 @@ import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
 import com.sigmap.common.doc_soumission.request.DocSoumissionQuery;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
 import com.sigmap.common.doc_soumission.response.DocSoumissionResponse;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;

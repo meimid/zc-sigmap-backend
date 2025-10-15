@@ -13,7 +13,11 @@ import com.sigmap.common.com.exception.*;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.contact.exception.ContactDeleted;
 import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.dac.exeption.DacIdRequired;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExist;
+import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
+import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
 import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
@@ -715,7 +719,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(ReunionDate.class)
+    @ExceptionHandler(Date.class)
     public ResponseEntity<ErrorResponse> ReunionDateException() {
         String message = messageSource.getMessage("reunion.date",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
@@ -858,6 +862,39 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidTypeDossierException.class)
     public ResponseEntity<ErrorResponse> TypeDossierRequiredDocSoumissionException(InvalidTypeDossierException ex) {
         String message = messageSource.getMessage("docSoumission.invalidTypeDossierException",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DacIdRequired.class)
+    public ResponseEntity<ErrorResponse> DacIdRequiredException() {
+        String message = messageSource.getMessage("dac.IdRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DocSoumissionIdRequired.class)
+    public ResponseEntity<ErrorResponse> DocSoumissionIdRequiredException() {
+        String message = messageSource.getMessage("docSoumission.IdRequired",new Object[] {}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DacDocSoumissionNotFound.class)
+    public ResponseEntity<ErrorResponse> DocSoumissionNotFoundException() {
+        String message = messageSource.getMessage("dacDocSoumission.notFound", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DacDocSoumissionAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> DacDocSoumissionAlreadyExistException(DacDocSoumissionAlreadyExist ex) {
+        String message = messageSource.getMessage("dacDocSoumission.alreadyExist",new Object[] {ex.getDacId(),ex.getDacVersion(),ex.getDocSoumissionId()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
