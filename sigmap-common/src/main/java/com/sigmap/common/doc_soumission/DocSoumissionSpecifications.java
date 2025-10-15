@@ -43,7 +43,7 @@ public class DocSoumissionSpecifications {
         };
     }
     /** Documents NOT linked to a given DAC */
-    public static Specification<DocSoumission> notInDac(Integer dacId) {
+    public static Specification<DocSoumission> inDac(Integer dacId) {
         return (root, query, cb) -> {
             if (dacId == null) {
                 return cb.conjunction();
@@ -58,7 +58,7 @@ public class DocSoumissionSpecifications {
     }
 
     /** Documents linked (IN) to a given DAC */
-    public static Specification<DocSoumission> inDac(Integer dacId) {
+    public static Specification<DocSoumission> notInDac (Integer dacId) {
         return (root, query, cb) -> {
             if (dacId == null) {
                 return cb.conjunction();
