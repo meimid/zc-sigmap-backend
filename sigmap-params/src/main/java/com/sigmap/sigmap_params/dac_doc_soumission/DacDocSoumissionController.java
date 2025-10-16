@@ -110,10 +110,21 @@ public class DacDocSoumissionController {
 
         DacDocSoumissionPageResponse response = DacDocSoumissionPageResponse.builder()
                 .dacId(dacId)
-                .docSoumissions(page)
+                .content(page.getContent())
+                .pageable(page.getPageable())
+                .last(page.isLast())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .size(page.getSize())
+                .number(page.getNumber())
+                .sort(page.getSort())
+                .first(page.isFirst())
+                .numberOfElements(page.getNumberOfElements())
+                .empty(page.isEmpty())
                 .build();
 
         return ResponseEntity.ok(response);
+
     }
 
 
