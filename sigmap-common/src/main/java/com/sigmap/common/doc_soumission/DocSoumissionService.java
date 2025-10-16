@@ -1,12 +1,14 @@
 package com.sigmap.common.doc_soumission;
 
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,5 +74,10 @@ public interface DocSoumissionService {
      * @param id the id of the DocSoumission to delete
      */
     void delete(Integer id) throws DocSoumissionNotFound;
+
+    List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
+    List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec);
+    public List<DocSoumission> findDocSoumissionByType(TypeDossier typeDossier);
+
 
 }
