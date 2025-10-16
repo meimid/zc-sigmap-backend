@@ -177,11 +177,14 @@ public class DynaDocsServiceImpl implements DynaDocsService {
    */
   private void validateAAOUniquenessForUpdate(Integer currentDynaDocId, Integer typeMarcheId, Integer modePassationId) {
      var existingAAOs = dynaDocsRepository.findActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+     log.debug("Found {} active AAOs for typeMarcheId {} and modePassationId {}", existingAAOs.size(), typeMarcheId, modePassationId);
     // Check if any existing AAO is different from the current document being updated
     boolean hasOtherAAO = existingAAOs.stream()
         .anyMatch(aao -> !aao.getId().equals(currentDynaDocId));
     if (hasOtherAAO) {
+      log.debug("---------- ActiveAAOAlreadyExistsException ---------");
         throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
+
     }
   }
 }

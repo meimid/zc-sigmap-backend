@@ -3,7 +3,7 @@ package com.sigmap.common.dac.request;
 import lombok.Data;
 
 @Data
-public class ModeleRequest {
+public class ModeleAAORequest {
     private Integer dacId;
     private Integer dacVersion;
     private String signataire;
