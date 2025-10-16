@@ -16,6 +16,7 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,49 @@ public class DynaFormServiceImpl implements DynaFormService {
                 .map(mapper::toResponse)
                 .toList();
     }
+
+    /**
+     * Récupère une liste paginée des DynaForm non supprimés (soft delete),
+     * en ne retournant que la dernière version pour chaque ID métier,
+     * selon la spécification donnée. Les champs (fields) soft-deleted
+     * sont exclus de la réponse.
+     *
+     * @param spec     Spécification optionnelle pour filtrer les DynaForm (ex: type, search, status)
+     * @param pageable Configuration de pagination et tri
+     * @return Page de DynaFormResponse correspondant à la dernière version par ID
+     */
+    @Transactional(readOnly = true)
+    public Page<DynaFormResponse> findAll(Specification<DynaForm> spec, Pageable pageable) {
+        Specification<DynaForm> base = Specification
+                .where(DynaFormSpecifications.notDeleted())
+                .and(DynaFormSpecifications.latestVersionPerId());
+
+        Specification<DynaForm> combined = (spec != null) ? base.and(spec) : base;
+
+        Page<DynaForm> page = formRepo.findAll(combined, pageable);
+
+        if (page.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return page.map(this::toFilteredResponse);
+    }
+
+
+    private DynaFormResponse toFilteredResponse(DynaForm form) {
+        DynaFormResponse dto = mapper.toResponse(form);
+
+        if (form.getFields() != null && !form.getFields().isEmpty()) {
+            var kept = form.getFields().stream()
+                    .filter(f -> Boolean.FALSE.equals(f.getIsDeleted()))
+                    .map(fieldMapper::toResponse)
+                    .toList();
+            dto.setFields(kept);
+        }
+
+        return dto;
+    }
+
 
     @Transactional
     @Override

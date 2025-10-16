@@ -1,11 +1,15 @@
 package com.sigmap.sigmap_params.DynaForm;
 
+import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.DynaFormService;
+import com.sigmap.common.dyna_form.request.DynaFormQuery;
 import com.sigmap.common.dyna_form.request.DynaFormRequest;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.entity.TypeDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,10 +51,25 @@ public class DynaFormController {
      * List latest versions (service returns whatever your implementation decides:
      * either all versions or only latest; adjust service if needed).
      */
-    @GetMapping
+    @GetMapping("/list")
     public ResponseEntity<List<DynaFormResponse>> list() {
         List<DynaFormResponse> list = dynaFormService.list();
         return ResponseEntity.ok(list);
+    }
+
+    /**
+     * Retrieves a paginated list of non-deleted DynaForm entities, returning only the latest version for each ID
+     * based on the given query.
+     *
+     * @param query    The query to filter DynaForm entities (e.g., search, typeDossier, status)
+     * @param pageable The pagination and sorting information
+     * @return ResponseEntity with a Page of DynaFormResponse DTOs and HTTP status 200 (OK)
+     */
+    @GetMapping
+    public ResponseEntity<Page<DynaFormResponse>> getAllLatestDynaForms(DynaFormQuery query, Pageable pageable) {
+        Specification<DynaForm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
+        Page<DynaFormResponse> page = dynaFormService.findAll(spec, pageable);
+        return new ResponseEntity<>(page, HttpStatus.OK);
     }
 
     /**
