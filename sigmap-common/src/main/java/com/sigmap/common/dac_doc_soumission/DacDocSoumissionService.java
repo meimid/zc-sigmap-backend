@@ -42,6 +42,7 @@ public interface DacDocSoumissionService {
      * @return the DacDocSoumission with the given ids
      */
     DacDocSoumission findByDacIdAndDocSoumissionId(Integer dacId,Integer docSoumissionId) throws DacDocSoumissionNotFound;
+    List<DacDocSoumission> findByDacId(Integer dacId) throws DacDocSoumissionNotFound;
 
     /**
      * Save a DacDocSoumission.
