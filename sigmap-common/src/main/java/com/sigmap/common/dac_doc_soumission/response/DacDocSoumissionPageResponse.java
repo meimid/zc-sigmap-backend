@@ -13,6 +13,5 @@ import java.util.Date;
 @Builder
 public class DacDocSoumissionPageResponse {
     private Integer dacId;
-    private Date dateValidate;
-    private Page<DocSoumissionResponse> docSoumissions;
+    private Page<DacDocSoumissionWithOutDacId> docSoumissions;
 }
