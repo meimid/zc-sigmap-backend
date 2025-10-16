@@ -9,6 +9,8 @@ import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.Calendar;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -55,5 +57,14 @@ public class Dac extends BaseEntity {
   private String reference;
 
   private String processInstanceId;
+
+  @Column(name = "date_limite_soumission")
+  private Calendar dateLimiteSoumission;
+
+  @Column(name = "date_limite_recption_demande")
+  private Calendar dateLimiteRecptionDemande;
+
+  @Column(name = "payant")
+  private boolean payant;
 
 }

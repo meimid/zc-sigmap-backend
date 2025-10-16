@@ -2,7 +2,9 @@ package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
@@ -28,6 +30,7 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -267,10 +270,34 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     @Override
     @Transactional
-    public List<DacDocs> createDacDocsList(List<DacDocsRequest> requests) {
+    public List<DacDocs> createDacDocsList(DacDoccsAndDacRequest dacDoccsAndDacRequest) {
+
         List<DacDocs> result = new ArrayList<>();
 
+        // Validate input
+        if (dacDoccsAndDacRequest.getRequests() == null || dacDoccsAndDacRequest.getRequests().isEmpty()) {
+            throw new RuntimeException("No DacDocs requests provided");
+        }
+        if (dacDoccsAndDacRequest.getDacEditRequest() == null) {
+            throw new RuntimeException("Dac request is required");
+        }
+
+        // 1-  get the Dac from the DacRequest
+        Dac existDac = dacRepository.findDacByDacIdAndDacVer(dacDoccsAndDacRequest.getDacEditRequest().getDacId(), dacDoccsAndDacRequest.getDacEditRequest().getDacVer())
+                .orElseThrow(() -> new DacNotFound("",dacDoccsAndDacRequest.getDacEditRequest().getDacId(), dacDoccsAndDacRequest.getDacEditRequest().getDacVer()));
+
+        //update dac values
+        existDac.setDateLimiteSoumission(dacDoccsAndDacRequest.getDacEditRequest().getDateLimiteSoumission());
+        existDac.setDateLimiteRecptionDemande(dacDoccsAndDacRequest.getDacEditRequest().getDateLimiteRecptionDemande());
+        existDac.setPayant(dacDoccsAndDacRequest.getDacEditRequest().isPayant());
+
+        //update dac and save
+        dacRepository.save(existDac);
+
+        List<DacDocsRequest> requests = dacDoccsAndDacRequest.getRequests();
+
         for (DacDocsRequest request : requests) {
+
             // 1- Get the DynaDocs with the last version
             Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
             if (existingDynaDocs.isEmpty()) {

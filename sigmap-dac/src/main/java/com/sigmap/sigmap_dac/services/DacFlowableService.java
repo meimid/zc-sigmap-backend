@@ -8,6 +8,10 @@ import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_prix.DacPrix;
+import com.sigmap.common.dac_prix.DacPrixRepository;
+import com.sigmap.common.dac_prix.mapper.DacPrixMapper;
+import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -75,6 +79,7 @@ public class DacFlowableService {
     @Autowired private DacDocsService dacDocsService;
     @Autowired private CurrentUserService currentUserService;
     @Autowired private KeycloakAdminService keycloakAdminService;
+    @Autowired private DacPrixRepository dacPrixRepository;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -664,6 +669,11 @@ public class DacFlowableService {
         // Attach full DAC docs/details snapshot for latest version
         DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
         resp.setDacDocs(dacDocs);
+
+        // Attached DacPrix
+        List<DacPrix> prixDac = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+        List<DacPrixResponce> responces = prixDac.stream().map(DacPrixMapper.INSTANCE::map).toList();
+        resp.setDacPrix(responces);
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {

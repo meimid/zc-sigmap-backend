@@ -864,6 +864,21 @@ public class DacServiceImpl implements DacService {
         return dacResponse;
     }
 
+
+    public static Dac cloneWithNewVersion(Dac base, int nextVer) {
+        Dac newDac = new Dac();
+        newDac.setDacId(base.getDacId());
+        newDac.setDacVer(nextVer);
+        newDac.setPpm(base.getPpm());
+        newDac.setRealisation(base.getRealisation());
+        newDac.setTypeMarche(base.getTypeMarche());
+        newDac.setDateLimiteSoumission(base.getDateLimiteSoumission());
+        newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
+        newDac.setPayant(base.isPayant());
+        // Add other fields as needed...
+        return newDac;
+    }
+
     @Override
     @Transactional
     public DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer) {
@@ -875,13 +890,8 @@ public class DacServiceImpl implements DacService {
         Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
         int nextVer = latest.getDacVer() + 1;
 
-        // Create new DAC version as a snapshot clone
-        Dac newDac = new Dac();
-        newDac.setDacId(base.getDacId());
-        newDac.setDacVer(nextVer);
-        newDac.setPpm(base.getPpm());
-        newDac.setRealisation(base.getRealisation());
-        newDac.setTypeMarche(base.getTypeMarche());
+        // Create new DAC version using mapper
+        Dac newDac = cloneWithNewVersion(base, nextVer);
 
         // Set modePassation from base DAC, or from realisation if base doesn't have it
         if (base.getModePassation() != null) {

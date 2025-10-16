@@ -1,5 +1,7 @@
 package com.sigmap.common.dac_docs;
 
+import com.sigmap.common.dac.request.DacRequest;
+import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 
@@ -21,7 +23,7 @@ public interface DacDocsService {
     List<DacDocs> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
 
     // save dacDocLis without versionning
-    List<DacDocs> createDacDocsList(List<DacDocsRequest> requests);
+    List<DacDocs> createDacDocsList(DacDoccsAndDacRequest dacDocsAndDacRequest);
 
     // New explicit methods
     DacDocs updateDacDocsWithVersioning(DacDocsRequest request);
