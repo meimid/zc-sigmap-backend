@@ -8,11 +8,15 @@ import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.mapper.DacPrixMapper;
 import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
+import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
+import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -668,6 +672,28 @@ public class DacFlowableService {
 
         // Attach full DAC docs/details snapshot for latest version
         DacResponseDTO dacDocs = dacService.findByDacIdAndVer(dac.getDacId(), dac.getDacVer());
+
+        // sort dacDocs -> dynaDoc -> dynaFields -> dynaFieldsDetails by columnPos ascending
+        if (dacDocs != null && dacDocs.getDynaDocs() != null) {
+            for (DynaDocsResponseDTO dd : dacDocs.getDynaDocs()) {
+                if (dd.getDynaFields() != null) {
+                    // sort details inside each field by columnPos
+                    for (DynaFieldsDTO f : dd.getDynaFields()) {
+                        if (f.getDynaFieldsDetails() != null && !f.getDynaFieldsDetails().isEmpty()) {
+                            List<DynaFieldsDetailsDTO> sorted = new ArrayList<>(f.getDynaFieldsDetails());
+                            sorted.sort(java.util.Comparator.comparing(DynaFieldsDetailsDTO::getColumnPos, Comparator.nullsLast(Integer::compareTo)));
+                            f.setDynaFieldsDetails(new LinkedHashSet<>(sorted));
+                        }
+                    }
+                    // sort fields by dynaFieldsOrder if present
+                    dd.getDynaFields().sort(Comparator.comparing(DynaFieldsDTO::getDynaFieldsOrder, Comparator.nullsLast(Integer::compareTo)));
+                }
+            }
+            // sort dynaDocs by dynaDocOrder if present
+            dacDocs.getDynaDocs().sort(java.util.Comparator.comparing(DynaDocsResponseDTO::getDynaDocOrder, Comparator.nullsLast(Integer::compareTo)
+            ));
+        }
+
         resp.setDacDocs(dacDocs);
 
         // Attached DacPrix

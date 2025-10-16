@@ -42,6 +42,7 @@ public interface DynaFieldsMapper {
   @Mapping(target = "sourceField", source = "source_field")
   DynaFieldsResponse.Detail map(DynaFieldsDetails source);
 
+  @Mapping(target = "details", source = "dynaFieldsDetails")
   List<DynaFieldsResponse> map(List<DynaFields> source);
 
   @Mapping(target = "dynaFieldsId", source = "dynaFieldsId")
