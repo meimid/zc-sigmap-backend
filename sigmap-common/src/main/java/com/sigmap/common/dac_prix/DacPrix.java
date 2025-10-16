@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Entity
 @Table(name = "dac_prix")
-public class DacPrix {
+public class DacPrix extends BaseEntity {
 
     @EmbeddedId
     private DacPrixId id;

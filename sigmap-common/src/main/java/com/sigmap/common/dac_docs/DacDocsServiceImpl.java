@@ -364,6 +364,24 @@ public class DacDocsServiceImpl implements DacDocsService{
             if (prixRequests == null || prixRequests.isEmpty()) {
                 throw new IllegalArgumentException("DacPrixRequests are required when payant = true");
             }
+            // 1-1Fetch existing DacPrix in DB
+            List<DacPrix> existingPrixList = dacPrixRepository.findByDac(existDac.getDacId(), existDac.getDacVer());
+
+            //1-2 Determine which Monnaies are requested
+            Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                    .map(DacPrixRequestForDac::getMonnaieId)
+                    .collect(Collectors.toSet());
+
+            // 1-3 Delete DacPrix not present in request but present in DB
+            List<DacPrix> toDelete = existingPrixList.stream()
+                    .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+            if (!toDelete.isEmpty()) {
+                dacPrixRepository.softDelete(toDelete);
+                log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), existDac.getDacId(), existDac.getDacVer());
+            }
+
+
             for (DacPrixRequestForDac prixRequest : prixRequests) {
                 savePrixDac(prixRequest,existDac.getDacId(),existDac.getDacVer());
                 log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),existDac.getDacId(),existDac.getDacVer());
