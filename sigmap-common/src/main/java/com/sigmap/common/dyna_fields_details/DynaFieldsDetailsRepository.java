@@ -28,5 +28,5 @@ public interface DynaFieldsDetailsRepository
                                                @Param("dynaDocsVer") Integer dynaDocsVer,
                                                @Param("dynaFieldsId") Integer dynaFieldsId);
 
-    DynaFieldsDetails findByDynaFieldsDetailsId(Integer dynaFieldsDetailsId);
+    DynaFieldsDetails findByDynaDocsIdAndDynaDocsVerAndDynaFieldsDetailsId(Integer dynaDocsId,Integer dynaDocsVer,Integer dynaFieldsDetailsId);
 }
