@@ -16,6 +16,8 @@ import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsService;
 import com.sigmap.common.dyna_fields_details.mappers.DynaFieldsDetailsMapper;
 import java.util.List;
+
+import com.sigmap.common.dyna_fields_details.request.DynaFieldsDetailsQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -110,10 +112,32 @@ public class DynaDocsVersionsAop {
       dynaFieldsService.save(newDynaField);
     }
 
-    Object result = joinPoint.proceed();
+    //Object result = joinPoint.proceed();
 
     log.info("after dynaDoc update ...");
 
+    // dynaFieldsDetails update
+    DynaFieldsDetailsQuery dynaFieldsDetailsQuery = new DynaFieldsDetailsQuery();
+    dynaFieldsDetailsQuery.setDynaDocsId(dynaDocId);
+    dynaFieldsDetailsQuery.setDynaDocsVer(oldVersion);
+    //dynaFieldsDetailsQuery.setDynaFieldsId(dynaFieldsDetailsQuery.getDynaFieldsId());
+
+    List<DynaFieldsDetails> dynaFieldsDetails = dynaFieldsDetailsService.findAll(dynaFieldsDetailsQuery.toSpecification());
+
+    log.info("Found {} dynaFieldsDetails", dynaFieldsDetails.size());
+
+    for (DynaFieldsDetails dynaFieldsDetail : dynaFieldsDetails) {
+      DynaFieldsDetails newDynaFieldDetails = DynaFieldsDetailsMapper.INSTANCE.mapWithoutId(dynaFieldsDetail);
+      newDynaFieldDetails.setDynaFieldsDetailsId(dynaFieldsDetail.getDynaFieldsId());
+      newDynaFieldDetails.setDynaDocsId(dynaDocId);
+      newDynaFieldDetails.setDynaDocsVer(newDynaDocsVer);
+      newDynaFieldDetails.setDynaFieldsId(dynaFieldsDetail.getDynaFieldsId());
+      dynaFieldsDetailsService.save(newDynaFieldDetails);
+    }
+
+    Object result = joinPoint.proceed();
+
+    log.info("after dynaFieldsDetails update ...");
     return result;
   }
 

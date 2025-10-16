@@ -120,7 +120,7 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
 
         dacService.findById(dacId,dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + dacId, dacId, null));
         Specification<DocSoumission> spec =
-                Specification.where(DocSoumissionSpecifications.inDac(dacId))
+                Specification.where(DocSoumissionSpecifications.notInDac(dacId))
                         .and(docSoumissionSpec != null ? docSoumissionSpec : Specification.where(null));
         return repository.findAll(spec);
        // return repository.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
@@ -137,7 +137,7 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
 
         dacService.findById(dacId,dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + dacId, dacId, null));
         Specification<DocSoumission> spec =
-                Specification.where(DocSoumissionSpecifications.notInDac(dacId))
+                Specification.where(DocSoumissionSpecifications.inDac(dacId))
                         .and(docSoumissionSpec != null ? docSoumissionSpec : Specification.where(null));
 
         return repository.findAll(spec);

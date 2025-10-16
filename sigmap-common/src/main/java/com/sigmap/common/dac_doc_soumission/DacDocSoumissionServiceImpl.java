@@ -75,9 +75,9 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
 
     @Override
     public List<DacDocSoumission> findByDacId(Integer dacId) throws DacDocSoumissionNotFound {
-        Integer dacLatestVersion;
+
         try {
-            dacLatestVersion = dacService.findLatestVersionById(dacId);
+            dacService.findLatestVersionById(dacId);
         } catch (Exception e) {
             throw new DacNotFound("DAC not found with ID " + dacId, dacId, null);
         }

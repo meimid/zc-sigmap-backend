@@ -23,8 +23,10 @@ public interface DynaFieldsDetailsRepository
                                                        @Param("dynaDocsVer")Integer dynaDocsVer,
                                                        @Param("dynaFieldsId")Integer dynaFieldsId);
 
-  @Query("SELECT dfd FROM DynaFieldsDetails dfd WHERE dfd.dynaDocsId = :dynaDocsId AND dfd.dynaDocsVer = :dynaDocsVer AND dfd.dynaFieldsId = :dynaFieldsId")
+  @Query("SELECT dfd FROM DynaFieldsDetails dfd WHERE dfd.dynaDocsId = :dynaDocsId AND dfd.dynaDocsVer = :dynaDocsVer AND dfd.dynaFieldsId = :dynaFieldsId ORDER BY dfd.columnPos ASC")
   List<DynaFieldsDetails> findAllByDocAndField(@Param("dynaDocsId") Integer dynaDocsId,
                                                @Param("dynaDocsVer") Integer dynaDocsVer,
                                                @Param("dynaFieldsId") Integer dynaFieldsId);
+
+    DynaFieldsDetails findByDynaDocsIdAndDynaDocsVerAndDynaFieldsDetailsId(Integer dynaDocsId,Integer dynaDocsVer,Integer dynaFieldsDetailsId);
 }

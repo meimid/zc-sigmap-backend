@@ -6,6 +6,7 @@ import lombok.Data;
 public class DacDocDetailsDTO {
     private Integer dynaFieldsDetailsId;
     private Integer rowId;
+    private Integer columnPos;
     private String sourceId;
     private String fieldValue;
     private Integer dynaDocId;
