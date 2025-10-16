@@ -1,8 +1,11 @@
 package com.sigmap.common.dac.request;
 
+import com.sigmap.common.dac_prix.request.DacPrixRequest;
+import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import lombok.Data;
 
 import java.util.Calendar;
+import java.util.List;
 
 @Data
 public class DacEditRequest {
@@ -11,4 +14,5 @@ public class DacEditRequest {
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;
+    private List<DacPrixRequestForDac> dacPrixRequests;
 }

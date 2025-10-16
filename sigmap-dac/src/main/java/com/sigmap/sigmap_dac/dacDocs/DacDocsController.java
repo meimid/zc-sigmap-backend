@@ -9,6 +9,7 @@ import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -44,7 +45,7 @@ public class DacDocsController {
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithoutVersionning(@RequestBody DacDoccsAndDacRequest dacDocsAndDacRequest) {
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithoutVersionning(@RequestBody DacDoccsAndDacRequest dacDocsAndDacRequest)throws MonnaieNotFound {
         List<DacDocs> dacDocsList = dacDocsService.createDacDocsList(dacDocsAndDacRequest);
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
