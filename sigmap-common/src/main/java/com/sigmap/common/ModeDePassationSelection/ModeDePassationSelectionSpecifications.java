@@ -11,6 +11,7 @@ public class ModeDePassationSelectionSpecifications{
         Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
             return criteriaBuilder.or(
                 criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
+                criteriaBuilder.like(root.get("isRestraint"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("description"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
             };
@@ -47,4 +48,16 @@ public static Specification<ModeDePassationSelection> deleted(boolean deleted) {
 public static Specification<ModeDePassationSelection> hastypeMarcherId(Integer typeMarcherId) {
     return (root, query, cb) -> cb.equal(root.get("typeMarchers").get("id"), typeMarcherId);
 }
+
+    /** isRestraint. */
+    public static Specification<ModeDePassationSelection> isRestraint(boolean isRestraint) {
+        return (root, query, criteriaBuilder) -> {
+            if (!isRestraint) {
+                return criteriaBuilder.or(
+                        criteriaBuilder.isNull(root.get("isRestraint")),
+                        criteriaBuilder.isFalse(root.get("isRestraint")));
+            }
+            return criteriaBuilder.isTrue(root.get("isRestraint"));
+        };
+    }
 }
