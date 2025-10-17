@@ -12,4 +12,6 @@ import java.util.List;
 public class ModeDePassationSelectionRequest {
     private String libelle;
     private List <Integer> typeMarchersIds=new ArrayList<>();
+    private boolean isRestraint;
+
 }
