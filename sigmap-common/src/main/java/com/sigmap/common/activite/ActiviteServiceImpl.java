@@ -128,6 +128,17 @@ public class ActiviteServiceImpl implements ActiviteService {
     @Override
     public void delete(Integer id) throws ActiviteNotFound {
         findById(id);
+        // Check if this activity is related to any Societe
+        Specification<Activite> spec = Specification
+                .where(ActiviteSpecifications.deleted(false))
+                .and(ActiviteSpecifications.id(id))
+                .and(ActiviteSpecifications.hasAssociatedSociete());
+
+        boolean hasAssociatedSociete = repository.count(spec) > 0;
+
+        if (hasAssociatedSociete) {
+            throw new HasAssociatedSociete("This activity is linked to one or more sociétés.", id);
+        }
         repository.softDelete(id);
 
     }

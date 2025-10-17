@@ -1,7 +1,10 @@
 package com.sigmap.common.societe;
 
+import com.sigmap.common.activite.Activite;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 /**
  * Specification for managing {@link Societe}.
@@ -9,17 +12,24 @@ import org.springframework.data.jpa.domain.Specification;
 public class SocieteSpecifications {
     /** search. */
     public static Specification<Societe> search(String search) {
-        return (root, query, criteriaBuilder) -> {
-            Join<Societe, RefParam> join = root.join("RefParam");
-            return criteriaBuilder.or(
-                    criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("nni"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("categorieSoumissionnaireId"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("description"), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("codeColor"),"%" + search + "%"),
-                    criteriaBuilder.like(join.get("code"),"%" + search + "%")
+        return (root, query, cb) -> {
+            Join<Societe, RefParam> typeJoin = root.join("type", JoinType.LEFT);
+            Join<Societe, RefParam> catJoin = root.join("categorieSoumissionnaire", JoinType.LEFT);
+            Join<Societe, Activite> activiteJoin = root.join("activites", JoinType.LEFT);
+            return cb.or(
+                    cb.like(cb.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("nni")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("nif")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("decretCreation")), "%" + search.toLowerCase() + "%"),
 
+                    cb.like(cb.lower(typeJoin.get("description")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(typeJoin.get("codeColor")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(typeJoin.get("code")), "%" + search.toLowerCase() + "%"),
+
+                    cb.like(cb.lower(catJoin.get("description")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(catJoin.get("code")), "%" + search.toLowerCase() + "%"),
+
+                    cb.like(cb.lower(activiteJoin.get("libelle")), "%" + search.toLowerCase() + "%")
             );
         };
     }
@@ -76,4 +86,24 @@ public class SocieteSpecifications {
     public static Specification<Societe> hasPaysIdOrTypeId(Integer refParamId) {
         return hasPaysId(refParamId).or(hasTypeId(refParamId));
     }
+
+    public static Specification<Societe> nif(String nif) {
+        return (root, query, cb) -> cb.like(root.get("nif"), "%" + nif + "%");
+    }
+
+    public static Specification<Societe> numCnss(Integer numCnss) {
+        return (root, query, cb) -> cb.equal(root.get("numCnss"), numCnss);
+    }
+
+    public static Specification<Societe> dateNif(java.util.Date dateNif) {
+        return (root, query, cb) -> cb.equal(root.get("dateNif"), dateNif);
+    }
+
+    public static Specification<Societe> status(ActiveStatus status) {
+        return (root, query, cb) -> cb.equal(root.get("status"), status);
+    }
+    public static Specification<Societe> hasActivite() {
+        return (root, query, cb) -> cb.isNotEmpty(root.get("activites"));
+    }
+
 }
