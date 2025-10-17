@@ -9,4 +9,6 @@ import lombok.*;
 public class ModeDePassationSelectionResponseDto {
     private Integer id;
     private String libelle;
+    private boolean isRestraint;
+
 }
