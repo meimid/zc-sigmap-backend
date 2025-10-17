@@ -11,7 +11,6 @@ public class ModeDePassationSelectionSpecifications{
         Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
             return criteriaBuilder.or(
                 criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
-                criteriaBuilder.like(root.get("isRestraint"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("description"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
             };
