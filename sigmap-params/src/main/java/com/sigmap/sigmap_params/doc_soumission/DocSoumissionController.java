@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.doc_soumission;
 
 
 
+import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionService;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
@@ -10,7 +11,6 @@ import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
 import com.sigmap.common.doc_soumission.request.DocSoumissionQuery;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
 import com.sigmap.common.doc_soumission.response.DocSoumissionResponse;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/doc_soumission")
+@RequestMapping("/api/doc-soumission")
 public class DocSoumissionController {
     private final DocSoumissionService service;
 
@@ -44,6 +44,7 @@ public class DocSoumissionController {
                 params.map(DocSoumissionMapper.INSTANCE::map);
         return ResponseEntity.ok(response);
     }
+
 
 
     @GetMapping("/list")
@@ -80,6 +81,27 @@ public class DocSoumissionController {
         DocSoumission deleted = service.findById(id);
         DocSoumissionResponse response = DocSoumissionMapper.INSTANCE.map(deleted);
         service.delete(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/administrative")
+
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeAdministrative(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.ADMINISTRATIVE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/financer")
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeFinancer(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.FINANCIERE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/technique")
+    public ResponseEntity<List<DocSoumissionResponse>> findDocSoumissionByTypeTechnique(){
+        List<DocSoumission> params=service.findDocSoumissionByType(TypeDossier.TECHNIQUE);
+        List<DocSoumissionResponse> response =params.stream().map(DocSoumissionMapper.INSTANCE::map).collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
 }

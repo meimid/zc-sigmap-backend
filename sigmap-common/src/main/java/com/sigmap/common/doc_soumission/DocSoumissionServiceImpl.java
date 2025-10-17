@@ -1,8 +1,14 @@
 package com.sigmap.common.doc_soumission;
 
 import com.sigmap.common.config.TypeDossier;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacService;
+import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumissionSpecifications;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
-import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
+import com.sigmap.common.doc_soumission.exception.HasDacDocSoumission;
 import com.sigmap.common.doc_soumission.exception.NomRequired;
 import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
@@ -18,9 +24,12 @@ import java.util.Optional;
 @Service
 public class DocSoumissionServiceImpl implements DocSoumissionService {
     private final DocSoumissionRepository repository;
-
-    public DocSoumissionServiceImpl(DocSoumissionRepository repository) {
+    private final DacDocSoumissionRepository dacDocSoumissionRepository;
+    private final DacService dacService;
+    public DocSoumissionServiceImpl(DocSoumissionRepository repository, DacDocSoumissionRepository dacDocSoumissionRepository, DacService dacService) {
         this.repository = repository;
+        this.dacDocSoumissionRepository = dacDocSoumissionRepository;
+        this.dacService = dacService;
     }
     @Override
     public List<DocSoumission> findAllList(Specification<DocSoumission> docSoumission) {
@@ -88,8 +97,56 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
 
     @Override
     public void delete(Integer id) throws DocSoumissionNotFound {
+        Specification<DacDocSoumission> spec = Specification.where(DacDocSoumissionSpecifications.hasDacDocSoumission(id));
+
+        boolean hasDacDocSoumission = dacDocSoumissionRepository.count(spec) > 0;
+        if (hasDacDocSoumission) {
+            throw new HasDacDocSoumission("");
+        }
        DocSoumission docSoumission= findById(id);
        repository.delete(docSoumission);
 
+    }
+
+    @Override
+    public List<DocSoumission> findNotExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec) {
+
+        Integer dacLatestVersion;
+        try {
+            dacLatestVersion = dacService.findLatestVersionById(dacId);
+        } catch (Exception e) {
+            throw new DacNotFound("DAC not found with ID " + dacId, dacId, null);
+        }
+
+        dacService.findById(dacId,dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + dacId, dacId, null));
+        Specification<DocSoumission> spec =
+                Specification.where(DocSoumissionSpecifications.notInDac(dacId))
+                        .and(docSoumissionSpec != null ? docSoumissionSpec : Specification.where(null));
+        return repository.findAll(spec);
+       // return repository.findNotExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    }
+
+    @Override
+    public List<DocSoumission> findExistingDocSoumissionOfDacDocSoumissionByDacId(Integer dacId,Specification<DocSoumission> docSoumissionSpec) {
+        Integer dacLatestVersion;
+        try {
+            dacLatestVersion = dacService.findLatestVersionById(dacId);
+        } catch (Exception e) {
+            throw new DacNotFound("DAC not found with ID " + dacId, dacId, null);
+        }
+
+        dacService.findById(dacId,dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + dacId, dacId, null));
+        Specification<DocSoumission> spec =
+                Specification.where(DocSoumissionSpecifications.inDac(dacId))
+                        .and(docSoumissionSpec != null ? docSoumissionSpec : Specification.where(null));
+
+        return repository.findAll(spec);
+        //return repository.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
+    }
+    @Override
+    public List<DocSoumission> findDocSoumissionByType(TypeDossier typeDossier) {
+        Specification<DocSoumission> spec = Specification
+                .where(DacDocSoumissionSpecifications.hasTypeDossier(typeDossier));
+        return repository.findAll(spec);
     }
 }

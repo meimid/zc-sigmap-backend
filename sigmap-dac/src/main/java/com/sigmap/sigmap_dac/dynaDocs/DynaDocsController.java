@@ -7,16 +7,25 @@ import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsQuery;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.dyna_docs.response.DynaDocsResponse;
+import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
+import com.sigmap.common.dyna_fields.DynaFieldsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldsService;
 import com.sigmap.common.dyna_fields.mappers.DynaFieldsMapper;
 import com.sigmap.common.dyna_fields.request.DynaFieldsQuery;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsService;
+import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsSpecification;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.response.PageResponse;
 import com.sigmap.sigmap_dac.templates.TemplateService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Comparator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,7 +48,10 @@ import org.springframework.web.server.ResponseStatusException;
 public class DynaDocsController {
   private final DynaDocsService dynaDocsService;
   private final DynaFieldsService dynaFieldsService;
+  private final DynaFieldsRepository dynaFieldsRepository;
+  private final DynaFieldsDetailsService dynaFieldsDetailsService;
   private final TemplateService templateService;
+  private final DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
 
   /**
    * Constructor.
@@ -49,12 +61,18 @@ public class DynaDocsController {
    * @param templateService the template service
    */
   public DynaDocsController(
-      DynaDocsService dynaDocsService,
-      DynaFieldsService dynaFieldsService,
-      TemplateService templateService) {
+          DynaDocsService dynaDocsService,
+          DynaFieldsService dynaFieldsService,
+          DynaFieldsDetailsService dynaFieldsDetailsService,
+          TemplateService templateService,
+          DynaFieldsRepository dynaFieldsRepository,
+          DynaFieldsDetailsRepository dynaFieldsDetailsRepository) {
     this.dynaDocsService = dynaDocsService;
     this.dynaFieldsService = dynaFieldsService;
+    this.dynaFieldsDetailsService = dynaFieldsDetailsService;
     this.templateService = templateService;
+    this.dynaFieldsDetailsRepository = dynaFieldsDetailsRepository;
+    this.dynaFieldsRepository = dynaFieldsRepository;
   }
 
   @GetMapping
@@ -95,10 +113,26 @@ public class DynaDocsController {
         dynaFieldsQuery.setDynaDocId(dynaDocsId);
         dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
-        List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
-        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(
-                dynaFields.stream().filter(f -> !"__DEFAULT__".equals(f.getName())).toList()
-        );
+       // List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
+        List<DynaFields> dynaFields = dynaFieldsRepository.findAllWithDetails(dynaFieldsQuery.getDynaDocId(), dynaFieldsQuery.getDynaDocVer());
+
+        // Load details only for LIST and TABLE types
+        for (DynaFields field : dynaFields) {
+          if (field.getType() == DynaFieldType.LIST || field.getType() == DynaFieldType.TABLE) {
+            List<DynaFieldsDetails> details = dynaFieldsDetailsRepository.findAllByDocAndField(field.getDynaDocsId(), field.getDynaDocsVer(), field.getDynaFieldsId());
+            Set<DynaFieldsDetails> detailsSet = new HashSet<>(details);
+            field.setDynaFieldsDetails(detailsSet);
+          }
+        }
+
+        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+        // Order details by columnPos ascending for each field
+        for (DynaFieldsResponse fieldRes : dynaFieldsResponse) {
+          if (fieldRes.getDetails() != null) {
+            fieldRes.getDetails().sort(Comparator.comparing(DynaFieldsResponse.Detail::getColumnPos, Comparator.nullsLast(Integer::compareTo)));
+          }
+        }
+
 
         dynaDocsResponse.setFields(dynaFieldsResponse);
       }
@@ -116,9 +150,28 @@ public class DynaDocsController {
       dynaFieldsQuery.setDynaDocVer(dynaDocs.getVersion());
 
       List<DynaFields> dynaFields = dynaFieldsService.findAll(dynaFieldsQuery.toSpecification());
+
+      // Load details only for LIST and TABLE types
+      for (DynaFields field : dynaFields) {
+        if (field.getType() == DynaFieldType.LIST || field.getType() == DynaFieldType.TABLE) {
+          List<DynaFieldsDetails> details = dynaFieldsDetailsService.findAll(
+              DynaFieldsDetailsSpecification.dynaDocId(field.getDynaDocsId())
+                  .and(DynaFieldsDetailsSpecification.dynaDocVer(field.getDynaDocsVer()))
+                  .and(DynaFieldsDetailsSpecification.dynaFieldsId(field.getDynaFieldsId()))
+          );
+          Set<DynaFieldsDetails> detailsSet = new HashSet<>(details);
+          field.setDynaFieldsDetails(detailsSet);
+        }
+      }
       List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(
               dynaFields.stream().filter(f -> !"__DEFAULT__".equals(f.getName())).toList()
       );
+      // Order details by columnPos ascending for each field
+      for (DynaFieldsResponse fieldRes : dynaFieldsResponse) {
+        if (fieldRes.getDetails() != null) {
+          fieldRes.getDetails().sort(Comparator.comparing(DynaFieldsResponse.Detail::getColumnPos, Comparator.nullsLast(Integer::compareTo)));
+        }
+      }
 
       dynaDocsResponse.setFields(dynaFieldsResponse);
     }
