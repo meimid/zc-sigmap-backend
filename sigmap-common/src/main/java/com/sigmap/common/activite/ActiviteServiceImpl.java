@@ -75,8 +75,9 @@ public class ActiviteServiceImpl implements ActiviteService {
     }
 
     @Override
-    public Activite save(Activite Activite) {
-        return repository.save(Activite);    }
+    public Activite save(Activite activite) {
+        return repository.save(activite);
+    }
 
     @Override
     public Activite create(ActiviteRequest request) throws RefParamNotFound {
