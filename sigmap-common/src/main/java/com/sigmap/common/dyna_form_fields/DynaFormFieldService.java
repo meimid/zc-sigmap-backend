@@ -1,7 +1,6 @@
 package com.sigmap.common.dyna_form_fields;
 
 import com.sigmap.common.dyna_form.DynaForm;
-import com.sigmap.common.dyna_form.request.DynaFormRequest;
 import com.sigmap.common.dyna_form_fields.request.DynaFormFieldRequest;
 
 import java.util.List;
