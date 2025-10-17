@@ -82,10 +82,10 @@ public class SocieteController {
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<Page<SocieteResponse>> findAll(
+    public ResponseEntity<Page<SocieteResponseDto>> findAll(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAll(query.toSpecification(), pageable);
-         Page<SocieteResponse> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::map);
+         Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
         return ResponseEntity.ok(compteBancaireResponses);
     }
 
@@ -98,10 +98,10 @@ public class SocieteController {
      */
     @GetMapping("/deleted")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<Page<SocieteResponse>> findAllDeleted(
+    public ResponseEntity<Page<SocieteResponseDto>> findAllDeleted(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllDeleted(query.toSpecification(), pageable);
-        Page<SocieteResponse> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::map);
+        Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
         return ResponseEntity.ok(compteBancaireResponses);
     }
 

@@ -1,12 +1,10 @@
 package com.sigmap.common.user_societe;
 
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.societe.Societe;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.Date;
 @Getter
@@ -14,9 +12,10 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@EqualsAndHashCode(callSuper = true)
 @Table(name = "user_societe")
 @IdClass(UserSocieteId.class)
-public class UserSociete {
+public class UserSociete extends BaseEntity {
 
     @Id
     @Column(name = "user_id")

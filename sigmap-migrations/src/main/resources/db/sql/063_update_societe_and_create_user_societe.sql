@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS user_societe (
     tel2 VARCHAR(255),
     email VARCHAR(255),
     status ENUM('ACTIF', 'NON_ACTIF') NOT NULL DEFAULT 'NON_ACTIF',
+    created_at DATETIME DEFAULT NULL,
     created_by VARCHAR(100) DEFAULT NULL,
     updated_at DATETIME DEFAULT NULL,
     updated_by VARCHAR(100) DEFAULT NULL,
