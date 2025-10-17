@@ -53,19 +53,30 @@ public final class DynaFormFieldSpecifications {
         return (root, q, cb) -> cb.equal(root.get("status"), status);
     }
 
+    public static Specification<DynaFormField> hasTotalEq(Boolean hasTotal) {
+        return (root, q, cb) -> cb.equal(root.get("hasTotal"), hasTotal);
+    }
+
+    public static Specification<DynaFormField> isFormulaEq(Boolean isFormula) {
+        return (root, q, cb) -> cb.equal(root.get("isFormula"), isFormula);
+    }
+
+    public static Specification<DynaFormField> formulaLike(String formula) {
+        return (root, q, cb) -> cb.like(cb.lower(root.get("formula")), like(formula));
+    }
+
     /** Text search over common columns */
     public static Specification<DynaFormField> search(String search) {
         return (root, q, cb) -> cb.or(
                 cb.like(cb.lower(root.get("name")),        like(search)),
                 cb.like(cb.lower(root.get("label")),       like(search)),
-                cb.like(cb.lower(root.get("description")), like(search))
+                cb.like(cb.lower(root.get("description")), like(search)),
+                cb.like(cb.lower(root.get("formula")),     like(search))
         );
     }
 
     /**
-     * If you ever store fields across multiple versions *with identical ids* and you need
-     * “latest field rows for a given business (field) id across versions of the same form”,
-     * you can use this subquery pattern.
+     * Latest field row per fieldId (for versioned forms)
      */
     public static Specification<DynaFormField> latestFieldRowPerFieldId(Integer formId) {
         return (root, query, cb) -> {

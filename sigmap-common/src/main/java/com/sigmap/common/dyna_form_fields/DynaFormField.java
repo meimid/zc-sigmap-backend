@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_form_fields;
 
+import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.BaseEntity;
@@ -35,8 +36,9 @@ public class DynaFormField extends BaseEntity {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "type_id")
-    private Integer typeId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_id", length = 32)
+    private DynaFieldType type;
 
     @Column(name = "is_required")
     private Boolean isRequired;
@@ -54,4 +56,13 @@ public class DynaFormField extends BaseEntity {
             @JoinColumn(name = "dyna_form_ver", referencedColumnName = "dyna_form_ver", insertable = false, updatable = false)
     })
     private DynaForm form;
+
+    @Column(name = "has_total")
+    private Boolean hasTotal;
+
+    @Column(name = "is_formula")
+    private Boolean isFormula;
+
+    @Column(name = "formula", length = 255)
+    private String formula;
 }

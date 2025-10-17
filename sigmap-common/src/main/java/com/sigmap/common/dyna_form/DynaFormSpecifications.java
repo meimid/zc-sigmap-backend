@@ -1,12 +1,14 @@
 package com.sigmap.common.dyna_form;
 
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.FormType;
 import com.sigmap.common.entity.TypeDossier;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 public final class DynaFormSpecifications {
+
     private DynaFormSpecifications() {}
 
     /** Only rows that are not soft-deleted */
@@ -47,6 +49,10 @@ public final class DynaFormSpecifications {
         return (root, q, cb) -> cb.equal(root.get("typeDossier"), type);
     }
 
+    public static Specification<DynaForm> formTypeEq(FormType formType) {
+        return (root, q, cb) -> cb.equal(root.get("formType"), formType);
+    }
+
     public static Specification<DynaForm> nameEq(String name) {
         return (root, q, cb) -> cb.equal(root.get("name"), name);
     }
@@ -62,9 +68,10 @@ public final class DynaFormSpecifications {
     /** Simple multi-field search (header) */
     public static Specification<DynaForm> search(String search) {
         return (root, q, cb) -> cb.or(
-                cb.like(cb.lower(root.get("name")),  like(search)),
+                cb.like(cb.lower(root.get("name")), like(search)),
                 cb.like(cb.lower(root.get("status").as(String.class)), like(search)),
-                cb.like(cb.lower(root.get("typeDossier").as(String.class)), like(search))
+                cb.like(cb.lower(root.get("typeDossier").as(String.class)), like(search)),
+                cb.like(cb.lower(root.get("formType").as(String.class)), like(search)) // ✅ added formType search too
         );
     }
 

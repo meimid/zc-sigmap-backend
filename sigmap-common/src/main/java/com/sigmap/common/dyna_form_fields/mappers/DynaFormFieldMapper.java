@@ -16,18 +16,27 @@ public interface DynaFormFieldMapper {
     @Mapping(target = "name",      source = "name")
     @Mapping(target = "label",     source = "label")
     @Mapping(target = "description", source = "description")
-    @Mapping(target = "typeId",    source = "typeId")
+    @Mapping(target = "type", source = "type")
     @Mapping(target = "isRequired",source = "isRequired")
     @Mapping(target = "order",     source = "order")
+    @Mapping(target = "hasTotal",         source = "hasTotal")
+    @Mapping(target = "isFormula",        source = "isFormula")
+    @Mapping(target = "formula",          source = "formula")
+    @Mapping(target = "status",          source = "status")
     DynaFormFieldResponse toResponse(DynaFormField entity);
 
     @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "dynaFormFieldsId",   source = "dynaFormFieldsId")
     @Mapping(target = "name",       source = "name")
     @Mapping(target = "label",      source = "label")
     @Mapping(target = "description",source = "description")
-    @Mapping(target = "typeId",     source = "typeId")
+    @Mapping(target = "type",     source = "type")
     @Mapping(target = "isRequired", source = "isRequired")
     @Mapping(target = "order",      source = "order")
+    @Mapping(target = "hasTotal",         source = "hasTotal")
+    @Mapping(target = "isFormula",        source = "isFormula")
+    @Mapping(target = "formula",          source = "formula")
+    @Mapping(target = "status",          source = "status")
     DynaFormField toEntity(DynaFormFieldRequest req);
 }
 

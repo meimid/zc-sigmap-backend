@@ -37,7 +37,7 @@ public class DynaFormFieldServiceImpl implements DynaFormFieldService {
 
         List<DynaFormFieldRequest> incoming = Optional.ofNullable(incomingRaw).orElseGet(List::of);
         Set<Integer> incomingIds = incoming.stream()
-                .map(DynaFormFieldRequest::getFieldId)
+                .map(DynaFormFieldRequest::getDynaFormFieldsId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
@@ -47,7 +47,7 @@ public class DynaFormFieldServiceImpl implements DynaFormFieldService {
         removed.removeAll(incomingIds); // present in DB but missing in request → removed
 
         for (var rf : incoming) {
-            Integer fid = rf.getFieldId();
+            Integer fid = rf.getDynaFormFieldsId();
             if (fid == null) {
                 additions.add(rf);
                 continue;
@@ -61,7 +61,7 @@ public class DynaFormFieldServiceImpl implements DynaFormFieldService {
                     Objects.equals(n(ex.getName()), n(rf.getName())) &&
                             Objects.equals(n(ex.getLabel()), n(rf.getLabel())) &&
                             Objects.equals(n(ex.getDescription()), n(rf.getDescription())) &&
-                            Objects.equals(ex.getTypeId(), rf.getTypeId()) &&
+                            Objects.equals(ex.getType(), rf.getType()) &&
                             Objects.equals(Boolean.TRUE.equals(ex.getIsRequired()), Boolean.TRUE.equals(rf.getIsRequired())) &&
                             Objects.equals(ex.getOrder(), rf.getOrder());
 
@@ -85,16 +85,27 @@ public class DynaFormFieldServiceImpl implements DynaFormFieldService {
             nf.setName(oldF.getName());
             nf.setLabel(oldF.getLabel());
             nf.setDescription(oldF.getDescription());
-            nf.setTypeId(oldF.getTypeId());
+            nf.setType(oldF.getType());
             nf.setIsRequired(oldF.getIsRequired());
+            nf.setHasTotal(oldF.getHasTotal());
+            nf.setIsFormula(oldF.getIsFormula());
+            nf.setFormula(oldF.getFormula());
             nf.setOrder(oldF.getOrder() != null ? oldF.getOrder() : ++fallbackOrder);
-            nf.setStatus(ActiveStatus.ACTIF);
+            if(oldF.getStatus() != null)
+            {
+                nf.setStatus(oldF.getStatus());
+            }
+            else {
+                nf.setStatus(ActiveStatus.ACTIF);
+            }
             nf.setForm(target);
+
             fieldRepo.save(nf);
             target.getFields().add(nf);
         }
         em.flush();
     }
+
 
     @Transactional
     @Override
@@ -115,11 +126,21 @@ public class DynaFormFieldServiceImpl implements DynaFormFieldService {
             nf.setName(rf.getName());
             nf.setLabel(rf.getLabel());
             nf.setDescription(rf.getDescription());
-            nf.setTypeId(rf.getTypeId());
+            nf.setType(rf.getType());
             nf.setIsRequired(Boolean.TRUE.equals(rf.getIsRequired()));
+            nf.setHasTotal(Boolean.TRUE.equals(rf.getHasTotal()));
+            nf.setIsFormula(Boolean.TRUE.equals(rf.getIsFormula()));
+            nf.setFormula(rf.getFormula());
             nf.setOrder(rf.getOrder() != null ? rf.getOrder() : ++fallbackOrder);
-            nf.setStatus(ActiveStatus.ACTIF);
+            if(rf.getStatus() != null)
+            {
+            nf.setStatus(rf.getStatus());
+            }
+            else {
+                nf.setStatus(ActiveStatus.ACTIF);
+            }
             nf.setForm(target);
+
             fieldRepo.save(nf);
             target.getFields().add(nf);
         }

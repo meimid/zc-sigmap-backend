@@ -36,24 +36,31 @@ public class DynaFormServiceImpl implements DynaFormService {
     private final EntityManager em;
 
     private static final String FORM_SEQ = "dyna_form_id_seq";
-    private static final String FIELD_SEQ = "dyna_form_fields_id_seq";
+
+    /** -------------------- CREATE -------------------- **/
     @Transactional
     @Override
     public DynaFormResponse create(DynaFormRequest req) {
-        // new header
         DynaForm f = mapper.toHeaderEntity(req);
         f.setId(seq.getNextId(FORM_SEQ));
         f.setVersion(1);
-        f.setStatus(ActiveStatus.ACTIF);
-        formRepo.save(f);
+        f.setStatus(req.getStatus() != null ? req.getStatus() : ActiveStatus.ACTIF);
 
+        if (req.getFormType() != null) {
+            f.setFormType(req.getFormType());
+        }
+
+        formRepo.save(f);
         fieldSvc.createNewFieldsForVersion(f.getId(), f.getVersion(), req.getFields(), f);
 
-        em.flush(); em.clear();
+        em.flush();
+        em.clear();
+
         DynaForm saved = formRepo.findById(new CompositeId(f.getId(), f.getVersion())).orElse(f);
         return mapper.toResponse(saved);
     }
 
+    /** -------------------- GET -------------------- **/
     @Transactional(readOnly = true)
     @Override
     public DynaFormResponse get(Integer id, Integer version) {
@@ -62,6 +69,7 @@ public class DynaFormServiceImpl implements DynaFormService {
         return mapper.toResponse(f);
     }
 
+    /** -------------------- LIST -------------------- **/
     @Transactional(readOnly = true)
     @Override
     public List<DynaFormResponse> list() {
@@ -70,16 +78,7 @@ public class DynaFormServiceImpl implements DynaFormService {
                 .toList();
     }
 
-    /**
-     * Récupère une liste paginée des DynaForm non supprimés (soft delete),
-     * en ne retournant que la dernière version pour chaque ID métier,
-     * selon la spécification donnée. Les champs (fields) soft-deleted
-     * sont exclus de la réponse.
-     *
-     * @param spec     Spécification optionnelle pour filtrer les DynaForm (ex: type, search, status)
-     * @param pageable Configuration de pagination et tri
-     * @return Page de DynaFormResponse correspondant à la dernière version par ID
-     */
+    /** -------------------- PAGINATED FIND ALL -------------------- **/
     @Transactional(readOnly = true)
     public Page<DynaFormResponse> findAll(Specification<DynaForm> spec, Pageable pageable) {
         Specification<DynaForm> base = Specification
@@ -87,7 +86,6 @@ public class DynaFormServiceImpl implements DynaFormService {
                 .and(DynaFormSpecifications.latestVersionPerId());
 
         Specification<DynaForm> combined = (spec != null) ? base.and(spec) : base;
-
         Page<DynaForm> page = formRepo.findAll(combined, pageable);
 
         if (page.isEmpty()) {
@@ -97,10 +95,8 @@ public class DynaFormServiceImpl implements DynaFormService {
         return page.map(this::toFilteredResponse);
     }
 
-
     private DynaFormResponse toFilteredResponse(DynaForm form) {
         DynaFormResponse dto = mapper.toResponse(form);
-
         if (form.getFields() != null && !form.getFields().isEmpty()) {
             var kept = form.getFields().stream()
                     .filter(f -> Boolean.FALSE.equals(f.getIsDeleted()))
@@ -108,11 +104,10 @@ public class DynaFormServiceImpl implements DynaFormService {
                     .toList();
             dto.setFields(kept);
         }
-
         return dto;
     }
 
-
+    /** -------------------- UPDATE WITH VERSIONING -------------------- **/
     @Transactional
     @Override
     public DynaFormResponse updateWithVersioning(Integer id, DynaFormRequest request) {
@@ -129,117 +124,79 @@ public class DynaFormServiceImpl implements DynaFormService {
                 .collect(Collectors.toMap(DynaFormField::getDynaFormFieldsId, f -> f));
 
         List<DynaFormFieldRequest> incoming = Optional.ofNullable(request.getFields()).orElseGet(List::of);
-
         Map<Integer, DynaFormFieldRequest> incomingById = incoming.stream()
-                .filter(fr -> fr.getFieldId() != null)
-                .collect(Collectors.toMap(DynaFormFieldRequest::getFieldId, fr -> fr, (a, b) -> b));
+                .filter(fr -> fr.getDynaFormFieldsId() != null)
+                .collect(Collectors.toMap(DynaFormFieldRequest::getDynaFormFieldsId, fr -> fr, (a, b) -> b));
 
         Set<Integer> keepIds = new HashSet<>(incomingById.keySet());
-
         List<DynaFormFieldRequest> toAdd = incoming.stream()
-                .filter(fr -> fr.getFieldId() == null)
-                .collect(Collectors.toList());
+                .filter(fr -> fr.getDynaFormFieldsId() == null)
+                .toList();
 
         Set<Integer> toDropIds = new HashSet<>(existingById.keySet());
         toDropIds.removeAll(keepIds);
 
-        boolean headerChanged =
-                !Objects.equals(n(latest.getName()), n(request.getName())) ||
-                        !Objects.equals(latest.getOrder(), request.getOrder()) ||
-                        !Objects.equals(latest.getTypeDossier(), request.getTypeDossier());
+        boolean headerChanged = mapper.headerChanged(latest, request);
 
-        boolean keptEdits = false;
-        for (Integer fid : keepIds) {
-            DynaFormField oldF = existingById.get(fid);
-            if (oldF == null) continue; // safety
-
-            DynaFormFieldRequest rf = incomingById.get(fid);
-            String newName        = rf.getName()        != null ? rf.getName()        : oldF.getName();
-            String newLabel       = rf.getLabel()       != null ? rf.getLabel()       : oldF.getLabel();
-            String newDesc        = rf.getDescription() != null ? rf.getDescription() : oldF.getDescription();
-            Integer newTypeId     = rf.getTypeId()      != null ? rf.getTypeId()      : oldF.getTypeId();
-            Boolean newRequired   = rf.getIsRequired()  != null ? rf.getIsRequired()  : oldF.getIsRequired();
-            Integer newOrder      = rf.getOrder()       != null ? rf.getOrder()       : oldF.getOrder();
-
-            if (!Objects.equals(n(oldF.getName()), n(newName)) ||
-                    !Objects.equals(n(oldF.getLabel()), n(newLabel)) ||
-                    !Objects.equals(n(oldF.getDescription()), n(newDesc)) ||
-                    !Objects.equals(oldF.getTypeId(), newTypeId) ||
-                    !Objects.equals(Boolean.TRUE.equals(oldF.getIsRequired()), Boolean.TRUE.equals(newRequired)) ||
-                    !Objects.equals(oldF.getOrder(), newOrder)) {
-                keptEdits = true;
-                break;
-            }
-        }
+        boolean keptEdits = incoming.stream().anyMatch(rf -> {
+            DynaFormField oldF = existingById.get(rf.getDynaFormFieldsId());
+            if (oldF == null) return false;
+            return !Objects.equals(oldF.getName(), rf.getName())
+                    || !Objects.equals(oldF.getLabel(), rf.getLabel())
+                    || !Objects.equals(oldF.getDescription(), rf.getDescription())
+                    || !Objects.equals(oldF.getType(), rf.getType())
+                    || !Objects.equals(oldF.getIsRequired(), rf.getIsRequired())
+                    || !Objects.equals(oldF.getHasTotal(), rf.getHasTotal())
+                    || !Objects.equals(oldF.getIsFormula(), rf.getIsFormula())
+                    || !Objects.equals(oldF.getFormula(), rf.getFormula())
+                    || !Objects.equals(oldF.getStatus(), rf.getStatus())
+                    || !Objects.equals(oldF.getOrder(), rf.getOrder());
+        });
 
         boolean fieldsChanged = keptEdits || !toAdd.isEmpty() || !toDropIds.isEmpty();
-
         if (!headerChanged && !fieldsChanged) {
             return mapper.toResponse(latest);
         }
 
         int newVer = latestVer + 1;
-
         DynaForm next = mapper.toHeaderEntity(request);
         next.setId(id);
         next.setVersion(newVer);
-        next.setStatus(ActiveStatus.ACTIF);
+        next.setStatus(request.getStatus() != null ? request.getStatus() : latest.getStatus());
+        next.setFormType(request.getFormType() != null ? request.getFormType() : latest.getFormType());
         formRepo.save(next);
 
         int fallbackOrder = 0;
 
-        List<Integer> orderedKeepIds = keepIds.stream()
-                .map(existingById::get)
-                .filter(Objects::nonNull)
-                .sorted(Comparator
-                        .comparing(DynaFormField::getOrder, Comparator.nullsLast(Integer::compareTo))
-                        .thenComparing(DynaFormField::getDynaFormFieldsId))
-                .map(DynaFormField::getDynaFormFieldsId)
-                .toList();
-
-        for (Integer fid : orderedKeepIds) {
+        for (Integer fid : keepIds) {
             DynaFormField oldF = existingById.get(fid);
             DynaFormFieldRequest rf = incomingById.get(fid);
+            if (oldF == null) continue;
 
             DynaFormField nf = new DynaFormField();
             nf.setDynaFormId(id);
             nf.setDynaFormVer(newVer);
             nf.setDynaFormFieldsId(oldF.getDynaFormFieldsId());
 
-            nf.setName(       rf.getName()        != null ? rf.getName()        : oldF.getName());
-            nf.setLabel(      rf.getLabel()       != null ? rf.getLabel()       : oldF.getLabel());
+            nf.setName(rf.getName() != null ? rf.getName() : oldF.getName());
+            nf.setLabel(rf.getLabel() != null ? rf.getLabel() : oldF.getLabel());
             nf.setDescription(rf.getDescription() != null ? rf.getDescription() : oldF.getDescription());
-            nf.setTypeId(     rf.getTypeId()      != null ? rf.getTypeId()      : oldF.getTypeId());
-            nf.setIsRequired( rf.getIsRequired()  != null ? rf.getIsRequired()  : oldF.getIsRequired());
+            nf.setType(rf.getType() != null ? rf.getType() : oldF.getType());
+            nf.setIsRequired(rf.getIsRequired() != null ? rf.getIsRequired() : oldF.getIsRequired());
+            nf.setHasTotal(rf.getHasTotal() != null ? rf.getHasTotal() : oldF.getHasTotal());
+            nf.setIsFormula(rf.getIsFormula() != null ? rf.getIsFormula() : oldF.getIsFormula());
+            nf.setFormula(rf.getFormula() != null ? rf.getFormula() : oldF.getFormula());
+            nf.setStatus(rf.getStatus() != null ? rf.getStatus() : oldF.getStatus());
 
             Integer ord = (rf.getOrder() != null) ? rf.getOrder() : oldF.getOrder();
             nf.setOrder(ord != null ? ord : ++fallbackOrder);
-
-            nf.setStatus(ActiveStatus.ACTIF);
             nf.setForm(next);
 
             formFieldRepo.save(nf);
             next.getFields().add(nf);
         }
 
-        List<DynaFormFieldRequest> orderedAdds = toAdd.stream()
-                .sorted(Comparator
-                        .comparing(DynaFormFieldRequest::getOrder, Comparator.nullsLast(Integer::compareTo))
-                        .thenComparing(DynaFormFieldRequest::getName, Comparator.nullsLast(String::compareTo)))
-                .toList();
-
-        for (var fr : orderedAdds) {
-            DynaFormField nf = fieldMapper.toEntity(fr);
-            nf.setDynaFormId(id);
-            nf.setDynaFormVer(newVer);
-            nf.setDynaFormFieldsId(seq.getNextId(FIELD_SEQ)); // brand-new identity
-            nf.setStatus(ActiveStatus.ACTIF);
-            if (nf.getOrder() == null) nf.setOrder(++fallbackOrder);
-            nf.setForm(next);
-
-            formFieldRepo.save(nf);
-            next.getFields().add(nf);
-        }
+        fieldSvc.createNewFieldsForVersion(id, newVer, toAdd, next);
 
         em.flush();
         em.clear();
@@ -250,7 +207,7 @@ public class DynaFormServiceImpl implements DynaFormService {
 
     private static String n(String s) { return (s == null ? null : s.trim()); }
 
-
+    /** -------------------- SOFT DELETE -------------------- **/
     @Transactional
     @Override
     public void softDelete(Integer id, Integer version) {
@@ -260,6 +217,7 @@ public class DynaFormServiceImpl implements DynaFormService {
         formRepo.save(f);
     }
 
+    /** -------------------- FIND BY TYPE -------------------- **/
     @Override
     public Page<DynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable) {
         Page<DynaForm> page = formRepo.findByTypeDossier(type, pageable);

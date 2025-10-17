@@ -1,10 +1,7 @@
 package com.sigmap.common.dyna_form;
 
 import com.sigmap.common.dyna_form_fields.DynaFormField;
-import com.sigmap.common.entity.ActiveStatus;
-import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.entity.TypeDossier;
+import com.sigmap.common.entity.*;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -36,6 +33,10 @@ public class DynaForm extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 32, nullable = false)
     private ActiveStatus status = ActiveStatus.ACTIF;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "form_type")
+    private FormType formType;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type_dossier", length = 32, nullable = false)
