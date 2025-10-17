@@ -16,6 +16,7 @@ public class ModeDePassationSelectionQuery {
     private String search;
     private String libelle;
     private boolean deleted;
+    private boolean isRestraint;
 
 
     /**
@@ -44,6 +45,9 @@ public class ModeDePassationSelectionQuery {
         }
         if (libelle != null && !libelle.isBlank()) {
             spec = spec.and(ModeDePassationSelectionSpecifications.libelle(libelle));
+        }
+        if (isRestraint) {
+            spec = spec.and(ModeDePassationSelectionSpecifications.isRestraint(isRestraint));
         }
 
         return spec;
