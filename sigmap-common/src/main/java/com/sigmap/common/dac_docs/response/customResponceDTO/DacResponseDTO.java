@@ -1,6 +1,7 @@
 package com.sigmap.common.dac_docs.response.customResponceDTO;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 
@@ -14,6 +15,7 @@ public class DacResponseDTO {
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;
+    private List<DacPrixResponce> dacPrix;
     private ProcessStatus status;
     private DacPpmResponseDTO ppm;
     private DacTypeMarcheResponseDTO typeMarche;
