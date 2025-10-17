@@ -28,11 +28,11 @@ public class ActiviteController {
     }
 
     /**
-     * Return list of mode de passation selection by cateigorie id .
+     * Return list of activite selection by cateigorie id .
      *
      * @param categoriesActiviteId the query to use
 
-     * @return a list of of mode de passation selection
+     * @return a list of of activite selection
      */
     @GetMapping("/categories_activite/{categoriesActiviteId}")
     public ResponseEntity<List<ActiviteResponseDto>> findAllBycategoriesActiviteId(
@@ -44,11 +44,11 @@ public class ActiviteController {
         return ResponseEntity.ok(response);
     }
     /**
-     * Return a page of Contact based on the given specification and pageable.
+     * Return a page of Activite based on the given specification and pageable.
      *
      * @param query the query to use
      * @param pageable the pageable to use
-     * @return a page of Contact
+     * @return a page of Activite
      */
     @GetMapping
     public ResponseEntity<Page<ActiviteResponseDto>> findAll(

@@ -27,5 +27,6 @@ public class ModeDePassationSelection extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "type_marcher_id")
     )
     private List<RefParam> typeMarchers;
-
+    @Column(name = "is_restraint")
+    private boolean isRestraint;
 }

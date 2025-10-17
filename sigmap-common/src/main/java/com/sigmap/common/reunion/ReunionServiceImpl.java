@@ -27,6 +27,7 @@ import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunionDac.ReunionDac;
@@ -152,7 +153,7 @@ public class ReunionServiceImpl implements ReunionService{
         reqCal.set(Calendar.SECOND, 0);
         reqCal.set(Calendar.MILLISECOND, 0);
         if(reqCal.before(nowCal)){
-            throw new ReunionDate("Reunion date cannot be before now");
+            throw new DateBefore("Reunion date cannot be before now");
         }
         }
       //  Reunion reunion = ReunionMapper.INSTANCE.map(request);
@@ -195,7 +196,7 @@ public class ReunionServiceImpl implements ReunionService{
                 reqCal.set(Calendar.SECOND, 0);
                 reqCal.set(Calendar.MILLISECOND, 0);
                 if(reqCal.before(nowCal)){
-                    throw new ReunionDate("Reunion date cannot be before now");
+                    throw new DateBefore("Reunion date cannot be before now");
                 }
             }
 
@@ -239,7 +240,7 @@ public class ReunionServiceImpl implements ReunionService{
             reqCal.set(Calendar.SECOND, 0);
             reqCal.set(Calendar.MILLISECOND, 0);
             if(reqCal.before(nowCal)){
-                throw new ReunionDate("Reunion date cannot be before now");
+                throw new DateBefore("Reunion date cannot be before now");
             }
             reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
             sendReunionInvitations(id);
@@ -262,7 +263,7 @@ public class ReunionServiceImpl implements ReunionService{
                 reqCal.set(Calendar.MILLISECOND, 0);
 
                 if(reqCal.before(nowCal)){
-                    throw new ReunionDate("Reunion date cannot be before now");
+                    throw new DateBefore("Reunion date cannot be before now");
                 }
 
                 reunionToUpdate.setStatus(ReunionStatus.PLANIFIER);
