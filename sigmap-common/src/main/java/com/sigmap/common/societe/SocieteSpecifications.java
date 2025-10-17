@@ -1,7 +1,7 @@
 package com.sigmap.common.societe;
 
 import com.sigmap.common.activite.Activite;
-import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -20,7 +20,8 @@ public class SocieteSpecifications {
                     cb.like(cb.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("nni")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("nif")), "%" + search.toLowerCase() + "%"),
-                    cb.like(cb.lower(root.get("decretCreation")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("status")), "%" + search.toLowerCase() + "%"),
+
 
                     cb.like(cb.lower(typeJoin.get("description")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(typeJoin.get("codeColor")), "%" + search.toLowerCase() + "%"),
@@ -99,11 +100,15 @@ public class SocieteSpecifications {
         return (root, query, cb) -> cb.equal(root.get("dateNif"), dateNif);
     }
 
-    public static Specification<Societe> status(ActiveStatus status) {
+    public static Specification<Societe> status(SocieteStatus status) {
         return (root, query, cb) -> cb.equal(root.get("status"), status);
     }
-    public static Specification<Societe> hasActivite() {
-        return (root, query, cb) -> cb.isNotEmpty(root.get("activites"));
+
+    public static Specification<Societe> hasActivite(Integer activiteId) {
+        return (root, query, cb) -> {
+            Join<Object, Object> activiteJoin = root.join("activites");
+            return cb.equal(activiteJoin.get("id"), activiteId);
+        };
     }
 
 }

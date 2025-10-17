@@ -1,8 +1,8 @@
 package com.sigmap.common.societe;
 
 import com.sigmap.common.activite.Activite;
-import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,6 +33,14 @@ public class Societe extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "categorie_soumissionnaire_id")
     private RefParam categorieSoumissionnaire;
+    private String nif;
+    @Column(name = "date_nif")
+    private Date dateNif;
+    @Column(name = "num_cnss")
+    private Integer numCnss;
+    @Enumerated(EnumType.STRING)
+    private SocieteStatus status;
+
     @ManyToMany
     @JoinTable(
             name = "societe_activite",
@@ -40,11 +48,4 @@ public class Societe extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "activite_id")
     )
     private List<Activite> activites = new ArrayList<Activite>();
-    private String nif;
-    @Column(name = "date_nif")
-    private Date dateNif;
-    @Column(name = "num_cnss")
-    private Integer numCnss;
-    @Enumerated(EnumType.STRING)
-    private ActiveStatus status;
 }

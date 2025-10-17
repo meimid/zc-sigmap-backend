@@ -46,6 +46,7 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.societe.exception.DuplicateActiviteIds;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -968,6 +969,13 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("activite.hasAssociatedSociete",new Object[] {}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(DuplicateActiviteIds.class)
+    public ResponseEntity<ErrorResponse> DuplicateActiviteIdsException(DuplicateActiviteIds ex) {
+        String message = messageSource.getMessage("duplicate.activite",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
 

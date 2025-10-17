@@ -4,11 +4,15 @@ import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.activite.exception.ActiviteAlreadyExist;
 import com.sigmap.common.activite.exception.ActiviteNotFound;
 import com.sigmap.common.activite.exception.CategoriesActiviteRequired;
+import com.sigmap.common.activite.exception.HasAssociatedSociete;
 import com.sigmap.common.activite.mapper.ActiviteMapper;
 import com.sigmap.common.activite.request.ActiviteRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
+import com.sigmap.common.societe.SocieteSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,9 +25,11 @@ import java.util.Optional;
 public class ActiviteServiceImpl implements ActiviteService {
     private final ActiviteRepository repository;
     private final RefParamService refParamService;
-    public ActiviteServiceImpl(ActiviteRepository repository, RefParamService refParamService) {
+    private final SocieteRepository societeRepository;
+    public ActiviteServiceImpl(ActiviteRepository repository, RefParamService refParamService, SocieteRepository societeRepository) {
         this.repository = repository;
         this.refParamService = refParamService;
+        this.societeRepository = societeRepository;
     }
 
     @Override
@@ -129,15 +135,14 @@ public class ActiviteServiceImpl implements ActiviteService {
     public void delete(Integer id) throws ActiviteNotFound {
         findById(id);
         // Check if this activity is related to any Societe
-        Specification<Activite> spec = Specification
-                .where(ActiviteSpecifications.deleted(false))
-                .and(ActiviteSpecifications.id(id))
-                .and(ActiviteSpecifications.hasAssociatedSociete());
+        Specification<Societe> societeSpec = Specification
+                .where(SocieteSpecifications.deleted(false))
+                .and(SocieteSpecifications.hasActivite(id));
 
-        boolean hasAssociatedSociete = repository.count(spec) > 0;
+        boolean hasAssociatedSociete = societeRepository.count(societeSpec) > 0;
 
         if (hasAssociatedSociete) {
-            throw new HasAssociatedSociete("This activity is linked to one or more sociétés.", id);
+            throw new HasAssociatedSociete("This activity is linked to one or more sociétés.");
         }
         repository.softDelete(id);
 

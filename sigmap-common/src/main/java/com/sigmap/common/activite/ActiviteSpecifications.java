@@ -48,8 +48,6 @@ public class ActiviteSpecifications {
         return (root, query, cb) -> cb.equal(root.get("categorieActivite").get("id"), typeActiviteId);
     }
 
-    public static Specification<Activite> hasAssociatedSociete() {
-        return (root, query, cb) -> cb.isNotEmpty(root.get("societes"));
-    }
+
 
 }

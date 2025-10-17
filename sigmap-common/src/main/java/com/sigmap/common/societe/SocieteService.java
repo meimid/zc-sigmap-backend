@@ -1,6 +1,7 @@
 package com.sigmap.common.societe;
 
 
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
@@ -94,4 +95,9 @@ public interface SocieteService {
      * @param id the id of the Societe to delete
      */
     void delete(Integer id) ;
+
+    Page<Societe> findAllWithStatus(Specification<Societe> societe, SocieteStatus status, Pageable pageable);
+
+    Societe aceptOrRejectTheSociete(Integer societeId, SocieteStatus status) throws SocieteNotFound;
+
 }

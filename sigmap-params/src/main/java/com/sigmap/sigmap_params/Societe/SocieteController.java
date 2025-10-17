@@ -12,6 +12,7 @@ import com.sigmap.common.contact.Mapper.ContactMapper;
 import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.contact.response.ContactResponseDto;
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
@@ -21,7 +22,9 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteQuery;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.societe.request.SocieteStatusRequest;
 import com.sigmap.common.societe.response.SocieteResponse;
+import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
@@ -42,6 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -156,6 +160,35 @@ public class SocieteController {
                 .orElseThrow();
         SocieteResponse response = SocieteMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
+    }
+    @GetMapping("/validee")
+    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusValidee(
+    SocieteQuery query, Pageable pageable) {
+        Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.VALIDEE, pageable);
+        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        return ResponseEntity.ok(societeResponses);
+    }
+    @GetMapping("/rejetee")
+    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusRejetee(
+            SocieteQuery query, Pageable pageable) {
+        Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.REJETEE, pageable);
+        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        return ResponseEntity.ok(societeResponses);
+    }
+    @GetMapping("/en-cours")
+    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusEnCours(
+            SocieteQuery query, Pageable pageable) {
+        Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.EN_COURS, pageable);
+        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        return ResponseEntity.ok(societeResponses);
+    }
+
+    @PutMapping("/{id}/accept-or-reject")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<SocieteResponse> aceptOrRejectTheSociete(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
+        Societe Societe = societeService.aceptOrRejectTheSociete(id,request.getStatus());
+        SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 /**
  *
