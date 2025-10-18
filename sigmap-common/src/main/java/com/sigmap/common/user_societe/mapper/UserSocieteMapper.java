@@ -22,7 +22,7 @@ public interface UserSocieteMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     UserSocieteResponse map(UserSociete userSociete);
-    void updateFromRequest(UserSocieteRequest request, @MappingTarget UserSociete userSociete);
+    UserSociete mapFromRequest(UserSocieteRequest request);
     UserSocieteResponseDto toDto(UserSociete userSociete);
 
 

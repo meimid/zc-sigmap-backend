@@ -98,6 +98,6 @@ public interface SocieteService {
 
     Page<Societe> findAllWithStatus(Specification<Societe> societe, SocieteStatus status, Pageable pageable);
 
-    Societe aceptOrRejectTheSociete(Integer societeId, SocieteStatus status) throws SocieteNotFound;
+    Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound;
 
 }

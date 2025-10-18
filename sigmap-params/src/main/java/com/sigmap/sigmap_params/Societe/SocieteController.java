@@ -161,21 +161,21 @@ public class SocieteController {
         SocieteResponse response = SocieteMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
-    @GetMapping("/validee")
+    @GetMapping("/status/validee")
     public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusValidee(
     SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.VALIDEE, pageable);
         Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
         return ResponseEntity.ok(societeResponses);
     }
-    @GetMapping("/rejetee")
+    @GetMapping("/status/rejetee")
     public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusRejetee(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.REJETEE, pageable);
         Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
         return ResponseEntity.ok(societeResponses);
     }
-    @GetMapping("/en-cours")
+    @GetMapping("/status/en-cours")
     public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusEnCours(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.EN_COURS, pageable);
@@ -183,10 +183,10 @@ public class SocieteController {
         return ResponseEntity.ok(societeResponses);
     }
 
-    @PutMapping("/{id}/accept-or-reject")
+    @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteResponse> aceptOrRejectTheSociete(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
-        Societe Societe = societeService.aceptOrRejectTheSociete(id,request.getStatus());
+    public ResponseEntity<SocieteResponse> updateStatus(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
+        Societe Societe = societeService.updateStatus(id,request.getStatus());
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }

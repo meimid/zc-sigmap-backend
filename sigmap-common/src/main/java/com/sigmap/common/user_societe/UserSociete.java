@@ -26,7 +26,7 @@ public class UserSociete extends BaseEntity {
     private Integer societeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "societe_id")
+    @JoinColumn(name = "societe_id", insertable = false, updatable = false)
     private Societe societe;
 
     private Boolean responsable ;

@@ -3,16 +3,20 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
-import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
+
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.DuplicateActiviteIds;
 
+import com.sigmap.common.societe.exception.HasAssociatedUserSociete;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.user_societe.UserSociete;
+import com.sigmap.common.user_societe.UserSocieteRepository;
+import com.sigmap.common.user_societe.UserSocieteSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,11 +30,13 @@ public class SocieteServiceImpl implements SocieteService {
     private final SocieteRepository repository;
     private final RefParamService refParamService;
     private final ActiviteService activiteService;
+    private final UserSocieteRepository  userSocieteRepository;
 
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService) {
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository) {
         this.repository = repository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
+        this.userSocieteRepository = userSocieteRepository;
     }
 
     @Override
@@ -41,7 +47,8 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Page<Societe> findAll(Specification<Societe> societe, Pageable pageable) {
-        return repository.findAll(societe, pageable);    }
+        return repository.findAll(societe, pageable);
+    }
 
     @Override
     public Page<Societe> findAllDeleted(Specification<Societe> societe, Pageable pageable) {
@@ -148,7 +155,15 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public void delete(Integer id) {
+        Specification<UserSociete> userSocieteSpecification = Specification.where(
+                UserSocieteSpecifications.deleted(false)
+                        .and(UserSocieteSpecifications.hasSocieteId(id)));
+        boolean hasAssociatedUserSociete = userSocieteRepository.count(userSocieteSpecification) > 0;
+        if (hasAssociatedUserSociete) {
+            throw new HasAssociatedUserSociete("", id);
+        }
         repository.softDelete(id);
+
     }
 
     @Override
@@ -158,7 +173,7 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Societe aceptOrRejectTheSociete(Integer societeId, SocieteStatus status) throws SocieteNotFound {
+    public Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound {
         Societe societe = findById(societeId);
         if(status != null) {
             societe.setStatus(status);

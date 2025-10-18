@@ -16,6 +16,6 @@ public interface UserSocieteRepository extends JpaRepository<UserSociete, UserSo
     @Transactional
     @Query("UPDATE UserSociete us SET us.isDeleted = true, us.deletedAt = CURRENT_TIMESTAMP, us.deletedBy = :#{principal.subject} " +
             "WHERE us.userId = :userId AND us.societeId = :societeId")
-    void softDelete(@Param("userId") Integer userId,
+    void softDelete(@Param("userId") String userId,
                     @Param("societeId") Integer societeId);
 }

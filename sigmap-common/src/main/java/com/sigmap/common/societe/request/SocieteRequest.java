@@ -21,7 +21,6 @@ public class SocieteRequest {
     private String nif;
     private Date dateNif;
     private Integer numCnss;
-    private SocieteStatus status;
     private List<Integer> activiteIds=new ArrayList<>();
 
 

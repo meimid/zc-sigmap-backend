@@ -16,28 +16,21 @@ public interface UserSocieteService {
     /**
      * Return a page of UserSociete based on the given specification and pageable.
      *
-     * @param UserSociete the specification to use
+     * @param userSociete the specification to use
      * @param pageable the pageable to use
      * @return a page of UserSociete
      */
-    Page<UserSociete> findAll(Specification<UserSociete> UserSociete, Pageable pageable);
+    Page<UserSociete> findAll(Specification<UserSociete> userSociete, Pageable pageable);
 
+    public List<UserSociete> findAllList(Specification<UserSociete> spec);
     /**
      * Return a page of deleted UserSociete based on the given specification and pageable.
      *
-     * @param UserSociete the specification to use
+     * @param userSociete the specification to use
      * @param pageable the pageable to use
      * @return a page of UserSociete
      */
-    Page<UserSociete> findAllDeleted(Specification<UserSociete> UserSociete, Pageable pageable);
 
-    /**
-     * Return a page of deleted UserSociete based on the given pageable.
-     *
-     * @param pageable the pageable to use
-     * @return a page of UserSociete
-     */
-    Page<UserSociete> findAllDeleted(Pageable pageable);
 
     /**
      * Return the deleted UserSociete with the given id.
@@ -58,7 +51,7 @@ public interface UserSocieteService {
     /**
      * Return the UserSociete with the given id.
      *
-     * @param id the id of the UserSociete to return
+     * @param userId and societeId are  the ids of the UserSociete to return
      * @return the UserSociete with the given id
      */
     UserSociete findById(String userId,Integer societeId)throws UserSocieteNotFound;
@@ -84,15 +77,19 @@ public interface UserSocieteService {
      * @param request the request to update the com from
      * @return the updated com
      */
-    UserSociete update(Integer id,UserSocieteRequest request) throws SocieteNotFound ,UserSocieteNotFound;
+    UserSociete update(String userId,Integer societeId,UserSocieteRequest request) throws SocieteNotFound ,UserSocieteNotFound;
     /**
      * Delete a UserSociete.
      *
-     * @param id the id of the UserSociete to delete
+     *     * @param userId AND societeId  ARE the ids of the UserSociete  to delete
      */
-    void delete(Integer id) ;
+    void delete(String userId,Integer societeId) ;
 
-    List<UserSociete> findBySocieteId(Integer societeId);
+    List<UserSociete> findBySocieteId(Integer societeId) throws SocieteNotFound;
 
-    UserSociete findByUserId(String userId);
+    UserSociete findByUserId(String userId) throws UserSocieteNotFound;
+
+    UserSociete makeUserSocieteResponsable(String userId, Integer societeId) throws SocieteNotFound;
+    UserSociete toggleUserSocieteStatus(String userId, Integer societeId) throws UserSocieteNotFound;
+
 }

@@ -46,10 +46,7 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
-import com.sigmap.common.societe.exception.DuplicateActiviteIds;
-import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
-import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
-import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe.exception.*;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
@@ -59,6 +56,7 @@ import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_societe.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -977,5 +975,61 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UserSocieteNotFound.class)
+    public ResponseEntity<ErrorResponse> handleUserSocieteNotFound(UserSocieteNotFound ex) {
+        String message = messageSource.getMessage("userSociete.notFound", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(UserSocieteAlreadyExist.class)
+    public ResponseEntity<ErrorResponse> handleUserSocieteAlreadyExist(UserSocieteAlreadyExist ex) {
+        String message = messageSource.getMessage("userSociete.alreadyExist", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(HasAssociatedUserSociete.class)
+    public ResponseEntity<ErrorResponse> handleHasAssociatedUserSociete(HasAssociatedUserSociete ex) {
+        String message = messageSource.getMessage("userSociete.hasAssociated", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(UserAlreadyRegisteredToOtherCompany.class)
+    public ResponseEntity<ErrorResponse> handleUserSocieteAlreadyToOtherCompany(UserAlreadyRegisteredToOtherCompany ex) {
+        String message = messageSource.getMessage("userSociete.alreadyToOtherCompany", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UserIsResponsableForThisUserSociete.class)
+    public ResponseEntity<ErrorResponse> handleUserIsResponsableForThisUserSociete(UserIsResponsableForThisUserSociete ex) {
+        String message = messageSource.getMessage("userSociete.isResponsableForThisSociete", new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UserNeedToBeActive.class)
+    public ResponseEntity<ErrorResponse> userNeedToBeActiveException(UserNeedToBeActive ex) {
+        String message = messageSource.getMessage("userSociete.userNeedToBeActive", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNeedToBeValidate.class)
+    public ResponseEntity<ErrorResponse> societeNeedToBeValidateException(SocieteNeedToBeValidate ex) {
+        String message = messageSource.getMessage("userSociete.societeNeedToBeValidate", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+
 }
 

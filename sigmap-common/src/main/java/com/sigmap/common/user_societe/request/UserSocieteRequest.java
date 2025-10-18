@@ -13,7 +13,6 @@ public class UserSocieteRequest {
     private String userId;
     private Integer societeId;
     private Societe societe;
-    private Boolean responsable ;
     private String nom;
     private String prenom;
     private String numCin;
@@ -21,5 +20,4 @@ public class UserSocieteRequest {
     private String tel1;
     private String tel2;
     private String email;
-    private ActiveStatus status ;
 }
