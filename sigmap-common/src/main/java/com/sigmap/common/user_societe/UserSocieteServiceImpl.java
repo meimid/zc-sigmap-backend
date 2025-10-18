@@ -104,6 +104,8 @@ public class UserSocieteServiceImpl implements UserSocieteService {
     @Override
     public UserSociete update(String userId,Integer societeId, UserSocieteRequest request) throws SocieteNotFound, UserSocieteNotFound {
         UserSociete userSociete=findById(userId,societeId);
+        boolean responsable=userSociete.getResponsable();
+        ActiveStatus activeStatus=userSociete.getStatus();
         keycloakAdminService.getUserById(request.getUserId());
        Societe societe= societeService.findById(request.getSocieteId());
         if (!societe.getStatus().equals(SocieteStatus.VALIDEE)) {
@@ -112,7 +114,8 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setUserId(userId);
         userSociete.setSocieteId(societeId);
-
+        userSociete.setResponsable(responsable);
+        userSociete.setStatus(activeStatus);
 
         return save(userSociete);
 

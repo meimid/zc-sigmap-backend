@@ -9,6 +9,7 @@ import java.util.Date;
 @Data
 public class UserSocieteResponseDto {
     private String userId;
+    private SocieteResponseDto societe;
     private Boolean responsable ;
     private String nom;
     private String prenom;
