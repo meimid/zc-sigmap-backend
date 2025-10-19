@@ -4,13 +4,12 @@ import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.SocieteSpecifications;
 import com.sigmap.common.societe.exception.SocieteNeedToBeValidate;
 import com.sigmap.common.societe.exception.SocieteNotFound;
-import com.sigmap.common.user_societe.exception.UserAlreadyRegisteredToOtherCompany;
-import com.sigmap.common.user_societe.exception.UserIsResponsableForThisUserSociete;
-import com.sigmap.common.user_societe.exception.UserNeedToBeActive;
-import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
+import com.sigmap.common.user_societe.exception.*;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.transaction.Transactional;
@@ -28,12 +27,12 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserSocieteServiceImpl implements UserSocieteService {
     private final UserSocieteRepository repository;
-    private  final SocieteService societeService;
+    private  final SocieteRepository societeRepository;
     private final KeycloakAdminService keycloakAdminService;
 
-    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteService societeService, KeycloakAdminService keycloakAdminService) {
+    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakAdminService keycloakAdminService) {
         this.repository = repository;
-        this.societeService = societeService;
+        this.societeRepository = societeRepository;
         this.keycloakAdminService = keycloakAdminService;
     }
 
@@ -82,18 +81,25 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
     @Override
     public UserSociete create(UserSocieteRequest request) throws SocieteNotFound {
+        log.info("UserSocieteServiceImpl.create {}",request.toString());
+        if (request.getUserId() == null || request.getUserId().isBlank()) {
+            throw new UserIdRequiredException();
+        }
+
+        if (request.getSocieteId() == null) {
+            throw new SocieteIdRequiredException();
+        }
         Specification<UserSociete> finalSpec = Specification.where(UserSocieteSpecifications.deleted(false)).and(UserSocieteSpecifications.userId(request.getUserId()));
         Optional<UserSociete> userCheck = findOne(finalSpec);
         if(userCheck.isPresent()){
             throw new UserAlreadyRegisteredToOtherCompany("");
         }
         keycloakAdminService.getUserById(request.getUserId());
-        Societe societe = societeService.findById(request.getSocieteId());
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
+                .and(SocieteSpecifications.deleted(false));
+        Societe societe= societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
 
-        if(!societe.getStatus().equals(SocieteStatus.VALIDEE))
-        {
-            throw new SocieteNeedToBeValidate("",request.getSocieteId());
-        }
         UserSociete userSociete = UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setResponsable(findBySocieteId(request.getSocieteId()).isEmpty());
         userSociete.setSociete(societe);
@@ -103,14 +109,22 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
     @Override
     public UserSociete update(String userId,Integer societeId, UserSocieteRequest request) throws SocieteNotFound, UserSocieteNotFound {
+        if (userId == null || request.getUserId().isBlank()) {
+            throw new UserIdRequiredException();
+        }
+
+        if (societeId == null) {
+            throw new SocieteIdRequiredException();
+        }
         UserSociete userSociete=findById(userId,societeId);
         boolean responsable=userSociete.getResponsable();
         ActiveStatus activeStatus=userSociete.getStatus();
         keycloakAdminService.getUserById(request.getUserId());
-       Societe societe= societeService.findById(request.getSocieteId());
-        if (!societe.getStatus().equals(SocieteStatus.VALIDEE)) {
-            throw new SocieteNeedToBeValidate("",societeId);
-        }
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
+                .and(SocieteSpecifications.deleted(false));
+        Societe societe= societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
+
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setUserId(userId);
         userSociete.setSocieteId(societeId);
@@ -130,7 +144,10 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
     @Override
     public List<UserSociete> findBySocieteId(Integer societeId) throws SocieteNotFound {
-        societeService.findById(societeId);
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(societeId)
+                .and(SocieteSpecifications.deleted(false));
+        societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(societeId)));
         Specification<UserSociete> spec = Specification.where(UserSocieteSpecifications.deleted(false)).and(UserSocieteSpecifications.societeId(societeId));
        return findAllList(spec);
 
@@ -168,6 +185,9 @@ public class UserSocieteServiceImpl implements UserSocieteService {
     @Override
     public UserSociete toggleUserSocieteStatus(String userId, Integer societeId) throws UserSocieteNotFound {
         UserSociete userSociete = findById(userId, societeId);
+        if(userSociete.getResponsable()&&userSociete.getStatus().equals(ActiveStatus.ACTIF)){
+            throw new CantResponsableNonActif("User is not active", userId);
+        }
 
         if (userSociete.getStatus() == ActiveStatus.ACTIF) {
             userSociete.setStatus(ActiveStatus.NON_ACTIF);

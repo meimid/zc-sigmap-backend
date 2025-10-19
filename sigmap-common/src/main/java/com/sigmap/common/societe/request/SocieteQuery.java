@@ -14,7 +14,6 @@ import org.springframework.data.jpa.domain.Specification;
 public class SocieteQuery {
     private String search;
     private String nom;
-    private String nni;
     private String nif;
     private Integer numCnss;
     private SocieteStatus status;
@@ -31,7 +30,6 @@ public class SocieteQuery {
      * null or blank.
      * <li>{@link SocieteSpecifications#nni(String)} if the nni
      * property is not null or blank.
-     * <li>{@link SocieteSpecifications#categorieSoumissionnaireId(String)} if the categorieSoumissionnaireId
      * property is not null or blank.
      * <li>{@link SocieteSpecifications#deleted(boolean)} if the deleted property is
      * true.
@@ -55,9 +53,7 @@ public class SocieteQuery {
         if (nom != null && !nom.isBlank()) {
             spec = spec.and(SocieteSpecifications.nom(nom));
         }
-        if (nni != null && !nni.isBlank()) {
-            spec = spec.and(SocieteSpecifications.nni(nni));
-        }
+
 
         if (nif != null && !nif.isBlank()) {
             spec = spec.and(SocieteSpecifications.nif(nif));

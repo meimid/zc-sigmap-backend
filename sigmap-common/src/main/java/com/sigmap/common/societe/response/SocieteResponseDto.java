@@ -12,9 +12,7 @@ public class SocieteResponseDto {
     private Integer id;
     private String nom;
     private RefParamResponseDto type;
-    private RefParamResponseDto pays;
     private RefParamResponseDto categorieSoumissionnaire;
-    private String nni;
     private String nif;
     private Date dateNif;
     private Integer numCnss;

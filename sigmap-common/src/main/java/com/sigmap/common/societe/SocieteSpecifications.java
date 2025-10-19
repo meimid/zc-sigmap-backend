@@ -18,7 +18,6 @@ public class SocieteSpecifications {
             Join<Societe, Activite> activiteJoin = root.join("activites", JoinType.LEFT);
             return cb.or(
                     cb.like(cb.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
-                    cb.like(cb.lower(root.get("nni")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("nif")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("status")), "%" + search.toLowerCase() + "%"),
 

@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_params.Societe;
 
+import com.sigmap.common.adresse.mappers.AdresseMapper;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireService;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
@@ -14,12 +15,14 @@ import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
+import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteQuery;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.request.SocieteStatusRequest;
@@ -28,9 +31,10 @@ import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
-import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
+
+import com.sigmap.common.societe_address.response.AddressAndTypeResponse;
 import com.sigmap.common.societe_address.response.SocieteAddressResponse;
-import com.sigmap.common.societe_address.response.SocieteAdressResponseDto;
+import com.sigmap.common.societe_address.response.SocieteAddressResponseForGetWithSocieteId;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
@@ -52,6 +56,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -127,7 +134,7 @@ public class SocieteController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequest request) throws RefParamNotFound {
+    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -153,7 +160,7 @@ public class SocieteController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id)  {
+    public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id) throws SocieteNotFound {
         societeService.delete(id);
 
         Societe deleted = societeService.findDeletedById(id)
@@ -273,14 +280,6 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
 }
 
-    // create Adress with Socicete Id
-    @PostMapping("/{societeId}/societe_address")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteAddressResponse> createAdress(@PathVariable Integer societeId, @RequestBody SocieteAdressUnderSocieteRequest request) throws RuntimeException, SocieteNotFound,RefParamNotFound {
-        SocieteAddress SocieteAddress = societeAddressService.createUnderSociete(societeId,request);
-        SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
 
     // create CompteBancaire with Socicete Id
     @PostMapping("/{societeId}/compte_bancaire")
@@ -313,11 +312,26 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     //get list of societe adress by societe by societe id
     @GetMapping("/{societeId}/societe_address")
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<Page<SocieteAdressResponseDto>> findSocieteAdressySocieteId(@PathVariable Integer societeId, Pageable pageable) throws SocieteNotFound {
-        Page<SocieteAddress> params = societeAddressService.findSocieteAddressBySocieteId(societeId, pageable);
-        Page<SocieteAdressResponseDto> SocieteAdressResponset = params.map(SocieteAddressMapper.INSTANCE::mapToDto);
-        return ResponseEntity.ok(SocieteAdressResponset);
+    public ResponseEntity<SocieteAddressResponseForGetWithSocieteId> findSocieteAddressBySocieteId(
+            @PathVariable Integer societeId) throws SocieteNotFound {
+
+        List<SocieteAddress> params = societeAddressService.findSocieteAddressBySocieteId(societeId);
+
+        List<AddressAndTypeResponse> content = params.stream()
+                .map(sa -> {
+                    AddressAndTypeResponse resp = new AddressAndTypeResponse();
+                    resp.setAddress(AdresseMapper.INSTANCE.toDto(sa.getAddress()));
+                    resp.setType(RefParamMapper.INSTANCE.mapToDto(sa.getType()));
+                    return resp;
+                })
+                .collect(Collectors.toList());
+
+        SocieteAddressResponseForGetWithSocieteId response = SocieteAddressResponseForGetWithSocieteId.builder()
+                .societe(SocieteMapper.INSTANCE.toResponseDto(params.get(0).getSociete()))
+                .content(content)
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{societeId}/contact/{contactId}/societe-contact")

@@ -12,9 +12,7 @@ import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.request.UserSocieteQuery;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
-import com.sigmap.common.user_societe.response.SocieteWithUsersResponse;
-import com.sigmap.common.user_societe.response.UserSocieteResponse;
-import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
+import com.sigmap.common.user_societe.response.*;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -211,8 +209,8 @@ public class UserSocieteController {
 
         Page<UserSociete> userPage = userSocieteService.findAll(spec, pageable);
 
-        List<UserSocieteResponseDto> userDtos = userPage
-                .map(UserSocieteMapper.INSTANCE::toDto)
+        List<UserResponse> userDtos = userPage
+                .map(UserSocieteMapper.INSTANCE::mapToUserDoResponse)
                 .getContent();
 
         SocieteWithUsersResponse response = SocieteWithUsersResponse.builder()
@@ -232,6 +230,29 @@ public class UserSocieteController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/user-list/societe/{societeId}")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
+    public ResponseEntity<SocieteUsersListUsersResponse> getSocieteWithUsers(
+            @PathVariable Integer societeId) throws SocieteNotFound {
+
+        List<UserSociete> userSocieteList = userSocieteService.findBySocieteId(societeId);
+
+        SocieteResponseDto societeDto = SocieteMapper.INSTANCE
+                .toResponseDto(userSocieteList.get(0).getSociete());
+
+        List<UserResponse> userDtos = userSocieteList.stream()
+                .map(UserSocieteMapper.INSTANCE::mapToUserDoResponse)
+                .toList();
+
+        SocieteUsersListUsersResponse response = SocieteUsersListUsersResponse.builder()
+                .societe(societeDto)
+                .users(userDtos)
+                .build();
+
+        return ResponseEntity.ok(response);
+    }
+
 
 
 }

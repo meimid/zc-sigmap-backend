@@ -6,6 +6,7 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -81,7 +82,7 @@ public interface SocieteService {
      * @param request the request to create the Societe from
      * @return the created Societe
      */
-    Societe create(SocieteRequest request) throws RefParamNotFound;
+    Societe create(SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound;
     /**
      * update Com.
      *
@@ -94,7 +95,7 @@ public interface SocieteService {
      *
      * @param id the id of the Societe to delete
      */
-    void delete(Integer id) ;
+    void delete(Integer id) throws SocieteNotFound;
 
     Page<Societe> findAllWithStatus(Specification<Societe> societe, SocieteStatus status, Pageable pageable);
 

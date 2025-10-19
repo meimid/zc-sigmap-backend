@@ -15,8 +15,6 @@ import java.util.List;
 public class SocieteRequest {
     private String nom;
     private Integer typeId;
-    private Integer paysId;
-    private String nni;
     private Integer categorieSoumissionnaireId;
     private String nif;
     private Date dateNif;

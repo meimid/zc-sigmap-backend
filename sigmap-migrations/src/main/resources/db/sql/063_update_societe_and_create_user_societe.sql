@@ -46,3 +46,57 @@ CREATE TABLE IF NOT EXISTS user_societe (
     FOREIGN KEY (societe_id) REFERENCES societe(societe_id)
     );
 
+
+-- changeset sigmap:1757950264-4
+ALTER TABLE societe
+DROP COLUMN IF EXISTS pays_id,
+    DROP COLUMN IF EXISTS nni;
+
+ -- changeset sigmap:1757950264-5
+
+ALTER TABLE societe_address MODIFY societe_address_id INT;
+
+-- changeset sigmap:1757950264-6
+
+ALTER TABLE societe_address DROP PRIMARY KEY;
+
+-- changeset sigmap:1757950264-7
+
+ALTER TABLE societe_address DROP COLUMN societe_address_id;
+
+
+-- changeset sigmap:1757950264-8
+ALTER TABLE societe_address
+    DROP COLUMN IF EXISTS societe_adresse_id,
+    DROP COLUMN IF EXISTS created_at,
+    DROP COLUMN IF EXISTS created_by,
+    DROP COLUMN IF EXISTS updated_at,
+    DROP COLUMN IF EXISTS updated_by,
+    DROP COLUMN IF EXISTS deleted_at,
+    DROP COLUMN IF EXISTS deleted_by,
+    DROP COLUMN IF EXISTS is_deleted,
+    DROP COLUMN IF EXISTS address;
+
+-- changeset sigmap:1757950264-9
+
+ALTER TABLE societe_address ADD COLUMN adresse_id INT NOT NULL;
+
+
+-- changeset sigmap:1757950264-10
+ALTER TABLE societe_address
+    ADD CONSTRAINT fk_societe_address_societe
+        FOREIGN KEY (societe_id) REFERENCES societe(societe_id),
+    ADD CONSTRAINT fk_societe_address_adresse
+        FOREIGN KEY (adresse_id) REFERENCES adresse(adresse_id);
+
+-- changeset sigmap:1757950264-11
+
+ALTER TABLE societe_address
+    MODIFY COLUMN societe_id INT NOT NULL FIRST,
+    MODIFY COLUMN adresse_id INT NOT NULL AFTER societe_id;
+
+-- changeset sigmap:1757950264-12
+ALTER TABLE societe_address
+    ADD PRIMARY KEY (societe_id, adresse_id);
+
+

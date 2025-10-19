@@ -15,7 +15,7 @@ import java.util.List;
 public class SocieteWithUsersResponse {
 
     private SocieteResponseDto societe;
-    private List<UserSocieteResponseDto> content;
+    private List<UserResponse> content;
 
     private Pageable pageable;
     private boolean last;

@@ -1,15 +1,24 @@
 package com.sigmap.common.societe_address;
 
+import com.sigmap.common.adresse.AdressService;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
+import com.sigmap.common.societe.SocieteSpecifications;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_address.exception.AddressIdRequiredException;
+import com.sigmap.common.societe_address.exception.SocieteAddressAlreadyExist;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
+import com.sigmap.common.societe_address.exception.TypeIdRequiredException;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
+import com.sigmap.common.societe_address.request.SocieteAddressUpdateRequest;
 import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
+import com.sigmap.common.user_societe.exception.SocieteIdRequiredException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,42 +30,28 @@ import java.util.Optional;
 @Service
 public class SocieteAddressServiceImpl implements SocieteAddressService {
     private final SocieteAddressRepository repository;
-    private final SocieteService societeService;
+    private final SocieteRepository societeRepository;
     private final RefParamService refParamService;
+    private final AdressService addressService;
 
-    public SocieteAddressServiceImpl(SocieteAddressRepository repository, SocieteService societeService, RefParamService refParamService) {
+    public SocieteAddressServiceImpl(SocieteAddressRepository repository, SocieteRepository societeRepository, RefParamService refParamService, AdressService addressService) {
         this.repository = repository;
-        this.societeService = societeService;
+        this.societeRepository = societeRepository;
         this.refParamService = refParamService;
+        this.addressService = addressService;
     }
 
     @Override
     public List<SocieteAddress> findAll() {
-        Specification<SocieteAddress> spec = SocieteAddressSpecifications.deleted(false);
-        return repository.findAll(spec);
+        return repository.findAll();
     }
 
     @Override
     public Page<SocieteAddress> findAll(Specification<SocieteAddress> societeAddress, Pageable pageable) {
         return repository.findAll(societeAddress, pageable);    }
 
-    @Override
-    public Page<SocieteAddress> findAllDeleted(Specification<SocieteAddress> societeAddress, Pageable pageable) {
-        societeAddress= SocieteAddressSpecifications.deleted(true);
-        return repository.findAll(societeAddress, pageable);
-    }
 
-    @Override
-    public Page<SocieteAddress> findAllDeleted(Pageable pageable) {
-        Specification<SocieteAddress> societeAddress = SocieteAddressSpecifications.deleted(true);
-        return repository.findAll(societeAddress, pageable);
-    }
 
-    @Override
-    public Optional<SocieteAddress> findDeletedById(Integer id) {
-        Specification<SocieteAddress> specification = SocieteAddressSpecifications.id(id).and(SocieteAddressSpecifications.deleted(true));
-        return findOne(specification);
-    }
 
     @Override
     public Optional<SocieteAddress> findOne(Specification<SocieteAddress> specification) {
@@ -64,11 +59,12 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     }
 
     @Override
-    public SocieteAddress findById(Integer id) throws SocieteAdresseNotFound {
-        Specification<SocieteAddress> specification = SocieteAddressSpecifications.id(id)
-                .and(SocieteAddressSpecifications.deleted(false));
+    public SocieteAddress findById(Integer societeId, Integer adresseId) throws SocieteAdresseNotFound {
+        Specification<SocieteAddress> specification =  Specification
+                .where(SocieteAddressSpecifications.societeId(societeId))
+                .and(SocieteAddressSpecifications.addressId(adresseId));
         return findOne(specification)
-                .orElseThrow(() -> new SocieteAdresseNotFound("",List.of(id)));
+                .orElseThrow(() -> new SocieteAdresseNotFound("",societeId,adresseId));
     }
 
     @Override
@@ -78,44 +74,69 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
 
     @Override
     public SocieteAddress create(SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
+        if (request.getSocieteId() == null) {
+            throw new SocieteIdRequiredException();
+        }
+
+        if (request.getAddressId() == null) {
+            throw new AddressIdRequiredException();
+        }
+
+        if (request.getTypeId() == null) {
+            throw new TypeIdRequiredException();
+        }
+
+        Specification<SocieteAddress> specification =  Specification
+                .where(SocieteAddressSpecifications.societeId(request.getSocieteId()))
+                .and(SocieteAddressSpecifications.addressId(request.getAddressId()));
+        Optional <SocieteAddress > existing=findOne(specification);
+
+        if (existing.isPresent()) {
+            throw new SocieteAddressAlreadyExist();
+        }
+
         SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.map(request);
+
         RefParam type=refParamService.findById(request.getTypeId());
-        Societe societe=societeService.findById(request.getSocieteId());
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
+                .and(SocieteSpecifications.deleted(false));
+        Societe societe= societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
+        Adresse address=addressService.findById(request.getAddressId());
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
+        societeAddress.setAddress(address);
         return save(societeAddress);
     }
 
     @Override
-    public SocieteAddress update(Integer id,SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound , SocieteAdresseNotFound{
-        SocieteAddress societeAddress = findById(id);
+    public SocieteAddress update(Integer societeId, Integer adresseId, SocieteAddressUpdateRequest request)
+    throws RefParamNotFound, SocieteNotFound , SocieteAdresseNotFound{
+        if (societeId == null) {
+            throw new SocieteIdRequiredException();
+        }
+
+        if (adresseId == null) {
+            throw new AddressIdRequiredException();
+        }
+
+        if (request.getTypeId() == null) {
+            throw new TypeIdRequiredException();
+        }
+        SocieteAddress societeAddress = findById(societeId,adresseId);
         SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId());
-        Societe societe=societeService.findById(request.getSocieteId());
         societeAddress.setType(type);
-        societeAddress.setSociete(societe);
         return save(societeAddress);
     }
 
     @Override
-    public void delete(Integer id) {
-        repository.softDelete(id);
-
-    }
-
-    @Override
-    public SocieteAddress createUnderSociete(Integer societeId, SocieteAdressUnderSocieteRequest request) throws RefParamNotFound, SocieteNotFound {
-        SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.mapFromSocieteAddressUnderSocieteRequest(request);
-        RefParam type=refParamService.findById(request.getTypeId());
-        Societe societe=societeService.findById(societeId);
-        societeAddress.setType(type);
-        societeAddress.setSociete(societe);
-        return save(societeAddress);
-    }
-
-    @Override
-    public Page<SocieteAddress> findSocieteAddressBySocieteId(Integer societeId, Pageable pageable) throws SocieteNotFound {
-        societeService.findById(societeId);
-        return repository.findSocieteAddressBySocieteId(societeId, pageable);
+    public List<SocieteAddress> findSocieteAddressBySocieteId(Integer societeId) throws SocieteNotFound {
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(societeId)
+                .and(SocieteSpecifications.deleted(false));
+        societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(societeId)));
+        Specification<SocieteAddress> spec=SocieteAddressSpecifications.societeId(societeId);
+        return repository.findAll(spec);
     }
 }
