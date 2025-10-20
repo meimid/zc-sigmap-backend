@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_params.DynaForm;
+package com.sigmap.sigmap_params.dyna_form;
 
 import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.DynaFormService;
@@ -112,5 +112,10 @@ public class DynaFormController {
     ) {
         Page<DynaFormResponse> page = dynaFormService.findByTypeDossier(type, pageable);
         return ResponseEntity.ok(page);
+    }
+
+    @GetMapping("/{id}/latest")
+    public ResponseEntity<DynaFormResponse> getLatest(@PathVariable Integer id) {
+        return ResponseEntity.ok(dynaFormService.getLatestVersion(id));
     }
 }

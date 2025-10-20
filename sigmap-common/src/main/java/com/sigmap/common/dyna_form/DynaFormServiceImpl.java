@@ -69,6 +69,23 @@ public class DynaFormServiceImpl implements DynaFormService {
         return mapper.toResponse(f);
     }
 
+    /** -------------------- GET LATEST VERSION -------------------- **/
+    @Transactional(readOnly = true)
+    @Override
+    public DynaFormResponse getLatestVersion(Integer id) {
+        Integer latestVer = formRepo.findMaxVersionById(id);
+        if (latestVer == null) {
+            throw new IllegalArgumentException("No versions found for DynaForm ID: " + id);
+        }
+
+        DynaForm latest = formRepo.findActiveByIdAndVersion(id, latestVer)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Latest version not found or deleted for DynaForm ID: " + id
+                ));
+
+        return mapper.toResponse(latest);
+    }
+
     /** -------------------- LIST -------------------- **/
     @Transactional(readOnly = true)
     @Override

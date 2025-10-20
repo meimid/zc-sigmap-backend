@@ -47,4 +47,9 @@ public interface DynaFormFieldRepository
     List<DynaFormField> findByFormVersion(@Param("formId") Integer formId,
                                           @Param("formVer") Integer formVer);
 
+    @Query("SELECT f.dynaFormFieldsId FROM DynaFormField f " +
+            "WHERE f.dynaFormId = :formId AND f.dynaFormVer = :formVer AND f.isDeleted = false")
+    List<Integer> findIdsByForm(@Param("formId") Integer formId, @Param("formVer") Integer formVer);
+
+
 }

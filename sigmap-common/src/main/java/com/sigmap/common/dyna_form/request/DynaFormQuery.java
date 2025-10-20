@@ -16,7 +16,7 @@ public class DynaFormQuery {
     private String search;
     private TypeDossier typeDossier;
     private ActiveStatus status;
-    private FormType formType; // ✅ new filter field
+    private FormType formType;
 
     public Specification<DynaForm> toSpecification() {
         Specification<DynaForm> spec = Specification.where(null);

@@ -12,6 +12,7 @@ import java.util.List;
 public interface DynaFormService {
     DynaFormResponse create(DynaFormRequest request);
     DynaFormResponse get(Integer id, Integer version);
+    DynaFormResponse getLatestVersion(Integer id);
     Page<DynaFormResponse> findAll(Specification<DynaForm> spec, Pageable pageable);
     List<DynaFormResponse> list();
     DynaFormResponse updateWithVersioning(Integer id, DynaFormRequest request);
