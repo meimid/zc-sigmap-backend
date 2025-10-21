@@ -143,7 +143,7 @@ public class SocieteServiceImpl implements SocieteService {
         if(request.getAddressRequest().getTel1()==null){
             throw new TelIsRequiredException ("");
         }
-        if(request.getAddressRequest().getEmail()==null){
+        if(request.getAddressRequest().getEmail()==null||request.getUserSocieteRequest().getEmail()==null){
             throw new EmailRequiredException ("");
         }
         if(request.getUserSocieteRequest().getNom()==null){

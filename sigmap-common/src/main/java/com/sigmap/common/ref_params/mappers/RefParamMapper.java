@@ -5,6 +5,7 @@ import com.sigmap.common.ref_params.request.RefParamRequest;
 import com.sigmap.common.ref_params.request.RefParamRequestWithoutRefTypeIdDto;
 import com.sigmap.common.ref_params.response.RefParamResponse;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
+import com.sigmap.common.ref_params.response.RefParamResponseDtoSoft;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -32,4 +33,5 @@ public interface RefParamMapper {
     void updateFromRequest(RefParamRequest source, @MappingTarget RefParam target);
     RefParamResponseDto mapToDto(RefParam source);
     RefParamRequest mapToRequest(RefParamRequestWithoutRefTypeIdDto source);
+    RefParamResponseDtoSoft mapToDtoSoft(RefParam source);
 }

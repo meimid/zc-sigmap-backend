@@ -3,6 +3,7 @@ package com.sigmap.common.societe_address;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
+import com.sigmap.common.societe_address.request.SocieteAddressCreateRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressUpdateRequest;
 import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
@@ -65,21 +66,20 @@ public interface SocieteAddressService {
      * @throws RefParamNotFound if a referenced parameter is not found
      * @throws SocieteNotFound if the referenced {@link com.sigmap.common.societe.Societe} is not found
      */
-    SocieteAddress create(SocieteAddressRequest request)
+    SocieteAddress create(SocieteAddressCreateRequest request)
             throws RefParamNotFound, SocieteNotFound;
 
     /**
      * Update an existing {@link SocieteAddress}.
      *
      * @param societeId the ID of the related {@link com.sigmap.common.societe.Societe}
-     * @param adresseId the ID of the related {@link com.sigmap.common.adresse.Adresse}
      * @param request the request containing updated data
      * @return the updated {@link SocieteAddress}
      * @throws RefParamNotFound if a referenced parameter is not found
      * @throws SocieteNotFound if the referenced {@link com.sigmap.common.societe.Societe} is not found
      * @throws SocieteAdresseNotFound if the {@link SocieteAddress} is not found
      */
-    SocieteAddress update(Integer societeId, Integer adresseId, SocieteAddressUpdateRequest request)
+    SocieteAddress update(Integer societeId, SocieteAddressUpdateRequest request)
             throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound;
 
 
