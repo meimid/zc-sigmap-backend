@@ -9,12 +9,14 @@ import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.SocieteSpecifications;
+import com.sigmap.common.societe.exception.AddressRequiredException;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_address.exception.AddressIdRequiredException;
 import com.sigmap.common.societe_address.exception.SocieteAddressAlreadyExist;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.exception.TypeIdRequiredException;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
+import com.sigmap.common.societe_address.request.SocieteAddressCreateRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressUpdateRequest;
 import com.sigmap.common.societe_address.request.SocieteAdressUnderSocieteRequest;
@@ -73,60 +75,60 @@ public class SocieteAddressServiceImpl implements SocieteAddressService {
     }
 
     @Override
-    public SocieteAddress create(SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
+    public SocieteAddress create(SocieteAddressCreateRequest request) throws RefParamNotFound, SocieteNotFound {
         if (request.getSocieteId() == null) {
             throw new SocieteIdRequiredException();
         }
 
-        if (request.getAddressId() == null) {
-            throw new AddressIdRequiredException();
+        if(request.getAddressRequest() == null) {
+            throw new AddressRequiredException("");
         }
 
         if (request.getTypeId() == null) {
             throw new TypeIdRequiredException();
         }
 
-        Specification<SocieteAddress> specification =  Specification
-                .where(SocieteAddressSpecifications.societeId(request.getSocieteId()))
-                .and(SocieteAddressSpecifications.addressId(request.getAddressId()));
-        Optional <SocieteAddress > existing=findOne(specification);
-
-        if (existing.isPresent()) {
-            throw new SocieteAddressAlreadyExist();
-        }
-
-        SocieteAddress societeAddress= SocieteAddressMapper.INSTANCE.map(request);
+        SocieteAddress societeAddress= new SocieteAddress();
 
         RefParam type=refParamService.findById(request.getTypeId());
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
                 .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
-        Adresse address=addressService.findById(request.getAddressId());
+        Adresse address=addressService.create(request.getAddressRequest());
         societeAddress.setType(type);
         societeAddress.setSociete(societe);
         societeAddress.setAddress(address);
+        societeAddress.setSocieteId(societe.getId());
+        societeAddress.setAddressId(address.getId());
         return save(societeAddress);
     }
 
     @Override
-    public SocieteAddress update(Integer societeId, Integer adresseId, SocieteAddressUpdateRequest request)
+    public SocieteAddress update(Integer societeId, SocieteAddressUpdateRequest request)
     throws RefParamNotFound, SocieteNotFound , SocieteAdresseNotFound{
         if (societeId == null) {
             throw new SocieteIdRequiredException();
         }
 
-        if (adresseId == null) {
-            throw new AddressIdRequiredException();
+        if (request.getAddressRequest() == null) {
+            throw new AddressRequiredException("");
+        }
+        if(request.getAddressRequest().getId() == null) {
+            throw new AddressIdRequiredException("");
         }
 
         if (request.getTypeId() == null) {
             throw new TypeIdRequiredException();
         }
-        SocieteAddress societeAddress = findById(societeId,adresseId);
+        SocieteAddress societeAddress = findById(societeId,request.getAddressRequest().getId());
+        addressService.findById(request.getAddressRequest().getId());
+        Adresse updatedAddress=addressService.update(request.getAddressRequest());
+
         SocieteAddressMapper.INSTANCE.updateFromRequest(request, societeAddress);
         RefParam type=refParamService.findById(request.getTypeId());
         societeAddress.setType(type);
+        societeAddress.setAddress(updatedAddress);
         return save(societeAddress);
     }
 

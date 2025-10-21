@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950264-1
+-- changeset sigmap:1757950270-1
 
 ALTER TABLE societe
     ADD COLUMN nif VARCHAR(255) NOT NULL,
@@ -8,7 +8,7 @@ ALTER TABLE societe
     ADD COLUMN num_cnss INTEGER NOT NULL,
     ADD COLUMN status ENUM('VALIDEE', 'REJETEE','EN_COURS') NOT NULL DEFAULT 'EN_COURS';
 
--- changeset sigmap:1757950264-2
+-- changeset sigmap:1757950270-2
 CREATE TABLE societe_activite (
     societe_id INT NOT NULL,
     activite_id INT NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE societe_activite (
 
 -- liquibase formatted sql
 
--- changeset sigmap:1757950264-3
+-- changeset sigmap:1757950270-3
 CREATE TABLE IF NOT EXISTS user_societe (
     user_id VARCHAR(255) NOT NULL,
     societe_id INT NOT NULL,
@@ -47,25 +47,25 @@ CREATE TABLE IF NOT EXISTS user_societe (
     );
 
 
--- changeset sigmap:1757950264-4
+-- changeset sigmap:1757950270-4
 ALTER TABLE societe
 DROP COLUMN IF EXISTS pays_id,
     DROP COLUMN IF EXISTS nni;
 
- -- changeset sigmap:1757950264-5
+ -- changeset sigmap:1757950270-5
 
 ALTER TABLE societe_address MODIFY societe_address_id INT;
 
--- changeset sigmap:1757950264-6
+-- changeset sigmap:1757950270-6
 
 ALTER TABLE societe_address DROP PRIMARY KEY;
 
--- changeset sigmap:1757950264-7
+-- changeset sigmap:1757950270-7
 
 ALTER TABLE societe_address DROP COLUMN societe_address_id;
 
 
--- changeset sigmap:1757950264-8
+-- changeset sigmap:1757950270-8
 ALTER TABLE societe_address
     DROP COLUMN IF EXISTS societe_adresse_id,
     DROP COLUMN IF EXISTS created_at,
@@ -77,25 +77,25 @@ ALTER TABLE societe_address
     DROP COLUMN IF EXISTS is_deleted,
     DROP COLUMN IF EXISTS address;
 
--- changeset sigmap:1757950264-9
+-- changeset sigmap:1757950270-9
 
 ALTER TABLE societe_address ADD COLUMN adresse_id INT NOT NULL;
 
 
--- changeset sigmap:1757950264-10
+-- changeset sigmap:1757950270-10
 ALTER TABLE societe_address
     ADD CONSTRAINT fk_societe_address_societe
         FOREIGN KEY (societe_id) REFERENCES societe(societe_id),
     ADD CONSTRAINT fk_societe_address_adresse
         FOREIGN KEY (adresse_id) REFERENCES adresse(adresse_id);
 
--- changeset sigmap:1757950264-11
+-- changeset sigmap:1757950270-11
 
 ALTER TABLE societe_address
     MODIFY COLUMN societe_id INT NOT NULL FIRST,
     MODIFY COLUMN adresse_id INT NOT NULL AFTER societe_id;
 
--- changeset sigmap:1757950264-12
+-- changeset sigmap:1757950270-12
 ALTER TABLE societe_address
     ADD PRIMARY KEY (societe_id, adresse_id);
 

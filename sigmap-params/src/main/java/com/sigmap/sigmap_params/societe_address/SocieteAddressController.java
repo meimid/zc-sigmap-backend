@@ -9,6 +9,7 @@ import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
 import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
+import com.sigmap.common.societe_address.request.SocieteAddressCreateRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressQuery;
 import com.sigmap.common.societe_address.request.SocieteAddressRequest;
 import com.sigmap.common.societe_address.request.SocieteAddressUpdateRequest;
@@ -77,7 +78,7 @@ public class SocieteAddressController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteAddressResponse> create(@RequestBody SocieteAddressRequest request) throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<SocieteAddressResponse> create(@RequestBody SocieteAddressCreateRequest request) throws RefParamNotFound, SocieteNotFound {
         SocieteAddress SocieteAddress = societeAddressService.create(request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -88,10 +89,10 @@ public class SocieteAddressController {
      * @param request the request to update the SocieteAddress from
      * @return the updated SocieteAddress
      */
-    @PutMapping("/societe/{societeId}/address/{addressId}")
+    @PutMapping("/societe/{societeId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer societeId,@PathVariable Integer addressId,@RequestBody SocieteAddressUpdateRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound {
-        SocieteAddress SocieteAddress = societeAddressService.update(societeId,addressId,request);
+    public ResponseEntity<SocieteAddressResponse> update(@PathVariable Integer societeId,@RequestBody SocieteAddressUpdateRequest request) throws RefParamNotFound, SocieteNotFound, SocieteAdresseNotFound {
+        SocieteAddress SocieteAddress = societeAddressService.update(societeId,request);
         SocieteAddressResponse response = SocieteAddressMapper.INSTANCE.map(SocieteAddress);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
