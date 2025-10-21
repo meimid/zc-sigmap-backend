@@ -102,6 +102,16 @@ public class DynaFormController {
     }
 
     /**
+     * Soft delete all versions of a DynaForm by ID.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> softDeleteAll(@PathVariable Integer id) {
+        dynaFormService.softDeleteAllVersions(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
+    /**
      * Page through forms by dossier type.
      * Example: GET /api/dyna-forms/by-type?type=ADMINISTRATIVE&page=0&size=20
      */

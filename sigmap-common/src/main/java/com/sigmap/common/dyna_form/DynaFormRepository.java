@@ -33,6 +33,10 @@ public interface DynaFormRepository extends
     """)
     List<DynaForm> findAllActive(@Param("status") ActiveStatus status);
 
+    @Query("SELECT f FROM DynaForm f WHERE f.id = :id AND (f.isDeleted = false OR f.isDeleted IS NULL)")
+    List<DynaForm> findAllById(@Param("id") Integer id);
+
+
     @Modifying
     @Query("update DynaForm f set f.isDeleted = true where f.id = :id and f.version = :ver")
     void softDeleteByIdAndVersion(@Param("id") Integer id, @Param("ver") Integer ver);

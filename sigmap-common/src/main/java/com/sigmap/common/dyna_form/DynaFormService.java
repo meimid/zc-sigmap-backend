@@ -18,4 +18,5 @@ public interface DynaFormService {
     DynaFormResponse updateWithVersioning(Integer id, DynaFormRequest request);
     void softDelete(Integer id, Integer version);
     Page<DynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable);
+    void softDeleteAllVersions(Integer id);
 }

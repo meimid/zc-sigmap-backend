@@ -234,6 +234,20 @@ public class DynaFormServiceImpl implements DynaFormService {
         formRepo.save(f);
     }
 
+    /** -------------------- SOFT DELETE ALL VERSIONS -------------------- **/
+    @Transactional
+    @Override
+    public void softDeleteAllVersions(Integer id) {
+        List<DynaForm> versions = formRepo.findAllById(id);
+
+        if (versions.isEmpty()) {
+            throw new IllegalArgumentException("No forms found for ID: " + id);
+        }
+
+        versions.forEach(f -> f.setIsDeleted(true));
+        formRepo.saveAll(versions);
+    }
+
     /** -------------------- FIND BY TYPE -------------------- **/
     @Override
     public Page<DynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable) {
