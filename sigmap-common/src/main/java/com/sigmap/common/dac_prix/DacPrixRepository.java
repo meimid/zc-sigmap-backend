@@ -19,7 +19,7 @@ import java.util.Optional;
 public interface DacPrixRepository extends JpaRepository<DacPrix, DacPrixId>, JpaSpecificationExecutor<DacPrix>
                                             , SoftDeleteRepository<DacPrix, DacPrixId> {
 
-    @Query("SELECT dp FROM DacPrix dp  WHERE dp.id.dac.dacId =:dacId AND dp.id.dac.dacVer =:dacVer AND dp.id.monnaie.id =:monnaieId")
+    @Query("SELECT dp FROM DacPrix dp  WHERE dp.id.dac.dacId =:dacId AND dp.id.dac.dacVer =:dacVer AND dp.id.monnaie.id =:monnaieId and dp.isDeleted = false")
     Optional<DacPrix> findById( @Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("monnaieId") Integer monnaieId);
 
     @Query("SELECT dp FROM DacPrix dp  WHERE dp.id.dac.dacId =:dacId AND dp.id.dac.dacVer =:dacVer ")

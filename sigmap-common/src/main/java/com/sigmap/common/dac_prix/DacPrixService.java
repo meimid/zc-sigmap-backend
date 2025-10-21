@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.List;
+
 public interface DacPrixService {
     DacPrix save(DacPrixRequest request) throws MonnaieNotFound;
     
@@ -16,4 +18,6 @@ public interface DacPrixService {
     
     DacPrix findById(Integer dacId, Integer dacVer, Integer monnaieId);
     Page<DacPrix> getAllDacPrix(Specification<DacPrix> spec, Pageable pageable);
+
+    void defenitiveDelete(List<DacPrix> dacPrixList) throws DacPrixNotFound;
 }

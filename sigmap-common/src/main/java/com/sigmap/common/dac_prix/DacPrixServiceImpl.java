@@ -120,4 +120,24 @@ public class DacPrixServiceImpl implements DacPrixService {
         log.debug("Récupération des prix DAC avec spécification et pagination");
         return dacPrixRepository.findAll(spec, pageable);
     }
+
+
+    @Override
+    public void defenitiveDelete(List<DacPrix> dacPrixList) {
+        dacPrixList.forEach(dacPrix ->
+                deleteOne(dacPrix.getId().getDac().getDacId(),
+                        dacPrix.getId().getDac().getDacVer(),
+                        dacPrix.getId().getMonnaie().getId())
+        );
+    }
+
+    @Transactional
+    public void deleteOne(Integer dacId, Integer dacVer, Integer monnaieId) {
+        log.debug("Suppression du prix DAC pour dacId={}, dacVer={}, monnaieId={}", dacId, dacVer, monnaieId);
+        DacPrix dacPrix = findById(dacId, dacVer, monnaieId);
+        if (dacPrix == null) {
+            throw new DacPrixNotFound(dacId, dacVer, monnaieId);
+        }
+        dacPrixRepository.delete(dacPrix);
+    }
 }

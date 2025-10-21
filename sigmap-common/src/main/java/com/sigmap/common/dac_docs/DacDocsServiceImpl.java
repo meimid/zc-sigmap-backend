@@ -84,6 +84,8 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Autowired
     private DacPrixRepository dacPrixRepository;
     @Autowired
+    private DacPrixService dacPrixService;
+    @Autowired
     private MonnaieRepository monnaieRepository;
     @Override
     @Transactional
@@ -311,6 +313,8 @@ public class DacDocsServiceImpl implements DacDocsService{
         // Find existing OR create new
         Optional<DacPrix> existingDacPrix = dacPrixRepository.findById(dacId, dacVer, request.getMonnaieId());
 
+        log.info("existingDacPrix............. : {}", existingDacPrix);
+
         DacPrix dacPrix;
         if (existingDacPrix.isPresent()) {
             // UPDATE EXISTING - Just change the prix!
@@ -376,8 +380,13 @@ public class DacDocsServiceImpl implements DacDocsService{
             List<DacPrix> toDelete = existingPrixList.stream()
                     .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
 
-            if (!toDelete.isEmpty()) {
+            if (!toDelete.isEmpty() && existDac.getStatus() != ProcessStatus.BROUILLON) {
                 dacPrixRepository.softDelete(toDelete);
+                log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), existDac.getDacId(), existDac.getDacVer());
+            }
+
+            if (!toDelete.isEmpty() && existDac.getStatus() == ProcessStatus.BROUILLON) {
+                dacPrixService.defenitiveDelete(toDelete);
                 log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), existDac.getDacId(), existDac.getDacVer());
             }
 
