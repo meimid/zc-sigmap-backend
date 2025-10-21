@@ -1139,5 +1139,42 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(AddressRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleAddressRequiredException(AddressRequiredException ex) {
+        String message = messageSource.getMessage("societe.address.required", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(CodePostalRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleCodePostalRequiredException(CodePostalRequiredException ex) {
+        String message = messageSource.getMessage("societe.codepostal.required", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TelIsRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleTelIsRequiredException(TelIsRequiredException ex) {
+        String message = messageSource.getMessage("societe.tel.required", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(EmailRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleEmailRequiredException(EmailRequiredException ex) {
+        String message = messageSource.getMessage("societe.email.required", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NameIsRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleNameIsRequiredException(NameIsRequiredException ex) {
+        String message = messageSource.getMessage("societe.nom.required", null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
 }
 

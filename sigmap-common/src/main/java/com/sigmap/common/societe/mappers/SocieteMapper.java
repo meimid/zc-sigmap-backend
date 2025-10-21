@@ -56,22 +56,34 @@ public interface SocieteMapper {
         if (societeAddresses == null) return null;
 
         return societeAddresses.stream()
-                .filter(sa -> sa.getAddress() != null)
                 .map(sa -> {
-                    var adresse = sa.getAddress();
                     var dto = new AdresseResponseDto();
-                    dto.setId(adresse.getId());
-                    dto.setTel1(adresse.getTel1());
-                    dto.setTel2(adresse.getTel2());
-                    dto.setFax(adresse.getFax());
-                    dto.setAdresse(adresse.getAdresse());
-                    dto.setCompAdresse(adresse.getCompAdresse());
-                    dto.setCodePostal(adresse.getCodePostal());
-                    dto.setVille(adresse.getVille());
-                    dto.setPays(RefParamMapper.INSTANCE.mapToDto(adresse.getPays()));
+
+                    if (sa.getAddress() != null) {
+                        var adresse = sa.getAddress();
+                        dto.setId(adresse.getId());
+                        dto.setEmail(adresse.getEmail());
+                        dto.setTel1(adresse.getTel1());
+                        dto.setTel2(adresse.getTel2());
+                        dto.setFax(adresse.getFax());
+                        dto.setAdresse(adresse.getAdresse());
+                        dto.setCompAdresse(adresse.getCompAdresse());
+                        dto.setCodePostal(adresse.getCodePostal());
+                        dto.setVille(adresse.getVille());
+                        dto.setPays(RefParamMapper.INSTANCE.mapToDto(adresse.getPays()));
+                    } else {
+                        dto.setId(sa.getAddressId());
+                        dto.setEmail(sa.getAddress().getEmail());
+
+
+
+
+                    }
+
                     return dto;
                 })
                 .collect(Collectors.toList());
     }
+
 }
 

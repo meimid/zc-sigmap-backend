@@ -4,10 +4,8 @@ import lombok.Getter;
 
 @Getter
 public class PaysIsRequiredException extends RuntimeException {
-    private final Integer id;
 
-    public PaysIsRequiredException(String message, Integer id) {
+    public PaysIsRequiredException(String message) {
         super(message);
-        this.id = id;
     }
 }

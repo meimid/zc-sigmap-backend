@@ -105,9 +105,7 @@ public class SocieteServiceImpl implements SocieteService {
     @Override
     @Transactional
     public Societe create(SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
-        log.info("UserSocieteServiceImpl.societe {}",request.getSocieteRequest());
-        log.info("UserSocieteServiceImpl.adress {}",request.getAddressRequest());
-        log.info("--------- {}",request.getUserSocieteRequest());
+
 
         Societe societe =  SocieteMapper.INSTANCE.map(request.getSocieteRequest());
 
@@ -129,17 +127,38 @@ public class SocieteServiceImpl implements SocieteService {
         if (request.getSocieteRequest().getActiviteIds() == null || request.getSocieteRequest().getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
+        if(request.getAddressRequest()==null){
+            throw new AddressRequiredException("");
+        }
+        if(request.getAddressRequest().getAdresse()==null){
+            throw new AddressRequiredException("");
 
+        }
+        if( request.getAddressRequest().getCodePostal()==null) {
+            throw new CodePostalRequiredException ("");
+        }
+        if(request.getAddressRequest().getPaysId()==null){
+            throw new PaysIsRequiredException("");
+        }
+        if(request.getAddressRequest().getTel1()==null){
+            throw new TelIsRequiredException ("");
+        }
+        if(request.getAddressRequest().getEmail()==null){
+            throw new EmailRequiredException ("");
+        }
+        if(request.getUserSocieteRequest().getNom()==null){
+            throw new NameIsRequiredException ("");
+        }
 
-        if (request.getSocieteRequest().getNif() == null) {
+        /*if (request.getSocieteRequest().getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }
-        if (request.getSocieteRequest().getDateNif() == null) {
+        }*/
+      /*  if (request.getSocieteRequest().getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
-        }
-        if (request.getSocieteRequest().getNumCnss() == null) {
+        }*/
+       /* if (request.getSocieteRequest().getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }
+        }*/
 
         if (request.getUserSocieteRequest().getUserId() == null || request.getUserSocieteRequest().getUserId().isBlank()) {
             throw new UserIdRequiredException();
@@ -158,13 +177,15 @@ public class SocieteServiceImpl implements SocieteService {
         Adresse address=adressService.create(request.getAddressRequest());
         SocieteAddress societeAddress=new SocieteAddress();
         societeAddress.setAddressId(address.getId());
+        societeAddress.setAddress(address);
         societeAddress.setSocieteId(savedSociete.getId());
         societeAddress.setType(savedSociete.getType());
-        societeAddressService.save(societeAddress);
+       SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
         request.getUserSocieteRequest().setSocieteId(savedSociete.getId());
-         userSocieteService.create(request.getUserSocieteRequest());
-
-        return findById(savedSociete.getId());
+        UserSociete savedUserSociete= userSocieteService.create(request.getUserSocieteRequest());
+        savedSociete.getSocieteAddresses().add(savedSocieteAdress);
+        savedSociete.getUsersSociete().add(savedUserSociete);
+        return savedSociete;
 
     }
 
@@ -189,15 +210,15 @@ public class SocieteServiceImpl implements SocieteService {
         if (request.getActiviteIds() == null || request.getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
-        if (request.getNif() == null) {
+       /* if (request.getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }
-        if (request.getDateNif() == null) {
+        }*/
+        /*if (request.getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
-        }
-        if (request.getNumCnss() == null) {
+        }*/
+       /* if (request.getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }
+        }*/
 
       /*  if(request.getStatus() != null) {
             societe.setStatus(request.getStatus());
