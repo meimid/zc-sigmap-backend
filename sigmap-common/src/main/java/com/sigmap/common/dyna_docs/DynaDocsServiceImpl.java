@@ -142,6 +142,16 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDoc.setModePassation(null);
     }
 
+    // ensure that DynaDocsModel exists by id or set null
+    if (request.getDynaDocsModelId() != null) {
+      DynaDocsModel ddm = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
+              .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
+
+      dynaDoc.setDynaDocsModel(ddm);
+    } else {
+      dynaDoc.setDynaDocsModel(null);
+    }
+
     // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
     if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
       validateAAOUniquenessForUpdate(dynaDocId, request.getTypeMarcheId(), request.getModePassationId());
