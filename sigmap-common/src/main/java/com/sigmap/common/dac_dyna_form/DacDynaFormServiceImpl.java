@@ -88,9 +88,6 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     @Override
     public Page<DynaFormResponse> findDistinctFormsByDac(Integer dacId, Integer dacVer, Pageable pageable) {
         List<Object[]> distinct = repo.findDistinctFormsByDac(dacId, dacVer);
-        if (distinct.isEmpty()) {
-            throw new DacDynaFormNotFoundException("No forms attached to this DAC.");
-        }
 
         List<DynaForm> forms = distinct.stream()
                 .map(arr -> formRepo.findById(new com.sigmap.common.entity.CompositeId(
@@ -116,14 +113,9 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
                                                                    Integer dacVer,
                                                                    TypeDossier type,
                                                                    Pageable pageable) {
-        Page<DynaForm> unattachedForms = formRepo.findAll(
-                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type),
-                pageable
+        List<DynaForm> unattachedForms = formRepo.findAll(
+                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type)
         );
-
-        if (unattachedForms.isEmpty()) {
-            throw new DacDynaFormNotFoundException("No unattached forms found for the specified TypeDossier.");
-        }
 
         List<DynaFormResponse> responses = unattachedForms
                 .stream()
