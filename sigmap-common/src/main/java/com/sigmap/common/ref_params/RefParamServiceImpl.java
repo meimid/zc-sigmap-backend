@@ -256,8 +256,8 @@ public class RefParamServiceImpl implements RefParamService {
         }
 
         Specification<SocieteAddress> societeAddressSpec = Specification.where(
-                SocieteAddressSpecifications.deleted(false)
-                        .and(SocieteAddressSpecifications.hasTypeId(id))
+
+                        SocieteAddressSpecifications.hasTypeId(id)
         );
         boolean hasAssociatedSocieteAddress = societeAddressRepository.count(societeAddressSpec) > 0;
         if (hasAssociatedSocieteAddress) {

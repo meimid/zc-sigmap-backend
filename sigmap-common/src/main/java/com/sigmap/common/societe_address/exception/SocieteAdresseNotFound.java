@@ -5,11 +5,13 @@ import lombok.Getter;
 import java.util.List;
 
 @Getter
-public class SocieteAdresseNotFound extends Exception {
-    private final List<Integer> id;
-    public SocieteAdresseNotFound(String message , List<Integer> id) {
+public class SocieteAdresseNotFound extends RuntimeException {
+    private final Integer societeId;
+    private final Integer adresseId;
+    public SocieteAdresseNotFound(String message , Integer societeId, Integer adresseId) {
         super(message);
-        this.id = id;
+        this.societeId = societeId;
+        this.adresseId = adresseId;
     }
 
 }

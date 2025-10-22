@@ -9,6 +9,7 @@ import org.springframework.data.jpa.domain.Specification;
 @Data
 public class AdresseQuery {
     private String search;
+    private String email;
     private String tel1;
     private String tel2;
     private String fax;
@@ -46,6 +47,9 @@ public class AdresseQuery {
         }
         if (ville != null && !ville.isBlank()) {
             spec = spec.and(AdressSpecifications.ville(ville));
+        }
+        if (email != null && !email.isBlank()) {
+            spec = spec.and(AdressSpecifications.email(email));
         }
         return spec;
     }

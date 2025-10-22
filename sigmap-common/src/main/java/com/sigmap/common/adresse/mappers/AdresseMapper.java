@@ -3,6 +3,7 @@ package com.sigmap.common.adresse.mappers;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.adresse.response.AdresseResponse;
+import com.sigmap.common.adresse.response.AdresseResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -20,6 +21,7 @@ public interface AdresseMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AdresseResponse map(Adresse source);
     Adresse map(AdresseRequest source);
+    AdresseResponseDto toDto(Adresse source);
     void updateFromRequest(AdresseRequest source, @MappingTarget Adresse target);
 
 
