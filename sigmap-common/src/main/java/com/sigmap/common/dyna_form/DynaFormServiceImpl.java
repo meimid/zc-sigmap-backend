@@ -20,6 +20,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -244,7 +245,11 @@ public class DynaFormServiceImpl implements DynaFormService {
             throw new IllegalArgumentException("No forms found for ID: " + id);
         }
 
-        versions.forEach(f -> f.setIsDeleted(true));
+        versions.forEach(f -> {
+            f.setIsDeleted(true);
+            f.setDeletedAt(Calendar.getInstance());
+        });
+
         formRepo.saveAll(versions);
     }
 
