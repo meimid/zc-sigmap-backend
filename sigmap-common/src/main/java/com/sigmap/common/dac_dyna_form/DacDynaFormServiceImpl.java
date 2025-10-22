@@ -112,7 +112,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Transactional(readOnly = true)
     @Override
-    public Page<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
+    public List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                                    Integer dacVer,
                                                                    TypeDossier type,
                                                                    Pageable pageable) {
@@ -131,7 +131,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
                 .map(mapper::toDynaFormResponse)
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(responses, pageable, unattachedForms.getTotalElements());
+        return responses;
     }
 
     // ------------------------------------------------------------

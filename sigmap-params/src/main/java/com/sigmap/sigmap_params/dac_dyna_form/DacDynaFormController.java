@@ -63,11 +63,11 @@ public class DacDynaFormController {
     //  Retrieve unattached forms filtered by TypeDossier
     // ------------------------------------------------------------
     @PostMapping("/unattached")
-    public ResponseEntity<Page<DynaFormResponse>> getUnattachedForms(
+    public ResponseEntity<List<DynaFormResponse>> getUnattachedForms(
             @RequestBody DacDynaFormRequest request,
             @RequestParam(required = false) TypeDossier type,
             Pageable pageable) {
-        Page<DynaFormResponse> page =
+        List<DynaFormResponse> page =
                 service.findUnattachedFormsByTypeDossier(request.getDacId(), request.getDacVer(), type, pageable);
         return ResponseEntity.ok(page);
     }

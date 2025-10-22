@@ -53,7 +53,7 @@ public interface DacDynaFormService {
      *  Retrieve forms that are NOT attached to the given DAC,
      * filtered by their TypeDossier (Administrative / Financière / Technique).
      */
-    Page<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
+    List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                             Integer dacVer,
                                                             TypeDossier type,
                                                             Pageable pageable);
