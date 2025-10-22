@@ -18,6 +18,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExist;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
+import com.sigmap.common.dac_dyna_form.exceptions.DacDynaFormNotFoundException;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.doc_soumission.exception.*;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
@@ -963,6 +964,19 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DacDynaFormNotFoundException.class)
+    public ResponseEntity<ErrorResponse> DacDynaFormNotFoundException(DacDynaFormNotFoundException ex) {
+        String message = messageSource.getMessage(
+                "dacDynaForm.notFound",
+                new Object[]{ex.getMessage()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
 
     @ResponseStatus(HttpStatus.CONFLICT)
     @ExceptionHandler(HasAssociatedSociete.class)
