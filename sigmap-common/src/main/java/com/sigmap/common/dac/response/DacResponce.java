@@ -27,5 +27,7 @@ public class DacResponce {
     private ModeDePassationSelection modePassation;
     private ProcessStatus status;
     private String processInstanceId;
+    private Integer parentDacId;
+    private boolean shortListing;
     private BaseEntityResponse metadata;
 }

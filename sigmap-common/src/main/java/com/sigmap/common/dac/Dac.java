@@ -56,4 +56,10 @@ public class Dac extends BaseEntity {
 
   private String processInstanceId;
 
+  @Column(name = "short_listing")
+  private boolean shortListing;
+
+  @Column(name = "parent_dac_id")
+  private Integer parentDacId;
+
 }
