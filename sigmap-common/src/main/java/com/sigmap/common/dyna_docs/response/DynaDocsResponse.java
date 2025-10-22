@@ -2,6 +2,7 @@ package com.sigmap.common.dyna_docs.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.ref_params.RefParam;
@@ -32,6 +33,8 @@ public class DynaDocsResponse {
   private Boolean isStatic;
 
   private Boolean isAAO;
+
+  private DynaDocsModel dynaDocsModel;
 
   @JsonInclude(Include.NON_NULL)
   private List<DynaFieldsResponse> fields;
