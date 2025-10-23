@@ -205,7 +205,7 @@ public class SocieteController {
         return ResponseEntity.ok(societeResponses);
     }
 
-    @PutMapping("/rejetee/{id}")
+/*    @PutMapping("/rejetee/{id}")
     public ResponseEntity<SocieteResponse> updateStatusRejetee(@PathVariable Integer id) throws RefParamNotFound,SocieteNotFound {
 
         Societe societe = societeService.updateStatus(id,SocieteStatus.REJETEE);
@@ -220,6 +220,13 @@ public class SocieteController {
         Societe societe = societeService.updateStatus(id,SocieteStatus.VALIDEE);
         inscriptionOrchestrationService.validateUser(societe.getUsersSociete().get(0).getUserId());
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }*/
+
+    @PutMapping("/validate/{id}")
+    public ResponseEntity<SocieteResponse> updateStatus(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
+        Societe Societe = societeService.updateStatus(id,request.getStatus());
+        SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 /**
