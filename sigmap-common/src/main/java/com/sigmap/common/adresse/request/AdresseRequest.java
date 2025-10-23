@@ -4,7 +4,6 @@ import lombok.Data;
 
 @Data
 public class AdresseRequest {
-    private Integer id;
     private String email;
     private String tel1;
     private String tel2;

@@ -1,13 +1,13 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
-import com.sigmap.common.keycloak_website_admin.dto.UserResquestWebsiteDTO;
+import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
-import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteGlobalRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteGlobalRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,36 +52,19 @@ public class KeycloakWebisteAdminService {
     /**
      * Crée un utilisateur Website dans Keycloak (Pending) et crée la société associée.
      */
-    public String createPendingWebsiteUserWithSociete(UserWebsiteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
+    public String createPendingWebsiteUserWithSociete(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
         //  Création de l'utilisateur dans Keycloak
-        String userId = createPendingWebsiteUser(request.getUserRequest());
+        String userId = createPendingWebsiteUser(request.getUserResquest());
 
-        //  Création de la société et alimentation table UserSociete
-        SocieteGlobalRequest societeGlobal = request.getSocieteRequest();
-
-        // Remplir userSocieteRequest avec l'userId généré
-        if (societeGlobal.getUserSocieteRequest() == null) {
-            societeGlobal.setUserSocieteRequest(new UserSocieteRequest());
+        if (userId!=null){
+            request.getUserResquest().setId(userId);
+            societeService.create(request);
         }
-        societeGlobal.getUserSocieteRequest().setUserId(userId);
-        societeGlobal.getUserSocieteRequest().setNom(request.getUserRequest().getLastName());
-        societeGlobal.getUserSocieteRequest().setPrenom(request.getUserRequest().getFirstName());
-        societeGlobal.getUserSocieteRequest().setEmail(request.getUserRequest().getEmail());
-        societeGlobal.getUserSocieteRequest().setTel1(request.getUserRequest().getMobile());
-        societeGlobal.getUserSocieteRequest().setTel2(request.getUserRequest().getFixe());
-        societeGlobal.getUserSocieteRequest().setNumCin(request.getUserRequest().getCin());
-        societeGlobal.getUserSocieteRequest().setDateDelivranceCin(
-                request.getUserRequest().getDateCIN() != null ? java.sql.Date.valueOf(request.getUserRequest().getDateCIN()) : null
-        );
-
-        // Appel du service societe
-        societeService.create(societeGlobal);
-
         return userId;
     }
 
     /*** Création utilisateur website (Pending) ***/
-    public String createPendingWebsiteUser(UserResquestWebsiteDTO dto) {
+    public String createPendingWebsiteUser(UserResquest dto) {
         String token = tokenService.getAccessToken();
         HttpHeaders headers = createHeaders(token);
         headers.setContentType(MediaType.APPLICATION_JSON);

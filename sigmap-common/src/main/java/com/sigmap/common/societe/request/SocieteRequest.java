@@ -1,5 +1,6 @@
 package com.sigmap.common.societe.request;
 
+import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.entity.SocieteStatus;
 
 import lombok.*;
@@ -20,7 +21,6 @@ public class SocieteRequest {
     private Date dateNif;
     private Integer numCnss;
     private List<Integer> activiteIds=new ArrayList<>();
-
-
+    private AdresseRequest adresseRequest;
 
 }
