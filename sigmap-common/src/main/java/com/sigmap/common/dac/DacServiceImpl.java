@@ -693,6 +693,8 @@ public class DacServiceImpl implements DacService {
         dac.setTypeMarche(typeMarche);
         dac.setModePassation( modePassation);
         dac.setStatus(ProcessStatus.BROUILLON);
+        dac.setParentDacId(request.getParentDacId());
+        dac.setShortListing(request.isShortListing());
         Dac savedCdac = dacRepository.save(dac);
 
         // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche

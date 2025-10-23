@@ -3,6 +3,7 @@ package com.sigmap.common.dyna_docs;
 import java.util.List;
 import java.util.Optional;
 
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.CompositeId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -99,5 +100,8 @@ public interface DynaDocsRepository
    */
   @Query("SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation IS NULL")
   List<DynaDocs> findActiveAAOByTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
+
+  @Query("SELECT COUNT(d) > 0 FROM DynaDocs d WHERE d.dynaDocsModel.dynaDocsModelId = :modelId")
+  boolean existsByDynaDocsModelId(@Param("modelId") Integer modelId);
 
 }
