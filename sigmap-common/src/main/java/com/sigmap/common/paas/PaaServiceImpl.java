@@ -641,10 +641,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 realisation.setImputationBudgetaire(rReq.getImputationBudgetaire());
                 realisation.setTypeMarcher(rReq.getTypeMarcher());
                 realisation.setModePassation(rReq.getModePassation());
-                realisation.setDatePrevLps(rReq.getDatePrevLps());
-                realisation.setDatePrevAc(rReq.getDatePrevAc());
-                realisation.setDatePrevDp(rReq.getDatePrevDp());
-                realisation.setDatePrevAp(rReq.getDatePrevAp());
+                LocalDate lps = rReq.getDatePrevLps();
+                realisation.setDatePrevLps(lps);
+                realisation.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
                 realisation.setIsPublished(rReq.getIsPublished());
                 realisation.setPublishedAt(rReq.getPublishedAt());
                 realisation.setSort(rReq.getSort());
@@ -889,7 +888,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 real.setIsDeleted(false);
 
                 Integer nextRealId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-                real.setId(nextRealId);            // IMPORTANT: no +1
+                real.setId(nextRealId);
                 real.setVersion(1);
 
                 real.setRealisationEnvisagees(rReq.getRealisationEnvisagees());
@@ -897,10 +896,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 real.setImputationBudgetaire(rReq.getImputationBudgetaire());
                 real.setTypeMarcher(rReq.getTypeMarcher());
                 real.setModePassation(rReq.getModePassation());
-                real.setDatePrevLps(rReq.getDatePrevLps());
-                real.setDatePrevAc(rReq.getDatePrevAc());
-                real.setDatePrevDp(rReq.getDatePrevDp());
-                real.setDatePrevAp(rReq.getDatePrevAp());
+                LocalDate lpsNew = rReq.getDatePrevLps();
+                real.setDatePrevLps(lpsNew);
+                real.setDatePrevAc(lpsNew != null ? lpsNew.plusDays(30) : null);
                 real.setIsPublished(rReq.getIsPublished());
                 real.setPublishedAt(rReq.getPublishedAt());
                 real.setSort(rReq.getSort());
@@ -1333,10 +1331,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         newRealisationRequest.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
                         newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
                         newRealisationRequest.setModePassation(realisationDto.getModePassation());
-                        newRealisationRequest.setDatePrevLps(realisationDto.getDatePrevLps());
-                        newRealisationRequest.setDatePrevAc(realisationDto.getDatePrevAc());
-                        newRealisationRequest.setDatePrevDp(realisationDto.getDatePrevDp());
-                        newRealisationRequest.setDatePrevAp(realisationDto.getDatePrevAp());
+                        LocalDate lps = realisationDto.getDatePrevLps();
+                        newRealisationRequest.setDatePrevLps(lps);
+                        newRealisationRequest.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
                         newRealisationRequest.setIsPublished(realisationDto.getIsPublished());
                         newRealisationRequest.setPublishedAt(realisationDto.getPublishedAt());
                         newRealisationRequest.setSort(realisationDto.getSort());
@@ -2241,9 +2238,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 //                realisation.setModeSelection(realisationRequest.getModeSelection());
                 realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+//                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
+//                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
                 realisation.setBudgetEstime(realisationRequest.getBudgetEstime());
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
@@ -2693,6 +2690,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             List<Realisation> realisationsToSave = new ArrayList<>();
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
                 Realisation realisation = new Realisation();
+                LocalDate lps = realisationRequest.getDatePrevLps();
                 realisation.setId(nextRealisationId++);
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
@@ -2700,10 +2698,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModePassation(realisationRequest.getModePassation());
-                realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
-                realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
-                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
+                realisation.setDatePrevLps(lps);
+                realisation.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
+//                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
+//                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());

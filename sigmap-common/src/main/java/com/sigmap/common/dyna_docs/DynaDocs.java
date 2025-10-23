@@ -1,4 +1,5 @@
 package com.sigmap.common.dyna_docs;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
@@ -59,4 +60,8 @@ public class DynaDocs {
 
   @Column(name = "is_aao")
   private Boolean isAAO;
+
+  @ManyToOne
+  @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
+  private DynaDocsModel dynaDocsModel;
 }
