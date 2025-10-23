@@ -13,7 +13,7 @@ spring:
       additional-paths: ../sigmap-common
 
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 
@@ -79,8 +79,9 @@ keycloak:
 keycloak-admin:
   server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
   realm: ${KEYCLOAK_ADMIN_REALM:sigmap-realm}
-  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-admin-api}
-  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:xg4WSMLxHH8BfPZlYKYKtdiwiZI5xHzb}
+  client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:sigmap-web-site-api}
+  common-backend-client-id: ${KEYCLOAK_COMMON_BACKEND_CLIENT_ID:website-common}
+  client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:GTGF5vg5JWgW9fhBA2K262vXSQ25JW4W}
 
 alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}

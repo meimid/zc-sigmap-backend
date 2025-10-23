@@ -46,6 +46,9 @@ public class KeycloakAdminService {
     @Value("${keycloak-admin.realm}")
     private String realm;
 
+    @Value("${keycloak-admin.common-backend-client-id}")
+    private String commonClientId;
+
     @Autowired
     private AcRepository acRepository;
     @Autowired
@@ -337,15 +340,19 @@ public class KeycloakAdminService {
 
 
 
-    public List<RoleDTO> getAllRealmRolesWithDescriptions() {
+    public List<RoleDTO> getAllClientRolesWithDescriptions() {
+        // Vérifie les droits de l'utilisateur courant
         boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
                 && !Authentication.hasRole("SUPER_ADMIN")
                 && !Authentication.hasRole("ADMIN_CENTRAL");
 
         Set<String> allowedAdminAcRoles = Set.of("REDACTEUR_AC", "PUB_AC", "VALIDATEUR_AC");
 
+        // Récupère le token d'accès
         String token = tokenService.getAccessToken();
-        String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
+
+        // ⚠️ Ici on cible les rôles du CLIENT "backend-common"
+        String url = String.format("%s/admin/realms/%s/clients/%s/roles", keycloakBaseUrl, realm, getClientUuid(commonClientId));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -354,11 +361,7 @@ public class KeycloakAdminService {
         ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> roles = response.getBody();
 
-        String defaultRoleName = "default-roles-" + realm;
-        Set<String> technicalRoles = Set.of(defaultRoleName, "offline_access", "uma_authorization");
-
         return roles.stream()
-                .filter(role -> !technicalRoles.contains(role.get("name")))
                 .filter(role -> {
                     String roleName = (String) role.get("name");
                     if (isAdminAcOnly) {
@@ -377,6 +380,23 @@ public class KeycloakAdminService {
                 .collect(Collectors.toList());
     }
 
+    private String getClientUuid(String clientId) {
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/clients?clientId=%s", keycloakBaseUrl, realm, clientId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+        List<Map<String, Object>> clients = response.getBody();
+
+        if (clients != null && !clients.isEmpty()) {
+            return (String) clients.get(0).get("id"); // UUID du client
+        }
+
+        throw new RuntimeException("Client " + clientId + " not found in realm " + realm);
+    }
 
     public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();
