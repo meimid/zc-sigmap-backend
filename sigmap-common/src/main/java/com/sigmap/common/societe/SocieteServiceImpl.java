@@ -9,7 +9,6 @@ import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
-//import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -30,6 +29,7 @@ import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -50,8 +50,9 @@ public class SocieteServiceImpl implements SocieteService {
     private final UserSocieteService userSocieteService;
    // private final KeycloakWebisteAdminService keycloakWebisteAdminService;
     public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService
-                              // , KeycloakWebisteAdminService keycloakWebisteAdminService
-                              ) {
+
+
+    ) {
         this.repository = repository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
@@ -59,7 +60,6 @@ public class SocieteServiceImpl implements SocieteService {
         this.adressService = adressService;
         this.societeAddressService = societeAddressService;
         this.userSocieteService = userSocieteService;
-      //  this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
