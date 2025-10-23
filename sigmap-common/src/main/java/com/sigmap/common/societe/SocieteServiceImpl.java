@@ -5,7 +5,6 @@ import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
-import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
