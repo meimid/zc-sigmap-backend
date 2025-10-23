@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class SocieteAdressUnderSocieteRequest {
     private Integer typeId;
-    private String address;
+    private Integer addressId;
 }

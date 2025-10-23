@@ -13,6 +13,7 @@ public class AdressSpecifications {
             Join<Adresse, RefParam> join = root.join("pays");
 
             return criteriaBuilder.or(
+                    criteriaBuilder.like(join.get("email"),"%" + search + "%"),
                     criteriaBuilder.like(root.get("tel1"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("tel2"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("fax"), "%" + search + "%") ,
@@ -32,7 +33,12 @@ public class AdressSpecifications {
             return criteriaBuilder.equal(root.get("id"), id);
         };
     }
-
+    /** email. */
+    public static Specification<Adresse> email(String email) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("email"), email );
+        };
+    }
     /** tel1. */
     public static Specification<Adresse> tel1(String tel1) {
         return (root, query, criteriaBuilder) -> {
