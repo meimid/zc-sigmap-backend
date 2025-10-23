@@ -1,11 +1,14 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
 
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
+import com.sigmap.common.user_societe.UserSociete;
+import com.sigmap.common.user_societe.UserSocieteService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +31,7 @@ public class InscriptionOrchestrationService {
 
     private final KeycloakWebisteAdminService keycloakService;
     private final SocieteService societeService;
+    private final UserSocieteService userSocieteService;
 
     /**
      * Crée un utilisateur Website Keycloak (Pending) et la société associée
@@ -42,7 +46,8 @@ public class InscriptionOrchestrationService {
 
         // 1️⃣ Créer utilisateur Keycloak en Pending
         String userId = keycloakService.createPendingWebsiteUserWithSociete(request);
-
+        request.getUserResquest().setId(userId);
+        societeService.create(request);
         if (userId != null) {
 
             logger.info("Utilisateur {} et société créés avec succès", request.getUserResquest().getUsername());
@@ -59,11 +64,14 @@ public class InscriptionOrchestrationService {
      * @param userId ID Keycloak de l'utilisateur
      * @return DTO utilisateur complet avec mot de passe temporaire
      */
-    public UserWebsiteDTO validateUser(String userId) {
+    public UserWebsiteDTO validateUser(String userId) throws SocieteNotFound {
         logger.info("Validation utilisateur Keycloak {}", userId);
 
         // Appel du service Keycloak pour activer le compte et déplacer le groupe
         UserWebsiteDTO dto = keycloakService.validateWebsiteUser(userId);
+        UserSociete userSociete =userSocieteService.findByUserId(userId);
+        societeService.updateStatus(userSociete.getSocieteId(), SocieteStatus.VALIDEE);
+
 
         logger.info("Utilisateur {} activé et groupe Website Active mis à jour", userId);
         return dto;

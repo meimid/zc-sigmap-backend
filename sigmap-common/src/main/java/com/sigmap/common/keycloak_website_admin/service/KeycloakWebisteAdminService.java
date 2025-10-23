@@ -4,7 +4,6 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import jakarta.transaction.Transactional;
@@ -30,11 +29,10 @@ public class KeycloakWebisteAdminService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final KeycloakTokenService tokenService;
-    private final SocieteService societeService;
 
-    public KeycloakWebisteAdminService(KeycloakTokenService tokenService, SocieteService societeService) {
+    public KeycloakWebisteAdminService(KeycloakTokenService tokenService) {
         this.tokenService = tokenService;
-        this.societeService = societeService;
+
     }
 
     @Value("${keycloak-admin.server-url}")
@@ -79,7 +77,7 @@ public class KeycloakWebisteAdminService {
         mapUserKeycloakToRequest(userKeycloak, request.getUserResquest());
 
         // 5️⃣ Création de la société associée
-        societeService.create(request);
+     //   societeService.create(request);
         logger.info("Société créée et liée à l'utilisateur Keycloak {}", userId);
 
         return userId;

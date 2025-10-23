@@ -5,11 +5,9 @@ import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
-import com.sigmap.common.adresse.request.AdresseRequest;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
-import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -25,7 +23,6 @@ import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteRepository;
 import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
-import com.sigmap.common.user_societe.exception.SocieteIdRequiredException;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.transaction.Transactional;
@@ -49,8 +46,7 @@ public class SocieteServiceImpl implements SocieteService {
     private final AdressService adressService;
     private final SocieteAddressService societeAddressService;
     private final UserSocieteService userSocieteService;
-    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService, @Lazy KeycloakWebisteAdminService keycloakWebisteAdminService
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService
 
 
     ) {
@@ -61,7 +57,6 @@ public class SocieteServiceImpl implements SocieteService {
         this.adressService = adressService;
         this.societeAddressService = societeAddressService;
         this.userSocieteService = userSocieteService;
-        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
@@ -290,7 +285,6 @@ public class SocieteServiceImpl implements SocieteService {
             societe.setStatus(status);
         }
         if(status.equals(SocieteStatus.VALIDEE)) {
-            keycloakWebisteAdminService.validateWebsiteUser(societe.getUsersSociete().get(0).getUserId());
             UserSociete userSociete=userSocieteService.findByUserId(societe.getUsersSociete().get(0).getUserId());
             userSociete.setStatus(ActiveStatus.ACTIF);
             userSocieteRepository.save(userSociete);
