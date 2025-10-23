@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950269-2
+-- changeset sigmap:1757950270-7
 
 CREATE TABLE IF NOT EXISTS dyna_docs_model (
     dyna_docs_model_id INT NOT NULL AUTO_INCREMENT,
