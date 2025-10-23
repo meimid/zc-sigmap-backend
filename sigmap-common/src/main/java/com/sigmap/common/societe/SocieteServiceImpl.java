@@ -16,6 +16,7 @@ import com.sigmap.common.societe.exception.*;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe_address.SocieteAddress;
 import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.user_societe.UserSociete;
@@ -24,6 +25,7 @@ import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
 import com.sigmap.common.user_societe.exception.SocieteIdRequiredException;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
+import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -104,49 +106,49 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     @Transactional
-    public Societe create(SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
+    public Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
 
 
-        Societe societe =  SocieteMapper.INSTANCE.map(request.getSocieteRequest());
+        Societe societe =  SocieteMapper.INSTANCE.map(request);
 
-        if (request.getSocieteRequest().getTypeId() == null) {
+        if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
         } else {
-            RefParam type = refParamService.findById(request.getSocieteRequest().getTypeId());
+            RefParam type = refParamService.findById(request.getTypeId());
             societe.setType(type);
         }
 
 
-        if (request.getSocieteRequest().getCategorieSoumissionnaireId() == null) {
+        if (request.getCategorieSoumissionnaireId() == null) {
             throw new CategorieSoumissionnaireIsRequiredException("Categorie soumissionnaire is required", societe.getId());
         } else {
-            RefParam cat = refParamService.findById(request.getSocieteRequest().getCategorieSoumissionnaireId());
+            RefParam cat = refParamService.findById(request.getCategorieSoumissionnaireId());
             societe.setCategorieSoumissionnaire(cat);
         }
 
-        if (request.getSocieteRequest().getActiviteIds() == null || request.getSocieteRequest().getActiviteIds().isEmpty()) {
+        if (request.getActiviteIds() == null || request.getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
-        if(request.getAddressRequest()==null){
+        if(request.getAdresseRequest()==null){
             throw new AddressRequiredException("");
         }
-        if(request.getAddressRequest().getAdresse()==null){
+        if(request.getAdresseRequest().getAdresse()==null){
             throw new AddressRequiredException("");
 
         }
-        if( request.getAddressRequest().getCodePostal()==null) {
+        if( request.getAdresseRequest().getCodePostal()==null) {
             throw new CodePostalRequiredException ("");
         }
-        if(request.getAddressRequest().getPaysId()==null){
+        if(request.getAdresseRequest().getPaysId()==null){
             throw new PaysIsRequiredException("");
         }
-        if(request.getAddressRequest().getTel1()==null){
+        if(request.getAdresseRequest().getTel1()==null){
             throw new TelIsRequiredException ("");
         }
-        if(request.getAddressRequest().getEmail()==null||request.getUserSocieteRequest().getEmail()==null){
+        if(request.getAdresseRequest().getEmail()==null||request.getUserResquest().getEmail()==null){
             throw new EmailRequiredException ("");
         }
-        if(request.getUserSocieteRequest().getNom()==null){
+        if(request.getUserResquest().getFirstName()==null||request.getUserResquest().getLastName()==null){
             throw new NameIsRequiredException ("");
         }
 
@@ -160,29 +162,38 @@ public class SocieteServiceImpl implements SocieteService {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
         }*/
 
-        if (request.getUserSocieteRequest().getUserId() == null || request.getUserSocieteRequest().getUserId().isBlank()) {
+        if (request.getUserResquest().getId() == null || request.getUserResquest().getId().isBlank()) {
             throw new UserIdRequiredException();
         }
 
 
         societe.setStatus(SocieteStatus.EN_COURS);
 
-        getSizeList(request.getSocieteRequest().getActiviteIds());
-        for(Integer i : request.getSocieteRequest().getActiviteIds()){
+        getSizeList(request.getActiviteIds());
+        for(Integer i : request.getActiviteIds()){
             Activite  activite=activiteService.findById(i);
             societe.getActivites().add(activite);
         }
         Societe savedSociete = save(societe);
 
-        Adresse address=adressService.create(request.getAddressRequest());
+        Adresse address=adressService.create(request.getAdresseRequest());
         SocieteAddress societeAddress=new SocieteAddress();
         societeAddress.setAddressId(address.getId());
         societeAddress.setAddress(address);
         societeAddress.setSocieteId(savedSociete.getId());
         societeAddress.setType(savedSociete.getType());
-       SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
-        request.getUserSocieteRequest().setSocieteId(savedSociete.getId());
-        UserSociete savedUserSociete= userSocieteService.create(request.getUserSocieteRequest());
+        SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
+        UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
+        userSocieteRequest.setUserId(request.getUserResquest().getId());
+        userSocieteRequest.setSocieteId(savedSociete.getId());
+        userSocieteRequest.setEmail(request.getUserResquest().getEmail());
+        userSocieteRequest.setNom(request.getUserResquest().getLastName());
+        userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
+        userSocieteRequest.setNumCin(request.getUserResquest().getCin());
+        userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
+        userSocieteRequest.setTel1(request.getUserResquest().getMobile());
+        userSocieteRequest.setTel2(request.getUserResquest().getFixe());
+        UserSociete savedUserSociete= userSocieteService.create(userSocieteRequest);
         savedSociete.getSocieteAddresses().add(savedSocieteAdress);
         savedSociete.getUsersSociete().add(savedUserSociete);
         return savedSociete;

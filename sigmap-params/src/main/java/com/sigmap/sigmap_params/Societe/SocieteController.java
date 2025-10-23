@@ -22,10 +22,7 @@ import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
 import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
-import com.sigmap.common.societe.request.SocieteGlobalRequest;
-import com.sigmap.common.societe.request.SocieteQuery;
-import com.sigmap.common.societe.request.SocieteRequest;
-import com.sigmap.common.societe.request.SocieteStatusRequest;
+import com.sigmap.common.societe.request.*;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
@@ -130,7 +127,7 @@ public class SocieteController {
      * @return the created Societe
      */
     @PostMapping
-    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

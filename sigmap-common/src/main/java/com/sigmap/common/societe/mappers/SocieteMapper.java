@@ -6,6 +6,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
@@ -40,7 +41,7 @@ public interface SocieteMapper {
 
     SocieteResponse map(Societe source);
     Societe map(SocieteRequest source);
-
+    Societe map(SocieteRequestInscription source);
     @Mapping(target = "metadata.createdAt", ignore = true)
     @Mapping(target = "metadata.createdBy", ignore = true)
     @Mapping(target = "metadata.updatedAt", ignore = true)
