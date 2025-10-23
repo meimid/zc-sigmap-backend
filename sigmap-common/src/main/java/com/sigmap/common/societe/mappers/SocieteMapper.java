@@ -7,6 +7,7 @@ import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
+import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
@@ -51,7 +52,7 @@ public interface SocieteMapper {
     void updateFromRequest(SocieteRequest source, @MappingTarget Societe target);
 
     SocieteResponseDto toResponseDto(Societe source);
-
+    SocieteEnCourResponseDto toEnCourResponseDto(Societe source);
     @Named("mapSocieteAddresses")
     default List<AdresseResponseDto> mapSocieteAddresses(List<SocieteAddress> societeAddresses) {
         if (societeAddresses == null) return null;

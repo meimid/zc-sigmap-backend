@@ -1,6 +1,8 @@
 package com.sigmap.sigmap_params.Societe;
 
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.mappers.AdresseMapper;
+import com.sigmap.common.adresse.response.AdresseResponseDto;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireService;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
@@ -23,6 +25,7 @@ import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.*;
+import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import com.sigmap.common.societe_address.SocieteAddress;
@@ -174,10 +177,20 @@ public class SocieteController {
         return ResponseEntity.ok(societeResponses);
     }
     @GetMapping("/status/en-cours")
-    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusEnCours(
+    public ResponseEntity<Page<SocieteEnCourResponseDto>> findAllWithStatusEnCours(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.EN_COURS, pageable);
-        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        Page<SocieteEnCourResponseDto> societeResponses = params.map(societe -> {
+            SocieteEnCourResponseDto dto = SocieteMapper.INSTANCE.toEnCourResponseDto(societe);
+
+            if (!societe.getSocieteAddresses().isEmpty()) {
+                dto.setAddress(AdresseMapper.INSTANCE
+                        .toDto(societe.getSocieteAddresses().get(0).getAddress()));
+            }
+
+            return dto;
+        });
+
         return ResponseEntity.ok(societeResponses);
     }
 

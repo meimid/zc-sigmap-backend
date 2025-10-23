@@ -6,8 +6,10 @@ import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.request.AdresseRequest;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
+//import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -46,8 +48,10 @@ public class SocieteServiceImpl implements SocieteService {
     private final AdressService adressService;
     private final SocieteAddressService societeAddressService;
     private final UserSocieteService userSocieteService;
-
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService) {
+   // private final KeycloakWebisteAdminService keycloakWebisteAdminService;
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService
+                              // , KeycloakWebisteAdminService keycloakWebisteAdminService
+                              ) {
         this.repository = repository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
@@ -55,6 +59,7 @@ public class SocieteServiceImpl implements SocieteService {
         this.adressService = adressService;
         this.societeAddressService = societeAddressService;
         this.userSocieteService = userSocieteService;
+      //  this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
@@ -131,6 +136,9 @@ public class SocieteServiceImpl implements SocieteService {
         }
         if(request.getAdresseRequest()==null){
             throw new AddressRequiredException("");
+        }
+        if(request.getUserResquest()==null){
+            throw new UserIdRequiredException("User is required");
         }
         if(request.getAdresseRequest().getAdresse()==null){
             throw new AddressRequiredException("");
@@ -272,12 +280,18 @@ public class SocieteServiceImpl implements SocieteService {
         Specification<Societe> com = SocieteSpecifications.deleted(false).and(SocieteSpecifications.status(status));
         return repository.findAll(com, pageable);
     }
-
+    @Transactional
     @Override
     public Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound {
         Societe societe = findById(societeId);
         if(status != null) {
             societe.setStatus(status);
+        }
+        if(status.equals(SocieteStatus.VALIDEE)) {
+         //   keycloakWebisteAdminService.validateWebsiteUser(societe.getUsersSociete().get(0).getUserId());
+            UserSociete userSociete=userSocieteService.findByUserId(societe.getUsersSociete().get(0).getUserId());
+            userSociete.setStatus(ActiveStatus.ACTIF);
+            userSocieteRepository.save(userSociete);
         }
         return save(societe);
     }
