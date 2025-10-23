@@ -140,12 +140,12 @@ public class SocieteController {
      * @param request the request to create the Societe from
      * @return the created Societe
      */
-    @PostMapping
+/*    @PostMapping
     public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
+    }*/
     /**
      * Update  Societe.
      *

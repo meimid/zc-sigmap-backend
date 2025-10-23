@@ -54,7 +54,8 @@ public class SecurityConfig {
                         "/api/docs",
                         "/api/docs/*",
                         "/api/docs-ui.html",
-                        "/v3/api-docs/**")
+                        "/v3/api-docs/**",
+                    "/api/soumissionnaire/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
@@ -63,7 +64,8 @@ public class SecurityConfig {
         .oauth2ResourceServer(
             oauth2 ->
                 oauth2.jwt(
-                    jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)));
+                    jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)))
+            .csrf(csrf -> csrf.disable());;
     //                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
     return http.build();
   }

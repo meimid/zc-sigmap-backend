@@ -29,16 +29,6 @@ public class KeycloakAdminController {
     private final InscriptionOrchestrationService inscriptionOrchestrationService;
     private final MailService mailService;
 
-
-    /***  Inscription d’un utilisateur website (Pending) ***/
-    @PostMapping("/users/register-with-societe")
-    public ResponseEntity<String> registerWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
-        String userId = inscriptionOrchestrationService.createUserAndSociete(request);
-        log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
-        return ResponseEntity.ok(userId);
-    }
-
-
     /*** Validation par l’admin (Activation + mail) ***//*
     @PostMapping("/users/{userId}/validate")
     public ResponseEntity<UserWebsiteDTO> validateWebsiteUser(@PathVariable String userId) throws MessagingException, IOException {
