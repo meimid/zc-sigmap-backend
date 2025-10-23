@@ -29,7 +29,7 @@ public interface DynaDocsMapper {
   @Mapping(target = "modePassation", ignore = true)
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "version", ignore = true)
-  @Mapping(target = "dynaDocsModel.dynaDocsModelId", source = "dynaDocsModelId")
+  @Mapping(target = "dynaDocsModel", ignore = true)
   void map(DynaDocsRequest source, @MappingTarget DynaDocs target);
 
   @Mapping(target = "typeMarche", source = "typeMarche")
