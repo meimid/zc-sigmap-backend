@@ -26,6 +26,8 @@ import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
 import com.sigmap.common.doc_soumission.exception.NomRequired;
 import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.docs.exeptions.DocDeleted;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
 import com.sigmap.common.lots.exception.LotNotFound;
@@ -1190,5 +1192,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DynaDocsModelNotFoundExeption.class)
+    public ResponseEntity<ErrorResponse> DynaDocsModelNotFoundExeptionException(DynaDocsModelNotFoundExeption ex) {
+        String message = messageSource.getMessage("dynaDocsModel.notFound",new Object[] {ex.getDynaDocsModelId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.IM_USED)
+    @ExceptionHandler(DynaDocsModelAlreadyUsedExeption.class)
+    public ResponseEntity<ErrorResponse> DynaDocsModelAlreadyUsedExeptionException(DynaDocsModelAlreadyUsedExeption ex) {
+        String message = messageSource.getMessage("dynaDocsModel.alreadyUsed",new Object[] {ex.getDynaDocsModelId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.IM_USED.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.IM_USED);
+    }
 }
 

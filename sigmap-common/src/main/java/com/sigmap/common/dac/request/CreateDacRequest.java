@@ -15,4 +15,6 @@ public class CreateDacRequest {
     private Integer ppmVer;
     private Integer realisationId;
     private Integer realisationVer;
+    private Integer parentDacId;
+    private boolean shortListing;
 }
