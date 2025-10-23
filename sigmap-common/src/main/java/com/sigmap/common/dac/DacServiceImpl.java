@@ -15,6 +15,9 @@ import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
+import com.sigmap.common.dac_prix.DacPrix;
+import com.sigmap.common.dac_prix.DacPrixRepository;
+import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
@@ -87,6 +90,7 @@ public class DacServiceImpl implements DacService {
     private final DacDocsDetailsRepository dacDocsDetailsRepository;
     private final AlfrescoService alfrescoService;
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
+    private final DacPrixRepository dacPrixRepository;
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
@@ -764,6 +768,33 @@ public class DacServiceImpl implements DacService {
         return dacRepository.save(dac);
     }
 
+
+
+    // MAPPER 1 : UN SEUL DacPrix → DacPrixResponce
+    public DacPrixResponce mapDacPrixToDacPrixResponce(DacPrix dacPrix) {
+        if (dacPrix == null) {
+            return null;
+        }
+        DacPrixResponce response = new DacPrixResponce();
+        response.setDacId(dacPrix.getId().getDac().getDacId());
+        response.setDacVer(dacPrix.getId().getDac().getDacVer());
+        response.setMonnaie(dacPrix.getId().getMonnaie());
+        response.setPrix(dacPrix.getPrix());
+        return response;
+    }
+
+    // MAPPER 2 : LISTE → LISTE (APPELLE LE PREMIER)
+    public List<DacPrixResponce> mapDacPrixToDacPrixResponceList(List<DacPrix> dacPrixList) {
+        if (dacPrixList == null || dacPrixList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return dacPrixList.stream()
+                .map(this::mapDacPrixToDacPrixResponce) // RÉUTILISE LE 1ER MAPPER
+                .collect(Collectors.toList());
+    }
+
+
+
     @Override
     @Transactional
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
@@ -816,6 +847,15 @@ public class DacServiceImpl implements DacService {
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
 
+        List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dacId, dacVer);
+        if (dacPrixList != null && !dacPrixList.isEmpty()) {
+            List<DacPrixResponce> dacPrixResponces = mapDacPrixToDacPrixResponceList(dacPrixList);
+            dacResponse.setDacPrix(dacPrixResponces);
+        }
+        else {
+            dacResponse.setDacPrix(new ArrayList<>());
+        }
+
         List<DynaDocsResponseDTO> dynaDocsResponses = docPairs.values().stream()
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
@@ -864,6 +904,21 @@ public class DacServiceImpl implements DacService {
         return dacResponse;
     }
 
+
+    public static Dac cloneWithNewVersion(Dac base, int nextVer) {
+        Dac newDac = new Dac();
+        newDac.setDacId(base.getDacId());
+        newDac.setDacVer(nextVer);
+        newDac.setPpm(base.getPpm());
+        newDac.setRealisation(base.getRealisation());
+        newDac.setTypeMarche(base.getTypeMarche());
+        newDac.setDateLimiteSoumission(base.getDateLimiteSoumission());
+        newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
+        newDac.setPayant(base.isPayant());
+        // Add other fields as needed...
+        return newDac;
+    }
+
     @Override
     @Transactional
     public DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer) {
@@ -875,13 +930,15 @@ public class DacServiceImpl implements DacService {
         Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
         int nextVer = latest.getDacVer() + 1;
 
-        // Create new DAC version as a snapshot clone
-        Dac newDac = new Dac();
-        newDac.setDacId(base.getDacId());
-        newDac.setDacVer(nextVer);
-        newDac.setPpm(base.getPpm());
-        newDac.setRealisation(base.getRealisation());
-        newDac.setTypeMarche(base.getTypeMarche());
+        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
+        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacId, dacVer);
+        for (DacPrix dacPrix : prixDac) {
+            dacPrix.getId().getDac().setDacVer(nextVer);
+            dacPrixRepository.save(dacPrix);
+        }
+
+        // Create new DAC version using mapper
+        Dac newDac = cloneWithNewVersion(base, nextVer);
 
         // Set modePassation from base DAC, or from realisation if base doesn't have it
         if (base.getModePassation() != null) {

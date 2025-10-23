@@ -1,8 +1,11 @@
 package com.sigmap.common.dac_docs;
 
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
@@ -12,6 +15,13 @@ import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsSpecification;
 import com.sigmap.common.dac_docs_details.request.DacDocsDetailsRequest;
+import com.sigmap.common.dac_prix.DacPrix;
+import com.sigmap.common.dac_prix.DacPrixId;
+import com.sigmap.common.dac_prix.DacPrixRepository;
+import com.sigmap.common.dac_prix.DacPrixService;
+import com.sigmap.common.dac_prix.exceptions.DacPrixAlreadyExist;
+import com.sigmap.common.dac_prix.request.DacPrixRequest;
+import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
@@ -28,6 +38,9 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.monnaie.Monnaie;
+import com.sigmap.common.monnaie.MonnaieRepository;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +81,12 @@ public class DacDocsServiceImpl implements DacDocsService{
     private DocumentCommuneService documentCommuneService;
     @Autowired
     private DynaFieldsDetailsRepository dynaFieldsDetailsRepository;
+    @Autowired
+    private DacPrixRepository dacPrixRepository;
+    @Autowired
+    private DacPrixService dacPrixService;
+    @Autowired
+    private MonnaieRepository monnaieRepository;
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
@@ -264,13 +283,124 @@ public class DacDocsServiceImpl implements DacDocsService{
             return entity;
     }
 
+    public static DacPrix dacPrxMapperToEntity(BigDecimal prix, Dac dac, Monnaie monnaie) {
+        DacPrix dacPrix = new DacPrix();
+        DacPrixId id = new DacPrixId(dac, monnaie);
+        dacPrix.setId(id);
+        dacPrix.setPrix(prix);
+        return dacPrix;
+    }
+
+    @Transactional
+    public void savePrixDac(DacPrixRequestForDac request , Integer dacId, Integer dacVer) throws MonnaieNotFound {
+        log.debug("Saving/Upserting DacPrix: {}", request);
+
+        // Validate request fields
+        if (dacId == null || dacVer == null ||
+                request.getMonnaieId() == null || request.getPrix() == null) {
+            throw new IllegalArgumentException("dacId, dacVer, monnaieId and prix are required");
+        }
+
+        // Get Dac
+        DacId dacIdPK = new DacId(dacId, dacVer);
+        Dac dac = dacRepository.findById(dacIdPK)
+                .orElseThrow(() -> new DacNotFound("", dacId, dacVer));
+
+        // Get Monnaie
+        Monnaie monnaie = monnaieRepository.findById(request.getMonnaieId())
+                .orElseThrow(() -> new MonnaieNotFound("", List.of(request.getMonnaieId())));
+
+        // Find existing OR create new
+        Optional<DacPrix> existingDacPrix = dacPrixRepository.findById(dacId, dacVer, request.getMonnaieId());
+
+        log.info("existingDacPrix............. : {}", existingDacPrix);
+
+        DacPrix dacPrix;
+        if (existingDacPrix.isPresent()) {
+            // UPDATE EXISTING - Just change the prix!
+            dacPrix = existingDacPrix.get();
+            dacPrix.setPrix(request.getPrix());
+            log.debug("Updated existing DacPrix for {}/{}/{}", dacId, dacVer, request.getMonnaieId());
+        } else {
+            // CREATE NEW using Mapper
+            dacPrix = dacPrxMapperToEntity(request.getPrix(), dac, monnaie);
+            log.debug("Created new DacPrix for {}/{}/{}", dacId, dacVer, request.getMonnaieId());
+        }
+
+        // Save (CREATE or UPDATE)
+        dacPrix = dacPrixRepository.save(dacPrix);
+        log.info("Saved DacPrix: {}", dacPrix);
+    }
+
 
     @Override
     @Transactional
-    public List<DacDocs> createDacDocsList(List<DacDocsRequest> requests) {
+    public List<DacDocs> createDacDocsList(DacDoccsAndDacRequest dacDoccsAndDacRequest) throws MonnaieNotFound {
+
         List<DacDocs> result = new ArrayList<>();
 
+        // Validate input
+        if (dacDoccsAndDacRequest.getRequests() == null || dacDoccsAndDacRequest.getRequests().isEmpty()) {
+            throw new RuntimeException("No DacDocs requests provided");
+        }
+        if (dacDoccsAndDacRequest.getDacEditRequest() == null) {
+            throw new RuntimeException("Dac request is required");
+        }
+
+        // 1-  get the Dac from the DacRequest
+        Dac existDac = dacRepository.findDacByDacIdAndDacVer(dacDoccsAndDacRequest.getDacEditRequest().getDacId(), dacDoccsAndDacRequest.getDacEditRequest().getDacVer())
+                .orElseThrow(() -> new DacNotFound("",dacDoccsAndDacRequest.getDacEditRequest().getDacId(), dacDoccsAndDacRequest.getDacEditRequest().getDacVer()));
+
+        //update dac values
+        existDac.setDateLimiteSoumission(dacDoccsAndDacRequest.getDacEditRequest().getDateLimiteSoumission());
+        existDac.setDateLimiteRecptionDemande(dacDoccsAndDacRequest.getDacEditRequest().getDateLimiteRecptionDemande());
+        existDac.setPayant(dacDoccsAndDacRequest.getDacEditRequest().isPayant());
+
+        //update dac and save
+        dacRepository.save(existDac);
+
+        // test if payant is true then
+        // SAVE PRIX DAC LIST
+        if (dacDoccsAndDacRequest.getDacEditRequest().isPayant()) {
+
+            List<DacPrixRequestForDac> prixRequests = dacDoccsAndDacRequest.getDacEditRequest().getDacPrixRequests();
+
+            if (prixRequests == null || prixRequests.isEmpty()) {
+                throw new IllegalArgumentException("DacPrixRequests are required when payant = true");
+            }
+            // 1-1Fetch existing DacPrix in DB
+            List<DacPrix> existingPrixList = dacPrixRepository.findByDac(existDac.getDacId(), existDac.getDacVer());
+
+            //1-2 Determine which Monnaies are requested
+            Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                    .map(DacPrixRequestForDac::getMonnaieId)
+                    .collect(Collectors.toSet());
+
+            // 1-3 Delete DacPrix not present in request but present in DB
+            List<DacPrix> toDelete = existingPrixList.stream()
+                    .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+            if (!toDelete.isEmpty() && existDac.getStatus() != ProcessStatus.BROUILLON) {
+                dacPrixRepository.softDelete(toDelete);
+                log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), existDac.getDacId(), existDac.getDacVer());
+            }
+
+            if (!toDelete.isEmpty() && existDac.getStatus() == ProcessStatus.BROUILLON) {
+                dacPrixService.defenitiveDelete(toDelete);
+                log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), existDac.getDacId(), existDac.getDacVer());
+            }
+
+
+            for (DacPrixRequestForDac prixRequest : prixRequests) {
+                savePrixDac(prixRequest,existDac.getDacId(),existDac.getDacVer());
+                log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),existDac.getDacId(),existDac.getDacVer());
+            }
+        }
+
+        List<DacDocsRequest> requests = dacDoccsAndDacRequest.getRequests();
+
         for (DacDocsRequest request : requests) {
+
             // 1- Get the DynaDocs with the last version
             Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
             if (existingDynaDocs.isEmpty()) {
