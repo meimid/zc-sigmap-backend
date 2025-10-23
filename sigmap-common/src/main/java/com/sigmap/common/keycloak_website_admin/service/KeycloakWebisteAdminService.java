@@ -86,7 +86,12 @@ public class KeycloakWebisteAdminService {
     /**
      * Crée l'utilisateur dans Keycloak (statut inactive).
      */
+
+
     private String createUserInKeycloak(UserResquest dto, HttpHeaders headers) {
+        // Ensure JSON content type
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
         Map<String, Object> payload = Map.of(
                 "username", dto.getUsername(),
                 "firstName", dto.getFirstName(),
@@ -104,14 +109,19 @@ public class KeycloakWebisteAdminService {
         );
 
         String url = String.format("%s/admin/realms/%s/users", keycloakBaseUrl, realm);
-        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(payload, headers), Void.class);
 
-        if (!response.getStatusCode().is2xxSuccessful())
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(payload, headers);
+
+        ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
+
+        if (!response.getStatusCode().is2xxSuccessful()) {
             throw new RuntimeException("Erreur création utilisateur Keycloak");
+        }
 
         String location = response.getHeaders().getFirst("Location");
-        if (location == null)
+        if (location == null) {
             throw new RuntimeException("Impossible de récupérer l'ID Keycloak");
+        }
 
         return location.substring(location.lastIndexOf("/") + 1);
     }
