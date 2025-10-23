@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_website_auth.keycloak;
 
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
+import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -25,14 +26,14 @@ public class KeycloakAdminController {
 
     private static final Logger log = LoggerFactory.getLogger(KeycloakAdminController.class);
 
-    private final KeycloakWebisteAdminService keycloakAdminService;
+    private final InscriptionOrchestrationService inscriptionOrchestrationService;
     private final MailService mailService;
 
 
     /***  Inscription d’un utilisateur website (Pending) ***/
     @PostMapping("/users/register-with-societe")
     public ResponseEntity<String> registerWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
-        String userId = keycloakAdminService.createPendingWebsiteUserWithSociete(request);
+        String userId = inscriptionOrchestrationService.createUserAndSociete(request);
         log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
         return ResponseEntity.ok(userId);
     }
