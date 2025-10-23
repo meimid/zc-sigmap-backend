@@ -15,6 +15,7 @@ public class Adresse extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "adresse_id")
     private Integer id;
+    private String email;
     private String tel1;
     private String tel2;
     private String fax;

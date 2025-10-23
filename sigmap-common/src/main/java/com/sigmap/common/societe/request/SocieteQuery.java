@@ -1,9 +1,11 @@
 package com.sigmap.common.societe.request;
 
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteSpecifications;
 import lombok.*;
 import org.springframework.data.jpa.domain.Specification;
+
 
 @Getter
 @Setter
@@ -12,7 +14,9 @@ import org.springframework.data.jpa.domain.Specification;
 public class SocieteQuery {
     private String search;
     private String nom;
-    private String nni;
+    private String nif;
+    private Integer numCnss;
+    private SocieteStatus status;
     private boolean deleted;
     /**
      * Creates a {@link Specification} from the properties of the current object.
@@ -26,7 +30,6 @@ public class SocieteQuery {
      * null or blank.
      * <li>{@link SocieteSpecifications#nni(String)} if the nni
      * property is not null or blank.
-     * <li>{@link SocieteSpecifications#categorieSoumissionnaireId(String)} if the categorieSoumissionnaireId
      * property is not null or blank.
      * <li>{@link SocieteSpecifications#deleted(boolean)} if the deleted property is
      * true.
@@ -50,9 +53,20 @@ public class SocieteQuery {
         if (nom != null && !nom.isBlank()) {
             spec = spec.and(SocieteSpecifications.nom(nom));
         }
-        if (nni != null && !nni.isBlank()) {
-            spec = spec.and(SocieteSpecifications.nni(nni));
+
+
+        if (nif != null && !nif.isBlank()) {
+            spec = spec.and(SocieteSpecifications.nif(nif));
         }
+
+        if (numCnss != null) {
+            spec = spec.and(SocieteSpecifications.numCnss(numCnss));
+        }
+
+        if (status != null) {
+            spec = spec.and(SocieteSpecifications.status(status));
+        }
+
 
         return spec;
     }
