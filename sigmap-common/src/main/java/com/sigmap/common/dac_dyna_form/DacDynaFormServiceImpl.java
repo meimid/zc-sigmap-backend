@@ -6,6 +6,7 @@ import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import com.sigmap.common.entity.TypeDossier;
@@ -27,6 +28,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     private final DynaFormRepository formRepo;
     private final DynaFormFieldRepository fieldRepo;
     private final DacDynaFormMapper mapper;
+    private final DynaFormMapper DynaFormMapper;
 
     // ------------------------------------------------------------
     // Attach a full DynaForm to a DAC
@@ -98,7 +100,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
 
         List<DynaFormResponse> responses = forms.stream()
                 .filter(f -> f.getIsDeleted() == null || !f.getIsDeleted()) // exclude deleted
-                .map(mapper::toDynaFormResponse)
+                .map(DynaFormMapper::toResponse)
                 .toList();
 
         return new PageImpl<>(responses, pageable, responses.size());
