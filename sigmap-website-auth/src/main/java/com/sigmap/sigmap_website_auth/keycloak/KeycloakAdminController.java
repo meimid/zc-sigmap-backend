@@ -38,7 +38,7 @@ public class KeycloakAdminController {
     }
 
 
-    /*** Validation par l’admin (Activation + mail) ***/
+    /*** Validation par l’admin (Activation + mail) ***//*
     @PostMapping("/users/{userId}/validate")
     public ResponseEntity<UserWebsiteDTO> validateWebsiteUser(@PathVariable String userId) throws MessagingException, IOException {
         UserWebsiteDTO userDto = keycloakAdminService.validateWebsiteUser(userId);
@@ -55,17 +55,17 @@ public class KeycloakAdminController {
         return ResponseEntity.ok(userDto);
     }
 
-    /*** Récupération des utilisateurs Pending ***/
+    *//*** Récupération des utilisateurs Pending ***//*
     @GetMapping("/users/pending")
     public ResponseEntity<List<UserWebsiteDTO>> getPendingUsers() {
         List<UserWebsiteDTO> pendingUsers = keycloakAdminService.getPendingUsers();
         return ResponseEntity.ok(pendingUsers);
     }
 
-    /*** Récupération des utilisateurs Active ***/
+    *//*** Récupération des utilisateurs Active ***//*
     @GetMapping("/users/active")
     public ResponseEntity<List<UserWebsiteDTO>> getActiveUsers() {
         List<UserWebsiteDTO> activeUsers = keycloakAdminService.getActiveUsers();
         return ResponseEntity.ok(activeUsers);
-    }
+    }*/
 }
