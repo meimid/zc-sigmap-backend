@@ -56,6 +56,7 @@ import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -659,10 +660,11 @@ public class RealisationServiceImpl implements RealisationService {
                 : existing.getModePassation();
         probe.setModePassation(modePassation);
 
-        probe.setDatePrevLps(request.getDatePrevLps() != null ? request.getDatePrevLps() : existing.getDatePrevLps());
-        probe.setDatePrevAc(request.getDatePrevAc() != null ? request.getDatePrevAc() : existing.getDatePrevAc());
-        probe.setDatePrevDp(request.getDatePrevDp() != null ? request.getDatePrevDp() : existing.getDatePrevDp());
-        probe.setDatePrevAp(request.getDatePrevAp() != null ? request.getDatePrevAp() : existing.getDatePrevAp());
+        LocalDate lps = (request.getDatePrevLps() != null) ? request.getDatePrevLps() : existing.getDatePrevLps();
+        probe.setDatePrevLps(lps);
+        probe.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
+        probe.setDatePrevDp(null);
+        probe.setDatePrevAp(null);
         probe.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existing.getBudgetEstime());
         probe.setIsPublished(request.getIsPublished() != null ? request.getIsPublished() : existing.getIsPublished());
         probe.setPublishedAt(request.getPublishedAt() != null ? request.getPublishedAt() : existing.getPublishedAt());
