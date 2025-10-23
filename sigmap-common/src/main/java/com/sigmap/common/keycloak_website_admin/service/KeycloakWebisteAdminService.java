@@ -21,15 +21,14 @@ import java.util.*;
 
 /**
  * Service d'administration Keycloak pour la gestion des utilisateurs "Website".
- * Permet la création, l'activation, la récupération et le déplacement des utilisateurs
- * entre les groupes Pending et Active, avec intégration à la logique métier "Société".
+ * Gestion des groupes Pending/Active, création de société associée et mot de passe temporaire.
  */
 @Service
 public class KeycloakWebisteAdminService {
 
     private static final Logger logger = LoggerFactory.getLogger(KeycloakWebisteAdminService.class);
-    private final RestTemplate restTemplate = new RestTemplate();
 
+    private final RestTemplate restTemplate = new RestTemplate();
     private final KeycloakTokenService tokenService;
     private final SocieteService societeService;
 
@@ -50,52 +49,44 @@ public class KeycloakWebisteAdminService {
     @Value("${keycloak-admin.groupes.website-pending}")
     private String gpWebsitePending;
 
-
     /**
-     * Crée un utilisateur Website (Pending) dans Keycloak
-     * puis crée la société associée dans le système local.
+     * Crée un utilisateur Website (Pending) et la société associée.
      *
      * @param request données complètes d’inscription (société + user)
-     * @return ID de l’utilisateur Keycloak créé
+     * @return ID Keycloak
      * @throws RefParamNotFound si paramètre de référence manquant
-     * @throws SocieteNotFound si la société n’a pas pu être créée
+     * @throws SocieteNotFound si création société impossible
      */
     @Transactional
     public String createPendingWebsiteUserWithSociete(SocieteRequestInscription request)
             throws RefParamNotFound, SocieteNotFound {
 
-        String token = tokenService.getAccessToken();
-        HttpHeaders headers = createHeaders(token);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpHeaders headers = createAuthHeaders();
 
-        // 1️⃣ Création utilisateur dans Keycloak
+        // 1️⃣ Création utilisateur Keycloak
         String userId = createUserInKeycloak(request.getUserResquest(), headers);
 
-        // 2️⃣ Ajout au groupe "Pending"
+        // 2️⃣ Ajout au groupe Pending
         addUserToGroup(userId, gpWebsitePending, headers);
-        logger.info("✅ Utilisateur {} ajouté au groupe PENDING.", request.getUserResquest().getUsername());
+        logger.info("Utilisateur {} ajouté au groupe Pending", request.getUserResquest().getUsername());
 
         // 3️⃣ Récupération infos Keycloak réelles
         UserWebsiteDTO userKeycloak = getUserDetails(userId, headers);
         if (userKeycloak == null)
-            throw new RuntimeException("Erreur lors de la récupération des données utilisateur depuis Keycloak.");
+            throw new RuntimeException("Impossible de récupérer les informations de l'utilisateur Keycloak");
 
-        // 4️⃣ Injection des infos Keycloak dans la requête Société
+        // 4️⃣ Injection des infos Keycloak dans le DTO
         mapUserKeycloakToRequest(userKeycloak, request.getUserResquest());
 
         // 5️⃣ Création de la société associée
         societeService.create(request);
+        logger.info("Société créée et liée à l'utilisateur Keycloak {}", userId);
 
-        logger.info("✅ Société créée et liée à l’utilisateur Keycloak {}", userId);
         return userId;
     }
 
     /**
-     * Crée un utilisateur dans Keycloak avec statut inactif.
-     *
-     * @param dto informations du user à créer
-     * @param headers headers HTTP avec token d’admin
-     * @return l’ID Keycloak du nouvel utilisateur
+     * Crée l'utilisateur dans Keycloak (statut inactive).
      */
     private String createUserInKeycloak(UserResquest dto, HttpHeaders headers) {
         Map<String, Object> payload = Map.of(
@@ -106,10 +97,10 @@ public class KeycloakWebisteAdminService {
                 "enabled", false,
                 "emailVerified", false,
                 "attributes", Map.of(
-                        "address", List.of(dto.getAddress()),
-                        "mobile", List.of(dto.getMobile()),
-                        "fixe", List.of(dto.getFixe()),
-                        "cin", List.of(dto.getCin()),
+                        "address", List.of(Optional.ofNullable(dto.getAddress()).orElse("")),
+                        "mobile", List.of(Optional.ofNullable(dto.getMobile()).orElse("")),
+                        "fixe", List.of(Optional.ofNullable(dto.getFixe()).orElse("")),
+                        "cin", List.of(Optional.ofNullable(dto.getCin()).orElse("")),
                         "dateCIN", List.of(dto.getDateCIN() != null ? dto.getDateCIN().toString() : "")
                 )
         );
@@ -117,39 +108,34 @@ public class KeycloakWebisteAdminService {
         String url = String.format("%s/admin/realms/%s/users", keycloakBaseUrl, realm);
         ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(payload, headers), Void.class);
 
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("❌ Échec création utilisateur Keycloak");
-        }
+        if (!response.getStatusCode().is2xxSuccessful())
+            throw new RuntimeException("Erreur création utilisateur Keycloak");
 
         String location = response.getHeaders().getFirst("Location");
-        if (location == null) throw new RuntimeException("❌ Impossible de récupérer l’ID Keycloak");
+        if (location == null)
+            throw new RuntimeException("Impossible de récupérer l'ID Keycloak");
+
         return location.substring(location.lastIndexOf("/") + 1);
     }
 
     /**
-     * Active un utilisateur Website, le déplace du groupe Pending vers Active,
-     * génère un mot de passe temporaire, et retourne les infos complètes.
+     * Active un utilisateur Website et le déplace du groupe Pending vers Active.
      *
      * @param userId ID Keycloak
-     * @return informations utilisateur avec mot de passe temporaire
+     * @return DTO utilisateur avec mot de passe temporaire
      */
     public UserWebsiteDTO validateWebsiteUser(String userId) {
-        String token = tokenService.getAccessToken();
-        HttpHeaders headers = createHeaders(token);
+        HttpHeaders headers = createAuthHeaders();
 
         String pendingId = getGroupIdByName(gpWebsitePending, headers);
         String activeId = getGroupIdByName(gpWebsiteActive, headers);
         if (pendingId == null || activeId == null)
-            throw new RuntimeException("Groupes Website introuvables dans Keycloak");
+            throw new RuntimeException("Groupes Keycloak introuvables");
 
-        // Déplacement du groupe pending → active
         removeUserFromGroup(userId, pendingId, headers);
         addUserToGroup(userId, gpWebsiteActive, headers);
-
-        // Activation du compte
         enableUser(userId, true, headers);
 
-        // Génération d’un mot de passe temporaire
         String tempPassword = updatePasswordForAdmin(userId);
 
         UserWebsiteDTO dto = getUserDetails(userId, headers);
@@ -157,25 +143,18 @@ public class KeycloakWebisteAdminService {
         return dto;
     }
 
-
-    /**
-     * Récupère la liste des utilisateurs en attente d’activation.
-     */
     public List<UserWebsiteDTO> getPendingUsers() {
         return getUsersByGroup(gpWebsitePending);
     }
 
-    /**
-     * Récupère la liste des utilisateurs actifs.
-     */
     public List<UserWebsiteDTO> getActiveUsers() {
         return getUsersByGroup(gpWebsiteActive);
     }
 
-    private List<UserWebsiteDTO> getUsersByGroup(String groupName) {
-        String token = tokenService.getAccessToken();
-        HttpHeaders headers = createHeaders(token);
+    /*---------------- Utilitaires ----------------*/
 
+    private List<UserWebsiteDTO> getUsersByGroup(String groupName) {
+        HttpHeaders headers = createAuthHeaders();
         String groupId = getGroupIdByName(groupName, headers);
         if (groupId == null) return Collections.emptyList();
 
@@ -187,10 +166,9 @@ public class KeycloakWebisteAdminService {
         return rawUsers.stream().map(this::mapToUserWebsiteDTO).toList();
     }
 
-
     private void enableUser(String userId, boolean enabled, HttpHeaders headers) {
-        Map<String, Object> payload = Map.of("enabled", enabled);
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+        Map<String, Object> payload = Map.of("enabled", enabled);
         restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(payload, headers), Void.class);
     }
 
@@ -214,19 +192,17 @@ public class KeycloakWebisteAdminService {
         return groups.stream()
                 .filter(g -> groupName.equals(g.get("name")))
                 .map(g -> (String) g.get("id"))
-                .findFirst()
-                .orElse(null);
+                .findFirst().orElse(null);
     }
 
-    private HttpHeaders createHeaders(String token) {
+    private HttpHeaders createAuthHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+        headers.setBearerAuth(tokenService.getAccessToken());
         return headers;
     }
 
     public String updatePasswordForAdmin(String userId) {
-        String token = tokenService.getAccessToken();
-        HttpHeaders headers = createHeaders(token);
+        HttpHeaders headers = createAuthHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         String tempPassword = generateTemporaryPassword();
@@ -265,9 +241,7 @@ public class KeycloakWebisteAdminService {
         dto.setLastName((String) map.get("lastName"));
         dto.setEnabled(Boolean.TRUE.equals(map.get("enabled")));
         dto.setEmailVerified(Boolean.TRUE.equals(map.get("emailVerified")));
-        if (map.get("createdTimestamp") instanceof Number ts) {
-            dto.setCreatedTimestamp(ts.longValue());
-        }
+        if (map.get("createdTimestamp") instanceof Number ts) dto.setCreatedTimestamp(ts.longValue());
 
         Map<String, List<String>> attrs = (Map<String, List<String>>) map.get("attributes");
         if (attrs != null) {
@@ -283,7 +257,7 @@ public class KeycloakWebisteAdminService {
 
     private String getAttr(Map<String, List<String>> attrs, String key) {
         List<String> values = attrs.get(key);
-        return values != null && !values.isEmpty() ? values.get(0) : null;
+        return (values != null && !values.isEmpty()) ? values.get(0) : null;
     }
 
     private void mapUserKeycloakToRequest(UserWebsiteDTO src, UserResquest target) {
