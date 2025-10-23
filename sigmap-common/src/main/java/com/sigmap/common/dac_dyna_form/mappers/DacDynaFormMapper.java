@@ -55,6 +55,14 @@ public interface DacDynaFormMapper {
         res.setTypeDossier(form.getTypeDossier());
         res.setFormType(form.getFormType());
         res.setStatus(form.getStatus());
+        res.setOrder(form.getOrder());
+        res.getMetadata().setCreatedAt(form.getCreatedAt());
+        res.getMetadata().setCreatedBy(form.getCreatedBy());
+        res.getMetadata().setUpdatedAt(form.getUpdatedAt());
+        res.getMetadata().setUpdatedBy(form.getUpdatedBy());
+        res.getMetadata().setDeletedAt(form.getDeletedAt());
+        res.getMetadata().setDeletedBy(form.getDeletedBy());
+        res.getMetadata().setIsDeleted(form.getIsDeleted());
         return res;
     }
 }
