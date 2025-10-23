@@ -3,6 +3,7 @@ package com.sigmap.sigmap_dac.services.dto.response;
 
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
+import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import lombok.Data;
 
@@ -23,6 +24,8 @@ public class TaskDetailsDTO {
     private Map<String, Object> traceability;
     
     private DacResponseDTO dacDocs;
+    // prix dac information
+    private List<DacPrixResponce> dacPrix;;
 
     // Status information
     private String status;
