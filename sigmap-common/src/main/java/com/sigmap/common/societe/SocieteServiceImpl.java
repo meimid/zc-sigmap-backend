@@ -36,6 +36,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 public class SocieteServiceImpl implements SocieteService {
@@ -69,6 +71,13 @@ public class SocieteServiceImpl implements SocieteService {
     public Page<Societe> findAll(Specification<Societe> societe, Pageable pageable) {
         return repository.findAll(societe, pageable);
     }
+
+    @Override
+    public Page<Societe> findAllNotEncours(Specification<Societe> societe, Pageable pageable) {
+        Specification<Societe> notEnCoursSpec = societe.and((root, query, cb) ->
+                cb.notEqual(root.get("status"), SocieteStatus.EN_COURS)
+        );
+        return repository.findAll(notEnCoursSpec, pageable);    }
 
     @Override
     public Page<Societe> findAllDeleted(Specification<Societe> societe, Pageable pageable) {

@@ -27,6 +27,8 @@ public interface SocieteService {
      * @return a page of Societe
      */
     Page<Societe> findAll(Specification<Societe> societe, Pageable pageable);
+    Page<Societe> findAllNotEncours(Specification<Societe> societe, Pageable pageable);
+
 
     /**
      * Return a page of deleted societe based on the given specification and pageable.

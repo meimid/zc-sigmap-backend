@@ -16,6 +16,7 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.entity.SocieteStatus;
+import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.societe.Societe;
@@ -71,13 +72,15 @@ public class SocieteController {
     private final SocieteAddressService societeAddressService;
     private final CompteBancaireService  compteBancaireService;
     private final ContactService contactService;
+    private final InscriptionOrchestrationService inscriptionOrchestrationService;
 
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, SocieteAddressService societeAddressService, CompteBancaireService compteBancaireService, ContactService contactService) {
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, SocieteAddressService societeAddressService, CompteBancaireService compteBancaireService, ContactService contactService, InscriptionOrchestrationService inscriptionOrchestrationService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
         this.societeAddressService = societeAddressService;
         this.compteBancaireService = compteBancaireService;
         this.contactService = contactService;
+        this.inscriptionOrchestrationService = inscriptionOrchestrationService;
     }
 
     /**
@@ -92,6 +95,14 @@ public class SocieteController {
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAll(query.toSpecification(), pageable);
          Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        return ResponseEntity.ok(compteBancaireResponses);
+    }
+
+    @GetMapping("/not-en-cours")
+    public ResponseEntity<Page<SocieteResponseDto>> findAllNotEncours(
+            SocieteQuery query, Pageable pageable) {
+        Page<Societe> params = societeService.findAllNotEncours(query.toSpecification(), pageable);
+        Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
         return ResponseEntity.ok(compteBancaireResponses);
     }
 
@@ -194,10 +205,21 @@ public class SocieteController {
         return ResponseEntity.ok(societeResponses);
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<SocieteResponse> updateStatus(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
-        Societe Societe = societeService.updateStatus(id,request.getStatus());
-        SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
+    @PutMapping("/rejetee/{id}")
+    public ResponseEntity<SocieteResponse> updateStatusRejetee(@PathVariable Integer id) throws RefParamNotFound,SocieteNotFound {
+
+        Societe societe = societeService.updateStatus(id,SocieteStatus.REJETEE);
+        inscriptionOrchestrationService.validateUser(societe.getUsersSociete().get(0).getUserId());
+        SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
+        return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @PutMapping("/validee/{id}")
+    public ResponseEntity<SocieteResponse> updateStatusValidee(@PathVariable Integer id) throws RefParamNotFound,SocieteNotFound {
+
+        Societe societe = societeService.updateStatus(id,SocieteStatus.VALIDEE);
+        inscriptionOrchestrationService.validateUser(societe.getUsersSociete().get(0).getUserId());
+        SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 /**
