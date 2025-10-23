@@ -62,7 +62,8 @@ public class SecurityConfig {
         .oauth2ResourceServer(
             oauth2 ->
                 oauth2.jwt(
-                    jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)));
+                    jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)))
+            .csrf(csrf -> csrf.disable());
     //                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
     return http.build();
   }

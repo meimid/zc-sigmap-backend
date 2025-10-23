@@ -401,24 +401,61 @@ public class PpmServiceImpl implements PpmService {
         if (publishedPpms.isEmpty()) {
             return Page.empty(pageable);
         }
-
-        // Build a set of realisation keys already attached to a DAC
-        List<Object[]> realisationKeysWithDac = dacRepository.findRealisationKeysWithDac();
-        Set<String> realisationsWithDac = realisationKeysWithDac.stream()
+        // Build sets of realisations grouped by DAC linkage and publication
+        List<Object[]> realisationsWithAnyDacArr = dacRepository.findRealisationKeysWithDac();
+        Set<String> realisationsWithAnyDac = realisationsWithAnyDacArr.stream()
                 .map(o -> o[0] + ":" + o[1])
                 .collect(Collectors.toSet());
 
-        // For each PPM, keep only unattached realisations; drop PPMs with none
+        // Build sets of realisations grouped by DAC linkage and publication
+        List<Object[]> realisationsWithPublishedDacArr = dacRepository.findRealisationKeysWithPublishedDac();
+        Set<String> realisationsWithPublishedDac = realisationsWithPublishedDacArr.stream()
+                .map(o -> o[0] + ":" + o[1])
+                .collect(Collectors.toSet());
+
+        // Build sets of realisations grouped by DAC linkage and non-publication (to exclude mixed cases)
+        List<Object[]> realisationsWithNonPublishedDacArr = dacRepository.findRealisationKeysWithNonPublishedDac();
+        Set<String> realisationsWithNonPublishedDac = realisationsWithNonPublishedDacArr.stream()
+                .map(o -> o[0] + ":" + o[1])
+                .collect(Collectors.toSet());
+
+        // NEW: Get realization DAC counts (key: "id:version", value: count)
+        List<Object[]> realisationsWithDacCountArr = dacRepository.findRealisationKeysWithDacCount();
+        Map<String, Long> realisationsDacCount = realisationsWithDacCountArr.stream()
+                .collect(Collectors.toMap(
+                        o -> o[0] + ":" + o[1],  // key: id:version
+                        o -> (Long) o[2],        // value: count
+                        (existing, replacement) -> existing
+                ));
+
+        // For each PPM, keep realisations that have no DAC, or have at least one published DAC and no non-published DAC
         List<Ppm> filteredPpms = publishedPpms.getContent().stream()
                 .map(ppm -> {
                     Ppm copy = createFilteredResponsePpm(ppm);
                     if (copy.getRealisations() != null) {
-                        List<Realisation> unattached = copy.getRealisations().stream()
+                        List<Realisation> allowed = copy.getRealisations().stream()
                                 .filter(r -> r != null)
                                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
-                                .filter(r -> !realisationsWithDac.contains(r.getId() + ":" + r.getVersion()))
+                                .filter(r -> {
+                                    String key = r.getId() + ":" + r.getVersion();
+
+                                    // CONDITION 1: No DACs at all → KEEP
+                                    if (!realisationsWithAnyDac.contains(key)) {
+                                        return true;
+                                    }
+
+                                    // CONDITION 2: Has non-published DAC → EXCLUDE
+                                    if (realisationsWithNonPublishedDac.contains(key)) {
+                                        return false;
+                                    }
+
+                                    // CONDITION 3: Less than 2 DACs total → KEEP
+                                    Long dacCount = realisationsDacCount.get(key);
+                                    return dacCount != null && dacCount < 2L;
+
+                                    })
                                 .collect(Collectors.toList());
-                        copy.setRealisations(unattached);
+                        copy.setRealisations(allowed);
                     }
                     return copy;
                 })

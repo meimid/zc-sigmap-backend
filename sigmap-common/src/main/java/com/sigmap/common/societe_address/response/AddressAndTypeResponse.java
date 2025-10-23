@@ -1,13 +1,11 @@
 package com.sigmap.common.societe_address.response;
 
+import com.sigmap.common.adresse.response.AdresseResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
-import com.sigmap.common.societe.response.SocieteResponseDto;
 import lombok.Data;
 
 @Data
-public class SocieteAdressResponseDto {
-    private Integer id;
+public class AddressAndTypeResponse {
+    private AdresseResponseDto address;
     private RefParamResponseDto type;
-    private String address;
-
 }

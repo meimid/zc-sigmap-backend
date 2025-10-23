@@ -8,8 +8,22 @@ import org.springframework.data.jpa.domain.Specification;
 @Data
 public class SocieteAddressQuery {
     private String search;
-    private String address;
-    private boolean deleted;
+    private Integer typeId;
+    private String type; // e.g. code or description
+
+    private Integer societeId;
+    private String societeName;
+
+    private Integer paysId;
+    private String pays; // description or code
+
+    private String adresse; // full address line
+    private String compAdresse;
+    private String ville;
+    private String codePostal;
+    private String tel1;
+    private String tel2;
+    private String fax;
     /**
      * Creates a {@link Specification} from the properties of the current object.
      * <p>
@@ -20,7 +34,6 @@ public class SocieteAddressQuery {
      * not null or blank.
      * <li>{@link SocieteAddressSpecifications#address(String)} if the address property is not
      * null or blank.
-     * <li>{@link SocieteAddressSpecifications#deleted(boolean)} if the deleted property is
      * true.
      * </ul>
      * <p>
@@ -31,14 +44,56 @@ public class SocieteAddressQuery {
      * @return a {@link Specification} that can be used to query the database.
      */
     public Specification<SocieteAddress> toSpecification() {
-        Specification<SocieteAddress> spec = Specification.where(SocieteAddressSpecifications.deleted(deleted));
+        Specification<SocieteAddress> spec = Specification.where(null);
 
         if (search != null && !search.isBlank()) {
             spec = spec.and(SocieteAddressSpecifications.search(search));
         }
 
-        if (address != null && !address.isBlank()) {
-            spec = spec.and(SocieteAddressSpecifications.address(address));
+        if (typeId != null) {
+            spec = spec.and(SocieteAddressSpecifications.hasTypeId(typeId));
+        }
+        if (type != null && !type.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasTypeString(type));
+        }
+
+        // 🔹 Filter by Societe
+        if (societeId != null) {
+            spec = spec.and(SocieteAddressSpecifications.hasSocieteId(societeId));
+        }
+        if (societeName != null && !societeName.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasSocieteName(societeName));
+        }
+
+        // 🔹 Filter by Pays
+        if (paysId != null) {
+            spec = spec.and(SocieteAddressSpecifications.hasPaysId(paysId));
+        }
+        if (pays != null && !pays.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasPaysString(pays));
+        }
+
+        // 🔹 Filter by Adresse (entity fields)
+        if (adresse != null && !adresse.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasAdresse(adresse));
+        }
+        if (compAdresse != null && !compAdresse.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasCompAdresse(compAdresse));
+        }
+        if (ville != null && !ville.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasVille(ville));
+        }
+        if (codePostal != null && !codePostal.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasCodePostal(codePostal));
+        }
+        if (tel1 != null && !tel1.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasTel1(tel1));
+        }
+        if (tel2 != null && !tel2.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasTel2(tel2));
+        }
+        if (fax != null && !fax.isBlank()) {
+            spec = spec.and(SocieteAddressSpecifications.hasFax(fax));
         }
 
         return spec;

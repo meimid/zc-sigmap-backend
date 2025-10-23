@@ -11,6 +11,7 @@ import lombok.Data;
 @Data
 public class AdresseResponse {
     private Integer id;
+    private String email;
     private String tel1;
     private String tel2;
     private String fax;

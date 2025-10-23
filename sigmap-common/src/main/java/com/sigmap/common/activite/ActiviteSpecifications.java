@@ -47,4 +47,7 @@ public class ActiviteSpecifications {
     public static Specification<Activite> hasActiviteId(Integer typeActiviteId) {
         return (root, query, cb) -> cb.equal(root.get("categorieActivite").get("id"), typeActiviteId);
     }
+
+
+
 }

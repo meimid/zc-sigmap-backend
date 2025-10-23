@@ -1,30 +1,42 @@
 package com.sigmap.common.societe_address;
 
+import com.sigmap.common.Participant.ParticipantId;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.societe.Societe;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 @Data
-@EqualsAndHashCode(callSuper = true)
 @Entity
+@ToString(onlyExplicitlyIncluded = true)
 @Table(name = "societe_address")
-public class SocieteAddress extends BaseEntity {
+@IdClass(SocieteAddressId.class)
+public class SocieteAddress {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "societe_address_id")
-    private Integer id;
+    @Column(name = "societe_id")
+    private Integer societeId;
+
+    @Id
+    @Column(name = "adresse_id")
+    private Integer addressId;
+
+
     @ManyToOne
     @JoinColumn(name = "type_id")
     private RefParam type;
-    private String address;
+
     @ManyToOne
-    @JoinColumn(name = "societe_id")
-    private Societe societe;
+    @JoinColumn(name = "adresse_id", insertable = false, updatable = false)
 
+    Adresse address;
+    @ManyToOne
+    @JoinColumn(name = "societe_id", insertable = false, updatable = false)
 
-
+    Societe societe;
 
 }
