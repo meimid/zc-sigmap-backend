@@ -57,6 +57,21 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
         }
         return responses;
     }
+    @Transactional
+    @Override
+     public List<DacDynaFormResponse> getDacDynaFormFields(Integer dacId, Integer dacVer,
+                                                           Integer dynaFormId, Integer dynaFormVer)
+     {
+         List<DacDynaForm> records = repo.findByDacAndForm(dacId, dacVer, dynaFormId, dynaFormVer)
+                 .stream()
+                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                 .collect(Collectors.toList());
+         List<DacDynaFormResponse> responses = new ArrayList<>();
+         for (DacDynaForm record : records) {
+             responses.add(mapper.toResponseFields(record));
+         }
+         return responses;
+     }
 
     // ------------------------------------------------------------
     // Update which fields are displayed (true/false)

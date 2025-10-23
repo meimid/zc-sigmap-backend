@@ -47,6 +47,17 @@ public interface DacDynaFormMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     DacDynaFormResponse toResponse(DacDynaForm entity);
 
+    /**
+     * Converts an entity to its response DTO.
+     */
+    @Mapping(target = "dacId", source = "dacId")
+    @Mapping(target = "dacVer", source = "dacVer")
+    @Mapping(target = "dynaFormId", source = "dynaFormId")
+    @Mapping(target = "dynaFormVer", source = "dynaFormVer")
+    @Mapping(target = "dynaFormFieldsId", source = "dynaFormFieldsId")
+    @Mapping(target = "display", source = "display")
+    DacDynaFormResponse toResponseFields(DacDynaForm entity);
+
     default DynaFormResponse toDynaFormResponse(DynaForm form) {
         DynaFormResponse res = new DynaFormResponse();
         res.setId(form.getId());

@@ -84,6 +84,14 @@ public class DacDynaFormController {
         return ResponseEntity.ok(page);
     }
 
+    @PostMapping("/fields")
+    public ResponseEntity<List<DacDynaFormResponse>> getDacDynaFormFields(
+            @RequestBody DacDynaFormRequest request) {
+        List<DacDynaFormResponse> page =
+                service.getDacDynaFormFields(request.getDacId(), request.getDacVer(), request.getDynaFormId(), request.getDynaFormVer());
+        return ResponseEntity.ok(page);
+    }
+
     // ------------------------------------------------------------
     //  Filter attached DAC–Form associations by TypeDossier
     // ------------------------------------------------------------

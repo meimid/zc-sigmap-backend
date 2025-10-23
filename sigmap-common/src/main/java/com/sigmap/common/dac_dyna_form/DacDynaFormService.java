@@ -43,6 +43,9 @@ public interface DacDynaFormService {
                                         Integer dacVer,
                                         Pageable pageable);
 
+    List<DacDynaFormResponse> getDacDynaFormFields(Integer dacId, Integer dacVer,
+                                                          Integer dynaFormId, Integer dynaFormVer);
+
     /**
      *  Filter DAC–Form associations by TypeDossier (Administrative / Financière / Technique).
      * Returns a paginated list.
