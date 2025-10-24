@@ -347,4 +347,14 @@ public class DacController {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
     }
   }
+
+  @GetMapping("/published/{realisationId}/{realisationVer}")
+  public ResponseEntity<List<DacResponce>> getPublishedDacsByRealisation(
+          @PathVariable Integer realisationId,
+          @PathVariable Integer realisationVer) {
+    log.debug("REST request to get published DACs for realisation ID: {} and version: {}", realisationId, realisationVer);
+    List<Dac> dacs = dacService.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
+    List<DacResponce> dacResponse = dacs.stream().map(DacMapper.INSTANCE::map).toList();
+    return ResponseEntity.ok(dacResponse);
+  }
 }

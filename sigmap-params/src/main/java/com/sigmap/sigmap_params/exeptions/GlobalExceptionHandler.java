@@ -1224,5 +1224,30 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ResponsableRequired.class)
+    public ResponseEntity<ErrorResponse> handleResponsableRequired(ResponsableRequired ex) {
+        String message = messageSource.getMessage(
+                "responsable.required",
+                null,
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UserNotFound.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFound ex) {
+        String message = messageSource.getMessage(
+                "user.notfound",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
 }
 
