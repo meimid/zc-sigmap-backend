@@ -28,6 +28,7 @@ import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
+import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
 import com.sigmap.common.lots.exception.LotNotFound;
@@ -1207,5 +1208,21 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.IM_USED.value(), message);
         return new ResponseEntity<>(error, HttpStatus.IM_USED);
     }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DynaFormNotFound.class)
+    public ResponseEntity<ErrorResponse> DynaFormNotFoundException(DynaFormNotFound ex) {
+        String message = messageSource.getMessage(
+                "dynaForm.notfound",
+                new Object[]{
+                        String.join(",", ex.getId().stream().map(String::valueOf).toList()),
+                        String.join(",", ex.getVersion().stream().map(String::valueOf).toList())
+                },
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
 }
 
