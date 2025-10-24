@@ -1,6 +1,7 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -72,5 +73,9 @@ public class Dac extends BaseEntity {
 
   @Column(name = "parent_dac_id")
   private Integer parentDacId;
+
+  @ManyToOne
+  @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
+  private DynaDocsModel dynaDocsModel;
 
 }
