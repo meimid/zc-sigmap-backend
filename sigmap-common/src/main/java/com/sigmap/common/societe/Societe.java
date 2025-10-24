@@ -39,7 +39,7 @@ public class Societe extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private SocieteStatus status;
     @OneToOne
-    @JoinColumn(name = "address_id")
+    @JoinColumn(name = "adresse_id")
     private Adresse address;
     @ManyToMany
     @JoinTable(
