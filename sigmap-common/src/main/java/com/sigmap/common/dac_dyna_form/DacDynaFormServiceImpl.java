@@ -6,6 +6,7 @@ import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import com.sigmap.common.entity.TypeDossier;
@@ -27,6 +28,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     private final DynaFormRepository formRepo;
     private final DynaFormFieldRepository fieldRepo;
     private final DacDynaFormMapper mapper;
+    private final DynaFormMapper DynaFormMapper;
 
     // ------------------------------------------------------------
     // Attach a full DynaForm to a DAC
@@ -55,6 +57,21 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
         }
         return responses;
     }
+    @Transactional
+    @Override
+     public List<DacDynaFormResponse> getDacDynaFormFields(Integer dacId, Integer dacVer,
+                                                           Integer dynaFormId, Integer dynaFormVer)
+     {
+         List<DacDynaForm> records = repo.findByDacAndForm(dacId, dacVer, dynaFormId, dynaFormVer)
+                 .stream()
+                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
+                 .collect(Collectors.toList());
+         List<DacDynaFormResponse> responses = new ArrayList<>();
+         for (DacDynaForm record : records) {
+             responses.add(mapper.toResponseFields(record));
+         }
+         return responses;
+     }
 
     // ------------------------------------------------------------
     // Update which fields are displayed (true/false)
@@ -88,9 +105,6 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     @Override
     public Page<DynaFormResponse> findDistinctFormsByDac(Integer dacId, Integer dacVer, Pageable pageable) {
         List<Object[]> distinct = repo.findDistinctFormsByDac(dacId, dacVer);
-        if (distinct.isEmpty()) {
-            throw new DacDynaFormNotFoundException("No forms attached to this DAC.");
-        }
 
         List<DynaForm> forms = distinct.stream()
                 .map(arr -> formRepo.findById(new com.sigmap.common.entity.CompositeId(
@@ -101,7 +115,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
 
         List<DynaFormResponse> responses = forms.stream()
                 .filter(f -> f.getIsDeleted() == null || !f.getIsDeleted()) // exclude deleted
-                .map(mapper::toDynaFormResponse)
+                .map(DynaFormMapper::toResponse)
                 .toList();
 
         return new PageImpl<>(responses, pageable, responses.size());
@@ -112,18 +126,13 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Transactional(readOnly = true)
     @Override
-    public Page<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
+    public List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                                    Integer dacVer,
                                                                    TypeDossier type,
                                                                    Pageable pageable) {
-        Page<DynaForm> unattachedForms = formRepo.findAll(
-                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type),
-                pageable
+        List<DynaForm> unattachedForms = formRepo.findAll(
+                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type)
         );
-
-        if (unattachedForms.isEmpty()) {
-            throw new DacDynaFormNotFoundException("No unattached forms found for the specified TypeDossier.");
-        }
 
         List<DynaFormResponse> responses = unattachedForms
                 .stream()
@@ -131,7 +140,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
                 .map(mapper::toDynaFormResponse)
                 .collect(Collectors.toList());
 
-        return new PageImpl<>(responses, pageable, unattachedForms.getTotalElements());
+        return responses;
     }
 
     // ------------------------------------------------------------
