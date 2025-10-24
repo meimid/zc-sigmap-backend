@@ -17,6 +17,7 @@
         <module>sigmap-dac</module>
         <module>sigmap-auth</module>
         <module>sigmap-webmaster</module>
+        <module>sigmap-website-auth</module>
 
     </modules>
 

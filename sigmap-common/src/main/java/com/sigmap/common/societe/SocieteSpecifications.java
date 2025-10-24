@@ -1,6 +1,7 @@
 package com.sigmap.common.societe;
 
 import com.sigmap.common.activite.Activite;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
@@ -16,10 +17,15 @@ public class SocieteSpecifications {
             Join<Societe, RefParam> typeJoin = root.join("type", JoinType.LEFT);
             Join<Societe, RefParam> catJoin = root.join("categorieSoumissionnaire", JoinType.LEFT);
             Join<Societe, Activite> activiteJoin = root.join("activites", JoinType.LEFT);
+            Join<Societe, Adresse> addressJoin = root.join("address", JoinType.LEFT);
+
             return cb.or(
                     cb.like(cb.lower(root.get("nom")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("nif")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(root.get("status")), "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("numCnss")), "%" + search.toLowerCase() + "%"),
+
+
 
 
                     cb.like(cb.lower(typeJoin.get("description")), "%" + search.toLowerCase() + "%"),
@@ -29,7 +35,15 @@ public class SocieteSpecifications {
                     cb.like(cb.lower(catJoin.get("description")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(catJoin.get("code")), "%" + search.toLowerCase() + "%"),
 
-                    cb.like(cb.lower(activiteJoin.get("libelle")), "%" + search.toLowerCase() + "%")
+                    cb.like(cb.lower(activiteJoin.get("libelle")), "%" + search.toLowerCase() + "%"),
+
+                    cb.like(cb.lower(addressJoin.get("email")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("ville")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("codePostal")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("adresse")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("tel1")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("tel2")),  "%" + search.toLowerCase() + "%"),
+                    cb.like(cb.lower(addressJoin.get("fax")),  "%" + search.toLowerCase() + "%")
             );
         };
     }
@@ -91,7 +105,7 @@ public class SocieteSpecifications {
         return (root, query, cb) -> cb.like(root.get("nif"), "%" + nif + "%");
     }
 
-    public static Specification<Societe> numCnss(Integer numCnss) {
+    public static Specification<Societe> numCnss(String numCnss) {
         return (root, query, cb) -> cb.equal(root.get("numCnss"), numCnss);
     }
 

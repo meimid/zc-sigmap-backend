@@ -8,6 +8,7 @@ import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,6 +27,8 @@ public interface SocieteService {
      * @return a page of Societe
      */
     Page<Societe> findAll(Specification<Societe> societe, Pageable pageable);
+    Page<Societe> findAllNotEncours(Specification<Societe> societe, Pageable pageable);
+
 
     /**
      * Return a page of deleted societe based on the given specification and pageable.
@@ -82,7 +85,7 @@ public interface SocieteService {
      * @param request the request to create the Societe from
      * @return the created Societe
      */
-    Societe create(SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound;
+    Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound;
     /**
      * update Com.
      *

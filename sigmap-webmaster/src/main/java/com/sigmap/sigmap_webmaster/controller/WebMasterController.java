@@ -51,6 +51,7 @@ import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteGlobalRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import jakarta.annotation.security.PermitAll;
@@ -239,7 +240,7 @@ public class WebMasterController {
      */
     @PermitAll
     @PostMapping("/societe-create")
-    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<SocieteResponse> create(@RequestBody SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

@@ -6,6 +6,8 @@ import com.sigmap.common.societe.Societe;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 @Getter
 @Setter
@@ -36,8 +38,7 @@ public class UserSociete extends BaseEntity {
     private String numCin;
 
     @Column(name = "date_delivrance_cin")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date dateDelivranceCin;
+    private LocalDateTime dateDelivranceCin;
 
     private String tel1;
     private String tel2;
