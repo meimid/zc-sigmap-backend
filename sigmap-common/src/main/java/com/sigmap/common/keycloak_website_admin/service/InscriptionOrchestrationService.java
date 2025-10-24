@@ -3,6 +3,8 @@ package com.sigmap.common.keycloak_website_admin.service;
 
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 /**
  * Service d'orchestration pour gérer l'inscription d'un utilisateur Website
@@ -43,19 +46,28 @@ public class InscriptionOrchestrationService {
      */
     public String createUserAndSociete(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
         logger.info("Début création utilisateur Keycloak et société pour {}", request.getUserResquest().getUsername());
+        String userId;
+        try {
+            // 1️⃣ Créer utilisateur Keycloak en Pending
+             userId = keycloakService.createPendingWebsiteUserWithSociete(request);
 
-        // 1️⃣ Créer utilisateur Keycloak en Pending
-        String userId = keycloakService.createPendingWebsiteUserWithSociete(request);
-        request.getUserResquest().setId(userId);
-        societeService.create(request);
-        if (userId != null) {
+            request.getUserResquest().setId(userId);
+            societeService.create(request);
+            if (userId != null) {
 
-            logger.info("Utilisateur {} et société créés avec succès", request.getUserResquest().getUsername());
-        } else {
-            throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");
+                logger.info("Utilisateur {} et société créés avec succès", request.getUserResquest().getUsername());
+            } else {
+                throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");
+            }
+
+            return userId;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
+            } else {
+                throw new CreateUserFailed("");
+            }
         }
-
-        return userId;
     }
 
     /**

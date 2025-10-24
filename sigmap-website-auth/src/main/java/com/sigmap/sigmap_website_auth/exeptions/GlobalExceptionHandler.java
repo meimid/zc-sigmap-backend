@@ -7,6 +7,8 @@ import java.util.stream.Collectors;
 
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedAc;
 import com.sigmap.common.keycloakAdmin.exception.UserHasAssociatedCom;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
@@ -72,4 +74,30 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
+
+  @ResponseStatus(HttpStatus.CONFLICT)
+  @ExceptionHandler(EmailOrUserNameAlreadyUsedForAnotherUser.class)
+  public ResponseEntity<ErrorResponse> handleEmailOrUserNameAlreadyUsedForAnotherUser() {
+    String message = messageSource.getMessage(
+            "email.username.already.used",
+            new Object[]{},
+            getLocal()
+    );
+    ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+  }
+  @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+  @ExceptionHandler(CreateUserFailed.class)
+  public ResponseEntity<ErrorResponse> handleCreateUserFailed() {
+
+    String message = messageSource.getMessage(
+            "user.create.failed",
+            new Object[]{},
+            getLocal()
+    );
+
+    ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+  }
+
 }

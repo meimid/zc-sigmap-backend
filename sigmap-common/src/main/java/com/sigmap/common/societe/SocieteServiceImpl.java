@@ -197,16 +197,8 @@ public class SocieteServiceImpl implements SocieteService {
         societeAddress.setSocieteId(savedSociete.getId());
         societeAddress.setType(savedSociete.getType());
         SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
-        UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
-        userSocieteRequest.setUserId(request.getUserResquest().getId());
-        userSocieteRequest.setSocieteId(savedSociete.getId());
-        userSocieteRequest.setEmail(request.getUserResquest().getEmail());
-        userSocieteRequest.setNom(request.getUserResquest().getLastName());
-        userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
-        userSocieteRequest.setNumCin(request.getUserResquest().getCin());
-        userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
-        userSocieteRequest.setTel1(request.getUserResquest().getMobile());
-        userSocieteRequest.setTel2(request.getUserResquest().getFixe());
+        UserSocieteRequest userSocieteRequest= mapFromRequest(request,savedSociete);
+
         UserSociete savedUserSociete= userSocieteService.create(userSocieteRequest);
         savedSociete.getSocieteAddresses().add(savedSocieteAdress);
         savedSociete.getUsersSociete().add(savedUserSociete);
@@ -321,4 +313,37 @@ public class SocieteServiceImpl implements SocieteService {
         }
         return size;
     }
+     UserSocieteRequest mapFromRequest(SocieteRequestInscription request,Societe savedSociete) {
+         UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
+         userSocieteRequest.setUserId(request.getUserResquest().getId());
+         userSocieteRequest.setSocieteId(savedSociete.getId());
+         if (request.getUserResquest().getEmail() != null) {
+             userSocieteRequest.setEmail(request.getUserResquest().getEmail());
+         }
+
+         if (request.getUserResquest().getLastName() != null) {
+             userSocieteRequest.setNom(request.getUserResquest().getLastName());
+         }
+
+         if (request.getUserResquest().getFirstName() != null) {
+             userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
+         }
+
+         if (request.getUserResquest().getCin() != null) {
+             userSocieteRequest.setNumCin(request.getUserResquest().getCin());
+         }
+
+         if (request.getUserResquest().getDateCIN() != null) {
+             userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
+         }
+
+         if (request.getUserResquest().getMobile() != null) {
+             userSocieteRequest.setTel1(request.getUserResquest().getMobile());
+         }
+
+         if (request.getUserResquest().getFixe() != null) {
+             userSocieteRequest.setTel2(request.getUserResquest().getFixe());
+         }
+         return userSocieteRequest;
+     }
 }

@@ -3,6 +3,8 @@ package com.sigmap.common.keycloak_website_admin.service;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
@@ -12,6 +14,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.SecureRandom;
@@ -52,17 +56,19 @@ public class KeycloakWebisteAdminService {
      *
      * @param request données complètes d’inscription (société + user)
      * @return ID Keycloak
-     * @throws RefParamNotFound si paramètre de référence manquant
-     * @throws SocieteNotFound si création société impossible
      */
     @Transactional
     public String createPendingWebsiteUserWithSociete(SocieteRequestInscription request)
-            throws RefParamNotFound, SocieteNotFound {
+            {
 
         HttpHeaders headers = createAuthHeaders();
+        String userId;
+        try {
 
-        // 1️⃣ Création utilisateur Keycloak
-        String userId = createUserInKeycloak(request.getUserResquest(), headers);
+            // 1️⃣ Création utilisateur Keycloak
+
+            userId = createUserInKeycloak(request.getUserResquest(), headers);
+
 
         // 2️⃣ Ajout au groupe Pending
         addUserToGroup(userId, gpWebsitePending, headers);
@@ -76,11 +82,14 @@ public class KeycloakWebisteAdminService {
         // 4️⃣ Injection des infos Keycloak dans le DTO
         mapUserKeycloakToRequest(userKeycloak, request.getUserResquest());
 
-        // 5️⃣ Création de la société associée
-     //   societeService.create(request);
-        logger.info("Société créée et liée à l'utilisateur Keycloak {}", userId);
-
         return userId;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
+            } else {
+                throw new CreateUserFailed("");
+            }
+        }
     }
 
     /**
