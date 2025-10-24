@@ -1395,4 +1395,10 @@ public class DacServiceImpl implements DacService {
         }
     }
 
+    @Override
+    @Transactional
+    public List<Dac> findPublishedDacsByRealisationIdAndVersion(Integer realisationId, Integer realisationVer) {
+        log.debug("Fetching published DACs for realisation ID: {} and version: {}", realisationId, realisationVer);
+        return dacRepository.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
+    }
 }

@@ -43,6 +43,9 @@ public interface DacDynaFormService {
                                         Integer dacVer,
                                         Pageable pageable);
 
+    List<DacDynaFormResponse> getDacDynaFormFields(Integer dacId, Integer dacVer,
+                                                          Integer dynaFormId, Integer dynaFormVer);
+
     /**
      *  Filter DAC–Form associations by TypeDossier (Administrative / Financière / Technique).
      * Returns a paginated list.
@@ -53,7 +56,7 @@ public interface DacDynaFormService {
      *  Retrieve forms that are NOT attached to the given DAC,
      * filtered by their TypeDossier (Administrative / Financière / Technique).
      */
-    Page<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
+    List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                             Integer dacVer,
                                                             TypeDossier type,
                                                             Pageable pageable);
