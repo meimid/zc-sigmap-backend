@@ -68,6 +68,7 @@ public class ComServiceImpl implements ComService {
   private final AcService acService;
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
+
   public ComServiceImpl(
           ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
     this.repository = repository;
@@ -132,6 +133,12 @@ public class ComServiceImpl implements ComService {
   @Override
   public Com create(ComRequest request)
           throws RefParamNotFound, AcNotFound, DuplicateAcIdsException, ComNotFound, IOException {
+    if(request.getResponsableId()==null||request.getResponsableId().isBlank()){
+      throw new ResponsableRequired("");
+    }
+    try {
+      keycloakAdminService.getUserById(request.getResponsableId());
+
     Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
     List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
     if (!refParams.isEmpty()) {
@@ -213,12 +220,21 @@ public class ComServiceImpl implements ComService {
     }
 
     return savedCom;
+    }
+    catch (RuntimeException e) {
+      throw new UserNotFound("",request.getResponsableId());
+    }
   }
 
   @Override
  // @Transactional
   public Com update(Integer id, ComRequest request)
           throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
+    if(request.getResponsableId()==null||request.getResponsableId().isBlank()){
+      throw new ResponsableRequired("");
+    }
+    try {
+      keycloakAdminService.getUserById(request.getResponsableId());
     Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
     Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
     List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
@@ -359,8 +375,11 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
     }
 
-
     return  findById(id);
+    }
+    catch (RuntimeException e) {
+      throw new UserNotFound("",request.getResponsableId());
+    }
   }
 
 /*
