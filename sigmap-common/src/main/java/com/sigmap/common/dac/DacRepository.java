@@ -28,6 +28,11 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
 
   @Query("SELECT d FROM Dac d WHERE d.dacId = :dacId AND d.dacVer = :dacVer")
   Optional<Dac> findDacByDacIdAndDacVer(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);
+  
+  @Query("SELECT d FROM Dac d WHERE d.realisation.id = :realisationId AND d.realisation.version = :realisationVer AND d.isDeleted = false and d.status = 'PUBLIE'")
+  List<Dac> findPublishedDacsByRealisationIdAndVersion(
+      @Param("realisationId") Integer realisationId, 
+      @Param("realisationVer") Integer realisationVer);
 
 
   /**

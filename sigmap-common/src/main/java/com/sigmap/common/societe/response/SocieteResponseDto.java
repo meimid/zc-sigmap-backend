@@ -1,5 +1,6 @@
 package com.sigmap.common.societe.response;
 
+import com.sigmap.common.adresse.response.AdresseResponseDto;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.response.RefParamResponseDto;
@@ -15,6 +16,7 @@ public class SocieteResponseDto {
     private RefParamResponseDto categorieSoumissionnaire;
     private String nif;
     private Date dateNif;
-    private Integer numCnss;
+    private String numCnss;
     private SocieteStatus status;
+    private AdresseResponseDto address;
 }

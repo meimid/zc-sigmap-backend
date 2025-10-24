@@ -6,6 +6,7 @@ import com.sigmap.common.response.BaseEntityResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.Date;
 @Data
 public class UserSocieteResponse {
@@ -15,7 +16,7 @@ public class UserSocieteResponse {
     private String nom;
     private String prenom;
     private String numCin;
-    private Date dateDelivranceCin;
+    private LocalDate dateDelivranceCin;
     private String tel1;
     private String tel2;
     private String email;

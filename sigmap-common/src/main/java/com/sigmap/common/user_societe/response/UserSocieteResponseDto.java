@@ -4,6 +4,7 @@ import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.societe.response.SocieteResponseDto;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.Date;
 
 @Data
@@ -14,7 +15,7 @@ public class UserSocieteResponseDto {
     private String nom;
     private String prenom;
     private String numCin;
-    private Date dateDelivranceCin;
+    private LocalDate dateDelivranceCin;
     private String tel1;
     private String tel2;
     private String email;

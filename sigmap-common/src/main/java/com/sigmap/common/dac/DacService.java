@@ -47,4 +47,12 @@ public interface DacService {
     Integer findLatestVersionById(Integer ppmId);
 
     public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
+
+    /**
+     * Find all published DACs for a given realisation ID and version
+     * @param realisationId The ID of the realisation
+     * @param realisationVer The version of the realisation
+     * @return List of published DACs for the given realisation
+     */
+    List<Dac> findPublishedDacsByRealisationIdAndVersion(Integer realisationId, Integer realisationVer);
 }

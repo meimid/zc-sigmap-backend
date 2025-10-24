@@ -30,10 +30,10 @@ public class SocieteResponse {
     private RefParamResponseDto categorieSoumissionnaire;
     private String nif;
     private Date dateNif;
-    private Integer numCnss;
+    private String numCnss;
     private SocieteStatus status;
+    private AdresseResponseDto address ;
     private List<ActiviteResponseDto> activites = new ArrayList<>();
-    private List<AdresseResponseDto> societeAddresses = new ArrayList<>();
     private List<UserSocieteResponseDto> usersSociete = new ArrayList<>();
     private BaseEntityResponse metadata;
 }

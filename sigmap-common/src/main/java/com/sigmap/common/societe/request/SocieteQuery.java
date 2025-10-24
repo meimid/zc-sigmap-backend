@@ -15,7 +15,7 @@ public class SocieteQuery {
     private String search;
     private String nom;
     private String nif;
-    private Integer numCnss;
+    private String numCnss;
     private SocieteStatus status;
     private boolean deleted;
     /**

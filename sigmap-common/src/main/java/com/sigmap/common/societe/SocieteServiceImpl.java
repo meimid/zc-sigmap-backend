@@ -5,7 +5,8 @@ import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
-import com.sigmap.common.adresse.request.AdresseRequest;
+import com.sigmap.common.adresse.exceptions.AdresseNotFound;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
 import com.sigmap.common.ref_params.RefParam;
@@ -14,18 +15,17 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.*;
 
 import com.sigmap.common.societe.mappers.SocieteMapper;
-import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.SocieteAddressService;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteRepository;
 import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
-import com.sigmap.common.user_societe.exception.SocieteIdRequiredException;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
+import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,6 +34,8 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 public class SocieteServiceImpl implements SocieteService {
@@ -42,16 +44,16 @@ public class SocieteServiceImpl implements SocieteService {
     private final ActiviteService activiteService;
     private final UserSocieteRepository  userSocieteRepository;
     private final AdressService adressService;
-    private final SocieteAddressService societeAddressService;
     private final UserSocieteService userSocieteService;
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService
 
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService) {
+
+    ) {
         this.repository = repository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
         this.userSocieteRepository = userSocieteRepository;
         this.adressService = adressService;
-        this.societeAddressService = societeAddressService;
         this.userSocieteService = userSocieteService;
     }
 
@@ -65,6 +67,13 @@ public class SocieteServiceImpl implements SocieteService {
     public Page<Societe> findAll(Specification<Societe> societe, Pageable pageable) {
         return repository.findAll(societe, pageable);
     }
+
+    @Override
+    public Page<Societe> findAllNotEncours(Specification<Societe> societe, Pageable pageable) {
+        Specification<Societe> notEnCoursSpec = societe.and((root, query, cb) ->
+                cb.notEqual(root.get("status"), SocieteStatus.EN_COURS)
+        );
+        return repository.findAll(notEnCoursSpec, pageable);    }
 
     @Override
     public Page<Societe> findAllDeleted(Specification<Societe> societe, Pageable pageable) {
@@ -104,49 +113,52 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     @Transactional
-    public Societe create(SocieteGlobalRequest request) throws RefParamNotFound, SocieteNotFound {
+    public Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
 
 
-        Societe societe =  SocieteMapper.INSTANCE.map(request.getSocieteRequest());
+        Societe societe =  SocieteMapper.INSTANCE.map(request);
 
-        if (request.getSocieteRequest().getTypeId() == null) {
+        if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
         } else {
-            RefParam type = refParamService.findById(request.getSocieteRequest().getTypeId());
+            RefParam type = refParamService.findById(request.getTypeId());
             societe.setType(type);
         }
 
 
-        if (request.getSocieteRequest().getCategorieSoumissionnaireId() == null) {
+        if (request.getCategorieSoumissionnaireId() == null) {
             throw new CategorieSoumissionnaireIsRequiredException("Categorie soumissionnaire is required", societe.getId());
         } else {
-            RefParam cat = refParamService.findById(request.getSocieteRequest().getCategorieSoumissionnaireId());
+            RefParam cat = refParamService.findById(request.getCategorieSoumissionnaireId());
             societe.setCategorieSoumissionnaire(cat);
         }
 
-        if (request.getSocieteRequest().getActiviteIds() == null || request.getSocieteRequest().getActiviteIds().isEmpty()) {
+        if (request.getActiviteIds() == null || request.getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
-        if(request.getAddressRequest()==null){
+        if(request.getAdresseRequest()==null){
             throw new AddressRequiredException("");
         }
-        if(request.getAddressRequest().getAdresse()==null){
+        if(request.getUserResquest()==null){
+            throw new UserIdRequiredException("User is required");
+        }
+        if(request.getAdresseRequest().getAdresse()==null){
             throw new AddressRequiredException("");
 
         }
-        if( request.getAddressRequest().getCodePostal()==null) {
+        if( request.getAdresseRequest().getCodePostal()==null) {
             throw new CodePostalRequiredException ("");
         }
-        if(request.getAddressRequest().getPaysId()==null){
+        if(request.getAdresseRequest().getPaysId()==null){
             throw new PaysIsRequiredException("");
         }
-        if(request.getAddressRequest().getTel1()==null){
+        if(request.getAdresseRequest().getTel1()==null){
             throw new TelIsRequiredException ("");
         }
-        if(request.getAddressRequest().getEmail()==null||request.getUserSocieteRequest().getEmail()==null){
+        if(request.getAdresseRequest().getEmail()==null||request.getUserResquest().getEmail()==null){
             throw new EmailRequiredException ("");
         }
-        if(request.getUserSocieteRequest().getNom()==null){
+        if(request.getUserResquest().getFirstName()==null||request.getUserResquest().getLastName()==null){
             throw new NameIsRequiredException ("");
         }
 
@@ -160,30 +172,33 @@ public class SocieteServiceImpl implements SocieteService {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
         }*/
 
-        if (request.getUserSocieteRequest().getUserId() == null || request.getUserSocieteRequest().getUserId().isBlank()) {
+        if (request.getUserResquest().getId() == null || request.getUserResquest().getId().isBlank()) {
             throw new UserIdRequiredException();
         }
 
 
         societe.setStatus(SocieteStatus.EN_COURS);
 
-        getSizeList(request.getSocieteRequest().getActiviteIds());
-        for(Integer i : request.getSocieteRequest().getActiviteIds()){
+        getSizeList(request.getActiviteIds());
+        for(Integer i : request.getActiviteIds()){
             Activite  activite=activiteService.findById(i);
             societe.getActivites().add(activite);
         }
+        if(request.getAdresseRequest()!=null){
+            if(request.getAdresseRequest().getPaysId()==null){
+                throw new PaysIsRequiredException ("");
+            }
+            Adresse address=adressService.create(request.getAdresseRequest());
+            societe.setAddress(address);
+
+        }
         Societe savedSociete = save(societe);
 
-        Adresse address=adressService.create(request.getAddressRequest());
-        SocieteAddress societeAddress=new SocieteAddress();
-        societeAddress.setAddressId(address.getId());
-        societeAddress.setAddress(address);
-        societeAddress.setSocieteId(savedSociete.getId());
-        societeAddress.setType(savedSociete.getType());
-       SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
-        request.getUserSocieteRequest().setSocieteId(savedSociete.getId());
-        UserSociete savedUserSociete= userSocieteService.create(request.getUserSocieteRequest());
-        savedSociete.getSocieteAddresses().add(savedSocieteAdress);
+
+
+        UserSocieteRequest userSocieteRequest= mapFromRequest(request,savedSociete);
+
+        UserSociete savedUserSociete= userSocieteService.create(userSocieteRequest);
         savedSociete.getUsersSociete().add(savedUserSociete);
         return savedSociete;
 
@@ -191,6 +206,9 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound, SocieteNotFound {
+        if(request.getAdresseRequest()==null){
+            throw new AddressRequiredException("");
+        }
         Societe societe=findById(id);
         if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
@@ -235,7 +253,15 @@ public class SocieteServiceImpl implements SocieteService {
             newActivites.add(activite);
         }
         societe.setActivites(newActivites);
-
+        if(request.getAdresseRequest()!=null){
+            if(request.getAdresseRequest().getId()!=null&&request.getAdresseRequest().getId()!=societe.getAddress().getId()){
+                throw new AdresseNotFound("",request.getAdresseRequest().getId());
+            }
+            if(request.getAdresseRequest().getPaysId()==null){
+                throw new PaysIsRequiredException ("");
+            }
+            adressService.update(request.getAdresseRequest());
+        }
         Societe savedSociete= save(societe);
       return   findById(savedSociete.getId());
 
@@ -261,12 +287,17 @@ public class SocieteServiceImpl implements SocieteService {
         Specification<Societe> com = SocieteSpecifications.deleted(false).and(SocieteSpecifications.status(status));
         return repository.findAll(com, pageable);
     }
-
+    @Transactional
     @Override
     public Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound {
         Societe societe = findById(societeId);
         if(status != null) {
             societe.setStatus(status);
+        }
+        if(status.equals(SocieteStatus.VALIDEE)) {
+            UserSociete userSociete=userSocieteService.findByUserId(societe.getUsersSociete().get(0).getUserId());
+            userSociete.setStatus(ActiveStatus.ACTIF);
+            userSocieteRepository.save(userSociete);
         }
         return save(societe);
     }
@@ -291,4 +322,37 @@ public class SocieteServiceImpl implements SocieteService {
         }
         return size;
     }
+     UserSocieteRequest mapFromRequest(SocieteRequestInscription request,Societe savedSociete) {
+         UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
+         userSocieteRequest.setUserId(request.getUserResquest().getId());
+         userSocieteRequest.setSocieteId(savedSociete.getId());
+         if (request.getUserResquest().getEmail() != null) {
+             userSocieteRequest.setEmail(request.getUserResquest().getEmail());
+         }
+
+         if (request.getUserResquest().getLastName() != null) {
+             userSocieteRequest.setNom(request.getUserResquest().getLastName());
+         }
+
+         if (request.getUserResquest().getFirstName() != null) {
+             userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
+         }
+
+         if (request.getUserResquest().getCin() != null) {
+             userSocieteRequest.setNumCin(request.getUserResquest().getCin());
+         }
+
+         if (request.getUserResquest().getDateCIN() != null) {
+             userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
+         }
+
+         if (request.getUserResquest().getMobile() != null) {
+             userSocieteRequest.setTel1(request.getUserResquest().getMobile());
+         }
+
+         if (request.getUserResquest().getFixe() != null) {
+             userSocieteRequest.setTel2(request.getUserResquest().getFixe());
+         }
+         return userSocieteRequest;
+     }
 }
