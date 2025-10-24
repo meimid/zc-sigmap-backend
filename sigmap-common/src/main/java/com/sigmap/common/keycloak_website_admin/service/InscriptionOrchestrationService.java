@@ -51,10 +51,11 @@ public class InscriptionOrchestrationService {
             // 1️⃣ Créer utilisateur Keycloak en Pending
              userId = keycloakService.createPendingWebsiteUserWithSociete(request);
 
-            request.getUserResquest().setId(userId);
-            societeService.create(request);
-            if (userId != null) {
+       ;
 
+            if (userId != null) {
+                request.getUserResquest().setId(userId);
+                societeService.create(request);
                 logger.info("Utilisateur {} et société créés avec succès", request.getUserResquest().getUsername());
             } else {
                 throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");

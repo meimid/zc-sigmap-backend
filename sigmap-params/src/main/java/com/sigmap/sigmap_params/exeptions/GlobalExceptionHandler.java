@@ -50,10 +50,6 @@ import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.societe.exception.*;
-import com.sigmap.common.societe_address.exception.AddressIdRequiredException;
-import com.sigmap.common.societe_address.exception.SocieteAddressAlreadyExist;
-import com.sigmap.common.societe_address.exception.SocieteAdresseNotFound;
-import com.sigmap.common.societe_address.exception.TypeIdRequiredException;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.type_agrement.exception.OrganismeDeDeliveranceAgrementsRequired;
@@ -185,14 +181,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(SocieteNotFound.class)
     public ResponseEntity<ErrorResponse> societeNotFoundException(SocieteNotFound ex) {
         String message = messageSource.getMessage("societe.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
-
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(SocieteAdresseNotFound.class)
-    public ResponseEntity<ErrorResponse> societeAdresseNotFoundException(SocieteAdresseNotFound ex) {
-        String message = messageSource.getMessage("societeAdresse.notfound",new Object[] { ",", ex.getSocieteId(),ex.getAdresseId() } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
@@ -1130,30 +1118,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    // 🔹 Address ID required
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(AddressIdRequiredException.class)
-    public ResponseEntity<ErrorResponse> handleAddressIdRequired(AddressIdRequiredException ex) {
-        String message = messageSource.getMessage("address.id.required", null, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
 
-    // 🔹 Type ID required
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(TypeIdRequiredException.class)
-    public ResponseEntity<ErrorResponse> handleTypeIdRequired(TypeIdRequiredException ex) {
-        String message = messageSource.getMessage("type.id.required", null, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-    }
-    @ResponseStatus(HttpStatus.CONFLICT)
-    @ExceptionHandler(SocieteAddressAlreadyExist.class)
-    public ResponseEntity<ErrorResponse> handleSocieteAddressAlreadyExist(SocieteAddressAlreadyExist ex) {
-        String message = messageSource.getMessage("societe.address.already.exist", null, getLocal());
-        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
-    }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(AddressRequiredException.class)

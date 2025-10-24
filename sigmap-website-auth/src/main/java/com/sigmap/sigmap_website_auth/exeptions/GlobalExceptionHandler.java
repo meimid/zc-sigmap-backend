@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_website_auth.exeptions;
 
+import com.sigmap.common.activite.exception.ActiviteNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
@@ -99,5 +100,12 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
     return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
   }
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(ActiviteNotFound.class)
+  public ResponseEntity<ErrorResponse> ActiviteNotFoundException(ActiviteNotFound ex) {
+    String message = messageSource.getMessage("activite.notFound", new Object[]{ex.getId()}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
 
+  }
 }

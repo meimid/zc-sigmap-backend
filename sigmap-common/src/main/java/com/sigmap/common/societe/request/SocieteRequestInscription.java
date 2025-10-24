@@ -16,7 +16,7 @@ public class SocieteRequestInscription {
     private Integer categorieSoumissionnaireId;
     private String nif;
     private Date dateNif;
-    private Integer numCnss;
+    private String numCnss;
     private List<Integer> activiteIds=new ArrayList<>();
     private AdresseRequest adresseRequest;
     private UserResquest userResquest;

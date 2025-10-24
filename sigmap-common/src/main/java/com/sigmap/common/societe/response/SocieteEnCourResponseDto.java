@@ -25,7 +25,7 @@ public class SocieteEnCourResponseDto {
     private RefParamResponseDto categorieSoumissionnaire;
     private String nif;
     private Date dateNif;
-    private Integer numCnss;
+    private String numCnss;
     private SocieteStatus status;
     private  AdresseResponseDto address  ;
     private List<ActiviteResponseDto> activites = new ArrayList<>();

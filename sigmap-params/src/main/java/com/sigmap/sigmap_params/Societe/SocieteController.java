@@ -1,8 +1,5 @@
 package com.sigmap.sigmap_params.Societe;
 
-import com.sigmap.common.adresse.Adresse;
-import com.sigmap.common.adresse.mappers.AdresseMapper;
-import com.sigmap.common.adresse.response.AdresseResponseDto;
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.CompteBancaireService;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
@@ -16,26 +13,17 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.entity.SocieteStatus;
-import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
-import com.sigmap.common.societe.exception.SocieteHasAssociatedCompteBancaire;
-import com.sigmap.common.societe.exception.SocieteHasAssociatedSocieteAddress;
+
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.*;
 import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
-import com.sigmap.common.societe.response.SocieteResponseDto;
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.SocieteAddressService;
-import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
+import com.sigmap.common.societe.response.SocieteResponseDtoSoft;
 
-import com.sigmap.common.societe_address.response.AddressAndTypeResponse;
-import com.sigmap.common.societe_address.response.SocieteAddressResponse;
-import com.sigmap.common.societe_address.response.SocieteAddressResponseForGetWithSocieteId;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
@@ -46,17 +34,17 @@ import com.sigmap.common.societe_contact.SocieteContactService;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
+import com.sigmap.common.user_societe.UserSociete;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -69,18 +57,14 @@ public class SocieteController {
     private final Logger logger = LoggerFactory.getLogger(SocieteController.class);
     private final SocieteService societeService;
     private final  SocieteContactService societeContactService;
-    private final SocieteAddressService societeAddressService;
     private final CompteBancaireService  compteBancaireService;
     private final ContactService contactService;
-    private final InscriptionOrchestrationService inscriptionOrchestrationService;
 
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, SocieteAddressService societeAddressService, CompteBancaireService compteBancaireService, ContactService contactService, InscriptionOrchestrationService inscriptionOrchestrationService) {
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
-        this.societeAddressService = societeAddressService;
         this.compteBancaireService = compteBancaireService;
         this.contactService = contactService;
-        this.inscriptionOrchestrationService = inscriptionOrchestrationService;
     }
 
     /**
@@ -91,19 +75,19 @@ public class SocieteController {
      * @return a page of Societe
      */
     @GetMapping
-    public ResponseEntity<Page<SocieteResponseDto>> findAll(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAll(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAll(query.toSpecification(), pageable);
-         Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
-        return ResponseEntity.ok(compteBancaireResponses);
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
+        return ResponseEntity.ok(societeResponses);
     }
 
     @GetMapping("/not-en-cours")
-    public ResponseEntity<Page<SocieteResponseDto>> findAllNotEncours(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllNotEncours(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllNotEncours(query.toSpecification(), pageable);
-        Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
-        return ResponseEntity.ok(compteBancaireResponses);
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
+        return ResponseEntity.ok(societeResponses);
     }
 
     /**
@@ -114,11 +98,11 @@ public class SocieteController {
      * @return a page of deleted Societe
      */
     @GetMapping("/deleted")
-    public ResponseEntity<Page<SocieteResponseDto>> findAllDeleted(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllDeleted(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllDeleted(query.toSpecification(), pageable);
-        Page<SocieteResponseDto> compteBancaireResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
-        return ResponseEntity.ok(compteBancaireResponses);
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
+        return ResponseEntity.ok(societeResponses);
     }
 
     /**
@@ -128,9 +112,9 @@ public class SocieteController {
      * @return the Societe
      */
     @GetMapping("/{id}")
-    public ResponseEntity<SocieteResponse> findById(@PathVariable Integer id) throws SocieteNotFound {
+    public ResponseEntity<SocieteEnCourResponseDto> findById(@PathVariable Integer id) throws SocieteNotFound {
         Societe param = societeService.findById(id);
-        SocieteResponse response = SocieteMapper.INSTANCE.map(param);
+        SocieteEnCourResponseDto response = SocieteMapper.INSTANCE.toEnCourResponseDto(param);
         return ResponseEntity.ok(response);
     }
 
@@ -156,6 +140,7 @@ public class SocieteController {
     public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
+
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
@@ -174,34 +159,24 @@ public class SocieteController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/status/validee")
-    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusValidee(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllWithStatusValidee(
     SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.VALIDEE, pageable);
-        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
         return ResponseEntity.ok(societeResponses);
     }
     @GetMapping("/status/rejetee")
-    public ResponseEntity<Page<SocieteResponseDto>> findAllWithStatusRejetee(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllWithStatusRejetee(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.REJETEE, pageable);
-        Page<SocieteResponseDto> societeResponses = params.map(SocieteMapper.INSTANCE::toResponseDto);
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
         return ResponseEntity.ok(societeResponses);
     }
     @GetMapping("/status/en-cours")
-    public ResponseEntity<Page<SocieteEnCourResponseDto>> findAllWithStatusEnCours(
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllWithStatusEnCours(
             SocieteQuery query, Pageable pageable) {
         Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.EN_COURS, pageable);
-        Page<SocieteEnCourResponseDto> societeResponses = params.map(societe -> {
-            SocieteEnCourResponseDto dto = SocieteMapper.INSTANCE.toEnCourResponseDto(societe);
-
-            if (!societe.getSocieteAddresses().isEmpty()) {
-                dto.setAddress(AdresseMapper.INSTANCE
-                        .toDto(societe.getSocieteAddresses().get(0).getAddress()));
-            }
-
-            return dto;
-        });
-
+        Page<SocieteResponseDtoSoft> societeResponses = mapToSocieteResponseDtoSoftPage(params, pageable);
         return ResponseEntity.ok(societeResponses);
     }
 
@@ -333,29 +308,6 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
         return ResponseEntity.ok(contactResponses);
     }
 
-    //get list of societe adress by societe by societe id
-    @GetMapping("/{societeId}/societe_address")
-    public ResponseEntity<SocieteAddressResponseForGetWithSocieteId> findSocieteAddressBySocieteId(
-            @PathVariable Integer societeId) throws SocieteNotFound {
-
-        List<SocieteAddress> params = societeAddressService.findSocieteAddressBySocieteId(societeId);
-
-        List<AddressAndTypeResponse> content = params.stream()
-                .map(sa -> {
-                    AddressAndTypeResponse resp = new AddressAndTypeResponse();
-                    resp.setAddress(AdresseMapper.INSTANCE.toDto(sa.getAddress()));
-                    resp.setType(RefParamMapper.INSTANCE.mapToDto(sa.getType()));
-                    return resp;
-                })
-                .collect(Collectors.toList());
-
-        SocieteAddressResponseForGetWithSocieteId response = SocieteAddressResponseForGetWithSocieteId.builder()
-                .societe(SocieteMapper.INSTANCE.toResponseDto(params.get(0).getSociete()))
-                .content(content)
-                .build();
-
-        return ResponseEntity.ok(response);
-    }
 
     @PutMapping("/{societeId}/contact/{contactId}/societe-contact")
     public ResponseEntity<SocieteContactResponseDto> updateContactAndSocieteContact(@PathVariable Integer societeId,@PathVariable Integer contactId,@RequestBody ContactAndSocieteContactRequest request) throws SocieteContactNotFound, SocieteNotFound {
@@ -363,6 +315,36 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
         SocieteContactResponseDto response = SociteContactMapper.INSTANCE.mapToDto(param);
         return ResponseEntity.status(HttpStatus.OK).body(response);
 
+    }
+
+    private Page<SocieteResponseDtoSoft> mapToSocieteResponseDtoSoftPage(Page<Societe> societePage, Pageable pageable) {
+        List<SocieteResponseDtoSoft> dtoList = societePage.getContent().stream()
+                .map(this::mapToSocieteResponseDtoSoft)
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(dtoList, pageable, societePage.getTotalElements());
+    }
+    private SocieteResponseDtoSoft mapToSocieteResponseDtoSoft(Societe s) {
+        SocieteResponseDtoSoft dto = new SocieteResponseDtoSoft();
+        dto.setId(s.getId());
+        dto.setNom(s.getNom());
+        dto.setNif(s.getNif());
+
+        if (s.getAddress() != null ) {
+            dto.setEmail(s.getAddress().getEmail());
+        }
+
+        // ✅ Safe responsable extraction
+        s.getUsersSociete().stream()
+                .filter(UserSociete::getResponsable)
+                .findFirst()
+                .ifPresent(responsable -> {
+                    dto.setResponsableNom(responsable.getNom());
+                    dto.setResponsablePrenom(responsable.getPrenom());
+                    dto.setResponsableEmail(responsable.getEmail());
+                });
+
+        return dto;
     }
 
 }

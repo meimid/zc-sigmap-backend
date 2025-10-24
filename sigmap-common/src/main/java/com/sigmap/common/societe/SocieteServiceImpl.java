@@ -5,6 +5,7 @@ import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
@@ -14,11 +15,8 @@ import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.*;
 
 import com.sigmap.common.societe.mappers.SocieteMapper;
-import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.SocieteAddressService;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteRepository;
 import com.sigmap.common.user_societe.UserSocieteService;
@@ -46,9 +44,8 @@ public class SocieteServiceImpl implements SocieteService {
     private final ActiviteService activiteService;
     private final UserSocieteRepository  userSocieteRepository;
     private final AdressService adressService;
-    private final SocieteAddressService societeAddressService;
     private final UserSocieteService userSocieteService;
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, SocieteAddressService societeAddressService, UserSocieteService userSocieteService
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService
 
 
     ) {
@@ -57,7 +54,6 @@ public class SocieteServiceImpl implements SocieteService {
         this.activiteService = activiteService;
         this.userSocieteRepository = userSocieteRepository;
         this.adressService = adressService;
-        this.societeAddressService = societeAddressService;
         this.userSocieteService = userSocieteService;
     }
 
@@ -188,19 +184,21 @@ public class SocieteServiceImpl implements SocieteService {
             Activite  activite=activiteService.findById(i);
             societe.getActivites().add(activite);
         }
+        if(request.getAdresseRequest()!=null){
+            if(request.getAdresseRequest().getPaysId()==null){
+                throw new PaysIsRequiredException ("");
+            }
+            Adresse address=adressService.create(request.getAdresseRequest());
+            societe.setAddress(address);
+
+        }
         Societe savedSociete = save(societe);
 
-        Adresse address=adressService.create(request.getAdresseRequest());
-        SocieteAddress societeAddress=new SocieteAddress();
-        societeAddress.setAddressId(address.getId());
-        societeAddress.setAddress(address);
-        societeAddress.setSocieteId(savedSociete.getId());
-        societeAddress.setType(savedSociete.getType());
-        SocieteAddress savedSocieteAdress= societeAddressService.save(societeAddress);
+
+
         UserSocieteRequest userSocieteRequest= mapFromRequest(request,savedSociete);
 
         UserSociete savedUserSociete= userSocieteService.create(userSocieteRequest);
-        savedSociete.getSocieteAddresses().add(savedSocieteAdress);
         savedSociete.getUsersSociete().add(savedUserSociete);
         return savedSociete;
 
@@ -208,6 +206,9 @@ public class SocieteServiceImpl implements SocieteService {
 
     @Override
     public Societe update(Integer id,SocieteRequest request) throws RefParamNotFound, SocieteNotFound {
+        if(request.getAdresseRequest()==null){
+            throw new AddressRequiredException("");
+        }
         Societe societe=findById(id);
         if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
@@ -252,7 +253,15 @@ public class SocieteServiceImpl implements SocieteService {
             newActivites.add(activite);
         }
         societe.setActivites(newActivites);
-
+        if(request.getAdresseRequest()!=null){
+            if(request.getAdresseRequest().getId()!=null&&request.getAdresseRequest().getId()!=societe.getAddress().getId()){
+                throw new AdresseNotFound("",request.getAdresseRequest().getId());
+            }
+            if(request.getAdresseRequest().getPaysId()==null){
+                throw new PaysIsRequiredException ("");
+            }
+            adressService.update(request.getAdresseRequest());
+        }
         Societe savedSociete= save(societe);
       return   findById(savedSociete.getId());
 
