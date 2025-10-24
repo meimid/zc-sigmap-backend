@@ -11,6 +11,7 @@ public class SocieteResponseDtoSoft {
     private String responsableNom;
     private String responsablePrenom;
     private String responsableEmail;
+    private String pays;
 
 
 }

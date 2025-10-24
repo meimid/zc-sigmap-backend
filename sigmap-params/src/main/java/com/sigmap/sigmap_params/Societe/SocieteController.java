@@ -329,6 +329,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
         dto.setId(s.getId());
         dto.setNom(s.getNom());
         dto.setNif(s.getNif());
+        dto.setPays(s.getAddress().getPays().getDescription());
 
         if (s.getAddress() != null ) {
             dto.setEmail(s.getAddress().getEmail());
