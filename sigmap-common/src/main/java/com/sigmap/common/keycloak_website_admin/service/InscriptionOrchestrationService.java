@@ -55,7 +55,18 @@ public class InscriptionOrchestrationService {
 
             if (userId != null) {
                 request.getUserResquest().setId(userId);
-                societeService.create(request);
+                try {
+                    societeService.create(request);
+                }catch (RuntimeException e){
+                        try {
+                            keycloakService.deleteUser(userId);
+                            logger.warn("Rollback : utilisateur Keycloak {} supprimé suite à un échec de création de société", userId);
+                        } catch (Exception deleteEx) {
+                            logger.error("Impossible de supprimer l'utilisateur Keycloak {} lors du rollback : {}", userId, deleteEx.getMessage());
+
+                        }
+                        throw e;
+                }
                 logger.info("Utilisateur {} et société créés avec succès", request.getUserResquest().getUsername());
             } else {
                 throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");
@@ -66,6 +77,7 @@ public class InscriptionOrchestrationService {
             if (e.getStatusCode().value() == 409) {
                 throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
             } else {
+
                 throw new CreateUserFailed("");
             }
         }
