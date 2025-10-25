@@ -73,6 +73,9 @@ public class Constants {
   public static final String VAR_PERMANENT_COM_ID  = "permanentComId";
   public static final String VAR_SCS_COM_ID        = "scsComId";
 
+  public static final String PATH_ENTREPOT_GED_DAC_SOUMISSIONAIR="/SOUMISSIONAIR/"+ LocalDate.now().getYear();
+  public static final String PATH_ENTREPOT_GED_DAC="/SIGMAP-DEV/ARCHIVE/DAC/";
+
 
   private Constants() {}
 }
