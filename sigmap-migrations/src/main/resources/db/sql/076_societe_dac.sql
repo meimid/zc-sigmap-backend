@@ -7,7 +7,7 @@ CREATE TABLE societe_dac (
     societe_id INT NOT NULL,
     methode_paiement ENUM('EN_LIGNE', 'MANUEL') NOT NULL,
     justif_paiement_id INT NOT NULL,
-    status_paiement TINYINT(1),
+    status_paiement TINYINT(1) NULL,
     created_at datetime DEFAULT NULL NULL,
     created_by VARCHAR(100) NULL,
     updated_at datetime DEFAULT NULL NULL,
