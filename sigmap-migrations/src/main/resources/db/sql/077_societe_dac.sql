@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950270-12
+-- changeset sigmap:1757950273-12
 CREATE TABLE societe_dac (
     dac_id INT NOT NULL,
     dac_ver INT NOT NULL,
