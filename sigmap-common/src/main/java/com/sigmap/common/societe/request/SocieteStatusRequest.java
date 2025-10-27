@@ -11,6 +11,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class SocieteStatusRequest {
-    private SocieteStatus status;
+    private boolean approved;
 
 }
