@@ -17,4 +17,5 @@ public class CreateDacRequest {
     private Integer realisationVer;
     private Integer parentDacId;
     private boolean shortListing;
+    private Integer dynaDocsModelId;
 }

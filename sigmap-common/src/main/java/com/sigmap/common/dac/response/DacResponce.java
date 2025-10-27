@@ -1,6 +1,7 @@
 package com.sigmap.common.dac.response;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.dyna_docs_model.response.DynaDocsModelResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
@@ -34,5 +35,6 @@ public class DacResponce {
     private String processInstanceId;
     private Integer parentDacId;
     private boolean shortListing;
+    private DynaDocsModelResponse dynaDocsModel;
     private BaseEntityResponse metadata;
 }

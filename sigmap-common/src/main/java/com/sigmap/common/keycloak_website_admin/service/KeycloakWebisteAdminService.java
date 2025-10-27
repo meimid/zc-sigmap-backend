@@ -292,4 +292,20 @@ public class KeycloakWebisteAdminService {
         target.setCin(src.getCin());
         target.setDateCIN(src.getDateCIN());
     }
+    public void deleteUser(String userId) {
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
+        try {
+            HttpHeaders headers = createAuthHeaders();
+            restTemplate.exchange(url, HttpMethod.DELETE, new HttpEntity<>(headers), Void.class);
+            logger.info("Utilisateur Keycloak {} supprimé avec succès", userId);
+        } catch (HttpClientErrorException e) {
+            logger.error("Erreur lors de la suppression de l'utilisateur Keycloak {} : {}", userId, e.getMessage());
+            throw new RuntimeException("Échec de suppression de l'utilisateur Keycloak", e);
+        } catch (Exception e) {
+            logger.error("Erreur inattendue lors de la suppression de l'utilisateur Keycloak {} : {}", userId, e.getMessage());
+            throw new RuntimeException("Échec de suppression de l'utilisateur Keycloak", e);
+        }
+    }
+
+
 }
