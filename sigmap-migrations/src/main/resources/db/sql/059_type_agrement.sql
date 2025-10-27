@@ -1,11 +1,19 @@
 -- liquibase formatted sql
 
 -- changeset sigmap:1757950260-1
+DELETE FROM ref_param
+WHERE ref_type_id IN (
+    SELECT ref_type_id
+    FROM ref_type
+    WHERE ref_code = 'TYPE_AGREMENT'
+);
+
+-- changeset sigmap:1757950260-2
 
 DELETE FROM ref_type
 WHERE ref_code = 'TYPE_AGREMENT';
 
--- changeset sigmap:1757950260-2
+-- changeset sigmap:1757950260-3
 
 CREATE TABLE IF NOT EXISTS type_agrement (
     type_agrement_id INT AUTO_INCREMENT NOT NULL,
