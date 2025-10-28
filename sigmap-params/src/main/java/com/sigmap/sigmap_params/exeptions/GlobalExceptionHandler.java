@@ -31,6 +31,8 @@ import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
@@ -1212,6 +1214,57 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ActiveResponsableRequired.class)
+    public ResponseEntity<ErrorResponse> handleActiveResponsableRequired() {
+        String message = messageSource.getMessage(
+                "responsable.activeRequired",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(EmailOrUserNameAlreadyUsedForAnotherUser.class)
+    public ResponseEntity<ErrorResponse> handleEmailOrUserNameAlreadyUsedForAnotherUser() {
+        String message = messageSource.getMessage(
+                "email.username.already.used",
+                new Object[]{},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(CreateUserFailed.class)
+    public ResponseEntity<ErrorResponse> handleCreateUserFailed() {
+
+        String message = messageSource.getMessage(
+                "user.create.failed",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UserNotFoundInKeycloak.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundInKeycloak(UserNotFoundInKeycloak ex) {
+        String message = messageSource.getMessage(
+                "user.notFoundInKeycloak",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 }

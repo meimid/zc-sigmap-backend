@@ -1,5 +1,12 @@
 package com.sigmap.sigmap_params.user_societe;
 
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
+import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
+import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
+import com.sigmap.common.mail.MailService;
+import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -10,10 +17,14 @@ import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
 import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
+import com.sigmap.common.user_societe.request.CreateNewNonResponsableRequest;
 import com.sigmap.common.user_societe.request.UserSocieteQuery;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import com.sigmap.common.user_societe.response.*;
 
+import jakarta.mail.MessagingException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -21,17 +32,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/user-societe")
+@Slf4j
 public class UserSocieteController {
 
     private final UserSocieteService userSocieteService;
     private final SocieteService societeService;
-    public UserSocieteController(UserSocieteService userSocieteService, SocieteService societeService) {
+    private final KeycloakAdminService keycloakAdminService;
+    private final InscriptionOrchestrationService inscriptionOrchestrationService;
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
+
+    public UserSocieteController(UserSocieteService userSocieteService, SocieteService societeService, KeycloakAdminService keycloakAdminService, InscriptionOrchestrationService inscriptionOrchestrationService, KeycloakWebisteAdminService keycloakWebisteAdminService) {
         this.userSocieteService = userSocieteService;
         this.societeService = societeService;
+        this.keycloakAdminService = keycloakAdminService;
+        this.inscriptionOrchestrationService = inscriptionOrchestrationService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     /**
@@ -87,9 +107,13 @@ public class UserSocieteController {
      * @param request the UserSocieteRequest to create
      * @return the created UserSocieteResponse
      */
-    @PostMapping
-    public ResponseEntity<UserSocieteResponse> create(@RequestBody UserSocieteRequest request) throws SocieteNotFound {
-        UserSociete userSociete = userSocieteService.create(request);
+    @PostMapping("/responsable/{responsableId}")
+    public ResponseEntity<UserSocieteResponse> create(@PathVariable String responsableId,@RequestBody UserResquest request) throws SocieteNotFound, RefParamNotFound {
+
+        String userId = inscriptionOrchestrationService.createUserNotResponsableAndSociete(request,responsableId);
+
+
+        UserSociete userSociete=userSocieteService.findByUserId(userId);
         UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
         return ResponseEntity.ok(response);
     }

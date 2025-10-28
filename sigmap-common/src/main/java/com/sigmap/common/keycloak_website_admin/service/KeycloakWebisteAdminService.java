@@ -5,9 +5,6 @@ import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.societe.exception.SocieteNotFound;
-import com.sigmap.common.societe.request.SocieteRequestInscription;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.SecureRandom;
@@ -58,7 +54,7 @@ public class KeycloakWebisteAdminService {
      * @return ID Keycloak
      */
     @Transactional
-    public String createPendingWebsiteUserWithSociete(SocieteRequestInscription request)
+    public String createPendingWebsiteUserWithSociete(UserResquest request)
             {
 
         HttpHeaders headers = createAuthHeaders();
@@ -67,12 +63,12 @@ public class KeycloakWebisteAdminService {
 
             // 1️⃣ Création utilisateur Keycloak
 
-            userId = createUserInKeycloak(request.getUserResquest(), headers);
+            userId = createUserInKeycloak(request, headers);
 
 
         // 2️⃣ Ajout au groupe Pending
         addUserToGroup(userId, gpWebsitePending, headers);
-        logger.info("Utilisateur {} ajouté au groupe Pending", request.getUserResquest().getUsername());
+        logger.info("Utilisateur {} ajouté au groupe Pending", request.getUsername());
 
         // 3️⃣ Récupération infos Keycloak réelles
         UserWebsiteDTO userKeycloak = getUserDetails(userId, headers);
@@ -80,7 +76,7 @@ public class KeycloakWebisteAdminService {
             throw new RuntimeException("Impossible de récupérer les informations de l'utilisateur Keycloak");
 
         // 4️⃣ Injection des infos Keycloak dans le DTO
-        mapUserKeycloakToRequest(userKeycloak, request.getUserResquest());
+        mapUserKeycloakToRequest(userKeycloak, request);
 
         return userId;
         } catch (HttpClientErrorException e) {

@@ -35,6 +35,10 @@ import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.societe_contact.mapper.SociteContactMapper;
 import com.sigmap.common.user_societe.UserSociete;
+import com.sigmap.common.user_societe.UserSocieteService;
+import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
+import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
+import com.sigmap.common.user_societe.response.UserSocieteResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -50,6 +54,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
+
 @RestController
 @RequestMapping("/api/societe")
 
@@ -59,12 +64,14 @@ public class SocieteController {
     private final  SocieteContactService societeContactService;
     private final CompteBancaireService  compteBancaireService;
     private final ContactService contactService;
+    private final UserSocieteService userSocieteService;
 
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService) {
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService, UserSocieteService userSocieteService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
         this.compteBancaireService = compteBancaireService;
         this.contactService = contactService;
+        this.userSocieteService = userSocieteService;
     }
 
     /**
@@ -203,6 +210,21 @@ public class SocieteController {
         Societe Societe = societeService.updateStatus(id,request.getStatus());
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+
+    /**
+     * Find a Societe by userId only.
+     *
+     * @param userId the user ID
+     * @return the UserSocieteResponse
+     */
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<SocieteResponse> findByUserId(@PathVariable String userId)
+            throws UserSocieteNotFound {
+        UserSociete param = userSocieteService.findByUserId(userId);
+        SocieteResponse response=SocieteMapper.INSTANCE.map(param.getSociete());
+        return ResponseEntity.ok(response);
     }
 /**
  *
