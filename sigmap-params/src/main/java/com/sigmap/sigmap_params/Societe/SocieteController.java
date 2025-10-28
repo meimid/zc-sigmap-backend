@@ -207,7 +207,7 @@ public class SocieteController {
 
     @PutMapping("/validate/{id}")
     public ResponseEntity<SocieteResponse> updateStatus(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
-        Societe Societe = societeService.updateStatus(id,request.getStatus());
+        Societe Societe = societeService.updateStatus(id,request.isApproved() ? SocieteStatus.VALIDEE : SocieteStatus.REJETEE);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }

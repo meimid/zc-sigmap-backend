@@ -13,6 +13,7 @@ COPY sigmap-paa ./sigmap-paa
 COPY sigmap-auth ./sigmap-auth
 COPY sigmap-dac ./sigmap-dac
 COPY sigmap-webmaster ./sigmap-webmaster
+COPY sigmap-website-auth ./sigmap-website-auth
 
 COPY pom.xml .
 
@@ -22,6 +23,6 @@ FROM eclipse-temurin:17-jdk-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/sigmap-auth/target/sigmap-auth*.jar /app.jar
+COPY --from=builder /app/sigmap-website-auth/target/sigmap-website-auth*.jar /app.jar
 
 ENTRYPOINT ["java","-jar","/app.jar"]

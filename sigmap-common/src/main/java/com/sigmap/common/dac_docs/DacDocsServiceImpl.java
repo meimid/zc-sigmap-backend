@@ -629,6 +629,12 @@ public class DacDocsServiceImpl implements DacDocsService{
         newDac.setTypeMarche(existingDac.getTypeMarche());
         newDac.setStatus(existingDac.getStatus());
         newDac.setReference(existingDac.getReference());
+        newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
+        newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
+        newDac.setPayant(existingDac.isPayant());
+        newDac.setShortListing(existingDac.isShortListing());
+        newDac.setParentDacId(existingDac.getParentDacId());
+        newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
         newDac = dacRepository.save(newDac);
 
         // 3- Clone previous dac_docs snapshot to the new version
@@ -922,6 +928,12 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setTypeMarche(existingDac.getTypeMarche());
                 newDac.setStatus(existingDac.getStatus());
                 newDac.setReference(existingDac.getReference());
+                newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
+                newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
+                newDac.setPayant(existingDac.isPayant());
+                newDac.setShortListing(existingDac.isShortListing());
+                newDac.setParentDacId(existingDac.getParentDacId());
+                newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
 
                 // Clone previous dac_docs snapshot to the new version

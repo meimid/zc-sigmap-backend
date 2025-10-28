@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -36,6 +37,14 @@ public class DynaDocsModelController {
         Specification<DynaDocsModel> specification = Specification.where(DynaDocsModelSpecifications.deleted(false));
         Page<DynaDocsModel> result = dynaDocsModelService.findAll(specification, pageable);
         Page<DynaDocsModelResponse> response = result.map(DynaDocsModelMapper.INSTANCE::map);
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/list")
+    public ResponseEntity<List<DynaDocsModelResponse>> getAllDynaDocsModels() {
+        log.debug("Récupération de tous les modèles de documents dynamiques");
+        // Créer une spécification pour les éléments non supprimés
+        List<DynaDocsModel> result = dynaDocsModelService.findAll();
+        List<DynaDocsModelResponse> response = result.stream().map(DynaDocsModelMapper.INSTANCE::map).toList();
         return ResponseEntity.ok(response);
     }
 

@@ -21,6 +21,9 @@ import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
+import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
@@ -91,6 +94,7 @@ public class DacServiceImpl implements DacService {
     private final AlfrescoService alfrescoService;
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
     private final DacPrixRepository dacPrixRepository;
+    private final DynaDocsModelRepository dynaDocsModelRepository;
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
@@ -671,10 +675,12 @@ public class DacServiceImpl implements DacService {
         if (typeMarche == null) {
             throw new IllegalArgumentException("Type marche not found");
         }
-        ModeDePassationSelection modePassation = null;
+        ModeDePassationSelection modePassation;
         if (modePassationId != null) {
             modePassation = modeDePassationSelectionRepository.findById(modePassationId)
                     .orElseThrow(()-> new ModeDePassationSelectionNotFound("",modePassationId));
+        } else {
+            modePassation = null;
         }
 
         // AAO validation: ensure at least one active AAO DynaDocs exists for this typeMarche and modePassation
@@ -682,6 +688,12 @@ public class DacServiceImpl implements DacService {
         // Generate DAC reference
         String nom_ac = ppm.getAc().getNom();
         Integer sequenceNumber = dacRepository.findMaxDacNumber() + 1;
+
+        // get DynaDocModel by dynaDocsModelId from request
+        Optional <DynaDocsModel> dynaDocModel = dynaDocsModelRepository.findById(request.getDynaDocsModelId());
+        if(dynaDocModel.isEmpty()) {
+            throw new IllegalArgumentException("Dyna Doc Model is required");
+        }
 
         // Create DAC
         Dac dac = new Dac();
@@ -695,13 +707,16 @@ public class DacServiceImpl implements DacService {
         dac.setStatus(ProcessStatus.BROUILLON);
         dac.setParentDacId(request.getParentDacId());
         dac.setShortListing(request.isShortListing());
+        dynaDocModel.ifPresent(dac::setDynaDocsModel);
         Dac savedCdac = dacRepository.save(dac);
 
         // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche
-        List<DynaDocs> latestDocs = modePassation != null
-            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId())
-            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
-        for (DynaDocs dd : latestDocs) {
+       // List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId(), dac.getDynaDocsModel().getDynaDocsModelId());
+
+        // get all dyna docs with last version
+
+        List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarche.getId(), modePassation.getId(), dac.getDynaDocsModel().getDynaDocsModelId());
+        for (DynaDocs dd : latestDocsFiltred) {
             List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
             if (fields.isEmpty()) {
                 // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
@@ -828,14 +843,17 @@ public class DacServiceImpl implements DacService {
         java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
         java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
         if (noSnapshot) {
-            // New DAC without snapshot: return latest docs for its typeMarche (do not persist)
+            // New DAC without snapshot: return latest docs for its typeMarche, modePassation and modelId (do not persist)
             Integer typeMarcheIdForDac = dac.getTypeMarche().getId();
             Integer modePassationIdForDac = dac.getModePassation() != null ? dac.getModePassation().getId() : null;
-            List<DynaDocs> latestByCategoryAndModePassation = modePassationIdForDac != null
-                ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac)
-                : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForDac);
+            Integer modelId = dac.getDynaDocsModel().getDynaDocsModelId() != null ? dac.getDynaDocsModel().getDynaDocsModelId() : null;
+            if(typeMarcheIdForDac == null || modePassationIdForDac == null || modelId == null) {
+                throw new RuntimeException("return latest docs for its typeMarche, modePassation and modelId");
+            }
+           // List<DynaDocs> latestByCategoryAndModePassationAndModel =  dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac,modelId);
 
-            for (DynaDocs dd : latestByCategoryAndModePassation) {
+            List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForDac, modePassationIdForDac,modelId);
+            for (DynaDocs dd : latestDocsFiltred) {
                 String key = dd.getId() + ":" + dd.getVersion();
                 if (!docPairs.containsKey(key)) {
                     docPairs.put(key, new int[]{dd.getId(), dd.getVersion()});
@@ -930,6 +948,9 @@ public class DacServiceImpl implements DacService {
         newDac.setDateLimiteSoumission(base.getDateLimiteSoumission());
         newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
         newDac.setPayant(base.isPayant());
+        newDac.setShortListing(base.isShortListing());
+        newDac.setParentDacId(base.getParentDacId());
+        newDac.setDynaDocsModel(base.getDynaDocsModel());
         // Add other fields as needed...
         return newDac;
     }
@@ -967,13 +988,17 @@ public class DacServiceImpl implements DacService {
         newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
-        // Load latest active DynaDocs for DAC category
+        // Load latest active DynaDocs for DAC with typeMarche, modePassation and modelId
         Integer typeMarcheIdForNew = newDac.getTypeMarche().getId();
         Integer modePassationIdForNew = newDac.getModePassation() != null ? newDac.getModePassation().getId() : null;
-        List<DynaDocs> latestDocs = modePassationIdForNew != null
-            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew)
-            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForNew);
+        Integer modelIdForNew = newDac.getDynaDocsModel().getDynaDocsModelId();
+        if(typeMarcheIdForNew==null || modePassationIdForNew==null || modelIdForNew==null){
+            throw new RuntimeException("could not load latest active DynaDocs for DAC with typeMarche, modePassation and modelId ");
+        }
+        //List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
+        // get all dyna docs with last version
+        List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
@@ -1132,6 +1157,24 @@ public class DacServiceImpl implements DacService {
 
         // Return the assembled response for the new version using snapshot assembly
         return findByDacIdAndVer(newDac.getDacId(), newDac.getDacVer());
+    }
+
+    private List<DynaDocs> getAllDynaDocsWithTypeMarchRealisationModelIds(Integer typeMarche,Integer ModePassationId, Integer modelId) {
+
+        // get all dyna docs with last version
+        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLast();
+
+        // test parametres not null before
+        if (typeMarche ==null || ModePassationId == null || modelId == null) {
+            throw new IllegalArgumentException("All fields (typeMarcheId, modePassationId, dynaDocsModelId) are required");
+        }
+        List<DynaDocs> latestDocsFiltred = latestDocs.stream()
+                .filter(d -> d.getTypeMarche().getId().equals(typeMarche)
+                        && d.getModePassation().getId().equals(ModePassationId) &&
+                        d.getDynaDocsModel().getDynaDocsModelId().equals(modelId))
+                .toList();
+        log.debug("------------{}",latestDocsFiltred);
+        return latestDocsFiltred;
     }
 
     //Update if exists or insert a system field if it doesnt exist

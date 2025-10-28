@@ -1,7 +1,7 @@
 
 -- liquibase formatted sql
 
--- changeset sigmap:1757950270-3
+-- changeset sigmap:1757950271-1
 CREATE TABLE IF NOT EXISTS dac_prix (
     dac_id INT NOT NULL,
     dac_ver INT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS dac_prix (
 
 -- liquibase formatted sql
 
--- changeset sigmap:1757950270-4
+-- changeset sigmap:1757950271-2
 
 ALTER TABLE dac_prix
     ADD COLUMN created_at datetime DEFAULT NULL NULL,
