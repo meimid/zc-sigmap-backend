@@ -4,13 +4,17 @@ package com.sigmap.sigmap_website_auth.societe;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteService;
+import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.response.UserSocieteResponse;
 
+import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
 
 @RestController
@@ -54,13 +59,38 @@ public class SoumissionnaireInscriptionController {
     }
     /***  Inscription d’un utilisateur website (Pending) ***/
     @PutMapping
-    public ResponseEntity<UserSocieteResponse> updateWebsiteUserWithSociete(@PathVariable Integer societeId,@RequestBody SocieteRequestInscription request,@AuthenticationPrincipal Jwt jwt) throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<UserSocieteResponse> updateWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request,@AuthenticationPrincipal Jwt jwt) throws RefParamNotFound, SocieteNotFound {
         String responsableId = jwt.getSubject();
-        request.getUserResquest().setId(responsableId);
-        String userId = inscriptionOrchestrationService.updateUserAndSociete(societeId,request);
-        UserSociete userSociete=userSocieteService.findByUserId(userId);
-        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
-        log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
+        UserSociete param =inscriptionOrchestrationService.updateUserWithSociete(request,responsableId);
+        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Find a UserSociete by userId only.
+     *
+     * @return the UserSocieteResponse
+     */
+    @GetMapping
+    public ResponseEntity<UserSocieteResponse> findByUserId(@AuthenticationPrincipal Jwt jwt)
+            throws UserSocieteNotFound {
+        String userId = jwt.getSubject();
+
+        UserSociete param = userSocieteService.findByUserId(userId);
+        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/users")
+    public ResponseEntity<List<UserSocieteResponseDto>> findUsersListByUserId(@AuthenticationPrincipal Jwt jwt)
+            throws UserSocieteNotFound {
+        String userId = jwt.getSubject();
+
+        UserSociete param = userSocieteService.findByUserId(userId);
+        List<UserSociete> list = userSocieteService.findBySocieteId(param.getSocieteId());
+        List<UserSocieteResponseDto> responses = list.stream().filter(u->!u.getResponsable())
+                .map(UserSocieteMapper.INSTANCE::toDto)
+                .toList();
+        return ResponseEntity.ok(responses);
     }
 }

@@ -236,15 +236,15 @@ public class SocieteServiceImpl implements SocieteService {
         if (request.getActiviteIds() == null || request.getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
-       /* if (request.getNif() == null) {
+       if (request.getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }*/
+        }
         /*if (request.getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
         }*/
-       /* if (request.getNumCnss() == null) {
+        if (request.getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }*/
+        }
 
       /*  if(request.getStatus() != null) {
             societe.setStatus(request.getStatus());
@@ -252,6 +252,18 @@ public class SocieteServiceImpl implements SocieteService {
         else {
             societe.setStatus(SocieteStatus.EN_COURS);
         }*/
+
+        if (request.getNom() != null)
+            societe.setNom(request.getNom());
+
+        if (request.getNif() != null)
+            societe.setNif(request.getNif());
+
+        if (request.getNumCnss() != null)
+            societe.setNumCnss(request.getNumCnss());
+
+        if (request.getDateNif() != null)
+            societe.setDateNif(request.getDateNif());
 
         getSizeList(request.getActiviteIds());
         List<Activite> newActivites = new ArrayList<>();

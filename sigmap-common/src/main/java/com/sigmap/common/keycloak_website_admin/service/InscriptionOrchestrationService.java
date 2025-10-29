@@ -184,34 +184,103 @@ public class InscriptionOrchestrationService {
      */
     @Transactional
     public String updateUserAndSociete(Integer societeId,SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {societeService.findById(societeId);
-       societeService.findById(societeId);
+      Societe societe= societeService.findById(societeId);
        UserSociete userSociete=userSocieteService.findById(request.getUserResquest().getId(),societeId);
        if(!userSociete.getResponsable()||userSociete.getStatus().equals(ActiveStatus.NON_ACTIF)){
           throw new ResponsableRequired("");
        }
-        SocieteRequest societeRequest = new SocieteRequest();
-       societeRequest.setTypeId(request.getTypeId());
-       societeRequest.setNom(request.getNom());
-       societeRequest.setNif(request.getNif());
-       societeRequest.setNumCnss(request.getNumCnss());
-       societeRequest.setDateNif(request.getDateNif());
-       societeRequest.setActiviteIds(request.getActiviteIds());
-       societeRequest.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
-       societeRequest.setAdresseRequest(request.getAdresseRequest());
-     Societe societe=  societeService.update(societeId,societeRequest);
-        UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
-        userSocieteRequest.setSocieteId(societeId);
-        userSocieteRequest.setUserId(request.getUserResquest().getId());
-        userSocieteRequest.setNom(request.getUserResquest().getLastName());
-        userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
-        userSocieteRequest.setEmail(request.getUserResquest().getEmail());
-        userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
-        userSocieteRequest.setTel1(request.getUserResquest().getMobile());
-        userSocieteRequest.setTel2(request.getUserResquest().getFixe());
-        userSocieteRequest.setEmail(request.getUserResquest().getCin());
-        userSociete.setSociete(societe);
+        SocieteRequest societeRequest = mapSocieteRequestForUpdate(request, societe);
+         societeService.update(societeId, societeRequest);
+        UserSocieteRequest userSocieteRequest = mapUserSocieteRequestForUpdate(societeId, request, userSociete);
         userSociete= userSocieteService.update(request.getUserResquest().getId(),societeId,userSocieteRequest);
         return userSociete.getUserId();
 
     }
+
+    public SocieteRequest mapSocieteRequestForUpdate(SocieteRequestInscription request, Societe societe) {
+        SocieteRequest societeRequest = new SocieteRequest();
+
+        if (request != null) {
+            if (request.getTypeId() != null)
+                societeRequest.setTypeId(request.getTypeId());
+
+            if (request.getNom() != null)
+                societeRequest.setNom(request.getNom());
+
+            if (request.getActiviteIds() != null)
+                societeRequest.setActiviteIds(request.getActiviteIds());
+
+            if (request.getCategorieSoumissionnaireId() != null)
+                societeRequest.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
+
+            if (request.getAdresseRequest() != null)
+                societeRequest.setAdresseRequest(request.getAdresseRequest());
+        }
+
+        if (societe != null) {
+            if (societe.getNif() != null)
+                societeRequest.setNif(societe.getNif());
+
+            if (societe.getNumCnss() != null)
+                societeRequest.setNumCnss(societe.getNumCnss());
+
+            if (societe.getDateNif() != null)
+                societeRequest.setDateNif(societe.getDateNif());
+        }
+
+        return societeRequest;
+    }
+
+    public UserSocieteRequest mapUserSocieteRequestForUpdate(Integer societeId,
+                                                             SocieteRequestInscription request,
+                                                             UserSociete userSociete) {
+        UserSocieteRequest userSocieteRequest = new UserSocieteRequest();
+
+        userSocieteRequest.setSocieteId(societeId);
+
+        if (request != null && request.getUserResquest() != null) {
+            var userReq = request.getUserResquest();
+
+            if (userReq.getId() != null)
+                userSocieteRequest.setUserId(userReq.getId());
+
+            if (userReq.getLastName() != null)
+                userSocieteRequest.setNom(userReq.getLastName());
+
+            if (userReq.getFirstName() != null)
+                userSocieteRequest.setPrenom(userReq.getFirstName());
+
+            if (userSociete != null && userSociete.getEmail() != null)
+                userSocieteRequest.setEmail(userSociete.getEmail());
+
+            if (userReq.getDateCIN() != null)
+                userSocieteRequest.setDateDelivranceCin(userReq.getDateCIN());
+
+            if (userReq.getMobile() != null)
+                userSocieteRequest.setTel1(userReq.getMobile());
+
+            if (userReq.getFixe() != null)
+                userSocieteRequest.setTel2(userReq.getFixe());
+
+            if (userReq.getCin() != null)
+                userSocieteRequest.setNumCin(userReq.getCin());
+        }
+
+        return userSocieteRequest;
+    }
+
+    public UserSociete updateUserWithSociete(SocieteRequestInscription request, String responsableId) throws RefParamNotFound {
+
+        request.getUserResquest().setId(responsableId);
+        Integer societeId=userSocieteService.findByUserId(responsableId).getSocieteId();
+        String userId = updateUserAndSociete(societeId,request);
+        UserSociete param = userSocieteService.findByUserId(userId);
+        // get societe by id from param.getSocieteId() because type fetch lazy (chargement à la demande)
+        Societe societe=societeService.findById(param.getSocieteId());
+        param.setSociete(societe);
+        return param;
+
+    }
+
+
 }
