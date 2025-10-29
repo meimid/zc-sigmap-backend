@@ -46,9 +46,14 @@ public class KeycloakAdminService {
     @Value("${keycloak-admin.realm}")
     private String realm;
 
-    @Value("${keycloak-admin.common-backend-client-id}")
+    @Value("${keycloak.common-backend-client-id}")
     private String commonClientId;
 
+    @Value("${keycloak.client-id}")
+    private String clientId;
+
+    @Value("${keycloak-admin.groupes.backend-users}")
+    private String gpBackendUsers;
     @Autowired
     private AcRepository acRepository;
     @Autowired
@@ -279,7 +284,8 @@ public class KeycloakAdminService {
 
 
     private List<String> fetchRealmRolesForUserWithDescriptions(String userId, HttpEntity<Void> entity) {
-        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId + "/role-mappings/realm";
+        String url = String.format("%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId));
         try {
             ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
             List<Map<String, Object>> roles = response.getBody();
@@ -412,6 +418,8 @@ public class KeycloakAdminService {
         }
 
         String userId = extractUserIdFromLocation(location);
+        addUserToGroup(userId, gpBackendUsers, headers);
+
 
         //set update password for admin methode that return a generic password
         String genericPassword = updatePasswordForAdmin(userId);
@@ -625,7 +633,10 @@ public class KeycloakAdminService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         // Récupération des rôles actuels
-        String getRolesUrl = String.format("%s/admin/realms/%s/users/%s/role-mappings/realm", keycloakBaseUrl, realm, userId);
+        String getRolesUrl = String.format(
+                "%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId)
+        );
         ResponseEntity<List> rolesResp = restTemplate.exchange(getRolesUrl, HttpMethod.GET, new HttpEntity<>(headers), List.class);
         List<Map<String, Object>> existingRoles = rolesResp.getBody();
 
@@ -667,7 +678,10 @@ public class KeycloakAdminService {
         if (!toAdd.isEmpty()) {
             List<Map<String, Object>> rolesToAdd = new ArrayList<>();
             for (String roleName : toAdd) {
-                String roleUrl = String.format("%s/admin/realms/%s/roles/%s", keycloakBaseUrl, realm, roleName);
+                String roleUrl = String.format(
+                        "%s/admin/realms/%s/clients/%s/roles/%s",
+                        keycloakBaseUrl, realm, getClientUuid(commonClientId), roleName
+                );
                 ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
                 rolesToAdd.add(roleResp.getBody());
             }
@@ -737,13 +751,17 @@ public class KeycloakAdminService {
         List<Map<String, Object>> rolesToAssign = new ArrayList<>();
         for (String roleName : roleNames) {
             // Get full role info
-            String roleUrl = String.format("%s/admin/realms/%s/roles/%s", keycloakBaseUrl, realm, roleName);
-            ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            String roleUrl = String.format(
+                    "%s/admin/realms/%s/clients/%s/roles/%s",
+                    keycloakBaseUrl, realm, getClientUuid(commonClientId), roleName
+            );            ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
             rolesToAssign.add(roleResp.getBody());
         }
 
-        String assignUrl = String.format("%s/admin/realms/%s/users/%s/role-mappings/realm", keycloakBaseUrl, realm, userId);
-        HttpEntity<List<Map<String, Object>>> assignEntity = new HttpEntity<>(rolesToAssign, headers);
+        String assignUrl = String.format(
+                "%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId)
+        );        HttpEntity<List<Map<String, Object>>> assignEntity = new HttpEntity<>(rolesToAssign, headers);
         restTemplate.exchange(assignUrl, HttpMethod.POST, assignEntity, Void.class);
     }
 
@@ -769,5 +787,22 @@ public class KeycloakAdminService {
                 .collect(Collectors.toList());
 
         return users;
+    }
+
+    private void addUserToGroup(String userId, String groupName, HttpHeaders headers) {
+        String groupId = getGroupIdByName(groupName, headers);
+        if (groupId == null) return;
+        String url = String.format("%s/admin/realms/%s/users/%s/groups/%s", keycloakBaseUrl, realm, userId, groupId);
+        restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(headers), Void.class);
+    }
+    private String getGroupIdByName(String groupName, HttpHeaders headers) {
+        String url = String.format("%s/admin/realms/%s/groups", keycloakBaseUrl, realm);
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
+        List<Map<String, Object>> groups = response.getBody();
+        if (groups == null) return null;
+        return groups.stream()
+                .filter(g -> groupName.equals(g.get("name")))
+                .map(g -> (String) g.get("id"))
+                .findFirst().orElse(null);
     }
 }
