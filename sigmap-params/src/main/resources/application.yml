@@ -18,7 +18,7 @@ spring:
   application:
     name: Sigmap PARAMS
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 
@@ -79,6 +79,7 @@ cors:
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+  common-backend-client-id: ${KEYCLOAK_COMMON_BACKEND_CLIENT_ID:backend-common}
 
 
 keycloak-admin:
@@ -91,7 +92,6 @@ keycloak-admin:
     website-active: ${KEYCLOAK_GROUPES_WS_ACTIVE:SIGMAP-WEBSITE}
     website-pending: ${KEYCLOAK_GROUPES_WS_PENDING:SIGMAP-PENDING-WEBSITE}
     backend-users: ${KEYCLOAK_GROUPES_BACK_USERS:SIGMAP-BACKOFFICE}
-  common-backend-client-id: ${KEYCLOAK_COMMON_BACKEND_CLIENT_ID:backend-common}
 
 alfresco:
   url: ${ALFRESCO_URL:http://sigmap-alfresco.zedneycreative.com/alfresco}

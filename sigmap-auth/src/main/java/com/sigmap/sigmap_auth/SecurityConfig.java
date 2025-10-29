@@ -1,6 +1,9 @@
 package com.sigmap.sigmap_auth;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -76,7 +79,16 @@ public class SecurityConfig {
    */
   @Bean
   public KeycloakJwtConverter jwtAuthenticationConverter(Environment env) {
-    String clientId = env.getProperty("keycloak.client-id");
-    return new KeycloakJwtConverter(clientId);
+      // Lis les propriétés individuellement
+      String mainClientId = env.getProperty("keycloak.client-id", "");
+      String commonClientId = env.getProperty("keycloak.common-backend-client-id", "");
+
+      // Fusionne dans une seule liste
+      List<String> clientIds = Arrays.asList(mainClientId, commonClientId).stream()
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .collect(Collectors.toList());
+
+      return new KeycloakJwtConverter(clientIds);
   }
 }
