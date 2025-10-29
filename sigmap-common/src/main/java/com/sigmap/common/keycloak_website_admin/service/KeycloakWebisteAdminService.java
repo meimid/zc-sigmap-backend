@@ -251,7 +251,7 @@ public class KeycloakWebisteAdminService {
         return sb.toString();
     }
 
-     UserWebsiteDTO getUserDetails(String userId, HttpHeaders headers) {
+    public UserWebsiteDTO getUserDetails(String userId, HttpHeaders headers) {
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
         ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
         Map<String, Object> map = response.getBody();

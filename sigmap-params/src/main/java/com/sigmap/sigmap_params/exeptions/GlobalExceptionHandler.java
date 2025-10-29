@@ -1278,6 +1278,46 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNifAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNifAlreadyRelatedToOtherSociete(SocieteNifAlreadyRelatedToOtherSociete ex) {
+        String message = messageSource.getMessage(
+                "societe.nifAlreadyExists",
+                new Object[]{ex.getNif()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNumCnssAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNumCnssAlreadyRelatedToOtherSociete(
+            SocieteNumCnssAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.numCnssAlreadyExists",
+                new Object[]{ex.getNumCnss()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteEmailAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteEmailAlreadyRelatedToOtherSociete(
+            SocieteEmailAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.emailAlreadyExists",
+                new Object[]{ex.getEmail()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 
 }
 

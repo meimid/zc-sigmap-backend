@@ -28,7 +28,6 @@ public class SocieteQuery {
      * not null or blank.
      * <li>{@link SocieteSpecifications#nom(String)} if the nom property is not
      * null or blank.
-     * <li>{@link SocieteSpecifications#nni(String)} if the nni
      * property is not null or blank.
      * property is not null or blank.
      * <li>{@link SocieteSpecifications#deleted(boolean)} if the deleted property is

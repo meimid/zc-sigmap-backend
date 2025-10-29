@@ -61,12 +61,7 @@ public class SocieteSpecifications {
             return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
         };
     }
-    /** nni. */
-    public static Specification<Societe> nni(String nni) {
-        return (root, query, criteriaBuilder) -> {
-            return criteriaBuilder.like(root.get("nni"), "%" + nni + "%");
-        };
-    }
+
     /** categorieSoumissionnaireId. */
     public static Specification<Societe> categorieSoumissionnaireId(String categorieSoumissionnaireId) {
         return (root, query, criteriaBuilder) -> {
@@ -123,5 +118,10 @@ public class SocieteSpecifications {
             return cb.equal(activiteJoin.get("id"), activiteId);
         };
     }
-
+    public static Specification<Societe> emailAddress(String email) {
+        return (root, query, cb) -> {
+            Join<Societe, Adresse> adresseJoin = root.join("address", JoinType.LEFT);
+            return cb.like(cb.lower(adresseJoin.get("email")), "%" + email.toLowerCase() + "%");
+        };
+    }
 }

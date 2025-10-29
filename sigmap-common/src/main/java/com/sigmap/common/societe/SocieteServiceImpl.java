@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -122,6 +123,24 @@ public class SocieteServiceImpl implements SocieteService {
     @Override
     @Transactional
     public Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
+
+        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false));
+         if(findOne(nifSpecification).isPresent()) {
+             throw new SocieteNifAlreadyRelatedToOtherSociete("",request.getNif());
+         }
+
+        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false));
+
+        if(findOne(cnssSpecification).isPresent()) {
+            throw new SocieteNumCnssAlreadyRelatedToOtherSociete("",request.getNumCnss());
+        }
+        Specification<Societe> emailSpecification =
+                SocieteSpecifications.emailAddress(request.getAdresseRequest().getEmail())
+                        .and(SocieteSpecifications.deleted(false));
+
+        if (findOne(emailSpecification).isPresent()) {
+            throw new SocieteEmailAlreadyRelatedToOtherSociete("",request.getAdresseRequest().getEmail());
+        }
 
 
         Societe societe =  SocieteMapper.INSTANCE.map(request);
@@ -218,6 +237,24 @@ public class SocieteServiceImpl implements SocieteService {
             throw new AddressRequiredException("");
         }
         Societe societe=findById(id);
+        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false));
+      Optional  <Societe> societeNif=findOne(nifSpecification);
+        if(societeNif.isPresent()&& !Objects.equals(societeNif.get().getId(), id)) {
+            throw new SocieteNifAlreadyRelatedToOtherSociete("",request.getNif());
+        }
+
+        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false));
+        Optional  <Societe> societeCnss=findOne(cnssSpecification);
+        if(societeCnss.isPresent()&& !Objects.equals(societeCnss.get().getId(), id)) {
+            throw new SocieteNumCnssAlreadyRelatedToOtherSociete("",request.getNumCnss());
+        }
+        Specification<Societe> emailSpecification =
+                SocieteSpecifications.emailAddress(request.getAdresseRequest().getEmail())
+                        .and(SocieteSpecifications.deleted(false));
+        Optional  <Societe> societeEmail=findOne(emailSpecification);
+        if (societeEmail.isPresent()&& !Objects.equals(societeEmail.get().getId(), id)) {
+            throw new SocieteEmailAlreadyRelatedToOtherSociete("",request.getAdresseRequest().getEmail());
+        }
         if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
         } else {
