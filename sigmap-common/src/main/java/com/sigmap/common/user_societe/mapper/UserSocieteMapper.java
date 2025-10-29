@@ -22,6 +22,7 @@ public interface UserSocieteMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "societe",source = "societe")
     UserSocieteResponse map(UserSociete userSociete);
     UserSociete mapFromRequest(UserSocieteRequest request);
     UserSocieteResponseDto toDto(UserSociete userSociete);

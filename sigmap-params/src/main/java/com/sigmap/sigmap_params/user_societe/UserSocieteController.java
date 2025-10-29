@@ -110,7 +110,7 @@ public class UserSocieteController {
     @PostMapping("/responsable/{responsableId}")
     public ResponseEntity<UserSocieteResponse> create(@PathVariable String responsableId,@RequestBody UserResquest request) throws SocieteNotFound, RefParamNotFound {
 
-        String userId = inscriptionOrchestrationService.createUserNotResponsableAndSociete(request,responsableId);
+        String userId = inscriptionOrchestrationService.createUserNotResponsable(request,responsableId);
 
 
         UserSociete userSociete=userSocieteService.findByUserId(userId);

@@ -1,19 +1,24 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
+import com.sigmap.common.mail.MailService;
+import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.*;
@@ -29,7 +34,8 @@ public class KeycloakWebisteAdminService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final KeycloakTokenService tokenService;
-
+    @Autowired
+    MailService mailService;
     public KeycloakWebisteAdminService(KeycloakTokenService tokenService) {
         this.tokenService = tokenService;
 
@@ -64,6 +70,7 @@ public class KeycloakWebisteAdminService {
             // 1️⃣ Création utilisateur Keycloak
 
             userId = createUserInKeycloak(request, headers);
+            logger.info("userId id .............{}", userId);
 
 
         // 2️⃣ Ajout au groupe Pending
@@ -137,7 +144,7 @@ public class KeycloakWebisteAdminService {
      * @param userId ID Keycloak
      * @return DTO utilisateur avec mot de passe temporaire
      */
-    public UserWebsiteDTO validateWebsiteUser(String userId) {
+    public UserWebsiteDTO validateWebsiteUser(String userId) throws MessagingException, IOException {
         HttpHeaders headers = createAuthHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -154,6 +161,9 @@ public class KeycloakWebisteAdminService {
 
         UserWebsiteDTO dto = getUserDetails(userId, headers);
         dto.setGenericPassword(tempPassword);
+        UserDTO userDTO=mapToUserDTO(dto,userId);
+        mailService.sendEditPasswordForAdminEmail(userDTO, tempPassword, userId);
+
         return dto;
     }
 
@@ -241,7 +251,7 @@ public class KeycloakWebisteAdminService {
         return sb.toString();
     }
 
-    private UserWebsiteDTO getUserDetails(String userId, HttpHeaders headers) {
+     UserWebsiteDTO getUserDetails(String userId, HttpHeaders headers) {
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
         ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
         Map<String, Object> map = response.getBody();
@@ -332,4 +342,52 @@ public class KeycloakWebisteAdminService {
         dto.setGenericPassword(tempPassword);
         return dto;
     }
+
+    public UserDTO mapToUserDTO(UserWebsiteDTO dto, String userId) {
+        UserDTO userDTO = new UserDTO();
+
+        if (dto == null) {
+            return userDTO;
+        }
+
+        userDTO.setId(userId);
+
+        if (dto.getUsername() != null)
+            userDTO.setUsername(dto.getUsername());
+
+        if (dto.getFirstName() != null)
+            userDTO.setFirstName(dto.getFirstName());
+
+        if (dto.getLastName() != null)
+            userDTO.setLastName(dto.getLastName());
+
+        if (dto.getEmail() != null) {
+            userDTO.setEmail(dto.getEmail());
+        }
+
+            userDTO.setEnabled(dto.isEnabled());
+            userDTO.setEmailVerified(dto.isEmailVerified());
+
+        if (dto.getAddress() != null)
+            userDTO.setAddress(dto.getAddress());
+
+        if (dto.getMobile() != null)
+            userDTO.setMobile(dto.getMobile());
+
+        if (dto.getFixe() != null)
+            userDTO.setFixe(dto.getFixe());
+
+        if (dto.getCreatedTimestamp() != null)
+            userDTO.setCreatedTimestamp(dto.getCreatedTimestamp());
+
+        if (dto.getGenericPassword() != null)
+            userDTO.setGenericPassword(dto.getGenericPassword());
+
+        if (dto.getRoles() != null)
+            userDTO.setRoles(dto.getRoles());
+
+        return userDTO;
+    }
+
+
 }

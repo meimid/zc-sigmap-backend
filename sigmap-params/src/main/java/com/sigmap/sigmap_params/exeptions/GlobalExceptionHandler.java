@@ -1266,6 +1266,18 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(KeycloakUserError.class)
+    public ResponseEntity<ErrorResponse> handleKeycloakUserError(KeycloakUserError ex) {
+        String message = messageSource.getMessage(
+                "keycloak.user.error",
+                new Object[]{ex.getDetails()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
 }
 

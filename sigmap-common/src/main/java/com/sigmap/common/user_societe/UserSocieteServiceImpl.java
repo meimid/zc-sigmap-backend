@@ -2,22 +2,17 @@ package com.sigmap.common.user_societe;
 
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
-import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
-import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.SocieteSpecifications;
 import com.sigmap.common.societe.exception.SocieteNeedToBeValidate;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.user_societe.exception.*;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
-import com.sigmap.common.user_societe.request.CreateNewNonResponsableRequest;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
-import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,26 +21,19 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UserSocieteServiceImpl implements UserSocieteService {
     private final UserSocieteRepository repository;
     private  final SocieteRepository societeRepository;
-    private final KeycloakAdminService keycloakAdminService;
-    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
-    @Autowired
-    MailService mailService;
 
-    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakAdminService keycloakAdminService, KeycloakWebisteAdminService keycloakWebisteAdminService) {
+
+    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository) {
         this.repository = repository;
         this.societeRepository = societeRepository;
-        this.keycloakAdminService = keycloakAdminService;
-        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
@@ -106,7 +94,6 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         if(userCheck.isPresent()){
             throw new UserAlreadyRegisteredToOtherCompany("");
         }
-        keycloakAdminService.getUserById(request.getUserId());
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
@@ -137,11 +124,7 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         if(userCheck.isPresent()){
             throw new UserAlreadyRegisteredToOtherCompany("");
         }
-        try {
-             keycloakAdminService.getUserById(responsableId);
-        } catch (RuntimeException e) {
-            throw new UserNotFoundInKeycloak("",responsableId);
-        }
+
         Specification<Societe> specificationSociete = SocieteSpecifications.id(userSocieteResponsable.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
@@ -179,10 +162,9 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         UserSociete userSociete=findById(userId,societeId);
         boolean responsable=userSociete.getResponsable();
         ActiveStatus activeStatus=userSociete.getStatus();
-        keycloakAdminService.getUserById(request.getUserId());
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
-        Societe societe= societeRepository.findOne(specificationSociete)
+         societeRepository.findOne(specificationSociete)
                 .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
 
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);

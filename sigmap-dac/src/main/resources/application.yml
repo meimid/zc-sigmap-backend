@@ -80,6 +80,7 @@ cors:
 keycloak:
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-api}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:null}
+  common-backend-client-id: ${KEYCLOAK_COMMON_BACKEND_CLIENT_ID:backend-common}
 
 keycloak-admin:
   server-url: ${KEYCLOAK_ADMIN_SERVER_URL:https://sigmap-auth.zedneycreative.com}
@@ -91,7 +92,6 @@ keycloak-admin:
     website-active: ${KEYCLOAK_GROUPES_WS_ACTIVE:SIGMAP-WEBSITE}
     website-pending: ${KEYCLOAK_GROUPES_WS_PENDING:SIGMAP-PENDING-WEBSITE}
     backend-users: ${KEYCLOAK_GROUPES_BACK_USERS:SIGMAP-BACKOFFICE}
-  common-backend-client-id: ${KEYCLOAK_COMMON_BACKEND_CLIENT_ID:backend-common}
 
 # Flowable: use a dedicated database
 flowable:

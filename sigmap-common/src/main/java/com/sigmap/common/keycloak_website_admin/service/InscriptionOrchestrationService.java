@@ -1,21 +1,25 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
 
-import com.sigmap.common.entity.SocieteStatus;
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.adresse.AdressService;
+import com.sigmap.common.com.exception.ResponsableRequired;
+import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteService;
+import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import jakarta.mail.MessagingException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -46,7 +50,7 @@ public class InscriptionOrchestrationService {
     private final KeycloakWebisteAdminService keycloakService;
     private final SocieteService societeService;
     private final UserSocieteService userSocieteService;
-    private final KeycloakAdminService keycloakAdminService;
+    private final AdressService adressService;
     @Autowired
     MailService mailService;
     /**
@@ -64,9 +68,7 @@ public class InscriptionOrchestrationService {
             // 1️⃣ Créer utilisateur Keycloak en Pending
              userId = keycloakService.createPendingWebsiteUserWithSociete(request.getUserResquest());
              // get user by user id from keycloak
-
        ;
-
             if (userId != null) {
                 request.getUserResquest().setId(userId);
                 try {
@@ -103,7 +105,7 @@ public class InscriptionOrchestrationService {
      * @param userId ID Keycloak de l'utilisateur
      * @return DTO utilisateur complet avec mot de passe temporaire
      */
-    public UserWebsiteDTO validateUser(String userId) throws SocieteNotFound {
+    public UserWebsiteDTO validateUser(String userId) throws SocieteNotFound, MessagingException, IOException {
         logger.info("Validation utilisateur Keycloak {}", userId);
 
         // Appel du service Keycloak pour activer le compte et déplacer le groupe
@@ -135,27 +137,20 @@ public class InscriptionOrchestrationService {
     }
 
 
-    public String createUserNotResponsableAndSociete(UserResquest request,String responsableId) throws  SocieteNotFound {
+    public String createUserNotResponsable(UserResquest request,String responsableId) throws  SocieteNotFound {
         logger.info("Début création utilisateur Keycloak et société pour {}", request.getUsername());
 
             //  Créer utilisateur Keycloak en Pending
        String userId = keycloakService.createPendingWebsiteUserWithSociete(request);
-        log.info("user id mte3 jdid -------- {}",userId);
-
+        log.info("userId id .............{}", userId);
         if (userId != null) {
             request.setId(userId);
             try {
                 userSocieteService.createNonResponsableUser(request, responsableId);
                 keycloakService.validateWebsiteUser(userId);
-                String tmpPassword = generateTemporaryPasswordForInscription();
-
-                UserDTO user = keycloakAdminService.updatePassword(userId, tmpPassword);
-
-                mailService.sendEditPasswordForAdminEmail(user, tmpPassword, userId);
-                log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
             }
-            catch (MessagingException | IOException  e) {
-                keycloakAdminService.deleteUser(userId);
+            catch (RuntimeException | MessagingException | IOException e) {
+                keycloakService.deleteUser(userId);
                 log.info("error when updating password {}", e.getMessage());
                 throw new RuntimeException(e);
             }
@@ -176,5 +171,47 @@ public class InscriptionOrchestrationService {
             password.append(chars.charAt(random.nextInt(chars.length())));
         }
         return password.toString();
+    }
+
+
+    /**
+     * Crée un utilisateur Website Keycloak (Pending) et la société associée
+     *
+     * @param request DTO contenant les informations utilisateur + société
+     * @return ID Keycloak de l'utilisateur créé
+     * @throws RefParamNotFound si des paramètres de référence sont manquants
+     * @throws SocieteNotFound si la société ne peut pas être créée
+     */
+    @Transactional
+    public String updateUserAndSociete(Integer societeId,SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {societeService.findById(societeId);
+       societeService.findById(societeId);
+       UserSociete userSociete=userSocieteService.findById(request.getUserResquest().getId(),societeId);
+       if(!userSociete.getResponsable()||userSociete.getStatus().equals(ActiveStatus.NON_ACTIF)){
+          throw new ResponsableRequired("");
+       }
+        SocieteRequest societeRequest = new SocieteRequest();
+       societeRequest.setTypeId(request.getTypeId());
+       societeRequest.setNom(request.getNom());
+       societeRequest.setNif(request.getNif());
+       societeRequest.setNumCnss(request.getNumCnss());
+       societeRequest.setDateNif(request.getDateNif());
+       societeRequest.setActiviteIds(request.getActiviteIds());
+       societeRequest.setCategorieSoumissionnaireId(request.getCategorieSoumissionnaireId());
+       societeRequest.setAdresseRequest(request.getAdresseRequest());
+     Societe societe=  societeService.update(societeId,societeRequest);
+        UserSocieteRequest userSocieteRequest=new UserSocieteRequest();
+        userSocieteRequest.setSocieteId(societeId);
+        userSocieteRequest.setUserId(request.getUserResquest().getId());
+        userSocieteRequest.setNom(request.getUserResquest().getLastName());
+        userSocieteRequest.setPrenom(request.getUserResquest().getFirstName());
+        userSocieteRequest.setEmail(request.getUserResquest().getEmail());
+        userSocieteRequest.setDateDelivranceCin(request.getUserResquest().getDateCIN());
+        userSocieteRequest.setTel1(request.getUserResquest().getMobile());
+        userSocieteRequest.setTel2(request.getUserResquest().getFixe());
+        userSocieteRequest.setEmail(request.getUserResquest().getCin());
+        userSociete.setSociete(societe);
+        userSociete= userSocieteService.update(request.getUserResquest().getId(),societeId,userSocieteRequest);
+        return userSociete.getUserId();
+
     }
 }

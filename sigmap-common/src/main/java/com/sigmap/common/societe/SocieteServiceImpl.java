@@ -9,8 +9,6 @@ import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
-import com.sigmap.common.keycloakAdmin.dto.UserDTO;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.RefParam;
@@ -31,18 +29,15 @@ import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -54,11 +49,10 @@ public class SocieteServiceImpl implements SocieteService {
     private final AdressService adressService;
     private final UserSocieteService userSocieteService;
     private final KeycloakWebisteAdminService keycloakWebisteAdminService;
-    private final KeycloakAdminService keycloakAdminService;
 
     @Autowired
     MailService mailService;
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService, KeycloakWebisteAdminService keycloakWebisteAdminService, KeycloakAdminService keycloakAdminService
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService, KeycloakWebisteAdminService keycloakWebisteAdminService
 
 
     ) {
@@ -69,7 +63,6 @@ public class SocieteServiceImpl implements SocieteService {
         this.adressService = adressService;
         this.userSocieteService = userSocieteService;
         this.keycloakWebisteAdminService = keycloakWebisteAdminService;
-        this.keycloakAdminService = keycloakAdminService;
     }
 
     @Override
@@ -177,15 +170,15 @@ public class SocieteServiceImpl implements SocieteService {
             throw new NameIsRequiredException ("");
         }
 
-        /*if (request.getSocieteRequest().getNif() == null) {
+        if (request.getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }*/
+        }
       /*  if (request.getSocieteRequest().getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
         }*/
-       /* if (request.getSocieteRequest().getNumCnss() == null) {
+        if (request.getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }*/
+        }
 
         if (request.getUserResquest().getId() == null || request.getUserResquest().getId().isBlank()) {
             throw new UserIdRequiredException();
@@ -326,24 +319,9 @@ public class SocieteServiceImpl implements SocieteService {
 
             try {
                 keycloakWebisteAdminService.validateWebsiteUser(responsableId);
-                if (responsableId != null) {
-                    try {
-                        String tmpPassword = keycloakWebisteAdminService.generateTemporaryPasswordForInscription();
-                        UserDTO user = keycloakAdminService.updatePassword(responsableId, tmpPassword);
-                        try {
-                            mailService.sendEditPasswordForAdminEmail(user, tmpPassword, responsableId);
-                            log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
-                        } catch (MessagingException | IOException e) {
-                            log.warn("Failed to send password reset email to {} on first attempt: {}", user.getEmail(), e.getMessage());
-                            throw new RuntimeException(e);
-                        }
-                    } catch (Exception e) {
-                        log.info("error when updating password {}", e.getMessage());
-                        throw new RuntimeException(e);
-                    }
-                }
-            } catch (RuntimeException e) {
-                throw new RuntimeException(e);
+
+            } catch (RuntimeException | MessagingException | IOException e) {
+                throw new KeycloakUserError("");
             }
         }
 
