@@ -9,6 +9,10 @@ import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
+import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -23,14 +27,18 @@ import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
+import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -45,7 +53,12 @@ public class SocieteServiceImpl implements SocieteService {
     private final UserSocieteRepository  userSocieteRepository;
     private final AdressService adressService;
     private final UserSocieteService userSocieteService;
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
+    private final KeycloakAdminService keycloakAdminService;
+
+    @Autowired
+    MailService mailService;
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService, KeycloakWebisteAdminService keycloakWebisteAdminService, KeycloakAdminService keycloakAdminService
 
 
     ) {
@@ -55,6 +68,8 @@ public class SocieteServiceImpl implements SocieteService {
         this.userSocieteRepository = userSocieteRepository;
         this.adressService = adressService;
         this.userSocieteService = userSocieteService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
+        this.keycloakAdminService = keycloakAdminService;
     }
 
     @Override
@@ -289,16 +304,49 @@ public class SocieteServiceImpl implements SocieteService {
     }
     @Transactional
     @Override
-    public Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound {
+    public Societe updateStatus(Integer societeId, boolean status) throws SocieteNotFound {
         Societe societe = findById(societeId);
-        if(status != null) {
-            societe.setStatus(status);
+        if(!status ) {
+            societe.setStatus(SocieteStatus.REJETEE);
+
+            Specification<UserSociete> spec = Specification.where(UserSocieteSpecifications.deleted(false)).and(UserSocieteSpecifications.societeId(societeId));
+          List  <UserSociete> users=  userSocieteRepository.findAll(spec);
+          users.forEach(user -> {user.setStatus(ActiveStatus.NON_ACTIF);
+              keycloakWebisteAdminService.disableWebsiteUser(user.getUserId());});
+          userSocieteRepository.saveAll(users);
+
         }
-        if(status.equals(SocieteStatus.VALIDEE)) {
-            UserSociete userSociete=userSocieteService.findByUserId(societe.getUsersSociete().get(0).getUserId());
+        else {
+            societe.setStatus(SocieteStatus.VALIDEE);
+
+            String responsableId = societe.getUsersSociete().stream().filter(UserSociete::getResponsable).findFirst().get().getUserId();
+            UserSociete userSociete = userSocieteService.findByUserId(responsableId);
             userSociete.setStatus(ActiveStatus.ACTIF);
             userSocieteRepository.save(userSociete);
+
+            try {
+                keycloakWebisteAdminService.validateWebsiteUser(responsableId);
+                if (responsableId != null) {
+                    try {
+                        String tmpPassword = keycloakWebisteAdminService.generateTemporaryPasswordForInscription();
+                        UserDTO user = keycloakAdminService.updatePassword(responsableId, tmpPassword);
+                        try {
+                            mailService.sendEditPasswordForAdminEmail(user, tmpPassword, responsableId);
+                            log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
+                        } catch (MessagingException | IOException e) {
+                            log.warn("Failed to send password reset email to {} on first attempt: {}", user.getEmail(), e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    } catch (Exception e) {
+                        log.info("error when updating password {}", e.getMessage());
+                        throw new RuntimeException(e);
+                    }
+                }
+            } catch (RuntimeException e) {
+                throw new RuntimeException(e);
+            }
         }
+
         return save(societe);
     }
 
@@ -355,4 +403,5 @@ public class SocieteServiceImpl implements SocieteService {
          }
          return userSocieteRequest;
      }
+
 }

@@ -36,7 +36,7 @@ public class SoumissionnaireInscriptionController {
         log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
 
 
-        String tmpPassword = inscriptionOrchestrationService.generateTemporaryPasswordForInscription();
+/*        String tmpPassword = inscriptionOrchestrationService.generateTemporaryPasswordForInscription();
         try {
             UserDTO user = keycloakAdminService.updatePassword(userId, tmpPassword);
 
@@ -51,7 +51,7 @@ public class SoumissionnaireInscriptionController {
         catch (Exception e) {
             log.info("error when updating password {}", e.getMessage());
             throw new RuntimeException(e);
-        }
+        }*/
         return ResponseEntity.ok(userId);
     }
 

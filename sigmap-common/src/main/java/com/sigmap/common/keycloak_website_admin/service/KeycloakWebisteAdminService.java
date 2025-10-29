@@ -184,7 +184,7 @@ public class KeycloakWebisteAdminService {
 
     private void enableUser(String userId, boolean enabled, HttpHeaders headers) {
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
-        Map<String, Object> payload = Map.of("enabled", enabled);
+        Map<String, Boolean> payload = Map.of("enabled", enabled);
         restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(payload, headers), Void.class);
     }
 
@@ -302,6 +302,34 @@ public class KeycloakWebisteAdminService {
             throw new RuntimeException("Échec de suppression de l'utilisateur Keycloak", e);
         }
     }
+    public String generateTemporaryPasswordForInscription() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
 
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
+    }
 
+    public UserWebsiteDTO disableWebsiteUser(String userId) {
+        HttpHeaders headers = createAuthHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        String pendingId = getGroupIdByName(gpWebsitePending, headers);
+        String activeId = getGroupIdByName(gpWebsiteActive, headers);
+        if (pendingId == null || activeId == null)
+            throw new RuntimeException("Groupes Keycloak introuvables");
+
+       // removeUserFromGroup(userId, pendingId, headers);
+      //  addUserToGroup(userId, gpWebsiteActive, headers);
+        enableUser(userId, false, headers);
+
+        String tempPassword = updatePasswordForAdmin(userId);
+
+        UserWebsiteDTO dto = getUserDetails(userId, headers);
+        dto.setGenericPassword(tempPassword);
+        return dto;
+    }
 }

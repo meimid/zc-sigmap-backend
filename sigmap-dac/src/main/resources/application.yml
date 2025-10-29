@@ -13,7 +13,7 @@ spring:
       additional-paths: ../sigmap-common
 
   datasource:
-    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3307/sigmap-db}
+    url: ${DB_URL:jdbc:mariadb://127.0.0.1:3306/sigmap-db}
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
 

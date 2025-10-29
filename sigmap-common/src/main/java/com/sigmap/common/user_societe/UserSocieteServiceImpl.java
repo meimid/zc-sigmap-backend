@@ -5,6 +5,8 @@ import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
+import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
+import com.sigmap.common.mail.MailService;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
@@ -15,13 +17,16 @@ import com.sigmap.common.user_societe.exception.*;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.request.CreateNewNonResponsableRequest;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
+import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,11 +37,15 @@ public class UserSocieteServiceImpl implements UserSocieteService {
     private final UserSocieteRepository repository;
     private  final SocieteRepository societeRepository;
     private final KeycloakAdminService keycloakAdminService;
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
+    @Autowired
+    MailService mailService;
 
-    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakAdminService keycloakAdminService) {
+    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakAdminService keycloakAdminService, KeycloakWebisteAdminService keycloakWebisteAdminService) {
         this.repository = repository;
         this.societeRepository = societeRepository;
         this.keycloakAdminService = keycloakAdminService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
@@ -150,9 +159,13 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         UserSociete userSociete = UserSocieteMapper.INSTANCE.mapFromRequest(userSocieteRequest);
         userSociete.setResponsable(findBySocieteId(userSocieteResponsable.getSocieteId()).isEmpty());
         userSociete.setSociete(societe);
-        userSociete.setStatus(ActiveStatus.NON_ACTIF);
+        userSociete.setStatus(ActiveStatus.ACTIF);
+
         return repository.save(userSociete);
     }
+
+
+
 
     @Override
     public UserSociete update(String userId,Integer societeId, UserSocieteRequest request) throws SocieteNotFound, UserSocieteNotFound {

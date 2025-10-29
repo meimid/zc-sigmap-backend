@@ -109,7 +109,7 @@ public class InscriptionOrchestrationService {
         // Appel du service Keycloak pour activer le compte et déplacer le groupe
         UserWebsiteDTO dto = keycloakService.validateWebsiteUser(userId);
         UserSociete userSociete =userSocieteService.findByUserId(userId);
-        societeService.updateStatus(userSociete.getSocieteId(), SocieteStatus.VALIDEE);
+        societeService.updateStatus(userSociete.getSocieteId(), true);
 
 
         logger.info("Utilisateur {} activé et groupe Website Active mis à jour", userId);
@@ -137,60 +137,34 @@ public class InscriptionOrchestrationService {
 
     public String createUserNotResponsableAndSociete(UserResquest request,String responsableId) throws  SocieteNotFound {
         logger.info("Début création utilisateur Keycloak et société pour {}", request.getUsername());
-        String userId;
-        try {
-            // 1️⃣ Créer utilisateur Keycloak en Pending
-            userId = keycloakService.createPendingWebsiteUserWithSociete(request);
 
+            //  Créer utilisateur Keycloak en Pending
+       String userId = keycloakService.createPendingWebsiteUserWithSociete(request);
+        log.info("user id mte3 jdid -------- {}",userId);
 
-            if (userId != null) {
-                request.setId(userId);
-                try {
-                    userSocieteService.createNonResponsableUser(request,responsableId);
-                    try {
+        if (userId != null) {
+            request.setId(userId);
+            try {
+                userSocieteService.createNonResponsableUser(request, responsableId);
+                keycloakService.validateWebsiteUser(userId);
+                String tmpPassword = generateTemporaryPasswordForInscription();
 
-                        String tmpPassword = generateTemporaryPasswordForInscription();
+                UserDTO user = keycloakAdminService.updatePassword(userId, tmpPassword);
 
-                        UserDTO user = keycloakAdminService.updatePassword(userId, tmpPassword);
-
-                        try {
-                            mailService.sendEditPasswordForAdminEmail(user, tmpPassword, userId);
-                            log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
-                        } catch (MessagingException | IOException e) {
-                            keycloakService.deleteUser(userId);
-                            log.warn("Failed to send password reset email to {} on first attempt: {}", user.getEmail(), e.getMessage());
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    catch (Exception e) {
-                        keycloakAdminService.deleteUser(userId);
-                        log.info("error when updating password {}", e.getMessage());
-                        throw new RuntimeException(e);
-                    }
-                }catch (RuntimeException e){
-                    try {
-                        keycloakService.deleteUser(userId);
-                        logger.warn("Rollback : utilisateur Keycloak {} supprimé suite à un échec de création de société", userId);
-                    } catch (Exception deleteEx) {
-                        logger.error("Impossible de supprimer l'utilisateur Keycloak {} lors du rollback : {}", userId, deleteEx.getMessage());
-
-                    }
-                    throw e;
-                }
-                logger.info("Utilisateur {}  créés avec succès", request.getUsername());
-            } else {
-                throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");
+                mailService.sendEditPasswordForAdminEmail(user, tmpPassword, userId);
+                log.info("Password reset email sent successfully to {} on first attempt", user.getEmail());
             }
-
-            return userId;
-        } catch (HttpClientErrorException e) {
-            if (e.getStatusCode().value() == 409) {
-                throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
-            } else {
-
-                throw new CreateUserFailed("");
+            catch (MessagingException | IOException  e) {
+                keycloakAdminService.deleteUser(userId);
+                log.info("error when updating password {}", e.getMessage());
+                throw new RuntimeException(e);
             }
+            logger.info("Utilisateur {}  créés avec succès", request.getUsername());
+        } else {
+            throw new RuntimeException("Erreur lors de la création de l'utilisateur Keycloak");
         }
+        return userId;
+
     }
 
     public String generateTemporaryPasswordForInscription() {
