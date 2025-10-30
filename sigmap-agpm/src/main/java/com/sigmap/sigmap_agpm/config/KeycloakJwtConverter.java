@@ -9,55 +9,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-// EXAMPLE KEYCLOAK JWT TOKEN CLAIM
-// {
-//   "exp": 1739884603,
-//   "iat": 1739884303,
-//   "auth_time": 1739884303,
-//   "jti": "41254945-1b7c-40de-9d6b-3fd250872887",
-//   "iss": "http://localhost:8080/realms/sigmap-realm",
-//   "aud": [
-//     "sigmap-paa",
-//     "account"
-//   ],
-//   "sub": "bfeaaa8b-514d-47b0-9171-52feb92aa7b6",
-//   "typ": "Bearer",
-//   "azp": "sigmap-web",
-//   "sid": "18068d84-44a3-4200-a28a-32fdf96177af",
-//   "acr": "1",
-//   "allowed-origins": [
-//     "*"
-//   ],
-//   "realm_access": {
-//     "roles": [
-//       "offline_access",
-//       "default-roles-sigmap-realm",
-//       "uma_authorization"
-//     ]
-//   },
-//   "resource_access": {
-//     "sigmap-paa": {
-//       "roles": [
-//         "test_role"
-//       ]
-//     },
-//     "account": {
-//       "roles": [
-//         "manage-account",
-//         "manage-account-links",
-//         "view-profile"
-//       ]
-//     }
-//   },
-//   "scope": "openid email profile",
-//   "email_verified": false,
-//   "name": "Haytham Boussarsar",
-//   "preferred_username": "superadmin@email.com",
-//   "given_name": "Haytham",
-//   "family_name": "Boussarsar",
-//   "email": "superadmin@email.com"
-// }
-
 /** Converts a JWT into a Spring Security authentication token. */
 public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
   private final List<String> clientIds;
@@ -112,21 +63,6 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
    * @param jwt the JWT
    * @return the roles
    */
-/*  private List<String> extractResourceAccessRoles(Jwt jwt) {
-    Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
-
-
-    if (resourceAccess == null
-        || resourceAccess.isEmpty()
-        || !resourceAccess.containsKey(clientId)) {
-      return List.of();
-    }
-
-    System.out.println("Resource access " + resourceAccess);
-    Map<String, Object> targetClient = (Map<String, Object>) resourceAccess.get(clientId);
-
-    return (List<String>) targetClient.get("roles");
-  }*/
   private List<String> extractResourceAccessRoles(Jwt jwt) {
     Object claim = jwt.getClaim("resource_access");
     if (!(claim instanceof Map)) return List.of();
