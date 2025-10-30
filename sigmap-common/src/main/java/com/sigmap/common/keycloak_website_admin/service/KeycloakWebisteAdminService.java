@@ -39,16 +39,16 @@ public class KeycloakWebisteAdminService {
 
     }
 
-    @Value("${keycloak-admin.server-url}")
+    @Value("${keycloak.server-url}")
     private String keycloakBaseUrl;
 
-    @Value("${keycloak-admin.realm}")
+    @Value("${keycloak.realm}")
     private String realm;
 
-    @Value("${keycloak-admin.groupes.website-active}")
+    @Value("${keycloak.groupes.website-active}")
     private String gpWebsiteActive;
 
-    @Value("${keycloak-admin.groupes.website-pending}")
+    @Value("${keycloak.groupes.website-pending}")
     private String gpWebsitePending;
 
     /**

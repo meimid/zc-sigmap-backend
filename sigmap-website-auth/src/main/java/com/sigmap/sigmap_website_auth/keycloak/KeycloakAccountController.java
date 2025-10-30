@@ -37,10 +37,10 @@ public class KeycloakAccountController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${keycloak-admin.server-url}")
+    @Value("${keycloak.server-url}")
     private String keycloakUrl;
 
-    @Value("${keycloak-admin.realm}")
+    @Value("${keycloak.realm}")
     private String realm;
 
     @GetMapping

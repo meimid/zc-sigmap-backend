@@ -40,19 +40,19 @@ public class KeycloakAdminService {
     @Autowired
     private KeycloakTokenService tokenService;
 
-    @Value("${keycloak-admin.server-url}")
+    @Value("${keycloak.server-url}")
     private String keycloakBaseUrl;
 
-    @Value("${keycloak-admin.realm}")
+    @Value("${keycloak.realm}")
     private String realm;
 
-    @Value("${keycloak.common-backend-client-id}")
+    @Value("${keycloak.common-client-id}")
     private String commonClientId;
 
     @Value("${keycloak.client-id}")
     private String clientId;
 
-    @Value("${keycloak-admin.groupes.backend-users}")
+    @Value("${keycloak.groupes.backend-users}")
     private String gpBackendUsers;
     @Autowired
     private AcRepository acRepository;
