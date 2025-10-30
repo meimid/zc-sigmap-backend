@@ -13,6 +13,7 @@ import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.contact.response.ContactResponse;
 import com.sigmap.common.contact.response.ContactResponseDto;
 import com.sigmap.common.entity.SocieteStatus;
+import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
@@ -48,6 +49,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -65,13 +68,16 @@ public class SocieteController {
     private final CompteBancaireService  compteBancaireService;
     private final ContactService contactService;
     private final UserSocieteService userSocieteService;
+    private final InscriptionOrchestrationService inscriptionOrchestrationService;
 
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService, UserSocieteService userSocieteService) {
+
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService, UserSocieteService userSocieteService, InscriptionOrchestrationService inscriptionOrchestrationService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
         this.compteBancaireService = compteBancaireService;
         this.contactService = contactService;
         this.userSocieteService = userSocieteService;
+        this.inscriptionOrchestrationService = inscriptionOrchestrationService;
     }
 
     /**
@@ -205,11 +211,12 @@ public class SocieteController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }*/
 
-    @PutMapping("/validate/{id}")
-    public ResponseEntity<SocieteResponse> updateStatus(@PathVariable Integer id,@RequestBody SocieteStatusRequest request) throws RefParamNotFound,SocieteNotFound {
-        Societe Societe = societeService.updateStatus(id,request.isApproved());
-        SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+    @PutMapping("/update-user-societe")
+    public ResponseEntity<UserSocieteResponse> updateWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request,@AuthenticationPrincipal Jwt jwt) throws RefParamNotFound, SocieteNotFound {
+        String responsableId = jwt.getSubject();
+        UserSociete param =inscriptionOrchestrationService.updateUserWithSociete(request,responsableId);
+        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(param);
+        return ResponseEntity.ok(response);
     }
 
 

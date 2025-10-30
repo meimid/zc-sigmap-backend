@@ -41,27 +41,7 @@ public class SoumissionnaireInscriptionController {
         log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
         return ResponseEntity.ok(userId);
     }
-    /**
-     * Create a new UserSociete.
-     *
-     * @param request the UserSocieteRequest to create
-     * @return the created UserSocieteResponse
-     */
-    @PostMapping("/new-user")
-    public ResponseEntity<UserSocieteResponse> create(
-            @RequestBody UserResquest request,
-            @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws SocieteNotFound {
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-         String responsableId = jwt.getSubject();
-        String userId = inscriptionOrchestrationService.createUserNotResponsable(request,responsableId);
 
-        UserSociete userSociete=userSocieteService.findByUserId(userId);
-        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
-        return ResponseEntity.ok(response);
-    }
     /***  Inscription d’un utilisateur website (Pending) ***/
     @PutMapping
     public ResponseEntity<UserSocieteResponse> updateWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request,@AuthenticationPrincipal Jwt jwt) throws RefParamNotFound, SocieteNotFound {

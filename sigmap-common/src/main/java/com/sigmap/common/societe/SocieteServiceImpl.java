@@ -371,6 +371,7 @@ public class SocieteServiceImpl implements SocieteService {
 
             } catch (RuntimeException | MessagingException | IOException e) {
                 throw new KeycloakUserError("");
+               // throw new RuntimeException(e);
             }
         }
 

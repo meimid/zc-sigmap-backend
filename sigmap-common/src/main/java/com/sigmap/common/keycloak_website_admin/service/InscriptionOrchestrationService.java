@@ -192,7 +192,7 @@ public class InscriptionOrchestrationService {
         SocieteRequest societeRequest = mapSocieteRequestForUpdate(request, societe);
          societeService.update(societeId, societeRequest);
         UserSocieteRequest userSocieteRequest = mapUserSocieteRequestForUpdate(societeId, request, userSociete);
-        userSociete= userSocieteService.update(request.getUserResquest().getId(),societeId,userSocieteRequest);
+        userSociete= userSocieteService.update(request.getUserResquest().getId(),userSocieteRequest,request.getUserResquest().getId());
         return userSociete.getUserId();
 
     }

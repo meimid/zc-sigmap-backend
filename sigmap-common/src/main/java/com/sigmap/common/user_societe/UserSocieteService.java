@@ -80,7 +80,7 @@ public interface UserSocieteService {
      * @param request the request to update the com from
      * @return the updated com
      */
-    UserSociete update(String userId,Integer societeId,UserSocieteRequest request) throws SocieteNotFound ,UserSocieteNotFound;
+    UserSociete update(String userId,UserSocieteRequest request,String responsableId) throws SocieteNotFound ,UserSocieteNotFound;
     /**
      * Delete a UserSociete.
      *

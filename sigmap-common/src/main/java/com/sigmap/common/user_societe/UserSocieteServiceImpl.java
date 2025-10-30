@@ -6,7 +6,6 @@ import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
 
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
-import com.sigmap.common.mail.MailService;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
@@ -32,15 +31,15 @@ import java.util.Optional;
 public class UserSocieteServiceImpl implements UserSocieteService {
     private final UserSocieteRepository repository;
     private  final SocieteRepository societeRepository;
-    private final KeycloakWebisteAdminService keycloakAdminService;
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
 
     private final KeycloakTokenService tokenService;
 
 
-    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakWebisteAdminService keycloakAdminService, KeycloakTokenService tokenService) {
+    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakWebisteAdminService keycloakWebisteAdminService, KeycloakTokenService tokenService) {
         this.repository = repository;
         this.societeRepository = societeRepository;
-        this.keycloakAdminService = keycloakAdminService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
         this.tokenService = tokenService;
 
     }
@@ -108,7 +107,7 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         if(userCheck.isPresent()){
             throw new UserAlreadyRegisteredToOtherCompany("");
         }
-        keycloakAdminService.getUserDetails(request.getUserId(), headers);
+        keycloakWebisteAdminService.getUserDetails(request.getUserId(), headers);
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
@@ -166,19 +165,20 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
 
     @Override
-    public UserSociete update(String userId,Integer societeId, UserSocieteRequest request) throws SocieteNotFound, UserSocieteNotFound {
+    public UserSociete update(String userId ,UserSocieteRequest request,String responsableId) throws SocieteNotFound, UserSocieteNotFound {
         if (userId == null || request.getUserId().isBlank()) {
             throw new UserIdRequiredException();
         }
 
-        if (societeId == null) {
-            throw new SocieteIdRequiredException();
-        }
         HttpHeaders headers = createAuthHeaders();
-        UserSociete userSociete=findById(userId,societeId);
-        boolean responsable=userSociete.getResponsable();
+        UserSociete userSocieteResponsable=findByUserId(responsableId);
+        UserSociete userSociete=findByUserId(userId);
+        boolean isResponsable=userSocieteResponsable.getResponsable();
+        if(!userSocieteResponsable.getResponsable()||userSocieteResponsable.getStatus() != ActiveStatus.ACTIF){
+            throw  new ActiveResponsableRequired("");
+        }
         ActiveStatus activeStatus=userSociete.getStatus();
-        keycloakAdminService.getUserDetails(request.getUserId(), headers);
+        keycloakWebisteAdminService.getUserDetails(request.getUserId(), headers);
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
@@ -186,8 +186,9 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setUserId(userId);
-        userSociete.setSocieteId(societeId);
-        userSociete.setResponsable(responsable);
+        userSociete.setSocieteId(societe.getId());
+        userSociete.setSocieteId(userSociete.getSocieteId());
+        userSociete.setResponsable(isResponsable);
         userSociete.setStatus(activeStatus);
 
         return save(userSociete);

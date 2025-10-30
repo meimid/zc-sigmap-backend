@@ -30,6 +30,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -122,16 +124,16 @@ public class UserSocieteController {
      * Update an existing UserSociete.
      *
      * @param userId    the user ID
-     * @param societeId the societe ID
      * @param request   the UserSocieteRequest to update
      * @return the updated UserSocieteResponse
      */
-    @PutMapping("/user/{userId}/societe/{societeId}")
+    @PutMapping("/user/{userId}")
     public ResponseEntity<UserSocieteResponse> update(@PathVariable String userId,
-                                                      @PathVariable Integer societeId,
-                                                      @RequestBody UserSocieteRequest request)
+                                                      @RequestBody UserSocieteRequest request,@AuthenticationPrincipal Jwt jwt)
             throws SocieteNotFound, UserSocieteNotFound {
-        UserSociete userSociete = userSocieteService.update(userId, societeId, request);
+        String responsableId = jwt.getSubject();
+
+        UserSociete userSociete = userSocieteService.update(userId, request,responsableId);
         UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
         return ResponseEntity.ok(response);
     }
