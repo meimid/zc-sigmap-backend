@@ -97,7 +97,7 @@ public class SocieteSpecifications {
     }
 
     public static Specification<Societe> nif(String nif) {
-        return (root, query, cb) -> cb.like(root.get("nif"), "%" + nif + "%");
+        return (root, query, cb) -> cb.like(root.get("nif") ,nif );
     }
 
     public static Specification<Societe> numCnss(String numCnss) {
@@ -121,7 +121,7 @@ public class SocieteSpecifications {
     public static Specification<Societe> emailAddress(String email) {
         return (root, query, cb) -> {
             Join<Societe, Adresse> adresseJoin = root.join("address", JoinType.LEFT);
-            return cb.like(cb.lower(adresseJoin.get("email")), "%" + email.toLowerCase() + "%");
+            return cb.like(cb.lower(adresseJoin.get("email")),   email.toLowerCase() );
         };
     }
 }

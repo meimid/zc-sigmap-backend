@@ -1340,5 +1340,16 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }
+  @ResponseStatus(HttpStatus.UNAUTHORIZED)
+  @ExceptionHandler(TokenRequired.class)
+  public ResponseEntity<ErrorResponse> handleTokenRequired(TokenRequired ex) {
+    String message = messageSource.getMessage(
+            "token.required",
+            null,
+            getLocal()
+    );
 
+    ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+  }
 }

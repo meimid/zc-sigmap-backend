@@ -8,13 +8,16 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteService;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.response.UserSocieteResponse;
 
 import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -47,7 +50,11 @@ public class SoumissionnaireInscriptionController {
     @PostMapping("/new-user")
     public ResponseEntity<UserSocieteResponse> create(
             @RequestBody UserResquest request,
-            @AuthenticationPrincipal Jwt jwt) throws SocieteNotFound {
+            @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws SocieteNotFound {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
          String responsableId = jwt.getSubject();
         String userId = inscriptionOrchestrationService.createUserNotResponsable(request,responsableId);
 
