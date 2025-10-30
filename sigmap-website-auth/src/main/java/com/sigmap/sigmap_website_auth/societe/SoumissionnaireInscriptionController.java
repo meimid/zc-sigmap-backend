@@ -4,8 +4,6 @@ package com.sigmap.sigmap_website_auth.societe;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.societe.Societe;
-import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.user_societe.UserSociete;
