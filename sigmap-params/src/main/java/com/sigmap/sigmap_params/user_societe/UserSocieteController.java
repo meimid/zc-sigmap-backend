@@ -129,10 +129,8 @@ public class UserSocieteController {
      */
     @PutMapping("/user/{userId}")
     public ResponseEntity<UserSocieteResponse> update(@PathVariable String userId,
-                                                      @RequestBody UserSocieteRequest request,@AuthenticationPrincipal Jwt jwt)
-            throws SocieteNotFound, UserSocieteNotFound {
+                                                      @RequestBody UserSocieteRequest request,@AuthenticationPrincipal Jwt jwt) throws SocieteNotFound, UserSocieteNotFound {
         String responsableId = jwt.getSubject();
-
         UserSociete userSociete = userSocieteService.update(userId, request,responsableId);
         UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
         return ResponseEntity.ok(response);

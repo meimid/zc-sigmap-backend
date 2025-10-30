@@ -166,23 +166,24 @@ public class UserSocieteServiceImpl implements UserSocieteService {
 
     @Override
     public UserSociete update(String userId ,UserSocieteRequest request,String responsableId) throws SocieteNotFound, UserSocieteNotFound {
-        if (userId == null || request.getUserId().isBlank()) {
+        if (userId == null ) {
             throw new UserIdRequiredException();
         }
 
         HttpHeaders headers = createAuthHeaders();
         UserSociete userSocieteResponsable=findByUserId(responsableId);
         UserSociete userSociete=findByUserId(userId);
+        Integer id=userSociete.getSocieteId();
         boolean isResponsable=userSocieteResponsable.getResponsable();
         if(!userSocieteResponsable.getResponsable()||userSocieteResponsable.getStatus() != ActiveStatus.ACTIF){
             throw  new ActiveResponsableRequired("");
         }
         ActiveStatus activeStatus=userSociete.getStatus();
-        keycloakWebisteAdminService.getUserDetails(request.getUserId(), headers);
-        Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
+        keycloakWebisteAdminService.getUserDetails(userId, headers);
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(id)
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
-                .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
+                .orElseThrow(() -> new SocieteNotFound("",List.of(id)));
 
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setUserId(userId);

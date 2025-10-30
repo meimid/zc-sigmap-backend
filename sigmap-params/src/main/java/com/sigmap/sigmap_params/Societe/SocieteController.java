@@ -162,6 +162,8 @@ public class SocieteController {
      * @param id the id of the Societe to delete
      * @return the deleted Societe
      */
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL')")
+
     @DeleteMapping("/{id}")
     public ResponseEntity<SocieteResponse> deleteById(@PathVariable Integer id) throws SocieteNotFound {
         societeService.delete(id);
@@ -171,6 +173,7 @@ public class SocieteController {
         SocieteResponse response = SocieteMapper.INSTANCE.map(deleted);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/status/validee")
     public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllWithStatusValidee(
     SocieteQuery query, Pageable pageable) {
