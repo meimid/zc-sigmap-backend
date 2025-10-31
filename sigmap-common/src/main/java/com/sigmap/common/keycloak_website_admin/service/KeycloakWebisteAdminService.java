@@ -1,6 +1,8 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
+import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service d'administration Keycloak pour la gestion des utilisateurs "Website".
@@ -207,8 +210,9 @@ public class KeycloakWebisteAdminService {
         UserWebsiteDTO dto = getUserDetails(userId, headers);
         dto.setGenericPassword(tempPassword);
         UserDTO userDTO=mapToUserDTO(dto,userId);
-     //   mailService.sendEditPasswordForAdminEmail(userDTO, tempPassword, userId);
-        mailService.sendActivationEmail1(userDTO, tempPassword, currentUserId.get());
+
+        UserResquestDTO user= mapToUserRequestDTO(userDTO);
+        mailService.sendActivationEmail(user, tempPassword, currentUserId.get());
 
 
         return dto;
@@ -436,5 +440,34 @@ public class KeycloakWebisteAdminService {
         return userDTO;
     }
 
+    public static UserResquestDTO mapToUserRequestDTO(UserDTO userDTO) {
+        if (userDTO == null) {
+            return null;
+        }
+
+        UserResquestDTO dto = new UserResquestDTO();
+
+        dto.setUsername(userDTO.getUsername());
+        dto.setFirstName(userDTO.getFirstName());
+        dto.setLastName(userDTO.getLastName());
+        dto.setEmail(userDTO.getEmail());
+        dto.setAddress(userDTO.getAddress());
+        dto.setMobile(userDTO.getMobile());
+        dto.setFixe(userDTO.getFixe());
+        dto.setPassword(userDTO.getGenericPassword());
+        dto.setRoles(userDTO.getRoles());
+        dto.setEnable(userDTO.isEnabled());
+
+        // ✅ Convert coms → comIds
+        if (userDTO.getComs() != null) {
+            dto.setComIds(
+                    userDTO.getComs().stream()
+                            .map(UserComDTO::getId)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        return dto;
+    }
 
 }

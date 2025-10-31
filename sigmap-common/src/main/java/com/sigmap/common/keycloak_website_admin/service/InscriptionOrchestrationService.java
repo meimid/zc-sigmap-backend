@@ -5,6 +5,7 @@ import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.com.exception.ResponsableRequired;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
@@ -147,18 +148,19 @@ public class InscriptionOrchestrationService {
         HttpHeaders headers = keycloakService.createAuthHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         Optional<String> currentUserId = Authentication.getCurrentUserId();
-            //  Créer utilisateur Keycloak en Pending
        String userId = keycloakService.createWebsiteUserUnderResponsable(request);
         log.info("userId id .............{}", userId);
         if (userId != null) {
             request.setId(userId);
             try {
-                userSocieteService.createNonResponsableUser(request, responsableId);
                 String tempPassword = keycloakService.updatePasswordForAdmin(userId);
                 UserWebsiteDTO dto = keycloakService.getUserDetails(userId, headers);
                 dto.setGenericPassword(tempPassword);
                 UserDTO userDTO=keycloakService.mapToUserDTO(dto,userId);
-                mailService.sendActivationEmail1(userDTO, tempPassword, currentUserId.get());
+                UserResquestDTO user= mapToUserRequestDTO(userDTO);
+                mailService.sendActivationEmail(user, tempPassword, currentUserId.get());
+                userSocieteService.createNonResponsableUser(request, responsableId);
+
             }
             catch (RuntimeException | MessagingException | IOException e) {
                 keycloakService.deleteUser(userId);
@@ -291,6 +293,25 @@ public class InscriptionOrchestrationService {
         param.setSociete(societe);
         return param;
 
+    }
+    public static UserResquestDTO mapToUserRequestDTO(UserDTO userDTO) {
+        if (userDTO == null) {
+            return null;
+        }
+
+        UserResquestDTO dto = new UserResquestDTO();
+
+        dto.setUsername(userDTO.getUsername());
+        dto.setFirstName(userDTO.getFirstName());
+        dto.setLastName(userDTO.getLastName());
+        dto.setEmail(userDTO.getEmail());
+        dto.setAddress(userDTO.getAddress());
+        dto.setMobile(userDTO.getMobile());
+        dto.setFixe(userDTO.getFixe());
+        dto.setPassword(userDTO.getGenericPassword());
+        dto.setRoles(userDTO.getRoles());
+        dto.setEnable(userDTO.isEnabled());
+        return dto;
     }
 
 

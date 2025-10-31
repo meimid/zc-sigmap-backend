@@ -27,12 +27,10 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/societe")
 public class SocieteController {
     private final SocieteService societeService;
-    private final InscriptionOrchestrationService inscriptionOrchestrationService;
-    private final UserSocieteService userSocieteService;
-    public SocieteController(SocieteService societeService, InscriptionOrchestrationService inscriptionOrchestrationService, UserSocieteService userSocieteService) {
+
+    public SocieteController(SocieteService societeService) {
         this.societeService = societeService;
-        this.inscriptionOrchestrationService = inscriptionOrchestrationService;
-        this.userSocieteService = userSocieteService;
+
     }
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL')")
 

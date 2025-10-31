@@ -50,35 +50,6 @@ public class MailService {
 
 
 
-    public void sendActivationEmail1(UserDTO user, String GenericPassword,String adminId) throws MessagingException, IOException {
-
-        try {
-
-            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-
-            // Set email details
-            helper.setTo(user.getEmail());
-            helper.setSubject("SIGMAP – Lien d'activation compte");
-            helper.setFrom(fromEmail);
-
-            helper.setText(activationEmailContext1( user, GenericPassword), true); // true = isHTML
-
-            // Send email
-            javaMailSender.send(mimeMessage);
-
-            log.info("Email sent successfully to : {} ", user.getEmail());
-
-            // Save email trace record
-            emailService.saveEmailTrace(adminId,TypeEmail.ACTIVATION_COMPTE,"Activate Account",activationEmailContext1( user, GenericPassword),user.getEmail(),true, LocalDateTime.now());
-
-        } catch (Exception e ) {
-            // Save email trace record
-            emailService.saveEmailTrace(adminId,TypeEmail.ACTIVATION_COMPTE,"Activate Account",activationEmailContext1( user, GenericPassword),user.getEmail(),false, LocalDateTime.now());
-            throw new MessagingException("Failed to send email",e);
-        }
-
-    }
 
     public void sendActivationEmail(UserResquestDTO user, String GenericPassword,String adminId) throws MessagingException, IOException {
 
@@ -130,26 +101,6 @@ public class MailService {
 
     }
 
-    private String activationEmailContext1(UserDTO user, String GenericPassword) throws IOException {
-        // Load and encode logo
-        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
-        byte[] sourceLogo = IOUtils.toByteArray(logo);
-        String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
-        encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
-
-        // Prepare Thymeleaf context
-        Context context = new Context();
-        context.setVariable("name", user.getFirstName()+" "+user.getLastName());
-        context.setVariable("password", GenericPassword);
-        context.setVariable("email", user.getEmail());
-        context.setVariable("baseUrl", getBaseUrl);
-        context.setVariable("logo", encodedStringLogo);
-        context.setVariable("from", fromEmail);
-        //log.info("....................... {} ", encodedStringLogo);
-
-        return templateEngine.process("email/activationEmail", context);
-
-    }
 
     public void sendEditPasswordForAdminEmail(UserDTO user, String GenericPassword, String adminId) throws MessagingException, IOException {
 

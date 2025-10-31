@@ -50,9 +50,6 @@ public class SocieteServiceImpl implements SocieteService {
     private final AdressService adressService;
     private final UserSocieteService userSocieteService;
     private final KeycloakWebisteAdminService keycloakWebisteAdminService;
-
-    @Autowired
-    MailService mailService;
     public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService, KeycloakWebisteAdminService keycloakWebisteAdminService
 
 
