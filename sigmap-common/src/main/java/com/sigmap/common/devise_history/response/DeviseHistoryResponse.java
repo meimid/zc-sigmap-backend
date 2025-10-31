@@ -20,6 +20,6 @@ public class DeviseHistoryResponse {
     private Calendar dateDebut;
     private Calendar dateFin;
     private String action;
-    private String UserId;
-    private String userName;
+    //private String UserId;
+    private String changedBy;
 }

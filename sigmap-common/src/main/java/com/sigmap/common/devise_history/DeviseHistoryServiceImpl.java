@@ -142,8 +142,7 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
         response.setDateDebut(entity.getDateDebut());
         response.setDateFin(entity.getDateFin());
         response.setAction(entity.getAction());
-        response.setUserId(entity.getChangedBy());
-        response.setUserName(getUserConnectedName(entity.getChangedBy()));
+        response.setChangedBy(getUserConnectedName(entity.getChangedBy()));
 
         return response;
 
