@@ -7,6 +7,7 @@ import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.security.Authentication;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
@@ -69,7 +70,7 @@ public class KeycloakWebisteAdminService {
 
             // 1️⃣ Création utilisateur Keycloak
 
-            userId = createUserInKeycloak(request, headers);
+            userId = createUserInKeycloak(request, headers, false);
             logger.info("userId id .............{}", userId);
 
 
@@ -90,9 +91,52 @@ public class KeycloakWebisteAdminService {
             if (e.getStatusCode().value() == 409) {
                 throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
             } else {
-                throw new CreateUserFailed("");
+                throw new  RuntimeException();
             }
         }
+    }
+
+    /**
+     * Crée un utilisateur Website (Pending) et la société associée.
+     *
+     * @param request données complètes d’inscription (société + user)
+     * @return ID Keycloak
+     */
+    @Transactional
+    public String createWebsiteUserUnderResponsable(UserResquest request)
+    {
+
+        HttpHeaders headers = createAuthHeaders();
+        String userId;
+        try {
+
+            // 1️⃣ Création utilisateur Keycloak
+
+            userId = createUserInKeycloak(request, headers, true);
+            logger.info("userId id .............{}", userId);
+
+
+            // 2️⃣ Ajout au groupe Pending
+            addUserToGroup(userId, gpWebsiteActive, headers);
+            logger.info("Utilisateur {} ajouté au groupe Pending", request.getUsername());
+
+            // 3️⃣ Récupération infos Keycloak réelles
+            UserWebsiteDTO userKeycloak = getUserDetails(userId, headers);
+            if (userKeycloak == null)
+                throw new RuntimeException("Impossible de récupérer les informations de l'utilisateur Keycloak");
+
+            // 4️⃣ Injection des infos Keycloak dans le DTO
+            mapUserKeycloakToRequest(userKeycloak, request);
+
+            return userId;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
+            } else {
+                throw new  RuntimeException();
+            }
+        }
+
     }
 
     /**
@@ -100,7 +144,7 @@ public class KeycloakWebisteAdminService {
      */
 
 
-    private String createUserInKeycloak(UserResquest dto, HttpHeaders headers) {
+    private String createUserInKeycloak(UserResquest dto, HttpHeaders headers, boolean enable) {
         // Ensure JSON content type
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -109,7 +153,7 @@ public class KeycloakWebisteAdminService {
                 "firstName", dto.getFirstName(),
                 "lastName", dto.getLastName(),
                 "email", dto.getEmail(),
-                "enabled", false,
+                "enabled", enable,
                 "emailVerified", false,
                 "attributes", Map.of(
                         "address", List.of(Optional.ofNullable(dto.getAddress()).orElse("")),
@@ -147,6 +191,7 @@ public class KeycloakWebisteAdminService {
     public UserWebsiteDTO validateWebsiteUser(String userId) throws MessagingException, IOException {
         HttpHeaders headers = createAuthHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
 
         String pendingId = getGroupIdByName(gpWebsitePending, headers);
         String activeId = getGroupIdByName(gpWebsiteActive, headers);
@@ -162,7 +207,9 @@ public class KeycloakWebisteAdminService {
         UserWebsiteDTO dto = getUserDetails(userId, headers);
         dto.setGenericPassword(tempPassword);
         UserDTO userDTO=mapToUserDTO(dto,userId);
-        mailService.sendEditPasswordForAdminEmail(userDTO, tempPassword, userId);
+     //   mailService.sendEditPasswordForAdminEmail(userDTO, tempPassword, userId);
+        mailService.sendActivationEmail1(userDTO, tempPassword, currentUserId.get());
+
 
         return dto;
     }
@@ -221,7 +268,7 @@ public class KeycloakWebisteAdminService {
                 .findFirst().orElse(null);
     }
 
-    private HttpHeaders createAuthHeaders() {
+    public HttpHeaders createAuthHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenService.getAccessToken());
         return headers;

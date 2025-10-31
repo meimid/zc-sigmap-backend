@@ -11,6 +11,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -65,6 +66,7 @@ public class SecurityConfig {
                         "/api/docs/*",
                         "/api/docs-ui.html",
                         "/v3/api-docs/**",
+                        "/api/soumissionnaire",
                         "/web/api/**")
                 .permitAll()
                 .anyRequest()
@@ -77,6 +79,7 @@ public class SecurityConfig {
                             .jwtAuthenticationConverter(jwtConverter)
                     )
             );
+      http.csrf(AbstractHttpConfigurer::disable);
     return http.build();
   }
     @Bean

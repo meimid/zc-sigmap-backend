@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_website_auth.societe;
+package com.sigmap.sigmap_webmaster.controller;
 
 
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
@@ -12,7 +12,6 @@ import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
 import com.sigmap.common.user_societe.response.UserSocieteResponse;
-
 import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +39,22 @@ public class SoumissionnaireInscriptionController {
         String userId = inscriptionOrchestrationService.createUserAndSociete(request);
         log.info("Nouvelle demande d'inscription Website avec société, userId: {}", userId);
         return ResponseEntity.ok(userId);
+    }
+    /***  Creattion d’un utilisateur sous societe ***/
+    @PostMapping("/new-user")
+    public ResponseEntity<UserSocieteResponse> create(
+            @RequestBody UserResquest request,
+            @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws SocieteNotFound {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+        String responsableId = jwt.getSubject();
+        String userId = inscriptionOrchestrationService.createUserNotResponsable(request,responsableId);
+
+        UserSociete userSociete=userSocieteService.findByUserId(userId);
+        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
+        return ResponseEntity.ok(response);
     }
 
     /***  Inscription d’un utilisateur website (Pending) ***/

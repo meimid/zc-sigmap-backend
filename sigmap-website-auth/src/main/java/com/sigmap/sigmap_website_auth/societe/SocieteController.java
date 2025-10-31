@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_auth.societe;
+package com.sigmap.sigmap_website_auth.societe;
 
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.service.InscriptionOrchestrationService;
@@ -43,19 +43,5 @@ public class SocieteController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @PostMapping("/new-user")
-    public ResponseEntity<UserSocieteResponse> create(
-            @RequestBody UserResquest request,
-            @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws SocieteNotFound {
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-        String responsableId = jwt.getSubject();
-        String userId = inscriptionOrchestrationService.createUserNotResponsable(request,responsableId);
 
-        UserSociete userSociete=userSocieteService.findByUserId(userId);
-        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
-        return ResponseEntity.ok(response);
-    }
 }

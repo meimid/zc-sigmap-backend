@@ -4,12 +4,14 @@ package com.sigmap.common.keycloak_website_admin.service;
 import com.sigmap.common.adresse.AdressService;
 import com.sigmap.common.com.exception.ResponsableRequired;
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -25,11 +27,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.io.IOException;
 import java.security.SecureRandom;
+import java.util.Optional;
 
 /**
  * Service d'orchestration pour gérer l'inscription d'un utilisateur Website
@@ -139,15 +144,21 @@ public class InscriptionOrchestrationService {
 
     public String createUserNotResponsable(UserResquest request,String responsableId) throws  SocieteNotFound {
         logger.info("Début création utilisateur Keycloak et société pour {}", request.getUsername());
-
+        HttpHeaders headers = keycloakService.createAuthHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
             //  Créer utilisateur Keycloak en Pending
-       String userId = keycloakService.createPendingWebsiteUserWithSociete(request);
+       String userId = keycloakService.createWebsiteUserUnderResponsable(request);
         log.info("userId id .............{}", userId);
         if (userId != null) {
             request.setId(userId);
             try {
                 userSocieteService.createNonResponsableUser(request, responsableId);
-                keycloakService.validateWebsiteUser(userId);
+                String tempPassword = keycloakService.updatePasswordForAdmin(userId);
+                UserWebsiteDTO dto = keycloakService.getUserDetails(userId, headers);
+                dto.setGenericPassword(tempPassword);
+                UserDTO userDTO=keycloakService.mapToUserDTO(dto,userId);
+                mailService.sendActivationEmail1(userDTO, tempPassword, currentUserId.get());
             }
             catch (RuntimeException | MessagingException | IOException e) {
                 keycloakService.deleteUser(userId);
