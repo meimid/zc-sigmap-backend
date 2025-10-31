@@ -1,5 +1,8 @@
 package com.sigmap.common.devise_history;
 
+import com.sigmap.common.devise_history.response.DeviseHistoryResponse;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.security.Authentication;
 import lombok.AllArgsConstructor;
@@ -18,6 +21,7 @@ import java.util.Optional;
 public class DeviseHistoryServiceImpl implements DeviseHistoryService {
 
    private final DeviseHistoryRepository deviseHistoryRepository;
+   private final KeycloakAdminService keycloakAdminService;
 
 
     @Override
@@ -40,6 +44,11 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
     private String getUserConnectedId(){
         Optional<String> currentUserId = Authentication.getCurrentUserId();
         return currentUserId.orElse("System");
+    }
+
+    private String getUserConnectedName(String userId){
+        UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
+        return keycloakUser.getFirstName()+ " "+keycloakUser.getLastName();
     }
 
     private Integer getMaxId (Integer deviseId){
@@ -116,4 +125,27 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
         save(history);
     }
 
+    @Override
+    public DeviseHistoryResponse entityToResponse (DeviseHistory entity){
+
+        if (entity == null){
+            return null;
+        }
+
+        DeviseHistoryResponse response = new DeviseHistoryResponse();
+
+        response.setId(entity.getId());
+        response.setDeviseId(entity.getDeviseId());
+        response.setCode(entity.getCode());
+        response.setDescription(entity.getDescription());
+        response.setTaux(entity.getTaux());
+        response.setDateDebut(entity.getDateDebut());
+        response.setDateFin(entity.getDateFin());
+        response.setAction(entity.getAction());
+        response.setUserId(entity.getChangedBy());
+        response.setUserName(getUserConnectedName(entity.getChangedBy()));
+
+        return response;
+
+    }
 }

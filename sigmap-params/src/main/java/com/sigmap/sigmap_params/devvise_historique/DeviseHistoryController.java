@@ -3,6 +3,7 @@ package com.sigmap.sigmap_params.devvise_historique;
 import com.sigmap.common.devise_history.DeviseHistory;
 import com.sigmap.common.devise_history.DeviseHistoryService;
 import com.sigmap.common.devise_history.request.DeviseHistoryQuerry;
+import com.sigmap.common.devise_history.response.DeviseHistoryResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -23,14 +24,16 @@ public class DeviseHistoryController {
 
 
     @GetMapping
-    public ResponseEntity<Page<DeviseHistory>> findAll(DeviseHistoryQuerry query, Pageable pageable) {
+    public ResponseEntity<Page<DeviseHistoryResponse>> findAll(DeviseHistoryQuerry query, Pageable pageable) {
         Page<DeviseHistory> responses = deviseHistoryService.findAll(query.toSpecification(), pageable);
-        return ResponseEntity.ok(responses);
+        Page<DeviseHistoryResponse> resp = responses.map(deviseHistoryService::entityToResponse);
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/{deviseId}")
-    public ResponseEntity<Page<DeviseHistory>> findAllByCurrencyId(@PathVariable Integer deviseId, DeviseHistoryQuerry query, Pageable pageable) {
+    public ResponseEntity<Page<DeviseHistoryResponse>> findAllByCurrencyId(@PathVariable Integer deviseId, DeviseHistoryQuerry query, Pageable pageable) {
         Page<DeviseHistory> responses = deviseHistoryService.findAllByCurrencyId(deviseId,query.toSpecification(), pageable);
-        return ResponseEntity.ok(responses);
+        Page<DeviseHistoryResponse> resp = responses.map(deviseHistoryService::entityToResponse);
+        return ResponseEntity.ok(resp);
     }
 }
