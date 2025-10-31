@@ -198,10 +198,16 @@ public class InscriptionOrchestrationService {
     @Transactional
     public String updateUserAndSociete(Integer societeId,SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {societeService.findById(societeId);
       Societe societe= societeService.findById(societeId);
+
        UserSociete userSociete=userSocieteService.findById(request.getUserResquest().getId(),societeId);
        if(!userSociete.getResponsable()||userSociete.getStatus().equals(ActiveStatus.NON_ACTIF)){
           throw new ResponsableRequired("");
        }
+        try
+        {      keycloakService.updateUserInfoInKeycloak(request.getUserResquest());
+        }catch (RuntimeException e) {
+            throw new RuntimeException("Erreur lors de l'updateUser in Keycloak");
+        }
         SocieteRequest societeRequest = mapSocieteRequestForUpdate(request, societe);
          societeService.update(societeId, societeRequest);
         UserSocieteRequest userSocieteRequest = mapUserSocieteRequestForUpdate(societeId, request, userSociete);
@@ -282,12 +288,13 @@ public class InscriptionOrchestrationService {
         return userSocieteRequest;
     }
 
-    public UserSociete updateUserWithSociete(SocieteRequestInscription request, String responsableId) throws RefParamNotFound {
-
+    public UserSociete updateUserWithSociete(SocieteRequestInscription request, String userId) throws RefParamNotFound {
+        UserSociete userSociete =userSocieteService.findByUserId(userId);
+        String responsableId=userSocieteService.findBySocieteId(userSociete.getSocieteId()).stream().filter(UserSociete::getResponsable).map(UserSociete::getUserId).findFirst().get();
         request.getUserResquest().setId(responsableId);
         Integer societeId=userSocieteService.findByUserId(responsableId).getSocieteId();
-        String userId = updateUserAndSociete(societeId,request);
-        UserSociete param = userSocieteService.findByUserId(userId);
+        String updatedUserId = updateUserAndSociete(societeId,request);
+        UserSociete param = userSocieteService.findByUserId(updatedUserId);
         // get societe by id from param.getSocieteId() because type fetch lazy (chargement à la demande)
         Societe societe=societeService.findById(param.getSocieteId());
         param.setSociete(societe);

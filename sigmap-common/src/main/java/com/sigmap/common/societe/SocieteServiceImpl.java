@@ -121,12 +121,12 @@ public class SocieteServiceImpl implements SocieteService {
     @Transactional
     public Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
 
-        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false));
+        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false)).and(SocieteSpecifications.hasPaysId(request.getAdresseRequest().getPaysId()));
          if(findOne(nifSpecification).isPresent()) {
              throw new SocieteNifAlreadyRelatedToOtherSociete("",request.getNif());
          }
 
-        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false));
+        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false)).and(SocieteSpecifications.hasPaysId(request.getAdresseRequest().getPaysId()));
 
         if(findOne(cnssSpecification).isPresent()) {
             throw new SocieteNumCnssAlreadyRelatedToOtherSociete("",request.getNumCnss());

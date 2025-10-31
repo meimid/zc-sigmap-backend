@@ -11,8 +11,10 @@ import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import com.sigmap.common.user_societe.mapper.UserSocieteMapper;
+import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import com.sigmap.common.user_societe.response.UserSocieteResponse;
 import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
+import com.sigmap.common.user_societe.response.UserSocieteResponseUpdatableDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -60,8 +62,11 @@ public class SoumissionnaireInscriptionController {
     /***  Inscription d’un utilisateur website (Pending) ***/
     @PutMapping
     public ResponseEntity<UserSocieteResponse> updateWebsiteUserWithSociete(@RequestBody SocieteRequestInscription request,@AuthenticationPrincipal Jwt jwt) throws RefParamNotFound, SocieteNotFound {
-        String responsableId = jwt.getSubject();
-        UserSociete param =inscriptionOrchestrationService.updateUserWithSociete(request,responsableId);
+
+        String userId = jwt.getSubject();
+
+
+        UserSociete param =inscriptionOrchestrationService.updateUserWithSociete(request,userId);
         UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -72,14 +77,20 @@ public class SoumissionnaireInscriptionController {
      * @return the UserSocieteResponse
      */
     @GetMapping
-    public ResponseEntity<UserSocieteResponse> findByUserId(@AuthenticationPrincipal Jwt jwt)
+    public ResponseEntity<UserSocieteResponseUpdatableDto> findByUserId(@AuthenticationPrincipal Jwt jwt)
             throws UserSocieteNotFound {
         String userId = jwt.getSubject();
-
-        UserSociete param = userSocieteService.findByUserId(userId);
-        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(param);
+        UserSociete userSociete =userSocieteService.findByUserId(userId);
+        String responsableId=userSocieteService.findBySocieteId(userSociete.getSocieteId()).stream().filter(UserSociete::getResponsable).map(UserSociete::getUserId).findFirst().get();
+        UserSociete param = userSocieteService.findByUserId(responsableId);
+        UserSocieteResponseUpdatableDto response = UserSocieteMapper.INSTANCE.mapToUserSocieteResponse(param);
+        if(responsableId.equals(userId)){
+            response.setUpdatable(true);
+        }
         return ResponseEntity.ok(response);
     }
+
+
 
     @GetMapping("/users")
     public ResponseEntity<List<UserSocieteResponseDto>> findUsersListByUserId(@AuthenticationPrincipal Jwt jwt)
@@ -93,4 +104,20 @@ public class SoumissionnaireInscriptionController {
                 .toList();
         return ResponseEntity.ok(responses);
     }
+
+  /*  *//**
+     * Update an existing UserSociete.
+     *
+     * @param userId    the user ID
+     * @param request   the UserSocieteRequest to update
+     * @return the updated UserSocieteResponse
+     *//*
+    @PutMapping("/user/{userId}")
+    public ResponseEntity<UserSocieteResponse> update(@PathVariable String userId,
+                                                      @RequestBody UserSocieteRequest request, @AuthenticationPrincipal Jwt jwt) throws SocieteNotFound, UserSocieteNotFound {
+        String responsableId = jwt.getSubject();
+        UserSociete userSociete = userSocieteService.update(userId, request,responsableId);
+        UserSocieteResponse response = UserSocieteMapper.INSTANCE.map(userSociete);
+        return ResponseEntity.ok(response);
+    }*/
 }

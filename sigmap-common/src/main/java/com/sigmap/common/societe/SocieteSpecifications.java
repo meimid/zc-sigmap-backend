@@ -85,7 +85,7 @@ public class SocieteSpecifications {
     }
 
     public static Specification<Societe> hasPaysId(Integer paysId) {
-        return (root, query, cb) -> cb.equal(root.get("pays").get("id"), paysId);
+        return (root, query, cb) -> cb.equal(root.get("address").get("pays").get("id"), paysId);
     }
 
     public static Specification<Societe> hasTypeId(Integer typeId) {
@@ -124,4 +124,6 @@ public class SocieteSpecifications {
             return cb.like(cb.lower(adresseJoin.get("email")),   email.toLowerCase() );
         };
     }
+
+
 }

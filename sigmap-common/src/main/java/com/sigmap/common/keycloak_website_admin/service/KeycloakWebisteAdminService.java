@@ -469,5 +469,33 @@ public class KeycloakWebisteAdminService {
 
         return dto;
     }
+    public void updateUserInfoInKeycloak(UserResquest request) {
+        HttpHeaders headers = createAuthHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //  Prepare the payload for Keycloak update
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("firstName", request.getFirstName());
+        payload.put("lastName", request.getLastName());
+        payload.put("email", request.getEmail());
+        payload.put("attributes", Map.of(
+                "address", List.of(request.getAddress()),
+                "mobile", List.of(request.getMobile()),
+                "fixe", List.of(request.getFixe()),
+                "cin", List.of(request.getCin()),
+                "dateCIN", request.getDateCIN() != null ? List.of(request.getDateCIN().toString()) : List.of()
+        ));
+
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, request.getId());
+
+        try {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+            logger.info("✅ User {} successfully updated in Keycloak", request.getUsername());
+        } catch (HttpClientErrorException e) {
+            logger.error("❌ Error updating user {} in Keycloak: {}", request.getUsername(), e.getMessage());
+            throw new RuntimeException("Failed to update user in Keycloak", e);
+        }
+    }
 
 }
