@@ -8,16 +8,14 @@ import com.sigmap.common.security.Authentication;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Optional;
-import java.util.TimeZone;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -40,9 +38,12 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
 
     @Override
     public Page<DeviseHistory> findAllByCurrencyId(String date, Specification<DeviseHistory> spec, Pageable pageable) {
+        if (date == null || date.trim().isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+        
         try {
             // Parse the input date string in ISO 8601 format (e.g., 2025-11-26T15:14:10.000Z)
-            // The 'X' is for ISO 8601 time zone
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
             sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
             Date parsedDate = sdf.parse(date);

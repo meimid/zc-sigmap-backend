@@ -32,7 +32,7 @@ public class DeviseHistoryController {
 
     @GetMapping
     public ResponseEntity<Page<DeviseHistoryResponse>> findAllByCurrencyId(
-            @RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) String date,
+            @RequestParam(name = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) String date,
             DeviseHistoryQuerry query, Pageable pageable) {
         Page<DeviseHistory> responses = deviseHistoryService.findAllByCurrencyId(date, query.toSpecification(), pageable);
         Page<DeviseHistoryResponse> resp = responses.map(deviseHistoryService::entityToResponse);
