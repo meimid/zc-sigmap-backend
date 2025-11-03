@@ -9,10 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/devise_historique")
@@ -23,16 +23,18 @@ public class DeviseHistoryController {
     private final DeviseHistoryService deviseHistoryService;
 
 
-    @GetMapping
+   /* @GetMapping
     public ResponseEntity<Page<DeviseHistoryResponse>> findAll(DeviseHistoryQuerry query, Pageable pageable) {
         Page<DeviseHistory> responses = deviseHistoryService.findAll(query.toSpecification(), pageable);
         Page<DeviseHistoryResponse> resp = responses.map(deviseHistoryService::entityToResponse);
         return ResponseEntity.ok(resp);
-    }
+    }*/
 
-    @GetMapping("/{deviseId}")
-    public ResponseEntity<Page<DeviseHistoryResponse>> findAllByCurrencyId(@PathVariable Integer deviseId, DeviseHistoryQuerry query, Pageable pageable) {
-        Page<DeviseHistory> responses = deviseHistoryService.findAllByCurrencyId(deviseId,query.toSpecification(), pageable);
+    @GetMapping
+    public ResponseEntity<Page<DeviseHistoryResponse>> findAllByCurrencyId(
+            @RequestParam(name = "date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) String date,
+            DeviseHistoryQuerry query, Pageable pageable) {
+        Page<DeviseHistory> responses = deviseHistoryService.findAllByCurrencyId(date, query.toSpecification(), pageable);
         Page<DeviseHistoryResponse> resp = responses.map(deviseHistoryService::entityToResponse);
         return ResponseEntity.ok(resp);
     }

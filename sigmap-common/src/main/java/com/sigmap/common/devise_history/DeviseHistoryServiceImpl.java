@@ -12,8 +12,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Optional;
+import java.util.TimeZone;
 
 @Service
 @Slf4j
@@ -35,10 +39,32 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
     }
 
     @Override
-    public Page<DeviseHistory> findAllByCurrencyId(Integer deviseId, Specification<DeviseHistory> spec, Pageable pageable) {
-        spec = spec.and(DeviseHistorySpecifications.deviseId(deviseId));
+    public Page<DeviseHistory> findAllByCurrencyId(String date, Specification<DeviseHistory> spec, Pageable pageable) {
+        try {
+            // Parse the input date string in ISO 8601 format (e.g., 2025-11-26T15:14:10.000Z)
+            // The 'X' is for ISO 8601 time zone
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            Date parsedDate = sdf.parse(date);
+            Calendar targetDate = Calendar.getInstance();
+            targetDate.setTime(parsedDate);
 
-        return deviseHistoryRepository.findAll(spec, pageable);
+            // Add date range specification to find records where targetDate is between dateDebut and dateFin
+            spec = spec.and((root, query, criteriaBuilder) -> {
+                // The target date should be >= dateDebut AND (<= dateFin OR dateFin is null)
+                return criteriaBuilder.and(
+                    criteriaBuilder.lessThanOrEqualTo(root.get("dateDebut"), targetDate),
+                    criteriaBuilder.or(
+                        criteriaBuilder.greaterThanOrEqualTo(root.get("dateFin"), targetDate),
+                        criteriaBuilder.isNull(root.get("dateFin"))
+                    )
+                );
+            });
+
+            return deviseHistoryRepository.findAll(spec, pageable);
+        } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid date format. Please use format exmp: 2025-11-26T15:14:10.000Z ", e);
+        }
     }
 
     private String getUserConnectedId(){
