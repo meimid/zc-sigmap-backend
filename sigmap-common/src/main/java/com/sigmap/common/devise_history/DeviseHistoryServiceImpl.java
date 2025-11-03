@@ -61,7 +61,9 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
                 );
             });
 
-            return deviseHistoryRepository.findAll(spec, pageable);
+            Page<DeviseHistory> result = deviseHistoryRepository.findAll(spec, pageable);
+            // Return the result (will be empty if no records found)
+            return result;
         } catch (ParseException e) {
             throw new IllegalArgumentException("Invalid date format. Please use format exmp: 2025-11-26T15:14:10.000Z ", e);
         }
