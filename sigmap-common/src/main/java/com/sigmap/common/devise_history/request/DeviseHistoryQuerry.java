@@ -33,19 +33,14 @@ public class DeviseHistoryQuerry {
         Calendar debut = parseDateStringToCalendar(dateDebut);
         Calendar fin = parseDateStringToCalendar(dateFin);
 
-        // 🔍 Search text + date
-        if (search != null && !search.isBlank() && (debut != null || fin != null)) {
-            spec = spec.and(DeviseHistorySpecifications.search(search, debut, fin));
-        }
-        // 🔍 Search text only
-        else if (search != null && !search.isBlank()) {
+        // 🔍 Apply filters
+        if (search != null && !search.isBlank()) {
             spec = spec.and(DeviseHistorySpecifications.search(search));
         }
-        // 📅 Date range only
-        else if (debut != null || fin != null) {
-            Calendar startDate = debut != null ? debut : fin;
-            Calendar endDate = fin != null ? fin : debut;
-            spec = spec.and(DeviseHistorySpecifications.search(null, startDate, endDate));
+        
+        // Apply date filters if any date parameter is provided
+        if (debut != null || fin != null) {
+            spec = spec.and(DeviseHistorySpecifications.dateRange(debut, fin));
         }
 
         if (code != null && !code.isBlank()) {
