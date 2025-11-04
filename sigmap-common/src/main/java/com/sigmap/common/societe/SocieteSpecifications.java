@@ -61,12 +61,7 @@ public class SocieteSpecifications {
             return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
         };
     }
-    /** nni. */
-    public static Specification<Societe> nni(String nni) {
-        return (root, query, criteriaBuilder) -> {
-            return criteriaBuilder.like(root.get("nni"), "%" + nni + "%");
-        };
-    }
+
     /** categorieSoumissionnaireId. */
     public static Specification<Societe> categorieSoumissionnaireId(String categorieSoumissionnaireId) {
         return (root, query, criteriaBuilder) -> {
@@ -90,7 +85,7 @@ public class SocieteSpecifications {
     }
 
     public static Specification<Societe> hasPaysId(Integer paysId) {
-        return (root, query, cb) -> cb.equal(root.get("pays").get("id"), paysId);
+        return (root, query, cb) -> cb.equal(root.get("address").get("pays").get("id"), paysId);
     }
 
     public static Specification<Societe> hasTypeId(Integer typeId) {
@@ -102,7 +97,7 @@ public class SocieteSpecifications {
     }
 
     public static Specification<Societe> nif(String nif) {
-        return (root, query, cb) -> cb.like(root.get("nif"), "%" + nif + "%");
+        return (root, query, cb) -> cb.like(root.get("nif") ,nif );
     }
 
     public static Specification<Societe> numCnss(String numCnss) {
@@ -123,5 +118,12 @@ public class SocieteSpecifications {
             return cb.equal(activiteJoin.get("id"), activiteId);
         };
     }
+    public static Specification<Societe> emailAddress(String email) {
+        return (root, query, cb) -> {
+            Join<Societe, Adresse> adresseJoin = root.join("address", JoinType.LEFT);
+            return cb.like(cb.lower(adresseJoin.get("email")),   email.toLowerCase() );
+        };
+    }
+
 
 }
