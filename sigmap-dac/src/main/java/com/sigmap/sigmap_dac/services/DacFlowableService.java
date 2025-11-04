@@ -1,6 +1,10 @@
 package com.sigmap.sigmap_dac.services;
 
+import com.sigmap.common.ac.AcServiceImpl;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComServiceImpl;
+import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -21,6 +25,10 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.ppms.exception.MissingAcIdException;
+import com.sigmap.common.ppms.exception.MissingComIdException;
+import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
+import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
@@ -29,6 +37,7 @@ import com.sigmap.sigmap_dac.services.dto.response.ProcessStartResponseDTO;
 import com.sigmap.sigmap_dac.services.dto.response.TaskDTO;
 import com.sigmap.sigmap_dac.services.dto.response.TaskDetailsDTO;
 import com.sigmap.sigmap_dac.services.dto.response.TaskListResponseDTO;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.*;
 import org.flowable.engine.HistoryService;
@@ -84,6 +93,9 @@ public class DacFlowableService {
     @Autowired private CurrentUserService currentUserService;
     @Autowired private KeycloakAdminService keycloakAdminService;
     @Autowired private DacPrixRepository dacPrixRepository;
+    @Autowired private ComServiceImpl comServiceImpl;
+    @Autowired private AcServiceImpl acServiceImpl;
+    @Autowired private EntityManager entityManager;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -118,12 +130,13 @@ public class DacFlowableService {
         return cgs != null && !cgs.isEmpty() && cgs.stream().anyMatch(g -> hasRole(jwtAuth, g));
     }
 
-    /** Reads boolean flags from BPMN form properties: isUpdatable, isPublishable, meetingRequired. */
+    /** Reads boolean flags from BPMN form properties: isUpdatable, isPublishable, meetingRequired, commissionRequired. */
     private Map<String, Boolean> getTaskProperties(Task task) {
         Map<String, Boolean> props = new HashMap<>();
         props.put("isUpdatable", false);
         props.put("isPublishable", false);
         props.put("meetingRequired", false);
+        props.put("commissionRequired", false);
 
         try {
             BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
@@ -131,9 +144,10 @@ public class DacFlowableService {
             if (fe instanceof UserTask ut && ut.getFormProperties() != null) {
                 for (FormProperty fp : ut.getFormProperties()) {
                     switch (fp.getId()) {
-                        case "isUpdatable" -> props.put("isUpdatable", Boolean.parseBoolean(fp.getDefaultExpression()));
-                        case "isPublishable" -> props.put("isPublishable", Boolean.parseBoolean(fp.getDefaultExpression()));
-                        case "meetingRequired" -> props.put("meetingRequired", Boolean.parseBoolean(fp.getDefaultExpression()));
+                        case "isUpdatable"        -> props.put("isUpdatable", Boolean.parseBoolean(fp.getDefaultExpression()));
+                        case "isPublishable"      -> props.put("isPublishable", Boolean.parseBoolean(fp.getDefaultExpression()));
+                        case "meetingRequired"    -> props.put("meetingRequired", Boolean.parseBoolean(fp.getDefaultExpression()));
+                        case "commissionRequired" -> props.put("commissionRequired", Boolean.parseBoolean(fp.getDefaultExpression()));
                     }
                 }
             }
@@ -141,6 +155,20 @@ public class DacFlowableService {
             log.warn("Failed to read form properties for task {}", task.getId(), e);
         }
         return props;
+    }
+
+    private Optional<UserTask> getModelUserTask(Task task) {
+        try {
+            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            FlowElement fe = bpmnModel.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
+            if (fe instanceof UserTask ut) return Optional.of(ut);
+        } catch (Exception ignore) {}
+        return Optional.empty();
+    }
+
+    private boolean userTaskHasFormProp(UserTask ut, String formPropId) {
+        if (ut.getFormProperties() == null) return false;
+        return ut.getFormProperties().stream().anyMatch(fp -> formPropId.equals(fp.getId()));
     }
 
     /* -------------------------------- process start -------------------------------- */
@@ -208,6 +236,9 @@ public class DacFlowableService {
         vars.put("version", version);
         Integer acId = (dac.getPpm() != null && dac.getPpm().getAc() != null) ? dac.getPpm().getAc().getId() : null;
         if (acId != null) vars.put("acId", acId);
+        vars.put("isRestraint", dac.getModePassation() != null && dac.getModePassation().isRestraint());
+        vars.put("shortListing", dac.isShortListing());
+        vars.put("parentDacId", dac.getParentDacId());
 
         ProcessInstance pi = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, vars, TENANT_ID);
 
@@ -444,13 +475,18 @@ public class DacFlowableService {
 
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request)
-            throws DacNotFound, DocNotFound, AcNotFound, IOException {
+            throws DacNotFound, DocNotFound, AcNotFound,
+            MissingAcIdException, MissingComIdException,
+            UserNotAssociatedWithAcException,
+            UserNotAssociatedWithComException,
+            ComNotFound {
 
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (!(auth instanceof JwtAuthenticationToken jwtAuth)) {
-            var r = new TaskDTO();
-            r.setStatus("Invalid or missing JWT authentication");
-            return r;
+        // --- Auth & task lookup ---
+        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            TaskDTO error = new TaskDTO();
+            error.setStatus("Invalid or missing JWT authentication");
+            return error;
         }
 
         Task task = taskService.createTaskQuery()
@@ -459,112 +495,515 @@ public class DacFlowableService {
                 .active()
                 .singleResult();
         if (task == null) {
-            var r = new TaskDTO();
-            r.setStatus("Task not found or not active");
-            return r;
+            TaskDTO error = new TaskDTO();
+            error.setStatus("Task not found or not active");
+            return error;
         }
 
-        if (!(hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth))) {
-            var r = new TaskDTO();
-            r.setStatus("User not allowed to validate this task");
-            return r;
+        // Candidate group
+        String candidateGroup = getCandidateGroup(task);
+        if (candidateGroup == null) {
+            TaskDTO error = new TaskDTO();
+            error.setStatus("Task does not have a candidate group");
+            return error;
         }
 
-        Map<String, Object> pvars = runtimeService.getVariables(task.getProcessInstanceId());
-        Integer id = (Integer) pvars.get("id");
-        Integer version = (Integer) pvars.get("version");
+        // Permissions
+        if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+            TaskDTO error = new TaskDTO();
+            error.setStatus("User does not have the required role or assignment to validate this task");
+            return error;
+        }
+
+        // --- Process vars & DAC ---
+        Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
+        log.info("Process variables for DAC task [{}]: {}", taskId, processVariables);
+        Integer id = (Integer) processVariables.getOrDefault("id", null);
+        Integer version = (Integer) processVariables.getOrDefault("version", null);
         if (id == null || version == null) {
-            var r = new TaskDTO();
-            r.setStatus("Missing process variables: id/version");
-            return r;
+            TaskDTO error = new TaskDTO();
+            error.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
+            return error;
         }
 
-        Optional<Dac> currentOpt = dacService.findById(id, version);
-        if (currentOpt.isEmpty()) {
-            var r = new TaskDTO();
-            r.setStatus("DAC not found for id " + id + " and version " + version);
-            return r;
+        Optional<Dac> dacOpt = dacService.findById(id, version);
+        if (dacOpt.isEmpty()) {
+            TaskDTO error = new TaskDTO();
+            error.setStatus("DAC not found for id " + id + " and version " + version);
+            return error;
         }
-        Dac current = currentOpt.get();
+        Dac latestDac = dacOpt.get();
 
-        Map<String, Boolean> props = getTaskProperties(task);
-        boolean isUpdatable = Boolean.TRUE.equals(props.get("isUpdatable"));
-        boolean isPublishable = Boolean.TRUE.equals(props.get("isPublishable"));
+        // --- Task properties  ---
+        Map<String, Boolean> taskProps = getTaskProperties(task);
+        Boolean isUpdatable        = taskProps.get("isUpdatable");
+        Boolean isPublishable      = taskProps.get("isPublishable");
+        Boolean commissionRequired = taskProps.get("commissionRequired");
+        Boolean meetingRequired    = taskProps.get("meetingRequired");
 
-        if (isUpdatable) {
+        boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting());
+        log.info("DAC approve-path: [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
+                task.getTaskDefinitionKey(), task.getName(),
+                isUpdatable, meetingRequired, commissionRequired, isPublishable, fromMeeting);
+
+        // --- meetingRequired enforcement  ---
+        if (Boolean.TRUE.equals(meetingRequired)) {
+            if (!fromMeeting) {
+                TaskDTO error = new TaskDTO();
+                error.setStatus("Une réunion est requise pour clôturer cette tâche. Utilisez le service (endpoint) dédié à la réunion.");
+                return error;
+            }
+            try {
+                BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+                FlowElement fe = model.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
+                if (fe instanceof UserTask ut) {
+                    List<String> modelGroups = ut.getCandidateGroups();
+                    if (modelGroups != null && modelGroups.size() >= 2) {
+                        String closerGroup = modelGroups.get(modelGroups.size() - 1);
+                        if (!hasRole(jwtAuth, closerGroup)) {
+                            TaskDTO error = new TaskDTO();
+                            error.setStatus("Une réunion est requise. Seul le groupe de clôture peut terminer cette tâche.");
+                            return error;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("meetingRequired enforcement: could not resolve candidate groups for task [{}]: {}", taskId, e.getMessage());
+            }
+        }
+
+        // --- If editable, update DAC (batch docs → new single version),---
+        if (Boolean.TRUE.equals(isUpdatable)) {
             List<DacDocsRequest> updates = request.getDacDocsRequest();
             if (updates == null || updates.isEmpty()) {
-                var r = new TaskDTO();
-                r.setStatus("At least one DacDocsRequest is required when isUpdatable=true");
-                return r;
+                TaskDTO error = new TaskDTO();
+                error.setStatus("At least one DacDocsRequest is required when isUpdatable=true");
+                return error;
             }
-            // force DAC id from process vars to avoid tampering; batch ensures one new version
             for (DacDocsRequest u : updates) u.setDacId(id);
             dacDocsService.createDacDocsBatch(updates);
 
-            // refresh to latest version (batch creates a single new version)
-            current = dacService.findById(id, null).orElse(current);
-            version = current.getDacVer();
-            pvars.put("version", version);
-            runtimeService.setVariables(task.getProcessInstanceId(), pvars);
+            // refresh DAC to latest version
+            latestDac = dacService.findById(id, null).orElse(latestDac);
+            runtimeService.setVariable(task.getProcessInstanceId(), "version", latestDac.getDacVer());
+
+            // refresh gateway-driving vars from DAC
+            runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
+                    latestDac.getModePassation() != null && latestDac.getModePassation().isRestraint());
+            runtimeService.setVariable(task.getProcessInstanceId(), "shortListing", latestDac.isShortListing());
+            runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
+            log.info("Updated DAC after versioning; DAC ver={}, isRestraint={}, shortListing={}, parentDacId={}",
+                    latestDac.getDacVer(),
+                    runtimeService.getVariable(task.getProcessInstanceId(), "isRestraint"),
+                    runtimeService.getVariable(task.getProcessInstanceId(), "shortListing"),
+                    runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId"));
         }
 
-        // Dynamically resolve decision variable & whether chosen branch goes to EndEvent
-        Boolean validate = request.getValidate();
-        DecisionResolution decision = resolveDecision(task, validate);
+        // --- Resolve next user task + its meeting/commission flags (best-effort) ---
+        UserTask nextUserTask = null;
+        Boolean nextMeetingRequired = null;
+        Boolean nextCommissionRequired = null;
+        if (Boolean.TRUE.equals(request.getValidate())) {
+            try {
+                BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+                FlowElement taskElement = bpmnModel.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
 
-        ProcessStatus newStatus = null;
-        if (isPublishable) {
-            newStatus = ProcessStatus.PUBLIE;
-        } else if (Boolean.TRUE.equals(validate) && decision.nextIsEnd) {
-            newStatus = ProcessStatus.VALIDE;
+                if (taskElement instanceof UserTask ut) {
+                    for (SequenceFlow flow : ut.getOutgoingFlows()) {
+                        FlowElement target = bpmnModel.getMainProcess().getFlowElement(flow.getTargetRef());
+                        if (target instanceof ExclusiveGateway gw) {
+                            for (SequenceFlow gf : gw.getOutgoingFlows()) {
+                                String val = extractConditionValue(gf.getConditionExpression());
+                                if ("true".equalsIgnoreCase(val)) {
+                                    FlowElement nxt = bpmnModel.getMainProcess().getFlowElement(gf.getTargetRef());
+                                    if (nxt instanceof UserTask) nextUserTask = (UserTask) nxt;
+                                    break;
+                                }
+                            }
+                        } else if (target instanceof UserTask) {
+                            nextUserTask = (UserTask) target;
+                        }
+                        if (nextUserTask != null) break;
+                    }
+
+                    if (nextUserTask == null) {
+                        for (SequenceFlow flow : ut.getOutgoingFlows()) {
+                            FlowElement target = bpmnModel.getMainProcess().getFlowElement(flow.getTargetRef());
+                            if (target instanceof ExclusiveGateway gw) {
+                                for (SequenceFlow gf : gw.getOutgoingFlows()) {
+                                    FlowElement maybe = bpmnModel.getMainProcess().getFlowElement(gf.getTargetRef());
+                                    if (maybe instanceof UserTask cand) {
+                                        Boolean candMeeting = cand.getFormProperties().stream()
+                                                .filter(fp -> "meetingRequired".equals(fp.getId()))
+                                                .findFirst()
+                                                .map(fp -> Boolean.parseBoolean(fp.getDefaultExpression()))
+                                                .orElse(null);
+                                        if (Boolean.TRUE.equals(candMeeting)) {
+                                            nextUserTask = cand;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (nextUserTask != null) break;
+                        }
+                    }
+
+                    if (nextUserTask != null && nextUserTask.getFormProperties() != null) {
+                        for (FormProperty fp : nextUserTask.getFormProperties()) {
+                            if ("meetingRequired".equals(fp.getId()))
+                                nextMeetingRequired = Boolean.parseBoolean(fp.getDefaultExpression());
+                            if ("commissionRequired".equals(fp.getId()))
+                                nextCommissionRequired = Boolean.parseBoolean(fp.getDefaultExpression());
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.info("Next-step resolution failed for DAC task [{}]: {}", taskId, e.getMessage());
+            }
+        }
+
+        log.info("DAC approve-path: nextTask [{}] meetingRequired={}, commissionRequired={}",
+                nextUserTask != null ? nextUserTask.getId() : "null", nextMeetingRequired, nextCommissionRequired);
+
+        boolean skipComAssociationCheck = false;
+        Integer deferComIdAfterCompletion = null;  // for CPMP→PER or SCS→PER
+
+        // --- Dynamic COM wiring (approve path), AC inside DAC via DAC→PPM→AC ---
+        if (Boolean.TRUE.equals(request.getValidate())) {
+            // Resolve AC id through DAC->PPM->AC
+            Integer acIdFromDac = (latestDac.getPpm() != null && latestDac.getPpm().getAc() != null)
+                    ? latestDac.getPpm().getAc().getId() : null;
+
+            // Case: current = AC validation (no meeting) and next requires meeting → set CPMP for the AC
+            if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
+                if (acIdFromDac == null) throw new MissingAcIdException("acId is required to route commission from AC validation (DAC→PPM→AC)");
+                Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdFromDac);
+                if (cpmpComId == null) throw new ComNotFound("your ac dont have a cpmp", List.of(acIdFromDac));
+                Com cpmp = comServiceImpl.findById(cpmpComId);
+                if (cpmp == null) throw new ComNotFound("CPMP commission not found", List.of(cpmpComId));
+
+                // associate CPMP to DAC (idempotent)
+                attachComToDac(latestDac, cpmpComId);
+
+                runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
+                log.info("DAC AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
+                skipComAssociationCheck = true;
+            }
+
+            // Case: CPMP meeting and next needs commission → prepare CNCMP PER (defer switch after completion)
+            if (Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextCommissionRequired)) {
+                Com cncmpPer = comServiceImpl.findCNCMPP();
+                if (cncmpPer == null) throw new ComNotFound("Aucune commission CNCMP Permanente n'est configurée.", List.of());
+
+                attachComToDac(latestDac, cncmpPer.getId()); // keep PER associated with DAC
+                deferComIdAfterCompletion = cncmpPer.getId();
+                runtimeService.setVariable(task.getProcessInstanceId(), "cncmpPerComId", cncmpPer.getId());
+                log.info("DAC CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
+            }
+        }
+
+        /* -------- CNCMP Decision (APPROVE / REJECT / CI) -------- */
+        Boolean validateFlag = request.getValidate();
+        boolean isCncmpDecisionTask = getModelUserTask(task)
+                .map(ut -> userTaskHasFormProp(ut, "cncmpDecision"))
+                .orElse(false);
+
+        Integer deferComIdAfterDecision = null;
+
+        if (isCncmpDecisionTask) {
+            var dec = request.getCncmpDecision();
+            if (dec != null) {
+                String pid = task.getProcessInstanceId();
+
+                Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+                if (perId != null) {
+                    runtimeService.setVariable(pid, "comId", perId);
+                    try { attachComToDac(latestDac, perId); } catch (Exception ignore) {}
+                }
+                runtimeService.setVariable(pid, "cncmpDecision", dec.name());
+
+                switch (dec) {
+                    case APPROVE -> {
+                        deferComIdAfterDecision = perId;
+                        validateFlag = null;
+                        log.info("DAC CNCMP Decision: APPROVE");
+                    }
+                    case REJECT -> {
+                        Integer acIdVar = (Integer) runtimeService.getVariable(pid, "acId");
+                        if (acIdVar == null) throw new MissingAcIdException("acId required to route REJECT to CPMP");
+                        Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdVar);
+                        if (cpmpComId == null) throw new ComNotFound("your ac dont have a cpmp", List.of(acIdVar));
+                        deferComIdAfterDecision = cpmpComId;
+                        validateFlag = null;
+                        log.info("DAC CNCMP Decision: REJECT → defer comId to CPMP={}", cpmpComId);
+                    }
+                    case CI -> {
+                        Integer speComId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
+                        deferComIdAfterDecision = speComId;
+                        validateFlag = null;
+                        log.info("DAC CNCMP Decision: CI → defer comId to SCS={}", speComId);
+                    }
+                }
+            }
+        }
+
+        // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required (choose SCS) ---
+        if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
+            Integer reqComId = request.getComId();
+            if (reqComId == null) {
+                throw new MissingComIdException("comId is required at Affectation (commissionRequired=true) when validate is true");
+            }
+            Com scs = comServiceImpl.findById(reqComId);
+            if (scs == null) throw new ComNotFound("Commission not found", List.of(reqComId));
+
+            attachComToDac(latestDac, reqComId); // SCS
+            runtimeService.setVariable(task.getProcessInstanceId(), "comId", reqComId);
+            runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId);
+            log.info("DAC Affectation: Overwrote comId to {} and set cncmpSpeComId", reqComId);
+            skipComAssociationCheck = true;
+
+            // Ensure PER + CPMP remain associated alongside SCS (idempotent)
+            try {
+                String pid = task.getProcessInstanceId();
+                Integer perId  = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+                Integer acIdV  = (Integer) runtimeService.getVariable(pid, "acId");
+                Integer cpmpId = (acIdV != null) ? acServiceImpl.getComIdByAcId(acIdV) : null;
+
+                attachComToDac(latestDac, perId);
+                attachComToDac(latestDac, cpmpId);
+            } catch (Exception e) {
+                log.warn("DAC Affectation: failed to persist SCS/PER/CPMP associations: {}", e.getMessage());
+            }
+        }
+
+        // --- Association checks with CURRENT step's comId  ---
+        Integer currComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+        if ((!skipComAssociationCheck && currComId != null) && !Boolean.TRUE.equals(isPublishable)) {
+            List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+            if (userComIds == null || !userComIds.contains(currComId)) {
+                throw new com.sigmap.common.ppms.exception.UserNotAssociatedWithComException(
+                        "User is not associated with the commission ID: " + currComId);
+            }
+            log.info("DAC User validated for commission ID: {}", currComId);
+        } else if (currComId == null) {
+            Integer acIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "acId");
+            if (acIdVar == null) throw new MissingAcIdException("acId is required in process variables for tasks without comId");
+            List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+            if (userAcIds == null || !userAcIds.contains(acIdVar)) {
+                throw new com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException(
+                        "User is not associated with the AC ID: " + acIdVar);
+            }
+            log.info("DAC User validated for AC ID: {}", acIdVar);
         } else {
+            log.info("DAC: Skipping commission association check at system hand-off (comId={})", currComId);
+        }
+
+        // Persist CURRENT comId into DAC.coms BEFORE status update (idempotent)
+        try {
+            Integer snap = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+            if (snap != null) attachComToDac(latestDac, snap);
+        } catch (Exception e) {
+            log.warn("DAC Association: failed to add CURRENT comId before status update: {}", e.getMessage());
+        }
+
+        // --- Status updates  ---
+        ProcessStatus newStatus = null;
+        boolean actedByDecision = isCncmpDecisionTask && request.getCncmpDecision() != null;
+
+        if (Boolean.TRUE.equals(isPublishable)) {
+            newStatus = ProcessStatus.PUBLIE;
+            Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
+            if (updated == null) {
+                TaskDTO error = new TaskDTO();
+                error.setStatus("Failed to update DAC status to Publiée");
+                return error;
+            }
+            latestDac = updated;
+            log.info("Updated DAC status to Publiée for task [{}], new status: {}", taskId, latestDac.getStatus());
+
+        } else if ((request.getValidate() != null) || actedByDecision) {
             newStatus = ProcessStatus.EN_TRAITEMENT;
-        }
-        if (newStatus != null) {
-            current = dacService.updateStatus(id, current.getDacVer(), newStatus);
+            Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
+            if (updated == null) {
+                TaskDTO error = new TaskDTO();
+                error.setStatus("Failed to update DAC status to En cours de traitement");
+                return error;
+            }
+            latestDac = updated;
+
+        } else if (request.getValidate() != null && !request.getValidate()) {
+            newStatus = ProcessStatus.EN_TRAITEMENT;
+            Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
+            if (updated == null) {
+                TaskDTO error = new TaskDTO();
+                error.setStatus("Failed to keep status En cours de traitement");
+                return error;
+            }
+            latestDac = updated;
         }
 
-        Map<String, Object> toSet = new HashMap<>();
-        if (decision.variable != null && validate != null) {
-            toSet.put(decision.variable, validate);
-        }
-        toSet.put("comment", request.getComment() != null ? request.getComment() : "");
-        toSet.put("dateComment", LocalDateTime.now());
-        toSet.put("treater", jwtAuth.getName());
-        if (isPublishable) {
-            toSet.put("isPublishable", true);
-        }
-        runtimeService.setVariables(task.getProcessInstanceId(), toSet);
+        // === SAFETY CASE #1 === re-ensure CPMP/PER/SCS are associated after status update ===
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
+            Integer cpmpId = (acIdForCpmp != null) ? acServiceImpl.getComIdByAcId(acIdForCpmp) : null;
+            Integer perId  = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+            Integer scsId  = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
 
+            attachComToDac(latestDac, cpmpId);
+            attachComToDac(latestDac, perId);
+            attachComToDac(latestDac, scsId);
+        } catch (Exception e) {
+            log.warn("DAC SAFETY#1: failed to re-ensure associations after status update: {}", e.getMessage());
+        }
+
+        // --- Determine gateway variable + whether next is EndEvent  ---
+        String processVariable = candidateGroup.toLowerCase() + "_valide";
+        boolean nextTaskIsLast = false;
+        try {
+            BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            if (bpmnModel != null) {
+                FlowElement te = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
+                if (te instanceof UserTask ut) {
+                    for (SequenceFlow of : ut.getOutgoingFlows()) {
+                        FlowElement target = bpmnModel.getFlowElement(of.getTargetRef());
+                        if (target instanceof ExclusiveGateway gw) {
+                            for (SequenceFlow gf : gw.getOutgoingFlows()) {
+                                String cond = gf.getConditionExpression();
+                                if (cond != null && cond.toLowerCase().contains("valide")) {
+                                    String variableName = extractVariableName(cond);
+                                    if (variableName != null && variableName.toLowerCase().contains("valide")) {
+                                        processVariable = variableName;
+                                    }
+                                }
+                                FlowElement next = bpmnModel.getFlowElement(gf.getTargetRef());
+                                if (next instanceof EndEvent) { nextTaskIsLast = true; break; }
+                            }
+                        } else if (target instanceof EndEvent) {
+                            nextTaskIsLast = true; break;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.info("DAC: Failed to extract gateway condition or determine next task for [{}]: {}", taskId, e.getMessage());
+        }
+
+        // --- Write vars, traceability, early VALIDEE if entering last user task (when not publishable) ---
+        Map<String, Object> varsToSet = new HashMap<>();
+        if (validateFlag != null) varsToSet.put(processVariable, validateFlag);
+        varsToSet.put("comment", request.getComment() != null ? request.getComment() : "");
+        varsToSet.put("dateComment", LocalDateTime.now());
+        varsToSet.put("treater", jwtAuth.getName());
+        if (Boolean.TRUE.equals(isPublishable)) varsToSet.put("isPublishable", true);
+        runtimeService.setVariables(task.getProcessInstanceId(), varsToSet);
+
+        if (nextTaskIsLast && !Boolean.TRUE.equals(isPublishable)) {
+            Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), ProcessStatus.VALIDE);
+            if (updated != null) {
+                latestDac = updated;
+                log.info("DAC status set to Validée before entering last task for [{}], status: {}", taskId, latestDac.getStatus());
+            }
+        }
+
+        dacService.save(latestDac);
         taskService.setAssignee(taskId, Authentication.getCurrentUserId().orElse(jwtAuth.getName()));
-        if (request.getComment() != null) {
-            taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+        if (request.getComment() != null) taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+
+        // Snapshot current comId (e.g., SCS after Affectation)
+        Integer comIdSnapshot = null;
+        try { comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); }
+        catch (Exception ex) { log.debug("DAC: Could not snapshot comId before completion for [{}]: {}", taskId, ex.getMessage()); }
+
+        // Ensure CURRENT comId is associated (idempotent)
+        if (comIdSnapshot != null) {
+            try { attachComToDac(latestDac, comIdSnapshot); }
+            catch (Exception e) { log.warn("DAC Association: failed to add comId {} to DAC: {}", comIdSnapshot, e.getMessage()); }
         }
+
+        // ---------- SCS→PER (defer switch back) ----------
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer perId     = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+            Integer speId     = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
+            Integer currentId = (Integer) runtimeService.getVariable(pid, "comId");
+
+            boolean onScsTask = !Boolean.TRUE.equals(commissionRequired)
+                    && perId != null && speId != null
+                    && Objects.equals(currentId, speId);
+
+            if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
+                deferComIdAfterCompletion = perId;
+                log.info("DAC SCS→PER: defer switch back to Permanent comId {} after completing SCS task", perId);
+            }
+        } catch (Exception e) {
+            log.warn("DAC SCS→PER: failed to plan switch back: {}", e.getMessage());
+        }
+
+        // Apply deferred comId changes just before completion (and persist)
+        Integer finalSwitch = (deferComIdAfterDecision != null) ? deferComIdAfterDecision : deferComIdAfterCompletion;
+        if (finalSwitch != null) {
+            runtimeService.setVariable(task.getProcessInstanceId(), "comId", finalSwitch);
+            try { attachComToDac(latestDac, finalSwitch); }
+            catch (Exception e) { log.warn("DAC Switch & Association: failed to ensure deferred comId {}: {}", finalSwitch, e.getMessage()); }
+        }
+
+        // === SAFETY CASE #2 === keep CPMP associated right before completing
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
+            Integer cpmpId = (acIdForCpmp != null) ? acServiceImpl.getComIdByAcId(acIdForCpmp) : null;
+            attachComToDac(latestDac, cpmpId);
+        } catch (Exception e) {
+            log.warn("DAC SAFETY#2: failed to ensure CPMP before completing: {}", e.getMessage());
+        }
+
+        // Complete task
         taskService.complete(taskId);
 
-        // If process ended after completion -> ensure status PUBLIE
+        // If process ended, force PUBLIE
         boolean finished = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())
                 .finished().count() > 0;
         if (finished) {
-            current = dacService.updateStatus(id, current.getDacVer(), ProcessStatus.PUBLIE);
+            latestDac = dacService.updateStatus(id, latestDac.getDacVer(), ProcessStatus.PUBLIE);
         }
 
-        TaskDTO r = new TaskDTO();
-        r.setTaskId(task.getId());
-        r.setTaskName(task.getName());
-        r.setTaskDefinitionKey(task.getTaskDefinitionKey());
-        r.setProcessInstanceId(task.getProcessInstanceId());
-        r.setId(id);
-        r.setVersion(current.getDacVer());
-        r.setNewStatus(current.getStatus());
-        r.setValidate(validate);
-        r.setTraceability(toSet);
-        r.setIsUpdatable(isUpdatable);
-        r.setIsPublishable(isPublishable);
-        r.setStatus("Task validated successfully");
-        return r;
+        // --- Response ---
+        TaskDTO resp = new TaskDTO();
+        resp.setTaskId(task.getId());
+        resp.setTaskName(task.getName());
+        resp.setTaskDefinitionKey(task.getTaskDefinitionKey());
+        resp.setProcessInstanceId(task.getProcessInstanceId());
+        resp.setId(id);
+        resp.setVersion(latestDac.getDacVer());
+        resp.setNewStatus(newStatus != null ? newStatus : latestDac.getStatus());
+        resp.setValidate(validateFlag != null ? validateFlag : request.getValidate());
+        resp.setTraceability(varsToSet);
+        resp.setIsUpdatable(isUpdatable);
+        resp.setIsPublishable(isPublishable);
+        if (comIdSnapshot != null) resp.setComId(comIdSnapshot);
+        resp.setStatus("Task validated successfully");
+        return resp;
+    }
+
+    private void attachComToDac(Dac dac, Integer comId) throws ComNotFound {
+        if (comId == null) return;
+        if (!entityManager.contains(dac)) dac = entityManager.merge(dac);
+        Dac finalDac = dac;
+        List<Com> list = Optional.ofNullable(dac.getComs())
+                .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalDac.setComs(l); return l; });
+        boolean exists = list.stream().anyMatch(c -> c.getId().equals(comId));
+        if (!exists) {
+            Com com = comServiceImpl.findById(comId);
+            if (com != null) {
+                list.add(com);
+                dacService.save(dac);
+                entityManager.flush();
+                log.info("Added comId {} to DAC(id={}, ver={})", comId, dac.getDacId(), dac.getDacVer());
+            }
+        }
     }
 
     /* -------------------------------- list my tasks -------------------------------- */
