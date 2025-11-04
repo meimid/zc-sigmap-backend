@@ -31,6 +31,8 @@ import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
@@ -1218,6 +1220,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
+<<<<<<< HEAD
 
     /** Handle when creation fails */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -1256,6 +1259,107 @@ public class GlobalExceptionHandler {
                 new Object[]{ex.getUserId()},
                 getLocal()
         );
+=======
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ActiveResponsableRequired.class)
+    public ResponseEntity<ErrorResponse> handleActiveResponsableRequired() {
+        String message = messageSource.getMessage(
+                "responsable.activeRequired",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(EmailOrUserNameAlreadyUsedForAnotherUser.class)
+    public ResponseEntity<ErrorResponse> handleEmailOrUserNameAlreadyUsedForAnotherUser() {
+        String message = messageSource.getMessage(
+                "email.username.already.used",
+                new Object[]{},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(CreateUserFailed.class)
+    public ResponseEntity<ErrorResponse> handleCreateUserFailed() {
+
+        String message = messageSource.getMessage(
+                "user.create.failed",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UserNotFoundInKeycloak.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundInKeycloak(UserNotFoundInKeycloak ex) {
+        String message = messageSource.getMessage(
+                "user.notFoundInKeycloak",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(KeycloakUserError.class)
+    public ResponseEntity<ErrorResponse> handleKeycloakUserError(KeycloakUserError ex) {
+        String message = messageSource.getMessage(
+                "keycloak.user.error",
+                new Object[]{ex.getDetails()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNifAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNifAlreadyRelatedToOtherSociete(SocieteNifAlreadyRelatedToOtherSociete ex) {
+        String message = messageSource.getMessage(
+                "societe.nifAlreadyExists",
+                new Object[]{ex.getNif()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNumCnssAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNumCnssAlreadyRelatedToOtherSociete(
+            SocieteNumCnssAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.numCnssAlreadyExists",
+                new Object[]{ex.getNumCnss()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteEmailAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteEmailAlreadyRelatedToOtherSociete(
+            SocieteEmailAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.emailAlreadyExists",
+                new Object[]{ex.getEmail()},
+                getLocal()
+        );
+
+>>>>>>> 11d2ad703325ed29ac81fc18832005928be03c9e
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }

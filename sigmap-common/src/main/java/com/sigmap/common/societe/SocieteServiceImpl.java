@@ -9,6 +9,8 @@ import com.sigmap.common.adresse.exceptions.AdresseNotFound;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
 
+import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
+import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -23,18 +25,20 @@ import com.sigmap.common.user_societe.UserSocieteService;
 import com.sigmap.common.user_societe.UserSocieteSpecifications;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
+import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -45,7 +49,8 @@ public class SocieteServiceImpl implements SocieteService {
     private final UserSocieteRepository  userSocieteRepository;
     private final AdressService adressService;
     private final UserSocieteService userSocieteService;
-    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
+    public SocieteServiceImpl(SocieteRepository repository, RefParamService refParamService, ActiviteService activiteService, UserSocieteRepository userSocieteRepository, AdressService adressService, UserSocieteService userSocieteService, KeycloakWebisteAdminService keycloakWebisteAdminService
 
 
     ) {
@@ -55,6 +60,7 @@ public class SocieteServiceImpl implements SocieteService {
         this.userSocieteRepository = userSocieteRepository;
         this.adressService = adressService;
         this.userSocieteService = userSocieteService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
     }
 
     @Override
@@ -115,6 +121,24 @@ public class SocieteServiceImpl implements SocieteService {
     @Transactional
     public Societe create(SocieteRequestInscription request) throws RefParamNotFound, SocieteNotFound {
 
+        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false)).and(SocieteSpecifications.hasPaysId(request.getAdresseRequest().getPaysId()));
+         if(findOne(nifSpecification).isPresent()) {
+             throw new SocieteNifAlreadyRelatedToOtherSociete("",request.getNif());
+         }
+
+        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false)).and(SocieteSpecifications.hasPaysId(request.getAdresseRequest().getPaysId()));
+
+        if(findOne(cnssSpecification).isPresent()) {
+            throw new SocieteNumCnssAlreadyRelatedToOtherSociete("",request.getNumCnss());
+        }
+        Specification<Societe> emailSpecification =
+                SocieteSpecifications.emailAddress(request.getAdresseRequest().getEmail())
+                        .and(SocieteSpecifications.deleted(false));
+
+        if (findOne(emailSpecification).isPresent()) {
+            throw new SocieteEmailAlreadyRelatedToOtherSociete("",request.getAdresseRequest().getEmail());
+        }
+
 
         Societe societe =  SocieteMapper.INSTANCE.map(request);
 
@@ -162,15 +186,15 @@ public class SocieteServiceImpl implements SocieteService {
             throw new NameIsRequiredException ("");
         }
 
-        /*if (request.getSocieteRequest().getNif() == null) {
+        if (request.getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }*/
+        }
       /*  if (request.getSocieteRequest().getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
         }*/
-       /* if (request.getSocieteRequest().getNumCnss() == null) {
+        if (request.getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }*/
+        }
 
         if (request.getUserResquest().getId() == null || request.getUserResquest().getId().isBlank()) {
             throw new UserIdRequiredException();
@@ -210,6 +234,24 @@ public class SocieteServiceImpl implements SocieteService {
             throw new AddressRequiredException("");
         }
         Societe societe=findById(id);
+        Specification<Societe> nifSpecification = SocieteSpecifications.nif(request.getNif()).and(SocieteSpecifications.deleted(false));
+      Optional  <Societe> societeNif=findOne(nifSpecification);
+        if(societeNif.isPresent()&& !Objects.equals(societeNif.get().getId(), id)) {
+            throw new SocieteNifAlreadyRelatedToOtherSociete("",request.getNif());
+        }
+
+        Specification<Societe> cnssSpecification = SocieteSpecifications.numCnss(request.getNumCnss()).and(SocieteSpecifications.deleted(false));
+        Optional  <Societe> societeCnss=findOne(cnssSpecification);
+        if(societeCnss.isPresent()&& !Objects.equals(societeCnss.get().getId(), id)) {
+            throw new SocieteNumCnssAlreadyRelatedToOtherSociete("",request.getNumCnss());
+        }
+        Specification<Societe> emailSpecification =
+                SocieteSpecifications.emailAddress(request.getAdresseRequest().getEmail())
+                        .and(SocieteSpecifications.deleted(false));
+        Optional  <Societe> societeEmail=findOne(emailSpecification);
+        if (societeEmail.isPresent()&& !Objects.equals(societeEmail.get().getId(), id)) {
+            throw new SocieteEmailAlreadyRelatedToOtherSociete("",request.getAdresseRequest().getEmail());
+        }
         if (request.getTypeId() == null) {
             throw new TypeIsRequiredException("Type is required", societe.getId());
         } else {
@@ -228,15 +270,15 @@ public class SocieteServiceImpl implements SocieteService {
         if (request.getActiviteIds() == null || request.getActiviteIds().isEmpty()) {
             throw new ActiviteIsRequiredException("Activite is required", societe.getId());
         }
-       /* if (request.getNif() == null) {
+       if (request.getNif() == null) {
             throw new NifIsRequiredException("NIF is required", societe.getId());
-        }*/
+        }
         /*if (request.getDateNif() == null) {
             throw new DateNifIsRequiredException("Date NIF is required", societe.getId());
         }*/
-       /* if (request.getNumCnss() == null) {
+        if (request.getNumCnss() == null) {
             throw new NumCnssIsRequiredException("Num CNSS is required", societe.getId());
-        }*/
+        }
 
       /*  if(request.getStatus() != null) {
             societe.setStatus(request.getStatus());
@@ -244,6 +286,18 @@ public class SocieteServiceImpl implements SocieteService {
         else {
             societe.setStatus(SocieteStatus.EN_COURS);
         }*/
+
+        if (request.getNom() != null)
+            societe.setNom(request.getNom());
+
+        if (request.getNif() != null)
+            societe.setNif(request.getNif());
+
+        if (request.getNumCnss() != null)
+            societe.setNumCnss(request.getNumCnss());
+
+        if (request.getDateNif() != null)
+            societe.setDateNif(request.getDateNif());
 
         getSizeList(request.getActiviteIds());
         List<Activite> newActivites = new ArrayList<>();
@@ -289,16 +343,35 @@ public class SocieteServiceImpl implements SocieteService {
     }
     @Transactional
     @Override
-    public Societe updateStatus(Integer societeId, SocieteStatus status) throws SocieteNotFound {
+    public Societe updateStatus(Integer societeId, boolean status) throws SocieteNotFound {
         Societe societe = findById(societeId);
-        if(status != null) {
-            societe.setStatus(status);
+        if(!status ) {
+            societe.setStatus(SocieteStatus.REJETEE);
+
+            Specification<UserSociete> spec = Specification.where(UserSocieteSpecifications.deleted(false)).and(UserSocieteSpecifications.societeId(societeId));
+          List  <UserSociete> users=  userSocieteRepository.findAll(spec);
+          users.forEach(user -> {user.setStatus(ActiveStatus.NON_ACTIF);
+              keycloakWebisteAdminService.disableWebsiteUser(user.getUserId());});
+          userSocieteRepository.saveAll(users);
+
         }
-        if(status.equals(SocieteStatus.VALIDEE)) {
-            UserSociete userSociete=userSocieteService.findByUserId(societe.getUsersSociete().get(0).getUserId());
+        else {
+            societe.setStatus(SocieteStatus.VALIDEE);
+
+            String responsableId = societe.getUsersSociete().stream().filter(UserSociete::getResponsable).findFirst().get().getUserId();
+            UserSociete userSociete = userSocieteService.findByUserId(responsableId);
             userSociete.setStatus(ActiveStatus.ACTIF);
             userSocieteRepository.save(userSociete);
+
+            try {
+                keycloakWebisteAdminService.validateWebsiteUser(responsableId);
+
+            } catch (RuntimeException | MessagingException | IOException e) {
+                throw new KeycloakUserError("");
+               // throw new RuntimeException(e);
+            }
         }
+
         return save(societe);
     }
 
@@ -355,4 +428,5 @@ public class SocieteServiceImpl implements SocieteService {
          }
          return userSocieteRequest;
      }
+
 }

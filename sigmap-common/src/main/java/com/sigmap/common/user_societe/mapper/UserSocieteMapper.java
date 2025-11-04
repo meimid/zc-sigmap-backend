@@ -8,6 +8,7 @@ import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import com.sigmap.common.user_societe.response.UserResponse;
 import com.sigmap.common.user_societe.response.UserSocieteResponse;
 import com.sigmap.common.user_societe.response.UserSocieteResponseDto;
+import com.sigmap.common.user_societe.response.UserSocieteResponseUpdatableDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -22,7 +23,9 @@ public interface UserSocieteMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(target = "societe",source = "societe")
     UserSocieteResponse map(UserSociete userSociete);
+    UserSocieteResponseUpdatableDto mapToUserSocieteResponse(UserSociete userSociete);
     UserSociete mapFromRequest(UserSocieteRequest request);
     UserSocieteResponseDto toDto(UserSociete userSociete);
     UserResponse mapToUserDoResponse(UserSociete userSociete);
