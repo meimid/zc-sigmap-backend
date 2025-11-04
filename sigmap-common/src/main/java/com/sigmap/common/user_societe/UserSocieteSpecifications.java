@@ -32,7 +32,6 @@ public class UserSocieteSpecifications {
                     cb.like(cb.lower(root.get("tel2")), "%" + search.toLowerCase() + "%"),
 
                     cb.like(cb.lower(societeJoin.get("nom")), "%" + search.toLowerCase() + "%"),
-                    cb.like(cb.lower(societeJoin.get("nni")), "%" + search.toLowerCase() + "%"),
                     cb.like(cb.lower(societeJoin.get("nif")), "%" + search.toLowerCase() + "%"),
 
                     cb.like(cb.lower(typeJoin.get("description")), "%" + search.toLowerCase() + "%"),

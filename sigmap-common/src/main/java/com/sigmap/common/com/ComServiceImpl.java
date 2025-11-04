@@ -36,6 +36,10 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
+import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
+import com.sigmap.common.user_commission_historique.exception.SwitchStatueException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -68,9 +72,10 @@ public class ComServiceImpl implements ComService {
   private final AcService acService;
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
+  private final UserCommissionHistoriqueService userCommissionHistoriqueService;
 
   public ComServiceImpl(
-          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
+          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService) {
     this.repository = repository;
     this.refParamService = refParamService;
     this.acRepository = acRepository;
@@ -78,6 +83,7 @@ public class ComServiceImpl implements ComService {
       this.acService = acService;
       this.documentCommuneService = documentCommuneService;
       this.docsRepository = docsRepository;
+      this.userCommissionHistoriqueService = userCommissionHistoriqueService;
   }
 
   @Override
@@ -206,6 +212,17 @@ public class ComServiceImpl implements ComService {
         } catch (Exception e) {
           logger.warn("Impossible d'associer l'utilisateur {} à l'COM {} : {}", userId, savedCom.getId(), e.getMessage());
         }
+
+        try {
+          UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+          userCommissionHistorique.setUserId(userId);
+          userCommissionHistorique.setComId(savedCom.getId());
+          userCommissionHistoriqueService.create(userCommissionHistorique);
+        } catch (RuntimeException e) {
+
+          logger.warn("create history  user  {} for com {} : {}", userId, savedCom.getId(), e.getMessage());
+          throw new CreateUserComHitoriqueException("");
+        }
       }
     }
 
@@ -217,6 +234,17 @@ public class ComServiceImpl implements ComService {
       userCom.setStatus(ActiveStatus.ACTIF);
       userCom.setResponsable(true);
       userComRepository.save(userCom);
+
+      try {
+        UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+        userCommissionHistorique.setUserId(request.getResponsableId());
+        userCommissionHistorique.setComId(savedCom.getId());
+        userCommissionHistoriqueService.create(userCommissionHistorique);
+      } catch (RuntimeException e) {
+
+        logger.warn("create history  responsable  {} for com {} : {}", request.getResponsableId(), savedCom.getId(), e.getMessage());
+        throw new CreateUserComHitoriqueException("");
+      }
     }
 
     return savedCom;
@@ -336,6 +364,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
         manyallySoftDelete(existing.getComId() , existing.getUserId());
       }
 
+
     }
 
 
@@ -351,7 +380,19 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
         userCom.setComId(id);
         userCom.setStatus(ActiveStatus.ACTIF);
         userComRepository.save(userCom);
+        //handle History create
+        try {
+          UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+          userCommissionHistorique.setUserId(userId);
+          userCommissionHistorique.setComId(id);
+          userCommissionHistoriqueService.create(userCommissionHistorique);
+        } catch (RuntimeException e) {
+
+          logger.warn("create history  user  {} for com {} : {}", request.getResponsableId(), id, e.getMessage());
+          throw new CreateUserComHitoriqueException("");
+        }
       }
+
     }
     if(request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
       existingUserComs.forEach(el -> el.setResponsable(false));
@@ -362,6 +403,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
         newResponsable.setResponsable(true);
         newResponsable.setStatus(ActiveStatus.ACTIF);
         userComRepository.save(newResponsable);
+
       }
       else{
         userComRepository.saveAll(existingUserComs);
@@ -371,6 +413,17 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
         newResponsable.setStatus(ActiveStatus.ACTIF);
         newResponsable.setResponsable(true);
         userComRepository.save(newResponsable);
+        //handle History create
+        try {
+          UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+          userCommissionHistorique.setUserId(newResponsable.getUserId());
+          userCommissionHistorique.setComId(id);
+          userCommissionHistoriqueService.create(userCommissionHistorique);
+        } catch (RuntimeException e) {
+
+          logger.warn("create history  user  {} for com {} : {}", request.getResponsableId(), id, e.getMessage());
+          throw new CreateUserComHitoriqueException("");
+        }
       }
 
     }
@@ -410,7 +463,15 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
       uscom.get().setIsDeleted(true);
       uscom.get().setDeletedAt(Calendar.getInstance());
       uscom.get().setDeletedBy(ConnectedUserID);
+      //handle History Status switch to notActif
 
+      try{
+        userCommissionHistoriqueService.switchStatus(userId,comId,ActiveStatus.NON_ACTIF);
+
+      }catch (RuntimeException e) {
+        logger.info("error while switching status for user historique when deleting user from com");
+        throw new SwitchStatueException("",userId);
+      }
       userComRepository.save(uscom.get());
 
     }
@@ -441,7 +502,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
   @Override
   public void delete(Integer id) throws ComHasAssociatedAc, ComNotFound {
-    findById(id);
+  Com com=  findById(id);
     Specification<Ac> societeAddressSpec = Specification.where(
             AcSpecifications.deleted(false)
                     .and(AcSpecifications.hasCom(id))
@@ -454,6 +515,17 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     if(!users.isEmpty()) {
        throw new ComHasAssociatedUser("",id);
     }
+    //status update of history users for com
+ /*   List<String> usersIds = users.stream().map(UserCom::getUserId).collect(Collectors.toList());
+    for (String userId : usersIds) {
+      try{
+        userCommissionHistoriqueService.switchStatus(userId,id,ActiveStatus.NON_ACTIF);
+
+      }catch (RuntimeException e) {
+        logger.info("error while switching status for user historique when deleting user from com");
+        throw new SwitchStatueException("",userId);
+      }
+    }*/
     repository.softDelete(id);
   }
 
