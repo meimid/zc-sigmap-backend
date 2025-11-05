@@ -821,6 +821,7 @@ public class KeycloakAdminService {
 
     private UserCommissionHistoriqueResponse mapToUserComHitoriqueResponse(UserCommissionHistorique historique, UserDTO user) {
         UserCommissionHistoriqueResponse resp = new UserCommissionHistoriqueResponse();
+        resp.setId(historique.getId());
         resp.setUserId(historique.getUserId());
         resp.setComId(historique.getCom().getId());
         resp.setStatus(historique.getStatus());

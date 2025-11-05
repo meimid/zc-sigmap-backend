@@ -109,7 +109,7 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
     @Override
     public Page<UserCommissionHistorique> findAllByComId(Integer comId, Pageable pageable, Specification<UserCommissionHistorique> specification
     ) {
-        Specification<UserCommissionHistorique> spec = UserCommissionHistoriqueSpecifications.hasComId(comId).and(specification);
+        Specification<UserCommissionHistorique> spec = UserCommissionHistoriqueSpecifications.hasComId(comId).and(specification).and(UserCommissionHistoriqueSpecifications.orderByIdDesc());
         return repository.findAll(spec, pageable);
     }
 

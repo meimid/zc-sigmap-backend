@@ -121,4 +121,11 @@ public class UserCommissionHistoriqueSpecifications {
 
         };
     }
+
+    public static Specification<UserCommissionHistorique> orderByIdDesc() {
+        return (root, query, cb) -> {
+            query.orderBy(cb.desc(root.get("id")));
+            return cb.conjunction();
+        };
+    }
 }
