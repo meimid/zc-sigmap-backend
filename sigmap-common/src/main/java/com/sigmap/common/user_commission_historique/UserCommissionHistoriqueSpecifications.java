@@ -16,14 +16,12 @@ public class UserCommissionHistoriqueSpecifications {
                 return cb.conjunction(); // no filter
             }
 
-            String likePattern = "%" + search.trim().toLowerCase() + "%";
 
             return cb.or(
-                    cb.like(cb.lower(root.get("userId")), likePattern),
-                    cb.like(cb.lower(cb.function("CAST", String.class, root.get("comId"))), likePattern),
-                    cb.like(cb.lower(root.get("status").as(String.class)), likePattern),
-                    cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateDebut"), cb.literal("%Y-%m-%d %H:%i"))), likePattern),
-                    cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateFin"), cb.literal("%Y-%m-%d %H:%i"))), likePattern)
+                    cb.like(cb.lower(root.get("userId")), "%" + search.trim().toLowerCase() + "%"),
+                    cb.like(cb.lower(root.get("status")), "%" + search.trim().toLowerCase() + "%"),
+                    cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateDebut"), cb.literal("%Y-%m-%d %H:%i"))), "%" + search.trim().toLowerCase() + "%"),
+                    cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateFin"), cb.literal("%Y-%m-%d %H:%i"))), "%" + search.trim().toLowerCase() + "%")
             );
         };
     }
@@ -128,4 +126,6 @@ public class UserCommissionHistoriqueSpecifications {
             return cb.conjunction();
         };
     }
+
+
 }
