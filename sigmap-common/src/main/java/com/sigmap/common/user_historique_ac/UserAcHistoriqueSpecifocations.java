@@ -32,26 +32,24 @@ public class UserAcHistoriqueSpecifocations {
                 return cb.conjunction();
             }
             
-            // Set start of day (00:00:00.000)
+            // Create a copy to avoid modifying the original
             Calendar startOfDay = (Calendar) targetDate.clone();
             startOfDay.set(Calendar.HOUR_OF_DAY, 0);
             startOfDay.set(Calendar.MINUTE, 0);
             startOfDay.set(Calendar.SECOND, 0);
             startOfDay.set(Calendar.MILLISECOND, 0);
             
-            // Set end of day (23:59:59.999)
-            Calendar endOfDay = (Calendar) targetDate.clone();
-            endOfDay.set(Calendar.HOUR_OF_DAY, 23);
-            endOfDay.set(Calendar.MINUTE, 59);
-            endOfDay.set(Calendar.SECOND, 59);
-            endOfDay.set(Calendar.MILLISECOND, 999);
+            // Create end of day by adding 1 day to startOfDay and subtracting 1 millisecond
+            Calendar endOfDay = (Calendar) startOfDay.clone();
+            endOfDay.add(Calendar.DAY_OF_MONTH, 1);
+            endOfDay.add(Calendar.MILLISECOND, -1);
             
             // Find records where:
             // (dateDebut <= endOfDay) AND (dateFin >= startOfDay OR dateFin is null)
             return cb.and(
-                cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay),
+                cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay.getTime()),
                 cb.or(
-                    cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay),
+                    cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay.getTime()),
                     cb.isNull(root.get("dateFin"))
                 )
             );

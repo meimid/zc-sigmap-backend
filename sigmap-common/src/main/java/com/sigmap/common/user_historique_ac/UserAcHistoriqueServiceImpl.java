@@ -2,14 +2,10 @@ package com.sigmap.common.user_historique_ac;
 
 
 import com.sigmap.common.ac.Ac;
-import com.sigmap.common.ac.AcService;
-import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.devise_history.DeviseHistory;
-import com.sigmap.common.devise_history.response.DeviseHistoryResponse;
+import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_historique_ac.response.UserAcHistoriqueResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -124,13 +120,18 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
 
         response.setId(entity.getId());
         response.setUserId(entity.getUserId());
-        response.setAc(entity.getAc());
+        
+        // Map Ac to AcResponseDto using AcMapper
+        if (entity.getAc() != null) {
+            AcMapper acMapper = AcMapper.INSTANCE;
+            response.setAc(acMapper.mapToDto(entity.getAc()));
+        }
+        
         response.setDateDebut(entity.getDateDebut());
         response.setDateFin(entity.getDateFin());
         response.setStatus(entity.getStatus());
         response.setUserName(getUserConnectedName(entity.getUserId()));
 
         return response;
-
     }
 }
