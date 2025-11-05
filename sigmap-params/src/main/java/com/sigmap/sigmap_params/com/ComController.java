@@ -30,7 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -361,7 +363,7 @@ public class ComController {
     @GetMapping("/users/historique-by-com/{comId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Page<UserCommissionHistoriqueResponse>> getAllByComId(@PathVariable Integer comId,
-                                                                                Pageable pageable,
+                                                                                @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
                                                                                 UserCommissionHistoriqueQuery query) {
         Specification<UserCommissionHistorique> specification = query.toSpecification();
         Page<UserCommissionHistoriqueResponse> responses = keycloakAdminService.hitoriqueData(comId,pageable,specification);
