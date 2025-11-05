@@ -50,6 +50,7 @@ public class MailService {
 
 
 
+
     public void sendActivationEmail(UserResquestDTO user, String GenericPassword,String adminId) throws MessagingException, IOException {
 
         try {
@@ -99,7 +100,6 @@ public class MailService {
         return templateEngine.process("email/activationEmail", context);
 
     }
-
 
 
     public void sendEditPasswordForAdminEmail(UserDTO user, String GenericPassword, String adminId) throws MessagingException, IOException {

@@ -1,7 +1,9 @@
 package com.sigmap.common.user_societe;
 
+import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
+import com.sigmap.common.user_societe.request.CreateNewNonResponsableRequest;
 import com.sigmap.common.user_societe.request.UserSocieteRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -71,13 +73,14 @@ public interface UserSocieteService {
      * @return the created UserSociete
      */
     UserSociete create(UserSocieteRequest request) throws SocieteNotFound;
+    UserSociete createNonResponsableUser(UserResquest request, String responsableId) throws SocieteNotFound;
     /**
      * update Com.
      *
      * @param request the request to update the com from
      * @return the updated com
      */
-    UserSociete update(String userId,Integer societeId,UserSocieteRequest request) throws SocieteNotFound ,UserSocieteNotFound;
+    UserSociete update(String userId,UserSocieteRequest request,String responsableId) throws SocieteNotFound ,UserSocieteNotFound;
     /**
      * Delete a UserSociete.
      *

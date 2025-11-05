@@ -83,7 +83,7 @@ keycloak:
   realm: ${KEYCLOAK_REALM:sigmap-realm}
   client-id: ${KEYCLOAK_CLIENT_ID:sigmap-website-admin}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:tUpszo4k7Sk5GYbLIviqJxvpQe40M2TV}
-  common-client-id: ${KEYCLOAK_COMMON_CLIENT_ID:website-common}
+  common-client-id: ${KEYCLOAK_COMMON_CLIENT_ID:backend-common}
   groupes:
     website-active: ${KEYCLOAK_GROUPES_WS_ACTIVE:SIGMAP-WEBSITE}
     website-pending: ${KEYCLOAK_GROUPES_WS_PENDING:SIGMAP-PENDING-WEBSITE}

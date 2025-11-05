@@ -1,26 +1,31 @@
 package com.sigmap.common.keycloak_website_admin.service;
 
+import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.dto.UserResquestDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.keycloak_website_admin.dto.UserWebsiteDTO;
 import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
 import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
-import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.societe.exception.SocieteNotFound;
-import com.sigmap.common.societe.request.SocieteRequestInscription;
+import com.sigmap.common.mail.MailService;
+import com.sigmap.common.security.Authentication;
+import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service d'administration Keycloak pour la gestion des utilisateurs "Website".
@@ -33,7 +38,8 @@ public class KeycloakWebisteAdminService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final KeycloakTokenService tokenService;
-
+    @Autowired
+    MailService mailService;
     public KeycloakWebisteAdminService(KeycloakTokenService tokenService) {
         this.tokenService = tokenService;
 
@@ -58,7 +64,7 @@ public class KeycloakWebisteAdminService {
      * @return ID Keycloak
      */
     @Transactional
-    public String createPendingWebsiteUserWithSociete(SocieteRequestInscription request)
+    public String createPendingWebsiteUserWithSociete(UserResquest request)
             {
 
         HttpHeaders headers = createAuthHeaders();
@@ -67,12 +73,13 @@ public class KeycloakWebisteAdminService {
 
             // 1️⃣ Création utilisateur Keycloak
 
-            userId = createUserInKeycloak(request.getUserResquest(), headers);
+            userId = createUserInKeycloak(request, headers, false);
+            logger.info("userId id .............{}", userId);
 
 
         // 2️⃣ Ajout au groupe Pending
         addUserToGroup(userId, gpWebsitePending, headers);
-        logger.info("Utilisateur {} ajouté au groupe Pending", request.getUserResquest().getUsername());
+        logger.info("Utilisateur {} ajouté au groupe Pending", request.getUsername());
 
         // 3️⃣ Récupération infos Keycloak réelles
         UserWebsiteDTO userKeycloak = getUserDetails(userId, headers);
@@ -80,16 +87,59 @@ public class KeycloakWebisteAdminService {
             throw new RuntimeException("Impossible de récupérer les informations de l'utilisateur Keycloak");
 
         // 4️⃣ Injection des infos Keycloak dans le DTO
-        mapUserKeycloakToRequest(userKeycloak, request.getUserResquest());
+        mapUserKeycloakToRequest(userKeycloak, request);
 
         return userId;
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode().value() == 409) {
                 throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
             } else {
-                throw new CreateUserFailed("");
+                throw new  RuntimeException();
             }
         }
+    }
+
+    /**
+     * Crée un utilisateur Website (Pending) et la société associée.
+     *
+     * @param request données complètes d’inscription (société + user)
+     * @return ID Keycloak
+     */
+    @Transactional
+    public String createWebsiteUserUnderResponsable(UserResquest request)
+    {
+
+        HttpHeaders headers = createAuthHeaders();
+        String userId;
+        try {
+
+            // 1️⃣ Création utilisateur Keycloak
+
+            userId = createUserInKeycloak(request, headers, true);
+            logger.info("userId id .............{}", userId);
+
+
+            // 2️⃣ Ajout au groupe Pending
+            addUserToGroup(userId, gpWebsiteActive, headers);
+            logger.info("Utilisateur {} ajouté au groupe Pending", request.getUsername());
+
+            // 3️⃣ Récupération infos Keycloak réelles
+            UserWebsiteDTO userKeycloak = getUserDetails(userId, headers);
+            if (userKeycloak == null)
+                throw new RuntimeException("Impossible de récupérer les informations de l'utilisateur Keycloak");
+
+            // 4️⃣ Injection des infos Keycloak dans le DTO
+            mapUserKeycloakToRequest(userKeycloak, request);
+
+            return userId;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                throw new EmailOrUserNameAlreadyUsedForAnotherUser("");
+            } else {
+                throw new  RuntimeException();
+            }
+        }
+
     }
 
     /**
@@ -97,7 +147,7 @@ public class KeycloakWebisteAdminService {
      */
 
 
-    private String createUserInKeycloak(UserResquest dto, HttpHeaders headers) {
+    private String createUserInKeycloak(UserResquest dto, HttpHeaders headers, boolean enable) {
         // Ensure JSON content type
         headers.setContentType(MediaType.APPLICATION_JSON);
 
@@ -106,7 +156,7 @@ public class KeycloakWebisteAdminService {
                 "firstName", dto.getFirstName(),
                 "lastName", dto.getLastName(),
                 "email", dto.getEmail(),
-                "enabled", false,
+                "enabled", enable,
                 "emailVerified", false,
                 "attributes", Map.of(
                         "address", List.of(Optional.ofNullable(dto.getAddress()).orElse("")),
@@ -141,9 +191,10 @@ public class KeycloakWebisteAdminService {
      * @param userId ID Keycloak
      * @return DTO utilisateur avec mot de passe temporaire
      */
-    public UserWebsiteDTO validateWebsiteUser(String userId) {
+    public UserWebsiteDTO validateWebsiteUser(String userId) throws MessagingException, IOException {
         HttpHeaders headers = createAuthHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
 
         String pendingId = getGroupIdByName(gpWebsitePending, headers);
         String activeId = getGroupIdByName(gpWebsiteActive, headers);
@@ -158,6 +209,12 @@ public class KeycloakWebisteAdminService {
 
         UserWebsiteDTO dto = getUserDetails(userId, headers);
         dto.setGenericPassword(tempPassword);
+        UserDTO userDTO=mapToUserDTO(dto,userId);
+
+        UserResquestDTO user= mapToUserRequestDTO(userDTO);
+        mailService.sendActivationEmail(user, tempPassword, currentUserId.get());
+
+
         return dto;
     }
 
@@ -188,7 +245,7 @@ public class KeycloakWebisteAdminService {
 
     private void enableUser(String userId, boolean enabled, HttpHeaders headers) {
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
-        Map<String, Object> payload = Map.of("enabled", enabled);
+        Map<String, Boolean> payload = Map.of("enabled", enabled);
         restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(payload, headers), Void.class);
     }
 
@@ -215,7 +272,7 @@ public class KeycloakWebisteAdminService {
                 .findFirst().orElse(null);
     }
 
-    private HttpHeaders createAuthHeaders() {
+    public HttpHeaders createAuthHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(tokenService.getAccessToken());
         return headers;
@@ -306,6 +363,139 @@ public class KeycloakWebisteAdminService {
             throw new RuntimeException("Échec de suppression de l'utilisateur Keycloak", e);
         }
     }
+    public String generateTemporaryPasswordForInscription() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+        SecureRandom random = new SecureRandom();
+        StringBuilder password = new StringBuilder(12);
 
+        for (int i = 0; i < 12; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return password.toString();
+    }
+
+    public UserWebsiteDTO disableWebsiteUser(String userId) {
+        HttpHeaders headers = createAuthHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        String pendingId = getGroupIdByName(gpWebsitePending, headers);
+        String activeId = getGroupIdByName(gpWebsiteActive, headers);
+        if (pendingId == null || activeId == null)
+            throw new RuntimeException("Groupes Keycloak introuvables");
+
+       // removeUserFromGroup(userId, pendingId, headers);
+      //  addUserToGroup(userId, gpWebsiteActive, headers);
+        enableUser(userId, false, headers);
+
+        String tempPassword = updatePasswordForAdmin(userId);
+
+        UserWebsiteDTO dto = getUserDetails(userId, headers);
+        dto.setGenericPassword(tempPassword);
+        return dto;
+    }
+
+    public UserDTO mapToUserDTO(UserWebsiteDTO dto, String userId) {
+        UserDTO userDTO = new UserDTO();
+
+        if (dto == null) {
+            return userDTO;
+        }
+
+        userDTO.setId(userId);
+
+        if (dto.getUsername() != null)
+            userDTO.setUsername(dto.getUsername());
+
+        if (dto.getFirstName() != null)
+            userDTO.setFirstName(dto.getFirstName());
+
+        if (dto.getLastName() != null)
+            userDTO.setLastName(dto.getLastName());
+
+        if (dto.getEmail() != null) {
+            userDTO.setEmail(dto.getEmail());
+        }
+
+            userDTO.setEnabled(dto.isEnabled());
+            userDTO.setEmailVerified(dto.isEmailVerified());
+
+        if (dto.getAddress() != null)
+            userDTO.setAddress(dto.getAddress());
+
+        if (dto.getMobile() != null)
+            userDTO.setMobile(dto.getMobile());
+
+        if (dto.getFixe() != null)
+            userDTO.setFixe(dto.getFixe());
+
+        if (dto.getCreatedTimestamp() != null)
+            userDTO.setCreatedTimestamp(dto.getCreatedTimestamp());
+
+        if (dto.getGenericPassword() != null)
+            userDTO.setGenericPassword(dto.getGenericPassword());
+
+        if (dto.getRoles() != null)
+            userDTO.setRoles(dto.getRoles());
+
+        return userDTO;
+    }
+
+    public static UserResquestDTO mapToUserRequestDTO(UserDTO userDTO) {
+        if (userDTO == null) {
+            return null;
+        }
+
+        UserResquestDTO dto = new UserResquestDTO();
+
+        dto.setUsername(userDTO.getUsername());
+        dto.setFirstName(userDTO.getFirstName());
+        dto.setLastName(userDTO.getLastName());
+        dto.setEmail(userDTO.getEmail());
+        dto.setAddress(userDTO.getAddress());
+        dto.setMobile(userDTO.getMobile());
+        dto.setFixe(userDTO.getFixe());
+        dto.setPassword(userDTO.getGenericPassword());
+        dto.setRoles(userDTO.getRoles());
+        dto.setEnable(userDTO.isEnabled());
+
+        // ✅ Convert coms → comIds
+        if (userDTO.getComs() != null) {
+            dto.setComIds(
+                    userDTO.getComs().stream()
+                            .map(UserComDTO::getId)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        return dto;
+    }
+    public void updateUserInfoInKeycloak(UserResquest request) {
+        HttpHeaders headers = createAuthHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        //  Prepare the payload for Keycloak update
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("firstName", request.getFirstName());
+        payload.put("lastName", request.getLastName());
+        payload.put("email", request.getEmail());
+        payload.put("attributes", Map.of(
+                "address", List.of(request.getAddress()),
+                "mobile", List.of(request.getMobile()),
+                "fixe", List.of(request.getFixe()),
+                "cin", List.of(request.getCin()),
+                "dateCIN", request.getDateCIN() != null ? List.of(request.getDateCIN().toString()) : List.of()
+        ));
+
+        String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, request.getId());
+
+        try {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+            logger.info("✅ User {} successfully updated in Keycloak", request.getUsername());
+        } catch (HttpClientErrorException e) {
+            logger.error("❌ Error updating user {} in Keycloak: {}", request.getUsername(), e.getMessage());
+            throw new RuntimeException("Failed to update user in Keycloak", e);
+        }
+    }
 
 }

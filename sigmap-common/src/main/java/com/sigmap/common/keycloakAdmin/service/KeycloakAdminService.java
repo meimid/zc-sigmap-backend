@@ -16,11 +16,18 @@ import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueSpecifications;
+import com.sigmap.common.user_commission_historique.response.UserCommissionHistoriqueResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -30,6 +37,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -69,6 +77,11 @@ public class KeycloakAdminService {
     @Autowired
     private RefParamRepository refParamRepository;
 
+    private final UserCommissionHistoriqueService userCommissionHistoriqueService;
+
+    public KeycloakAdminService(UserCommissionHistoriqueService userCommissionHistoriqueService) {
+        this.userCommissionHistoriqueService = userCommissionHistoriqueService;
+    }
 
     public List<UserDTO> getAllUsers() {
         String accessToken = tokenService.getAccessToken();
@@ -804,5 +817,46 @@ public class KeycloakAdminService {
                 .filter(g -> groupName.equals(g.get("name")))
                 .map(g -> (String) g.get("id"))
                 .findFirst().orElse(null);
+    }
+
+
+    private UserCommissionHistoriqueResponse mapToUserComHitoriqueResponse(UserCommissionHistorique historique, UserDTO user) {
+        UserCommissionHistoriqueResponse resp = new UserCommissionHistoriqueResponse();
+        resp.setId(historique.getId());
+        resp.setDateDebut(historique.getDateDebut());
+        resp.setDateFin(historique.getDateFin());
+
+        if (user != null) {
+            resp.setUsername(user.getUsername());
+            resp.setFirstName(user.getFirstName());
+            resp.setLastName(user.getLastName());
+            resp.setEmail(user.getEmail());
+            resp.setAddress(user.getAddress());
+            resp.setMobile(user.getMobile());
+            resp.setFixe(user.getFixe());
+        }
+
+        return resp;
+    }
+
+
+    public Page<UserCommissionHistoriqueResponse> hitoriqueData(Integer comId,
+                                                                String date,
+                                                                Pageable pageable,
+                                                                Specification<UserCommissionHistorique> specification) {
+
+        Page<UserCommissionHistorique> historiques = userCommissionHistoriqueService.findAllByComId(comId,date, pageable, specification);
+
+        String accessToken = tokenService.getAccessToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
+
+        List<UserDTO> keycloakUsers = fetchUsersFromKeycloak(baseUrl, entity);
+        Map<String, UserDTO> userMap = keycloakUsers.stream()
+                .collect(Collectors.toMap(UserDTO::getId, u -> u, (u1, u2) -> u1));
+
+        return historiques.map(h -> mapToUserComHitoriqueResponse(h, userMap.get(h.getUserId())));
     }
 }

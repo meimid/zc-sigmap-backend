@@ -31,6 +31,8 @@ import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.exception.UserDoesNotHavePermission;
+import com.sigmap.common.keycloak_website_admin.exception.CreateUserFailed;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.lots.exception.LotNotFound;
 import com.sigmap.common.lots.exception.UpdateDeletedLot;
 import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
@@ -59,6 +61,7 @@ import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_commission_historique.exception.*;
 import com.sigmap.common.user_societe.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -1212,6 +1215,160 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+
+    /** Handle when creation fails */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(CreateUserComHitoriqueException.class)
+    public ResponseEntity<ErrorResponse> handleCreateUserComHistoriqueException() {
+        String message = messageSource.getMessage("usercommissionhistorique.create.error",
+                new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    /** Handle when commission id is missing */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ComIdRequired.class)
+    public ResponseEntity<ErrorResponse> handleComIdRequiredException(ComIdRequired ex) {
+        String message = messageSource.getMessage("usercommissionhistorique.comid.required",
+                null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    /** Handle when historique not found */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UserCommissionHistoriqueNotFound.class)
+    public ResponseEntity<ErrorResponse> handleUserCommissionHistoriqueNotFound(UserCommissionHistoriqueNotFound ex) {
+        String message = messageSource.getMessage("usercommissionhistorique.notfound",
+                new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SwitchStatueException.class)
+    public ResponseEntity<ErrorResponse> handleSwitchStatueException(SwitchStatueException ex) {
+        String message = messageSource.getMessage(
+                "usercommissionhistorique.switchstatus.error",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);}
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ActiveResponsableRequired.class)
+    public ResponseEntity<ErrorResponse> handleActiveResponsableRequired() {
+        String message = messageSource.getMessage(
+                "responsable.activeRequired",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(EmailOrUserNameAlreadyUsedForAnotherUser.class)
+    public ResponseEntity<ErrorResponse> handleEmailOrUserNameAlreadyUsedForAnotherUser() {
+        String message = messageSource.getMessage(
+                "email.username.already.used",
+                new Object[]{},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(CreateUserFailed.class)
+    public ResponseEntity<ErrorResponse> handleCreateUserFailed() {
+
+        String message = messageSource.getMessage(
+                "user.create.failed",
+                new Object[]{},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(UserNotFoundInKeycloak.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundInKeycloak(UserNotFoundInKeycloak ex) {
+        String message = messageSource.getMessage(
+                "user.notFoundInKeycloak",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler(KeycloakUserError.class)
+    public ResponseEntity<ErrorResponse> handleKeycloakUserError(KeycloakUserError ex) {
+        String message = messageSource.getMessage(
+                "keycloak.user.error",
+                new Object[]{ex.getDetails()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNifAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNifAlreadyRelatedToOtherSociete(SocieteNifAlreadyRelatedToOtherSociete ex) {
+        String message = messageSource.getMessage(
+                "societe.nifAlreadyExists",
+                new Object[]{ex.getNif()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteNumCnssAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteNumCnssAlreadyRelatedToOtherSociete(
+            SocieteNumCnssAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.numCnssAlreadyExists",
+                new Object[]{ex.getNumCnss()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SocieteEmailAlreadyRelatedToOtherSociete.class)
+    public ResponseEntity<ErrorResponse> handleSocieteEmailAlreadyRelatedToOtherSociete(
+            SocieteEmailAlreadyRelatedToOtherSociete ex) {
+
+        String message = messageSource.getMessage(
+                "societe.emailAlreadyExists",
+                new Object[]{ex.getEmail()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(FutureDateNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleFutureDateNotAllowed(FutureDateNotAllowedException ex) {
+        String message = messageSource.getMessage(
+                "future.date.not.allowed",
+                new Object[]{},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 }
