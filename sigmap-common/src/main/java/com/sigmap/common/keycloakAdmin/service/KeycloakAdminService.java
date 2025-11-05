@@ -37,6 +37,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -822,9 +823,6 @@ public class KeycloakAdminService {
     private UserCommissionHistoriqueResponse mapToUserComHitoriqueResponse(UserCommissionHistorique historique, UserDTO user) {
         UserCommissionHistoriqueResponse resp = new UserCommissionHistoriqueResponse();
         resp.setId(historique.getId());
-        resp.setUserId(historique.getUserId());
-        resp.setComId(historique.getCom().getId());
-        resp.setStatus(historique.getStatus());
         resp.setDateDebut(historique.getDateDebut());
         resp.setDateFin(historique.getDateFin());
 
@@ -845,6 +843,7 @@ public class KeycloakAdminService {
     public Page<UserCommissionHistoriqueResponse> hitoriqueData(Integer comId,
                                                                 Pageable pageable,
                                                                 Specification<UserCommissionHistorique> specification) {
+
         Page<UserCommissionHistorique> historiques = userCommissionHistoriqueService.findAllByComId(comId, pageable, specification);
 
         String accessToken = tokenService.getAccessToken();

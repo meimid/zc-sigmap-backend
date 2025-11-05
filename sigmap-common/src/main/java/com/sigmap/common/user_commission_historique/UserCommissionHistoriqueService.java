@@ -13,11 +13,6 @@ public interface UserCommissionHistoriqueService {
 
     List<UserCommissionHistorique> findAll();
 
-    /** Get all active historiques */
-    List<UserCommissionHistorique> findAllActif();
-
-    /** Get all non-active historiques */
-    List<UserCommissionHistorique> findAllNonActif();
 
     /** Find all by Specification + pagination */
     Page<UserCommissionHistorique> findAll(Specification<UserCommissionHistorique> specification, Pageable pageable);
@@ -36,7 +31,7 @@ public interface UserCommissionHistoriqueService {
 
 
     /** Switch status between ACTIF and NON_ACTIF */
-    UserCommissionHistorique switchStatus(String userId, Integer comId, ActiveStatus status) throws UserCommissionHistoriqueNotFound;
+ //   UserCommissionHistorique switchStatus(String userId, Integer comId, ActiveStatus status) throws UserCommissionHistoriqueNotFound;
 
     /**
      * Find one historique record by userId and comId.

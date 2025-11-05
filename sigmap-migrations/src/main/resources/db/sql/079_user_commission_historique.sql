@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS user_commission_historique (
     commission_id INT NOT NULL,
     date_debut DATETIME NOT NULL,
     date_fin DATETIME DEFAULT NULL,
-    status ENUM('ACTIF', 'NON_ACTIF') NOT NULL DEFAULT 'NON_ACTIF',
     CONSTRAINT pk_user_commission_historique PRIMARY KEY (id));
 
 -- changeset sigmap:1757950280-2
@@ -23,8 +22,7 @@ INSERT INTO user_commission_historique (
     user_id,
     commission_id,
     date_debut,
-    date_fin,
-    status
+    date_fin
 )
 SELECT
     uc.user_id,
@@ -33,11 +31,7 @@ SELECT
     CASE
         WHEN uc.is_deleted = 1 THEN uc.deleted_at
         ELSE NULL
-        END AS date_fin,
-    CASE
-        WHEN uc.is_deleted = 0 THEN 'ACTIF'
-        ELSE 'NON_ACTIF'
-        END AS status
+        END AS date_fin
 FROM user_com uc
 WHERE NOT EXISTS (
     SELECT 1

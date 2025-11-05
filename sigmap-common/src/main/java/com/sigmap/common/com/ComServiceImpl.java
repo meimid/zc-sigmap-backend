@@ -463,15 +463,6 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
       uscom.get().setIsDeleted(true);
       uscom.get().setDeletedAt(Calendar.getInstance());
       uscom.get().setDeletedBy(ConnectedUserID);
-      //handle History Status switch to notActif
-
-      try{
-        userCommissionHistoriqueService.switchStatus(userId,comId,ActiveStatus.NON_ACTIF);
-
-      }catch (RuntimeException e) {
-        logger.info("error while switching status for user historique when deleting user from com");
-        throw new SwitchStatueException("",userId);
-      }
       userComRepository.save(uscom.get());
 
     }

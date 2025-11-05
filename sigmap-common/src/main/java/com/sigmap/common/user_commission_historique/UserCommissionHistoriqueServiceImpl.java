@@ -28,17 +28,6 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
         return repository.findAll();
     }
 
-    @Override
-    public List<UserCommissionHistorique> findAllActif() {
-        Specification<UserCommissionHistorique> spec = UserCommissionHistoriqueSpecifications.hasStatus(ActiveStatus.ACTIF);
-        return repository.findAll(spec);
-    }
-
-    @Override
-    public List<UserCommissionHistorique> findAllNonActif() {
-        Specification<UserCommissionHistorique> spec = UserCommissionHistoriqueSpecifications.hasStatus(ActiveStatus.NON_ACTIF);
-        return repository.findAll(spec);
-    }
 
     @Override
     public Page<UserCommissionHistorique> findAll(Specification<UserCommissionHistorique> specification, Pageable pageable) {
@@ -72,10 +61,6 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
             throw new ComIdRequired("Commission ID is required");
         }
 
-        if (historique.getStatus() == null) {
-            historique.setStatus(ActiveStatus.ACTIF);
-        }
-
         if (historique.getDateDebut() == null) {
             historique.setDateDebut(LocalDateTime.now());
         }
@@ -83,27 +68,10 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
         return repository.save(historique);
     }
 
-
-
-    @Override
-    public UserCommissionHistorique switchStatus(String userId,Integer comId,ActiveStatus status) throws UserCommissionHistoriqueNotFound {
-        UserCommissionHistorique historique = findByUserIdAndComId(userId,comId).orElseThrow(()->new UserCommissionHistoriqueNotFound("Historique not found with id " , comId));
-
-        if (status == ActiveStatus.NON_ACTIF) {
-            historique.setStatus(ActiveStatus.NON_ACTIF);
-            historique.setDateFin(LocalDateTime.now());
-        } else {
-            historique.setStatus(ActiveStatus.ACTIF);
-            historique.setDateDebut(LocalDateTime.now());
-            historique.setDateFin(null);
-        }
-
-        return save(historique);
-    }
     @Override
     public Optional<UserCommissionHistorique> findByUserIdAndComId(String userId, Integer comId) {
         Specification<UserCommissionHistorique> spec =
-                UserCommissionHistoriqueSpecifications.hasUserIdAndComId(userId, comId).and(UserCommissionHistoriqueSpecifications.hasStatus(ActiveStatus.ACTIF));
+                UserCommissionHistoriqueSpecifications.hasUserIdAndComId(userId, comId);
         return findOne(spec);
     }
     @Override

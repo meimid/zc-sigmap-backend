@@ -1,7 +1,5 @@
 package com.sigmap.common.user_commission_historique;
 
-import com.sigmap.common.entity.ActiveStatus;
-import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.user_commission_historique.exception.FutureDateNotAllowedException;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -19,7 +17,6 @@ public class UserCommissionHistoriqueSpecifications {
 
             return cb.or(
                     cb.like(cb.lower(root.get("userId")), "%" + search.trim().toLowerCase() + "%"),
-                    cb.like(cb.lower(root.get("status")), "%" + search.trim().toLowerCase() + "%"),
                     cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateDebut"), cb.literal("%Y-%m-%d %H:%i"))), "%" + search.trim().toLowerCase() + "%"),
                     cb.like(cb.lower(cb.function("DATE_FORMAT", String.class, root.get("dateFin"), cb.literal("%Y-%m-%d %H:%i"))), "%" + search.trim().toLowerCase() + "%")
             );
@@ -47,13 +44,6 @@ public class UserCommissionHistoriqueSpecifications {
         };
     }
 
-    /** Filter by status */
-    public static Specification<UserCommissionHistorique> hasStatus(ActiveStatus status) {
-        return (root, query, cb) -> {
-            if (status == null) return cb.conjunction();
-            return cb.equal(root.get("status"), status);
-        };
-    }
 
     /** Filter by dateDebut (greater than or equal) */
     public static Specification<UserCommissionHistorique> dateDebutAfter(LocalDateTime startDate) {
@@ -109,13 +99,13 @@ public class UserCommissionHistoriqueSpecifications {
 
     public static Specification<UserCommissionHistorique> hasExactDate(LocalDate date) {
         return (root, query, cb) -> {
-            if (date == null) return cb.conjunction();
             if(date.isAfter(LocalDate.now())) {
                 throw new FutureDateNotAllowedException("");
             }
+            LocalDateTime startOfDay = date.atStartOfDay();
             LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-            return cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay);
+            return cb.or(cb.between(root.get("dateDebut"), startOfDay, endOfDay), cb.between(root.get("dateFin"), startOfDay, endOfDay));
 
         };
     }

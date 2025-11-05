@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 @Data
 public class UserCommissionHistoriqueResponse {
     private Integer id;
-    private String userId;
     private String username;
     private String firstName;
     private String lastName;
@@ -16,7 +15,6 @@ public class UserCommissionHistoriqueResponse {
     private String address;
     private String mobile;
     private String fixe;
-    private Integer comId;
     private ActiveStatus status;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;

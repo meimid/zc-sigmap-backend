@@ -25,6 +25,4 @@ public class UserCommissionHistorique {
     private LocalDateTime dateDebut = LocalDateTime.now() ;
     @Column(name = "date_fin")
     private LocalDateTime dateFin ;
-    @Enumerated(EnumType.STRING)
-    private ActiveStatus status ;
 }

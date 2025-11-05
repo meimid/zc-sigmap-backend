@@ -13,9 +13,6 @@ import java.time.LocalDateTime;
 public class UserCommissionHistoriqueQuery {
 
     private String search;
-    private String userId;
-    private Integer comId;
-    private ActiveStatus status;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;
     private LocalDate exactDate;
@@ -28,7 +25,6 @@ public class UserCommissionHistoriqueQuery {
      *   <li>{@link UserCommissionHistoriqueSpecifications#search(String)} — global text search</li>
      *   <li>{@link UserCommissionHistoriqueSpecifications#hasUserId(String)} — filter by user id</li>
      *   <li>{@link UserCommissionHistoriqueSpecifications#hasComId(Integer)} — filter by commission id</li>
-     *   <li>{@link UserCommissionHistoriqueSpecifications#hasStatus(ActiveStatus)} — filter by status</li>
      *   <li>{@link UserCommissionHistoriqueSpecifications#dateDebutAfter(LocalDateTime)} — start date</li>
      *   <li>{@link UserCommissionHistoriqueSpecifications#dateFinBefore(LocalDateTime)} — end date</li>
      * </ul>
@@ -42,17 +38,6 @@ public class UserCommissionHistoriqueQuery {
             spec = spec.and(UserCommissionHistoriqueSpecifications.search(search));
         }
 
-        if (userId != null && !userId.isBlank()) {
-            spec = spec.and(UserCommissionHistoriqueSpecifications.hasUserId(userId));
-        }
-
-        if (comId != null) {
-            spec = spec.and(UserCommissionHistoriqueSpecifications.hasComId(comId));
-        }
-
-        if (status != null) {
-            spec = spec.and(UserCommissionHistoriqueSpecifications.hasStatus(status));
-        }
 
         if (dateDebut != null) {
             spec = spec.and(UserCommissionHistoriqueSpecifications.dateDebutAfter(dateDebut));
