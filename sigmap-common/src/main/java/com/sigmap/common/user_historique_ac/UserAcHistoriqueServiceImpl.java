@@ -40,12 +40,44 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
     }
 
     private String getUserConnectedNom(String userId){
-        UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
-        return keycloakUser.getFirstName();
+        try {
+            UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
+
+            if (keycloakUser == null) {
+                return "user not found";
+            }
+
+            return keycloakUser.getFirstName();
+
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("404")) {
+                log.warn("User with ID {} not found in Keycloak.", userId);
+                return "user not found";
+        }
+        log.error("Error fetching user {} from Keycloak: {}", userId, e.getMessage());
+        return "user not found";
+    }
+
     }
     private String getUserConnectedPrenom(String userId){
-        UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
-        return keycloakUser.getLastName();
+        try {
+            UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
+
+            if (keycloakUser == null) {
+                return "user not found";
+            }
+
+            return keycloakUser.getLastName();
+
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("404")) {
+                log.warn("User with ID {} not found in Keycloak.", userId);
+                return "user not found";
+            }
+            log.error("Error fetching user {} from Keycloak: {}", userId, e.getMessage());
+            return "user not found";
+        }
+
     }
 
     @Override
