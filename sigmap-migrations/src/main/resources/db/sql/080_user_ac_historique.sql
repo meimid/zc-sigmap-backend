@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950279-3
+-- changeset sigmap:1757950281-1
 
 CREATE TABLE user_ac_historique ( id INT AUTO_INCREMENT NOT NULL,
                                   user_id VARCHAR (50) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE user_ac_historique ( id INT AUTO_INCREMENT NOT NULL,
 
 -- liquibase formatted sql
 
--- changeset sigmap:1757950279-4
+-- changeset sigmap:1757950281-2
 
 INSERT INTO user_ac_historique ( user_id, ac_id, date_debut, date_fin, status )
 SELECT ua.user_id, ua.ac_id, ua.created_at AS date_debut, NULL AS date_fin, 'ACTIF'  AS status
