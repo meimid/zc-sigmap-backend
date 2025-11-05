@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950278-2
+-- changeset sigmap:1757950279-1
 CREATE TABLE devise_historique ( id INT AUTO_INCREMENT NOT NULL,
                                  devise_id INT NOT NULL,
                                  code VARCHAR(20) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE devise_historique ( id INT AUTO_INCREMENT NOT NULL,
 
 -- liquibase formatted sql
 
--- changeset sigmap:1757950278-3
+-- changeset sigmap:1757950279-2
 
     INSERT INTO devise_historique (devise_id, code, description, taux, date_debut, date_fin, action, changed_by)
     SELECT m.monnaie_id AS devise_id, m.code, m.description, m.taux, COALESCE(m.created_at, NOW()) AS date_debut, NULL AS date_fin,'INIT' AS action, COALESCE(m.created_by, 'SYSTEM') AS changed_by
