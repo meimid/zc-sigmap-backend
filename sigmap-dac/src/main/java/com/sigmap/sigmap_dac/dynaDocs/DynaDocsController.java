@@ -125,7 +125,9 @@ public class DynaDocsController {
           }
         }
 
-        List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(dynaFields);
+          List<DynaFieldsResponse> dynaFieldsResponse = DynaFieldsMapper.INSTANCE.map(
+                  dynaFields.stream().filter(f -> !"__DEFAULT__".equals(f.getName())).toList()
+          );
         // Order details by columnPos ascending for each field
         for (DynaFieldsResponse fieldRes : dynaFieldsResponse) {
           if (fieldRes.getDetails() != null) {
