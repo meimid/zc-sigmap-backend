@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950279-1
+-- changeset sigmap:1757950280-1
 
 CREATE TABLE IF NOT EXISTS user_commission_historique (
     id INT NOT NULL AUTO_INCREMENT,
@@ -11,14 +11,14 @@ CREATE TABLE IF NOT EXISTS user_commission_historique (
     status ENUM('ACTIF', 'NON_ACTIF') NOT NULL DEFAULT 'NON_ACTIF',
     CONSTRAINT pk_user_commission_historique PRIMARY KEY (id));
 
--- changeset sigmap:1757950279-2
+-- changeset sigmap:1757950280-2
 
 ALTER TABLE user_commission_historique
     ADD CONSTRAINT fk_user_com_hist
         FOREIGN KEY (user_id, commission_id)
             REFERENCES user_com (user_id, com_id);
 
--- changeset sigmap:1757950279-3
+-- changeset sigmap:1757950280-3
 INSERT INTO user_commission_historique (
     user_id,
     commission_id,
