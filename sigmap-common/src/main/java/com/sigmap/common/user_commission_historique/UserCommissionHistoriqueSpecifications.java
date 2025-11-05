@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Calendar;
 
 public class UserCommissionHistoriqueSpecifications {
     public static Specification<UserCommissionHistorique> search(String search) {
@@ -117,5 +118,35 @@ public class UserCommissionHistoriqueSpecifications {
         };
     }
 
+    /** dateRange - Find all records that overlap with the given date (from 00:00:00.000 to 23:59:59.999 of the given date) */
+    public static Specification<UserCommissionHistorique> dateRange(Calendar targetDate) {
+        return (root, query, cb) -> {
+            if (targetDate == null) {
+                return cb.conjunction();
+            }
+
+            // Create a copy to avoid modifying the original
+            Calendar startOfDay = (Calendar) targetDate.clone();
+            startOfDay.set(Calendar.HOUR_OF_DAY, 0);
+            startOfDay.set(Calendar.MINUTE, 0);
+            startOfDay.set(Calendar.SECOND, 0);
+            startOfDay.set(Calendar.MILLISECOND, 0);
+
+            // Create end of day by adding 1 day to startOfDay and subtracting 1 millisecond
+            Calendar endOfDay = (Calendar) startOfDay.clone();
+            endOfDay.add(Calendar.DAY_OF_MONTH, 1);
+            endOfDay.add(Calendar.MILLISECOND, -1);
+
+            // Find records where:
+            // (dateDebut <= endOfDay) AND (dateFin >= startOfDay OR dateFin is null)
+            return cb.and(
+                    cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay.getTime()),
+                    cb.or(
+                            cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay.getTime()),
+                            cb.isNull(root.get("dateFin"))
+                    )
+            );
+        };
+    }
 
 }

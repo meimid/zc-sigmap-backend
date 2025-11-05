@@ -841,10 +841,11 @@ public class KeycloakAdminService {
 
 
     public Page<UserCommissionHistoriqueResponse> hitoriqueData(Integer comId,
+                                                                String date,
                                                                 Pageable pageable,
                                                                 Specification<UserCommissionHistorique> specification) {
 
-        Page<UserCommissionHistorique> historiques = userCommissionHistoriqueService.findAllByComId(comId, pageable, specification);
+        Page<UserCommissionHistorique> historiques = userCommissionHistoriqueService.findAllByComId(comId,date, pageable, specification);
 
         String accessToken = tokenService.getAccessToken();
         HttpHeaders headers = new HttpHeaders();

@@ -44,7 +44,7 @@ public interface UserCommissionHistoriqueService {
      * @param pageable pagination information
      * @return a page of UserCommissionHistorique
      */
-    Page<UserCommissionHistorique> findAllByComId(Integer comId, Pageable pageable, Specification<UserCommissionHistorique> specification
+    Page<UserCommissionHistorique> findAllByComId(Integer comId,String date, Pageable pageable, Specification<UserCommissionHistorique> specification
     );
 
 

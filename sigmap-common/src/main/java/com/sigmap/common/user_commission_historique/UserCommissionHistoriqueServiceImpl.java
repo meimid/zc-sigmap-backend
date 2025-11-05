@@ -5,14 +5,15 @@ import com.sigmap.common.user_commission_historique.exception.ComIdRequired;
 import com.sigmap.common.user_commission_historique.exception.UserCommissionHistoriqueNotFound;
 import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistoriqueService {
@@ -75,10 +76,37 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
         return findOne(spec);
     }
     @Override
-    public Page<UserCommissionHistorique> findAllByComId(Integer comId, Pageable pageable, Specification<UserCommissionHistorique> specification
+    public Page<UserCommissionHistorique> findAllByComId(Integer comId,String date, Pageable pageable, Specification<UserCommissionHistorique> specification
     ) {
-        Specification<UserCommissionHistorique> spec = UserCommissionHistoriqueSpecifications.hasComId(comId).and(specification);
-        return repository.findAll(spec, pageable);
+        if (date == null || date.trim().isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        specification = specification.and(UserCommissionHistoriqueSpecifications.hasComId(comId));
+
+        try {
+            // Parse the input date string in yyyy-MM-dd format
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            Date parsedDate = sdf.parse(date);
+
+            // Create a Calendar instance with UTC timezone
+            Calendar targetDate = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            targetDate.setTime(parsedDate);
+
+            // Clear the time part to ensure we're working with the start of the day in UTC
+            targetDate.set(Calendar.HOUR_OF_DAY, 0);
+            targetDate.set(Calendar.MINUTE, 0);
+            targetDate.set(Calendar.SECOND, 0);
+            targetDate.set(Calendar.MILLISECOND, 0);
+
+            // Add date range specification to find records for the entire day
+            specification = specification.and(UserCommissionHistoriqueSpecifications.dateRange(targetDate));
+
+            return repository.findAll(specification, pageable);
+        } catch (ParseException e) {
+            throw new IllegalArgumentException("Invalid date format. Please use format: yyyy-MM-dd", e);
+        }
     }
 
 }

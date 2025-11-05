@@ -366,12 +366,13 @@ public class ComController {
     @GetMapping("/users/historique-by-com/{comId}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<Page<UserCommissionHistoriqueResponse>> getAllByComId(
+            @RequestParam(name = "date", required = false) String exactDate,
             @PathVariable Integer comId,
             @PageableDefault(sort = "id", direction = Sort.Direction.DESC) Pageable pageable, UserCommissionHistoriqueQuery query) {
         Specification<UserCommissionHistorique> specification = query.toSpecification();
 
         Page<UserCommissionHistoriqueResponse> responses =
-                keycloakAdminService.hitoriqueData(comId, pageable, specification);
+                keycloakAdminService.hitoriqueData(comId, exactDate, pageable, specification);
 
         return ResponseEntity.ok(responses);
     }
