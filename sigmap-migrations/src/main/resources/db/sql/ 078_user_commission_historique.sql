@@ -17,3 +17,31 @@ ALTER TABLE user_commission_historique
     ADD CONSTRAINT fk_user_com_hist
         FOREIGN KEY (user_id, commission_id)
             REFERENCES user_com (user_id, com_id);
+
+-- changeset sigmap:1757950279-3
+INSERT INTO user_commission_historique (
+    user_id,
+    commission_id,
+    date_debut,
+    date_fin,
+    status
+)
+SELECT
+    uc.user_id,
+    uc.com_id,
+    uc.created_at AS date_debut,
+    CASE
+        WHEN uc.is_deleted = 1 THEN uc.deleted_at
+        ELSE NULL
+        END AS date_fin,
+    CASE
+        WHEN uc.is_deleted = 0 THEN 'ACTIF'
+        ELSE 'NON_ACTIF'
+        END AS status
+FROM user_com uc
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM user_commission_historique h
+    WHERE h.user_id = uc.user_id
+      AND h.commission_id = uc.com_id
+);
