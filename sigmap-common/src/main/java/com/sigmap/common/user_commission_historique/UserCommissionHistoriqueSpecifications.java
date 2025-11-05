@@ -98,19 +98,6 @@ public class UserCommissionHistoriqueSpecifications {
         };
     }
 
-    public static Specification<UserCommissionHistorique> hasExactDate(LocalDate date) {
-        return (root, query, cb) -> {
-            if(date.isAfter(LocalDate.now())) {
-                throw new FutureDateNotAllowedException("");
-            }
-            LocalDateTime startOfDay = date.atStartOfDay();
-            LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
-
-            return cb.or(cb.between(root.get("dateDebut"), startOfDay, endOfDay), cb.between(root.get("dateFin"), startOfDay, endOfDay));
-
-        };
-    }
-
     public static Specification<UserCommissionHistorique> orderByIdDesc() {
         return (root, query, cb) -> {
             query.orderBy(cb.desc(root.get("id")));
@@ -125,25 +112,24 @@ public class UserCommissionHistoriqueSpecifications {
                 return cb.conjunction();
             }
 
-            // Create a copy to avoid modifying the original
             Calendar startOfDay = (Calendar) targetDate.clone();
             startOfDay.set(Calendar.HOUR_OF_DAY, 0);
             startOfDay.set(Calendar.MINUTE, 0);
             startOfDay.set(Calendar.SECOND, 0);
             startOfDay.set(Calendar.MILLISECOND, 0);
 
-            // Create end of day by adding 1 day to startOfDay and subtracting 1 millisecond
             Calendar endOfDay = (Calendar) startOfDay.clone();
             endOfDay.add(Calendar.DAY_OF_MONTH, 1);
             endOfDay.add(Calendar.MILLISECOND, -1);
 
-            // Find records where:
-            // (dateDebut <= endOfDay) AND (dateFin >= startOfDay OR dateFin is null)
             return cb.and(
+                    // Member became active ANYTIME on or before endOfDay
                     cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay.getTime()),
+
+                    // Member was not removed before the day started
                     cb.or(
-                            cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay.getTime()),
-                            cb.isNull(root.get("dateFin"))
+                            cb.isNull(root.get("dateFin")),
+                            cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay.getTime())
                     )
             );
         };

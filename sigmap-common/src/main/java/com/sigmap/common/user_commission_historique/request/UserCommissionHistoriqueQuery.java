@@ -46,9 +46,6 @@ public class UserCommissionHistoriqueQuery {
         if (dateFin != null) {
             spec = spec.and(UserCommissionHistoriqueSpecifications.dateFinBefore(dateFin));
         }
-        if (exactDate != null) {
-            spec = spec.and(UserCommissionHistoriqueSpecifications.hasExactDate(exactDate));
-        }
         return spec;
     }
 }
