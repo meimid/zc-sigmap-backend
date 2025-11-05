@@ -35,7 +35,5 @@ public class UserAcHistorique {
     @Column(name = "date_fin")
     private LocalDateTime dateFin;
 
-    @Enumerated(EnumType.STRING)
-    private ActiveStatus status;
 
 }

@@ -58,7 +58,6 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
         UserAcHistorique newEntry = new UserAcHistorique();
         newEntry.setUserId(userId);
         newEntry.setDateDebut(LocalDateTime.now());
-        newEntry.setStatus(ActiveStatus.ACTIF);
         newEntry.setAc(ac);
         userAcHistoriqueRepository.save(newEntry);
 
@@ -74,7 +73,6 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
             // 2. Si existe → la fermer
             userAcHistorique.ifPresent(oldEntry -> {
                 oldEntry.setDateFin(LocalDateTime.now());
-                oldEntry.setStatus(ActiveStatus.NON_ACTIF);
                 userAcHistoriqueRepository.save(oldEntry);
             });
 
@@ -133,7 +131,6 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
         
         response.setDateDebut(entity.getDateDebut());
         response.setDateFin(entity.getDateFin());
-        response.setStatus(entity.getStatus());
         response.setNom(getUserConnectedNom(entity.getUserId()));
         response.setPrenom(getUserConnectedPrenom(entity.getUserId()));
 

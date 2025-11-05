@@ -13,6 +13,6 @@ public interface UserAcHistoriqueRepository extends JpaRepository<UserAcHistoriq
                                                     JpaSpecificationExecutor<UserAcHistorique> {
 
 
-    @Query("SELECT u FROM UserAcHistorique u WHERE u.userId = :userId AND u.ac.id = :acId AND u.status = 'ACTIF' AND u.dateFin IS NULL")
+    @Query("SELECT u FROM UserAcHistorique u WHERE u.userId = :userId AND u.ac.id = :acId AND u.dateFin IS NULL")
     Optional<UserAcHistorique> findByUserIdAndAcIdAndDateFinNull(@Param("userId")String userId,@Param("acId") Integer acId);
 }
