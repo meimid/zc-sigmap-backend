@@ -1,6 +1,8 @@
 package com.sigmap.common.user_commission_historique;
 
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.reunion.exception.DateBefore;
+import com.sigmap.common.user_commission_historique.exception.FutureDateNotAllowedException;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
@@ -110,16 +112,13 @@ public class UserCommissionHistoriqueSpecifications {
     public static Specification<UserCommissionHistorique> hasExactDate(LocalDate date) {
         return (root, query, cb) -> {
             if (date == null) return cb.conjunction();
-
-            // Build start and end of day
-            LocalDateTime startOfDay = date.atStartOfDay();
+            if(date.isAfter(LocalDate.now())) {
+                throw new FutureDateNotAllowedException("");
+            }
             LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
 
-            // Match either dateDebut or dateFin within that day
-            return cb.or(
-                    cb.between(root.get("dateDebut"), startOfDay, endOfDay),
-                    cb.between(root.get("dateFin"), startOfDay, endOfDay)
-            );
+            return cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay);
+
         };
     }
 }

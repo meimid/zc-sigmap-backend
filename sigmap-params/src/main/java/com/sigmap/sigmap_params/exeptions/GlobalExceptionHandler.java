@@ -61,10 +61,7 @@ import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
-import com.sigmap.common.user_commission_historique.exception.ComIdRequired;
-import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
-import com.sigmap.common.user_commission_historique.exception.SwitchStatueException;
-import com.sigmap.common.user_commission_historique.exception.UserCommissionHistoriqueNotFound;
+import com.sigmap.common.user_commission_historique.exception.*;
 import com.sigmap.common.user_societe.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -1220,7 +1217,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-<<<<<<< HEAD
 
     /** Handle when creation fails */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -1259,7 +1255,8 @@ public class GlobalExceptionHandler {
                 new Object[]{ex.getUserId()},
                 getLocal()
         );
-=======
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);}
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ActiveResponsableRequired.class)
     public ResponseEntity<ErrorResponse> handleActiveResponsableRequired() {
@@ -1359,7 +1356,17 @@ public class GlobalExceptionHandler {
                 getLocal()
         );
 
->>>>>>> 11d2ad703325ed29ac81fc18832005928be03c9e
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(FutureDateNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleFutureDateNotAllowed(FutureDateNotAllowedException ex) {
+        String message = messageSource.getMessage(
+                "future.date.not.allowed",
+                new Object[]{},
+                getLocal()
+        );
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
