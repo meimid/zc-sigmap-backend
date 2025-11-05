@@ -39,9 +39,13 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
         return userAcHistoriqueRepository.findAll(spec, pageable);
     }
 
-    private String getUserConnectedName(String userId){
+    private String getUserConnectedNom(String userId){
         UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
-        return keycloakUser.getFirstName()+ " "+keycloakUser.getLastName();
+        return keycloakUser.getFirstName();
+    }
+    private String getUserConnectedPrenom(String userId){
+        UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
+        return keycloakUser.getLastName();
     }
 
     @Override
@@ -130,7 +134,8 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
         response.setDateDebut(entity.getDateDebut());
         response.setDateFin(entity.getDateFin());
         response.setStatus(entity.getStatus());
-        response.setUserName(getUserConnectedName(entity.getUserId()));
+        response.setNom(getUserConnectedNom(entity.getUserId()));
+        response.setPrenom(getUserConnectedPrenom(entity.getUserId()));
 
         return response;
     }

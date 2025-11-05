@@ -344,10 +344,7 @@ public class AcServiceImpl implements AcService{
             for (UserAc existing : existingUserAcs) {
                 if (!newUserIds.contains(existing.getUserId())) {
                     userAcRepository.softDelete(existing.getAcId(), existing.getUserId());
-                    //create end for nor more existing ons
-
-                    log.info("------------------------------------ {}", existing.getUserId());
-                    log.info("************************************ {}", existing.getAcId());
+                    //create end for no more existing ons
                     userAcHistoriqueService.createEndHistory(existing.getUserId(), existing.getAcId());
                 }
             }

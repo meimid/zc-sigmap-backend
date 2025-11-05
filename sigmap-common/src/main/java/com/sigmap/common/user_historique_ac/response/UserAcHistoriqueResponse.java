@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 public class UserAcHistoriqueResponse {
     private Integer id;
     private String userId;
-    private String userName;
+    private String nom;
+    private String prenom;
     private AcResponseDto ac;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;
