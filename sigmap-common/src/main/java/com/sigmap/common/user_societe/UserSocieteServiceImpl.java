@@ -2,9 +2,10 @@ package com.sigmap.common.user_societe;
 
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.SocieteStatus;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakTokenService;
 import com.sigmap.common.keycloak_website_admin.service.KeycloakWebisteAdminService;
+
+import com.sigmap.common.keycloak_website_admin.dto.UserResquest;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteService;
@@ -24,21 +25,21 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class UserSocieteServiceImpl implements UserSocieteService {
     private final UserSocieteRepository repository;
     private  final SocieteRepository societeRepository;
-    private final KeycloakWebisteAdminService keycloakAdminService;
+    private final KeycloakWebisteAdminService keycloakWebisteAdminService;
 
     private final KeycloakTokenService tokenService;
 
-    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakWebisteAdminService keycloakAdminService, KeycloakTokenService tokenService) {
+
+    public UserSocieteServiceImpl(UserSocieteRepository repository, SocieteRepository societeRepository, KeycloakWebisteAdminService keycloakWebisteAdminService, KeycloakTokenService tokenService) {
         this.repository = repository;
         this.societeRepository = societeRepository;
-        this.keycloakAdminService = keycloakAdminService;
+        this.keycloakWebisteAdminService = keycloakWebisteAdminService;
         this.tokenService = tokenService;
 
     }
@@ -106,7 +107,7 @@ public class UserSocieteServiceImpl implements UserSocieteService {
         if(userCheck.isPresent()){
             throw new UserAlreadyRegisteredToOtherCompany("");
         }
-        keycloakAdminService.getUserDetails(request.getUserId(), headers);
+        keycloakWebisteAdminService.getUserDetails(request.getUserId(), headers);
         Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
@@ -120,28 +121,75 @@ public class UserSocieteServiceImpl implements UserSocieteService {
     }
 
     @Override
-    public UserSociete update(String userId,Integer societeId, UserSocieteRequest request) throws SocieteNotFound, UserSocieteNotFound {
-        if (userId == null || request.getUserId().isBlank()) {
+    public UserSociete createNonResponsableUser(UserResquest request,String responsableId) throws SocieteNotFound {
+
+        log.info("UserSocieteServiceImpl.create {}",request.toString());
+        if (request.getId() == null || request.getId().isBlank() ||responsableId == null || responsableId.isBlank()) {
             throw new UserIdRequiredException();
         }
 
-        if (societeId == null) {
-            throw new SocieteIdRequiredException();
+
+        UserSociete userSocieteResponsable=findByUserId(responsableId);
+        if(!userSocieteResponsable.getResponsable()||userSocieteResponsable.getStatus() == ActiveStatus.NON_ACTIF){
+            throw  new ActiveResponsableRequired("");
         }
-        HttpHeaders headers = createAuthHeaders();
-        UserSociete userSociete=findById(userId,societeId);
-        boolean responsable=userSociete.getResponsable();
-        ActiveStatus activeStatus=userSociete.getStatus();
-        keycloakAdminService.getUserDetails(request.getUserId(), headers);
-        Specification<Societe> specificationSociete = SocieteSpecifications.id(request.getSocieteId())
+        Specification<UserSociete> finalSpec = Specification.where(UserSocieteSpecifications.deleted(false)).and(UserSocieteSpecifications.userId(request.getId()));
+        Optional<UserSociete> userCheck = findOne(finalSpec);
+        if(userCheck.isPresent()){
+            throw new UserAlreadyRegisteredToOtherCompany("");
+        }
+
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(userSocieteResponsable.getSocieteId())
                 .and(SocieteSpecifications.deleted(false));
         Societe societe= societeRepository.findOne(specificationSociete)
-                .orElseThrow(() -> new SocieteNotFound("",List.of(request.getSocieteId())));
+                .orElseThrow(() -> new SocieteNotFound("",List.of(userSocieteResponsable.getSocieteId())));
+        UserSocieteRequest userSocieteRequest = new UserSocieteRequest();
+        userSocieteRequest.setUserId(request.getId());
+        userSocieteRequest.setSocieteId(societe.getId());
+        userSocieteRequest.setTel1(request.getMobile());
+        userSocieteRequest.setTel2(request.getFixe());
+        userSocieteRequest.setNom(request.getLastName());
+        userSocieteRequest.setPrenom(request.getFirstName());
+        userSocieteRequest.setEmail(request.getEmail());
+        userSocieteRequest.setNumCin(request.getCin());
+        userSocieteRequest.setDateDelivranceCin(request.getDateCIN());
+        UserSociete userSociete = UserSocieteMapper.INSTANCE.mapFromRequest(userSocieteRequest);
+        userSociete.setResponsable(findBySocieteId(userSocieteResponsable.getSocieteId()).isEmpty());
+        userSociete.setSociete(societe);
+        userSociete.setStatus(ActiveStatus.ACTIF);
+
+        return repository.save(userSociete);
+    }
+
+
+
+
+    @Override
+    public UserSociete update(String userId ,UserSocieteRequest request,String responsableId) throws SocieteNotFound, UserSocieteNotFound {
+        if (userId == null ) {
+            throw new UserIdRequiredException();
+        }
+
+        HttpHeaders headers = createAuthHeaders();
+        UserSociete userSocieteResponsable=findByUserId(responsableId);
+        UserSociete userSociete=findByUserId(userId);
+        Integer id=userSociete.getSocieteId();
+        boolean isResponsable=userSocieteResponsable.getResponsable();
+        if(!userSocieteResponsable.getResponsable()||userSocieteResponsable.getStatus() != ActiveStatus.ACTIF){
+            throw  new ActiveResponsableRequired("");
+        }
+        ActiveStatus activeStatus=userSociete.getStatus();
+        keycloakWebisteAdminService.getUserDetails(userId, headers);
+        Specification<Societe> specificationSociete = SocieteSpecifications.id(id)
+                .and(SocieteSpecifications.deleted(false));
+        Societe societe= societeRepository.findOne(specificationSociete)
+                .orElseThrow(() -> new SocieteNotFound("",List.of(id)));
 
         userSociete =UserSocieteMapper.INSTANCE.mapFromRequest(request);
         userSociete.setUserId(userId);
-        userSociete.setSocieteId(societeId);
-        userSociete.setResponsable(responsable);
+        userSociete.setSocieteId(societe.getId());
+        userSociete.setSocieteId(userSociete.getSocieteId());
+        userSociete.setResponsable(isResponsable);
         userSociete.setStatus(activeStatus);
 
         return save(userSociete);
