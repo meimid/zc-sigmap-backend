@@ -43,30 +43,27 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
         }
         
         try {
-            // Parse the input date string in ISO 8601 format (e.g., 2025-11-26T15:14:10.000Z)
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+            // Parse the input date string in yyyy-MM-dd format
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
             sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
             Date parsedDate = sdf.parse(date);
-            Calendar targetDate = Calendar.getInstance();
+
+            // Create a Calendar instance with UTC timezone
+            Calendar targetDate = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             targetDate.setTime(parsedDate);
 
-            // Add date range specification to find records where targetDate is between dateDebut and dateFin
-            spec = spec.and((root, query, criteriaBuilder) -> {
-                // The target date should be >= dateDebut AND (<= dateFin OR dateFin is null)
-                return criteriaBuilder.and(
-                    criteriaBuilder.lessThanOrEqualTo(root.get("dateDebut"), targetDate),
-                    criteriaBuilder.or(
-                        criteriaBuilder.greaterThanOrEqualTo(root.get("dateFin"), targetDate),
-                        criteriaBuilder.isNull(root.get("dateFin"))
-                    )
-                );
-            });
+            // Clear the time part to ensure we're working with the start of the day in UTC
+            targetDate.set(Calendar.HOUR_OF_DAY, 0);
+            targetDate.set(Calendar.MINUTE, 0);
+            targetDate.set(Calendar.SECOND, 0);
+            targetDate.set(Calendar.MILLISECOND, 0);
 
-            Page<DeviseHistory> result = deviseHistoryRepository.findAll(spec, pageable);
-            // Return the result (will be empty if no records found)
-            return result;
+            // Add date range specification to find records for the entire day
+            spec = spec.and(DeviseHistorySpecifications.dateBetween(targetDate));
+
+            return deviseHistoryRepository.findAll(spec, pageable);
         } catch (ParseException e) {
-            throw new IllegalArgumentException("Invalid date format. Please use format exmp: 2025-11-26T15:14:10.000Z ", e);
+            throw new IllegalArgumentException("Invalid date format. Please use format: yyyy-MM-dd", e);
         }
     }
 
@@ -76,8 +73,23 @@ public class DeviseHistoryServiceImpl implements DeviseHistoryService {
     }
 
     private String getUserConnectedName(String userId){
-        UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
-        return keycloakUser.getFirstName()+ " "+keycloakUser.getLastName();
+        try {
+            UserDTO keycloakUser = keycloakAdminService.getUserById(userId);
+
+            if (keycloakUser == null) {
+                return "user not found";
+            }
+
+            return keycloakUser.getFirstName() + " " + keycloakUser.getLastName();
+
+        } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("404")) {
+                log.warn("User with ID {} not found in Keycloak.", userId);
+                return "user not found";
+            }
+            log.error("Error fetching user {} from Keycloak: {}", userId, e.getMessage());
+            return "user not found";
+        }
     }
 
     private Integer getMaxId (Integer deviseId){

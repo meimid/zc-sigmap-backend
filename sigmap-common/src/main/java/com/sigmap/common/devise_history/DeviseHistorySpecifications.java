@@ -138,4 +138,36 @@ public class DeviseHistorySpecifications {
     public static Specification<DeviseHistory> deviseId(Integer deviseId) {
         return (root, query, cb) -> cb.equal(root.get("deviseId"), deviseId);
     }
+
+    public static Specification<DeviseHistory> dateBetween(Calendar targetDate) {
+        return (root, query, cb) -> {
+            if (targetDate == null) {
+                return cb.conjunction();
+            }
+
+            // Set start of day (00:00:00.000)
+            Calendar startOfDay = (Calendar) targetDate.clone();
+            startOfDay.set(Calendar.HOUR_OF_DAY, 0);
+            startOfDay.set(Calendar.MINUTE, 0);
+            startOfDay.set(Calendar.SECOND, 0);
+            startOfDay.set(Calendar.MILLISECOND, 0);
+
+            // Set end of day (23:59:59.999)
+            Calendar endOfDay = (Calendar) targetDate.clone();
+            endOfDay.set(Calendar.HOUR_OF_DAY, 23);
+            endOfDay.set(Calendar.MINUTE, 59);
+            endOfDay.set(Calendar.SECOND, 59);
+            endOfDay.set(Calendar.MILLISECOND, 999);
+
+            // Find records where:
+            // (dateDebut <= endOfDay) AND (dateFin >= startOfDay OR dateFin is null)
+            return cb.and(
+                    cb.lessThanOrEqualTo(root.get("dateDebut"), endOfDay),
+                    cb.or(
+                            cb.greaterThanOrEqualTo(root.get("dateFin"), startOfDay),
+                            cb.isNull(root.get("dateFin"))
+                    )
+            );
+        };
+    }
 }
