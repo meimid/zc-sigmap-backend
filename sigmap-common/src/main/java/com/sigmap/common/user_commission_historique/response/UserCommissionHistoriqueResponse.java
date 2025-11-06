@@ -8,14 +8,9 @@ import java.time.LocalDateTime;
 @Data
 public class UserCommissionHistoriqueResponse {
     private Integer id;
-    private String username;
     private String firstName;
     private String lastName;
     private String email;
-    private String address;
-    private String mobile;
-    private String fixe;
-    private ActiveStatus status;
     private LocalDateTime dateDebut;
     private LocalDateTime dateFin;
 }
