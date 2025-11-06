@@ -1,12 +1,15 @@
 package com.sigmap.common.monnaie;
 
+import com.sigmap.common.devise_history.DeviseHistoryService;
 import com.sigmap.common.monnaie.exceptions.MonnaieCodeAlreadyExist;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.monnaie.mappers.MonnaieMapper;
 import com.sigmap.common.monnaie.request.MonnaieRequest;
+
 import java.util.List;
 import java.util.Optional;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,8 +19,10 @@ import org.springframework.stereotype.Service;
  * Service implementation of {@link MonnaieService}
  */
 @Service
+@Slf4j
 public class MonnaieServiceImpl implements MonnaieService {
     private final MonnaieRepository repository;
+    private final DeviseHistoryService deviseHistoryService;
 
     /**
      * Constructor.
@@ -25,8 +30,9 @@ public class MonnaieServiceImpl implements MonnaieService {
      * @param repository     monnaie repository
      */
 
-    public MonnaieServiceImpl(MonnaieRepository repository) {
+    public MonnaieServiceImpl(MonnaieRepository repository, DeviseHistoryService deviseHistoryService) {
         this.repository = repository;
+        this.deviseHistoryService = deviseHistoryService;
     }
 
 
@@ -90,7 +96,9 @@ public class MonnaieServiceImpl implements MonnaieService {
             throw new MonnaieCodeAlreadyExist("",request.getCode());
         }
         Monnaie monnaie = MonnaieMapper.INSTANCE.map(request);
-        return save(monnaie);
+        Monnaie createdMonnaie = save(monnaie);
+        deviseHistoryService.createHistory(createdMonnaie);
+        return createdMonnaie;
     }
 
     @Override
@@ -101,12 +109,18 @@ public class MonnaieServiceImpl implements MonnaieService {
             throw new MonnaieCodeAlreadyExist("",request.getCode());
         }
         MonnaieMapper.INSTANCE.updateFromRequest(request, monnaie);
-        return save(monnaie);
+        Monnaie savedMonnaie = save(monnaie);
+
+        deviseHistoryService.updateHistoryFin(savedMonnaie,id);
+        deviseHistoryService.updateHistoryDebut(savedMonnaie,id);
+
+        return savedMonnaie;
     }
 
     @Override
     public void delete(Integer id) throws MonnaieNotFound {
-        findById(id);
+        Monnaie monnaie = findById(id);
+        deviseHistoryService.deleteHistory(monnaie, id);
         repository.softDelete(id);
     }
 

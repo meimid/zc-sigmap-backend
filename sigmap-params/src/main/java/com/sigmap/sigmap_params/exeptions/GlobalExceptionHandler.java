@@ -61,6 +61,7 @@ import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_commission_historique.exception.*;
 import com.sigmap.common.user_societe.exception.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
@@ -1216,6 +1217,46 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
+
+    /** Handle when creation fails */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(CreateUserComHitoriqueException.class)
+    public ResponseEntity<ErrorResponse> handleCreateUserComHistoriqueException() {
+        String message = messageSource.getMessage("usercommissionhistorique.create.error",
+                new Object[]{}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    /** Handle when commission id is missing */
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ComIdRequired.class)
+    public ResponseEntity<ErrorResponse> handleComIdRequiredException(ComIdRequired ex) {
+        String message = messageSource.getMessage("usercommissionhistorique.comid.required",
+                null, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    /** Handle when historique not found */
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(UserCommissionHistoriqueNotFound.class)
+    public ResponseEntity<ErrorResponse> handleUserCommissionHistoriqueNotFound(UserCommissionHistoriqueNotFound ex) {
+        String message = messageSource.getMessage("usercommissionhistorique.notfound",
+                new Object[]{ex.getId()}, getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SwitchStatueException.class)
+    public ResponseEntity<ErrorResponse> handleSwitchStatueException(SwitchStatueException ex) {
+        String message = messageSource.getMessage(
+                "usercommissionhistorique.switchstatus.error",
+                new Object[]{ex.getUserId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);}
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ActiveResponsableRequired.class)
     public ResponseEntity<ErrorResponse> handleActiveResponsableRequired() {
@@ -1315,6 +1356,17 @@ public class GlobalExceptionHandler {
                 getLocal()
         );
 
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(FutureDateNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleFutureDateNotAllowed(FutureDateNotAllowedException ex) {
+        String message = messageSource.getMessage(
+                "future.date.not.allowed",
+                new Object[]{},
+                getLocal()
+        );
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
