@@ -827,13 +827,9 @@ public class KeycloakAdminService {
         resp.setDateFin(historique.getDateFin());
 
         if (user != null) {
-            resp.setUsername(user.getUsername());
             resp.setFirstName(user.getFirstName());
             resp.setLastName(user.getLastName());
             resp.setEmail(user.getEmail());
-            resp.setAddress(user.getAddress());
-            resp.setMobile(user.getMobile());
-            resp.setFixe(user.getFixe());
         }
 
         return resp;
