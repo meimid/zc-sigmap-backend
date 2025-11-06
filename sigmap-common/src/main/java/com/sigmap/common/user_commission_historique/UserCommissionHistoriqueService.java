@@ -47,5 +47,5 @@ public interface UserCommissionHistoriqueService {
     Page<UserCommissionHistorique> findAllByComId(Integer comId,String date, Pageable pageable, Specification<UserCommissionHistorique> specification
     );
 
-
+   Optional <UserCommissionHistorique> removeUserFromCommissionHistorique(String userId, Integer comId);
 }
