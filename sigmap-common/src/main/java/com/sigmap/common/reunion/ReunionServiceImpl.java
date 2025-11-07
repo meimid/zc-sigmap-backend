@@ -386,6 +386,8 @@ public class ReunionServiceImpl implements ReunionService{
                 if (participantToUpdate != null) {
                     if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
+                    participantToUpdate.setFonction(participantRequest.getFonction());
+
                     }else{
                         participantToUpdate.setPresent(false);
                     }
