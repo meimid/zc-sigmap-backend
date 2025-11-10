@@ -30,6 +30,7 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionDropListDto;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionResponseDto;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
@@ -389,7 +390,7 @@ public class ReunionController {
 
 
     @GetMapping("/list/ppm/{ppmId}")
-    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
     public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
@@ -426,5 +427,10 @@ public class ReunionController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
     }
-
+    @GetMapping("/drop-list")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<List<ReunionDropListDto>> findAllDropList(){
+        List<Reunion> reunionList = reunionService.findAll();
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }
 }

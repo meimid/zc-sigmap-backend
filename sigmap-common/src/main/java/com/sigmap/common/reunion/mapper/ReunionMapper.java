@@ -7,6 +7,7 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionDropListDto;
 import com.sigmap.common.reunion.response.ReunionResponse;
 
 import com.sigmap.common.reunion.response.ReunionResponseDto;
@@ -70,5 +71,6 @@ public interface ReunionMapper {
     @Mapping(source = "participants", target = "participants")
     @Mapping(source = "processVerbal",target = "processVerbal")
     ReunionWithParticipantsAndPvDto mapToReunionWithParticipantsAndPvDto(Reunion reunion);
+    ReunionDropListDto mapToDropListDto(Reunion reunion);
 
 }

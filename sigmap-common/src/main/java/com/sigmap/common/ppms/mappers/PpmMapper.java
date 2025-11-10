@@ -4,10 +4,7 @@ import com.sigmap.common.financement.Financement;
 import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.request.PpmRequest;
-import com.sigmap.common.ppms.response.PpmResponse;
-import com.sigmap.common.ppms.response.PpmResponseDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDto;
-import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
+import com.sigmap.common.ppms.response.*;
 import com.sigmap.common.realisations.Realisation;
 // CHANGE HERE: Import the correct DTO
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
@@ -122,4 +119,8 @@ public interface PpmMapper {
                 .map(this::mapFinancement)
                 .collect(Collectors.toList());
     }
+
+
+    PpmDropListDto mapToDropListDto(Ppm ppm);
+
 }

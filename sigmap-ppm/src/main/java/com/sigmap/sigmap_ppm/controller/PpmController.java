@@ -61,6 +61,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.lang.reflect.Method;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
@@ -1430,6 +1432,11 @@ public class PpmController {
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(newVersion);
         return ResponseEntity.ok(response);
     }
-
+    @GetMapping("/drop-list")
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite()  {
+        List<Ppm> ppms = ppmService.findAll();
+         List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 
 }
