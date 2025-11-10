@@ -429,7 +429,7 @@ public class ReunionController {
     }
     @GetMapping("/drop-list/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
-    public ResponseEntity<List<ReunionDropListDto>> findAllDropList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
     }

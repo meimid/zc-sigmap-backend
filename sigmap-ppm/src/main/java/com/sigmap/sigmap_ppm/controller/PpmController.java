@@ -1433,8 +1433,9 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite()  {
-        List<Ppm> ppms = ppmService.findAll();
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
+        Specification specification = query.toSpecification();
+        List<Ppm> ppms = ppmService.findAllSpec(specification);
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
