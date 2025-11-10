@@ -160,7 +160,7 @@ public class ParticipantServiceImpl implements ParticipantService {
 
             UserDTO userDetails = keycloakAdminService.getUserById(userId);
             ParticipantType type = Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE;
-            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantFonction.RESPONSABLE : ParticipantFonction.MEMBRE;
+            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
 
             if (participant == null) {
                 // Create new participant for new commission member

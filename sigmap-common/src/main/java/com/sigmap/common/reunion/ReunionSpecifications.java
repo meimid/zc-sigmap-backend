@@ -125,13 +125,5 @@ public class ReunionSpecifications {
         };
     }
 
-    /**
-     * Filter Reunion by DAC ID through ReunionDac relationship.
-     */
-    public static Specification<Reunion> hasDacId(Integer dacId) {
-        return (root, query, cb) -> {
-            var join = root.join("reunionDacs"); // join Reunion -> ReunionPpm
-            return cb.equal(join.get("dacId"), dacId);
-        };
-    }
+
 }

@@ -395,7 +395,7 @@ public class ReunionController {
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
     }
 
-    @GetMapping("/history/reunion/{reunionId}/ppm/{ppmId}")
+    @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
     public ResponseEntity<List<ReunionWithParticipantsAndPvDto>> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
         List<Reunion> reunionList = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);

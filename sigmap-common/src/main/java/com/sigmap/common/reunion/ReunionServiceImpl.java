@@ -346,7 +346,7 @@ public class ReunionServiceImpl implements ReunionService{
             participantRequest.setMail(userDetails.getEmail());
             participantRequest.setUserId(userCom.getUserId());
             participantRequest.setType(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE);
-            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantFonction.RESPONSABLE : ParticipantFonction.MEMBRE;
+            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
             participantRequest.setOrganisme(reunion.getCom().getNom());
 
             participantRequest.setFonction(fonction);
@@ -389,6 +389,7 @@ public class ReunionServiceImpl implements ReunionService{
         for (ParticipantRequest participantRequest : participantsInRequest) {
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
+
                 if (participantToUpdate != null) {
                     if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
@@ -401,8 +402,9 @@ public class ReunionServiceImpl implements ReunionService{
                     participantIdsToKeep.add(participantToUpdate.getId());
                     if(participantToUpdate.getType().equals(ParticipantType.INVITE)){
                         participantToUpdate.setOrganisme(participantRequest.getOrganisme());
-                        participantToUpdate.setFonction(participantRequest.getFonction());
                     }
+                        participantToUpdate.setFonction(participantRequest.getFonction());
+
                     }
                 }
             } else {
