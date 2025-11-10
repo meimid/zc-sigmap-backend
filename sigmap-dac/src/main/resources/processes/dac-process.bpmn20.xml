@@ -161,7 +161,9 @@
     <sequenceFlow id="Flow_1y9t64n" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_0x68o40">
       <conditionExpression xsi:type="tFormalExpression">${cpmp_valide == true &amp;&amp; isRestraint == true}</conditionExpression>
     </sequenceFlow>
-    <sequenceFlow id="Flow_1f0e0oc" sourceRef="Gateway_0kkfgcl" targetRef="Activity_1d2aib2" />
+    <sequenceFlow id="Flow_1f0e0oc" sourceRef="Gateway_0kkfgcl" targetRef="Activity_1d2aib2">
+      <conditionExpression xsi:type="tFormalExpression">${reserve_valide==false}</conditionExpression>
+    </sequenceFlow>
     <userTask id="Task_1is7nge" name="(AC) Publication" flowable:candidateGroups="PUB_AC">
       <extensionElements>
         <flowable:formData>

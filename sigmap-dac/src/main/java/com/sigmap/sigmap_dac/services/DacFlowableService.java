@@ -30,6 +30,7 @@ import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.sigmap_dac.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
 import com.sigmap.sigmap_dac.services.dto.response.NextStepDTO;
@@ -425,54 +426,31 @@ public class DacFlowableService {
 
         return null;
     }
-
-    /** Resolve the decision variable for the branch matching the user's validate flag; also tell if that branch hits EndEvent next. */
-    private static class DecisionResolution {
-        String variable;
-        boolean nextIsEnd;
-    }
-
-    private DecisionResolution resolveDecision(Task task, Boolean validateFlag) {
-        DecisionResolution res = new DecisionResolution();
-        res.variable = null;
-        res.nextIsEnd = false;
-        try {
-            BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-            FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
-            if (!(te instanceof UserTask ut)) return res;
-
-            for (SequenceFlow of : ut.getOutgoingFlows()) {
-                FlowElement target = model.getFlowElement(of.getTargetRef());
-                if (target instanceof ExclusiveGateway gw) {
-                    for (SequenceFlow gf : gw.getOutgoingFlows()) {
-                        String cond = gf.getConditionExpression();
-                        String var = extractVariableName(cond);
-                        String rhs = extractConditionValue(cond); // "true" / "false" / enum
-                        if (var != null && rhs != null) {
-                            // If validateFlag is boolean, only pick matching boolean branch
-                            if (validateFlag == null || "true".equalsIgnoreCase(rhs) == validateFlag) {
-                                FlowElement then = model.getFlowElement(gf.getTargetRef());
-                                res.variable = var;
-                                res.nextIsEnd = (then instanceof EndEvent);
-                                return res;
-                            }
-                        }
-                    }
-                } else {
-                    // direct sequence flow
-                    res.variable = null;
-                    res.nextIsEnd = (target instanceof EndEvent);
-                    return res;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("resolveDecision failed for task {}: {}", task.getId(), e.getMessage());
-        }
-        return res;
-    }
-
     /* -------------------------------- validate / complete task -------------------------------- */
+    @Transactional
+    public List<TaskDTO> validateTaskGroup(List<GroupValidationRequest> requests)
+            throws DacNotFound, DocNotFound, AcNotFound,
+            MissingComIdException, MissingAcIdException,
+            UserNotAssociatedWithAcException, UserNotAssociatedWithComException,
+            ComNotFound, IOException {
 
+        List<TaskDTO> responses = new ArrayList<>();
+
+        for (GroupValidationRequest request : requests) {
+            ValidationRequest validationRequest = new ValidationRequest();
+            validationRequest.setValidate(request.getValidate());
+            validationRequest.setComment(request.getComment());
+            validationRequest.setComId(request.getComId());
+            validationRequest.setFromMeeting(true);
+            validationRequest.setCncmpDecision(request.getCncmpDecision());
+
+
+            TaskDTO response = validateTask(request.getTaskId(), validationRequest);
+            responses.add(response);
+        }
+
+        return responses;
+    }
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request)
             throws DacNotFound, DocNotFound, AcNotFound,
@@ -481,28 +459,38 @@ public class DacFlowableService {
             UserNotAssociatedWithComException,
             ComNotFound {
 
+        log.info("[FLOW] ==== Enter validateTask() for taskId={} ====", taskId);
+        log.debug("[FLOW] Incoming ValidationRequest: {}", request);
+
         // --- Auth & task lookup ---
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            log.warn("[SECURITY] Missing or invalid JWT authentication");
             TaskDTO error = new TaskDTO();
             error.setStatus("Invalid or missing JWT authentication");
             return error;
         }
+        log.info("[SECURITY] Authenticated user: {}", jwtAuth.getName());
 
         Task task = taskService.createTaskQuery()
                 .taskId(taskId)
                 .taskTenantId(TENANT_ID)
                 .active()
                 .singleResult();
+
         if (task == null) {
+            log.error("[TASK] Task not found or not active for id={}", taskId);
             TaskDTO error = new TaskDTO();
             error.setStatus("Task not found or not active");
             return error;
         }
+        log.info("[TASK] Loaded active Flowable task '{}' ({})", task.getName(), task.getId());
 
         // Candidate group
         String candidateGroup = getCandidateGroup(task);
+        log.debug("[TASK] Candidate group resolved: {}", candidateGroup);
         if (candidateGroup == null) {
+            log.error("[TASK] Candidate group missing for task={}", taskId);
             TaskDTO error = new TaskDTO();
             error.setStatus("Task does not have a candidate group");
             return error;
@@ -510,17 +498,20 @@ public class DacFlowableService {
 
         // Permissions
         if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+            log.warn("[SECURITY] User {} not authorized for task {} in group {}", jwtAuth.getName(), taskId, candidateGroup);
             TaskDTO error = new TaskDTO();
             error.setStatus("User does not have the required role or assignment to validate this task");
             return error;
         }
+        log.info("[SECURITY] Permission check passed for user {}", jwtAuth.getName());
 
         // --- Process vars & DAC ---
         Map<String, Object> processVariables = runtimeService.getVariables(task.getProcessInstanceId());
-        log.info("Process variables for DAC task [{}]: {}", taskId, processVariables);
+        log.info("[FLOW] Process variables for DAC task [{}]: {}", taskId, processVariables);
         Integer id = (Integer) processVariables.getOrDefault("id", null);
         Integer version = (Integer) processVariables.getOrDefault("version", null);
         if (id == null || version == null) {
+            log.error("[FLOW] Missing process variables: id={}, version={}", id, version);
             TaskDTO error = new TaskDTO();
             error.setStatus(String.format("Missing required process variables: id=%s, version=%s", id, version));
             return error;
@@ -528,11 +519,13 @@ public class DacFlowableService {
 
         Optional<Dac> dacOpt = dacService.findById(id, version);
         if (dacOpt.isEmpty()) {
+            log.error("[DAC] DAC not found for id={}, version={}", id, version);
             TaskDTO error = new TaskDTO();
             error.setStatus("DAC not found for id " + id + " and version " + version);
             return error;
         }
         Dac latestDac = dacOpt.get();
+        log.info("[DAC] Loaded DAC id={}, version={}, status={}", id, latestDac.getDacVer(), latestDac.getStatus());
 
         // --- Task properties  ---
         Map<String, Boolean> taskProps = getTaskProperties(task);
@@ -542,13 +535,14 @@ public class DacFlowableService {
         Boolean meetingRequired    = taskProps.get("meetingRequired");
 
         boolean fromMeeting = Boolean.TRUE.equals(request.getFromMeeting());
-        log.info("DAC approve-path: [{}:{}] isUpdatable={}, meetingRequired={}, commissionRequired={}, publishable={}, fromMeeting={}",
-                task.getTaskDefinitionKey(), task.getName(),
-                isUpdatable, meetingRequired, commissionRequired, isPublishable, fromMeeting);
+        log.info("[TASK] Properties: isUpdatable={}, isPublishable={}, commissionRequired={}, meetingRequired={}, fromMeeting={}",
+                isUpdatable, isPublishable, commissionRequired, meetingRequired, fromMeeting);
 
         // --- meetingRequired enforcement  ---
         if (Boolean.TRUE.equals(meetingRequired)) {
+            log.debug("[FLOW] Task requires meeting; verifying source");
             if (!fromMeeting) {
+                log.warn("[FLOW] Meeting required but not triggered from meeting endpoint");
                 TaskDTO error = new TaskDTO();
                 error.setStatus("Une réunion est requise pour clôturer cette tâche. Utilisez le service (endpoint) dédié à la réunion.");
                 return error;
@@ -561,6 +555,7 @@ public class DacFlowableService {
                     if (modelGroups != null && modelGroups.size() >= 2) {
                         String closerGroup = modelGroups.get(modelGroups.size() - 1);
                         if (!hasRole(jwtAuth, closerGroup)) {
+                            log.warn("[SECURITY] User {} lacks closing role {} for meeting-required task {}", jwtAuth.getName(), closerGroup, taskId);
                             TaskDTO error = new TaskDTO();
                             error.setStatus("Une réunion est requise. Seul le groupe de clôture peut terminer cette tâche.");
                             return error;
@@ -568,23 +563,28 @@ public class DacFlowableService {
                     }
                 }
             } catch (Exception e) {
-                log.warn("meetingRequired enforcement: could not resolve candidate groups for task [{}]: {}", taskId, e.getMessage());
+                log.warn("[FLOW] meetingRequired enforcement failed for task [{}]: {}", taskId, e.getMessage());
             }
         }
 
-        // --- If editable, update DAC (batch docs → new single version),---
+        // --- If editable, update DAC (batch docs → new single version) ---
         if (Boolean.TRUE.equals(isUpdatable)) {
+            log.info("[DAC] Task marked as updatable; processing DacDocs batch");
             List<DacDocsRequest> updates = request.getDacDocsRequest();
             if (updates == null || updates.isEmpty()) {
+                log.error("[DAC] No DacDocsRequest provided for updatable task {}", taskId);
                 TaskDTO error = new TaskDTO();
                 error.setStatus("At least one DacDocsRequest is required when isUpdatable=true");
                 return error;
             }
+
             for (DacDocsRequest u : updates) u.setDacId(id);
+            log.debug("[DAC] Creating batch of {} DAC docs for DAC {}", updates.size(), id);
             dacDocsService.createDacDocsBatch(updates);
 
             // refresh DAC to latest version
             latestDac = dacService.findById(id, null).orElse(latestDac);
+            log.info("[DAC] Refreshed DAC after docs batch → version={}", latestDac.getDacVer());
             runtimeService.setVariable(task.getProcessInstanceId(), "version", latestDac.getDacVer());
 
             // refresh gateway-driving vars from DAC
@@ -592,17 +592,19 @@ public class DacFlowableService {
                     latestDac.getModePassation() != null && latestDac.getModePassation().isRestraint());
             runtimeService.setVariable(task.getProcessInstanceId(), "shortListing", latestDac.isShortListing());
             runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
-            log.info("Updated DAC after versioning; DAC ver={}, isRestraint={}, shortListing={}, parentDacId={}",
+
+            log.info("[DAC] Updated process vars after versioning: version={}, isRestraint={}, shortListing={}, parentDacId={}",
                     latestDac.getDacVer(),
                     runtimeService.getVariable(task.getProcessInstanceId(), "isRestraint"),
                     runtimeService.getVariable(task.getProcessInstanceId(), "shortListing"),
                     runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId"));
         }
-
         // --- Resolve next user task + its meeting/commission flags (best-effort) ---
+        log.info("[FLOW] Resolving next user task and its flags for DAC [{}]", id);
         UserTask nextUserTask = null;
         Boolean nextMeetingRequired = null;
         Boolean nextCommissionRequired = null;
+
         if (Boolean.TRUE.equals(request.getValidate())) {
             try {
                 BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
@@ -658,48 +660,49 @@ public class DacFlowableService {
                         }
                     }
                 }
+                log.info("[FLOW] Next user task resolved: {} (meetingRequired={}, commissionRequired={})",
+                        (nextUserTask != null ? nextUserTask.getName() : "none"),
+                        nextMeetingRequired, nextCommissionRequired);
             } catch (Exception e) {
-                log.info("Next-step resolution failed for DAC task [{}]: {}", taskId, e.getMessage());
+                log.error("[FLOW] Failed to resolve next user task for [{}]: {}", taskId, e.getMessage());
             }
         }
 
-        log.info("DAC approve-path: nextTask [{}] meetingRequired={}, commissionRequired={}",
-                nextUserTask != null ? nextUserTask.getId() : "null", nextMeetingRequired, nextCommissionRequired);
-
         boolean skipComAssociationCheck = false;
-        Integer deferComIdAfterCompletion = null;  // for CPMP→PER or SCS→PER
+        Integer deferComIdAfterCompletion = null;
+        log.debug("[COM] skipComAssociationCheck={}, deferComIdAfterCompletion={}", skipComAssociationCheck, deferComIdAfterCompletion);
 
         // --- Dynamic COM wiring (approve path), AC inside DAC via DAC→PPM→AC ---
         if (Boolean.TRUE.equals(request.getValidate())) {
-            // Resolve AC id through DAC->PPM->AC
+            log.info("[COM] Evaluating dynamic commission wiring for validation path");
             Integer acIdFromDac = (latestDac.getPpm() != null && latestDac.getPpm().getAc() != null)
                     ? latestDac.getPpm().getAc().getId() : null;
 
             // Case: current = AC validation (no meeting) and next requires meeting → set CPMP for the AC
             if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
+                log.info("[COM] Case: AC→CPMP transition detected");
                 if (acIdFromDac == null) throw new MissingAcIdException("acId is required to route commission from AC validation (DAC→PPM→AC)");
                 Integer cpmpComId = acServiceImpl.getComIdByAcId(acIdFromDac);
                 if (cpmpComId == null) throw new ComNotFound("your ac dont have a cpmp", List.of(acIdFromDac));
                 Com cpmp = comServiceImpl.findById(cpmpComId);
                 if (cpmp == null) throw new ComNotFound("CPMP commission not found", List.of(cpmpComId));
 
-                // associate CPMP to DAC (idempotent)
                 attachComToDac(latestDac, cpmpComId);
-
                 runtimeService.setVariable(task.getProcessInstanceId(), "comId", cpmpComId);
-                log.info("DAC AC→CPMP: Set comId {} for process {}", cpmpComId, task.getProcessInstanceId());
+                log.info("[COM] Associated CPMP comId={} to DAC {} (process={})", cpmpComId, id, task.getProcessInstanceId());
                 skipComAssociationCheck = true;
             }
 
-            // Case: CPMP meeting and next needs commission → prepare CNCMP PER (defer switch after completion)
+            // Case: CPMP meeting and next needs commission → prepare CNCMP PER (defer switch)
             if (Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextCommissionRequired)) {
+                log.info("[COM] Case: CPMP→CNCMP(PER) transition detected");
                 Com cncmpPer = comServiceImpl.findCNCMPP();
                 if (cncmpPer == null) throw new ComNotFound("Aucune commission CNCMP Permanente n'est configurée.", List.of());
 
-                attachComToDac(latestDac, cncmpPer.getId()); // keep PER associated with DAC
+                attachComToDac(latestDac, cncmpPer.getId());
                 deferComIdAfterCompletion = cncmpPer.getId();
                 runtimeService.setVariable(task.getProcessInstanceId(), "cncmpPerComId", cncmpPer.getId());
-                log.info("DAC CPMP→CNCMPP: defer switch to PER comId {} after completion", cncmpPer.getId());
+                log.info("[COM] Deferred PER comId={} for process {}", cncmpPer.getId(), task.getProcessInstanceId());
             }
         }
 
@@ -708,18 +711,22 @@ public class DacFlowableService {
         boolean isCncmpDecisionTask = getModelUserTask(task)
                 .map(ut -> userTaskHasFormProp(ut, "cncmpDecision"))
                 .orElse(false);
-
         Integer deferComIdAfterDecision = null;
+        log.debug("[FLOW] CNCMP decision task={} validateFlag={}", isCncmpDecisionTask, validateFlag);
 
         if (isCncmpDecisionTask) {
             var dec = request.getCncmpDecision();
             if (dec != null) {
+                log.info("[COM] Processing CNCMP Decision: {}", dec);
                 String pid = task.getProcessInstanceId();
-
                 Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
+
                 if (perId != null) {
                     runtimeService.setVariable(pid, "comId", perId);
-                    try { attachComToDac(latestDac, perId); } catch (Exception ignore) {}
+                    try {
+                        attachComToDac(latestDac, perId);
+                        log.info("[COM] Attached PER comId={} to DAC {} (decision pre-apply)", perId, id);
+                    } catch (Exception ignore) {}
                 }
                 runtimeService.setVariable(pid, "cncmpDecision", dec.name());
 
@@ -727,7 +734,7 @@ public class DacFlowableService {
                     case APPROVE -> {
                         deferComIdAfterDecision = perId;
                         validateFlag = null;
-                        log.info("DAC CNCMP Decision: APPROVE");
+                        log.info("[COM] CNCMP Decision APPROVE → Keep PER comId={}", perId);
                     }
                     case REJECT -> {
                         Integer acIdVar = (Integer) runtimeService.getVariable(pid, "acId");
@@ -736,13 +743,13 @@ public class DacFlowableService {
                         if (cpmpComId == null) throw new ComNotFound("your ac dont have a cpmp", List.of(acIdVar));
                         deferComIdAfterDecision = cpmpComId;
                         validateFlag = null;
-                        log.info("DAC CNCMP Decision: REJECT → defer comId to CPMP={}", cpmpComId);
+                        log.info("[COM] CNCMP Decision REJECT → Switch to CPMP comId={}", cpmpComId);
                     }
                     case CI -> {
                         Integer speComId = (Integer) runtimeService.getVariable(pid, "cncmpSpeComId");
                         deferComIdAfterDecision = speComId;
                         validateFlag = null;
-                        log.info("DAC CNCMP Decision: CI → defer comId to SCS={}", speComId);
+                        log.info("[COM] CNCMP Decision CI → Switch to SCS comId={}", speComId);
                     }
                 }
             }
@@ -750,64 +757,74 @@ public class DacFlowableService {
 
         // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required (choose SCS) ---
         if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
+            log.info("[COM] Affectation step detected (commissionRequired=true, meetingRequired=false)");
             Integer reqComId = request.getComId();
-            if (reqComId == null) {
-                throw new MissingComIdException("comId is required at Affectation (commissionRequired=true) when validate is true");
-            }
+            if (reqComId == null) throw new MissingComIdException("comId is required at Affectation when validate is true");
             Com scs = comServiceImpl.findById(reqComId);
             if (scs == null) throw new ComNotFound("Commission not found", List.of(reqComId));
 
-            attachComToDac(latestDac, reqComId); // SCS
+            attachComToDac(latestDac, reqComId);
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", reqComId);
             runtimeService.setVariable(task.getProcessInstanceId(), "cncmpSpeComId", reqComId);
-            log.info("DAC Affectation: Overwrote comId to {} and set cncmpSpeComId", reqComId);
+            log.info("[COM] DAC Affectation: Overwrote comId={} and set cncmpSpeComId", reqComId);
             skipComAssociationCheck = true;
 
-            // Ensure PER + CPMP remain associated alongside SCS (idempotent)
             try {
                 String pid = task.getProcessInstanceId();
                 Integer perId  = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
                 Integer acIdV  = (Integer) runtimeService.getVariable(pid, "acId");
                 Integer cpmpId = (acIdV != null) ? acServiceImpl.getComIdByAcId(acIdV) : null;
-
                 attachComToDac(latestDac, perId);
                 attachComToDac(latestDac, cpmpId);
+                log.info("[COM] DAC Affectation: ensured SCS/PER/CPMP linked");
             } catch (Exception e) {
-                log.warn("DAC Affectation: failed to persist SCS/PER/CPMP associations: {}", e.getMessage());
+                log.warn("[COM] DAC Affectation: failed to persist linked commissions: {}", e.getMessage());
             }
         }
 
-        // --- Association checks with CURRENT step's comId  ---
+        // --- Association checks with CURRENT step's comId ---
         Integer currComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+        log.debug("[CHECK] Current comId from runtime vars: {}", currComId);
+
         if ((!skipComAssociationCheck && currComId != null) && !Boolean.TRUE.equals(isPublishable)) {
             List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+            log.debug("[CHECK] userComIds={}", userComIds);
             if (userComIds == null || !userComIds.contains(currComId)) {
-                throw new com.sigmap.common.ppms.exception.UserNotAssociatedWithComException(
+                log.error("[SECURITY] User not associated with comId {}", currComId);
+                throw new UserNotAssociatedWithComException(
                         "User is not associated with the commission ID: " + currComId);
             }
-            log.info("DAC User validated for commission ID: {}", currComId);
+            log.info("[SECURITY] User validated for commission ID: {}", currComId);
         } else if (currComId == null) {
             Integer acIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "acId");
+            log.debug("[CHECK] No comId; fallback to AC association check acId={}", acIdVar);
             if (acIdVar == null) throw new MissingAcIdException("acId is required in process variables for tasks without comId");
             List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
             if (userAcIds == null || !userAcIds.contains(acIdVar)) {
-                throw new com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException(
+                log.error("[SECURITY] User not associated with AC ID {}", acIdVar);
+                throw new UserNotAssociatedWithAcException(
                         "User is not associated with the AC ID: " + acIdVar);
             }
-            log.info("DAC User validated for AC ID: {}", acIdVar);
+            log.info("[SECURITY] User validated for AC ID: {}", acIdVar);
         } else {
-            log.info("DAC: Skipping commission association check at system hand-off (comId={})", currComId);
+            log.info("[CHECK] Skipping com association check at system hand-off (comId={})", currComId);
         }
 
-        // Persist CURRENT comId into DAC.coms BEFORE status update (idempotent)
+        // Persist CURRENT comId into DAC.coms BEFORE status update
         try {
             Integer snap = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
-            if (snap != null) attachComToDac(latestDac, snap);
+            if (snap != null) {
+                attachComToDac(latestDac, snap);
+                log.info("[COM] Persisted current comId={} into DAC {}", snap, latestDac.getDacId());
+            }
         } catch (Exception e) {
-            log.warn("DAC Association: failed to add CURRENT comId before status update: {}", e.getMessage());
+            log.warn("[COM] Failed to persist current comId before status update: {}", e.getMessage());
         }
 
-        // --- Status updates  ---
+        // --- Status updates ---
+        log.info("[FLOW] Starting DAC status update logic for DAC {} (validate={}, publishable={})",
+                id, request.getValidate(), isPublishable);
+
         ProcessStatus newStatus = null;
         boolean actedByDecision = isCncmpDecisionTask && request.getCncmpDecision() != null;
 
@@ -815,33 +832,41 @@ public class DacFlowableService {
             newStatus = ProcessStatus.PUBLIE;
             Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
             if (updated == null) {
+                log.error("[DAC] Failed to update status to Publiée");
                 TaskDTO error = new TaskDTO();
                 error.setStatus("Failed to update DAC status to Publiée");
                 return error;
             }
             latestDac = updated;
-            log.info("Updated DAC status to Publiée for task [{}], new status: {}", taskId, latestDac.getStatus());
+            log.info("[DAC] Status updated to Publiée (DAC id={}, ver={})", id, latestDac.getDacVer());
 
         } else if ((request.getValidate() != null) || actedByDecision) {
             newStatus = ProcessStatus.EN_TRAITEMENT;
             Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
             if (updated == null) {
+                log.error("[DAC] Failed to update status to En cours de traitement");
                 TaskDTO error = new TaskDTO();
                 error.setStatus("Failed to update DAC status to En cours de traitement");
                 return error;
             }
             latestDac = updated;
+            log.info("[DAC] Updated status to En cours de traitement (DAC id={}, ver={})", id, latestDac.getDacVer());
 
         } else if (request.getValidate() != null && !request.getValidate()) {
             newStatus = ProcessStatus.EN_TRAITEMENT;
             Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), newStatus);
             if (updated == null) {
+                log.error("[DAC] Failed to keep status En cours de traitement");
                 TaskDTO error = new TaskDTO();
                 error.setStatus("Failed to keep status En cours de traitement");
                 return error;
             }
             latestDac = updated;
+            log.info("[DAC] Status remains En cours de traitement (DAC id={}, ver={})", id, latestDac.getDacVer());
         }
+
+        log.info("[FLOW] ===== End of Part 2: Status update complete for DAC {} =====", id);
+
 
         // === SAFETY CASE #1 === re-ensure CPMP/PER/SCS are associated after status update ===
         try {
@@ -854,13 +879,16 @@ public class DacFlowableService {
             attachComToDac(latestDac, cpmpId);
             attachComToDac(latestDac, perId);
             attachComToDac(latestDac, scsId);
+
+            log.info("[COM] SAFETY#1 ensured CPMP={}, PER={}, SCS={} linked to DAC {}", cpmpId, perId, scsId, id);
         } catch (Exception e) {
-            log.warn("DAC SAFETY#1: failed to re-ensure associations after status update: {}", e.getMessage());
+            log.warn("[COM] SAFETY#1 failed to re-ensure associations: {}", e.getMessage());
         }
 
         // --- Determine gateway variable + whether next is EndEvent  ---
         String processVariable = candidateGroup.toLowerCase() + "_valide";
         boolean nextTaskIsLast = false;
+
         try {
             BpmnModel bpmnModel = repositoryService.getBpmnModel(task.getProcessDefinitionId());
             if (bpmnModel != null) {
@@ -886,9 +914,30 @@ public class DacFlowableService {
                     }
                 }
             }
+            log.info("[FLOW] Gateway variable resolved: {}, nextTaskIsLast={}", processVariable, nextTaskIsLast);
         } catch (Exception e) {
-            log.info("DAC: Failed to extract gateway condition or determine next task for [{}]: {}", taskId, e.getMessage());
+            log.warn("[FLOW] Failed to extract gateway variable for task [{}]: {}", taskId, e.getMessage());
         }
+
+        // --- Sanitize gateway variable name (avoid full expression like "cpmp_valide == true && ...") ---
+        if (processVariable != null && processVariable.contains("==")) {
+            // Extract only the part before "=="
+            processVariable = processVariable.substring(0, processVariable.indexOf("==")).trim();
+        }
+
+// --- If the gateway variable name wasn't found automatically, fallback logically ---
+        if (processVariable == null || processVariable.isBlank()) {
+            // Infer variable name dynamically based on task name or group
+            processVariable = candidateGroup.toLowerCase() + "_valide";
+        }
+
+// --- Use request.validate as value for the correct process variable ---
+        Boolean validateFlag2 = request.getValidate();
+        if (validateFlag != null) {
+            runtimeService.setVariable(task.getProcessInstanceId(), processVariable, validateFlag);
+            log.info("[FLOW] Set variable '{}' = {}", processVariable, validateFlag);
+        }
+
 
         // --- Write vars, traceability, early VALIDEE if entering last user task (when not publishable) ---
         Map<String, Object> varsToSet = new HashMap<>();
@@ -897,29 +946,45 @@ public class DacFlowableService {
         varsToSet.put("dateComment", LocalDateTime.now());
         varsToSet.put("treater", jwtAuth.getName());
         if (Boolean.TRUE.equals(isPublishable)) varsToSet.put("isPublishable", true);
+
         runtimeService.setVariables(task.getProcessInstanceId(), varsToSet);
+        log.info("[FLOW] Runtime variables updated for traceability: {}", varsToSet);
 
         if (nextTaskIsLast && !Boolean.TRUE.equals(isPublishable)) {
             Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), ProcessStatus.VALIDE);
             if (updated != null) {
                 latestDac = updated;
-                log.info("DAC status set to Validée before entering last task for [{}], status: {}", taskId, latestDac.getStatus());
+                log.info("[DAC] Status auto-set to VALIDÉE before entering last task, DAC ver={}", latestDac.getDacVer());
             }
         }
 
         dacService.save(latestDac);
+        log.info("[DAC] Persisted DAC {} after updates", latestDac.getDacId());
+
         taskService.setAssignee(taskId, Authentication.getCurrentUserId().orElse(jwtAuth.getName()));
-        if (request.getComment() != null) taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+        log.info("[TASK] Assignee set to {}", jwtAuth.getName());
 
-        // Snapshot current comId (e.g., SCS after Affectation)
+        if (request.getComment() != null) {
+            taskService.addComment(taskId, task.getProcessInstanceId(), request.getComment());
+            log.debug("[TASK] Comment added: {}", request.getComment());
+        }
+
+        // Snapshot current comId
         Integer comIdSnapshot = null;
-        try { comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); }
-        catch (Exception ex) { log.debug("DAC: Could not snapshot comId before completion for [{}]: {}", taskId, ex.getMessage()); }
+        try {
+            comIdSnapshot = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+            log.info("[CHECK] Snapshot current comId before completion: {}", comIdSnapshot);
+        } catch (Exception ex) {
+            log.debug("[CHECK] Could not snapshot comId [{}]: {}", taskId, ex.getMessage());
+        }
 
-        // Ensure CURRENT comId is associated (idempotent)
         if (comIdSnapshot != null) {
-            try { attachComToDac(latestDac, comIdSnapshot); }
-            catch (Exception e) { log.warn("DAC Association: failed to add comId {} to DAC: {}", comIdSnapshot, e.getMessage()); }
+            try {
+                attachComToDac(latestDac, comIdSnapshot);
+                log.info("[COM] Associated current comId={} to DAC {}", comIdSnapshot, id);
+            } catch (Exception e) {
+                log.warn("[COM] Failed to attach comId {} to DAC {}: {}", comIdSnapshot, id, e.getMessage());
+            }
         }
 
         // ---------- SCS→PER (defer switch back) ----------
@@ -935,18 +1000,22 @@ public class DacFlowableService {
 
             if (deferComIdAfterDecision == null && deferComIdAfterCompletion == null && onScsTask) {
                 deferComIdAfterCompletion = perId;
-                log.info("DAC SCS→PER: defer switch back to Permanent comId {} after completing SCS task", perId);
+                log.info("[COM] SCS→PER: defer switch back to Permanent comId={} after completion", perId);
             }
         } catch (Exception e) {
-            log.warn("DAC SCS→PER: failed to plan switch back: {}", e.getMessage());
+            log.warn("[COM] SCS→PER planning failed: {}", e.getMessage());
         }
 
-        // Apply deferred comId changes just before completion (and persist)
+        // Apply deferred comId changes
         Integer finalSwitch = (deferComIdAfterDecision != null) ? deferComIdAfterDecision : deferComIdAfterCompletion;
         if (finalSwitch != null) {
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", finalSwitch);
-            try { attachComToDac(latestDac, finalSwitch); }
-            catch (Exception e) { log.warn("DAC Switch & Association: failed to ensure deferred comId {}: {}", finalSwitch, e.getMessage()); }
+            try {
+                attachComToDac(latestDac, finalSwitch);
+                log.info("[COM] Deferred comId {} successfully applied to DAC {}", finalSwitch, id);
+            } catch (Exception e) {
+                log.warn("[COM] Failed to apply deferred comId {}: {}", finalSwitch, e.getMessage());
+            }
         }
 
         // === SAFETY CASE #2 === keep CPMP associated right before completing
@@ -955,19 +1024,28 @@ public class DacFlowableService {
             Integer acIdForCpmp = (Integer) runtimeService.getVariable(pid, "acId");
             Integer cpmpId = (acIdForCpmp != null) ? acServiceImpl.getComIdByAcId(acIdForCpmp) : null;
             attachComToDac(latestDac, cpmpId);
+            log.info("[COM] SAFETY#2 ensured CPMP comId={} linked before completion", cpmpId);
         } catch (Exception e) {
-            log.warn("DAC SAFETY#2: failed to ensure CPMP before completing: {}", e.getMessage());
+            log.warn("[COM] SAFETY#2 failed before completion: {}", e.getMessage());
         }
 
         // Complete task
         taskService.complete(taskId);
+        log.info("[TASK] Task [{}] completed successfully", taskId);
+
+        if (comIdSnapshot != null) {
+            runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
+            log.info("[SYNC] Restored comId={} into process variables post-completion", comIdSnapshot);
+        }
 
         // If process ended, force PUBLIE
         boolean finished = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())
                 .finished().count() > 0;
+
         if (finished) {
             latestDac = dacService.updateStatus(id, latestDac.getDacVer(), ProcessStatus.PUBLIE);
+            log.info("[FLOW] Process ended; DAC set to PUBLIE (DAC id={}, ver={})", id, latestDac.getDacVer());
         }
 
         // --- Response ---
@@ -983,26 +1061,64 @@ public class DacFlowableService {
         resp.setTraceability(varsToSet);
         resp.setIsUpdatable(isUpdatable);
         resp.setIsPublishable(isPublishable);
-        if (comIdSnapshot != null) resp.setComId(comIdSnapshot);
+
+        Integer finalComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
+        if (finalComId != null) {
+            resp.setComId(finalComId);
+            log.info("[RESP] Returning TaskDTO with comId={}", finalComId);
+        } else {
+            log.warn("[RESP] No comId variable found for processInstanceId={}", task.getProcessInstanceId());
+        }
+
         resp.setStatus("Task validated successfully");
+        log.info("[FLOW] ==== validateTask() completed for taskId={} ====", taskId);
         return resp;
     }
 
+
     private void attachComToDac(Dac dac, Integer comId) throws ComNotFound {
-        if (comId == null) return;
-        if (!entityManager.contains(dac)) dac = entityManager.merge(dac);
-        Dac finalDac = dac;
-        List<Com> list = Optional.ofNullable(dac.getComs())
-                .orElseGet(() -> { List<Com> l = new ArrayList<>(); finalDac.setComs(l); return l; });
-        boolean exists = list.stream().anyMatch(c -> c.getId().equals(comId));
-        if (!exists) {
-            Com com = comServiceImpl.findById(comId);
-            if (com != null) {
-                list.add(com);
+        if (comId == null) {
+            log.warn("❌ attachComToDac called with null comId for DAC(id={}, ver={})", dac.getDacId(), dac.getDacVer());
+            return;
+        }
+
+        log.info("🔸 [attachComToDac] Start linking DAC(id={}, ver={}) to COM(id={})", dac.getDacId(), dac.getDacVer(), comId);
+
+        // Ensure DAC is managed by EntityManager
+        if (!entityManager.contains(dac)) {
+            log.debug("🔹 DAC entity is detached, merging...");
+            dac = entityManager.merge(dac);
+        }
+
+        // Load commission entity
+        Com com = comServiceImpl.findById(comId);
+        if (com == null) {
+            log.error("❌ [attachComToDac] Commission with ID {} not found", comId);
+            throw new ComNotFound("Commission not found with ID: " + comId, List.of(comId));
+        }
+
+        // Initialize the coms list if necessary
+        if (dac.getComs() == null) {
+            dac.setComs(new ArrayList<>());
+            log.debug("🟡 Initialized empty DAC.coms list for DAC(id={}, ver={})", dac.getDacId(), dac.getDacVer());
+        }
+
+        // Check if already linked
+        boolean alreadyLinked = dac.getComs().stream()
+                .anyMatch(c -> Objects.equals(c.getId(), comId));
+
+        if (!alreadyLinked) {
+            dac.getComs().add(com);
+            log.info("✅ [attachComToDac] Added COM(id={}) to DAC(id={}, ver={}) list", comId, dac.getDacId(), dac.getDacVer());
+            try {
                 dacService.save(dac);
                 entityManager.flush();
-                log.info("Added comId {} to DAC(id={}, ver={})", comId, dac.getDacId(), dac.getDacVer());
+                log.info("💾 [attachComToDac] Persisted join DAC_COM (DAC={}, COM={})", dac.getDacId(), comId);
+            } catch (Exception e) {
+                log.error("❌ [attachComToDac] Failed to persist DAC_COM link: {}", e.getMessage(), e);
             }
+        } else {
+            log.info("ℹ️ [attachComToDac] DAC(id={}, ver={}) already linked to COM(id={})", dac.getDacId(), dac.getDacVer(), comId);
         }
     }
 
@@ -1016,6 +1132,7 @@ public class DacFlowableService {
         if (userAcIds == null || userAcIds.isEmpty()) {
             return new TaskListResponseDTO();
         }
+        log.info("Current user acIds: {}", userAcIds);
 
         List<String> userGroups = jwtAuth.getAuthorities().stream()
                 .map(a -> a.getAuthority().replace("ROLE_", ""))

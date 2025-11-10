@@ -80,12 +80,12 @@ public class Dac extends BaseEntity {
   @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
   private DynaDocsModel dynaDocsModel;
 
-  @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+  @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
   @JoinTable(
-          name = "ppm_com",
+          name = "dac_com",
           joinColumns = {
-                  @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
-                  @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
+                  @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),
+                  @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver")
           },
           inverseJoinColumns = @JoinColumn(name = "com_id")
   )
