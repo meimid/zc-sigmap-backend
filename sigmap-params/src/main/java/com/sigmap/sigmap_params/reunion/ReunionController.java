@@ -32,6 +32,7 @@ import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionResponseDto;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -384,6 +385,46 @@ public class ReunionController {
                 .map(DocMapper.INSTANCE::mapToDto)
                 .findFirst()
                 .orElse(null);
+    }
+
+
+    @GetMapping("/list/ppm/{ppmId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
+    public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
+    }
+
+    @GetMapping("/history/reunion/{reunionId}/ppm/{ppmId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<List<ReunionWithParticipantsAndPvDto>> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
+        List<ReunionWithParticipantsAndPvDto> response=reunionList.stream()
+                .map(reunion -> {
+                    // map normally first
+                    ReunionWithParticipantsAndPvDto dto =
+                            ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+
+                    // add PV document if available
+                    if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+                        DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+                        dto.getProcessVerbal().setDocument(
+                                pvDocDto != null
+                                        ? new ProcessVerbalReunionDocResponse(
+                                        dto.getProcessVerbal().getId(),
+                                        pvDocDto.getId(),
+                                        pvDocDto,
+                                        true
+                                )
+                                        : null
+                        );
+                    }
+
+                    return dto;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
     }
 
 }

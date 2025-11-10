@@ -1,6 +1,7 @@
 package com.sigmap.common.Participant.request;
 
 import com.sigmap.common.config.ParticipantType;
+import com.sigmap.common.entity.ParticipantFonction;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +18,7 @@ public class ParticipantRequest {
     private String nom;
     private String prenom;
     private String organisme;
-    private String fonction;
+    private ParticipantFonction fonction;
     private String mail;
     private String userId;
     private boolean present;

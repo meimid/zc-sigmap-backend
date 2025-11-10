@@ -1,6 +1,7 @@
 package com.sigmap.common.Participant.response;
 
 import com.sigmap.common.config.ParticipantType;
+import com.sigmap.common.entity.ParticipantFonction;
 import lombok.Data;
 
 @Data
@@ -11,7 +12,7 @@ public class ParticipantResponseDto {
     private String nom;
     private String prenom;
     private String organisme;
-    private String fonction;
+    private ParticipantFonction fonction;
     private String mail;
     private String userId;
     private boolean present;

@@ -10,6 +10,7 @@ import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionResponse;
 
 import com.sigmap.common.reunion.response.ReunionResponseDto;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
@@ -39,8 +40,6 @@ public interface ReunionMapper {
     @Mapping(source = "reunionDacs", target = "reunionDacs")
     @Mapping(source = "participants", target = "participants")
     @Mapping(source = "processVerbal",target = "processVerbal")
-
-
     ReunionResponse map(Reunion reunion);
 
 
@@ -55,8 +54,8 @@ public interface ReunionMapper {
     @Mapping(target = "reunionDacs", ignore = true)
     @Mapping(target ="status", ignore = true )
     @Mapping(source = "processVerbal",target = "processVerbal")
-
     void updateFromRequest(ReunionRequest request, @MappingTarget Reunion reunion);
+
     ParticipantResponseDto toDto(Participant participant);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -65,6 +64,11 @@ public interface ReunionMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(source = "com.nom", target = "comName")
     ReunionResponseDto mapToDto(Reunion reunion);
+
+    @Mapping(source = "participants", target = "participants")
+    @Mapping(source = "processVerbal",target = "processVerbal")
+    ReunionWithParticipantsAndPvDto mapToReunionWithParticipantsAndPvDto(Reunion reunion);
 
 }

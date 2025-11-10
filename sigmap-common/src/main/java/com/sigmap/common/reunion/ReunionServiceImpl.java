@@ -12,14 +12,17 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
@@ -285,7 +288,12 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
             }
 
-
+            if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)||
+                    reunionToUpdate.getStatus().equals(ReunionStatus.PLANIFIER)||
+                    reunionToUpdate.getStatus().equals(ReunionStatus.NON_PLANIFIER)||
+                    reunionToUpdate.getStatus().equals(ReunionStatus.EN_RETARD)){
+                updateParticipantsFonction(request,reunionToUpdate);
+            }
 
 
 
@@ -338,12 +346,10 @@ public class ReunionServiceImpl implements ReunionService{
             participantRequest.setMail(userDetails.getEmail());
             participantRequest.setUserId(userCom.getUserId());
             participantRequest.setType(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE);
-            ParticipantRequest requestData = requestParticipantsMap.get(userCom.getUserId());
+            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantFonction.RESPONSABLE : ParticipantFonction.MEMBRE;
             participantRequest.setOrganisme(reunion.getCom().getNom());
-            String participantFonction = String.valueOf(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId())
-                    ? ParticipantType.RESPONSABLE
-                    : ParticipantType.MEMBRE);
-            participantRequest.setFonction(participantFonction);
+
+            participantRequest.setFonction(fonction);
 
                 participantRequest.setPresent(false);
 
@@ -386,7 +392,6 @@ public class ReunionServiceImpl implements ReunionService{
                 if (participantToUpdate != null) {
                     if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
-                    participantToUpdate.setFonction(participantRequest.getFonction());
 
                     }else{
                         participantToUpdate.setPresent(false);
@@ -1031,6 +1036,27 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
+    @Override
+    public List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound {
+        Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
+        if(ppm.isEmpty()){
+            throw new PpmNotFound("",List.of(ppmId),null);
+        }
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        return repository.findAll(spec);
+    }
+
+    @Override
+    public List<Reunion> particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
+         findById(reunionId);
+        Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
+        if(ppm.isEmpty()){
+            throw new PpmNotFound("",List.of(ppmId),null);
+        }
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        return repository.findAll(spec);
+    }
+
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
         boolean superAdmin= Authentication.hasRole("SUPER_ADMIN");
         if(!superAdmin){
@@ -1062,5 +1088,14 @@ public class ReunionServiceImpl implements ReunionService{
         return !Participants.isEmpty();
 
     }
-
+    private void updateParticipantsFonction(ReunionRequest request, Reunion reunion) {
+        for (Participant participant : reunion.getParticipants()) {
+            for (ParticipantRequest participantRequest : request.getParticipants()) {
+                if (participant.getId().equals(participantRequest.getId())) {
+                    participant.setFonction(participantRequest.getFonction());
+                    break;
+                }
+            }
+        }
+    }
 }
