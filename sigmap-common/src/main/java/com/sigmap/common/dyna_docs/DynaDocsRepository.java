@@ -102,9 +102,20 @@ public interface DynaDocsRepository
   boolean existsActiveAAOByTypeMarche(@Param("typeMarcheId") Integer typeMarcheId);
 
   /**
-   * Find active AAO DynaDocs for the given typeMarche and modePassation
+   * Find Latest Version active AAO DynaDocs for the given typeMarche and modePassation
    */
-  @Query("SELECT d FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId")
+  @Query("""
+    SELECT d FROM DynaDocs d
+    WHERE d.version = (
+        SELECT MAX(d2.version)
+        FROM DynaDocs d2
+        WHERE d2.id = d.id
+    )
+    AND d.status = 'ACTIF'
+    AND d.isAAO = true
+    AND d.typeMarche.id = :typeMarcheId
+    AND d.modePassation.id = :modePassationId
+    """)
   List<DynaDocs> findActiveAAOByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
 
   /**
