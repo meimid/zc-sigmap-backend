@@ -463,6 +463,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
       uscom.get().setIsDeleted(true);
       uscom.get().setDeletedAt(Calendar.getInstance());
       uscom.get().setDeletedBy(ConnectedUserID);
+      userCommissionHistoriqueService.removeUserFromCommissionHistorique(userId, comId);
       userComRepository.save(uscom.get());
 
     }
