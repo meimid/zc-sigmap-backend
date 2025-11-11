@@ -1740,7 +1740,12 @@ public class PpmFlowableService {
                 taskInfo.setIsPublishable(props.get("isPublishable"));
                 taskInfo.setCommissionRequired(props.get("commissionRequired"));
 
-                taskList.add(taskInfo);
+                Boolean meetingRequired = props.get("meetingRequired");
+                if (meetingRequired != null && meetingRequired) {
+                    taskInfo.setMeetingRequired(true);
+                    taskList.add(taskInfo);
+                }
+
             }
         }
 
