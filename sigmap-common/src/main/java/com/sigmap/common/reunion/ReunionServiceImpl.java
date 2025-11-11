@@ -16,6 +16,8 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Mapper.DocMapper;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -29,10 +31,13 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
 import com.sigmap.common.reunionDac.ReunionDacRepository;
@@ -1047,16 +1052,35 @@ public class ReunionServiceImpl implements ReunionService{
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
         return repository.findAll(spec);
     }
-
+/*this methode return dto because i will build some data from different services*/
     @Override
-    public Reunion particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
-         findById(reunionId);
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
         Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
         if(ppm.isEmpty()){
             throw new PpmNotFound("",List.of(ppmId),null);
         }
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
-        return repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+       Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+        ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        UserDTO createdUser=keycloakAdminService.getUserById(reunion.getCreatedBy());
+        UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
+        dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
+        dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        return dto;
     }
 
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
@@ -1099,5 +1123,16 @@ public class ReunionServiceImpl implements ReunionService{
                 }
             }
         }
+    }
+
+    private DocsResponseDTO mapPvmDocs(List<ProcessVerbalReunionDoc> pvDocs) {
+        if (pvDocs == null) return null;
+
+        return pvDocs.stream()
+                .filter(pvDoc -> pvDoc.isPv() && pvDoc.getDoc() != null && !pvDoc.getDoc().getIsDeleted())
+                .map(ProcessVerbalReunionDoc::getDoc)
+                .map(DocMapper.INSTANCE::mapToDto)
+                .findFirst()
+                .orElse(null);
     }
 }

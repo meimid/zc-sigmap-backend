@@ -399,24 +399,10 @@ public class ReunionController {
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
-        Reunion reunion = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
-        ReunionWithParticipantsAndPvDto dto =
-                ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        ReunionWithParticipantsAndPvDto dto  = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
 
-        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
-            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
 
-            dto.getProcessVerbal().setDocument(
-                    pvDocDto != null
-                            ? new ProcessVerbalReunionDocResponse(
-                            dto.getProcessVerbal().getId(),
-                            pvDocDto.getId(),
-                            pvDocDto,
-                            true
-                    )
-                            : null
-            );
-        }
+
         return ResponseEntity.ok(dto);
     }
     @GetMapping("/drop-list/ppm/{ppmId}")

@@ -23,7 +23,8 @@ public class ReunionWithParticipantsAndPvDto {
     private List<ParticipantResponseDto> participants;
     private ProcessVerbalReunionResponse processVerbal;
     private BaseEntityResponse metadata;
-
+    private String createdBy;
+    private String updatedBy;
 
 
 }
