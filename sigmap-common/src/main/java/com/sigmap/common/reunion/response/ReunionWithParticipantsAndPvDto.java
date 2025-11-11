@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Calendar;
 import java.util.List;
 
 @Getter
@@ -15,6 +16,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReunionWithParticipantsAndPvDto {
+    private Calendar reunionDate;
+    private String emplacement;
+    private String object;
     private List<ParticipantResponseDto> participants;
     private ProcessVerbalReunionResponse processVerbal;
     private BaseEntityResponse metadata;
