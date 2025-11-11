@@ -1049,14 +1049,14 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
+    public Reunion particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
          findById(reunionId);
         Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
         if(ppm.isEmpty()){
             throw new PpmNotFound("",List.of(ppmId),null);
         }
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
-        return repository.findAll(spec);
+        return repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
     }
 
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){

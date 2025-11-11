@@ -44,7 +44,7 @@ public interface ReunionService {
     ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
     List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound;
-    List<Reunion> particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound;
+    Reunion particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound;
 
 
 

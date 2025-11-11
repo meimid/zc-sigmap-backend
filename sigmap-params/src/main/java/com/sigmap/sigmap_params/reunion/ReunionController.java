@@ -398,34 +398,26 @@ public class ReunionController {
 
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
-    public ResponseEntity<List<ReunionWithParticipantsAndPvDto>> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
-        List<Reunion> reunionList = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
-        List<ReunionWithParticipantsAndPvDto> response=reunionList.stream()
-                .map(reunion -> {
-                    // map normally first
-                    ReunionWithParticipantsAndPvDto dto =
-                            ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        Reunion reunion = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
+        ReunionWithParticipantsAndPvDto dto =
+                ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
 
-                    // add PV document if available
-                    if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
-                        DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
 
-                        dto.getProcessVerbal().setDocument(
-                                pvDocDto != null
-                                        ? new ProcessVerbalReunionDocResponse(
-                                        dto.getProcessVerbal().getId(),
-                                        pvDocDto.getId(),
-                                        pvDocDto,
-                                        true
-                                )
-                                        : null
-                        );
-                    }
-
-                    return dto;
-                })
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(response);
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        return ResponseEntity.ok(dto);
     }
     @GetMapping("/drop-list/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
