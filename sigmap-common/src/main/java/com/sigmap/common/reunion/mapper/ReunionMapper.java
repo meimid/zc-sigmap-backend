@@ -67,7 +67,13 @@ public interface ReunionMapper {
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(source = "com.nom", target = "comName")
     ReunionResponseDto mapToDto(Reunion reunion);
-
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(source = "participants", target = "participants")
     @Mapping(source = "processVerbal",target = "processVerbal")
     ReunionWithParticipantsAndPvDto mapToReunionWithParticipantsAndPvDto(Reunion reunion);
