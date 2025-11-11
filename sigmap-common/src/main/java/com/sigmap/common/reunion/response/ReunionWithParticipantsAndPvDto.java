@@ -16,6 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ReunionWithParticipantsAndPvDto {
+    private Integer id;
     private Calendar reunionDate;
     private String emplacement;
     private String object;
