@@ -106,7 +106,7 @@ flowable:
     password: ${FLOWABLE_DB_PASSWORD:root}
     driver-class-name: org.mariadb.jdbc.Driver
 tenant:
-  id: ${TENANT_ID:PAA}
+  id: ${TENANT_ID:ECLAIRCISSEMENT}
 process:
   definition:
     location: ${PROCESS_DEFINITION_LOCATION:processes/}
