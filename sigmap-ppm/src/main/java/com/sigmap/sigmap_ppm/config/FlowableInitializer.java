@@ -7,7 +7,6 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -87,19 +86,6 @@ public class FlowableInitializer {
         System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
 
         return processEngine;
-    }
-    @Bean
-    @Qualifier("adminProcessEngine")
-    public ProcessEngine adminProcessEngine() {
-        ProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration()
-                .setJdbcUrl(jdbcUrl)
-                .setJdbcUsername(jdbcUsername)
-                .setJdbcPassword(jdbcPassword)
-                .setJdbcDriver(jdbcDriver)
-                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE)
-                .setAsyncExecutorActivate(false);
-
-        return cfg.buildProcessEngine();
     }
     /**
      * Provides the Flowable RepositoryService for managing process definitions and deployments.
