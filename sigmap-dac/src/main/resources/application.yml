@@ -100,11 +100,16 @@ flowable:
     password: ${FLOWABLE_DB_PASSWORD:root}
     driver-class-name: org.mariadb.jdbc.Driver
 
+  async-executor:
+    activate: true
+
 tenant:
   id: ${TENANT_ID:DAC}
+
 process:
   definition:
     location: ${PROCESS_DEFINITION_LOCATION:processes/}
+
 
 
 alfresco:

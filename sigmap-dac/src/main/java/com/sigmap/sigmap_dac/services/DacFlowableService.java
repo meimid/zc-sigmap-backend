@@ -4,7 +4,9 @@ import com.sigmap.common.ac.AcServiceImpl;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComServiceImpl;
+import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.CncmpDecision;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -131,31 +133,44 @@ public class DacFlowableService {
         return cgs != null && !cgs.isEmpty() && cgs.stream().anyMatch(g -> hasRole(jwtAuth, g));
     }
 
-    /** Reads boolean flags from BPMN form properties: isUpdatable, isPublishable, meetingRequired, commissionRequired. */
     private Map<String, Boolean> getTaskProperties(Task task) {
-        Map<String, Boolean> props = new HashMap<>();
-        props.put("isUpdatable", false);
-        props.put("isPublishable", false);
-        props.put("meetingRequired", false);
-        props.put("commissionRequired", false);
+        Map<String, Boolean> properties = new HashMap<>();
+        properties.put("isUpdatable", false);
+        properties.put("isPublishable", false);
+        properties.put("commissionRequired", false);
+        properties.put("meetingRequired", false);
 
         try {
-            BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-            FlowElement fe = model.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
-            if (fe instanceof UserTask ut && ut.getFormProperties() != null) {
-                for (FormProperty fp : ut.getFormProperties()) {
-                    switch (fp.getId()) {
-                        case "isUpdatable"        -> props.put("isUpdatable", Boolean.parseBoolean(fp.getDefaultExpression()));
-                        case "isPublishable"      -> props.put("isPublishable", Boolean.parseBoolean(fp.getDefaultExpression()));
-                        case "meetingRequired"    -> props.put("meetingRequired", Boolean.parseBoolean(fp.getDefaultExpression()));
-                        case "commissionRequired" -> props.put("commissionRequired", Boolean.parseBoolean(fp.getDefaultExpression()));
+            String processDefinitionId = task.getProcessDefinitionId();
+            BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
+            FlowElement flowElement = bpmnModel.getMainProcess().getFlowElement(task.getTaskDefinitionKey());
+
+            if (flowElement instanceof UserTask userTask) {
+                List<FormProperty> formProperties = userTask.getFormProperties();
+                log.info("Form properties for task [{}]: {}", task.getId(), formProperties != null ? formProperties.size() : 0);
+                if (formProperties != null) {
+                    for (FormProperty formProperty : formProperties) {
+                        if ("isUpdatable".equals(formProperty.getId())) {
+                            properties.put("isUpdatable", Boolean.parseBoolean(formProperty.getDefaultExpression()));
+                        }
+                        if ("isPublishable".equals(formProperty.getId())) {
+                            properties.put("isPublishable", Boolean.parseBoolean(formProperty.getDefaultExpression()));
+                        }
+                        if ("commissionRequired".equals(formProperty.getId())) {
+                            properties.put("commissionRequired", Boolean.parseBoolean(formProperty.getDefaultExpression()));
+                        }
+                        if ("meetingRequired".equals(formProperty.getId())) {
+                            properties.put("meetingRequired", Boolean.parseBoolean(formProperty.getDefaultExpression()));
+                        }
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to read form properties for task {}", task.getId(), e);
+            log.error("Error retrieving properties for task [{}]: {}", task.getId(), e.getMessage(), e);
         }
-        return props;
+
+        log.info("Returning task properties for task [{}]: {}", task.getId(), properties);
+        return properties;
     }
 
     private Optional<UserTask> getModelUserTask(Task task) {
@@ -329,6 +344,11 @@ public class DacFlowableService {
         resp.setTraceability(extractTraceability(pvars));
         resp.setIsUpdatable(props.get("isUpdatable"));
         resp.setIsPublishable(props.get("isPublishable"));
+        resp.setCommissionRequired(props.get("commissionRequired"));
+        resp.setMeetingRequired(props.get("meetingRequired"));
+        Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+        if (comIdVar != null)
+            resp.setComId(comIdVar);
         resp.setNextSteps(getPossibleNextSteps(task));
         resp.setStatus("Task details retrieved successfully");
         return resp;
@@ -399,29 +419,41 @@ public class DacFlowableService {
         return next;
     }
 
-    private String extractVariableName(String expr) {
-        if (expr == null) return null;
-        String cleaned = expr.trim().replace("#{", "${");
-        Pattern p = Pattern.compile("\\$\\{\\s*([A-Za-z0-9_\\.]+)\\s*(==|!=)\\s*(true|false|'[^']+'|\"[^\"]+\")\\s*}");
-        Matcher m = p.matcher(cleaned);
-        if (m.find()) return m.group(1).trim();
-        if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
-            return cleaned.substring(2, cleaned.length() - 1).trim();
+    /* ======================= tiny parsing helpers ======================= */
+
+    private String extractVariableName(String conditionExpression) {
+        if (conditionExpression == null) return null;
+        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
+        String cleanedExpression = conditionExpression.trim().replace("#{", "${");
+        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
+        Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
+        Matcher matcher = pattern.matcher(cleanedExpression);
+        if (matcher.find()) {
+            return matcher.group(1).trim();
         }
+        // Fallback for simpler expressions like ${variable}
+        if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
+            String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
+            if (!variableName.isEmpty()) return variableName;
+        }
+        log.info("No variable name matched in expression: {}", conditionExpression);
         return null;
     }
 
-    private String extractConditionValue(String expr) {
-        if (expr == null) return null;
-        String c = expr.trim().replace("#{", "${");
+    private String extractConditionValue(String conditionExpression) {
+        if (conditionExpression == null) return null;
+        String cleaned = conditionExpression.trim().replace("#{", "${");
 
-        Matcher m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*(true|false)\\s*}").matcher(c);
-        if (m.find()) return m.group(2).toLowerCase();
+        // boolean
+        Matcher m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*(true|false)\\s*\\}").matcher(cleaned);
+        if (m.find()) return m.group(2).toLowerCase(); // "true" or "false"
 
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*'([^']+)'\\s*}").matcher(c);
-        if (m.find()) return m.group(2);
+        // single-quoted string
+        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*'([^']+)'\\s*\\}").matcher(cleaned);
+        if (m.find()) return m.group(2); // e.g. CI / APPROVE / REJECT
 
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*\"([^\"]+)\"\\s*}").matcher(c);
+        // double-quoted string
+        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*\"([^\"]+)\"\\s*\\}").matcher(cleaned);
         if (m.find()) return m.group(2);
 
         return null;
@@ -599,6 +631,19 @@ public class DacFlowableService {
                     runtimeService.getVariable(task.getProcessInstanceId(), "shortListing"),
                     runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId"));
         }
+
+// --- DAC-specific note: shortListing may exist without parentDacId ---
+        Boolean shortListing = (Boolean) runtimeService.getVariable(task.getProcessInstanceId(), "shortListing");
+        Integer parentDacId  = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId");
+        if (Boolean.TRUE.equals(shortListing) && parentDacId == null) {
+            log.warn("[DAC] shortListing=true but parentDacId is null for DAC {} — proceeding without blocking", id);
+        }
+
+        if (request.getCncmpDecision() != null) {
+            runtimeService.setVariable(task.getProcessInstanceId(), "cncmpDecision", request.getCncmpDecision().name());
+            log.info("[FLOW] Runtime variable 'cncmpDecision' set = {}", request.getCncmpDecision().name());
+        }
+
         // --- Resolve next user task + its meeting/commission flags (best-effort) ---
         log.info("[FLOW] Resolving next user task and its flags for DAC [{}]", id);
         UserTask nextUserTask = null;
@@ -721,6 +766,7 @@ public class DacFlowableService {
                 String pid = task.getProcessInstanceId();
                 Integer perId = (Integer) runtimeService.getVariable(pid, "cncmpPerComId");
 
+                // make sure comId switches to PER before sequence flows evaluate
                 if (perId != null) {
                     runtimeService.setVariable(pid, "comId", perId);
                     try {
@@ -728,12 +774,13 @@ public class DacFlowableService {
                         log.info("[COM] Attached PER comId={} to DAC {} (decision pre-apply)", perId, id);
                     } catch (Exception ignore) {}
                 }
+                // (already set earlier, but keep idempotent)
                 runtimeService.setVariable(pid, "cncmpDecision", dec.name());
 
                 switch (dec) {
                     case APPROVE -> {
                         deferComIdAfterDecision = perId;
-                        validateFlag = null;
+                        validateFlag = null; // let gateway route by decision, not by cpmp_valide
                         log.info("[COM] CNCMP Decision APPROVE → Keep PER comId={}", perId);
                     }
                     case REJECT -> {
@@ -755,6 +802,18 @@ public class DacFlowableService {
             }
         }
 
+        if (isCncmpDecisionTask && request.getCncmpDecision() == CncmpDecision.APPROVE) {
+            log.info("[STATUS] CNCMP APPROVE -> set status VALIDEE before Publication");
+            try {
+                Dac updated = dacService.updateStatus(id, latestDac.getDacVer(), ProcessStatus.VALIDE);
+                if (updated != null) {
+                    latestDac = updated;
+                    log.info("[STATUS] DAC {} updated to VALIDEE (ver={})", id, latestDac.getDacVer());
+                }
+            } catch (Exception e) {
+                log.warn("[STATUS] Failed to update DAC {} to VALIDEE: {}", id, e.getMessage());
+            }
+        }
         // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required (choose SCS) ---
         if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
             log.info("[COM] Affectation step detected (commissionRequired=true, meetingRequired=false)");
@@ -867,7 +926,6 @@ public class DacFlowableService {
 
         log.info("[FLOW] ===== End of Part 2: Status update complete for DAC {} =====", id);
 
-
         // === SAFETY CASE #1 === re-ensure CPMP/PER/SCS are associated after status update ===
         try {
             String pid = task.getProcessInstanceId();
@@ -896,11 +954,11 @@ public class DacFlowableService {
                 if (te instanceof UserTask ut) {
                     for (SequenceFlow of : ut.getOutgoingFlows()) {
                         FlowElement target = bpmnModel.getFlowElement(of.getTargetRef());
-                        if (target instanceof ExclusiveGateway gw) {
-                            for (SequenceFlow gf : gw.getOutgoingFlows()) {
-                                String cond = gf.getConditionExpression();
-                                if (cond != null && cond.toLowerCase().contains("valide")) {
-                                    String variableName = extractVariableName(cond);
+                        if (target instanceof ExclusiveGateway) {
+                            for (SequenceFlow gf : ((ExclusiveGateway) target).getOutgoingFlows()) {
+                                String conditionExpression = gf.getConditionExpression();
+                                if (conditionExpression != null && conditionExpression.toLowerCase().contains("valide")) {
+                                    String variableName = extractVariableName(conditionExpression);
                                     if (variableName != null && variableName.toLowerCase().contains("valide")) {
                                         processVariable = variableName;
                                     }
@@ -919,33 +977,28 @@ public class DacFlowableService {
             log.warn("[FLOW] Failed to extract gateway variable for task [{}]: {}", taskId, e.getMessage());
         }
 
-        // --- Sanitize gateway variable name (avoid full expression like "cpmp_valide == true && ...") ---
+        // Sanitize gateway variable name if a full expression slipped through (e.g., "cpmp_valide == true")
         if (processVariable != null && processVariable.contains("==")) {
-            // Extract only the part before "=="
             processVariable = processVariable.substring(0, processVariable.indexOf("==")).trim();
         }
-
-// --- If the gateway variable name wasn't found automatically, fallback logically ---
         if (processVariable == null || processVariable.isBlank()) {
-            // Infer variable name dynamically based on task name or group
             processVariable = candidateGroup.toLowerCase() + "_valide";
         }
 
-// --- Use request.validate as value for the correct process variable ---
-        Boolean validateFlag2 = request.getValidate();
-        if (validateFlag != null) {
-            runtimeService.setVariable(task.getProcessInstanceId(), processVariable, validateFlag);
-            log.info("[FLOW] Set variable '{}' = {}", processVariable, validateFlag);
-        }
-
-
         // --- Write vars, traceability, early VALIDEE if entering last user task (when not publishable) ---
         Map<String, Object> varsToSet = new HashMap<>();
-        if (validateFlag != null) varsToSet.put(processVariable, validateFlag);
+        if (request.getValidate() != null) {
+            varsToSet.put(processVariable, request.getValidate());
+        }
         varsToSet.put("comment", request.getComment() != null ? request.getComment() : "");
         varsToSet.put("dateComment", LocalDateTime.now());
         varsToSet.put("treater", jwtAuth.getName());
         if (Boolean.TRUE.equals(isPublishable)) varsToSet.put("isPublishable", true);
+
+        // if decision provided, keep it in runtime as trace
+        if (request.getCncmpDecision() != null) {
+            varsToSet.put("cncmpDecision", request.getCncmpDecision().name());
+        }
 
         runtimeService.setVariables(task.getProcessInstanceId(), varsToSet);
         log.info("[FLOW] Runtime variables updated for traceability: {}", varsToSet);
@@ -1028,7 +1081,24 @@ public class DacFlowableService {
         } catch (Exception e) {
             log.warn("[COM] SAFETY#2 failed before completion: {}", e.getMessage());
         }
-
+        if (request.getCncmpDecision() != null) {
+            String pid = task.getProcessInstanceId();
+            runtimeService.setVariable(pid, "cncmpDecision", request.getCncmpDecision().name());
+            log.info("[FLOW] ✅ Persisted cncmpDecision={} into process instance {}", request.getCncmpDecision().name(), pid);
+        }
+        // --- FINAL COM SYNC before completing task ---
+        try {
+            String pid = task.getProcessInstanceId();
+            Integer nextComId = (Integer) runtimeService.getVariable(pid, "comId");
+            if (nextComId != null) {
+                attachComToDac(latestDac, nextComId);
+                log.info("[COM] Final sync: ensured comId={} attached before completing task {}", nextComId, taskId);
+            } else {
+                log.warn("[COM] No comId variable found before completion for task {}", taskId);
+            }
+        } catch (Exception e) {
+            log.warn("[COM] Failed final com sync before completion: {}", e.getMessage());
+        }
         // Complete task
         taskService.complete(taskId);
         log.info("[TASK] Task [{}] completed successfully", taskId);
@@ -1074,6 +1144,9 @@ public class DacFlowableService {
         log.info("[FLOW] ==== validateTask() completed for taskId={} ====", taskId);
         return resp;
     }
+
+
+
 
 
     private void attachComToDac(Dac dac, Integer comId) throws ComNotFound {
@@ -1125,40 +1198,77 @@ public class DacFlowableService {
     /* -------------------------------- list my tasks -------------------------------- */
 
     public TaskListResponseDTO getUserTasks() {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) auth;
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        JwtAuthenticationToken jwtAuth = (JwtAuthenticationToken) authentication;
 
+        // Get user's AC IDs and comIds
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds == null || userAcIds.isEmpty()) {
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
+            log.warn("No AC IDs or comIds found for the current user");
             return new TaskListResponseDTO();
         }
-        log.info("Current user acIds: {}", userAcIds);
+        log.info("ac ids: {}, comIds: {}", userAcIds, userComIds);
 
-        List<String> userGroups = jwtAuth.getAuthorities().stream()
-                .map(a -> a.getAuthority().replace("ROLE_", ""))
+        // Get user's candidate groups (roles)
+        List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
+                .map(authority -> authority.getAuthority().replace("ROLE_", ""))
                 .collect(Collectors.toList());
-        if (userGroups.isEmpty()) {
+        log.info("User roles (candidate groups): {}", userCandidateGroups);
+
+        if (userCandidateGroups.isEmpty()) {
+            log.warn("User does not have any recognized roles");
             return new TaskListResponseDTO();
         }
 
-        // Collect process instances limited by user's ACs
-        List<String> instanceIds = new ArrayList<>();
-        for (Integer acId : userAcIds) {
-            var instances = runtimeService.createProcessInstanceQuery()
-                    .variableValueEquals("acId", acId)
+        List<String> matchingProcessInstanceIds = new ArrayList<>();
+
+        // Collect process instances where acId or comId matches user's IDs
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            for (Integer acId : userAcIds) {
+                List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                        .variableValueEquals("acId", acId)
+                        .list();
+                log.info("ac id {} matched {} instances: {}", acId, instances.size(), instances.stream().map(ProcessInstance::getId).collect(Collectors.toList()));
+                matchingProcessInstanceIds.addAll(
+                        instances.stream().map(ProcessInstance::getId).collect(Collectors.toList())
+                );
+            }
+        }
+        if (userComIds != null && !userComIds.isEmpty()) {
+            for (Integer comId : userComIds) {
+                List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                        .variableValueEquals("comId", comId)
+                        .list();
+                log.info("comId {} matched {} instances: {}", comId, instances.size(), instances.stream().map(ProcessInstance::getId).collect(Collectors.toList()));
+                matchingProcessInstanceIds.addAll(
+                        instances.stream().map(ProcessInstance::getId).collect(Collectors.toList())
+                );
+            }
+        }
+
+        // Log all active tasks for matched process instances to inspect candidate groups
+        for (String processInstanceId : matchingProcessInstanceIds) {
+            List<Task> allTasks = taskService.createTaskQuery()
+                    .processInstanceId(processInstanceId)
+                    .active()
                     .list();
-            instanceIds.addAll(instances.stream().map(ProcessInstance::getId).toList());
+            for (Task task : allTasks) {
+                String taskCandidateGroup = getCandidateGroup(task);
+                log.info("Task [{}] (processInstanceId: {}) required candidate group: {}, user has roles: {}",
+                        task.getId(), processInstanceId, taskCandidateGroup, userCandidateGroups);
+            }
         }
 
         List<Task> filtered = new ArrayList<>();
         int chunk = 1000;
-        for (int i = 0; i < instanceIds.size(); i += chunk) {
-            List<String> part = instanceIds.subList(i, Math.min(i + chunk, instanceIds.size()));
+        for (int i = 0; i < matchingProcessInstanceIds.size(); i += chunk) {
+            List<String> part = matchingProcessInstanceIds.subList(i, Math.min(i + chunk, matchingProcessInstanceIds.size()));
             if (part.isEmpty()) continue;
             filtered.addAll(
                     taskService.createTaskQuery()
                             .taskTenantId(TENANT_ID)
-                            .taskCandidateGroupIn(userGroups)
+                            .taskCandidateGroupIn(userCandidateGroups)
                             .processInstanceIdIn(List.of(part.toArray(new String[0])))
                             .active()
                             .orderByTaskCreateTime().desc()
@@ -1194,13 +1304,16 @@ public class DacFlowableService {
             Map<String, Boolean> props = getTaskProperties(t);
             dto.setIsUpdatable(props.get("isUpdatable"));
             dto.setIsPublishable(props.get("isPublishable"));
+            dto.setMeetingRequired(props.get("meetingRequired"));
+            Integer comIdVar = (Integer) runtimeService.getVariable(t.getProcessInstanceId(), "comId"); // ADDED
+            if (comIdVar != null) dto.setComId(comIdVar);
             return dto;
         }).collect(Collectors.toList());
 
         TaskListResponseDTO r = new TaskListResponseDTO();
         r.setTenantId(TENANT_ID);
         r.setTasks(dtos);
-        r.setCandidateGroup(String.join(", ", userGroups));
+        r.setCandidateGroup(String.join(", ", userCandidateGroups));
         r.setStatus("Tasks retrieved successfully");
         return r;
     }
