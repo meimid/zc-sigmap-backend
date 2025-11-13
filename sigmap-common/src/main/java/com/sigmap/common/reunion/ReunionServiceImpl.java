@@ -4,6 +4,8 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.ParticipantService;
 
+import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
+import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
@@ -12,7 +14,6 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
-import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
@@ -378,6 +379,15 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Transactional
     public void synchronizeParticipants(ReunionRequest request, Reunion reunionReq) {
+        long requestHasPresident = request.getParticipants().stream()
+                .filter(p -> p.getFonction() == ParticipantFonction.PRESIDENT).count();
+
+        if ( requestHasPresident==0) {
+            throw new PresidentFonctionRequiredException("");
+        }
+        if(requestHasPresident>1){
+            throw new MultiplePresidentsNotAllowedException("More than one president");
+        }
         Reunion reunion = repository.findByIdWithParticipants(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
         Map<Integer, Participant> currentParticipantsMap = reunion.getParticipants().stream()
@@ -431,6 +441,9 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
         if (!participantsToDelete.isEmpty()&&reunion.getStatus()==ReunionStatus.BROUILLON) {
+
+
+
             participantsToDelete.forEach(p->p.setPresent(false));
             participantService.softDeleteAll(participantsToDelete);
         }

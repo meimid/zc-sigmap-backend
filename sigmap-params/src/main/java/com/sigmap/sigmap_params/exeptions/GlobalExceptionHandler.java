@@ -4,7 +4,9 @@ import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcher
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
+import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
+import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
 import com.sigmap.common.ac.exception.*;
 import com.sigmap.common.activite.exception.*;
 import com.sigmap.common.adresse.exceptions.AdresseNotFound;
@@ -1369,6 +1371,33 @@ public class GlobalExceptionHandler {
         );
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(PresidentFonctionRequiredException.class)
+    public ResponseEntity<ErrorResponse> handlePresidentFonctionRequired() {
+
+        // fetch translated message from messages.properties
+        String message = messageSource.getMessage(
+                "participant.function.president.required",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MultiplePresidentsNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleMultiplePresidents() {
+        String message = messageSource.getMessage(
+                "reunion.president.only.one",
+                null,
+                getLocal()
+        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message));
     }
 
 }
