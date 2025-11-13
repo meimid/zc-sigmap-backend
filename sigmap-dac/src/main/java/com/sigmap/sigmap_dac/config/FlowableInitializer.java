@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_dac.config;
 
+import com.sigmap.sigmap_dac.services.delegates.TransmissionDaoDelegate;
 import org.flowable.engine.*;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.springframework.beans.factory.annotation.Value;
@@ -81,7 +82,7 @@ public class FlowableInitializer {
 
         // 🔹 Register custom delegates manually (since this is standalone)
         cfg.setBeans(Map.of(
-                "transmissionDaoDelegate", new com.sigmap.sigmap_dac.services.delegates.TransmissionDaoDelegate()
+                "transmissionDaoDelegate", new TransmissionDaoDelegate()
         ));
 
         // ✅ Enable async execution

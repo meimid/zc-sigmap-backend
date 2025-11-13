@@ -1,8 +1,11 @@
 package com.sigmap.sigmap_dac.services.delegates;
 
+import com.sigmap.common.dac.DacService;
+import com.sigmap.common.entity.ProcessStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,6 +17,8 @@ import org.springframework.stereotype.Component;
 @Component("transmissionDaoDelegate")
 public class TransmissionDaoDelegate implements JavaDelegate {
 
+    @Autowired
+    private DacService dacService;
     @Override
     public void execute(DelegateExecution execution) {
         Integer dacId = (Integer) execution.getVariable("id");
@@ -28,6 +33,7 @@ public class TransmissionDaoDelegate implements JavaDelegate {
             //  - generate DAO document
             //  - send email / letter / notification
             //  - update DAC status or attach document
+            dacService.updateStatus(dacId, dacVer, ProcessStatus.PUBLIE);
             log.info("Transmission logic executed successfully for DAC {}", dacId);
         } catch (Exception e) {
             log.error("Error during DAO transmission for DAC {}: {}", dacId, e.getMessage(), e);
