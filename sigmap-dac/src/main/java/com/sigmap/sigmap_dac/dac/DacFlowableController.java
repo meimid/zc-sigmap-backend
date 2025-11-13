@@ -2,10 +2,14 @@ package com.sigmap.sigmap_dac.dac;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.model_dac.ModelDacService;
+import com.sigmap.common.model_dac.exceptions.DacModelShouldExiste;
 import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
@@ -21,12 +25,19 @@ import com.sigmap.sigmap_dac.services.dto.response.TaskDTO;
 import com.sigmap.sigmap_dac.services.dto.response.TaskDetailsDTO;
 import com.sigmap.sigmap_dac.services.dto.response.TaskListResponseDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
+import org.flowable.task.api.Task;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller for managing Flowable process instances and tasks related to DAC entities.
@@ -40,10 +51,19 @@ public class DacFlowableController {
     private DacFlowableService dacFlowableService;
     private final ReunionService reunionService;
     private final ObjectMapper objectMapper;
+    private final ModelDacService modelDacService;
+    private final DocumentCommuneService documentCommuneService;
+    private final TaskService taskService;
+    private final RuntimeService runtimeService;
 
-    public DacFlowableController(ReunionService reunionService, ObjectMapper objectMapper) {
+
+    public DacFlowableController(ReunionService reunionService, ObjectMapper objectMapper, ModelDacService modelDacService, DocumentCommuneService documentCommuneService, TaskService taskService, RuntimeService runtimeService) {
         this.reunionService = reunionService;
         this.objectMapper = objectMapper;
+        this.modelDacService = modelDacService;
+        this.documentCommuneService = documentCommuneService;
+        this.taskService = taskService;
+        this.runtimeService = runtimeService;
     }
 
     /**
@@ -179,4 +199,44 @@ public class DacFlowableController {
         List<HistoricTaskDto> history = dacFlowableService.loadHistoricTasks(processInstanceId);
         return ResponseEntity.ok(history);
     }
+
+
+    @PreAuthorize("hasRole('VALIDATEUR_AC')")
+    @Transactional(rollbackFor = { Exception.class })
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate_with_model_dac")
+    public ResponseEntity<TaskDTO> validateTaskWithModelDac(
+            @PathVariable String taskId,
+            @ModelAttribute("request") ValidationRequest request,
+            @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile
+    ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound {
+
+        if (modelDacFile == null || modelDacFile.isEmpty()) {
+            throw new DacModelShouldExiste("Le fichier Model DAC est requis.");
+        }
+
+        Task task = taskService.createTaskQuery().taskId(taskId).singleResult();
+        if (task == null) {
+            throw new IllegalArgumentException("Task not found: " + taskId);
+        }
+
+        Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+        Integer dacId  = (Integer) vars.get("id");
+        Integer dacVer = (Integer) vars.get("version");
+        if (dacId == null || dacVer == null) {
+            throw new IllegalStateException("Process variables 'id' and 'version' are required on this task.");
+        }
+
+        String rootPath = Constants.PATH_ENTREPOT_GED_DAC_DOCS;
+        Integer docId = documentCommuneService.processAndSaveDocumentsForModelDac(
+                modelDacFile, dacId, dacVer, rootPath
+        );
+
+        modelDacService.setModel(dacId, dacVer, docId);
+
+        request.setFromMeeting(false);
+        TaskDTO response = dacFlowableService.validateTask(taskId, request);
+
+        return ResponseEntity.ok(response);
+    }
+
 }
