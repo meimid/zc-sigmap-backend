@@ -3917,7 +3917,7 @@ public class PpmServiceImpl implements PpmService {
         }
 
         existingPpm.setRef(existingPpm.getRef());
-        existingPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
+        existingPpm.setNom(existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
         existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
@@ -4661,7 +4661,6 @@ public class PpmServiceImpl implements PpmService {
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
         ppm.setVersion(ppmVersion);
-        ppm.setNom(request.getNom());
         ppm.setModePassation(request.getModePassation());
         ppm.setRemarque(request.getRemarque());
         ppm.setAnnee(currentYear);
@@ -4680,7 +4679,7 @@ public class PpmServiceImpl implements PpmService {
             throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
         }
         log.info("Annee validation passed: {}", ppm.getAnnee());
-
+        ppm.setNom("PPM-"+ac.getNom()+"-"+ppm.getAnnee());
         // Step 8: Save PPM initially
         Ppm savedPpm = repository.save(ppm);
 
