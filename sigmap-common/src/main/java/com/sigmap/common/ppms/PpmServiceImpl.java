@@ -302,7 +302,7 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setAc(ppm.getAc());
         filteredPpm.setStatus(ppm.getStatus());
         filteredPpm.setAnnee(ppm.getAnnee());
-        filteredPpm.setNom(ppm.getNom());
+//        filteredPpm.setNom(ppm.getNom());
         filteredPpm.setRef(ppm.getRef());
         filteredPpm.setActualise(ppm.getActualise());
         filteredPpm.setNbrActualisation(ppm.getNbrActualisation());
@@ -1712,7 +1712,7 @@ public class PpmServiceImpl implements PpmService {
     private Ppm buildTempPpm(Ppm existingPpm, PpmBaseRequestDto request) {
         Ppm tempPpm = new Ppm();
 //        tempPpm.setRef(request.getRef() != null ? request.getRef() : existingPpm.getRef());
-        tempPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
+//        tempPpm.setNom(request.getNom() != null ? request.getNom() : existingPpm.getNom());
 
         tempPpm.setRemarque(request.getRemarque() != null ? request.getRemarque() : existingPpm.getRemarque());
         Ac requestAc = null;
@@ -3918,7 +3918,7 @@ public class PpmServiceImpl implements PpmService {
         }
 
         existingPpm.setRef(existingPpm.getRef());
-        existingPpm.setNom(existingPpm.getNom());
+//        existingPpm.setNom(existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
 //        existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
@@ -4595,10 +4595,11 @@ public class PpmServiceImpl implements PpmService {
      * @param ppm the Ppm entity to set the reference for
      */
     private void setRef(Ppm ppm) {
-        if (ppm == null || ppm.getId() == null || ppm.getAnnee() == null) {
-            throw new IllegalArgumentException("Cannot set reference: ppm, id, or year is null.");
+        if (ppm == null || ppm.getAc() == null || ppm.getAnnee() == null) {
+            throw new IllegalArgumentException("Cannot set reference: ppm, ac, or year is null.");
         }
-        String ref = "PPM_" + ppm.getAnnee() + "_" + ppm.getId();
+        String acName =ppm.getAc().getNom();
+        String ref = "PPM_" +acName+"_" +ppm.getAnnee();
         ppm.setRef(ref);
     }
 
@@ -4673,13 +4674,13 @@ public class PpmServiceImpl implements PpmService {
         ppm.setModePassation(request.getModePassation());
         ppm.setRemarque(request.getRemarque());
         ppm.setAnnee(currentYear);
-        setRef(ppm);
+        ppm.setAnnee(currentYear);
 //        ppm.setBudgetEstime(request.getBudgetEstime());
         ppm.setStatus(ProcessStatus.BROUILLON);
         ppm.setAc(ac);
         ppm.setRealisations(new ArrayList<>());
         ppm.setDocs(new ArrayList<>());
-
+        setRef(ppm);
         ppm.setActualise(Boolean.FALSE);
         ppm.setNbrActualisation(0);
 
@@ -4688,7 +4689,7 @@ public class PpmServiceImpl implements PpmService {
             throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
         }
         log.info("Annee validation passed: {}", ppm.getAnnee());
-        ppm.setNom("PPM-"+ac.getNom()+"-"+ppm.getAnnee());
+//        ppm.setNom("PPM-"+ac.getNom()+"-"+ppm.getAnnee());
         // Step 8: Save PPM initially
         Ppm savedPpm = repository.save(ppm);
 
@@ -5957,6 +5958,11 @@ public class PpmServiceImpl implements PpmService {
                         "No PPM found for ID and version",
                         List.of(ppmId), List.of(latestVersion)));
 
+        Ppm first = repository.findById(new CompositeId(ppmId, 1))
+          .orElseThrow(() -> new PpmNotFound(
+                "the initial PPM not found for ID and version",
+                List.of(ppmId), List.of(1)));
+
         // Security: ensure user's AC matches
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         Integer acId = latest.getAc() != null ? latest.getAc().getId() : null;
@@ -5980,8 +5986,8 @@ public class PpmServiceImpl implements PpmService {
         next.setId(latest.getId());
         next.setVersion(nextVersion);
 
-        next.setRef(latest.getRef());
-        next.setNom(latest.getNom());
+//        next.setRef(latest.getRef());
+//        next.setNom(latest.getNom());
         next.setRemarque(latest.getRemarque());
         next.setAnnee(latest.getAnnee());
         next.setAc(latest.getAc());
@@ -5993,7 +5999,7 @@ public class PpmServiceImpl implements PpmService {
         next.setActualise(true);
         Integer prevNbr = latest.getNbrActualisation();
         next.setNbrActualisation((prevNbr == null ? 0 : prevNbr) + 1);
-
+        next.setRef(first.getRef()+"_"+next.getNbrActualisation());
         if (latest.getDocs() != null && !latest.getDocs().isEmpty()) {
             List<Docs> activeDocs = latest.getDocs().stream()
                     .filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
