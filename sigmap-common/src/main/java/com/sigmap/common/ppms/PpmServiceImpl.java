@@ -1720,6 +1720,7 @@ public class PpmServiceImpl implements PpmService {
             requestAc = acRepository.findById(request.getAcId()).orElse(null);
         }
         tempPpm.setAc(requestAc != null ? requestAc : existingPpm.getAc());
+        tempPpm.setBudgetEstime(existingPpm.getBudgetEstime());
         return tempPpm;
     }
 
@@ -3919,7 +3920,7 @@ public class PpmServiceImpl implements PpmService {
         existingPpm.setRef(existingPpm.getRef());
         existingPpm.setNom(existingPpm.getNom());
         existingPpm.setAnnee(request.getAnnee() != null ? request.getAnnee() : existingPpm.getAnnee());
-        existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
+//        existingPpm.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existingPpm.getBudgetEstime());
         existingPpm.setProcessInstanceId(existingPpm.getProcessInstanceId());
         existingPpm.setStatus(existingPpm.getStatus());
 
@@ -4385,6 +4386,14 @@ public class PpmServiceImpl implements PpmService {
 
         existingPpm.setRealisations(updatedRealisations);
         System.out.println("Updated PPM with " + updatedRealisations.size() + " realisations");
+
+        BigDecimal totalBudgetPpm = updatedRealisations.stream()
+                .filter(r -> r.getBudgetEstime() != null)
+                .map(Realisation::getBudgetEstime)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        existingPpm.setBudgetEstime(totalBudgetPpm);
+        System.out.println("PPM recalculated total budget: " + totalBudgetPpm);
 
         existingPpm = repository.save(existingPpm);
         System.out.println("Final save of PPM - ID: " + existingPpm.getId() + ", Version: " + existingPpm.getVersion());
