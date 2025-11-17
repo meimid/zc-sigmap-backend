@@ -1,11 +1,14 @@
 package com.sigmap.sigmap_dac.config;
 
+import com.sigmap.sigmap_dac.services.delegates.TransmissionDaoDelegate;
 import org.flowable.engine.*;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+
+import java.util.Map;
 
 /**
  * Configuration class for initializing the Flowable process engine and its core services.
@@ -70,18 +73,34 @@ public class FlowableInitializer {
     @Primary
     public ProcessEngine processEngine() {
 
-        ProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration()
+        StandaloneProcessEngineConfiguration cfg = (StandaloneProcessEngineConfiguration) new StandaloneProcessEngineConfiguration()
                 .setJdbcUrl(jdbcUrl)
                 .setJdbcUsername(jdbcUsername)
                 .setJdbcPassword(jdbcPassword)
                 .setJdbcDriver(jdbcDriver)
-                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+
+        // 🔹 Register custom delegates manually (since this is standalone)
+        cfg.setBeans(Map.of(
+                "transmissionDaoDelegate", new TransmissionDaoDelegate()
+        ));
+
+        // ✅ Enable async execution
+        cfg.setAsyncExecutorActivate(true);
+        cfg.setAsyncExecutorDefaultAsyncJobAcquireWaitTime(1000);
+        cfg.setAsyncExecutorMaxAsyncJobsDuePerAcquisition(5);
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
-        System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
 
+        if (cfg.getAsyncExecutor() != null && !cfg.getAsyncExecutor().isActive()) {
+            cfg.getAsyncExecutor().start();
+            System.out.println("✅ Flowable Async Job Executor started successfully.");
+        }
+
+        System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
         return processEngine;
     }
+
 
     /**
      * Provides the Flowable RepositoryService for managing process definitions and deployments.
