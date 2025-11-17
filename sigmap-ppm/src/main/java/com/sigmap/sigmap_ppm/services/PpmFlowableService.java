@@ -1219,10 +1219,6 @@ public class PpmFlowableService {
         return response;
     }
 
-
-
-
-
     /* ======================= next steps helper ======================= */
 
  private List<NextStepDTO> getPossibleNextSteps(Task task) {

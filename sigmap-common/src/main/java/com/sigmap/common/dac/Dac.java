@@ -1,6 +1,7 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
@@ -11,6 +12,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.Calendar;
+import java.util.List;
 
 @Getter
 @Setter
@@ -77,5 +79,16 @@ public class Dac extends BaseEntity {
   @ManyToOne
   @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
   private DynaDocsModel dynaDocsModel;
+
+  @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
+  @JoinTable(
+          name = "dac_com",
+          joinColumns = {
+                  @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),
+                  @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver")
+          },
+          inverseJoinColumns = @JoinColumn(name = "com_id")
+  )
+  private List<Com> coms;
 
 }

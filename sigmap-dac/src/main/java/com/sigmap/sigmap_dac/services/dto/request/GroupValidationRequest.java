@@ -10,6 +10,5 @@ public class GroupValidationRequest {
     private Boolean validate;
     private CncmpDecision cncmpDecision;
     private String comment;
-    private PpmWithLotsRequestDto ppm;
     private Integer comId;
 }
