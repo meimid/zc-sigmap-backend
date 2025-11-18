@@ -14,6 +14,7 @@ COPY sigmap-auth ./sigmap-auth
 COPY sigmap-dac ./sigmap-dac
 COPY sigmap-webmaster ./sigmap-webmaster
 COPY sigmap-website-auth ./sigmap-website-auth
+COPY sigmap-eclaircissement ./sigmap-eclaircissement
 
 
 

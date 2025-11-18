@@ -80,7 +80,7 @@ public class FlowableInitializer {
                 .setJdbcUsername(jdbcUsername)
                 .setJdbcPassword(jdbcPassword)
                 .setJdbcDriver(jdbcDriver)
-                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
         System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
