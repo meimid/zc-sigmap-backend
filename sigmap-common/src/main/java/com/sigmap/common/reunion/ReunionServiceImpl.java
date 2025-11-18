@@ -1123,12 +1123,19 @@ public class ReunionServiceImpl implements ReunionService{
         for (Participant participant : reunion.getParticipants()) {
             for (ParticipantRequest participantRequest : request.getParticipants()) {
                 if (participant.getId().equals(participantRequest.getId())) {
-                    if(participant.getType().equals(ParticipantType.RESPONSABLE)&&participantRequest.isPresent()){
+                    if(participant.getType().equals(ParticipantType.RESPONSABLE)){
+                        if(participantRequest.isPresent()){
                         participant.setFonctionReunion(ParticipantFonction.PRESIDENT);
+                        }
+                        else{
+                            participant.setFonctionReunion(ParticipantFonction.MEMBRE);
+
+                        }
                     }
                     else {
                         participant.setFonctionReunion(participantRequest.getFonctionReunion());
                     }
+
                     participantService.save(participant);
                     break;
                 }
