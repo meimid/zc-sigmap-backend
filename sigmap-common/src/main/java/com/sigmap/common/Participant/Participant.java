@@ -34,6 +34,7 @@ public class Participant extends BaseEntity {
     @Column(name = "user_id")
     private String userId;
     private boolean present;
+    @Column(name = "fonction_reunion")
     @Enumerated(EnumType.STRING)
     private ParticipantFonction fonctionReunion;
 }

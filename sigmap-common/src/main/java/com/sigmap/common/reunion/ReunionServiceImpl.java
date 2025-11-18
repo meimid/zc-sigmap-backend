@@ -295,14 +295,6 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setStatus(ReunionStatus.NON_PLANIFIER);
             }
 
-            if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)||
-                    reunionToUpdate.getStatus().equals(ReunionStatus.PLANIFIER)||
-                    reunionToUpdate.getStatus().equals(ReunionStatus.NON_PLANIFIER)||
-                    reunionToUpdate.getStatus().equals(ReunionStatus.EN_RETARD)){
-                updateParticipantsFonction(request,reunionToUpdate);
-            }
-
-
 
             return save(reunionToUpdate);
         }
@@ -354,14 +346,12 @@ public class ReunionServiceImpl implements ReunionService{
             participantRequest.setUserId(userCom.getUserId());
             ParticipantType type=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE;
             participantRequest.setType(type);
-            String fonction=String.valueOf(type);
             ParticipantFonction fonctionReunion=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
+            String fonction=String.valueOf(fonctionReunion);
             participantRequest.setOrganisme(reunion.getCom().getNom());
             participantRequest.setFonctionReunion(fonctionReunion);
             participantRequest.setFonction(fonction);
-
-                participantRequest.setPresent(false);
-
+            participantRequest.setPresent(false);
             Participant participant= participantService.create(participantRequest);
             reunion.getParticipants().add(participant);
 
@@ -372,6 +362,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if (invitedRequest.getUserId() == null || !commissionMemberUserIds.contains(invitedRequest.getUserId())) {
                     invitedRequest.setReunionId(reunion.getId());
                     invitedRequest.setType(ParticipantType.INVITE);
+                    invitedRequest.setFonctionReunion(ParticipantFonction.MEMBRE);
                     Participant participant=  participantService.create(invitedRequest);
                     reunion.getParticipants().add(participant);
 
@@ -422,14 +413,13 @@ public class ReunionServiceImpl implements ReunionService{
                         participantToUpdate.setOrganisme(participantRequest.getOrganisme());
                         participantToUpdate.setFonction(participantRequest.getFonction());
                     }
-                        participantToUpdate.setFonctionReunion(participantRequest.getFonctionReunion());
-
                     }
                 }
             } else {
                 if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
                     participantRequest.setReunionId(reunion.getId());
                     participantRequest.setType(ParticipantType.INVITE);
+                    participantRequest.setFonctionReunion(ParticipantFonction.MEMBRE);
                     Participant newInvitedParticipant = participantService.create(participantRequest);
                     participantsToSave.add(newInvitedParticipant);
                     reunion.getParticipants().add(newInvitedParticipant);
@@ -992,6 +982,7 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
+            updateParticipantsFonction(request, reunionToUpdate);
             return save(reunionToUpdate);
         }
         else {
@@ -1132,7 +1123,13 @@ public class ReunionServiceImpl implements ReunionService{
         for (Participant participant : reunion.getParticipants()) {
             for (ParticipantRequest participantRequest : request.getParticipants()) {
                 if (participant.getId().equals(participantRequest.getId())) {
-                    participant.setFonctionReunion(participantRequest.getFonctionReunion());
+                    if(participant.getType().equals(ParticipantType.RESPONSABLE)&&participantRequest.isPresent()){
+                        participant.setFonctionReunion(ParticipantFonction.PRESIDENT);
+                    }
+                    else {
+                        participant.setFonctionReunion(participantRequest.getFonctionReunion());
+                    }
+                    participantService.save(participant);
                     break;
                 }
             }
