@@ -160,7 +160,8 @@ public class ParticipantServiceImpl implements ParticipantService {
 
             UserDTO userDetails = keycloakAdminService.getUserById(userId);
             ParticipantType type = Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE;
-            ParticipantFonction fonction=Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
+            String fonction = String.valueOf(type);
+            ParticipantFonction fonctionReunion=Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
 
             if (participant == null) {
                 // Create new participant for new commission member
@@ -173,8 +174,8 @@ public class ParticipantServiceImpl implements ParticipantService {
                 participantRequest.setType(type);
                 participantRequest.setOrganisme(reunion.getCom().getNom());
                 participantRequest.setFonction(fonction);
-                participantRequest.setPresent(false); // Default for new participants
-
+                participantRequest.setFonctionReunion(fonctionReunion);
+                participantRequest.setPresent(false);
                 Participant newParticipant = create(participantRequest);
                 updatedParticipants.add(newParticipant);
                 participantsToSave.add(newParticipant);
@@ -184,6 +185,7 @@ public class ParticipantServiceImpl implements ParticipantService {
                 participant.setPrenom(userDetails.getLastName());
                 participant.setMail(userDetails.getEmail());
                 participant.setType(type); // Update role if RESPONSABLE changed
+                participant.setFonction(fonction);
                 participant.setOrganisme(reunion.getCom().getNom());
                 participantsToSave.add(participant);
             }

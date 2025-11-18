@@ -29,10 +29,11 @@ public class Participant extends BaseEntity {
     private String nom;
     private String prenom;
     private String organisme;
-    @Enumerated(EnumType.STRING)
-    private ParticipantFonction fonction;
+    private String fonction;
     private String mail;
     @Column(name = "user_id")
     private String userId;
     private boolean present;
+    @Enumerated(EnumType.STRING)
+    private ParticipantFonction fonctionReunion;
 }

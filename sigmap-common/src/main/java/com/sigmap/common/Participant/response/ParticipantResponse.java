@@ -14,10 +14,11 @@ public class ParticipantResponse {
     private String nom;
     private String prenom;
     private String organisme;
-    private ParticipantFonction fonction;
+    private String fonction;
     private String mail;
     private String userId;
     private boolean present;
+    private ParticipantFonction fonctionReunion;
     private BaseEntityResponse metadata;
 
 }

@@ -9,7 +9,8 @@ public class ParticipantInvitedRequest {
     private String nom;
     private String prenom;
     private String organisme;
-    private ParticipantFonction fonction;
+    private String fonction;
     private String mail;
     private boolean present;
+    private ParticipantFonction fonctionReunion;
 }
