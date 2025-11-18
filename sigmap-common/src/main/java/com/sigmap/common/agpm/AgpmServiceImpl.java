@@ -837,6 +837,7 @@ public class AgpmServiceImpl implements AgpmService {
         responseAgpm.setStatus(source.getStatus());
         responseAgpm.setActualise(source.getActualise());
         responseAgpm.setNbrActualisation(source.getNbrActualisation());
+        responseAgpm.setEtapeProcess(source.getEtapeProcess());
         responseAgpm.setIsDeleted(source.getIsDeleted());
         responseAgpm.setCreatedAt(source.getCreatedAt());
         responseAgpm.setCreatedBy(source.getCreatedBy());

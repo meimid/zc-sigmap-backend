@@ -36,5 +36,6 @@ public class DacResponce {
     private Integer parentDacId;
     private boolean shortListing;
     private DynaDocsModelResponse dynaDocsModel;
+    private String etapeProcess;
     private BaseEntityResponse metadata;
 }

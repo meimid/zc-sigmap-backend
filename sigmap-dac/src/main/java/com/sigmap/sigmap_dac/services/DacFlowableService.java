@@ -8,6 +8,8 @@ import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.CncmpDecision;
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacId;
+import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.DacDocsService;
@@ -23,6 +25,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -90,7 +93,7 @@ public class DacFlowableService {
     @Autowired private TaskService taskService;
     @Autowired private RepositoryService repositoryService;
     @Autowired private HistoryService historyService;
-
+    @Autowired private DacRepository dacRepository;
     @Autowired private DacService dacService;
     @Autowired private DacDocsService dacDocsService;
     @Autowired private CurrentUserService currentUserService;
@@ -282,8 +285,13 @@ public class DacFlowableService {
             r.setStatus("User cannot complete initial task. Candidate groups: " + getCandidateGroup(t));
             return r;
         }
+        String processInstanceId = pi.getProcessInstanceId();
+        Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
+
         taskService.setAssignee(t.getId(), Authentication.getCurrentUserId().orElse(((JwtAuthenticationToken) auth).getName()));
         taskService.complete(t.getId());
+        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
 
         var resp = new ProcessStartResponseDTO();
         resp.setProcessInstanceId(pi.getId());
@@ -1099,9 +1107,15 @@ public class DacFlowableService {
         } catch (Exception e) {
             log.warn("[COM] Failed final com sync before completion: {}", e.getMessage());
         }
+        String processInstanceId = task.getProcessInstanceId();
+        Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         // Complete task
         taskService.complete(taskId);
         log.info("[TASK] Task [{}] completed successfully", taskId);
+
+
+        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
 
         if (comIdSnapshot != null) {
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
@@ -1435,4 +1449,27 @@ public class DacFlowableService {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public void updateDacEtapeProcess(String processInstanceId,Integer dacId,Integer dacVer) {
+
+        // get the next active task
+        var nextTask = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .active()
+                .singleResult();
+
+        String stepName = (nextTask != null ? nextTask.getName() : "Completed");
+
+
+        if (dacId != null && dacVer != null) {
+            DacId compositeId = new DacId(dacId, dacVer);
+
+            dacRepository.findById(compositeId).ifPresent(dac -> {
+                dac.setEtapeProcess(stepName);
+                dacRepository.save(dac);
+            });
+        }
+    }
+
 }
