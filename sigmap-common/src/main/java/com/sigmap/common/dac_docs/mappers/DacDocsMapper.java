@@ -87,7 +87,7 @@ public interface DacDocsMapper {
     @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "realisation", source = "realisation")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
-    DacResponseDTO gitoDacResponse(Dac dac);
+    DacResponseDTO toDacResponse(Dac dac);
 
     @Mapping(target = "id", source = "dynaField.dynaDocs.id")
     @Mapping(target = "version", source = "dynaField.dynaDocs.version")

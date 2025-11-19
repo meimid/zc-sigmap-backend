@@ -22,4 +22,5 @@ public class DacResponseDTO {
     private ModeDePassationSelection modePassation;
     private DacRealisationResponseDTO realisation;
     private List<DynaDocsResponseDTO> dynaDocs;
+    private String etapeProcess;
 }
