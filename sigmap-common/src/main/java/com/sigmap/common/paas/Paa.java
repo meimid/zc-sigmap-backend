@@ -109,4 +109,8 @@ public class Paa extends BaseEntity implements DocumentHolder {
 
     @Column(name = "nbr_actualisation", nullable = false)
     private Integer nbrActualisation = 0;
+
+    @Column(name = "etape_process", length = 255)
+    private String etapeProcess;
+
 }

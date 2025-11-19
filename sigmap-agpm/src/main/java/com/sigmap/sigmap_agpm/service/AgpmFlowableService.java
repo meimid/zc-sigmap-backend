@@ -7,6 +7,7 @@ package com.sigmap.sigmap_agpm.service;
 
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
@@ -14,6 +15,7 @@ import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -98,6 +100,9 @@ public class AgpmFlowableService {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private AgpmRepository agpmRepository;
 
     /**
      * Checks if the user has the specified role based on their JWT authentication token.
@@ -338,7 +343,11 @@ public class AgpmFlowableService {
             return errorResponse;
         }
         taskService.setAssignee(initialTask.getId(), Authentication.getCurrentUserId().get());
+
+        Integer agpmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer agpmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         taskService.complete(initialTask.getId());
+        updateAgpmEtapeProcess(processInstanceId,agpmId,agpmVer);
 
         ProcessStartResponseDTO response = new ProcessStartResponseDTO();
         response.setProcessInstanceId(processInstance.getId());
@@ -756,7 +765,13 @@ public class AgpmFlowableService {
         if (comment != null) {
             taskService.addComment(taskId, task.getProcessInstanceId(), comment);
         }
+        String processInstanceId = task.getProcessInstanceId();
+        Integer agpmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer agpmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         taskService.complete(taskId);
+
+        updateAgpmEtapeProcess(processInstanceId,agpmId,agpmVer);
+
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
             newStatus = ProcessStatus.PUBLIE;
             Agpm updatedAgpm = agpmService.updateStatus(id, latestAgpm.getVersion(), newStatus);
@@ -1105,5 +1120,26 @@ public class AgpmFlowableService {
             throw new RuntimeException("Erreur inattendue lors de la génération du modèle AGPM : " + e.getMessage(), e);
         }
     }
+
+    @Transactional
+    public void updateAgpmEtapeProcess(String processInstanceId , Integer agpmId,Integer agpmVer) {
+
+        var nextTask = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .active()
+                .singleResult();
+
+        String stepName = (nextTask != null ? nextTask.getName() : "Completed");
+
+        if (agpmId != null && agpmVer != null) {
+            CompositeId key = new CompositeId(agpmId, agpmVer);
+            agpmRepository.findById(key).ifPresent(agpm -> {
+                agpm.setEtapeProcess(stepName);
+                agpmRepository.save(agpm);
+            });
+        }
+    }
+
+
 
 }

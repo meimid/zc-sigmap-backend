@@ -27,7 +27,7 @@ public interface DacMapper {
     @Mapping(target = "dateLimiteRecptionDemande", source = "dateLimiteRecptionDemande")
     @Mapping(target = "payant", source = "payant")
     @Mapping(target = "dynaDocsModel", source = "dynaDocsModel")
-
+    @Mapping(target = "etapeProcess", source = "etapeProcess")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")

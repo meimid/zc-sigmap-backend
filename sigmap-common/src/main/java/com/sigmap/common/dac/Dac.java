@@ -91,4 +91,8 @@ public class Dac extends BaseEntity {
   )
   private List<Com> coms;
 
+  @Column(name = "etape_process", length = 255)
+  private String etapeProcess;
+
+
 }

@@ -9,11 +9,13 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.CncmpDecision;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.mappers.PpmMapper;
@@ -85,6 +87,7 @@ public class PpmFlowableService {
     @Autowired private RealisationService realisationService;
     @Autowired private EntityManager entityManager;
     @Autowired private DataSource dataSource;
+    @Autowired private PpmRepository ppmRepository;
 
     /* ======================= small helpers ======================= */
 
@@ -324,7 +327,12 @@ public class PpmFlowableService {
             return errorResponse;
         }
 
+        Integer ppmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer ppmVer= (Integer) runtimeService.getVariable(processInstanceId, "version");
+
         taskService.complete(initialTask.getId());
+
+        updatePpmEtapeProcess(processInstanceId,ppmId,ppmVer);
 
         ProcessStartResponseDTO response = new ProcessStartResponseDTO();
         response.setProcessInstanceId(processInstance.getId());
@@ -1194,9 +1202,13 @@ public class PpmFlowableService {
         } catch (Exception e) {
             log.warn("SAFETY#2: failed to ensure CPMP before completing task: {}", e.getMessage());
         }
-
+        String processInstanceId = task.getProcessInstanceId();
+        Integer ppmId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer ppmVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         // Complete task
         taskService.complete(taskId);
+
+        updatePpmEtapeProcess(processInstanceId,ppmId,ppmVer);
 
         // --- Response ---
         TaskDTO response = new TaskDTO();
@@ -1782,5 +1794,25 @@ public class PpmFlowableService {
             throw new RuntimeException("Erreur inattendue lors de la génération du modèle ppm : " + e.getMessage(), e);
         }
     }
+
+    @Transactional
+    public void updatePpmEtapeProcess(String processInstanceId,Integer ppmId,Integer ppmVer) {
+
+        var nextTask = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .active()
+                .singleResult();
+
+        String stepName = (nextTask != null ? nextTask.getName() : "Completed");
+
+        if (ppmId != null && ppmVer != null) {
+            CompositeId key = new CompositeId(ppmId, ppmVer);
+            ppmRepository.findById(key).ifPresent(ppm -> {
+                ppm.setEtapeProcess(stepName);
+                ppmRepository.save(ppm);
+            });
+        }
+    }
+
 
 }

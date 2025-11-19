@@ -310,6 +310,7 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
         filteredPpm.setModelAlfrescoId(ppm.getModelAlfrescoId());
+        filteredPpm.setEtapeProcess(ppm.getEtapeProcess());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
         filteredPpm.setUpdatedAt(ppm.getUpdatedAt());
