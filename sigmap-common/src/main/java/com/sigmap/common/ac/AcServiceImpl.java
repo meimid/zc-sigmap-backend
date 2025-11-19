@@ -43,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.testcontainers.shaded.com.google.common.io.Files.getFileExtension;
 
@@ -437,8 +438,20 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public List<Ac> findAllAcsWithNoCom() {
-        Specification<Ac>specification=AcSpecifications.hasComNull();
-        return repository.findAll(specification);
+        // Step 1: Spec to get Ac with com == null
+        Specification<Ac> spec = AcSpecifications.hasComNull();
+
+        // Step 2: Get all Ac IDs that are used as 'tutel' in any Com
+        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted())
+                .map(Com::getTutel)           // get the Ac used as tutel
+                .filter(Objects::nonNull)
+                .map(Ac::getId)
+                .collect(Collectors.toSet());
+
+        // Step 3: Filter out those whose ID is in the used set
+        return repository.findAll(spec).stream()
+                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted())
+                .collect(Collectors.toList());
     }
 
     /**
