@@ -1011,7 +1011,9 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
-
+            if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
+                updateParticipantsFonction(request, reunionToUpdate);
+            }
             return save(reunionToUpdate);
         }
         else {
