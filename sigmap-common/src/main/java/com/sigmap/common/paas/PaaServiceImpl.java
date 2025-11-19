@@ -338,6 +338,7 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setStatus(paa.getStatus());
         filteredPaa.setActualise(paa.getActualise());
         filteredPaa.setNbrActualisation(paa.getNbrActualisation());
+        filteredPaa.setEtapeProcess(paa.getEtapeProcess());
         filteredPaa.setCreatedAt(paa.getCreatedAt());
         filteredPaa.setCreatedBy(paa.getCreatedBy());
         filteredPaa.setUpdatedAt(paa.getUpdatedAt());
