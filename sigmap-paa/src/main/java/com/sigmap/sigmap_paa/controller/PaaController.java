@@ -3,6 +3,7 @@ package com.sigmap.sigmap_paa.controller;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcAvailablePaaResponse;
 import com.sigmap.common.ac.response.AcResponseDto;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
@@ -118,12 +119,9 @@ public class PaaController {
     }
 
     @GetMapping("/current_year/user/acs_without_paa")
-    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
-        List<Ac> acsWithoutPaa = paaService.getAcsWithoutPaaForCurrentYear();
-        List<AcResponseDto> response = acsWithoutPaa.stream()
-                .map(AcMapper.INSTANCE::mapToDto)
-                .toList();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<AcAvailablePaaResponse>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<AcAvailablePaaResponse> acsWithoutPaa = paaService.getAcsWithoutPaaForCurrentYear();
+        return ResponseEntity.ok(acsWithoutPaa);
     }
 
     /**
