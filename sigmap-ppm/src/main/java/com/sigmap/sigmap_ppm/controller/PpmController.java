@@ -3,6 +3,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.ac.response.AcResponseDto;
 
 import com.sigmap.common.financement.request.FinancementRequest;
@@ -1228,12 +1229,9 @@ public class PpmController {
     }
 
     @GetMapping("/current_year/user/acs_without_paa")
-    public ResponseEntity<List<AcResponseDto>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
-        List<Ac> acsWithoutPaa = ppmService.getAcsWithoutPpmForCurrentYear();
-        List<AcResponseDto> response = acsWithoutPaa.stream()
-                .map(AcMapper.INSTANCE::mapToDto)
-                .toList();
-        return ResponseEntity.ok(response);
+    public ResponseEntity<List<AcAvailablePpmResponse>> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
+        List<AcAvailablePpmResponse> acsWithoutPaa = ppmService.getAcsWithoutPpmForCurrentYear();
+        return ResponseEntity.ok(acsWithoutPaa);
     }
 
 

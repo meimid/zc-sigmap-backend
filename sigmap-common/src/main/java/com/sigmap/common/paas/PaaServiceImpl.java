@@ -2576,7 +2576,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             return cb.and(yearPredicate, notDeleted);
         });
 
-        // 3. Group PAAs by AC
+        // 3. Group PAAs by AC → Set of existing years
         Map<Integer, Set<Integer>> acExistingYears = new HashMap<>();
 
         for (Paa paa : paas) {
@@ -2589,32 +2589,33 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         List<AcAvailablePaaResponse> response = new ArrayList<>();
 
-        // 4. For each AC of the user → determine allowed year
+        // 4. For each AC → determine all allowed years (1 or 2 values)
         for (Integer acId : userAcIds) {
 
             Set<Integer> years = acExistingYears.getOrDefault(acId, new HashSet<>());
+            List<Integer> allowedYears = new ArrayList<>();
 
-            Integer allowedYear = null;
-
-            // Rule: 1) If missing current year -> allow current year
+            // If AC has NO PAA for current year → allow it
             if (!years.contains(currentYear)) {
-                allowedYear = currentYear;
+                allowedYears.add(currentYear);
+            }
 
-                // Rule: 2) Else if missing next year -> allow next year
-            } else if (!years.contains(nextYear)) {
-                allowedYear = nextYear;
+            // If AC has NO PAA for next year → allow it
+            if (!years.contains(nextYear)) {
+                allowedYears.add(nextYear);
+            }
 
-                // Rule: 3) Else no PAA creation allowed
-            } else {
-                continue; // skip this AC
+            // If AC has none of the allowed years → skip
+            if (allowedYears.isEmpty()) {
+                continue;
             }
 
             Ac ac = acService.findById(acId);
 
             AcAvailablePaaResponse dto = new AcAvailablePaaResponse();
-            dto.setAcId(acId);
+            dto.setAcId(ac.getId());
             dto.setAcName(ac.getNom());
-            dto.setAllowedYear(allowedYear);
+            dto.setAllowedYears(allowedYears);
 
             response.add(dto);
         }
@@ -2629,6 +2630,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return response;
     }
+
     @Transactional
     @Override
     public Paa createPaaPerAc(PaaRequestGlobal request) throws AcNotFound, PaaCreationLimitExceededException, IOException {

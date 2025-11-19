@@ -3,6 +3,8 @@ package com.sigmap.common.ac.response;
 
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -10,5 +12,5 @@ import lombok.*;
 public class AcAvailablePaaResponse {
     private Integer acId;
     private String acName;
-    private Integer allowedYear;
+    private List<Integer> allowedYears;
 }
