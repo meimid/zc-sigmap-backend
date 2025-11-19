@@ -5,6 +5,7 @@ import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.response.AcAvailablePaaResponse;
 import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
@@ -2545,60 +2546,124 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         return paasPage;
     }
 
-    public List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
-        String currentYear = String.valueOf(LocalDate.now().getYear());
-        log.info("Checking ACs without PAA for current year: {}", currentYear);
+    @Transactional
+    @Override
+    public List<AcAvailablePaaResponse> getAcsWithoutPaaForCurrentYear() throws AcNotFound {
 
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        log.info("Checking ACs without PAA for years {} and {}", currentYear, nextYear);
+
+        // 1. Get ACs of user
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
             throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
         }
-        log.info("User AC IDs: {}", userAcIds);
 
+        // Validate each AC exists
         for (Integer acId : userAcIds) {
-            try {
-                acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            acService.findById(acId);
+        }
+
+        // 2. Load ALL non-deleted PAAs for current year and next year
+        List<Paa> paas = repository.findAll((root, query, cb) -> {
+            Predicate yearPredicate = root.get("annee").in(
+                    String.valueOf(currentYear),
+                    String.valueOf(nextYear)
+            );
+            Predicate notDeleted = cb.isFalse(root.get("isDeleted"));
+            return cb.and(yearPredicate, notDeleted);
+        });
+
+        // 3. Group PAAs by AC
+        Map<Integer, Set<Integer>> acExistingYears = new HashMap<>();
+
+        for (Paa paa : paas) {
+            if (paa.getAc() != null) {
+                acExistingYears
+                        .computeIfAbsent(paa.getAc().getId(), k -> new HashSet<>())
+                        .add(Integer.parseInt(paa.getAnnee()));
             }
         }
 
-        Specification<Paa> spec = (root, query, criteriaBuilder) -> {
-            Predicate yearPredicate = criteriaBuilder.equal(root.get("annee"), currentYear);
-            Predicate notDeletedPredicate = criteriaBuilder.isFalse(root.get("isDeleted"));
-            return criteriaBuilder.and(yearPredicate, notDeletedPredicate);
-        };
-        List<Paa> paas = repository.findAll(spec);
-        log.info("Found {} PAAs for year {} (non-deleted)", paas.size(), currentYear);
+        List<AcAvailablePaaResponse> response = new ArrayList<>();
 
-        Set<Integer> acIdsWithPaa = paas.stream()
-                .filter(paa -> paa.getAc() != null)
-                .map(paa -> paa.getAc().getId())
-                .collect(Collectors.toSet());
-        log.info("ACs with non-deleted PAA IDs: {}", acIdsWithPaa);
+        // 4. For each AC of the user → determine allowed year
+        for (Integer acId : userAcIds) {
 
-        List<Integer> acIdsWithoutPaa = userAcIds.stream()
-                .filter(acId -> !acIdsWithPaa.contains(acId))
-                .collect(Collectors.toList());
-        log.info("ACs without non-deleted PAA IDs: {}", acIdsWithoutPaa);
+            Set<Integer> years = acExistingYears.getOrDefault(acId, new HashSet<>());
 
-        if (acIdsWithoutPaa.isEmpty()) {
-            log.info("All ACs for user have non-deleted PAAs for year {}", currentYear);
-            throw new AllAcsHavePaaException("Vous ne pouvez pas actuellement créer un nouveau PAA ! Toutes les AC dont vous êtes membre ont des PAA non supprimés en cours pour l'année " + currentYear + ".");
+            Integer allowedYear = null;
+
+            // Rule: 1) If missing current year -> allow current year
+            if (!years.contains(currentYear)) {
+                allowedYear = currentYear;
+
+                // Rule: 2) Else if missing next year -> allow next year
+            } else if (!years.contains(nextYear)) {
+                allowedYear = nextYear;
+
+                // Rule: 3) Else no PAA creation allowed
+            } else {
+                continue; // skip this AC
+            }
+
+            Ac ac = acService.findById(acId);
+
+            AcAvailablePaaResponse dto = new AcAvailablePaaResponse();
+            dto.setAcId(acId);
+            dto.setAcName(ac.getNom());
+            dto.setAllowedYear(allowedYear);
+
+            response.add(dto);
         }
 
-        List<Ac> acsWithoutPaa = acRepository.findAllById(acIdsWithoutPaa);
-        log.info("Found {} ACs without non-deleted PAA for user", acsWithoutPaa.size());
-        return acsWithoutPaa;
+        if (response.isEmpty()) {
+            throw new AllAcsHavePaaException(
+                    "Vous ne pouvez pas actuellement créer un nouveau PAA ! " +
+                            "Toutes vos AC ont déjà un PAA pour " + currentYear +
+                            " et " + nextYear + "."
+            );
+        }
+
+        return response;
     }
     @Transactional
     @Override
     public Paa createPaaPerAc(PaaRequestGlobal request) throws AcNotFound, PaaCreationLimitExceededException, IOException {
-        String currentYear = String.valueOf(LocalDate.now().getYear());
-        log.info("Creating PAA for year: {}", currentYear);
 
+        // --------------------------
+        // 1. Validate request year
+        // --------------------------
+        String annee = request.getAnnee();
+        if (annee == null || annee.isBlank()) {
+            throw new IllegalArgumentException("L'année est obligatoire pour créer un PAA.");
+        }
+
+        int requestedYear;
+        try {
+            requestedYear = Integer.parseInt(annee);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Année invalide : " + annee);
+        }
+
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        // Rule: only current year or next year allowed
+        if (requestedYear != currentYear && requestedYear != nextYear) {
+            throw new IllegalArgumentException(
+                    "Vous ne pouvez créer un PAA que pour l'année " + currentYear +
+                            " ou " + nextYear + ". Année reçue : " + requestedYear
+            );
+        }
+
+        log.info("Requested PAA creation for AC with year {}", requestedYear);
+
+        // --------------------------
+        // 2. Validate AC access
+        // --------------------------
         Integer requestAcId = request.getAcId();
         if (requestAcId == null) {
             throw new IllegalArgumentException("AC ID is required to create a PAA.");
@@ -2606,30 +2671,37 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
             throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
         }
+
         if (!userAcIds.contains(requestAcId)) {
-            log.warn("User does not have permission for AC ID: {}", requestAcId);
             throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
         }
 
         Ac ac = acService.findById(requestAcId);
 
-        Specification<Paa> spec = PaaSpecifications.annee(currentYear)
+        // --------------------------
+        // 3. Uniqueness check for REQUESTED year
+        // --------------------------
+        Specification<Paa> spec = PaaSpecifications.annee(annee)
                 .and(PaaSpecifications.paaAc(requestAcId))
                 .and(PaaSpecifications.deleted(false));
+
         List<Paa> existingPaas = repository.findAll(spec);
+
         if (!existingPaas.isEmpty()) {
             Paa existingPaa = existingPaas.get(0);
             throw new PaaCreationLimitExceededException(
-                    "A PAA already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
+                    "Un PAA existe déjà pour l'AC " + requestAcId + " pour l'année " + annee + ".",
                     existingPaa.getId(),
                     existingPaa.getVersion(),
                     1
             );
         }
 
+        // --------------------------
+        // 4. Create the new PAA
+        // --------------------------
         Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
         Integer paaVersion = 1;
 
@@ -2639,7 +2711,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setNom(request.getNom());
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
-        paa.setAnnee(currentYear);
+        paa.setAnnee(annee);  // <-- YEAR FROM REQUEST
         setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatus(ProcessStatus.BROUILLON);
@@ -2650,10 +2722,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         paa.setRealisations(new ArrayList<>());
         paa.setDocs(new ArrayList<>());
-        log.info("Annee test check passed: {}", paa.getAnnee());
 
         Paa savedPaa = repository.save(paa);
 
+        // --------------------------
+        // 5. Attach Documents
+        // --------------------------
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
             List<Docs> docs = new ArrayList<>();
             for (Integer docId : request.getDocIds()) {
@@ -2677,21 +2751,26 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             );
         }
 
+        // --------------------------
+        // 6. REALISATIONS
+        // --------------------------
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+
             Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
-            log.info("Starting lot ID sequence at: {}", nextLotId);
 
             Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
             Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
-            log.info("Starting financement ID sequence at: {}", nextFinancementId);
 
             List<Realisation> realisationsToSave = new ArrayList<>();
+
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
+
                 Realisation realisation = new Realisation();
                 LocalDate lps = realisationRequest.getDatePrevLps();
+
                 realisation.setId(nextRealisationId++);
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
@@ -2701,12 +2780,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(lps);
                 realisation.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
-//                realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
-//                realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
 
+                // FILES
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     documentCommuneService.processAndSaveDocuments(
                             realisationRequest.getRealisationFiles(),
@@ -2721,136 +2799,122 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 realisation.getPaas().add(savedPaa);
                 savedPaa.getRealisations().add(realisation);
 
+                // LOTS
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                    log.info("Processing {} lots for realisation ID: {}", realisationRequest.getLots().size(), realisation.getId());
                     List<Lot> lots = new ArrayList<>();
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
-                        log.info("Processing lot with description: {}", lotRequest.getDescription());
                         if (lotRequest.getDescription() == null || lotRequest.getDescription().isEmpty()) {
-                            log.warn("Skipping lot with null or empty description for realisation ID: {}", realisation.getId());
                             continue;
                         }
                         Lot lot = new Lot();
                         Integer lotId = lotRequest.getId();
-                        if (lotId == null) {
-                            lotId = nextLotId++;
-                            log.info("Assigned new lot ID: {}", lotId);
-                        }
+                        if (lotId == null) lotId = nextLotId++;
                         CompositeId compositeId = new CompositeId(lotId, 1);
+
                         if (lotRepository.existsById(compositeId)) {
-                            log.error("Lot ID {} already exists in the database", lotId);
                             throw new IllegalStateException("Generated lot ID " + lotId + " already exists");
                         }
+
                         lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lotRequest.getDescription());
                         lot.setBudget(lotRequest.getBudget());
-                        try {
-                            lot = lotRepository.save(lot);
-                            log.info("Saved lot with ID: {}, Description: {}", lot.getId(), lot.getDescription());
-                            lots.add(lot);
-                        } catch (Exception e) {
-                            log.error("Failed to save lot with ID: {}, Description: {}. Error: {}", lotId, lotRequest.getDescription(), e.getMessage());
-                            throw new RuntimeException("Failed to save lot: " + e.getMessage(), e);
-                        }
+
+                        lots.add(lotRepository.save(lot));
                     }
                     realisation.setLots(lots);
-                    log.info("Assigned {} lots to realisation ID: {}", lots.size(), realisation.getId());
                 } else {
-                    log.info("No lots provided for realisation ID: {}", realisation.getId());
                     realisation.setLots(new ArrayList<>());
                 }
 
-                // Process Financements
+                // FINANCEMENTS
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+
                     List<Financement> financements = new ArrayList<>();
 
                     for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
 
-                        if (financementRequest.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
-                            continue;
-                        }
+                        if (financementRequest.getMonnaieId() == null) continue;
+
                         Financement financement = new Financement();
                         FinancementId financementId = new FinancementId();
                         financementId.setRealisation(realisation);
 
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+                                .orElseThrow(() ->
+                                        new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId())
+                                );
+
                         financement.setMonnaie(monnaie);
-                        if (monnaie.getTaux() != null) {
-                            financement.setTauxApplicable(monnaie.getTaux());
-                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
-                        } else {
-                            financement.setTauxApplicable(0.0);
-                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
-                        }
+                        financement.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
                         financementId.setFinancementId(nextFinancementId++);
                         financement.setId(financementId);
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
-                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
-                            financement.setSourceFinancement(sourceFinancement);
+                        if (financementRequest.getSourceFinancement() != null &&
+                                financementRequest.getSourceFinancement().getId() != null) {
+
+                            RefParam src = refParamRepository.findById(
+                                            financementRequest.getSourceFinancement().getId())
+                                    .orElseThrow(() ->
+                                            new EntityNotFoundException("Source Financement not found")
+                                    );
+
+                            financement.setSourceFinancement(src);
                         }
 
                         financements.add(financement);
-                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
-                                financementId.getFinancementId(),
-                                financementRequest.getMonnaieId(),
-                                financementRequest.getBudgetEstimer());
                     }
 
                     realisation.setFinancements(financements);
-                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
 
-                    // === Calculate realisation budget as Σ(budgetEstimer × Monnaie.taux) ===
+                    // compute budget: Σ(budgetEstimer × taux)
                     BigDecimal realisationBudget = financements.stream()
                             .map(f -> {
-                                BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0;
+                                BigDecimal budget = f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                        ? f.getMonnaie().getTaux()
+                                        : 0.0;
                                 return budget.multiply(BigDecimal.valueOf(taux));
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     realisation.setBudgetEstime(realisationBudget);
-                    log.info("Set realisation ID {} budgetEstime to {} (Σ budgetEstimer × Monnaie.taux)", realisation.getId(), realisationBudget);
+
                 } else {
-                    log.info("No financements provided for realisation ID: {}", realisation.getId());
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
-                    log.info("Set realisation ID {} budgetEstime to 0 due to no financements", realisation.getId());
                 }
 
-                // Set seuilApplicable and validate budget (uses already converted budget)
                 setSeuilApplicableForRealisation(realisation, requestAcId);
 
                 realisationsToSave.add(realisation);
             }
+
             realisationRepository.saveAll(realisationsToSave);
         }
 
+        // --------------------------
+        // 7. Validate and compute global budget
+        // --------------------------
         validateRealisations(savedPaa);
 
-        BigDecimal budgetEstime = savedPaa.getRealisations().stream()
-                .map(realisation -> realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO)
+        BigDecimal totalBudget = savedPaa.getRealisations().stream()
+                .map(r -> r.getBudgetEstime() != null ? r.getBudgetEstime() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        savedPaa.setBudgetEstime(budgetEstime);
-        log.info("Set PAA ID {} budgetEstime to {} based on sum of realisation budgets", savedPaa.getId(), budgetEstime);
 
-        for (Realisation realisation : savedPaa.getRealisations()) {
-            if (realisation.getSeuilApplicable() != null && realisation.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
-                log.warn("seuilApplicable is negative for Realisation ID: {}. Setting to 0.", realisation.getId());
-                realisation.setSeuilApplicable(BigDecimal.ZERO);
+        savedPaa.setBudgetEstime(totalBudget);
+
+        for (Realisation r : savedPaa.getRealisations()) {
+            if (r.getSeuilApplicable() != null && r.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
+                r.setSeuilApplicable(BigDecimal.ZERO);
             }
         }
 
         return repository.save(savedPaa);
     }
+
 
 
 
