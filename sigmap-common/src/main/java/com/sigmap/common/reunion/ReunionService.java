@@ -44,8 +44,12 @@ public interface ReunionService {
     Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
-    List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound;
-    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound;
+    List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId) throws PpmNotFound, AcNotFound;
+    List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId,String userId) throws PpmNotFound, AcNotFound;
+
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound;
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) throws PpmNotFound, AcNotFound;
+
 
 
 

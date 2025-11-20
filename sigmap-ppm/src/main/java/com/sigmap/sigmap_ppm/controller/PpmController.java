@@ -38,8 +38,10 @@ import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.sigmap_ppm.services.PpmFlowableService;
 import com.sigmap.sigmap_ppm.services.dto.response.TaskDetailsDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
@@ -51,9 +53,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -86,6 +89,7 @@ public class PpmController {
     @Autowired
     private HistoryService historyService;
     private final PpmService ppmService;
+
     private final Logger logger = LoggerFactory.getLogger(PpmController.class);
 
     public PpmController(PpmService ppmService) {
@@ -1432,9 +1436,37 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest)  {
         Specification specification = query.toSpecification();
-        List<Ppm> ppms = ppmService.findAllSpec(specification);
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+
+      // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+
+
+        List<Ppm> ppms = new ArrayList<>();
+        if(isAdminCentral||isSuperAdmin) {
+           ppms= ppmService.findAllForSuperAdminAndAdminCentral(specification);
+        }
+        else {
+            String userId = jwt.getSubject();
+            ppms=ppmService.findAllForComUser(specification,userId);
+        }
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
