@@ -1432,9 +1432,9 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query,Jwt jwt)  {
         Specification specification = query.toSpecification();
-        List<Ppm> ppms = ppmService.findAllSpec(specification);
+        List<Ppm> ppms = ppmService.findAllSpec(specification,jwt);
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
