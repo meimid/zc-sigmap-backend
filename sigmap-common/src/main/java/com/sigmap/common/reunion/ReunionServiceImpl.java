@@ -1052,10 +1052,10 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Override
     public List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound {
-        Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
+       /* Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
         if(ppm.isEmpty()){
             throw new PpmNotFound("",List.of(ppmId),null);
-        }
+        }*/
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
         return repository.findAll(spec);
     }
@@ -1124,6 +1124,12 @@ public class ReunionServiceImpl implements ReunionService{
     private void updateParticipantsFonction(ReunionRequest request, Reunion reunion) {
         for (Participant participant : reunion.getParticipants()) {
             for (ParticipantRequest participantRequest : request.getParticipants()) {
+                if((participant.getType().equals(ParticipantType.INVITE)||
+                        participant.getType().equals(ParticipantType.MEMBRE))&&
+                        participantRequest.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)&&
+                        !participantRequest.isPresent()) {
+                    throw new ParticipantPresidentPresenceRequired("");
+                }
                 if (participant.getId().equals(participantRequest.getId())) {
                     if(participant.getType().equals(ParticipantType.RESPONSABLE)){
                         if(participantRequest.isPresent()){

@@ -1399,6 +1399,22 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message));
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ParticipantPresidentPresenceRequired.class)
+    public ResponseEntity<ErrorResponse> ParticipantPresidentPresenceRequiredException () {
+        String message = messageSource.getMessage(
+                "participant.president.required",
+                new Object[] {},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 
 }
 

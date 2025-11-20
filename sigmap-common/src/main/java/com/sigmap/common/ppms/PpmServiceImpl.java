@@ -6071,7 +6071,7 @@ public class PpmServiceImpl implements PpmService {
     public List<Ppm> findAllSpec(Specification<Ppm> spec) {
         Specification<Ppm> finalSpec = Specification.where(spec)
                 .and(PpmSpecifications.isLatestVersion())
-                .and(PpmSpecifications.isPublished())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
                 .and(PpmSpecifications.isNotDeleted());
         return repository.findAll(finalSpec);
     }

@@ -213,4 +213,9 @@ public class PpmSpecifications {
                         year
                 );
     }
+
+    public static Specification<Ppm> BROUILLON() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "BROUILLON");
+    }
 }
