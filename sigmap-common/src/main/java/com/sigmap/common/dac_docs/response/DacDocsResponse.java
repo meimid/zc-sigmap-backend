@@ -13,4 +13,5 @@ public class DacDocsResponse {
     private String fieldValue;
     private String sourceId;
     private DocsResponseDTO docs;
+    private String etapeProcess;
 } 
