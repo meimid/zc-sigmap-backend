@@ -3,7 +3,6 @@ package com.sigmap.common.dac;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.dac.exception.NoActiveAAOException;
-import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -23,7 +22,6 @@ import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
-import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
@@ -72,6 +70,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 
 @Slf4j
 @Service
@@ -95,6 +94,7 @@ public class DacServiceImpl implements DacService {
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
     private final DacPrixRepository dacPrixRepository;
     private final DynaDocsModelRepository dynaDocsModelRepository;
+    private final CurrentUserService currentUserService;
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
@@ -767,18 +767,33 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public List <Dac> findAll() {
-        Specification<Dac> spec = DacSpecifications.searchByDeleted(false);
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        Specification<Dac> spec = Specification.where(DacSpecifications.searchByDeleted(false));
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            spec = spec.and(DacSpecifications.searchByAcIds(userAcIds));
+        }
         return dacRepository.findAll(spec);
     }
 
     @Override
     public Page<Dac> findAll(Specification<Dac> spec, Pageable pageable) {
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
+        if (spec != null) {
+            specification = specification.and(spec);
+        }
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            specification = specification.and(DacSpecifications.searchByAcIds(userAcIds));
+        }
         return dacRepository.findAll(specification, pageable);
     }
 
     public Page<Dac> findAllLatest(Pageable pageable) {
-        return dacRepository.findLatestPerDac(pageable);
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return dacRepository.findLatestPerDacByAcIds(userAcIds, pageable);
     }
 
     @Override

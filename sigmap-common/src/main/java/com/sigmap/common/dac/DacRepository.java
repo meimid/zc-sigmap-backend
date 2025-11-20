@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.repository.SoftDeleteRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -71,7 +73,15 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   Integer countDistinctDacByRealisation(@Param("id") Integer id, @Param("version") Integer version);
 
   @Query("SELECT d FROM Dac d WHERE d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
-  org.springframework.data.domain.Page<Dac> findLatestPerDac(org.springframework.data.domain.Pageable pageable);
+  Page<Dac> findLatestPerDac(Pageable pageable);
+
+  @Query("SELECT d FROM Dac d " +
+          "LEFT JOIN d.ppm p " +
+          "LEFT JOIN p.ac a " +
+          "WHERE d.isDeleted = false " +
+          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+          "AND a.id IN :acIds")
+  Page<Dac> findLatestPerDacByAcIds(@Param("acIds") List<Integer> acIds, Pageable pageable);
 
   /**
    * Find the maximum version for a given DAC ID.
