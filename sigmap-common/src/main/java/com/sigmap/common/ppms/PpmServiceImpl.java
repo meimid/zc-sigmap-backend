@@ -6073,7 +6073,7 @@ public class PpmServiceImpl implements PpmService {
                 .and(PpmSpecifications.isLatestVersion())
                 .and(Specification.not(PpmSpecifications.BROUILLON()))
                 .and(PpmSpecifications.isNotDeleted());
-        return repository.findAll(finalSpec);
+        return repository.findAll(finalSpec).stream().filter(ppm->ppm.getNom()!=null).collect(Collectors.toList());
     }
 
 
