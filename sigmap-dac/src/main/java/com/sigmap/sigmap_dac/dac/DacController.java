@@ -22,6 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
@@ -103,6 +104,7 @@ public class DacController {
 
 
   @PostMapping("/create")
+  @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
