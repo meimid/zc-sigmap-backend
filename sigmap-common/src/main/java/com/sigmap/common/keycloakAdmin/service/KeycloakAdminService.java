@@ -101,7 +101,7 @@ public class KeycloakAdminService {
             return Collections.emptyList();
         }
 
-        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds);
+        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds, currentUserId);
 
         return userIds.stream()
                 .map(this::getUserById)
