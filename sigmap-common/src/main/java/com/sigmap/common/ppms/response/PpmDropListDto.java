@@ -5,6 +5,6 @@ import lombok.Data;
 @Data
 public class PpmDropListDto {
     private Integer id;
-    private String nom;
+    private String ref;
 
 }
