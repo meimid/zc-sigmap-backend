@@ -1,10 +1,7 @@
 package com.sigmap.common.ac.mapper;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.request.AcRequest;
-import com.sigmap.common.ac.response.AcResponse;
-import com.sigmap.common.ac.response.AcResponseDto;
-import com.sigmap.common.ac.response.AcSelectResponseDto;
-import com.sigmap.common.ac.response.AcWebsiteResponse;
+import com.sigmap.common.ac.response.*;
 import com.sigmap.common.com.mapper.ComMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -25,6 +22,7 @@ public interface AcMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AcResponse map(Ac source);
     AcResponseDto mapToDto(Ac source);
+    AcAvailablePaaResponse mapToAcAvailablePaaResponse(Ac source);
     Ac map(AcRequest source);
     void updateAcFromRequest(AcRequest source, @MappingTarget Ac target);
     List<AcWebsiteResponse> mapToWebsiteResponse(List<Ac> source);

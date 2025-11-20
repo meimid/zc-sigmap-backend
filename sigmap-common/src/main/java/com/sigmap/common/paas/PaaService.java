@@ -2,6 +2,7 @@ package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.response.AcAvailablePaaResponse;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmInvalidStatusException;
 import com.sigmap.common.agpm.exceptions.AgpmNotAssociatedWithUserAcException;
@@ -193,7 +194,7 @@ public interface PaaService {
 
     Page<Paa> findCurrentYearPaasByUser(Pageable pageable);
 
-    List<Ac> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
+    List<AcAvailablePaaResponse> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
     Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;
     Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) ;
 
