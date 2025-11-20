@@ -45,7 +45,7 @@ public class DynaFieldsController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<PageResponse<DynaFieldsResponse>> getDynaFields(
       DynaFieldsQuery query, Pageable pageable) {
 
@@ -67,7 +67,7 @@ public class DynaFieldsController {
   }
 
   @GetMapping("/{dynaFieldsId}")
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaFieldsResponse> getDynaFieldsById(@PathVariable Integer dynaFieldsId) {
 
     DynaFields dynaFields =
@@ -81,7 +81,7 @@ public class DynaFieldsController {
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaFieldsResponse> createDynaFields(
       @RequestBody DynaFieldsRequest request) {
     try {
@@ -93,7 +93,7 @@ public class DynaFieldsController {
   }
 
   @PutMapping("/{dynaFieldId}")
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaFieldsResponse> updateDynaFields(
       @PathVariable Integer dynaFieldId, @RequestBody DynaFieldsRequest request) {
     try {
@@ -105,7 +105,7 @@ public class DynaFieldsController {
   }
 
   @DeleteMapping("/{dynaFieldId}")
-  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaFieldsResponse> deleteDynaFields(@PathVariable Integer dynaFieldId) {
 
     DynaFields dynaFields =
