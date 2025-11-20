@@ -16,11 +16,18 @@ import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueSpecifications;
+import com.sigmap.common.user_commission_historique.response.UserCommissionHistoriqueResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -30,6 +37,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,12 +48,20 @@ public class KeycloakAdminService {
     @Autowired
     private KeycloakTokenService tokenService;
 
-    @Value("${keycloak-admin.server-url}")
+    @Value("${keycloak.server-url}")
     private String keycloakBaseUrl;
 
-    @Value("${keycloak-admin.realm}")
+    @Value("${keycloak.realm}")
     private String realm;
 
+    @Value("${keycloak.common-client-id}")
+    private String commonClientId;
+
+    @Value("${keycloak.client-id}")
+    private String clientId;
+
+    @Value("${keycloak.groupes.backend-users}")
+    private String gpBackendUsers;
     @Autowired
     private AcRepository acRepository;
     @Autowired
@@ -61,6 +77,11 @@ public class KeycloakAdminService {
     @Autowired
     private RefParamRepository refParamRepository;
 
+    private final UserCommissionHistoriqueService userCommissionHistoriqueService;
+
+    public KeycloakAdminService(UserCommissionHistoriqueService userCommissionHistoriqueService) {
+        this.userCommissionHistoriqueService = userCommissionHistoriqueService;
+    }
 
     public List<UserDTO> getAllUsers() {
         String accessToken = tokenService.getAccessToken();
@@ -80,7 +101,7 @@ public class KeycloakAdminService {
             return Collections.emptyList();
         }
 
-        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds);
+        List<String> userIds = userAcRepository.findUserIdsByAcIds(managedAcIds, currentUserId);
 
         return userIds.stream()
                 .map(this::getUserById)
@@ -276,7 +297,8 @@ public class KeycloakAdminService {
 
 
     private List<String> fetchRealmRolesForUserWithDescriptions(String userId, HttpEntity<Void> entity) {
-        String url = keycloakBaseUrl + "/admin/realms/" + realm + "/users/" + userId + "/role-mappings/realm";
+        String url = String.format("%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId));
         try {
             ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
             List<Map<String, Object>> roles = response.getBody();
@@ -337,15 +359,19 @@ public class KeycloakAdminService {
 
 
 
-    public List<RoleDTO> getAllRealmRolesWithDescriptions() {
+    public List<RoleDTO> getAllClientRolesWithDescriptions() {
+        // Vérifie les droits de l'utilisateur courant
         boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
                 && !Authentication.hasRole("SUPER_ADMIN")
                 && !Authentication.hasRole("ADMIN_CENTRAL");
 
         Set<String> allowedAdminAcRoles = Set.of("REDACTEUR_AC", "PUB_AC", "VALIDATEUR_AC");
 
+        // Récupère le token d'accès
         String token = tokenService.getAccessToken();
-        String url = String.format("%s/admin/realms/%s/roles", keycloakBaseUrl, realm);
+
+        // ⚠️ Ici on cible les rôles du CLIENT "backend-common"
+        String url = String.format("%s/admin/realms/%s/clients/%s/roles", keycloakBaseUrl, realm, getClientUuid(commonClientId));
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(token);
@@ -354,11 +380,7 @@ public class KeycloakAdminService {
         ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> roles = response.getBody();
 
-        String defaultRoleName = "default-roles-" + realm;
-        Set<String> technicalRoles = Set.of(defaultRoleName, "offline_access", "uma_authorization");
-
         return roles.stream()
-                .filter(role -> !technicalRoles.contains(role.get("name")))
                 .filter(role -> {
                     String roleName = (String) role.get("name");
                     if (isAdminAcOnly) {
@@ -377,6 +399,23 @@ public class KeycloakAdminService {
                 .collect(Collectors.toList());
     }
 
+    private String getClientUuid(String clientId) {
+        String token = tokenService.getAccessToken();
+        String url = String.format("%s/admin/realms/%s/clients?clientId=%s", keycloakBaseUrl, realm, clientId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+        List<Map<String, Object>> clients = response.getBody();
+
+        if (clients != null && !clients.isEmpty()) {
+            return (String) clients.get(0).get("id"); // UUID du client
+        }
+
+        throw new RuntimeException("Client " + clientId + " not found in realm " + realm);
+    }
 
     public UserDTO createUser(UserResquestDTO userDTO) {
         String token = tokenService.getAccessToken();
@@ -392,6 +431,8 @@ public class KeycloakAdminService {
         }
 
         String userId = extractUserIdFromLocation(location);
+        addUserToGroup(userId, gpBackendUsers, headers);
+
 
         //set update password for admin methode that return a generic password
         String genericPassword = updatePasswordForAdmin(userId);
@@ -605,7 +646,10 @@ public class KeycloakAdminService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         // Récupération des rôles actuels
-        String getRolesUrl = String.format("%s/admin/realms/%s/users/%s/role-mappings/realm", keycloakBaseUrl, realm, userId);
+        String getRolesUrl = String.format(
+                "%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId)
+        );
         ResponseEntity<List> rolesResp = restTemplate.exchange(getRolesUrl, HttpMethod.GET, new HttpEntity<>(headers), List.class);
         List<Map<String, Object>> existingRoles = rolesResp.getBody();
 
@@ -647,7 +691,10 @@ public class KeycloakAdminService {
         if (!toAdd.isEmpty()) {
             List<Map<String, Object>> rolesToAdd = new ArrayList<>();
             for (String roleName : toAdd) {
-                String roleUrl = String.format("%s/admin/realms/%s/roles/%s", keycloakBaseUrl, realm, roleName);
+                String roleUrl = String.format(
+                        "%s/admin/realms/%s/clients/%s/roles/%s",
+                        keycloakBaseUrl, realm, getClientUuid(commonClientId), roleName
+                );
                 ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
                 rolesToAdd.add(roleResp.getBody());
             }
@@ -717,13 +764,17 @@ public class KeycloakAdminService {
         List<Map<String, Object>> rolesToAssign = new ArrayList<>();
         for (String roleName : roleNames) {
             // Get full role info
-            String roleUrl = String.format("%s/admin/realms/%s/roles/%s", keycloakBaseUrl, realm, roleName);
-            ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
+            String roleUrl = String.format(
+                    "%s/admin/realms/%s/clients/%s/roles/%s",
+                    keycloakBaseUrl, realm, getClientUuid(commonClientId), roleName
+            );            ResponseEntity<Map> roleResp = restTemplate.exchange(roleUrl, HttpMethod.GET, new HttpEntity<>(headers), Map.class);
             rolesToAssign.add(roleResp.getBody());
         }
 
-        String assignUrl = String.format("%s/admin/realms/%s/users/%s/role-mappings/realm", keycloakBaseUrl, realm, userId);
-        HttpEntity<List<Map<String, Object>>> assignEntity = new HttpEntity<>(rolesToAssign, headers);
+        String assignUrl = String.format(
+                "%s/admin/realms/%s/users/%s/role-mappings/clients/%s",
+                keycloakBaseUrl, realm, userId, getClientUuid(commonClientId)
+        );        HttpEntity<List<Map<String, Object>>> assignEntity = new HttpEntity<>(rolesToAssign, headers);
         restTemplate.exchange(assignUrl, HttpMethod.POST, assignEntity, Void.class);
     }
 
@@ -749,5 +800,59 @@ public class KeycloakAdminService {
                 .collect(Collectors.toList());
 
         return users;
+    }
+
+    private void addUserToGroup(String userId, String groupName, HttpHeaders headers) {
+        String groupId = getGroupIdByName(groupName, headers);
+        if (groupId == null) return;
+        String url = String.format("%s/admin/realms/%s/users/%s/groups/%s", keycloakBaseUrl, realm, userId, groupId);
+        restTemplate.exchange(url, HttpMethod.PUT, new HttpEntity<>(headers), Void.class);
+    }
+    private String getGroupIdByName(String groupName, HttpHeaders headers) {
+        String url = String.format("%s/admin/realms/%s/groups", keycloakBaseUrl, realm);
+        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), List.class);
+        List<Map<String, Object>> groups = response.getBody();
+        if (groups == null) return null;
+        return groups.stream()
+                .filter(g -> groupName.equals(g.get("name")))
+                .map(g -> (String) g.get("id"))
+                .findFirst().orElse(null);
+    }
+
+
+    private UserCommissionHistoriqueResponse mapToUserComHitoriqueResponse(UserCommissionHistorique historique, UserDTO user) {
+        UserCommissionHistoriqueResponse resp = new UserCommissionHistoriqueResponse();
+        resp.setId(historique.getId());
+        resp.setDateDebut(historique.getDateDebut());
+        resp.setDateFin(historique.getDateFin());
+
+        if (user != null) {
+            resp.setFirstName(user.getFirstName());
+            resp.setLastName(user.getLastName());
+            resp.setEmail(user.getEmail());
+        }
+
+        return resp;
+    }
+
+
+    public Page<UserCommissionHistoriqueResponse> hitoriqueData(Integer comId,
+                                                                String date,
+                                                                Pageable pageable,
+                                                                Specification<UserCommissionHistorique> specification) {
+
+        Page<UserCommissionHistorique> historiques = userCommissionHistoriqueService.findAllByComId(comId,date, pageable, specification);
+
+        String accessToken = tokenService.getAccessToken();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        String baseUrl = keycloakBaseUrl + "/admin/realms/" + realm;
+
+        List<UserDTO> keycloakUsers = fetchUsersFromKeycloak(baseUrl, entity);
+        Map<String, UserDTO> userMap = keycloakUsers.stream()
+                .collect(Collectors.toMap(UserDTO::getId, u -> u, (u1, u2) -> u1));
+
+        return historiques.map(h -> mapToUserComHitoriqueResponse(h, userMap.get(h.getUserId())));
     }
 }

@@ -2,7 +2,7 @@ package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
-import com.sigmap.common.dyna_docs.exception.ActiveAAOAlreadyExistsException;
+import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.Optional;

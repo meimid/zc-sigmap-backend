@@ -1,8 +1,6 @@
 package com.sigmap.sigmap_paa.config;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Stream;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -62,17 +60,16 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 /** Converts a JWT into a Spring Security authentication token. */
 public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
-  private final String clientId;
+  private final List<String> clientIds;
 
   /**
    * Constructor.
    *
    * @param clientId server client id
    */
-  public KeycloakJwtConverter(String clientId) {
-    this.clientId = clientId;
+  public KeycloakJwtConverter(List<String> clientIds) {
+    this.clientIds = clientIds == null ? List.of() : List.copyOf(clientIds);
   }
-
   @Override
   public AbstractAuthenticationToken convert(Jwt source) {
     return new JwtAuthenticationToken(source, getAuthorities(source), extractPrincipal(source));
@@ -116,19 +113,22 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
    * @return the roles
    */
   private List<String> extractResourceAccessRoles(Jwt jwt) {
-    Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
-
+    Object claim = jwt.getClaim("resource_access");
+    if (!(claim instanceof Map)) return List.of();
+    Map<String, Object> resourceAccess = (Map<String, Object>) claim;
     System.out.println("Resource access >>" + resourceAccess);
 
-    if (resourceAccess == null
-        || resourceAccess.isEmpty()
-        || !resourceAccess.containsKey(clientId)) {
-      return List.of();
+    Set<String> roles = new LinkedHashSet<>();
+    for (String clientId : clientIds) {
+      if (clientId == null || clientId.isBlank()) continue;
+      Object clientObj = resourceAccess.get(clientId);
+      if (!(clientObj instanceof Map)) continue;
+      Map<String, Object> clientMap = (Map<String, Object>) clientObj;
+      Object rolesObj = clientMap.get("roles");
+      if (rolesObj instanceof List) {
+        ((List<?>) rolesObj).stream().filter(Objects::nonNull).map(Object::toString).forEach(roles::add);
+      }
     }
-
-    System.out.println("Resource access " + resourceAccess);
-    Map<String, Object> targetClient = (Map<String, Object>) resourceAccess.get(clientId);
-
-    return (List<String>) targetClient.get("roles");
+    return List.copyOf(roles);
   }
 }

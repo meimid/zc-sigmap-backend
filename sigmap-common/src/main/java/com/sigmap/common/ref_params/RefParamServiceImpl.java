@@ -3,12 +3,12 @@ package com.sigmap.common.ref_params;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
+import com.sigmap.common.activite.Activite;
+import com.sigmap.common.activite.ActiviteRepository;
+import com.sigmap.common.activite.ActiviteSpecifications;
 import com.sigmap.common.adresse.AdressSpecifications;
 import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.adresse.AdresseRespository;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmRepository;
-import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.ComSpecifications;
@@ -38,9 +38,6 @@ import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteSpecifications;
-import com.sigmap.common.societe_address.SocieteAddress;
-import com.sigmap.common.societe_address.SocieteAddressRepository;
-import com.sigmap.common.societe_address.SocieteAddressSpecifications;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -53,17 +50,15 @@ import org.springframework.stereotype.Service;
 public class RefParamServiceImpl implements RefParamService {
     private final RefParamRepository repository;
     private final RefTypeService refTypeService;
-    private final AgpmRepository agpmRepository;
     private final CompteBancaireRepository compteBancaireRepository;
     private final SocieteRepository societeRepository;
     private final RealisationRepository realisationRepository;
     private final PpmRepository ppmRepository;
     private final PaaRepository paaRepository;
-    private final SocieteAddressRepository societeAddressRepository;
     private final ComRepository comRepository;
     private final AcRepository acRepository;
     private final  AdresseRespository  adresseRespository;
-
+    private final ActiviteRepository activiteRepository;
 
     /**
      * Constructor.
@@ -74,28 +69,25 @@ public class RefParamServiceImpl implements RefParamService {
 
     public RefParamServiceImpl(RefParamRepository repository,
                                RefTypeService refTypeService,
-                               AgpmRepository agpmRepository,
                                CompteBancaireRepository compteBancaireRepository,
                                SocieteRepository societeRepository,
                                RealisationRepository realisationRepository,
                                PpmRepository ppmRepository,
                                PaaRepository paaRepository,
-                               SocieteAddressRepository societeAddressRepository,
                                ComRepository comRepository,
-                               AcRepository acRepository, AdresseRespository adresseRespository
+                               AcRepository acRepository, AdresseRespository adresseRespository, ActiviteRepository activiteRepository
     ) {
         this.repository = repository;
         this.refTypeService = refTypeService;
-        this.agpmRepository = agpmRepository;
         this.compteBancaireRepository = compteBancaireRepository;
         this.societeRepository = societeRepository;
         this.realisationRepository = realisationRepository;
         this.ppmRepository = ppmRepository;
         this.paaRepository = paaRepository;
-        this.societeAddressRepository = societeAddressRepository;
         this.comRepository = comRepository;
         this.acRepository = acRepository;
         this.adresseRespository = adresseRespository;
+        this.activiteRepository = activiteRepository;
     }
 
 
@@ -251,14 +243,7 @@ public class RefParamServiceImpl implements RefParamService {
             throw new RefParamHasAssociatedSociete("", id);
         }
 
-        Specification<SocieteAddress> societeAddressSpec = Specification.where(
-                SocieteAddressSpecifications.deleted(false)
-                        .and(SocieteAddressSpecifications.hasTypeId(id))
-        );
-        boolean hasAssociatedSocieteAddress = societeAddressRepository.count(societeAddressSpec) > 0;
-        if (hasAssociatedSocieteAddress) {
-            throw new RefParamHasAssociatedSocieteAddress("", id);
-        }
+
 
         Specification<Ppm> ppmSpec = Specification.where(
                 PpmSpecifications.deleted(false)
@@ -310,6 +295,12 @@ public class RefParamServiceImpl implements RefParamService {
         boolean hasAddresse = adresseRespository.count(adresseSpec) > 0;
         if (hasAddresse) {
             throw new HasAssociatedAdress("", id);
+        }
+        Specification<Activite> spec = Specification.where(ActiviteSpecifications.hasActiviteId(id).and(ActiviteSpecifications.deleted(false)));
+
+        boolean hasAssociatedActivite = activiteRepository.count(spec) > 0;
+        if (hasAssociatedActivite) {
+            throw new HasAssociatedActivite("", id);
         }
 
         repository.softDelete(id);

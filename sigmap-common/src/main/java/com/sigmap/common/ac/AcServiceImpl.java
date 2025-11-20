@@ -24,6 +24,7 @@ import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
 import com.sigmap.common.user_ac.UserAcSpecifications;
+import com.sigmap.common.user_historique_ac.UserAcHistoriqueService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -42,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.testcontainers.shaded.com.google.common.io.Files.getFileExtension;
 
@@ -64,12 +66,15 @@ public class AcServiceImpl implements AcService{
 
     private final ComService comService;
     private final RefParamService refParamService;
+    private final UserAcHistoriqueService userAcHistoriqueService;
 
     @Autowired
     private FileStorageProperties fileStorageProperties;
 
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService, UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService, ComService comService, RefParamService refParamService) {
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService,
+                         UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService,
+                         ComService comService, RefParamService refParamService, UserAcHistoriqueService userAcHistoriqueService) {
         this.repository = repository;
         this.comRepository = comRepository;
         this.keycloakAdminService = keycloakAdminService;
@@ -78,6 +83,7 @@ public class AcServiceImpl implements AcService{
         this.adressService = adressService;
         this.comService = comService;
         this.refParamService = refParamService;
+        this.userAcHistoriqueService = userAcHistoriqueService;
     }
 
 
@@ -220,6 +226,7 @@ public class AcServiceImpl implements AcService{
                     userAc.setIsDeleted(false);
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
+                    userAcHistoriqueService.createStartHistory(userId, savedAc);
                 } catch (Exception e) {
                     logger.warn("Impossible d'associer l'utilisateur {} à l'AC {} : {}", userId, savedAc.getId(), e.getMessage());
                 }
@@ -338,6 +345,8 @@ public class AcServiceImpl implements AcService{
             for (UserAc existing : existingUserAcs) {
                 if (!newUserIds.contains(existing.getUserId())) {
                     userAcRepository.softDelete(existing.getAcId(), existing.getUserId());
+                    //create end for no more existing ons
+                    userAcHistoriqueService.createEndHistory(existing.getUserId(), existing.getAcId());
                 }
             }
 
@@ -351,9 +360,14 @@ public class AcServiceImpl implements AcService{
                     userAc.setAcId(id);
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
+
+                    //create start for new users
+                    userAcHistoriqueService.createStartHistory(userId, ac);
                 }
             }
         }
+
+        // hnaa na3mlou updates li jdod
 
         return savedAc;
     }
@@ -424,8 +438,20 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public List<Ac> findAllAcsWithNoCom() {
-        Specification<Ac>specification=AcSpecifications.hasComNull();
-        return repository.findAll(specification);
+        // Step 1: Spec to get Ac with com == null
+        Specification<Ac> spec = AcSpecifications.hasComNull();
+
+        // Step 2: Get all Ac IDs that are used as 'tutel' in any Com
+        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted())
+                .map(Com::getTutel)           // get the Ac used as tutel
+                .filter(Objects::nonNull)
+                .map(Ac::getId)
+                .collect(Collectors.toSet());
+
+        // Step 3: Filter out those whose ID is in the used set
+        return repository.findAll(spec).stream()
+                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted())
+                .collect(Collectors.toList());
     }
 
     /**

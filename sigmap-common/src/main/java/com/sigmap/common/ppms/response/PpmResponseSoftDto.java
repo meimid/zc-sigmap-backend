@@ -21,4 +21,5 @@ public class PpmResponseSoftDto {
     private Boolean actualise;
     private Integer nbrActualisation;
     private String remarque;
+    private String etapeProcess;
 }

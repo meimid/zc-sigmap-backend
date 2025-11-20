@@ -36,6 +36,10 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
+import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
+import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
+import com.sigmap.common.user_commission_historique.exception.SwitchStatueException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -68,8 +72,10 @@ public class ComServiceImpl implements ComService {
   private final AcService acService;
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
+  private final UserCommissionHistoriqueService userCommissionHistoriqueService;
+
   public ComServiceImpl(
-          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository) {
+          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService) {
     this.repository = repository;
     this.refParamService = refParamService;
     this.acRepository = acRepository;
@@ -77,6 +83,7 @@ public class ComServiceImpl implements ComService {
       this.acService = acService;
       this.documentCommuneService = documentCommuneService;
       this.docsRepository = docsRepository;
+      this.userCommissionHistoriqueService = userCommissionHistoriqueService;
   }
 
   @Override
@@ -132,235 +139,292 @@ public class ComServiceImpl implements ComService {
   @Override
   public Com create(ComRequest request)
           throws RefParamNotFound, AcNotFound, DuplicateAcIdsException, ComNotFound, IOException {
-    Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
-    List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
-    if (!refParams.isEmpty()) {
-      for(RefParam refParam:refParams){
-        Integer id = refParam.getId();
-        Specification<Com>comSpecification =ComSpecifications.hasComTypeId(id).and(ComSpecifications.deleted(false));
-        List<Com> com=repository.findAll(comSpecification);
-        log.info("Com count:"+com.size());
-        if(!com.isEmpty()&& Objects.equals(request.getComTypeId(), id)) {
-          throw new PermanentComAlreadyExist("",refParam.getCode());
-        }
+      if (request.getResponsableId() == null || request.getResponsableId().isBlank()) {
+          throw new ResponsableRequired("");
       }
+      try {
+          keycloakAdminService.getUserById(request.getResponsableId());
 
-    }
-    RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
-    Com com = ComMapper.INSTANCE.map(request);
+          Specification<RefParam> refParamSpecification = RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
+          List<RefParam> refParams = refParamService.findListRefParamSpecification(refParamSpecification);
+          if (!refParams.isEmpty()) {
+              for (RefParam refParam : refParams) {
+                  Integer id = refParam.getId();
+                  Specification<Com> comSpecification = ComSpecifications.hasComTypeId(id).and(ComSpecifications.deleted(false));
+                  List<Com> com = repository.findAll(comSpecification);
+                  log.info("Com count:" + com.size());
+                  if (!com.isEmpty() && Objects.equals(request.getComTypeId(), id)) {
+                      throw new PermanentComAlreadyExist("", refParam.getCode());
+                  }
+              }
 
-    if (comType.getId() != null) {
-      com.setComType(comType);
-    } else {
-      com.setComType(null);
-    }
-    if(request.getTutelId()!=null ) {
-      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
-      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
-        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+          }
+          RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
+          Com com = ComMapper.INSTANCE.map(request);
+
+          if (comType.getId() != null) {
+              com.setComType(comType);
+          } else {
+              com.setComType(null);
+          }
+          if (request.getTutelId() != null) {
+              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+                  throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
+              }
+              else {
+                  Ac tutel = acService.findById(request.getTutelId());
+                  com.setTutel(tutel);
+              }
+          }
+
+          Specification<RefParam> specPays = RefParamSpecifications.code("MR");
+          RefParam pays = refParamService.findOne(specPays).orElseThrow(() -> new RefParamNotFound("", null));
+          if (request.getTheAdresse() != null) {
+              Adresse adresse = adressService.create(request.getTheAdresse());
+              adresse.setPays(pays);
+              com.setTheAdresse(adresse);
+          }
+          else {
+              AdresseRequest adresseRequest = new AdresseRequest();
+              Adresse adresse = adressService.create(adresseRequest);
+              adresse.setPays(pays);
+              com.setTheAdresse(adresse);
+          }
+
+          Com savedCom = save(com);
+
+          if (request.getFiles() != null) {
+              documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), savedCom, Constants.PATH_ENTREPOT_GED_COM);
+              log.info("*****************************************{}", com.getDocs().size());
+              save(savedCom);
+          }
+
+          if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+              for (String userId : request.getUserIds()) {
+                  try {
+                      UserCom userCom = new UserCom();
+                      userCom.setUserId(userId);
+                      userCom.setComId(savedCom.getId());
+                      userCom.setIsDeleted(false);
+                      userCom.setStatus(ActiveStatus.ACTIF);
+                      userComRepository.save(userCom);
+                  } catch (Exception e) {
+                      logger.warn("Impossible d'associer l'utilisateur {} à l'COM {} : {}", userId, savedCom.getId(), e.getMessage());
+                  }
+
+                  try {
+                      UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+                      userCommissionHistorique.setUserId(userId);
+                      userCommissionHistorique.setComId(savedCom.getId());
+                      userCommissionHistoriqueService.create(userCommissionHistorique);
+                  } catch (RuntimeException e) {
+
+                      logger.warn("create history  user  {} for com {} : {}", userId, savedCom.getId(), e.getMessage());
+                      throw new CreateUserComHitoriqueException("");
+                  }
+              }
+          }
+
+          if (request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
+              UserCom userCom = new UserCom();
+              userCom.setUserId(request.getResponsableId());
+              userCom.setComId(savedCom.getId());
+              userCom.setIsDeleted(false);
+              userCom.setStatus(ActiveStatus.ACTIF);
+              userCom.setResponsable(true);
+              userComRepository.save(userCom);
+
+              try {
+                  UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+                  userCommissionHistorique.setUserId(request.getResponsableId());
+                  userCommissionHistorique.setComId(savedCom.getId());
+                  userCommissionHistoriqueService.create(userCommissionHistorique);
+              } catch (RuntimeException e) {
+
+                  logger.warn("create history  responsable  {} for com {} : {}", request.getResponsableId(), savedCom.getId(), e.getMessage());
+                  throw new CreateUserComHitoriqueException("");
+              }
+          }
+
+          return savedCom;
+      } catch ( Exception e) {
+         // throw new UserNotFound("", request.getResponsableId());
+          log.error("---------------------- {}",e.getMessage());
+          throw e;
       }
-      else {
-        Ac tutel = acService.findById(request.getTutelId());
-        com.setTutel(tutel);
-      }
-    }
-
-    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
-    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
-    if(request.getTheAdresse()!=null) {
-      Adresse adresse=adressService.create(request.getTheAdresse());
-      adresse.setPays(pays);
-      com.setTheAdresse(adresse);
-    }
-    else{
-      AdresseRequest adresseRequest=new AdresseRequest();
-      Adresse adresse=adressService.create(adresseRequest);
-      adresse.setPays(pays);
-      com.setTheAdresse(adresse);
-    }
-
-    Com savedCom = save(com);
-
-    if (request.getFiles() != null) {
-      documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), savedCom, Constants.PATH_ENTREPOT_GED_COM);
-      log.info("*****************************************{}",com.getDocs().size());
-      save(savedCom);
-    }
-
-    if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
-      for (String userId : request.getUserIds()) {
-        try {
-          UserCom userCom = new UserCom();
-          userCom.setUserId(userId);
-          userCom.setComId(savedCom.getId());
-          userCom.setIsDeleted(false);
-          userCom.setStatus(ActiveStatus.ACTIF);
-          userComRepository.save(userCom);
-        } catch (Exception e) {
-          logger.warn("Impossible d'associer l'utilisateur {} à l'COM {} : {}", userId, savedCom.getId(), e.getMessage());
-        }
-      }
-    }
-
-    if(request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
-      UserCom userCom = new UserCom();
-      userCom.setUserId(request.getResponsableId());
-      userCom.setComId(savedCom.getId());
-      userCom.setIsDeleted(false);
-      userCom.setStatus(ActiveStatus.ACTIF);
-      userCom.setResponsable(true);
-      userComRepository.save(userCom);
-    }
-
-    return savedCom;
   }
 
   @Override
  // @Transactional
   public Com update(Integer id, ComRequest request)
           throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
-    Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
-    Specification<RefParam> refParamSpecification=RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
-    List<RefParam> refParams=refParamService.findListRefParamSpecification(refParamSpecification);
-    if (!refParams.isEmpty()) {
-      for(RefParam refParam:refParams){
-        Integer refParamId = refParam.getId();
-        Specification<Com>comSpecification =ComSpecifications.hasComTypeId(refParamId).and(ComSpecifications.deleted(false));
-        List<Com> optionalCom=repository.findAll(comSpecification);
-        if(!optionalCom.isEmpty()&&!optionalCom.get(0).getId().equals(com.getId())&& Objects.equals(request.getComTypeId(), refParamId)) {
-          throw new PermanentComAlreadyExist("",refParam.getCode());
-        }
+      if (request.getResponsableId() == null || request.getResponsableId().isBlank()) {
+          throw new ResponsableRequired("");
       }
-    }
-    RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
-    ComMapper.INSTANCE.updateFromRequest(request, com);
+      try {
+          keycloakAdminService.getUserById(request.getResponsableId());
+          Com com = repository.findById(id).orElseThrow(() -> new ComNotFound("", List.of(id)));
+          Specification<RefParam> refParamSpecification = RefParamSpecifications.code("CNCMP-P").and(RefParamSpecifications.deleted(false));
+          List<RefParam> refParams = refParamService.findListRefParamSpecification(refParamSpecification);
+          if (!refParams.isEmpty()) {
+              for (RefParam refParam : refParams) {
+                  Integer refParamId = refParam.getId();
+                  Specification<Com> comSpecification = ComSpecifications.hasComTypeId(refParamId).and(ComSpecifications.deleted(false));
+                  List<Com> optionalCom = repository.findAll(comSpecification);
+                  if (!optionalCom.isEmpty() && !optionalCom.get(0).getId().equals(com.getId()) && Objects.equals(request.getComTypeId(), refParamId)) {
+                      throw new PermanentComAlreadyExist("", refParam.getCode());
+                  }
+              }
+          }
+          RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
+          ComMapper.INSTANCE.updateFromRequest(request, com);
 
-    if(request.getTutelId()!=null ) {
-      Specification<Com> specCom=ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
-      if(!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
-        throw new AcAlreadyHaveCom("Tutel already have com",request.getTutelId());
+          if (request.getTutelId() != null) {
+              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())) {
+                  throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
+              }
+              else {
+                  Ac tutel = acService.findById(request.getTutelId());
+                  com.setTutel(tutel);
+              }
+          }
+          if (comType.getId() != null) {
+              com.setComType(comType);
+          } else {
+              com.setComType(null);
+          }
+          Specification<RefParam> specPays = RefParamSpecifications.code("MR");
+          RefParam pays = refParamService.findOne(specPays).orElseThrow(() -> new RefParamNotFound("", null));
+
+          if (request.getTheAdresse() != null && Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
+              Adresse theAdress = adressService.update(request.getTheAdresse());
+              theAdress.setPays(pays);
+              com.setTheAdresse(theAdress);
+          }// else if ((com.getTheAdresse()==null|| com.getTheAdresse().getId() != null) && request.getTheAdresse() != null){
+          else if (request.getTheAdresse() != null && Optional.ofNullable(com.getTheAdresse().getId()).isEmpty()) {
+              Adresse theAddress = adressService.create(request.getTheAdresse());
+              theAddress.setPays(pays);
+              com.setTheAdresse(theAddress);
+          }
+          else {
+              AdresseRequest adresseRequest = new AdresseRequest();
+              adresseRequest.setPaysId(pays.getId());
+              Adresse theAddress = adressService.create(adresseRequest);
+              theAddress.setPays(pays);
+              com.setTheAdresse(theAddress);
+          }
+
+
+          List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
+          List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
+          List<Docs> requestedDocs = docsRepository.findByIdIn(requestedDocIds);
+          List<Integer> existingDocIds = com.getDocs() != null
+                  ? com.getDocs().stream().map(Docs::getId).toList()
+                  : new ArrayList<>();
+          if (!requestedDocs.isEmpty()) {
+              existingDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
+              existingDocs.addAll(requestedDocs);
+              com.setDocs(existingDocs);
+          }
+
+          if (requestedDocIds.size() != requestedDocs.size()) {
+              List<Integer> foundDocIds = requestedDocs.stream().map(Docs::getId).toList();
+              List<Integer> missingDocIds = requestedDocIds.stream()
+                      .filter(docId -> !foundDocIds.contains(docId))
+                      .collect(Collectors.toList());
+              throw new DocNotFound("Documents not found", missingDocIds);
+          }
+          List<Integer> docIdsToDelete = existingDocIds.stream()
+                  .filter(docId -> !requestedDocIds.contains(docId))
+                  .toList();
+          List<Integer> documentsIdsToDelete = docsRepository.findAllById(docIdsToDelete).stream().filter(doc -> !doc.getIsDeleted()).map(Docs::getId).toList();
+
+          documentCommuneService.deleteDocuments(documentsIdsToDelete);
+          if (request.getFiles() != null) {
+              documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), com, Constants.PATH_ENTREPOT_GED_COM);
+          }
+          // save
+          save(com);
+
+          // 1. Récupérer les anciens UserCom liés à ce COM
+          List<UserCom> existingUserComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
+
+          // 2. Construire la nouvelle liste à partir des userIds reçus
+          List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
+
+          // 3. Supprimer ceux qui n'existent plus
+          for (UserCom existing : existingUserComs) {
+              logger.debug("existing user com is : {} " ,  existing);
+              if (!newUserIds.contains(existing.getUserId())) {
+                  if (existing.isResponsable()) {
+                      throw new UserResponsibleForCom("", existing.getUserId(), existing.getComId());
+                  }
+                  //userComRepository.softDelete(existing.getComId(), existing.getUserId());
+                  manyallySoftDelete(existing.getComId(), existing.getUserId());
+              }
+          }
+
+          // 4. Ajouter les nouveaux
+          for (String userId : newUserIds) {
+              logger.debug("user id is : {} " , userId);
+              boolean exists = existingUserComs.stream()
+                      .anyMatch(e -> e.getUserId().equals(userId));
+              if (!exists) {
+                  logger.debug("user not exist id is : {} " ,  userId);
+                  UserCom userCom = new UserCom();
+                  userCom.setUserId(userId);
+                  userCom.setComId(id);
+                  userCom.setStatus(ActiveStatus.ACTIF);
+                  userComRepository.save(userCom);
+                  //handle History create
+                  try {
+                      UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+                      userCommissionHistorique.setUserId(userId);
+                      userCommissionHistorique.setComId(id);
+                      userCommissionHistoriqueService.create(userCommissionHistorique);
+                  } catch (RuntimeException e) {
+                      logger.warn("create history  user  {} for com {} : {}", request.getResponsableId(), id, e.getMessage());
+                      throw new CreateUserComHitoriqueException("");
+                  }
+              }
+          }
+          if (request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
+              existingUserComs.forEach(el -> el.setResponsable(false));
+              Optional<UserCom> userCom = userComRepository.findByUserIdAndComId(request.getResponsableId(), id);
+              if (userCom.isPresent() && !userCom.get().isResponsable()) {
+                  userComRepository.saveAll(existingUserComs);
+                  UserCom newResponsable = userCom.get();
+                  newResponsable.setResponsable(true);
+                  newResponsable.setStatus(ActiveStatus.ACTIF);
+                  userComRepository.save(newResponsable);
+              }
+              else {
+                  userComRepository.saveAll(existingUserComs);
+                  UserCom newResponsable = new UserCom();
+                  newResponsable.setUserId(request.getResponsableId());
+                  newResponsable.setComId(id);
+                  newResponsable.setStatus(ActiveStatus.ACTIF);
+                  newResponsable.setResponsable(true);
+                  userComRepository.save(newResponsable);
+                  //handle History create
+                  try {
+                      UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+                      userCommissionHistorique.setUserId(newResponsable.getUserId());
+                      userCommissionHistorique.setComId(id);
+                      userCommissionHistoriqueService.create(userCommissionHistorique);
+                  } catch (RuntimeException e) {
+                      logger.warn("create history  user  {} for com {} : {}", request.getResponsableId(), id, e.getMessage());
+                      throw new CreateUserComHitoriqueException("");
+                  }
+              }
+          }
+          return findById(id);
+      } catch ( Exception e) {
+          log.error("there is an error in one of the exceptions below{}",e.getMessage());
+          throw e;
       }
-      else {
-        Ac tutel = acService.findById(request.getTutelId());
-        com.setTutel(tutel);
-      }
-    }
-    if (comType.getId() != null) {
-      com.setComType(comType);
-    } else {
-      com.setComType(null);
-    }
-    Specification<RefParam> specPays= RefParamSpecifications.code("MR");
-    RefParam pays=refParamService.findOne(specPays).orElseThrow(()-> new RefParamNotFound("",null));
-
-    if(request.getTheAdresse()!=null&& Objects.equals(com.getTheAdresse().getId(), request.getTheAdresse().getId())) {
-      Adresse theAdress=adressService.update(request.getTheAdresse());
-      theAdress.setPays(pays);
-      com.setTheAdresse(theAdress);
-    }
-    else if (com.getTheAdresse()==null&&request.getTheAdresse()!=null){
-
-      Adresse theAddress=adressService.create(request.getTheAdresse());
-      theAddress.setPays(pays);
-      com.setTheAdresse(theAddress);
-      }
-    else {
-      AdresseRequest adresseRequest=new AdresseRequest();
-      adresseRequest.setPaysId(pays.getId());
-      Adresse theAddress=adressService.create(adresseRequest);
-      theAddress.setPays(pays);
-      com.setTheAdresse(theAddress);
-    }
-
-
-    List<Docs> existingDocs = com.getDocs() != null ? new ArrayList<>(com.getDocs()) : new ArrayList<>();
-    List<Integer> requestedDocIds = request.getDocIds() != null ? new ArrayList<>(request.getDocIds()) : new ArrayList<>();
-    List<Docs> requestedDocs = docsRepository.findByIdIn(requestedDocIds);
-    List<Integer> existingDocIds = com.getDocs() != null
-            ? com.getDocs().stream().map(Docs::getId).toList()
-            : new ArrayList<>();
-    if (!requestedDocs.isEmpty()) {
-      existingDocs.removeIf(doc -> requestedDocIds.contains(doc.getId()));
-      existingDocs.addAll(requestedDocs);
-      com.setDocs(existingDocs);
-    }
-
-    if (requestedDocIds.size() != requestedDocs.size()) {
-      List<Integer> foundDocIds = requestedDocs.stream().map(Docs::getId).toList();
-      List<Integer> missingDocIds = requestedDocIds.stream()
-              .filter(docId -> !foundDocIds.contains(docId))
-              .collect(Collectors.toList());
-      throw new DocNotFound("Documents not found", missingDocIds);
-    }
-    List<Integer> docIdsToDelete = existingDocIds.stream()
-            .filter(docId -> !requestedDocIds.contains(docId))
-            .toList();
-List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).stream().filter(doc->!doc.getIsDeleted()).map(Docs::getId).toList();
-
-    documentCommuneService.deleteDocuments(documentsIdsToDelete);
-      if (request.getFiles() != null) {
-        documentCommuneService.processAndSaveDocumentsForCom(request.getFiles(), com, Constants.PATH_ENTREPOT_GED_COM);
-    }
-     save(com);
-
-    // 1. Récupérer les anciens UserCom liés à ce COM
-    List<UserCom> existingUserComs = userComRepository.findAllByComIdAndIsDeletedFalse(id);
-
-    // 2. Construire la nouvelle liste à partir des userIds reçus
-    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : new ArrayList<>();
-
-    // 3. Supprimer ceux qui n'existent plus
-    for (UserCom existing : existingUserComs) {
-      logger.info("*************"+ existing);
-      if (!newUserIds.contains(existing.getUserId())) {
-        if(existing.isResponsable()) {
-          throw new UserResponsibleForCom("",existing.getUserId(),existing.getComId());
-        }
-        //userComRepository.softDelete(existing.getComId(), existing.getUserId());
-        manyallySoftDelete(existing.getComId() , existing.getUserId());
-      }
-
-    }
-
-
-    // 4. Ajouter les nouveaux
-    for (String userId : newUserIds) {
-      logger.info("*************"+ userId);
-      boolean exists = existingUserComs.stream()
-              .anyMatch(e -> e.getUserId().equals(userId));
-      if (!exists) {
-        logger.info("************* save", userId);
-        UserCom userCom = new UserCom();
-        userCom.setUserId(userId);
-        userCom.setComId(id);
-        userCom.setStatus(ActiveStatus.ACTIF);
-        userComRepository.save(userCom);
-      }
-    }
-    if(request.getResponsableId() != null && !request.getResponsableId().isEmpty()) {
-      existingUserComs.forEach(el -> el.setResponsable(false));
-     Optional<UserCom>  userCom= userComRepository.findByUserIdAndComId(request.getResponsableId(),id);
-      if(userCom.isPresent()&&!userCom.get().isResponsable()) {
-        userComRepository.saveAll(existingUserComs);
-        UserCom newResponsable=userCom.get();
-        newResponsable.setResponsable(true);
-        newResponsable.setStatus(ActiveStatus.ACTIF);
-        userComRepository.save(newResponsable);
-      }
-      else{
-        userComRepository.saveAll(existingUserComs);
-        UserCom newResponsable=new UserCom();
-        newResponsable.setUserId(request.getResponsableId());
-        newResponsable.setComId(id);
-        newResponsable.setStatus(ActiveStatus.ACTIF);
-        newResponsable.setResponsable(true);
-        userComRepository.save(newResponsable);
-      }
-
-    }
-
-
-    return  findById(id);
   }
 
 /*
@@ -391,7 +455,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
       uscom.get().setIsDeleted(true);
       uscom.get().setDeletedAt(Calendar.getInstance());
       uscom.get().setDeletedBy(ConnectedUserID);
-
+      userCommissionHistoriqueService.removeUserFromCommissionHistorique(userId, comId);
       userComRepository.save(uscom.get());
 
     }
@@ -422,7 +486,7 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
   @Override
   public void delete(Integer id) throws ComHasAssociatedAc, ComNotFound {
-    findById(id);
+  Com com=  findById(id);
     Specification<Ac> societeAddressSpec = Specification.where(
             AcSpecifications.deleted(false)
                     .and(AcSpecifications.hasCom(id))
@@ -435,6 +499,17 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     if(!users.isEmpty()) {
        throw new ComHasAssociatedUser("",id);
     }
+    //status update of history users for com
+ /*   List<String> usersIds = users.stream().map(UserCom::getUserId).collect(Collectors.toList());
+    for (String userId : usersIds) {
+      try{
+        userCommissionHistoriqueService.switchStatus(userId,id,ActiveStatus.NON_ACTIF);
+
+      }catch (RuntimeException e) {
+        logger.info("error while switching status for user historique when deleting user from com");
+        throw new SwitchStatueException("",userId);
+      }
+    }*/
     repository.softDelete(id);
   }
 
@@ -483,7 +558,9 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
     else{
       tutelId=ac.getTutel().getId();
     }
-    Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false));
+    Specification<Com> specCom=ComSpecifications.hasTute(tutelId).and(ComSpecifications.deleted(false))
+            .and(Specification.not(ComSpecifications.cncmp()))
+            .and(Specification.not(ComSpecifications.special()));
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
     if (page.hasContent()) {
       Com com= page.getContent().get(0);
@@ -497,7 +574,9 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
   public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
     Ac ac=acService.findById(acId);
     if(!ac.isIstTutel()){
-    Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false));
+    Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false)
+            .and(Specification.not(ComSpecifications.cncmp()))
+            .and(Specification.not(ComSpecifications.special())));
     Page<Com> page = findAll(specCom, Pageable.ofSize(1));
     if (page.hasContent() ) {
       Com com= page.getContent().get(0);
@@ -518,9 +597,11 @@ List<Integer> documentsIdsToDelete=docsRepository.findAllById(docIdsToDelete).st
 
   @Override
   public List<Com> getAllCommissionsDeTutelles(Integer acId) {
-    Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority();
-    List<Com> coms= repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
-    return coms;
+    Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority()
+                                               .and(ComSpecifications.deleted(false)
+                                               .and(Specification.not(ComSpecifications.cncmp()))
+                                               .and(Specification.not(ComSpecifications.special())));
+    return repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
   }
 
   @Override

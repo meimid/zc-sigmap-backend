@@ -15,7 +15,5 @@ public interface SocieteRepository  extends JpaRepository<Societe, Integer>,
     @Query("SELECT EXISTS (SELECT cb FROM CompteBancaire cb WHERE cb.societe.id = :societeId)")
     boolean hasAssociatedCompteBancaire(@Param("societeId") Integer societeId);
 
-    @Query("SELECT EXISTS (SELECT sa FROM SocieteAddress sa WHERE sa.societe.id = :societeId)")
-    boolean hasAssociatedSocieteAddress(@Param("societeId") Integer societeId);
 }
 

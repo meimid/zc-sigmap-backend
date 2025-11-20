@@ -3,7 +3,10 @@ package com.sigmap.common.societe.mappers;
 
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.request.SocieteRequest;
+import com.sigmap.common.societe.request.SocieteRequestInscription;
+import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
+import com.sigmap.common.societe.response.SocieteResponseDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -25,9 +28,10 @@ public interface SocieteMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.updatedBy", source = "updatedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+
     SocieteResponse map(Societe source);
     Societe map(SocieteRequest source);
-
+    Societe map(SocieteRequestInscription source);
     @Mapping(target = "metadata.createdAt", ignore = true)
     @Mapping(target = "metadata.createdBy", ignore = true)
     @Mapping(target = "metadata.updatedAt", ignore = true)
@@ -35,4 +39,9 @@ public interface SocieteMapper {
     @Mapping(target = "metadata.deletedBy", ignore = true)
     @Mapping(target = "metadata.isDeleted", ignore = true)
     void updateFromRequest(SocieteRequest source, @MappingTarget Societe target);
+
+    SocieteResponseDto toResponseDto(Societe source);
+    SocieteEnCourResponseDto toEnCourResponseDto(Societe source);
+
 }
+

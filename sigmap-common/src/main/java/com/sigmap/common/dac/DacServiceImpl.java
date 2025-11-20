@@ -3,7 +3,6 @@ package com.sigmap.common.dac;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.dac.exception.NoActiveAAOException;
-import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -15,9 +14,14 @@ import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
+import com.sigmap.common.dac_prix.DacPrix;
+import com.sigmap.common.dac_prix.DacPrixRepository;
+import com.sigmap.common.dac_prix.response.DacPrixResponce;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
+import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
@@ -66,6 +70,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 
 @Slf4j
 @Service
@@ -87,6 +92,9 @@ public class DacServiceImpl implements DacService {
     private final DacDocsDetailsRepository dacDocsDetailsRepository;
     private final AlfrescoService alfrescoService;
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
+    private final DacPrixRepository dacPrixRepository;
+    private final DynaDocsModelRepository dynaDocsModelRepository;
+    private final CurrentUserService currentUserService;
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
 
@@ -623,7 +631,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     @Transactional(rollbackOn = Throwable.class)
-    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
+    public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException {
         if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
             throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
         }
@@ -637,11 +645,24 @@ public class DacServiceImpl implements DacService {
         CompositeId realisationKey = new CompositeId();
         realisationKey.setId(request.getRealisationId());
         realisationKey.setVersion(request.getRealisationVer());
+        
 
-        // Check if a DAC already exists for this Realisation
-        Optional<Dac> existingDac = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
-        if (existingDac.isPresent()) {
-            throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+        // Enforce: a realisation can be linked to at most 2 DACs (by distinct dacId)
+        Integer dacCountForReal = dacRepository.countDistinctDacByRealisation(request.getRealisationId(), request.getRealisationVer());
+        log.info("Dac count for realisation: {} ------------------------ ", dacCountForReal);
+        if (dacCountForReal != null && dacCountForReal >= 2) {
+            throw new RuntimeException("Maximum number of DACs (2) already created for this realisation");
+        }
+
+        // Ensure if a DAC with this realisation exists -->  it must be published
+        List<Dac> dacsForRealisation = dacRepository.findByRealisationIdAndVersion(request.getRealisationId(), request.getRealisationVer());
+        //get the last DAC by its id and max version
+        Optional<Dac> lastDacVersion = dacsForRealisation.stream().max(Comparator.comparing(Dac::getDacId).thenComparing(Dac::getDacVer));
+        if (lastDacVersion.isPresent()) {
+            Dac firstDac = lastDacVersion.get();
+            if (firstDac.getStatus() != ProcessStatus.PUBLIE) {
+                throw new DacWithRealisation(request.getRealisationId() , request.getRealisationVer());
+            }
         }
 
         Realisation realisation = realisationRepository.findById(realisationKey).orElseThrow(() -> new RealisationNotFoundException( request.getRealisationId(), request.getRealisationVer()));
@@ -654,10 +675,12 @@ public class DacServiceImpl implements DacService {
         if (typeMarche == null) {
             throw new IllegalArgumentException("Type marche not found");
         }
-        ModeDePassationSelection modePassation = null;
+        ModeDePassationSelection modePassation;
         if (modePassationId != null) {
             modePassation = modeDePassationSelectionRepository.findById(modePassationId)
                     .orElseThrow(()-> new ModeDePassationSelectionNotFound("",modePassationId));
+        } else {
+            modePassation = null;
         }
 
         // AAO validation: ensure at least one active AAO DynaDocs exists for this typeMarche and modePassation
@@ -665,6 +688,12 @@ public class DacServiceImpl implements DacService {
         // Generate DAC reference
         String nom_ac = ppm.getAc().getNom();
         Integer sequenceNumber = dacRepository.findMaxDacNumber() + 1;
+
+        // get DynaDocModel by dynaDocsModelId from request
+        Optional <DynaDocsModel> dynaDocModel = dynaDocsModelRepository.findById(request.getDynaDocsModelId());
+        if(dynaDocModel.isEmpty()) {
+            throw new IllegalArgumentException("Dyna Doc Model is required");
+        }
 
         // Create DAC
         Dac dac = new Dac();
@@ -676,13 +705,18 @@ public class DacServiceImpl implements DacService {
         dac.setTypeMarche(typeMarche);
         dac.setModePassation( modePassation);
         dac.setStatus(ProcessStatus.BROUILLON);
+        dac.setParentDacId(request.getParentDacId());
+        dac.setShortListing(request.isShortListing());
+        dynaDocModel.ifPresent(dac::setDynaDocsModel);
         Dac savedCdac = dacRepository.save(dac);
 
         // Seed dac_docs snapshot for version 1 with latest DynaDocs of this typeMarche
-        List<DynaDocs> latestDocs = modePassation != null
-            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId())
-            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarche.getId());
-        for (DynaDocs dd : latestDocs) {
+       // List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarche.getId(), modePassation.getId(), dac.getDynaDocsModel().getDynaDocsModelId());
+
+        // get all dyna docs with last version
+
+        List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarche.getId(), modePassation.getId(), dac.getDynaDocsModel().getDynaDocsModelId());
+        for (DynaDocs dd : latestDocsFiltred) {
             List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
             if (fields.isEmpty()) {
                 // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
@@ -733,18 +767,33 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public List <Dac> findAll() {
-        Specification<Dac> spec = DacSpecifications.searchByDeleted(false);
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        Specification<Dac> spec = Specification.where(DacSpecifications.searchByDeleted(false));
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            spec = spec.and(DacSpecifications.searchByAcIds(userAcIds));
+        }
         return dacRepository.findAll(spec);
     }
 
     @Override
     public Page<Dac> findAll(Specification<Dac> spec, Pageable pageable) {
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
+        if (spec != null) {
+            specification = specification.and(spec);
+        }
+        if (userAcIds != null && !userAcIds.isEmpty()) {
+            specification = specification.and(DacSpecifications.searchByAcIds(userAcIds));
+        }
         return dacRepository.findAll(specification, pageable);
     }
 
     public Page<Dac> findAllLatest(Pageable pageable) {
-        return dacRepository.findLatestPerDac(pageable);
+        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        if (userAcIds == null || userAcIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+        return dacRepository.findLatestPerDacByAcIds(userAcIds, pageable);
     }
 
     @Override
@@ -764,6 +813,33 @@ public class DacServiceImpl implements DacService {
         return dacRepository.save(dac);
     }
 
+
+
+    // MAPPER 1 : UN SEUL DacPrix → DacPrixResponce
+    public DacPrixResponce mapDacPrixToDacPrixResponce(DacPrix dacPrix) {
+        if (dacPrix == null) {
+            return null;
+        }
+        DacPrixResponce response = new DacPrixResponce();
+        response.setDacId(dacPrix.getId().getDac().getDacId());
+        response.setDacVer(dacPrix.getId().getDac().getDacVer());
+        response.setMonnaie(dacPrix.getId().getMonnaie());
+        response.setPrix(dacPrix.getPrix());
+        return response;
+    }
+
+    // MAPPER 2 : LISTE → LISTE (APPELLE LE PREMIER)
+    public List<DacPrixResponce> mapDacPrixToDacPrixResponceList(List<DacPrix> dacPrixList) {
+        if (dacPrixList == null || dacPrixList.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return dacPrixList.stream()
+                .map(this::mapDacPrixToDacPrixResponce) // RÉUTILISE LE 1ER MAPPER
+                .collect(Collectors.toList());
+    }
+
+
+
     @Override
     @Transactional
     public DacResponseDTO findByDacIdAndVer(Integer dacId, Integer dacVer) {
@@ -782,14 +858,17 @@ public class DacServiceImpl implements DacService {
         java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
         java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
         if (noSnapshot) {
-            // New DAC without snapshot: return latest docs for its typeMarche (do not persist)
+            // New DAC without snapshot: return latest docs for its typeMarche, modePassation and modelId (do not persist)
             Integer typeMarcheIdForDac = dac.getTypeMarche().getId();
             Integer modePassationIdForDac = dac.getModePassation() != null ? dac.getModePassation().getId() : null;
-            List<DynaDocs> latestByCategoryAndModePassation = modePassationIdForDac != null
-                ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac)
-                : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForDac);
+            Integer modelId = dac.getDynaDocsModel().getDynaDocsModelId() != null ? dac.getDynaDocsModel().getDynaDocsModelId() : null;
+            if(typeMarcheIdForDac == null || modePassationIdForDac == null || modelId == null) {
+                throw new RuntimeException("return latest docs for its typeMarche, modePassation and modelId");
+            }
+           // List<DynaDocs> latestByCategoryAndModePassationAndModel =  dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForDac, modePassationIdForDac,modelId);
 
-            for (DynaDocs dd : latestByCategoryAndModePassation) {
+            List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForDac, modePassationIdForDac,modelId);
+            for (DynaDocs dd : latestDocsFiltred) {
                 String key = dd.getId() + ":" + dd.getVersion();
                 if (!docPairs.containsKey(key)) {
                     docPairs.put(key, new int[]{dd.getId(), dd.getVersion()});
@@ -815,6 +894,15 @@ public class DacServiceImpl implements DacService {
         }
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
+
+        List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dacId, dacVer);
+        if (dacPrixList != null && !dacPrixList.isEmpty()) {
+            List<DacPrixResponce> dacPrixResponces = mapDacPrixToDacPrixResponceList(dacPrixList);
+            dacResponse.setDacPrix(dacPrixResponces);
+        }
+        else {
+            dacResponse.setDacPrix(new ArrayList<>());
+        }
 
         List<DynaDocsResponseDTO> dynaDocsResponses = docPairs.values().stream()
                 .map(pair -> dynaDocsRepository
@@ -864,6 +952,24 @@ public class DacServiceImpl implements DacService {
         return dacResponse;
     }
 
+
+    public static Dac cloneWithNewVersion(Dac base, int nextVer) {
+        Dac newDac = new Dac();
+        newDac.setDacId(base.getDacId());
+        newDac.setDacVer(nextVer);
+        newDac.setPpm(base.getPpm());
+        newDac.setRealisation(base.getRealisation());
+        newDac.setTypeMarche(base.getTypeMarche());
+        newDac.setDateLimiteSoumission(base.getDateLimiteSoumission());
+        newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
+        newDac.setPayant(base.isPayant());
+        newDac.setShortListing(base.isShortListing());
+        newDac.setParentDacId(base.getParentDacId());
+        newDac.setDynaDocsModel(base.getDynaDocsModel());
+        // Add other fields as needed...
+        return newDac;
+    }
+
     @Override
     @Transactional
     public DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer) {
@@ -875,13 +981,15 @@ public class DacServiceImpl implements DacService {
         Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
         int nextVer = latest.getDacVer() + 1;
 
-        // Create new DAC version as a snapshot clone
-        Dac newDac = new Dac();
-        newDac.setDacId(base.getDacId());
-        newDac.setDacVer(nextVer);
-        newDac.setPpm(base.getPpm());
-        newDac.setRealisation(base.getRealisation());
-        newDac.setTypeMarche(base.getTypeMarche());
+        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
+        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacId, dacVer);
+        for (DacPrix dacPrix : prixDac) {
+            dacPrix.getId().getDac().setDacVer(nextVer);
+            dacPrixRepository.save(dacPrix);
+        }
+
+        // Create new DAC version using mapper
+        Dac newDac = cloneWithNewVersion(base, nextVer);
 
         // Set modePassation from base DAC, or from realisation if base doesn't have it
         if (base.getModePassation() != null) {
@@ -896,13 +1004,17 @@ public class DacServiceImpl implements DacService {
         newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
-        // Load latest active DynaDocs for DAC category
+        // Load latest active DynaDocs for DAC with typeMarche, modePassation and modelId
         Integer typeMarcheIdForNew = newDac.getTypeMarche().getId();
         Integer modePassationIdForNew = newDac.getModePassation() != null ? newDac.getModePassation().getId() : null;
-        List<DynaDocs> latestDocs = modePassationIdForNew != null
-            ? dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew)
-            : dynaDocsRepository.findAllLastVersionByTypeMarcheId(typeMarcheIdForNew);
+        Integer modelIdForNew = newDac.getDynaDocsModel().getDynaDocsModelId();
+        if(typeMarcheIdForNew==null || modePassationIdForNew==null || modelIdForNew==null){
+            throw new RuntimeException("could not load latest active DynaDocs for DAC with typeMarche, modePassation and modelId ");
+        }
+        //List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
+        // get all dyna docs with last version
+        List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
@@ -931,7 +1043,7 @@ public class DacServiceImpl implements DacService {
                 placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
                 placeholder.setStatus(ActiveStatus.ACTIF);
                 placeholder = dynaFieldsRepository.save(placeholder);
-                fields = java.util.List.of(placeholder);
+                fields = List.of(placeholder);
             }
             for (DynaFields f : fields) {
                 DacDocsId id = new DacDocsId();
@@ -949,8 +1061,17 @@ public class DacServiceImpl implements DacService {
                     sourceId = "";
                 } else {
                     prior = priorByFieldId.get(f.getDynaFieldsId());
+                    // Fallback: if field id changed between versions, match by field name within same dynaDoc
+                    if (prior == null) {
+                        prior = priorDocs.stream()
+                                .filter(p -> Objects.equals(p.getId().getDynaDocsId(), dd.getId()))
+                                .filter(p -> p.getDynaField() != null && Objects.equals(p.getDynaField().getName(), f.getName()))
+                                .findFirst()
+                                .orElse(null);
+                    }
                     if (prior != null) {
                         value = prior.getFieldValue();
+                        log.info("priooooor {}", value);
                         sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
                     } else if (f.getType() == DynaFieldType.SYSTEM) {
                         value = resolveSystemFieldValue(f, newDac);
@@ -979,16 +1100,25 @@ public class DacServiceImpl implements DacService {
                     List<DacDocsDetails> priorDetails = Collections.emptyList();
                     List<DynaFieldsDetails> priorColumns = Collections.emptyList();
                     Map<Integer, String> priorColNameById = Collections.emptyMap();
-                    if (prior != null) {
+                    DacDocs priorForDetails = prior;
+                    if (priorForDetails == null && !isNewDocForDac) {
+                        // Fallback by field name within same dynaDoc for details as well
+                        priorForDetails = priorDocs.stream()
+                                .filter(p -> Objects.equals(p.getId().getDynaDocsId(), dd.getId()))
+                                .filter(p -> p.getDynaField() != null && Objects.equals(p.getDynaField().getName(), f.getName()))
+                                .findFirst()
+                                .orElse(null);
+                    }
+                    if (priorForDetails != null) {
                         priorDetails = dacDocsDetailsRepository.findAll(
-                                Specification.where(DacDocsDetailsSpecification.byDacId(prior.getId().getDacId()))
-                                        .and(DacDocsDetailsSpecification.byDacVer(prior.getId().getDacVer()))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsId(prior.getId().getDynaDocsId()))
-                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
-                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
+                                Specification.where(DacDocsDetailsSpecification.byDacId(priorForDetails.getId().getDacId()))
+                                        .and(DacDocsDetailsSpecification.byDacVer(priorForDetails.getId().getDacVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsId(priorForDetails.getId().getDynaDocsId()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(priorForDetails.getId().getDynaDocsVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(priorForDetails.getId().getDynaFieldsId()))
                         );
                         // Also load prior column definitions to enable name-based matching when IDs changed
-                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(prior.getId().getDynaDocsId(), prior.getId().getDynaDocsVer(), prior.getId().getDynaFieldsId());
+                        priorColumns = dynaFieldsDetailsRepository.findAllByDocAndField(priorForDetails.getId().getDynaDocsId(), priorForDetails.getId().getDynaDocsVer(), priorForDetails.getId().getDynaFieldsId());
                         priorColNameById = priorColumns.stream().collect(Collectors.toMap(DynaFieldsDetails::getDynaFieldsDetailsId, DynaFieldsDetails::getColumnName, (a,b)->a));
                     }
 
@@ -1043,6 +1173,24 @@ public class DacServiceImpl implements DacService {
 
         // Return the assembled response for the new version using snapshot assembly
         return findByDacIdAndVer(newDac.getDacId(), newDac.getDacVer());
+    }
+
+    private List<DynaDocs> getAllDynaDocsWithTypeMarchRealisationModelIds(Integer typeMarche,Integer ModePassationId, Integer modelId) {
+
+        // get all dyna docs with last version
+        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLast();
+
+        // test parametres not null before
+        if (typeMarche ==null || ModePassationId == null || modelId == null) {
+            throw new IllegalArgumentException("All fields (typeMarcheId, modePassationId, dynaDocsModelId) are required");
+        }
+        List<DynaDocs> latestDocsFiltred = latestDocs.stream()
+                .filter(d -> d.getTypeMarche().getId().equals(typeMarche)
+                        && d.getModePassation().getId().equals(ModePassationId) &&
+                        d.getDynaDocsModel().getDynaDocsModelId().equals(modelId))
+                .toList();
+        log.debug("------------{}",latestDocsFiltred);
+        return latestDocsFiltred;
     }
 
     //Update if exists or insert a system field if it doesnt exist
@@ -1215,10 +1363,9 @@ public class DacServiceImpl implements DacService {
      * Validates that at least one active AAO DynaDocs exists for the given typeMarche and modePassation
      */
     private void validateActiveAAOExists(Integer typeMarcheId, Integer modePassationId) {
-        boolean hasActiveAAO;
         if (modePassationId != null && typeMarcheId != null) {
-            hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
-            if (!hasActiveAAO) {
+         var hasActiveAAO = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+            if (hasActiveAAO < 1) {
                 throw new NoActiveAAOException(typeMarcheId, modePassationId);
             }
         }
@@ -1307,4 +1454,10 @@ public class DacServiceImpl implements DacService {
         }
     }
 
+    @Override
+    @Transactional
+    public List<Dac> findPublishedDacsByRealisationIdAndVersion(Integer realisationId, Integer realisationVer) {
+        log.debug("Fetching published DACs for realisation ID: {} and version: {}", realisationId, realisationVer);
+        return dacRepository.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
+    }
 }

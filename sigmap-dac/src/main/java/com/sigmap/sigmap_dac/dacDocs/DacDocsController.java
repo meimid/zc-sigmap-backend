@@ -2,13 +2,16 @@ package com.sigmap.sigmap_dac.dacDocs;
 
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.Optional;
 import java.util.List;
@@ -28,6 +31,7 @@ public class DacDocsController {
 
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<DacDocsResponseFullEntities> createDacDocs(@RequestBody DacDocsRequest request) {
         DacDocs dacDocs = dacDocsService.createDacDocs(request);
         DacDocsResponseFullEntities response = DacDocsMapper.INSTANCE.entityToResponseMap(dacDocs);
@@ -35,6 +39,7 @@ public class DacDocsController {
     }
 
     @PostMapping("/batch-versionning")
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody List<DacDocsRequest> requests) {
         List<DacDocs> dacDocsList = dacDocsService.createDacDocsBatch(requests);
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
@@ -42,8 +47,9 @@ public class DacDocsController {
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithoutVersionning(@RequestBody List<DacDocsRequest> requests) {
-        List<DacDocs> dacDocsList = dacDocsService.createDacDocsList(requests);
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithoutVersionning(@RequestBody DacDoccsAndDacRequest dacDocsAndDacRequest)throws MonnaieNotFound {
+        List<DacDocs> dacDocsList = dacDocsService.createDacDocsList(dacDocsAndDacRequest);
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
     }
@@ -77,6 +83,7 @@ public class DacDocsController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<DacDocsResponse> updateDacDocs(@RequestBody DacDocsRequest request) {
         DacDocs dacDocs = dacDocsService.updateDacDocs(request);
         DacDocsResponse response = DacDocsMapper.INSTANCE.toResponse(dacDocs);
@@ -84,6 +91,7 @@ public class DacDocsController {
     }
 
     @PostMapping(path = "/upload-static", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<DacDocsResponseFullEntities> uploadStaticDoc(
             @RequestParam Integer dacId,
             @RequestParam Integer dynaDocsId,

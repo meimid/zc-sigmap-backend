@@ -2,9 +2,13 @@ package com.sigmap.common.dyna_docs;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
-import com.sigmap.common.dyna_docs.exception.ActiveAAOAlreadyExistsException;
+import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
+import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
+import com.sigmap.common.dyna_docs_model.DynaDocsModelService;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
@@ -22,8 +26,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import lombok.extern.slf4j.Slf4j;
@@ -36,18 +38,21 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   private final RefParamService refParamService;
   private final SequenceGeneratorService sequenceGeneratorService;
   private final ModeDePassationSelectionService modeDePassationSelectionService;
+  private final DynaDocsModelRepository dynaDocsModelRepository;
 
 
   public DynaDocsServiceImpl(
 
           DynaDocsRepository dynaDocsRepository,
           RefParamService refParamService, SequenceGeneratorService sequenceGeneratorService,
-          ModeDePassationSelectionService modeDePassationSelectionService) {
+          ModeDePassationSelectionService modeDePassationSelectionService,
+          DynaDocsModelRepository dynaDocsModelRepository) {
       this.sequenceGeneratorService = sequenceGeneratorService;
 
     this.dynaDocsRepository = dynaDocsRepository;
     this.refParamService = refParamService;
     this.modeDePassationSelectionService = modeDePassationSelectionService;
+    this.dynaDocsModelRepository = dynaDocsModelRepository;
   }
 
   @Override
@@ -88,6 +93,21 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
 
+    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
+    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
+      validateAAOUniqueness(request.getTypeMarcheId(), request.getModePassationId());
+    }
+
+    // ensure that DynaDocsModel exists by id or set null
+    if (request.getDynaDocsModelId() != null) {
+      DynaDocsModel ddm = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
+              .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
+
+      dynaDocs.setDynaDocsModel(ddm);
+    } else {
+      dynaDocs.setDynaDocsModel(null);
+    }
+
     dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));
     dynaDocs.setVersion(1);
 
@@ -99,11 +119,6 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDocs.setModePassation(mp);
     } else {
       dynaDocs.setModePassation(null);
-    }
-
-    // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
-    if (Boolean.TRUE.equals(request.getIsAAO()) && request.getStatus() == ActiveStatus.ACTIF) {
-      validateAAOUniqueness(request.getTypeMarcheId(), request.getModePassationId());
     }
 
     return save(dynaDocs);
@@ -125,6 +140,16 @@ public class DynaDocsServiceImpl implements DynaDocsService {
       dynaDoc.setModePassation(mp);
     } else {
       dynaDoc.setModePassation(null);
+    }
+
+    // ensure that DynaDocsModel exists by id or set null
+    if (request.getDynaDocsModelId() != null) {
+      DynaDocsModel ddm = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
+              .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
+
+      dynaDoc.setDynaDocsModel(ddm);
+    } else {
+      dynaDoc.setDynaDocsModel(null);
     }
 
     // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
@@ -167,7 +192,8 @@ public class DynaDocsServiceImpl implements DynaDocsService {
   private void validateAAOUniqueness(Integer typeMarcheId, Integer modePassationId) {
     if (modePassationId != null && typeMarcheId != null) {
       var exists = dynaDocsRepository.existsActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
-      if (exists) {
+      log.debug("Found {} active AAOs for typeMarcheId {} and modePassationId {}", exists, typeMarcheId, modePassationId);
+      if (exists > 0) {
         throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
       }
     }
@@ -178,11 +204,18 @@ public class DynaDocsServiceImpl implements DynaDocsService {
    */
   private void validateAAOUniquenessForUpdate(Integer currentDynaDocId, Integer typeMarcheId, Integer modePassationId) {
      var existingAAOs = dynaDocsRepository.findActiveAAOByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
+     log.debug("Found {} active AAOs for typeMarcheId {} and modePassationId {}", existingAAOs.size(), typeMarcheId, modePassationId);
     // Check if any existing AAO is different from the current document being updated
     boolean hasOtherAAO = existingAAOs.stream()
         .anyMatch(aao -> !aao.getId().equals(currentDynaDocId));
     if (hasOtherAAO) {
+      log.debug("---------- ActiveAAOAlreadyExistsException ---------");
         throw new ActiveAAOAlreadyExistsException(typeMarcheId, modePassationId);
+
     }
+  }
+
+  private DynaDocsModel findDynaDocsModelById(Integer dynaDocsModelId) {
+    return dynaDocsModelRepository.findById(dynaDocsModelId).orElseThrow(() -> new DynaDocsModelNotFoundExeption(dynaDocsModelId));
   }
 }

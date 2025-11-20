@@ -151,9 +151,9 @@ public class RefParamController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/categorie-soummisionaire")
-    public ResponseEntity<List<RefParamResponseDto>> findAllCategorieSoumissionaire() throws RefTypeNotFound {
-        List<RefParam> params = refParamService.findByRefType(RefTypes.CATEGORIE_SOMISSIONAIRE);
+    @GetMapping("/categorie-activite")
+    public ResponseEntity<List<RefParamResponseDto>> findAllCategorieActivite() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(RefTypes.CATEGORIE_ACTIVITE);
         List<RefParamResponseDto> responses = params.stream()
                 .map(RefParamMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
@@ -206,9 +206,9 @@ public class RefParamController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/categorie-soummisionnaire/{id}")
-    public ResponseEntity<RefParamResponse> findByCategorieSoumissionnaireAndById(@PathVariable Integer id) throws RefParamNotFound {
-        RefParam param = refParamService.findByIdAndRefTypeId(id, RefTypes.CATEGORIE_SOMISSIONAIRE);
+    @GetMapping("/categorie-activite/{id}")
+    public ResponseEntity<RefParamResponse> findByCategorieActiviteAndById(@PathVariable Integer id) throws RefParamNotFound {
+        RefParam param = refParamService.findByIdAndRefTypeId(id, RefTypes.CATEGORIE_ACTIVITE);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -253,12 +253,12 @@ public class RefParamController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/categorie-soummisionnaire/{id}")
+    @PutMapping("/categorie-activite/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<RefParamResponse> UpdateByCategorieSoumissionnaireAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
+    public ResponseEntity<RefParamResponse> UpdateByCategorieActiviteAndById(@PathVariable Integer id, @RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefParamNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefType(RefTypes.CATEGORIE_SOMISSIONAIRE);
-        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, RefTypes.CATEGORIE_SOMISSIONAIRE, request);
+        request.setRefType(RefTypes.CATEGORIE_ACTIVITE);
+        RefParam param = refParamService.UpdateRefParamByRefTypeId(id, RefTypes.CATEGORIE_ACTIVITE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(param);
         return ResponseEntity.ok(response);
     }
@@ -372,13 +372,13 @@ public class RefParamController {
     }
 
 
-    @DeleteMapping("/categorie-soummisionnaire/{id}")
+    @DeleteMapping("/categorie-activite/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<RefParamResponse> deleteByCategorieSoumissionnaireAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
+    public ResponseEntity<RefParamResponse> deleteByCategorieActiviteAndById(@PathVariable Integer id) throws RefParamHasAssociatedCom,
             RefParamHasAssociatedCompteBancaire,
             RefParamHasAssociatedSociete,
             RefParamHasAssociatedSocieteAddress, RefParamNotFound {
-        refParamService.deleteByIdAndRefTypeId(id, RefTypes.CATEGORIE_SOMISSIONAIRE);
+        refParamService.deleteByIdAndRefTypeId(id, RefTypes.CATEGORIE_ACTIVITE);
 
         RefParam deleted = refParamService.findDeletedById(id)
                 .orElseThrow();
@@ -460,12 +460,12 @@ public class RefParamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/categorie-soummisionnaire")
+    @PostMapping("/categorie-activite")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<RefParamResponse> createUnderCategorieSoumissionnaireAndById(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
+    public ResponseEntity<RefParamResponse> createUnderActiviteAndById(@RequestBody RefParamRequestWithoutRefTypeIdDto requestDto) throws RefTypeNotFound {
         RefParamRequest request = RefParamMapper.INSTANCE.mapToRequest(requestDto);
-        request.setRefType(RefTypes.CATEGORIE_SOMISSIONAIRE);
-        RefParam refParam = refParamService.createUnderRefType(RefTypes.CATEGORIE_SOMISSIONAIRE, request);
+        request.setRefType(RefTypes.CATEGORIE_ACTIVITE);
+        RefParam refParam = refParamService.createUnderRefType(RefTypes.CATEGORIE_ACTIVITE, request);
         RefParamResponse response = RefParamMapper.INSTANCE.map(refParam);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -533,4 +533,14 @@ public class RefParamController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
+
+    @GetMapping("/organisme-de-delivrance-agrements")
+    public ResponseEntity<List<RefParamResponseDto>> findOrganismeDeDelivranceAgrements() throws RefTypeNotFound {
+        List<RefParam> params = refParamService.findByRefType(RefTypes.ORGANISME_DE_DELIVRANCE_AGREMENTS);
+        List<RefParamResponseDto> responses = params.stream()
+                .map(RefParamMapper.INSTANCE::mapToDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
 }

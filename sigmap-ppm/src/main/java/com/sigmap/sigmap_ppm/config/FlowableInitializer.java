@@ -87,7 +87,6 @@ public class FlowableInitializer {
 
         return processEngine;
     }
-
     /**
      * Provides the Flowable RepositoryService for managing process definitions and deployments.
      * <p>

@@ -25,5 +25,6 @@ public class PpmResponseSoftDtoWithMetaData {
     private String remarque;
     private Boolean actualise;
     private Integer nbrActualisation;
+    private String etapeProcess;
     private BaseEntityResponse metadata;
 }

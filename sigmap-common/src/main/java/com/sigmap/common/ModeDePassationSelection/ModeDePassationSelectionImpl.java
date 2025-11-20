@@ -104,6 +104,9 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
             }
             modeDePassationSelection.getTypeMarchers().add(typeMarcher);
         }
+        if(request.isRestraint()){
+            modeDePassationSelection.setRestraint(true);
+        }
         return save(modeDePassationSelection);
     }
 
@@ -138,6 +141,10 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
                     RefParam typeMarcher = refParamService.findById(i);
                     modeDePassationSelection.getTypeMarchers().remove(typeMarcher);
             }
+        }
+
+        if(request.isRestraint()){
+            modeDePassationSelection.setRestraint(true);
         }
         return save(modeDePassationSelection);
     }

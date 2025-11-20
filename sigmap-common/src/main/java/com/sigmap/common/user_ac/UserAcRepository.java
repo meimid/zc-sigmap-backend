@@ -64,8 +64,10 @@ public interface UserAcRepository extends JpaRepository<UserAc, UserAcId>,
 
     @Query("SELECT DISTINCT ua.userId FROM UserAc ua " +
             "WHERE ua.acId IN :acIds " +
-            "AND ua.isDeleted = false")
-    List<String> findUserIdsByAcIds(@Param("acIds") List<Integer> acIds);
+            "AND ua.isDeleted = false " +
+            "AND ua.userId != :userId ")
+
+    List<String> findUserIdsByAcIds(@Param("acIds") List<Integer> acIds, @Param("userId") String userId);
 
 
 

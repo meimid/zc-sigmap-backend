@@ -15,6 +15,8 @@ public class ModeDePassationSelectionResponse {
     private Integer id;
     private String libelle;
     private List<RefParamResponseDto> typeMarchers;
+    private boolean isRestraint;
+
     private BaseEntityResponse metadata;
 
 

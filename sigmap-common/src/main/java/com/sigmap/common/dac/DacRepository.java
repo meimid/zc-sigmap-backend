@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.repository.SoftDeleteRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +30,11 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
 
   @Query("SELECT d FROM Dac d WHERE d.dacId = :dacId AND d.dacVer = :dacVer")
   Optional<Dac> findDacByDacIdAndDacVer(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);
+  
+  @Query("SELECT d FROM Dac d WHERE d.realisation.id = :realisationId AND d.realisation.version = :realisationVer AND d.isDeleted = false and d.status = 'PUBLIE' and d.shortListing = true")
+  List<Dac> findPublishedDacsByRealisationIdAndVersion(
+      @Param("realisationId") Integer realisationId, 
+      @Param("realisationVer") Integer realisationVer);
 
 
   /**
@@ -45,14 +52,36 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL and d.isDeleted = false")
   List<Object[]> findRealisationKeysWithDac();
 
+  @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL and d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) AND d.status = 'PUBLIE'")
+  List<Object[]> findRealisationKeysWithPublishedDac();
+
+  @Query("SELECT DISTINCT d.realisation.id, d.realisation.version FROM Dac d WHERE d.realisation IS NOT NULL AND d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) AND d.status <> 'PUBLIE'")
+  List<Object[]> findRealisationKeysWithNonPublishedDac();
+
+  @Query("SELECT DISTINCT d.realisation.id, d.realisation.version, COUNT(d) " +
+          "FROM Dac d WHERE d.realisation IS NOT NULL AND d.isDeleted = false " +
+          "GROUP BY d.realisation.id, d.realisation.version")
+  List<Object[]> findRealisationKeysWithDacCount();
+
   @Query("SELECT d FROM Dac d WHERE d.realisation.id = :id and d.realisation.version = :version and d.isDeleted = false")
-  Optional<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
+  List<Dac> findByRealisationIdAndVersion(@Param("id") Integer id, @Param("version") Integer version);
 
   @Query("SELECT COUNT (*) FROM Dac d")
   Integer findMaxDacNumber () ;
 
+  @Query("SELECT COUNT (DISTINCT d.dacId) FROM Dac d WHERE d.realisation.id = :id AND d.realisation.version = :version AND d.isDeleted = false")
+  Integer countDistinctDacByRealisation(@Param("id") Integer id, @Param("version") Integer version);
+
   @Query("SELECT d FROM Dac d WHERE d.isDeleted = false AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
-  org.springframework.data.domain.Page<Dac> findLatestPerDac(org.springframework.data.domain.Pageable pageable);
+  Page<Dac> findLatestPerDac(Pageable pageable);
+
+  @Query("SELECT d FROM Dac d " +
+          "LEFT JOIN d.ppm p " +
+          "LEFT JOIN p.ac a " +
+          "WHERE d.isDeleted = false " +
+          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+          "AND a.id IN :acIds")
+  Page<Dac> findLatestPerDacByAcIds(@Param("acIds") List<Integer> acIds, Pageable pageable);
 
   /**
    * Find the maximum version for a given DAC ID.

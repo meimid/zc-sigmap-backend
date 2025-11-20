@@ -28,5 +28,6 @@ public class PpmResponseDto {
     private String processInstanceId;
     private Boolean actualise;
     private Integer nbrActualisation;
+    private String etapeProcess;
     private BaseEntityResponse metadata;
 }

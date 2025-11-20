@@ -5,11 +5,13 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.mappers.PaaDetailedMapper;
@@ -91,6 +93,9 @@ public class PaaFlowableService {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private PaaRepository paaRepository;
 
     /**
      * Checks if the user has the specified role.
@@ -340,7 +345,10 @@ public class PaaFlowableService {
             return errorResponse;
         }
 
+        Integer paaId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer paaVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         taskService.complete(initialTask.getId());
+        updatePaaEtapeProcess(processInstanceId,paaId,paaVer);
 
         ProcessStartResponseDTO response = new ProcessStartResponseDTO();
         response.setProcessInstanceId(processInstance.getId());
@@ -782,7 +790,13 @@ public class PaaFlowableService {
         if (comment != null) {
             taskService.addComment(taskId, task.getProcessInstanceId(), comment);
         }
+        String processInstanceId = task.getProcessInstanceId();
+        Integer paaId = (Integer) runtimeService.getVariable(processInstanceId, "id");
+        Integer paaVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
         taskService.complete(taskId);
+
+
+        updatePaaEtapeProcess(processInstanceId,paaId,paaVer);
 
         if (historyService.createHistoricProcessInstanceQuery().processInstanceId(task.getProcessInstanceId()).finished().count() > 0) {
             newStatus = ProcessStatus.PUBLIE;
@@ -1135,6 +1149,25 @@ public class PaaFlowableService {
             throw new RuntimeException("Erreur lors de la génération du rapport Jasper : " + e.getMessage(), e);
         }catch (Exception e) {
             throw new RuntimeException("Erreur inattendue lors de la génération du modèle PAA : " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public void updatePaaEtapeProcess(String processInstanceId,Integer paaId,Integer paaVer) {
+
+        var nextTask = taskService.createTaskQuery()
+                .processInstanceId(processInstanceId)
+                .active()
+                .singleResult();
+
+        String stepName = (nextTask != null ? nextTask.getName() : "Completed");
+
+        if (paaId != null && paaVer != null) {
+            CompositeId key = new CompositeId(paaId, paaVer);
+            paaRepository.findById(key).ifPresent(paa -> {
+                paa.setEtapeProcess(stepName);
+                paaRepository.save(paa);
+            });
         }
     }
 

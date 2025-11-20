@@ -1,6 +1,7 @@
 package com.sigmap.common.dac.response;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.dyna_docs_model.response.DynaDocsModelResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
@@ -12,6 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Calendar;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -21,11 +24,18 @@ public class DacResponce {
     private Integer dacId;
     private Integer dacVer;
     private String reference;
+    private Calendar dateLimiteSoumission;
+    private Calendar dateLimiteRecptionDemande;
+    private boolean payant;
     private PpmResponseDto ppm;
     private RealisationResponseDTO realisation;
     private RefParam typeMarche;
     private ModeDePassationSelection modePassation;
     private ProcessStatus status;
     private String processInstanceId;
+    private Integer parentDacId;
+    private boolean shortListing;
+    private DynaDocsModelResponse dynaDocsModel;
+    private String etapeProcess;
     private BaseEntityResponse metadata;
 }

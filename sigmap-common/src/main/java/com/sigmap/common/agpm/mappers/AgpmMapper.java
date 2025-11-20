@@ -37,6 +37,7 @@ public interface AgpmMapper {
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "actualise", source = "actualise")
     @Mapping(target = "nbrActualisation", source = "nbrActualisation")
+    @Mapping(target = "etapeProcess", source = "etapeProcess")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")
@@ -72,6 +73,7 @@ public interface AgpmMapper {
     @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
     @Mapping(target = "actualise", source = "actualise")
     @Mapping(target = "nbrActualisation", source = "nbrActualisation")
+    @Mapping(target = "etapeProcess", source = "etapeProcess")
     AgpmResponseDto mapToDto(Agpm source);
 
     @Mapping(target = "id", ignore = true)

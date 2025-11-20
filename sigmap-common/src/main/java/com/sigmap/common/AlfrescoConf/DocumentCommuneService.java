@@ -615,5 +615,45 @@ public class DocumentCommuneService {
             throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
         }
     }
+
+
+    public  Integer processAndSaveDocumentsForPaymentDac(MultipartFile file, Integer dacId,Integer dacVer) throws IOException {
+
+        String baseFolderPath = String.format("%s/%d/%d/%s", Constants.PATH_ENTREPOT_GED_DAC , dacId,dacVer,Constants.PATH_ENTREPOT_GED_DAC_SOUMISSIONAIR);
+
+        try {
+            Docs document = mapperDocument(file,"PAYMENT_APPROVAL",baseFolderPath);
+
+
+            docsRepository.save(document);
+
+            return document.getId();
+
+
+        } catch (Exception e) {
+            log.error("Failed to process file: OriginalName={}, Error={}", file.getOriginalFilename(), e.getMessage());
+            // Re-throw as IOException for upstream handling
+            throw new IOException("Failed to process or upload document: " + e.getMessage(), e);
+        }
+    }
+
+    public Integer processAndSaveDocumentsForModelDac(MultipartFile file,
+                                                      Integer dacId,
+                                                      Integer dacVer,
+                                                      String path) throws IOException {
+        String baseFolderPath = String.format("%s/%d/%d/%s",
+                path, dacId, dacVer, Constants.PATH_ENTREPOT_GED_MODEL);
+
+        try {
+            Docs document = mapperDocument(file, "Model_DAC", baseFolderPath);
+
+            docsRepository.save(document);
+            return document.getId();
+        } catch (Exception e) {
+            log.error("Failed to process DAC model file: OriginalName={}, Error={}",
+                    file.getOriginalFilename(), e.getMessage());
+            throw new IOException("Failed to process or upload DAC model document: " + e.getMessage(), e);
+        }
+    }
 }
 
