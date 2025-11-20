@@ -31,6 +31,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -76,6 +77,7 @@ public class DynaDocsController {
   }
 
   @GetMapping
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<PageResponse<DynaDocsResponse>> getDynaDocs(
       DynaDocsQuery query, Pageable pageable) {
     Page<DynaDocs> dynaDocs = dynaDocsService.findAll(query.toSpecification(), pageable);
@@ -84,6 +86,7 @@ public class DynaDocsController {
   }
 
   @GetMapping("/{dynaDocsId}")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaDocsResponse> getDynaDocsById(
       @PathVariable Integer dynaDocsId,
       @RequestParam(required = false) Integer version,
@@ -182,6 +185,7 @@ public class DynaDocsController {
   }
 
   @PostMapping
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaDocsResponse> createDynaDocs(
       @RequestBody DynaDocsRequest dynaDocsRequest) {
     boolean templateExists = templateService.exists(dynaDocsRequest.getTemplateFileName());
@@ -209,6 +213,7 @@ public class DynaDocsController {
   }
 
   @PutMapping("/{dynaDocId}")
+  @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaDocsResponse> updateDynaDoc(
       @PathVariable Integer dynaDocId, @RequestBody DynaDocsRequest dynaDocsRequest) throws ModeDePassationSelectionNotFound {
     boolean templateExists = templateService.exists(dynaDocsRequest.getTemplateFileName());
