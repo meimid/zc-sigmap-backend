@@ -130,5 +130,8 @@ public class ComSpecifications {
     return (root, query, criteriaBuilder) ->
       criteriaBuilder.equal(root.get("comType").get("code"), "CNCMP-S");
   }
-
+    public static Specification<Com> cncmp() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("comType").get("code"), "CNCMP-P");
+    }
 }
