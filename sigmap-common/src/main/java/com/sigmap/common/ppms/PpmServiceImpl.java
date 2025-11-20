@@ -7,6 +7,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
@@ -4625,85 +4626,107 @@ public class PpmServiceImpl implements PpmService {
 
     @Transactional
     @Override
-    public Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException {
-        String currentYear = String.valueOf(LocalDate.now().getYear());
-        log.info("Creating PPM for year: {}", currentYear);
+    public Ppm createPpmPerAc(PpmWithLotsRequestDto request)
+            throws PpmCreationLimitExceededException, AcNotFound, IOException {
 
-        // Step 1: Validate the AC in the request
+        // ----------------------
+        // 1. Validate request year
+        // ----------------------
+        String annee = request.getAnnee();
+        if (annee == null || annee.isBlank()) {
+            throw new IllegalArgumentException("L'année est obligatoire pour créer un PPM.");
+        }
+
+        int requestedYear;
+        try {
+            requestedYear = Integer.parseInt(annee);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Année invalide : " + annee);
+        }
+
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        // Allowed years: current or next
+        if (requestedYear != currentYear && requestedYear != nextYear) {
+            throw new IllegalArgumentException(
+                    "Vous ne pouvez créer un PPM que pour l'année " + currentYear +
+                            " ou " + nextYear + ". Année reçue : " + requestedYear
+            );
+        }
+
+        log.info("Creating PPM for allowed year {}", requestedYear);
+
+        // ----------------------
+        // 2. Validate AC and permissions
+        // ----------------------
         Integer requestAcId = request.getAcId();
         if (requestAcId == null) {
-            throw new IllegalArgumentException("AC ID is required to create a PPM.");
+            throw new IllegalArgumentException("AC ID is required.");
         }
 
-        // Step 2: Verify that the user is associated with the requested AC
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
-        }
         if (!userAcIds.contains(requestAcId)) {
-            log.warn("User does not have permission for AC ID: {}", requestAcId);
-            throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
+            throw new AcNotFound("User not allowed for AC " + requestAcId, List.of(requestAcId));
         }
 
-        // Step 3: Verify that the AC exists
         Ac ac = acService.findById(requestAcId);
 
-        // Step 4: Restrict creation to one PPM per AC per year
-        Specification<Ppm> spec = PpmSpecifications.annee(currentYear)
+        // ----------------------
+        // 3. Check PPM uniqueness for REQUESTED YEAR
+        // ----------------------
+        Specification<Ppm> spec = PpmSpecifications.annee(String.valueOf(requestedYear))
                 .and(PpmSpecifications.ppmAc(requestAcId))
                 .and(PpmSpecifications.deleted(false));
+
         List<Ppm> existingPpms = repository.findAll(spec);
+
         if (!existingPpms.isEmpty()) {
-            Ppm existingPpm = existingPpms.get(0);
+            Ppm existing = existingPpms.get(0);
             throw new PpmCreationLimitExceededException(
-                    "A PPM already exists for AC ID " + requestAcId + " for year " + currentYear + ".",
-                    existingPpm.getId(),
-                    existingPpm.getVersion(),
+                    "Un PPM existe déjà pour l'AC " + requestAcId +
+                            " pour l'année " + requestedYear + ".",
+                    existing.getId(),
+                    existing.getVersion(),
                     1
             );
         }
 
-        // Step 5: Generate new PPM ID and set version
+        // ----------------------
+        // 4. Create PPM entity
+        // ----------------------
         Integer ppmId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
-        Integer ppmVersion = 1;
 
-        // Step 6: Create and populate PPM entity
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
-        ppm.setVersion(ppmVersion);
+        ppm.setVersion(1);
         ppm.setModePassation(request.getModePassation());
         ppm.setRemarque(request.getRemarque());
-        ppm.setAnnee(currentYear);
-        ppm.setAnnee(currentYear);
-//        ppm.setBudgetEstime(request.getBudgetEstime());
+        ppm.setAnnee(String.valueOf(requestedYear));
         ppm.setStatus(ProcessStatus.BROUILLON);
         ppm.setAc(ac);
         ppm.setRealisations(new ArrayList<>());
         ppm.setDocs(new ArrayList<>());
-        setRef(ppm);
         ppm.setActualise(Boolean.FALSE);
         ppm.setNbrActualisation(0);
+        setRef(ppm);
 
-        // Step 7: Validate annee
-        if (!currentYear.equals(ppm.getAnnee())) {
-            throw new IllegalStateException("Annee field is not set to the current year (" + currentYear + "). Current value: " + ppm.getAnnee());
-        }
-        log.info("Annee validation passed: {}", ppm.getAnnee());
-//        ppm.setNom("PPM-"+ac.getNom()+"-"+ppm.getAnnee());
-        // Step 8: Save PPM initially
+        log.info("PPM created with validated year {}", ppm.getAnnee());
+
         Ppm savedPpm = repository.save(ppm);
 
-        // Step 9: Handle documents for PPM
-        if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+        // ----------------------
+        // 5. Handle documents
+        // ----------------------
+        if (request.getDocIds() != null) {
             List<Docs> docs = new ArrayList<>();
             for (Integer docId : request.getDocIds()) {
                 Docs doc = docsRepository.findById(docId)
-                        .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                if (doc.getPpms() == null) {
-                    doc.setPpms(new ArrayList<>());
-                }
+                        .orElseThrow(() -> new EntityNotFoundException("Document not found: " + docId));
+
+                if (doc.getPpms() == null) doc.setPpms(new ArrayList<>());
                 doc.getPpms().add(savedPpm);
+
                 docs.add(doc);
                 docsRepository.save(doc);
             }
@@ -4717,8 +4740,6 @@ public class PpmServiceImpl implements PpmService {
                     Constants.PATH_ENTREPOT_GED_PPM
             );
         }
-
-        // Step 10: Process realisations if provided
         if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
             Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
@@ -4730,17 +4751,12 @@ public class PpmServiceImpl implements PpmService {
                 realisation.setVersion(1);
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
-//          realisation.setService(realisationRequest.getService());
-//          realisation.setDirection(realisationRequest.getDirection());
-//          realisation.setSourceFinancement(realisationRequest.getSourceFinancement());
-//          realisation.setMonnaie(realisationRequest.getMonnaie());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModePassation(realisationRequest.getModePassation());
                 realisation.setDatePrevLps(realisationRequest.getDatePrevLps());
                 realisation.setDatePrevAc(realisationRequest.getDatePrevAc());
                 realisation.setDatePrevDp(realisationRequest.getDatePrevDp());
                 realisation.setDatePrevAp(realisationRequest.getDatePrevAp());
-                // NOTE: do NOT set budgetEstime from request; we compute it from financements below
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
@@ -4855,15 +4871,12 @@ public class PpmServiceImpl implements PpmService {
                     // >>> Validate for PPM using the converted amounts
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
 
-                    // Keep the converted sum as the realisation budget (as requested)
-                    // (No other logic changed)
 
                 } else {
                     log.info("No financements provided for realisation ID: {}", realisation.getId());
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
 
-                    // >>> still validate for PPM (uses 0)
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
                 }
 
@@ -4872,21 +4885,18 @@ public class PpmServiceImpl implements PpmService {
             realisationRepository.saveAll(realisationsToSave);
 
         }
-
-        // Step 11: Validate realisations for budget consistency
+        // ----------------------
+        // FINAL STEPS
+        // ----------------------
         validateRealisations(savedPpm);
 
-        // Step 12: Calculate and set estimated budget based on realisations
-        BigDecimal budgetEstime = savedPpm.getRealisations().stream()
-                .map(Realisation::getBudgetEstime)
-                .filter(b -> b != null)
+        BigDecimal totalBudget = savedPpm.getRealisations().stream()
+                .map(r -> r.getBudgetEstime() != null ? r.getBudgetEstime() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        savedPpm.setBudgetEstime(budgetEstime);
 
-        // Step 13: Save and prepare the final PPM for return
-        Ppm finalPpm = repository.save(savedPpm);
+        savedPpm.setBudgetEstime(totalBudget);
 
-        return finalPpm;
+        return repository.save(savedPpm);
     }
 
 
@@ -4933,54 +4943,77 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound {
-        String currentYear = String.valueOf(LocalDate.now().getYear());
-        log.info("Checking ACs without PPM for current year: {}", currentYear);
+    public List<AcAvailablePpmResponse> getAcsWithoutPpmForCurrentYear() throws AcNotFound {
 
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        log.info("Checking ACs without PPM for {} and {}", currentYear, nextYear);
+
+        // User ACs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         if (userAcIds.isEmpty()) {
-            log.warn("No AC IDs found for the connected user");
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
+            throw new AcNotFound("No AC IDs found", Collections.emptyList());
         }
-        log.info("User AC IDs: {}", userAcIds);
 
         for (Integer acId : userAcIds) {
-            try {
-                acService.findById(acId);
-            } catch (AcNotFound e) {
-                log.warn("AC not found with ID: {}", acId);
-                throw e;
+            acService.findById(acId);
+        }
+
+        // Load all PPMs for (currentYear, nextYear)
+        List<Ppm> ppms = repository.findAll((root, query, cb) -> {
+            Predicate yearPredicate = root.get("annee").in(
+                    String.valueOf(currentYear),
+                    String.valueOf(nextYear)
+            );
+            Predicate notDeleted = cb.isFalse(root.get("isDeleted"));
+            return cb.and(yearPredicate, notDeleted);
+        });
+
+        // Group by AC
+        Map<Integer, Set<Integer>> acExistingYears = new HashMap<>();
+
+        for (Ppm ppm : ppms) {
+            if (ppm.getAc() != null) {
+                acExistingYears
+                        .computeIfAbsent(ppm.getAc().getId(), k -> new HashSet<>())
+                        .add(Integer.parseInt(ppm.getAnnee()));
             }
         }
 
-        Specification<Ppm> spec = (root, query, criteriaBuilder) -> {
-            Predicate yearPredicate = criteriaBuilder.equal(root.get("annee"), currentYear);
-            Predicate notDeletedPredicate = criteriaBuilder.isFalse(root.get("isDeleted"));
-            return criteriaBuilder.and(yearPredicate, notDeletedPredicate);
-        };
-        List<Ppm> ppms = repository.findAll(spec);
-        log.info("Found {} PPMs for year {} (non-deleted)", ppms.size(), currentYear);
+        List<AcAvailablePpmResponse> response = new ArrayList<>();
 
-        Set<Integer> acIdsWithPpm = ppms.stream()
-                .filter(ppm -> ppm.getAc() != null)
-                .map(ppm -> ppm.getAc().getId())
-                .collect(Collectors.toSet());
-        log.info("ACs with non-deleted PPM IDs: {}", acIdsWithPpm);
+        // Determine allowed years
+        for (Integer acId : userAcIds) {
 
-        List<Integer> acIdsWithoutPpm = userAcIds.stream()
-                .filter(acId -> !acIdsWithPpm.contains(acId))
-                .collect(Collectors.toList());
-        log.info("ACs without non-deleted PPM IDs: {}", acIdsWithoutPpm);
+            Set<Integer> years = acExistingYears.getOrDefault(acId, new HashSet<>());
+            List<Integer> allowedYears = new ArrayList<>();
 
-        if (acIdsWithoutPpm.isEmpty()) {
-            log.info("All ACs for user have non-deleted PPMs for year {}", currentYear);
-            throw new AllAcsHavePpmException("Vous ne pouvez pas actuellement créer un nouveau PPM ! Toutes les AC dont vous êtes membre ont des PPM en cours pour l'année " + currentYear + ".");
+            if (!years.contains(currentYear)) allowedYears.add(currentYear);
+            if (!years.contains(nextYear)) allowedYears.add(nextYear);
+
+            if (allowedYears.isEmpty()) continue;
+
+            Ac ac = acService.findById(acId);
+
+            AcAvailablePpmResponse dto = new AcAvailablePpmResponse();
+            dto.setAcId(acId);
+            dto.setAcName(ac.getNom());
+            dto.setAllowedYears(allowedYears);
+
+            response.add(dto);
         }
 
-        List<Ac> acsWithoutPpm = acRepository.findAllById(acIdsWithoutPpm);
-        log.info("Found {} ACs without non-deleted PPM for user", acsWithoutPpm.size());
-        return acsWithoutPpm;
+        if (response.isEmpty()) {
+            throw new AllAcsHavePpmException(
+                    "Toutes vos AC ont des PPM pour " + currentYear +
+                            " et " + nextYear + "."
+            );
+        }
+
+        return response;
     }
+
 
     @Override
     public Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) {

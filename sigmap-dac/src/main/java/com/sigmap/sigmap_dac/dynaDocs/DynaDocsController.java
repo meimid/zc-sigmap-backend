@@ -57,7 +57,7 @@ public class DynaDocsController {
    * Constructor.
    *
    * @param dynaDocsService the dynaDocs service
-   * @param dynaFieldsService the dynaFields service
+   * @param dynaFieldsService the dynaFields ser6vice
    * @param templateService the template service
    */
   public DynaDocsController(

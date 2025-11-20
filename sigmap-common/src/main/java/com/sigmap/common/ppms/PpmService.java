@@ -2,6 +2,7 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
@@ -312,7 +313,7 @@ public interface PpmService {
 
      Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException;
      Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable);
-     List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
+    List<AcAvailablePpmResponse> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
     Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) ;
 
     /**
