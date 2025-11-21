@@ -2506,7 +2506,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     }
     @Override
     public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
-        log.info("Retrieving current year's PAAs for connected user with pageable: {}", pageable);
+        log.info("Retrieving PAAs for current year and next year for connected user with pageable: {}", pageable);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
@@ -2520,31 +2520,42 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             try {
                 acService.findById(acId);
             } catch (Exception e) {
-                log.info("AC not found with ID: {}", acId);
+                log.warn("AC not found with ID: {}", acId);
                 return Page.empty(pageable);
             }
         }
 
-        // Get current year
-        String currentYear = String.valueOf(LocalDate.now().getYear());
+        // Get current year and next year
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        List<String> allowedYears = List.of(
+                String.valueOf(currentYear),
+                String.valueOf(nextYear)
+        );
+
+        log.info("Allowed PAA years for retrieval: {}", allowedYears);
 
         // Build specification
-        Specification<Paa> spec = Specification.where(PaaSpecifications.annee(currentYear))
+        Specification<Paa> spec = Specification
+                .where(PaaSpecifications.anneeIn(allowedYears))
                 .and(PaaSpecifications.paaAc(userAcIds))
                 .and(PaaSpecifications.deleted(false))
                 .and(PaaSpecifications.isLatestVersion());
 
-        // Query PAAs with pagination
         Page<Paa> paasPage = repository.findAll(spec, pageable);
 
         if (paasPage.isEmpty()) {
-            log.info("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            log.info("No PAAs found for years {} and {} for user ACs {}", currentYear, nextYear, userAcIds);
             return Page.empty(pageable);
         }
 
-        log.info("Retrieved {} PAAs for the current year {} and user ACs {}", paasPage.getContent().size(), currentYear, userAcIds);
+        log.info("Retrieved {} PAAs for years {} & {} for user ACs {}",
+                paasPage.getContent().size(), currentYear, nextYear, userAcIds);
+
         return paasPage;
     }
+
 
     @Transactional
     @Override

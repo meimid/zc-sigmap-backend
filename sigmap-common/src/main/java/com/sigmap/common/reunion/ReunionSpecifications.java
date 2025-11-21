@@ -114,4 +114,16 @@ public class ReunionSpecifications {
             return comJoin.get("id").in(comIds);
         };
     }
+
+    /**
+     * Filter Reunion by PPM ID through ReunionPpm relationship.
+     */
+    public static Specification<Reunion> hasPpmId(Integer ppmId) {
+        return (root, query, cb) -> {
+            var join = root.join("reunionPpms"); // join Reunion -> ReunionPpm
+            return cb.equal(join.get("ppmId"), ppmId);
+        };
+    }
+
+
 }

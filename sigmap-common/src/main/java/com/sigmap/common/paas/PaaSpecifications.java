@@ -211,4 +211,9 @@ public class PaaSpecifications {
                         year
                 );
     }
+
+    public static Specification<Paa> anneeIn(List<String> annees) {
+        return (root, query, cb) -> root.get("annee").in(annees);
+    }
+
 }
