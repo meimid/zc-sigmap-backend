@@ -1422,6 +1422,8 @@ public class DacFlowableService {
         Map<String, Boolean> props = getTaskProperties(task);
         resp.setIsUpdatable(props.get("isUpdatable"));
         resp.setIsPublishable(props.get("isPublishable"));
+        resp.setMeetingRequired(props.get("meetingRequired"));
+        resp.setCommissionRequired(props.get("commissionRequired"));
         resp.setNextSteps(getPossibleNextSteps(task));
         resp.setStatus("DAC and task details retrieved successfully");
         return resp;

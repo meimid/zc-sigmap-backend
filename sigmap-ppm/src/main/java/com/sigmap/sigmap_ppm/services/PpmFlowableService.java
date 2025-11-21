@@ -1725,13 +1725,22 @@ public class PpmFlowableService {
                 if (id != null && version != null) {
                     try {
                         Optional<Ppm> ppmOpt = ppmService.findById(id, version);
+
                         ppmOpt.ifPresent(ppm -> {
+
                             taskInfo.setId(id);
                             taskInfo.setVersion(version);
                             taskInfo.setNom(ppm.getNom());
                             taskInfo.setRef(ppm.getRef());
                             taskInfo.setModelAlfrescoId(ppm.getModelAlfrescoId());
+
+                            if (ppm.getAc() != null) {
+                                taskInfo.setNomAc(ppm.getAc().getNom());
+                            } else {
+                                taskInfo.setNomAc(null);
+                            }
                         });
+
                     } catch (Exception e) {
                         log.warn("Failed loading PPM for id {}, version {} in task {}: {}",
                                 id, version, task.getId(), e.getMessage());
