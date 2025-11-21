@@ -59,6 +59,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -1051,21 +1053,54 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound {
-       /* Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
-        if(ppm.isEmpty()){
-            throw new PpmNotFound("",List.of(ppmId),null);
-        }*/
+    public List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId)  {
+
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
         return repository.findAll(spec);
     }
-/*this methode return dto because i will build some data from different services*/
+
     @Override
-    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
-        Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
-        if(ppm.isEmpty()){
-            throw new PpmNotFound("",List.of(ppmId),null);
+    public List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId, String userId) {
+
+        List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        return repository.findAll(spec)
+                .stream()
+                .filter(reunion ->
+                        comIds.contains(reunion.getCom().getId()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt) {
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+        List<Reunion> reunionList=new ArrayList<>();
+        if(isAdminCentral||isSuperAdmin) {
+            reunionList = findAllByPpmIdListForAdminCentralAndSuperAdmin(ppmId);}
+        else{
+            String userId = jwt.getSubject();
+            reunionList=findAllByPpmIdListForUserCom(ppmId,userId);
+
         }
+        return reunionList;
+    }
+
+    /*this methode return dto because i will build some data from different services*/
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) {
+
         Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
        Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
         ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
@@ -1087,6 +1122,63 @@ public class ReunionServiceImpl implements ReunionService{
         UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
         dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
         dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        return dto;
+    }
+
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId){
+        List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+        if(!comIds.contains(reunion.getCom().getId())) {
+            throw new AuthorizationDeniedException("");
+        }
+        ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        UserDTO createdUser=keycloakAdminService.getUserById(reunion.getCreatedBy());
+        UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
+        dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
+        dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        return dto;
+    }
+
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId, Jwt jwt) {
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+        ReunionWithParticipantsAndPvDto dto =new ReunionWithParticipantsAndPvDto();
+        if(isAdminCentral||isSuperAdmin) {
+            dto = particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(reunionId, ppmId);
+        }
+        else {
+            String userId = jwt.getSubject();
+
+            dto =particpantHistoryByReunionIdAndPPmIdForUserCom(reunionId,ppmId,userId);
+        }
         return dto;
     }
 

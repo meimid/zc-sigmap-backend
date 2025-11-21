@@ -14,6 +14,7 @@ import com.sigmap.common.realisations.Realisation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.io.IOException;
 import java.util.List;
@@ -330,6 +331,10 @@ public interface PpmService {
      */
     Ppm actualise(Integer ppmId)
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
-    List<Ppm> findAllSpec(Specification<Ppm> spec);
+    List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
+    List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
+    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt);
+
+
 }
 
