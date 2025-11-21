@@ -412,29 +412,9 @@ public class ReunionController {
 
         // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
 
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+        ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId, jwt);
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-
-        ReunionWithParticipantsAndPvDto dto =new ReunionWithParticipantsAndPvDto();
-        if(isAdminCentral||isSuperAdmin) {
-            dto = reunionService.particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(reunionId, ppmId);
-        }
-        else {
-            String userId = jwt.getSubject();
-
-            reunionService.particpantHistoryByReunionIdAndPPmIdForUserCom(reunionId,ppmId,userId);
-        }
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
     @GetMapping("/drop-list/ppm/{ppmId}")
     public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws PpmNotFound, AcNotFound {
@@ -442,29 +422,9 @@ public class ReunionController {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
         }
-
         // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt);
 
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
-
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-
-        List<Reunion> reunionList=new ArrayList<>();
-        if(isAdminCentral||isSuperAdmin) {
-         reunionList = reunionService.findAllByPpmIdListForAdminCentralAndSuperAdmin(ppmId);}
-        else{
-            String userId = jwt.getSubject();
-            reunionList=reunionService.findAllByPpmIdListForUserCom(ppmId,userId);
-
-        }
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
     }
 }

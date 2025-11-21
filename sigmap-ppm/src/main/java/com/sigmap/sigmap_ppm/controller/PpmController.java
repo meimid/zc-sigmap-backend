@@ -1442,31 +1442,7 @@ public class PpmController {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
         }
-
-      // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
-
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-
-
-
-        List<Ppm> ppms = new ArrayList<>();
-        if(isAdminCentral||isSuperAdmin) {
-           ppms= ppmService.findAllForSuperAdminAndAdminCentral(specification);
-        }
-        else {
-            String userId = jwt.getSubject();
-            ppms=ppmService.findAllForComUser(specification,userId);
-        }
+        List<Ppm> ppms=ppmService.findAllPpms(specification,jwt);
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
