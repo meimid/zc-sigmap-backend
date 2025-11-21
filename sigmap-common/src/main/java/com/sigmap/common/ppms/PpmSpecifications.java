@@ -213,4 +213,8 @@ public class PpmSpecifications {
                         year
                 );
     }
+    public static Specification<Ppm> anneeIn(List<String> annees) {
+        return (root, query, cb) -> root.get("annee").in(annees);
+    }
+
 }

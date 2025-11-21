@@ -4902,7 +4902,7 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable) {
-        log.info("Retrieving current year's PPMs for connected user with pageable: {}", pageable);
+        log.info("Retrieving PPMs for current year and next year for connected user with pageable: {}", pageable);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
@@ -4911,21 +4911,30 @@ public class PpmServiceImpl implements PpmService {
             return Page.empty(pageable);
         }
 
-        // Validate ACs
+        // Validate ACs exist
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
             } catch (Exception e) {
-                log.info("AC not found with ID: {}", acId);
-                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+                log.warn("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
-        // Get current year
-        String currentYear = String.valueOf(LocalDate.now().getYear());
+        // Determine current year & next year
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        List<String> allowedYears = List.of(
+                String.valueOf(currentYear),
+                String.valueOf(nextYear)
+        );
+
+        log.info("Allowed PPM years for retrieval: {}", allowedYears);
 
         // Build specification
-        Specification<Ppm> spec = Specification.where(PpmSpecifications.annee(currentYear))
+        Specification<Ppm> spec = Specification
+                .where(PpmSpecifications.anneeIn(allowedYears))
                 .and(PpmSpecifications.ppmAc(userAcIds))
                 .and(PpmSpecifications.deleted(false))
                 .and(PpmSpecifications.isLatestVersion());
@@ -4934,13 +4943,17 @@ public class PpmServiceImpl implements PpmService {
         Page<Ppm> ppmsPage = repository.findAll(spec, pageable);
 
         if (ppmsPage.isEmpty()) {
-            log.info("No PPMs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            log.info("No PPMs found for years {} and {} for user ACs {}",
+                    currentYear, nextYear, userAcIds);
             return Page.empty(pageable);
         }
 
-        log.info("Retrieved {} PPMs for the current year {} and user ACs {}", ppmsPage.getContent().size(), currentYear, userAcIds);
+        log.info("Retrieved {} PPMs for years {} & {} for ACs {}",
+                ppmsPage.getContent().size(), currentYear, nextYear, userAcIds);
+
         return ppmsPage;
     }
+
 
     @Override
     public List<AcAvailablePpmResponse> getAcsWithoutPpmForCurrentYear() throws AcNotFound {
