@@ -330,5 +330,6 @@ public interface PpmService {
      */
     Ppm actualise(Integer ppmId)
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
-
+    List<Ppm> findAllSpec(Specification<Ppm> spec);
 }
+

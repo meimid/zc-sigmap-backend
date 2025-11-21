@@ -53,6 +53,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -62,6 +63,8 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.lang.reflect.Method;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
@@ -1428,6 +1431,12 @@ public class PpmController {
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(newVersion);
         return ResponseEntity.ok(response);
     }
-
+    @GetMapping("/drop-list")
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
+        Specification specification = query.toSpecification();
+        List<Ppm> ppms = ppmService.findAllSpec(specification);
+         List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
 
 }

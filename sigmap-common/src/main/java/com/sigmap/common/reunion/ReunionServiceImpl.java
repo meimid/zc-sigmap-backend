@@ -4,6 +4,8 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.ParticipantService;
 
+import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
+import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
@@ -15,21 +17,28 @@ import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.Mapper.DocMapper;
+import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
 import com.sigmap.common.reunionDac.ReunionDacRepository;
@@ -202,9 +211,10 @@ public class ReunionServiceImpl implements ReunionService{
 
             ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
             reunionToUpdate.setStatus(status);
-            synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
+            synchronizeParticipants(request, reunionToUpdate);
+
             return save(reunionToUpdate);
         }
         else {
@@ -226,9 +236,9 @@ public class ReunionServiceImpl implements ReunionService{
         if(reunionToUpdate.getStatus().equals(ReunionStatus.BROUILLON)){
 
         ReunionMapper.INSTANCE.updateFromRequest(request,reunionToUpdate);
-            synchronizeParticipants(request, reunionToUpdate);
             synchronizePpms(request, reunionToUpdate);
             synchronizeDacs(request, reunionToUpdate);
+            synchronizeParticipants(request, reunionToUpdate);
 
 
 
@@ -286,9 +296,6 @@ public class ReunionServiceImpl implements ReunionService{
             }
 
 
-
-
-
             return save(reunionToUpdate);
         }
         else {
@@ -337,16 +344,14 @@ public class ReunionServiceImpl implements ReunionService{
             participantRequest.setPrenom(userDetails.getLastName());
             participantRequest.setMail(userDetails.getEmail());
             participantRequest.setUserId(userCom.getUserId());
-            participantRequest.setType(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE);
-            ParticipantRequest requestData = requestParticipantsMap.get(userCom.getUserId());
+            ParticipantType type=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE;
+            participantRequest.setType(type);
+            ParticipantFonction fonctionReunion=Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId()) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
+            String fonction=String.valueOf(fonctionReunion);
             participantRequest.setOrganisme(reunion.getCom().getNom());
-            String participantFonction = String.valueOf(Objects.equals(reunion.getCom().getResponsableId(), userCom.getUserId())
-                    ? ParticipantType.RESPONSABLE
-                    : ParticipantType.MEMBRE);
-            participantRequest.setFonction(participantFonction);
-
-                participantRequest.setPresent(false);
-
+            participantRequest.setFonctionReunion(fonctionReunion);
+            participantRequest.setFonction(fonction);
+            participantRequest.setPresent(false);
             Participant participant= participantService.create(participantRequest);
             reunion.getParticipants().add(participant);
 
@@ -357,6 +362,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if (invitedRequest.getUserId() == null || !commissionMemberUserIds.contains(invitedRequest.getUserId())) {
                     invitedRequest.setReunionId(reunion.getId());
                     invitedRequest.setType(ParticipantType.INVITE);
+                    invitedRequest.setFonctionReunion(ParticipantFonction.MEMBRE);
                     Participant participant=  participantService.create(invitedRequest);
                     reunion.getParticipants().add(participant);
 
@@ -367,6 +373,15 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Transactional
     public void synchronizeParticipants(ReunionRequest request, Reunion reunionReq) {
+        long requestHasPresident = request.getParticipants().stream()
+                .filter(p -> p.getFonctionReunion() == ParticipantFonction.PRESIDENT).count();
+
+        if ( requestHasPresident==0) {
+            throw new PresidentFonctionRequiredException("");
+        }
+        if(requestHasPresident>1){
+            throw new MultiplePresidentsNotAllowedException("More than one president");
+        }
         Reunion reunion = repository.findByIdWithParticipants(reunionReq.getId())
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , reunionReq.getId()));
         Map<Integer, Participant> currentParticipantsMap = reunion.getParticipants().stream()
@@ -383,9 +398,11 @@ public class ReunionServiceImpl implements ReunionService{
         for (ParticipantRequest participantRequest : participantsInRequest) {
             if (participantRequest.getId() != null) {
                 Participant participantToUpdate = currentParticipantsMap.get(participantRequest.getId());
+
                 if (participantToUpdate != null) {
                     if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
+
                     }else{
                         participantToUpdate.setPresent(false);
                     }
@@ -402,6 +419,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if(reunion.getStatus().equals(ReunionStatus.BROUILLON)) {
                     participantRequest.setReunionId(reunion.getId());
                     participantRequest.setType(ParticipantType.INVITE);
+                    participantRequest.setFonctionReunion(ParticipantFonction.MEMBRE);
                     Participant newInvitedParticipant = participantService.create(participantRequest);
                     participantsToSave.add(newInvitedParticipant);
                     reunion.getParticipants().add(newInvitedParticipant);
@@ -964,6 +982,7 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
+            updateParticipantsFonction(request, reunionToUpdate);
             return save(reunionToUpdate);
         }
         else {
@@ -992,7 +1011,9 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
-
+            if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
+                updateParticipantsFonction(request, reunionToUpdate);
+            }
             return save(reunionToUpdate);
         }
         else {
@@ -1029,6 +1050,46 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
+    @Override
+    public List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound {
+       /* Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
+        if(ppm.isEmpty()){
+            throw new PpmNotFound("",List.of(ppmId),null);
+        }*/
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        return repository.findAll(spec);
+    }
+/*this methode return dto because i will build some data from different services*/
+    @Override
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound {
+        Optional<Ppm> ppm=ppmService.findLatestById(ppmId);
+        if(ppm.isEmpty()){
+            throw new PpmNotFound("",List.of(ppmId),null);
+        }
+        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.id(reunionId)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+       Reunion reunion= repository.findOne(spec).orElseThrow(()->new ReunionNotFound("",reunionId));
+        ReunionWithParticipantsAndPvDto dto=  ReunionMapper.INSTANCE.mapToReunionWithParticipantsAndPvDto(reunion);
+        if (reunion.getProcessVerbal() != null && dto.getProcessVerbal() != null) {
+            DocsResponseDTO pvDocDto = mapPvmDocs(reunion.getProcessVerbal().getDocuments());
+
+            dto.getProcessVerbal().setDocument(
+                    pvDocDto != null
+                            ? new ProcessVerbalReunionDocResponse(
+                            dto.getProcessVerbal().getId(),
+                            pvDocDto.getId(),
+                            pvDocDto,
+                            true
+                    )
+                            : null
+            );
+        }
+        UserDTO createdUser=keycloakAdminService.getUserById(reunion.getCreatedBy());
+        UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
+        dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
+        dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        return dto;
+    }
+
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
         boolean superAdmin= Authentication.hasRole("SUPER_ADMIN");
         if(!superAdmin){
@@ -1060,5 +1121,44 @@ public class ReunionServiceImpl implements ReunionService{
         return !Participants.isEmpty();
 
     }
+    private void updateParticipantsFonction(ReunionRequest request, Reunion reunion) {
+        for (Participant participant : reunion.getParticipants()) {
+            for (ParticipantRequest participantRequest : request.getParticipants()) {
+                if((participant.getType().equals(ParticipantType.INVITE)||
+                        participant.getType().equals(ParticipantType.MEMBRE))&&
+                        participantRequest.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)&&
+                        !participantRequest.isPresent()) {
+                    throw new ParticipantPresidentPresenceRequired("");
+                }
+                if (participant.getId().equals(participantRequest.getId())) {
+                    if(participant.getType().equals(ParticipantType.RESPONSABLE)){
+                        if(participantRequest.isPresent()){
+                        participant.setFonctionReunion(ParticipantFonction.PRESIDENT);
+                        }
+                        else{
+                            participant.setFonctionReunion(ParticipantFonction.MEMBRE);
 
+                        }
+                    }
+                    else {
+                        participant.setFonctionReunion(participantRequest.getFonctionReunion());
+                    }
+
+                    participantService.save(participant);
+                    break;
+                }
+            }
+        }
+    }
+
+    private DocsResponseDTO mapPvmDocs(List<ProcessVerbalReunionDoc> pvDocs) {
+        if (pvDocs == null) return null;
+
+        return pvDocs.stream()
+                .filter(pvDoc -> pvDoc.isPv() && pvDoc.getDoc() != null && !pvDoc.getDoc().getIsDeleted())
+                .map(ProcessVerbalReunionDoc::getDoc)
+                .map(DocMapper.INSTANCE::mapToDto)
+                .findFirst()
+                .orElse(null);
+    }
 }

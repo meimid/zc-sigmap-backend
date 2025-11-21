@@ -30,8 +30,10 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionDropListDto;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionResponseDto;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -386,4 +388,25 @@ public class ReunionController {
                 .orElse(null);
     }
 
+
+ /*   @GetMapping("/list/ppm/{ppmId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
+    }*/
+
+    @GetMapping("/history/{reunionId}/ppm/{ppmId}")
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        ReunionWithParticipantsAndPvDto dto  = reunionService.particpantHistoryByReunionIdAndPPmId(reunionId,ppmId);
+
+
+
+        return ResponseEntity.ok(dto);
+    }
+    @GetMapping("/drop-list/ppm/{ppmId}")
+    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }
 }

@@ -4,11 +4,13 @@ import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import jakarta.mail.MessagingException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +44,9 @@ public interface ReunionService {
     Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
+    List<Reunion> findByPpmIdList(Integer ppmId) throws PpmNotFound, AcNotFound;
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) throws PpmNotFound, AcNotFound;
+
 
 
 

@@ -6067,7 +6067,14 @@ public class PpmServiceImpl implements PpmService {
         return saved;
     }
 
-
+    @Override
+    public List<Ppm> findAllSpec(Specification<Ppm> spec) {
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec);
+    }
 
 
 }
