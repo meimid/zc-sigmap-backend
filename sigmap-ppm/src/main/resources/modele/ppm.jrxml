@@ -367,7 +367,7 @@ FROM  ppm p
 								<textElement textAlignment="Left" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? $F{realisation_envisagees} + " :\n •" + $F{lots}.replaceAll(" - ", "\n•") : $F{realisation_envisagees}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? " "+ $F{realisation_envisagees} + " :\n " + $F{lots}.replaceAll(" - ", "\n  ") : " "+  $F{realisation_envisagees}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
