@@ -30,25 +30,34 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ReunionDropListDto;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionResponseDto;
+import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -386,4 +395,36 @@ public class ReunionController {
                 .orElse(null);
     }
 
+
+ /*   @GetMapping("/list/ppm/{ppmId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
+    }*/
+
+    @GetMapping("/history/{reunionId}/ppm/{ppmId}")
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws PpmNotFound, AcNotFound {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+
+        ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId, jwt);
+
+        return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
+    }
+    @GetMapping("/drop-list/ppm/{ppmId}")
+    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws PpmNotFound, AcNotFound {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt);
+
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }
 }

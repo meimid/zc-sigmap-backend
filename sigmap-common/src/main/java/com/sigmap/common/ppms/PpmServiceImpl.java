@@ -24,6 +24,7 @@ import com.sigmap.common.financement.Financement;
 import com.sigmap.common.financement.FinancementId;
 import com.sigmap.common.financement.FinancementRepository;
 import com.sigmap.common.financement.request.FinancementRequest;
+import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -50,6 +51,9 @@ import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.*;
@@ -59,6 +63,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -97,6 +103,7 @@ public class PpmServiceImpl implements PpmService {
     private final FinancementRepository financementRepository;
     private final ModelPpmRepository modelPpmRepository;
     private final PpmRepository ppmRepository;
+    private final UserComRepository userComRepository;
 
     /**
      * Constructor.
@@ -110,7 +117,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -130,6 +137,7 @@ public class PpmServiceImpl implements PpmService {
         this.financementRepository = financementRepository;
         this.modelPpmRepository = modelPpmRepository;
         this.ppmRepository = ppmRepository;
+        this.userComRepository = userComRepository;
     }
 
     @Override
@@ -6080,7 +6088,48 @@ public class PpmServiceImpl implements PpmService {
         return saved;
     }
 
+    @Override
+    public List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec) {
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec);
+    }
 
+    @Override
+    public List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId) {
+       List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec).stream().filter(ppm->ppm.getComs().stream().map(Com::getId).anyMatch(comIds::contains)).collect(Collectors.toList());
 
+    }
+
+    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt) {
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+        List<Ppm> ppms = new ArrayList<>();
+        if(isAdminCentral||isSuperAdmin) {
+            ppms= findAllForSuperAdminAndAdminCentral(spec);
+        }
+        else {
+            String userId = jwt.getSubject();
+            ppms=findAllForComUser(spec,userId);
+        }
+        return ppms;
+    }
 
 }

@@ -217,4 +217,9 @@ public class PpmSpecifications {
         return (root, query, cb) -> root.get("annee").in(annees);
     }
 
+
+    public static Specification<Ppm> BROUILLON() {
+        return (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("status"), "BROUILLON");
+    }
 }

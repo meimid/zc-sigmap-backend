@@ -2,6 +2,7 @@ package com.sigmap.common.Participant;
 
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.reunion.Reunion;
 import jakarta.persistence.*;
 import lombok.*;
@@ -33,4 +34,7 @@ public class Participant extends BaseEntity {
     @Column(name = "user_id")
     private String userId;
     private boolean present;
+    @Column(name = "fonction_reunion")
+    @Enumerated(EnumType.STRING)
+    private ParticipantFonction fonctionReunion;
 }
