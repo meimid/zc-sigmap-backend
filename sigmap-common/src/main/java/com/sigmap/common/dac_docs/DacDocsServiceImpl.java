@@ -933,6 +933,8 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setPayant(existingDac.isPayant());
                 newDac.setShortListing(existingDac.isShortListing());
                 newDac.setParentDacId(existingDac.getParentDacId());
+                newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
+                newDac.setModePassation(existingDac.getModePassation());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
 
