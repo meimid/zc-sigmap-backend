@@ -35,6 +35,7 @@ public class PaaResponseWithRealisations {
     private String processInstanceId;
     private Boolean actualise;
     private Integer nbrActualisation;
+    private String etapeProcess;
     private BaseEntityResponse metadata;
 
 } 

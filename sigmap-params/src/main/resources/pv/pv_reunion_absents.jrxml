@@ -17,7 +17,7 @@
 FROM  participant
 where present=0
 and reunion_id= $P{reunion} 
-and type <> 'RESPONSABLE']]>
+and fonction_reunion <> 'PRESIDENT']]>
 	</queryString>
 	<field name="reunion_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>

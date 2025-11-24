@@ -24,7 +24,7 @@
 FROM  participant
 where present=1
 and reunion_id= $P{reunion}
-and type ='MEMBRE']]>
+and fonction_reunion ='MEMBRE']]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>

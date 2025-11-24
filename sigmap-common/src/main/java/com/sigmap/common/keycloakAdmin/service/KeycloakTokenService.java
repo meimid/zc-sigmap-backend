@@ -12,16 +12,16 @@ import java.util.Map;
 @Service
 public class KeycloakTokenService {
 
-    @Value("${keycloak-admin.server-url}")
+    @Value("${keycloak.server-url}")
     private String serverUrl;
 
-    @Value("${keycloak-admin.realm}")
+    @Value("${keycloak.realm}")
     private String realm;
 
-    @Value("${keycloak-admin.client-id}")
+    @Value("${keycloak.client-id}")
     private String clientId;
 
-    @Value("${keycloak-admin.client-secret}")
+    @Value("${keycloak.client-secret}")
     private String clientSecret;
 
     private final RestTemplate restTemplate = new RestTemplate();

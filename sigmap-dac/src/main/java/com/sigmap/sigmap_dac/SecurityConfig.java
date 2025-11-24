@@ -1,6 +1,8 @@
 package com.sigmap.sigmap_dac;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -10,6 +12,11 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 
@@ -22,6 +29,12 @@ public class SecurityConfig {
     @Value("${cors.origins}")
     private List<String> allowedOrigins;
 
+    private final Environment env;
+
+    public SecurityConfig(Environment env) {
+        this.env = env;
+    }
+
   /**
    * Configures the security filter chain.
    *
@@ -30,8 +43,7 @@ public class SecurityConfig {
    * @throws Exception the exception
    */
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, KeycloakJwtConverter jwtConverter)
-      throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http, JwtDecoder jwtDecoder, KeycloakJwtConverter jwtConverter) throws Exception {
     http.cors(
             (cors) ->
                 cors.configurationSource(
@@ -58,14 +70,44 @@ public class SecurityConfig {
                 .authenticated())
         .sessionManagement(
             management -> management.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .oauth2ResourceServer(
-            oauth2 ->
-                oauth2.jwt(
-                    jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtConverter)));
-    //                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+            .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(jwt -> jwt
+                            .decoder(jwtDecoder)
+                            .jwtAuthenticationConverter(jwtConverter)
+                    )
+            );
     return http.build();
   }
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        String issuerUri = env.getProperty("keycloak.server-url") + "/realms/" + env.getProperty("keycloak.realm");
+        System.out.println("Issuer URI: " + issuerUri);
 
+        NimbusJwtDecoder jwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
+
+        // Audiences autorisées : ici sigmap-api
+        List<String> validAudiences = List.of(
+                env.getProperty("keycloak.client-id"),          // sigmap-api
+                env.getProperty("keycloak.common-client-id") // backend-common
+        );
+
+        jwtDecoder.setJwtValidator(token -> {
+            System.out.println("VALIDATE JWT CALLED");
+            System.out.println("Token aud: " + token.getAudience());
+
+            for (String aud : token.getAudience()) {
+                if (validAudiences.contains(aud)) {
+                    return OAuth2TokenValidatorResult.success();
+                }
+            }
+
+            return OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error("invalid_token", "Audience invalide", null)
+            );
+        });
+
+        return jwtDecoder;
+    }
   /**
    * Configures the JWT converter.
    *
@@ -74,7 +116,16 @@ public class SecurityConfig {
    */
   @Bean
   public KeycloakJwtConverter jwtAuthenticationConverter(Environment env) {
-    String clientId = env.getProperty("keycloak.client-id");
-    return new KeycloakJwtConverter(clientId);
+      // Lis les propriétés individuellement
+      String mainClientId = env.getProperty("keycloak.client-id", "");
+      String commonClientId = env.getProperty("keycloak.common-client-id", "");
+
+      // Fusionne dans une seule liste
+      List<String> clientIds = Arrays.asList(mainClientId, commonClientId).stream()
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .collect(Collectors.toList());
+
+      return new KeycloakJwtConverter(clientIds);
   }
 }

@@ -1,9 +1,13 @@
 package com.sigmap.common.dyna_docs.request;
 
 import com.sigmap.common.entity.ActiveStatus;
-import lombok.Data;
+import lombok.*;
 
 @Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class DynaDocsRequest {
   private String name;
 
@@ -22,4 +26,6 @@ public class DynaDocsRequest {
   private Boolean isStatic;
 
   private Boolean isAAO;
+
+  private Integer dynaDocsModelId;
 }

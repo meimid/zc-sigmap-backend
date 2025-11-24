@@ -1,7 +1,6 @@
 package com.sigmap.common.user_com.mappers;
 
 import com.sigmap.common.keycloakAdmin.dto.ComMemberDTO;
-import com.sigmap.common.societe_address.mappers.SocieteAddressMapper;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.response.UserComResponse;
 import org.mapstruct.Mapper;

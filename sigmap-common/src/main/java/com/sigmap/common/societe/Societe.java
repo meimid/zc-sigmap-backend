@@ -1,9 +1,17 @@
 package com.sigmap.common.societe;
 
+import com.sigmap.common.activite.Activite;
+import com.sigmap.common.adresse.Adresse;
 import com.sigmap.common.entity.BaseEntity;
+import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.user_societe.UserSociete;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,11 +29,26 @@ public class Societe extends BaseEntity {
     @JoinColumn(name = "type_id")
     private RefParam type;
     @ManyToOne
-    @JoinColumn (name = "pays_id")
-    private RefParam pays;
-    private String nni;
-    @ManyToOne
     @JoinColumn(name = "categorie_soumissionnaire_id")
     private RefParam categorieSoumissionnaire;
+    private String nif;
+    @Column(name = "date_nif")
+    private Date dateNif;
+    @Column(name = "num_cnss")
+    private String numCnss;
+    @Enumerated(EnumType.STRING)
+    private SocieteStatus status;
+    @OneToOne
+    @JoinColumn(name = "adresse_id")
+    private Adresse address;
+    @ManyToMany
+    @JoinTable(
+            name = "societe_activite",
+            joinColumns = @JoinColumn(name = "societe_id"),
+            inverseJoinColumns = @JoinColumn(name = "activite_id")
+    )
+    private List<Activite> activites = new ArrayList<Activite>();
 
+    @OneToMany(mappedBy = "societe")
+    private List<UserSociete> usersSociete = new ArrayList<>();
 }

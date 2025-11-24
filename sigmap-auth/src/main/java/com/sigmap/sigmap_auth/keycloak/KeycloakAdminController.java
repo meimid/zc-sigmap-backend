@@ -196,7 +196,7 @@ public class KeycloakAdminController {
     @GetMapping("/roles")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public List<RoleDTO> getAllRealmRoles() {
-        return keycloakAdminService.getAllRealmRolesWithDescriptions();
+        return keycloakAdminService.getAllClientRolesWithDescriptions();
     }
 
     /**

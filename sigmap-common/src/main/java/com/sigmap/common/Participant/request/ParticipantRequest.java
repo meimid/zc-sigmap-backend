@@ -1,6 +1,7 @@
 package com.sigmap.common.Participant.request;
 
 import com.sigmap.common.config.ParticipantType;
+import com.sigmap.common.entity.ParticipantFonction;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,4 +22,5 @@ public class ParticipantRequest {
     private String mail;
     private String userId;
     private boolean present;
+    private ParticipantFonction fonctionReunion;
 }

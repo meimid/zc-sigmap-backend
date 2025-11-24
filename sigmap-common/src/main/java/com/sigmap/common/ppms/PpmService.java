@@ -2,6 +2,7 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
@@ -13,6 +14,7 @@ import com.sigmap.common.realisations.Realisation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.io.IOException;
 import java.util.List;
@@ -312,7 +314,7 @@ public interface PpmService {
 
      Ppm createPpmPerAc(PpmWithLotsRequestDto request) throws PpmCreationLimitExceededException, AcNotFound, IOException;
      Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable);
-     List<Ac> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
+    List<AcAvailablePpmResponse> getAcsWithoutPpmForCurrentYear() throws AcNotFound;
     Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) ;
 
     /**
@@ -329,5 +331,10 @@ public interface PpmService {
      */
     Ppm actualise(Integer ppmId)
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
+    List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
+    List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
+    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt);
+
 
 }
+

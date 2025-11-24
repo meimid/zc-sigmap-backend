@@ -1,5 +1,6 @@
 package com.sigmap.common.process_verbal_reunion;
 
+import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
@@ -19,6 +20,7 @@ import java.sql.SQLException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 @Slf4j
@@ -43,7 +45,7 @@ public class PvJasperReunionService {
                 .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + reunionId));
 
         // Récupération du président
-        String idPresedent = reunion.getCom().getResponsableId();
+        String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 
@@ -100,7 +102,7 @@ public class PvJasperReunionService {
                 .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + reunionId));
 
         // Récupération du président
-        String idPresedent = reunion.getCom().getResponsableId();
+        String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 

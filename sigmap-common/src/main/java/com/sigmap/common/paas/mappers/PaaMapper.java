@@ -54,7 +54,7 @@ public interface PaaMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "realisations", ignore = true) // Ignored as it's typically managed separately
     Paa updatePaaFromRequest(PaaRequest request, @MappingTarget Paa paa);
-
+    @Mapping(target = "etapeProcess", source = "etapeProcess")
     PaaResponseDto toDto(Paa paa);
 
     @Mapping(target = "id", source = "id")

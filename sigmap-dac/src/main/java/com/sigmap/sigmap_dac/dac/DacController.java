@@ -7,22 +7,11 @@ import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
-import com.sigmap.common.dac_docs.DacDocs;
-import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.DacDocsService;
-import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
-import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
-import com.sigmap.common.menu_item.MenuItem;
-import com.sigmap.common.menu_item.mappers.MenuItemMapper;
-import com.sigmap.common.menu_item.request.MenuItemQuery;
-import com.sigmap.common.menu_item.response.MenuItemResponse;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.realisations.Realisation;
-import com.sigmap.common.realisations.mappers.RealisationMapper;
-import com.sigmap.common.realisations.response.RealisationResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -33,8 +22,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
@@ -45,7 +33,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -117,6 +104,7 @@ public class DacController {
 
 
   @PostMapping("/create")
+  @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
   public ResponseEntity<DacResponce> createDac(@RequestBody CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound {
     Dac saved = dacService.create(request);
     DacResponce responce = DacMapper.INSTANCE.map(saved);
@@ -322,7 +310,7 @@ public class DacController {
   }
 
   @PostMapping("/generate-aao-pdf")
-  public ResponseEntity<byte[]> generatePdfforAAO(@RequestBody ModeleRequest request) {
+  public ResponseEntity<byte[]> generatePdfforAAO(@RequestBody ModeleAAORequest request) {
     try {
       // 1. Generate DOCX file as before
       String generatedFile = dacService.generateDAODocumentWithBookmarks(
@@ -360,5 +348,15 @@ public class DacController {
     } catch (Exception e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
     }
+  }
+
+  @GetMapping("/published/{realisationId}/{realisationVer}")
+  public ResponseEntity<List<DacResponce>> getPublishedDacsByRealisation(
+          @PathVariable Integer realisationId,
+          @PathVariable Integer realisationVer) {
+    log.debug("REST request to get published DACs for realisation ID: {} and version: {}", realisationId, realisationVer);
+    List<Dac> dacs = dacService.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
+    List<DacResponce> dacResponse = dacs.stream().map(DacMapper.INSTANCE::map).toList();
+    return ResponseEntity.ok(dacResponse);
   }
 }

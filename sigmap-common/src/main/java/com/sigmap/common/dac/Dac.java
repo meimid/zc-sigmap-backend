@@ -1,6 +1,8 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
@@ -8,6 +10,9 @@ import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.util.Calendar;
+import java.util.List;
 
 @Getter
 @Setter
@@ -55,5 +60,39 @@ public class Dac extends BaseEntity {
   private String reference;
 
   private String processInstanceId;
+
+  @Column(name = "date_limite_soumission")
+  private Calendar dateLimiteSoumission;
+
+  @Column(name = "date_limite_recption_demande")
+  private Calendar dateLimiteRecptionDemande;
+
+  @Column(name = "payant")
+  private boolean payant;
+
+  @Column(name = "short_listing")
+  private boolean shortListing;
+
+  @Column(name = "parent_dac_id")
+  private Integer parentDacId;
+
+  @ManyToOne
+  @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
+  private DynaDocsModel dynaDocsModel;
+
+  @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE, CascadeType.PERSIST})
+  @JoinTable(
+          name = "dac_com",
+          joinColumns = {
+                  @JoinColumn(name = "dac_id", referencedColumnName = "dac_id"),
+                  @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver")
+          },
+          inverseJoinColumns = @JoinColumn(name = "com_id")
+  )
+  private List<Com> coms;
+
+  @Column(name = "etape_process", length = 255)
+  private String etapeProcess;
+
 
 }
