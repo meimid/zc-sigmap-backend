@@ -375,57 +375,153 @@ public class DacFlowableService {
 
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
         List<NextStepDTO> next = new ArrayList<>();
+
         try {
-            BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
-            FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
+
+            BpmnModel model =
+                    repositoryService.getBpmnModel(task.getProcessDefinitionId());
+
+            FlowElement te =
+                    model.getFlowElement(task.getTaskDefinitionKey());
+
             if (te instanceof UserTask ut) {
+
                 for (SequenceFlow of : ut.getOutgoingFlows()) {
+
                     FlowElement target = model.getFlowElement(of.getTargetRef());
+
+                    // ---------- CASE 1: TARGET IS EXCLUSIVE GATEWAY ----------
                     if (target instanceof ExclusiveGateway gw) {
+
                         for (SequenceFlow gf : gw.getOutgoingFlows()) {
-                            String cond = gf.getConditionExpression();
+
+                            String cond = gf.getConditionExpression() != null
+                                    ? gf.getConditionExpression()
+                                    : "";
+
                             String var = extractVariableName(cond);
                             String rhs = extractConditionValue(cond);
-                            FlowElement then = model.getFlowElement(gf.getTargetRef());
-                            String name = (then != null && then.getName() != null && !then.getName().isEmpty())
-                                    ? then.getName() : (then != null ? then.getId() : "Unknown");
 
-                            var n = new NextStepDTO();
+                            FlowElement then =
+                                    model.getFlowElement(gf.getTargetRef());
+
+                            String name = (then != null && then.getName() != null && !then.getName().isEmpty())
+                                    ? then.getName()
+                                    : (then != null ? then.getId() : "Unknown");
+
+                            NextStepDTO n = new NextStepDTO();
                             n.setValidationVariable(var);
                             n.setValidationValue(rhs);
                             n.setNextTaskName(name);
+
+                            // ============================
+                            //   ACTION LABEL RESOLUTION
+                            // ============================
+
+                            // Priority 1: End event → publish
                             if (then instanceof EndEvent) {
                                 n.setActionLabel("Publier");
-                            } else if ("true".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Validate");
-                            } else if ("false".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Reject");
-                            } else {
-                                n.setActionLabel(var != null ? (var + " = " + rhs) : "Passer pour validation");
                             }
+                            // Priority 2: Affectation task
+                            else if (name.contains("Affectation")) {
+                                n.setActionLabel("Affecter");
+                            }
+                            // Priority 3: Publication task
+                            else if (name.contains("Publication")) {
+                                n.setActionLabel("Validate");
+                            }
+                            // Priority 4: DAO Transmission
+                            else if (name.contains("Transmission DAO")) {
+                                n.setActionLabel("Transmettre");
+                            }
+                            // Priority 5: Simple true/false
+                            else if ("true".equalsIgnoreCase(rhs)) {
+                                n.setActionLabel("Validate");
+                            }
+                            else if ("false".equalsIgnoreCase(rhs)) {
+                                n.setActionLabel("Reject");
+                            }
+                            // Default
+                            else {
+                                n.setActionLabel("Passer pour validation");
+                            }
+
                             next.add(n);
                         }
-                    } else {
+                    }
+
+                    // ---------- CASE 2: DIRECT TARGET (NO GATEWAY) ----------
+                    else {
+
                         String name = (target != null && target.getName() != null && !target.getName().isEmpty())
-                                ? target.getName() : (target != null ? target.getId() : "Complete");
-                        var n = new NextStepDTO();
+                                ? target.getName()
+                                : (target != null ? target.getId() : "Complete");
+
+                        NextStepDTO n = new NextStepDTO();
                         n.setValidationVariable(null);
                         n.setValidationValue(null);
                         n.setNextTaskName(name);
-                        n.setActionLabel(target instanceof EndEvent ? "Publier" : "Passer pour validation");
+
+                        if (target instanceof EndEvent) {
+                            n.setActionLabel("Publier");
+                        } else {
+                            n.setActionLabel("Passer pour validation");
+                        }
+
                         next.add(n);
                     }
                 }
             }
+
         } catch (Exception e) {
+
             log.warn("getPossibleNextSteps failed for task {}", task.getId(), e);
-            var n = new NextStepDTO();
+
+            NextStepDTO n = new NextStepDTO();
             n.setNextTaskName("Unknown");
             n.setActionLabel("Complete");
             next.add(n);
         }
+
         return next;
     }
+
+//    private String resolveActionLabel(String cond, String rhs, String nextTaskName, FlowElement next) {
+//
+//        // END → Publier
+//        if (next instanceof EndEvent) {
+//            return "Publier";
+//        }
+//
+//        // Simple boolean conditions
+//        if ("false".equalsIgnoreCase(rhs)) {
+//            return "Reject";
+//        }
+//        if ("true".equalsIgnoreCase(rhs)) {
+//            return "Validate";
+//        }
+//
+//        // ---- Special cases based on the target task name ----
+//
+//        // (CNCMP) commission permanente Affectation
+//        if (nextTaskName != null && nextTaskName.contains("Affectation")) {
+//            return "Affecter";
+//        }
+//
+//        // Transmission DAO + Invitation
+//        if (nextTaskName != null && nextTaskName.contains("Transmission DAO")) {
+//            return "Transmettre";
+//        }
+//
+//        // Publication task → Validate
+//        if (nextTaskName != null && nextTaskName.contains("Publication")) {
+//            return "Validate";
+//        }
+//
+//        // Default fallback
+//        return "Passer pour validation";
+//    }
+
 
     /* ======================= tiny parsing helpers ======================= */
 
@@ -1110,12 +1206,7 @@ public class DacFlowableService {
         String processInstanceId = task.getProcessInstanceId();
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
-        // Complete task
-        taskService.complete(taskId);
-        log.info("[TASK] Task [{}] completed successfully", taskId);
 
-
-        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
 
         if (comIdSnapshot != null) {
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
@@ -1156,6 +1247,10 @@ public class DacFlowableService {
 
         resp.setStatus("Task validated successfully");
         log.info("[FLOW] ==== validateTask() completed for taskId={} ====", taskId);
+        // Complete task
+        taskService.complete(taskId);
+        log.info("[TASK] Task [{}] completed successfully", taskId);
+        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
         return resp;
     }
 

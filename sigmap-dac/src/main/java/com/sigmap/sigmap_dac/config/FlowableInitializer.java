@@ -89,6 +89,7 @@ public class FlowableInitializer {
         cfg.setAsyncExecutorActivate(true);
         cfg.setAsyncExecutorDefaultAsyncJobAcquireWaitTime(1000);
         cfg.setAsyncExecutorMaxAsyncJobsDuePerAcquisition(5);
+//        cfg.setBeans(SpringContextProvider.getApplicationContext());
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
 
