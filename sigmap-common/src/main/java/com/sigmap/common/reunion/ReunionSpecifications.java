@@ -26,8 +26,12 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(root.get("object"), "%" + search + "%"),
                     criteriaBuilder.like(comJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("nom"), "%" + search + "%"),
-                    criteriaBuilder.like(ppmJoin.get("ref"), "%" + search + "%")
-            );
+                    criteriaBuilder.like(ppmJoin.get("ref"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("status"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%")
+
+
+                    );
         };
     }
 
@@ -44,6 +48,11 @@ public class ReunionSpecifications {
     public static Specification<Reunion> comId(Integer comId) {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("id"), comId);
     }
+
+    public static Specification<Reunion> comNom(String nom) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("nom"), nom);
+    }
+
 
     /**
      * Filters by the ReunionStatus enum.
