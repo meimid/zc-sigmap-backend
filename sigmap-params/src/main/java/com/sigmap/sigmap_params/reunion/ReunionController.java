@@ -33,10 +33,7 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.ReunionDropListDto;
-import com.sigmap.common.reunion.response.ReunionResponse;
-import com.sigmap.common.reunion.response.ReunionResponseDto;
-import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
+import com.sigmap.common.reunion.response.*;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -429,18 +426,29 @@ public class ReunionController {
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
     }
     @GetMapping("/pagebale/ppm/{ppmId}")
-    public ResponseEntity<Page<ReunionResponseDto>> findAllByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query)  {
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query)  {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
         }
         List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification());
 
-        List<ReunionResponseDto> dtoList = reunionList.stream()
-                .map(ReunionMapper.INSTANCE::mapToDto)
-                .toList();
+        List<ReunionSearchResponseDto> dtoList = reunionList.stream()
+                .map(ReunionMapper.INSTANCE::mapToReunionSearchResponseDto)
+                .peek(dto -> {
+                    reunionList.stream()
+                            .filter(re -> re.getId().equals(dto.getId()))
+                            .findFirst()
+                            .flatMap(re -> re.getReunionPpms().stream()
+                                    .filter(ppm -> ppm.getPpmId().equals(ppmId))
+                                    .findFirst()
+                            )
+                            .ifPresent(ppm -> dto.setDecision(ppm.getDecision()));
+                })
+                .collect(Collectors.toList());
 
-        Page<ReunionResponseDto> page = paginate(dtoList, pageable);
+
+        Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
 
         return ResponseEntity.ok(page);
     }
@@ -457,8 +465,8 @@ public class ReunionController {
         return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
     }
 
-    @GetMapping("/drop-list/ppm/{ppmId}/com/{comId}")
-    public ResponseEntity<List<ReunionDropListDto>> findAllComDropListByPpmIdAndComId(@PathVariable Integer ppmId,@PathVariable Integer comId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
+    @GetMapping("/pagebale/ppm/{ppmId}/com/{comId}")
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@PathVariable Integer ppmId,@PathVariable Integer comId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query) throws PpmNotFound, AcNotFound {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
@@ -466,8 +474,24 @@ public class ReunionController {
         // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
         List<Reunion> reunionList=reunionService.findAllByPpmIdAndComIdList(ppmId,comId,jwt,query.toSpecification());
 
-        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
-    }
+        List<ReunionSearchResponseDto> dtoList = reunionList.stream()
+                .map(ReunionMapper.INSTANCE::mapToReunionSearchResponseDto)
+                .peek(dto -> {
+                    reunionList.stream()
+                            .filter(re -> re.getId().equals(dto.getId()))
+                            .findFirst()
+                            .flatMap(re -> re.getReunionPpms().stream()
+                                    .filter(ppm -> ppm.getPpmId().equals(ppmId))
+                                    .findFirst()
+                            )
+                            .ifPresent(ppm -> dto.setDecision(ppm.getDecision()));
+                })
+                .collect(Collectors.toList());
+
+
+        Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
+
+        return ResponseEntity.ok(page);    }
 
 
     public static <T> Page<T> paginate(List<T> list, Pageable pageable) {

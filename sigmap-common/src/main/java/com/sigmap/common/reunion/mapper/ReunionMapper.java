@@ -7,11 +7,8 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.ReunionDropListDto;
-import com.sigmap.common.reunion.response.ReunionResponse;
+import com.sigmap.common.reunion.response.*;
 
-import com.sigmap.common.reunion.response.ReunionResponseDto;
-import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
@@ -78,5 +75,15 @@ public interface ReunionMapper {
     @Mapping(source = "processVerbal",target = "processVerbal")
     ReunionWithParticipantsAndPvDto mapToReunionWithParticipantsAndPvDto(Reunion reunion);
     ReunionDropListDto mapToDropListDto(Reunion reunion);
+
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    @Mapping(source = "com.nom", target = "comName")
+    ReunionSearchResponseDto mapToReunionSearchResponseDto(Reunion reunion);
 
 }
