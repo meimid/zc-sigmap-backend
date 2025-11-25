@@ -438,8 +438,8 @@ public class ReunionController {
         return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
     }
 
-    @GetMapping("/history/pageable")
-    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query, @RequestParam Integer ppmId, @RequestParam(required = false) Integer comId) throws PpmNotFound, AcNotFound {
+    @GetMapping("/history/pageable/ppm/{ppmId}")
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query, @PathVariable Integer ppmId, @RequestParam(required = false) Integer comId) throws PpmNotFound, AcNotFound {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
