@@ -414,7 +414,7 @@ public class ReunionController {
 
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
-    @GetMapping("/drop-list/ppm/{ppmId}")
+   /* @GetMapping("/drop-list/ppm/{ppmId}")
     public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -424,8 +424,8 @@ public class ReunionController {
         List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification());
 
         return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
-    }
-    @GetMapping("/pagebale/ppm/{ppmId}")
+    }*/
+    @GetMapping("/history/pageable/ppm/{ppmId}")
     public ResponseEntity<Page<ReunionSearchResponseDto>> findAllByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query)  {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -453,7 +453,7 @@ public class ReunionController {
         return ResponseEntity.ok(page);
     }
 
-    @GetMapping("/drop-list-com/ppm/{ppmId}")
+    @GetMapping("/history/drop-list-com/ppm/{ppmId}")
     public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -465,7 +465,7 @@ public class ReunionController {
         return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
     }
 
-    @GetMapping("/pagebale/ppm/{ppmId}/com/{comId}")
+    @GetMapping("/history/pageabl/ppm/{ppmId}/com/{comId}")
     public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@PathVariable Integer ppmId,@PathVariable Integer comId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query) throws PpmNotFound, AcNotFound {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
