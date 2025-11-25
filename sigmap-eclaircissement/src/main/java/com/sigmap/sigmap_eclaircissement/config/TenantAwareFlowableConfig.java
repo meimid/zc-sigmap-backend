@@ -97,7 +97,7 @@ public class TenantAwareFlowableConfig {
             if (!alreadyDeployed) {
                 repositoryService.createDeployment()
                         .tenantId(TENANT_ID)
-                        .name("PAA Process Deployment")
+                        .name("ECLAIRCISSEMENT Process Deployment")
                         .addInputStream(fileName, resource.getInputStream())
                         .deploy();
                 System.out.println("Deployed: " + fileName);
