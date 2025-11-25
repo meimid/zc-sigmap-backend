@@ -94,7 +94,7 @@ keycloak:
 
 # Flowable: use a dedicated database
 flowable:
-  process-definition-key: paaProcess
+  process-definition-key: eclaircissementProcess
   task-definition-key: saisieTask
   use-default-data-source: false
   database-schema-update: true
