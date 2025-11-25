@@ -374,195 +374,237 @@ public class DacFlowableService {
     /* -------------------------------- next steps (dynamic) -------------------------------- */
 
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
-        List<NextStepDTO> next = new ArrayList<>();
+
+        List<NextStepDTO> result = new ArrayList<>();
 
         try {
+            Map<String, Object> vars = runtimeService.getVariables(task.getExecutionId());
+            log.info("process Variables: " + vars);
+            BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
 
-            BpmnModel model =
-                    repositoryService.getBpmnModel(task.getProcessDefinitionId());
+            if (!(te instanceof UserTask ut)) return result;
 
-            FlowElement te =
-                    model.getFlowElement(task.getTaskDefinitionKey());
+            for (SequenceFlow of : ut.getOutgoingFlows()) {
 
-            if (te instanceof UserTask ut) {
+                FlowElement target = model.getFlowElement(of.getTargetRef());
 
-                for (SequenceFlow of : ut.getOutgoingFlows()) {
+            /* =============================================================
+               CASE 1 : OUTGOING → GATEWAY
+               ============================================================= */
+                if (target instanceof ExclusiveGateway gw) {
 
-                    FlowElement target = model.getFlowElement(of.getTargetRef());
+                    for (SequenceFlow gf : gw.getOutgoingFlows()) {
 
-                    // ---------- CASE 1: TARGET IS EXCLUSIVE GATEWAY ----------
-                    if (target instanceof ExclusiveGateway gw) {
+                        String cond = gf.getConditionExpression();
+                        String varsStr = extractVariableName(cond);
 
-                        for (SequenceFlow gf : gw.getOutgoingFlows()) {
+                        boolean matches = true;
 
-                            String cond = gf.getConditionExpression() != null
-                                    ? gf.getConditionExpression()
-                                    : "";
+                    /* =============================================================
+                       UNIVERSAL CONDITION EVALUATION (EXCEPT valide / cpmp_valide)
+                       ============================================================= */
+                        if (cond != null) {
 
-                            String var = extractVariableName(cond);
-                            String rhs = extractConditionValue(cond);
+                            // remove ${ }
+                            String inner = cond.replace("${", "")
+                                    .replace("}", "")
+                                    .trim();
 
-                            FlowElement then =
-                                    model.getFlowElement(gf.getTargetRef());
+                            // split: a && b && c
+                            String[] parts = inner.split("&&");
 
-                            String name = (then != null && then.getName() != null && !then.getName().isEmpty())
-                                    ? then.getName()
-                                    : (then != null ? then.getId() : "Unknown");
+                            for (String p : parts) {
+                                p = p.trim();
 
-                            NextStepDTO n = new NextStepDTO();
-                            n.setValidationVariable(var);
-                            n.setValidationValue(rhs);
-                            n.setNextTaskName(name);
+                                // ---- IGNORE decision variables ----
+                                if (p.startsWith("valide") || p.startsWith("cpmp_valide")) {
+                                    continue; // ALWAYS display these options
+                                }
 
-                            // ============================
-                            //   ACTION LABEL RESOLUTION
-                            // ============================
+                                /* ============================ BOOLEAN TRUE ============================== */
+                                if (p.contains("== true")) {
+                                    String var = p.replace("== true", "").trim();
+                                    Object val = vars.get(var);
+                                    if (!(val instanceof Boolean) || !((Boolean) val)) {
+                                        matches = false;
+                                    }
+                                }
 
-                            // Priority 1: End event → publish
-                            if (then instanceof EndEvent) {
-                                n.setActionLabel("Publier");
+                                /* ============================ BOOLEAN FALSE ============================= */
+                                else if (p.contains("== false")) {
+                                    String var = p.replace("== false", "").trim();
+                                    Object val = vars.get(var);
+                                    if (!(val instanceof Boolean) || ((Boolean) val)) {
+                                        matches = false;
+                                    }
+                                }
+
+                                /* ============================ NULL COMPARISON =========================== */
+                                else if (p.contains("== null")) {
+                                    String var = p.replace("== null", "").trim();
+                                    if (vars.get(var) != null) {
+                                        matches = false;
+                                    }
+                                }
+
+                                else if (p.contains("!= null")) {
+                                    String var = p.replace("!= null", "").trim();
+                                    if (vars.get(var) == null) {
+                                        matches = false;
+                                    }
+                                }
+
+                                /* ============================ STRING EQUALITY =========================== */
+                                else if (p.contains("== '")) {
+                                    String[] seg = p.split("==");
+                                    String var = seg[0].trim();
+                                    String expected = seg[1].trim().replace("'", "");
+                                    Object val = vars.get(var);
+                                    if (val == null || !val.toString().equals(expected)) {
+                                        matches = false;
+                                    }
+                                }
+
+                                else if (p.contains("!= '")) {
+                                    String[] seg = p.split("!=");
+                                    String var = seg[0].trim();
+                                    String expected = seg[1].trim().replace("'", "");
+                                    Object val = vars.get(var);
+                                    if (val != null && val.toString().equals(expected)) {
+                                        matches = false;
+                                    }
+                                }
+
+                                if (!matches) break;
                             }
-                            // Priority 2: Affectation task
-                            else if (name.contains("Affectation")) {
-                                n.setActionLabel("Affecter");
-                            }
-                            // Priority 3: Publication task
-                            else if (name.contains("Publication")) {
-                                n.setActionLabel("Validate");
-                            }
-                            // Priority 4: DAO Transmission
-                            else if (name.contains("Transmission DAO")) {
-                                n.setActionLabel("Transmettre");
-                            }
-                            // Priority 5: Simple true/false
-                            else if ("true".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Validate");
-                            }
-                            else if ("false".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Reject");
-                            }
-                            // Default
-                            else {
-                                n.setActionLabel("Passer pour validation");
-                            }
-
-                            next.add(n);
                         }
+
+                        if (!matches) continue;
+
+                    /* =============================================================
+                       BUILD NEXT STEP DTO
+                       ============================================================= */
+                        FlowElement next = model.getFlowElement(gf.getTargetRef());
+                        String nextName = next.getName();
+
+                        NextStepDTO dto = new NextStepDTO();
+                        dto.setValidationVariable(varsStr);
+                        dto.setValidationValue(cond);
+                        dto.setNextTaskName(nextName);
+
+                        // read actionLabel from BPMN
+                        String action = getActionLabelFromXml(gf);
+                        if (action == null) action = "Passer pour validation";
+                        dto.setActionLabel(action);
+
+                        result.add(dto);
                     }
+                }
 
-                    // ---------- CASE 2: DIRECT TARGET (NO GATEWAY) ----------
-                    else {
+            /* =============================================================
+               CASE 2 : DIRECT SEQUENCE FLOW
+               ============================================================= */
+                else {
+                    String nextName = target.getName();
 
-                        String name = (target != null && target.getName() != null && !target.getName().isEmpty())
-                                ? target.getName()
-                                : (target != null ? target.getId() : "Complete");
+                    NextStepDTO dto = new NextStepDTO();
+                    dto.setValidationVariable(null);
+                    dto.setValidationValue(null);
+                    dto.setNextTaskName(nextName);
 
-                        NextStepDTO n = new NextStepDTO();
-                        n.setValidationVariable(null);
-                        n.setValidationValue(null);
-                        n.setNextTaskName(name);
+                    String action = getActionLabelFromXml(of);
+                    if (action == null) action = "Passer pour validation";
+                    dto.setActionLabel(action);
 
-                        if (target instanceof EndEvent) {
-                            n.setActionLabel("Publier");
-                        } else {
-                            n.setActionLabel("Passer pour validation");
-                        }
-
-                        next.add(n);
-                    }
+                    result.add(dto);
                 }
             }
 
         } catch (Exception e) {
-
-            log.warn("getPossibleNextSteps failed for task {}", task.getId(), e);
-
-            NextStepDTO n = new NextStepDTO();
-            n.setNextTaskName("Unknown");
-            n.setActionLabel("Complete");
-            next.add(n);
+            log.error("Error in getPossibleNextSteps", e);
         }
 
-        return next;
+        return result;
     }
 
-//    private String resolveActionLabel(String cond, String rhs, String nextTaskName, FlowElement next) {
-//
-//        // END → Publier
-//        if (next instanceof EndEvent) {
-//            return "Publier";
-//        }
-//
-//        // Simple boolean conditions
-//        if ("false".equalsIgnoreCase(rhs)) {
-//            return "Reject";
-//        }
-//        if ("true".equalsIgnoreCase(rhs)) {
-//            return "Validate";
-//        }
-//
-//        // ---- Special cases based on the target task name ----
-//
-//        // (CNCMP) commission permanente Affectation
-//        if (nextTaskName != null && nextTaskName.contains("Affectation")) {
-//            return "Affecter";
-//        }
-//
-//        // Transmission DAO + Invitation
-//        if (nextTaskName != null && nextTaskName.contains("Transmission DAO")) {
-//            return "Transmettre";
-//        }
-//
-//        // Publication task → Validate
-//        if (nextTaskName != null && nextTaskName.contains("Publication")) {
-//            return "Validate";
-//        }
-//
-//        // Default fallback
-//        return "Passer pour validation";
-//    }
+    private String getActionLabelFromXml(SequenceFlow flow) {
+        if (flow.getExtensionElements() == null) return null;
+
+        // FIX: Flowable stores them under “property” not “flowable:property”
+        List<ExtensionElement> props = flow.getExtensionElements().get("property");
+        if (props == null) return null;
+
+        for (ExtensionElement p : props) {
+            String name = p.getAttributeValue(null, "name");
+            if ("actionLabel".equals(name)) {
+                return p.getAttributeValue(null, "value");
+            }
+        }
+        return null;
+    }
+
+
 
 
     /* ======================= tiny parsing helpers ======================= */
 
     private String extractVariableName(String conditionExpression) {
-        if (conditionExpression == null) return null;
-        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
-        String cleanedExpression = conditionExpression.trim().replace("#{", "${");
-        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
-        Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
-        Matcher matcher = pattern.matcher(cleanedExpression);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        // Fallback for simpler expressions like ${variable}
-        if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
-            String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
-            if (!variableName.isEmpty()) return variableName;
-        }
-        log.info("No variable name matched in expression: {}", conditionExpression);
-        return null;
-    }
+        if (conditionExpression == null || conditionExpression.isBlank()) return null;
 
-    private String extractConditionValue(String conditionExpression) {
-        if (conditionExpression == null) return null;
         String cleaned = conditionExpression.trim().replace("#{", "${");
 
-        // boolean
-        Matcher m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*(true|false)\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2).toLowerCase(); // "true" or "false"
+        // Supprime les ${ et }
+        if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
+            cleaned = cleaned.substring(2, cleaned.length() - 1).trim();
+        }
 
-        // single-quoted string
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*'([^']+)'\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2); // e.g. CI / APPROVE / REJECT
+        // On cherche TOUTES les variables, mais on retourne UNIQUEMENT celle qui contient "valide"
+        Pattern varPattern = Pattern.compile("([a-zA-Z0-9_]+)\\s*(==|!=|<>|<=|>=|<|>)");
+        Matcher matcher = varPattern.matcher(cleaned);
 
-        // double-quoted string
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*\"([^\"]+)\"\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2);
+        while (matcher.find()) {
+            String candidate = matcher.group(1).trim();
+            if (candidate.toLowerCase().contains("valide")) {
+                log.info("[GATEWAY] Variable 'valide' détectée : {}", candidate);
+                return candidate; // ← ON RETOURNE LA PREMIÈRE QUI CONTIENT "valide"
+            }
+        }
 
+        // Fallback : on prend la première variable trouvée si aucune ne contient "valide"
+        matcher.reset();
+        if (matcher.find()) {
+            String first = matcher.group(1).trim();
+            log.warn("[GATEWAY] Aucune variable '_valide' trouvée, fallback sur première variable : {}", first);
+            return first;
+        }
+
+        log.info("[GATEWAY] Aucune variable trouvée dans l'expression : {}", conditionExpression);
         return null;
     }
-    /* -------------------------------- validate / complete task -------------------------------- */
+    private String extractConditionValue(String conditionExpression) {
+        if (conditionExpression == null) return null;
+
+        String cleaned = conditionExpression.trim().replace("#{", "${");
+        if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
+            cleaned = cleaned.substring(2, cleaned.length() - 1).trim();
+        }
+
+        // Cas booléen : cpmp_valide == true
+        Matcher boolMatcher = Pattern.compile("\\s*(==|!=)\\s*(true|false)\\s*$", Pattern.CASE_INSENSITIVE)
+                .matcher(cleaned);
+        if (boolMatcher.find()) {
+            return boolMatcher.group(2).toLowerCase();
+        }
+
+        // Cas string : cncmpDecision == 'APPROVE'
+        Matcher strMatcher = Pattern.compile("\\s*(==|!=)\\s*['\"]([^'\"]+)['\"]\\s*$").matcher(cleaned);
+        if (strMatcher.find()) {
+            return strMatcher.group(2);
+        }
+
+        return null;
+    }    /* -------------------------------- validate / complete task -------------------------------- */
     @Transactional
     public List<TaskDTO> validateTaskGroup(List<GroupValidationRequest> requests)
             throws DacNotFound, DocNotFound, AcNotFound,
