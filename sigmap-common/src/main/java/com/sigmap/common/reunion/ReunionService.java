@@ -52,10 +52,7 @@ public interface ReunionService {
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
-    List<Reunion> findAllByPpmIdAndComIdList(Integer ppmId, Integer comId, Jwt jwt,Specification<Reunion> specifications);
-    List<Reunion> findAllByPpmIdAndComIdListForAdmin(Integer ppmId, Integer comId,Specification<Reunion> specifications);
-    List<Reunion> findAllByPpmIdAndComIdListForUserCom(Integer ppmId, Integer comId,String userId,Specification<Reunion> specifications) ;
-
+    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
 
 
 
