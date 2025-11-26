@@ -1577,13 +1577,13 @@ public class DacFlowableService {
 
         if (task == null) {
             resp.setHasTask(false);
+            resp.setProcessInstanceId(dac.getProcessInstanceId());
             resp.setStatus("DAC loaded successfully, no active task");
             return resp;
         }
 
         if (!(hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth))) {
             resp.setHasTask(false);
-            resp.setProcessInstanceId(task.getProcessInstanceId());
             resp.setStatus("DAC loaded, a task exists but user cannot view it");
             return resp;
         }
