@@ -1583,6 +1583,7 @@ public class DacFlowableService {
 
         if (!(hasCandidateGroup(task, jwtAuth) || hasAssign(task, jwtAuth))) {
             resp.setHasTask(false);
+            resp.setProcessInstanceId(task.getProcessInstanceId());
             resp.setStatus("DAC loaded, a task exists but user cannot view it");
             return resp;
         }
@@ -1596,7 +1597,9 @@ public class DacFlowableService {
         resp.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
         resp.setCandidateGroup(getCandidateGroup(task));
         resp.setTraceability(extractTraceability(runtimeService.getVariables(task.getProcessInstanceId())));
-
+        Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+        if (comIdVar != null)
+            resp.setComId(comIdVar);
         Map<String, Boolean> props = getTaskProperties(task);
         resp.setIsUpdatable(props.get("isUpdatable"));
         resp.setIsPublishable(props.get("isPublishable"));
@@ -1651,5 +1654,141 @@ public class DacFlowableService {
             });
         }
     }
+
+//    @Transactional(readOnly = true)
+//    public TaskListResponseDTO getDacTasksByComId(Integer comId) {
+//
+//        TaskListResponseDTO response = new TaskListResponseDTO();
+//
+//        // Auth check
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+//            response.setStatus("Invalid or missing JWT authentication");
+//            return response;
+//        }
+//
+//        if (comId == null) {
+//            response.setStatus("comId must not be null");
+//            return response;
+//        }
+//
+//        // Collect process instances having this comId (DAC process instances)
+//        List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+//                .variableValueEquals("comId", comId)
+//                .list();
+//
+//        if (instances == null || instances.isEmpty()) {
+//            response.setTenantId(TENANT_ID);
+//            response.setTasks(Collections.emptyList());
+//            response.setStatus("No active DAC process instances found for comId " + comId);
+//            return response;
+//        }
+//
+//        List<String> processInstanceIds = instances.stream()
+//                .map(ProcessInstance::getId)
+//                .collect(Collectors.toList());
+//
+//        // User roles (candidate groups)
+//        List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
+//                .map(a -> a.getAuthority().replace("ROLE_", ""))
+//                .collect(Collectors.toList());
+//
+//        List<TaskDTO> taskList = new ArrayList<>();
+//        int chunkSize = 1000;
+//
+//        for (int i = 0; i < processInstanceIds.size(); i += chunkSize) {
+//
+//            List<String> chunk = processInstanceIds.subList(i,
+//                    Math.min(i + chunkSize, processInstanceIds.size())
+//            );
+//
+//            // Fetch active tasks for DAC instances
+//            List<Task> tasks = taskService.createTaskQuery()
+//                    .taskTenantId(TENANT_ID)
+//                    .processInstanceIdIn(chunk)
+//                    .active()
+//                    .orderByTaskCreateTime().desc()
+//                    .list();
+//
+//            for (Task task : tasks) {
+//
+//                // Visibility rules
+//                if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+//                    continue;
+//                }
+//
+//                TaskDTO taskInfo = new TaskDTO();
+//                taskInfo.setTaskId(task.getId());
+//                taskInfo.setTaskName(task.getName());
+//                taskInfo.setTaskDefinitionKey(task.getTaskDefinitionKey());
+//                taskInfo.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+//                taskInfo.setProcessInstanceId(task.getProcessInstanceId());
+//                taskInfo.setCreated(task.getCreateTime().toInstant()
+//                        .atZone(ZoneId.systemDefault()).toLocalDateTime());
+//                taskInfo.setCandidateGroup(getCandidateGroup(task));
+//
+//                // Load process variables
+//                Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+//                Integer dacId = (Integer) vars.getOrDefault("id", null);
+//                Integer dacVer = (Integer) vars.getOrDefault("version", null);
+//
+//                // Load DAC info from db
+//                if (dacId != null && dacVer != null) {
+//                    try {
+//                        Optional<ModelDac> dacOpt = dacService.findByIdAndVersion(dacId, dacVer);
+//
+//                        dacOpt.ifPresent(dac -> {
+//                            taskInfo.setId(dacId);
+//                            taskInfo.setVersion(dacVer);
+//                            taskInfo.setNom(dac.getNom());
+//                            taskInfo.setRef(dac.getRef());
+//                            taskInfo.setModelAlfrescoId(dac.getModelAlfrescoId());
+//
+//                            if (dac.getAc() != null) {
+//                                taskInfo.setNomAc(dac.getAc().getNom());
+//                            } else {
+//                                taskInfo.setNomAc(null);
+//                            }
+//                        });
+//
+//                    } catch (Exception e) {
+//                        log.warn("Failed loading DAC for id {}, version {} in task {}: {}",
+//                                dacId, dacVer, task.getId(), e.getMessage());
+//                    }
+//                }
+//
+//                // Traceability
+//                Map<String, Object> trace = new HashMap<>();
+//                trace.put("decision", vars.getOrDefault("decision", ""));
+//                trace.put("comment", vars.getOrDefault("comment", ""));
+//                trace.put("dateComment", vars.getOrDefault("dateComment", ""));
+//                trace.put("treater", vars.getOrDefault("treater", ""));
+//                taskInfo.setTraceability(trace);
+//
+//                // Task properties from BPMN
+//                Map<String, Boolean> props = getTaskProperties(task);
+//                taskInfo.setIsUpdatable(props.get("isUpdatable"));
+//                taskInfo.setIsPublishable(props.get("isPublishable"));
+//                taskInfo.setCommissionRequired(props.get("commissionRequired"));
+//
+//                Boolean meetingRequired = props.get("meetingRequired");
+//                if (meetingRequired != null && meetingRequired) {
+//                    taskInfo.setMeetingRequired(true);
+//                }
+//
+//                taskList.add(taskInfo);
+//            }
+//        }
+//
+//        response.setTenantId(TENANT_ID);
+//        response.setTasks(taskList);
+//        response.setCandidateGroup(
+//                userCandidateGroups.isEmpty() ? null : String.join(", ", userCandidateGroups)
+//        );
+//        response.setStatus("DAC tasks retrieved successfully for comId " + comId);
+//
+//        return response;
+//    }
+
 
 }

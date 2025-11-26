@@ -239,4 +239,9 @@ public class DacFlowableController {
         return ResponseEntity.ok(response);
     }
 
+//    @GetMapping("/tasks/by_com/{comId}")
+//    public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
+//        return ResponseEntity.ok(dacFlowableService.getDacTasksByComId(comId));
+//    }
+
 }
