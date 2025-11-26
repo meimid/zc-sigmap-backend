@@ -276,7 +276,7 @@
     <serviceTask id="Activity_0u7tuz6" name="Transmission DAO + Lettre d’invitation aux candidats"
                  flowable:delegateExpression="${transmissionDaoDelegate}">
       <extensionElements>
-        <flowable:property name="actionLabel" value="Transmission"/>
+        <flowable:property name="actionLabel" value="Transmettre"/>
       </extensionElements>
       <incoming>Flow_1xkshui</incoming>
       <outgoing>Flow_04dfr0o</outgoing>
