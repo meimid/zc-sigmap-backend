@@ -403,7 +403,7 @@ public class DacFlowableService {
                         boolean matches = true;
 
                     /* =============================================================
-                       UNIVERSAL CONDITION EVALUATION (EXCEPT valide / cpmp_valide)
+                       UNIVERSAL CONDITION EVALUATION
                        ============================================================= */
                         if (cond != null) {
 
@@ -416,8 +416,9 @@ public class DacFlowableService {
                             for (String p : parts) {
                                 p = p.trim();
 
-                                // ---- ALWAYS SHOW validate / cpmp_valide options ----
-                                if (p.startsWith("valide") || p.startsWith("cpmp_valide")) {
+                                if (p.startsWith("valide")
+                                        || p.startsWith("cpmp_valide")
+                                        || p.startsWith("cncmpDecision")) {
                                     continue;
                                 }
 
@@ -515,6 +516,7 @@ public class DacFlowableService {
 
         return result;
     }
+
 
     private String getActionLabelFromXml(SequenceFlow flow) {
         if (flow.getExtensionElements() == null) return null;
