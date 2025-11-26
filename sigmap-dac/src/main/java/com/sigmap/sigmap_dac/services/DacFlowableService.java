@@ -380,6 +380,7 @@ public class DacFlowableService {
         try {
             Map<String, Object> vars = runtimeService.getVariables(task.getExecutionId());
             log.info("process Variables: " + vars);
+
             BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
             FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
 
@@ -406,53 +407,43 @@ public class DacFlowableService {
                        ============================================================= */
                         if (cond != null) {
 
-                            // remove ${ }
                             String inner = cond.replace("${", "")
                                     .replace("}", "")
                                     .trim();
 
-                            // split: a && b && c
                             String[] parts = inner.split("&&");
 
                             for (String p : parts) {
                                 p = p.trim();
 
-                                // ---- IGNORE decision variables ----
+                                // ---- ALWAYS SHOW validate / cpmp_valide options ----
                                 if (p.startsWith("valide") || p.startsWith("cpmp_valide")) {
-                                    continue; // ALWAYS display these options
+                                    continue;
                                 }
 
                                 /* ============================ BOOLEAN TRUE ============================== */
                                 if (p.contains("== true")) {
                                     String var = p.replace("== true", "").trim();
                                     Object val = vars.get(var);
-                                    if (!(val instanceof Boolean) || !((Boolean) val)) {
-                                        matches = false;
-                                    }
+                                    if (!(val instanceof Boolean) || !((Boolean) val)) matches = false;
                                 }
 
                                 /* ============================ BOOLEAN FALSE ============================= */
                                 else if (p.contains("== false")) {
                                     String var = p.replace("== false", "").trim();
                                     Object val = vars.get(var);
-                                    if (!(val instanceof Boolean) || ((Boolean) val)) {
-                                        matches = false;
-                                    }
+                                    if (!(val instanceof Boolean) || ((Boolean) val)) matches = false;
                                 }
 
                                 /* ============================ NULL COMPARISON =========================== */
                                 else if (p.contains("== null")) {
                                     String var = p.replace("== null", "").trim();
-                                    if (vars.get(var) != null) {
-                                        matches = false;
-                                    }
+                                    if (vars.get(var) != null) matches = false;
                                 }
 
                                 else if (p.contains("!= null")) {
                                     String var = p.replace("!= null", "").trim();
-                                    if (vars.get(var) == null) {
-                                        matches = false;
-                                    }
+                                    if (vars.get(var) == null) matches = false;
                                 }
 
                                 /* ============================ STRING EQUALITY =========================== */
@@ -461,9 +452,7 @@ public class DacFlowableService {
                                     String var = seg[0].trim();
                                     String expected = seg[1].trim().replace("'", "");
                                     Object val = vars.get(var);
-                                    if (val == null || !val.toString().equals(expected)) {
-                                        matches = false;
-                                    }
+                                    if (val == null || !val.toString().equals(expected)) matches = false;
                                 }
 
                                 else if (p.contains("!= '")) {
@@ -471,9 +460,7 @@ public class DacFlowableService {
                                     String var = seg[0].trim();
                                     String expected = seg[1].trim().replace("'", "");
                                     Object val = vars.get(var);
-                                    if (val != null && val.toString().equals(expected)) {
-                                        matches = false;
-                                    }
+                                    if (val != null && val.toString().equals(expected)) matches = false;
                                 }
 
                                 if (!matches) break;
@@ -490,10 +477,11 @@ public class DacFlowableService {
 
                         NextStepDTO dto = new NextStepDTO();
                         dto.setValidationVariable(varsStr);
-                        dto.setValidationValue(cond);
+
+                        dto.setValidationValue(extractConditionValue(cond));
+
                         dto.setNextTaskName(nextName);
 
-                        // read actionLabel from BPMN
                         String action = getActionLabelFromXml(gf);
                         if (action == null) action = "Passer pour validation";
                         dto.setActionLabel(action);
