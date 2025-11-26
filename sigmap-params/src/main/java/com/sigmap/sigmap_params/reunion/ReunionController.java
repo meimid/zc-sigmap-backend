@@ -57,6 +57,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -463,14 +464,14 @@ public class ReunionController {
                 .collect(Collectors.toList());
 
 
-        dtoList = applySorting(dtoList, pageable);
+        dtoList = applySorting(dtoList, pageable, ReunionSearchResponseDto.class);
 
         Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
 
         return ResponseEntity.ok(page);
     }
 
-
+// global function for paginated a list
     public static <T> Page<T> paginate(List<T> list, Pageable pageable) {
 
         int start = (int) pageable.getOffset();
@@ -487,49 +488,66 @@ public class ReunionController {
         return new PageImpl<>(pageContent, pageable, list.size());
     }
 
+// global function for build field for sorting methode
+    private static <T> Comparator<T> buildFieldComparator(Class<T> type, String fieldName) {
+        try {
+            Field field = type.getDeclaredField(fieldName);
+            field.setAccessible(true);
 
-    private Comparator<ReunionSearchResponseDto> getComparator(String field) {
-        return switch (field) {
-            case "id"          -> Comparator.comparing(ReunionSearchResponseDto::getId);
-            case "comName"     -> Comparator.comparing(ReunionSearchResponseDto::getComName, Comparator.nullsLast(String::compareToIgnoreCase));
-            case "reunionDate" -> Comparator.comparing(ReunionSearchResponseDto::getReunionDate, Comparator.nullsLast(Calendar::compareTo));
-            case "emplacement" -> Comparator.comparing(ReunionSearchResponseDto::getEmplacement, Comparator.nullsLast(String::compareToIgnoreCase));
-            case "object"      -> Comparator.comparing(ReunionSearchResponseDto::getObject, Comparator.nullsLast(String::compareToIgnoreCase));
-            case "status"      -> Comparator.comparing(ReunionSearchResponseDto::getStatus, Comparator.nullsLast(Enum::compareTo));
-            case "decision"    -> Comparator.comparing(ReunionSearchResponseDto::getDecision, Comparator.nullsLast(String::compareToIgnoreCase));
-            default -> null;
-        };
+            return (o1, o2) -> {
+                try {
+                    Object v1 = field.get(o1);
+                    Object v2 = field.get(o2);
+
+                    if (v1 == null && v2 == null) return 0;
+                    if (v1 == null) return 1;
+                    if (v2 == null) return -1;
+
+                    if (v1 instanceof Comparable<?> && v2 instanceof Comparable<?>) {
+                        Comparable<Object> c1 = (Comparable<Object>) v1;
+                        return c1.compareTo(v2);
+                    }
+
+
+                    return 0;
+                } catch (IllegalAccessException e) {
+                    return 0;
+                }
+            };
+
+        } catch (NoSuchFieldException e) {
+            return null;
+        }
     }
-    private List<ReunionSearchResponseDto> applySorting(
-            List<ReunionSearchResponseDto> list,
-            Pageable pageable
-    ) {
-        if (pageable.getSort().isUnsorted()) {
+//global  function for sorting
+    public static <T> List<T> applySorting(List<T> list, Pageable pageable, Class<T> type) {
+        if (pageable.getSort().isUnsorted() || list.isEmpty()) {
             return list;
         }
 
-        Comparator<ReunionSearchResponseDto> comparator = null;
+        Comparator<T> globalComparator = null;
 
         for (Sort.Order order : pageable.getSort()) {
-            Comparator<ReunionSearchResponseDto> fieldComparator = getComparator(order.getProperty());
+            Comparator<T> fieldComparator = buildFieldComparator(type, order.getProperty());
 
             if (fieldComparator != null) {
                 if (order.isDescending()) {
                     fieldComparator = fieldComparator.reversed();
                 }
 
-                comparator = (comparator == null)
+                globalComparator = (globalComparator == null)
                         ? fieldComparator
-                        : comparator.thenComparing(fieldComparator);
+                        : globalComparator.thenComparing(fieldComparator);
             }
         }
 
-        if (comparator != null) {
-            list = list.stream().sorted(comparator).collect(Collectors.toList());
+        if (globalComparator != null) {
+            return list.stream().sorted(globalComparator).toList();
         }
 
         return list;
     }
+
 
 
 }
