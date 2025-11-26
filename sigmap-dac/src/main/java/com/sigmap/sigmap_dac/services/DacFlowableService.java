@@ -583,28 +583,32 @@ public class DacFlowableService {
         return null;
     }
     private String extractConditionValue(String conditionExpression) {
-        if (conditionExpression == null) return null;
+        if (conditionExpression == null || conditionExpression.isBlank())
+            return null;
 
         String cleaned = conditionExpression.trim().replace("#{", "${");
+
+        // strip ${ ... }
         if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
             cleaned = cleaned.substring(2, cleaned.length() - 1).trim();
         }
 
-        // Cas booléen : cpmp_valide == true
-        Matcher boolMatcher = Pattern.compile("\\s*(==|!=)\\s*(true|false)\\s*$", Pattern.CASE_INSENSITIVE)
+        // BOOLEAN PATTERN → returns only "true" or "false"
+        Matcher boolMatcher = Pattern.compile("==\\s*(true|false)", Pattern.CASE_INSENSITIVE)
                 .matcher(cleaned);
         if (boolMatcher.find()) {
-            return boolMatcher.group(2).toLowerCase();
+            return boolMatcher.group(1).toLowerCase();  // ← FIX: return "true" or "false"
         }
 
-        // Cas string : cncmpDecision == 'APPROVE'
-        Matcher strMatcher = Pattern.compile("\\s*(==|!=)\\s*['\"]([^'\"]+)['\"]\\s*$").matcher(cleaned);
+        // STRING PATTERN → returns the literal value (ex: APPROVE)
+        Matcher strMatcher = Pattern.compile("==\\s*['\"]([^'\"]+)['\"]").matcher(cleaned);
         if (strMatcher.find()) {
-            return strMatcher.group(2);
+            return strMatcher.group(1); // APPROVE / REJECT / CI
         }
 
         return null;
-    }    /* -------------------------------- validate / complete task -------------------------------- */
+    }
+    /* -------------------------------- validate / complete task -------------------------------- */
     @Transactional
     public List<TaskDTO> validateTaskGroup(List<GroupValidationRequest> requests)
             throws DacNotFound, DocNotFound, AcNotFound,
