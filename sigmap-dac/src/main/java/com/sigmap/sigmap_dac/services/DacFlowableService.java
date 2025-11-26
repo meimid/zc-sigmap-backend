@@ -379,7 +379,7 @@ public class DacFlowableService {
 
         try {
             Map<String, Object> vars = runtimeService.getVariables(task.getExecutionId());
-            log.info("process Variables: " + vars);
+            log.info("process Variables: {}", vars);
 
             BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
             FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
@@ -400,10 +400,13 @@ public class DacFlowableService {
                         String cond = gf.getConditionExpression();
                         String varsStr = extractVariableName(cond);
 
+                        log.info("------ Checking SequenceFlow {} ------", gf.getId());
+                        log.info("ConditionExpression = {}", cond);
+
                         boolean matches = true;
 
                     /* =============================================================
-                       UNIVERSAL CONDITION EVALUATION
+                       UNIVERSAL CONDITION EVALUATION (EXCEPT valide / cpmp_valide / cncmpDecision)
                        ============================================================= */
                         if (cond != null) {
 
@@ -415,10 +418,14 @@ public class DacFlowableService {
 
                             for (String p : parts) {
                                 p = p.trim();
+                                log.info(" >> Evaluating condition part: '{}'", p);
 
+                                /* ALWAYS DISPLAY THESE OPTIONS — DO NOT FILTER */
                                 if (p.startsWith("valide")
                                         || p.startsWith("cpmp_valide")
                                         || p.startsWith("cncmpDecision")) {
+
+                                    log.info("    SKIP decision variable check for '{}'", p);
                                     continue;
                                 }
 
@@ -426,25 +433,47 @@ public class DacFlowableService {
                                 if (p.contains("== true")) {
                                     String var = p.replace("== true", "").trim();
                                     Object val = vars.get(var);
-                                    if (!(val instanceof Boolean) || !((Boolean) val)) matches = false;
+                                    log.info("    Expect {} == true, actual={}", var, val);
+
+                                    if (!(val instanceof Boolean) || !((Boolean) val)) {
+                                        log.warn("    ✗ Flow hidden: variable {} is not true", var);
+                                        matches = false;
+                                    }
                                 }
 
                                 /* ============================ BOOLEAN FALSE ============================= */
                                 else if (p.contains("== false")) {
                                     String var = p.replace("== false", "").trim();
                                     Object val = vars.get(var);
-                                    if (!(val instanceof Boolean) || ((Boolean) val)) matches = false;
+                                    log.info("    Expect {} == false, actual={}", var, val);
+
+                                    if (!(val instanceof Boolean) || ((Boolean) val)) {
+                                        log.warn("    ✗ Flow hidden: variable {} is not false", var);
+                                        matches = false;
+                                    }
                                 }
 
                                 /* ============================ NULL COMPARISON =========================== */
                                 else if (p.contains("== null")) {
                                     String var = p.replace("== null", "").trim();
-                                    if (vars.get(var) != null) matches = false;
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} == null, actual={}", var, val);
+
+                                    if (val != null) {
+                                        log.warn("    ✗ Flow hidden: {} is not null", var);
+                                        matches = false;
+                                    }
                                 }
 
                                 else if (p.contains("!= null")) {
                                     String var = p.replace("!= null", "").trim();
-                                    if (vars.get(var) == null) matches = false;
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} != null, actual={}", var, val);
+
+                                    if (val == null) {
+                                        log.warn("    ✗ Flow hidden: {} is null", var);
+                                        matches = false;
+                                    }
                                 }
 
                                 /* ============================ STRING EQUALITY =========================== */
@@ -453,7 +482,12 @@ public class DacFlowableService {
                                     String var = seg[0].trim();
                                     String expected = seg[1].trim().replace("'", "");
                                     Object val = vars.get(var);
-                                    if (val == null || !val.toString().equals(expected)) matches = false;
+                                    log.info("    Expect {} == '{}', actual={}", var, expected, val);
+
+                                    if (val == null || !val.toString().equals(expected)) {
+                                        log.warn("    ✗ Flow hidden: {} value not equal to expected '{}'", var, expected);
+                                        matches = false;
+                                    }
                                 }
 
                                 else if (p.contains("!= '")) {
@@ -461,14 +495,24 @@ public class DacFlowableService {
                                     String var = seg[0].trim();
                                     String expected = seg[1].trim().replace("'", "");
                                     Object val = vars.get(var);
-                                    if (val != null && val.toString().equals(expected)) matches = false;
+                                    log.info("    Expect {} != '{}', actual={}", var, expected, val);
+
+                                    if (val != null && val.toString().equals(expected)) {
+                                        log.warn("    ✗ Flow hidden: {} equals forbidden '{}'", var, expected);
+                                        matches = false;
+                                    }
                                 }
 
-                                if (!matches) break;
+                                if (!matches) {
+                                    log.warn(" → RESULT: Flow '{}' is HIDDEN", gf.getId());
+                                    break;
+                                }
                             }
                         }
 
                         if (!matches) continue;
+
+                        log.info(" → RESULT: Flow '{}' is VISIBLE ✓", gf.getId());
 
                     /* =============================================================
                        BUILD NEXT STEP DTO
@@ -495,12 +539,15 @@ public class DacFlowableService {
                CASE 2 : DIRECT SEQUENCE FLOW
                ============================================================= */
                 else {
-                    String nextName = target.getName();
+
+                    FlowElement next = target;
+
+                    log.info("Direct sequence to: {}", next.getName());
 
                     NextStepDTO dto = new NextStepDTO();
                     dto.setValidationVariable(null);
                     dto.setValidationValue(null);
-                    dto.setNextTaskName(nextName);
+                    dto.setNextTaskName(next.getName());
 
                     String action = getActionLabelFromXml(of);
                     if (action == null) action = "Passer pour validation";
