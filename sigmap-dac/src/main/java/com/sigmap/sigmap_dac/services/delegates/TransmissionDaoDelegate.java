@@ -7,6 +7,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 /**
  * Flowable delegate that runs during the sendTask:
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
  * Appears twice in dacProcess.bpmn (Activity_0u7tuz6, Activity_0z9wkoj).
  */
 @Slf4j
-@Component("transmissionDaoDelegate")
+@Service("transmissionDaoDelegate")
 public class TransmissionDaoDelegate implements JavaDelegate {
 
     @Autowired
@@ -33,7 +34,7 @@ public class TransmissionDaoDelegate implements JavaDelegate {
             //  - generate DAO document
             //  - send email / letter / notification
             //  - update DAC status or attach document
-//            dacService.updateStatus(dacId, dacVer, ProcessStatus.PUBLIE);
+            dacService.updateStatus(dacId, dacVer, ProcessStatus.PUBLIE);
             log.info("Transmission logic executed successfully for DAC {}", dacId);
         } catch (Exception e) {
             log.error("Error during DAO transmission for DAC {}: {}", dacId, e.getMessage(), e);
