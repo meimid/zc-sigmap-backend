@@ -4,6 +4,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireRequestDTO;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
@@ -80,7 +81,7 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     }
 
     @Override
-    public CompteBancaire create(CompteBancaireRequest request) throws RefParamNotFound, SocieteNotFound {
+    public CompteBancaire create(CompteBancaireRequestDTO request) throws RefParamNotFound, SocieteNotFound {
         RefParam pays=refParamService.findById(request.getPaysId());
         Societe societe=societeService.findById(request.getSocieteId());
         CompteBancaire compteBancaire= CompteBancaireMapper.INSTANCE.map(request);
@@ -90,7 +91,7 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     }
 
     @Override
-    public CompteBancaire update(Integer id,CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
+    public CompteBancaire update(Integer id, CompteBancaireRequestDTO request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
         CompteBancaire compteBancaire=repository.findById(id)
                 .orElseThrow(() -> new CompteBancaireNotFound("",List.of(id)));
         RefParam pays=refParamService.findById(request.getPaysId());
