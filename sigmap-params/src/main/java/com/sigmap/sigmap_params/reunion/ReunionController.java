@@ -46,6 +46,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -402,7 +403,7 @@ public class ReunionController {
     }*/
 
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
-    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) throws PpmNotFound, AcNotFound {
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
@@ -427,7 +428,7 @@ public class ReunionController {
     }*/
 
     @GetMapping("/history/drop-list-com/ppm/{ppmId}")
-    public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
+    public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
@@ -439,7 +440,7 @@ public class ReunionController {
     }
 
     @GetMapping("/history/pageable/ppm/{ppmId}")
-    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query, @PathVariable Integer ppmId, @RequestParam(required = false) Integer comId) throws PpmNotFound, AcNotFound {
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query, @PathVariable Integer ppmId, @RequestParam(required = false) Integer comId) {
         String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new TokenRequired();
@@ -462,9 +463,12 @@ public class ReunionController {
                 .collect(Collectors.toList());
 
 
+        dtoList = applySorting(dtoList, pageable);
+
         Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
 
-        return ResponseEntity.ok(page);    }
+        return ResponseEntity.ok(page);
+    }
 
 
     public static <T> Page<T> paginate(List<T> list, Pageable pageable) {
@@ -481,6 +485,50 @@ public class ReunionController {
         }
 
         return new PageImpl<>(pageContent, pageable, list.size());
+    }
+
+
+    private Comparator<ReunionSearchResponseDto> getComparator(String field) {
+        return switch (field) {
+            case "id"          -> Comparator.comparing(ReunionSearchResponseDto::getId);
+            case "comName"     -> Comparator.comparing(ReunionSearchResponseDto::getComName, Comparator.nullsLast(String::compareToIgnoreCase));
+            case "reunionDate" -> Comparator.comparing(ReunionSearchResponseDto::getReunionDate, Comparator.nullsLast(Calendar::compareTo));
+            case "emplacement" -> Comparator.comparing(ReunionSearchResponseDto::getEmplacement, Comparator.nullsLast(String::compareToIgnoreCase));
+            case "object"      -> Comparator.comparing(ReunionSearchResponseDto::getObject, Comparator.nullsLast(String::compareToIgnoreCase));
+            case "status"      -> Comparator.comparing(ReunionSearchResponseDto::getStatus, Comparator.nullsLast(Enum::compareTo));
+            case "decision"    -> Comparator.comparing(ReunionSearchResponseDto::getDecision, Comparator.nullsLast(String::compareToIgnoreCase));
+            default -> null;
+        };
+    }
+    private List<ReunionSearchResponseDto> applySorting(
+            List<ReunionSearchResponseDto> list,
+            Pageable pageable
+    ) {
+        if (pageable.getSort().isUnsorted()) {
+            return list;
+        }
+
+        Comparator<ReunionSearchResponseDto> comparator = null;
+
+        for (Sort.Order order : pageable.getSort()) {
+            Comparator<ReunionSearchResponseDto> fieldComparator = getComparator(order.getProperty());
+
+            if (fieldComparator != null) {
+                if (order.isDescending()) {
+                    fieldComparator = fieldComparator.reversed();
+                }
+
+                comparator = (comparator == null)
+                        ? fieldComparator
+                        : comparator.thenComparing(fieldComparator);
+            }
+        }
+
+        if (comparator != null) {
+            list = list.stream().sorted(comparator).collect(Collectors.toList());
+        }
+
+        return list;
     }
 
 
