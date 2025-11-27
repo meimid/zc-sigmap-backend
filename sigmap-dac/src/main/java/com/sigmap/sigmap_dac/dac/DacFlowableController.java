@@ -106,18 +106,19 @@ public class DacFlowableController {
      * @throws IOException   if an error occurs during processing
      * @throws ComNotFound   if a commission is not found
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group")
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group/{idReu}")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
-            @RequestParam("requestsJson") String requestsJson
+            @RequestParam("requestsJson") String requestsJson,
+            @PathVariable Integer idReu
             )
             throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
 
-//        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
-//        if (!present) {
-//            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
-//        }
+        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
+        if (!present) {
+            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
+        }
 
-//        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
+        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
 
         List<GroupValidationRequest> requests;
         try {
@@ -239,9 +240,9 @@ public class DacFlowableController {
         return ResponseEntity.ok(response);
     }
 
-//    @GetMapping("/tasks/by_com/{comId}")
-//    public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
-//        return ResponseEntity.ok(dacFlowableService.getDacTasksByComId(comId));
-//    }
+    @GetMapping("/tasks/by_com/{comId}")
+    public ResponseEntity<TaskListResponseDTO> getTasksByCom(@PathVariable Integer comId) {
+        return ResponseEntity.ok(dacFlowableService.getDacTasksByComId(comId));
+    }
 
 }

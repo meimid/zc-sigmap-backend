@@ -230,7 +230,7 @@
 
     <sequenceFlow id="Flow_0ympl8t" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_1lwas3w">
       <extensionElements>
-        <flowable:property name="actionLabel" value="Complément d'information"/>
+        <flowable:property name="actionLabel" value="Additional information"/>
       </extensionElements>
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision == 'CI'}]]></conditionExpression>
     </sequenceFlow>
