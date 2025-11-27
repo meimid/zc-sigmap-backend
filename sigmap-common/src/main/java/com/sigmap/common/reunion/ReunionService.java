@@ -24,6 +24,7 @@ import java.util.Optional;
 
 public interface ReunionService {
     List<Reunion> findAll();
+    List<Reunion> findAll(Specification<Reunion> spec);
     Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable);
     Page<Reunion> findAllDeleted(Specification<Reunion> spec, Pageable pageable);
     Page<Reunion> findAllDeleted(Pageable pageable);
@@ -45,12 +46,15 @@ public interface ReunionService {
     Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     ProcessVerbalReunion injectPv(Integer reunionId, MultipartFile file) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
-    List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId) ;
-    List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId,String userId) ;
-    List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt);
+    List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId,Specification<Reunion> specifications) ;
+    List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId,String userId,Specification<Reunion> specifications) ;
+    List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt,Specification<Reunion> specifications);
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
+    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
+
+
 
 
 
