@@ -5,6 +5,7 @@ import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.reunionPpm.ReunionPpm;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
@@ -18,8 +19,13 @@ public class ReunionSpecifications {
             Join<Reunion, Com> comJoin = root.join("com", JoinType.LEFT);
             Join<Reunion, ReunionPpm> reunionPpmJoin = root.join("reunionPpms", JoinType.LEFT);
             Join<ReunionPpm, Ppm> ppmJoin = reunionPpmJoin.join("ppm", JoinType.LEFT);
-
             query.distinct(true);
+            Expression<String> formattedDate = criteriaBuilder.function(
+                    "DATE_FORMAT",
+                    String.class,
+                    root.get("reunionDate"),
+                    criteriaBuilder.literal("%Y-%m-%d %H:%i:%s")
+            );
 
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("emplacement"), "%" + search + "%"),
@@ -28,7 +34,9 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(ppmJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("ref"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("status"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%")
+                    criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(formattedDate), "%" + search + "%"),
+                    criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%")
 
 
                     );
