@@ -25,7 +25,10 @@ public class Com extends BaseEntity {
   private Integer id;
 
   private String nom;
-
+  @Column(name = "nom_ar")
+  private String nomAr;
+  @Column(name = "abrv")
+  private String abreviation;
   @Column(name = "decret_creation")
   private String decretCreation;
 

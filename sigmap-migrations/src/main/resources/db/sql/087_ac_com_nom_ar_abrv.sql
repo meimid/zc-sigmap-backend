@@ -1,0 +1,10 @@
+-- liquibase formatted sql
+
+-- changeset sigmap:1757950288-1
+ALTER TABLE com ADD COLUMN nom_ar VARCHAR (255) DEFAULT NULL;
+-- changeset sigmap:1757950288-2
+ALTER TABLE com ADD COLUMN abrv VARCHAR (255) DEFAULT NULL;
+-- changeset sigmap:1757950288-3
+ALTER TABLE ac ADD COLUMN nom_ar VARCHAR (255) DEFAULT NULL;
+-- changeset sigmap:1757950288-4
+ALTER TABLE ac ADD COLUMN abrv VARCHAR (255) DEFAULT NULL;

@@ -10,6 +10,8 @@ import org.springframework.data.jpa.domain.Specification;
 public class AcQuery {
     private String search;
     private String nom;
+    private String abreviation;
+    private String nomAr;
     private String ancrage;
     private String contact;
     private String email;
@@ -45,6 +47,12 @@ public class AcQuery {
         }
         if (nom != null && !nom.isBlank()) {
             spec = spec.and(AcSpecifications.nom(nom));
+        }
+        if (nomAr != null && !nomAr.isBlank()) {
+            spec = spec.and(AcSpecifications.nomAr(nomAr));
+        }
+        if (abreviation != null && !abreviation.isBlank()) {
+            spec=spec.and(AcSpecifications.abreviation(abreviation));
         }
 
         if (ancrage != null && !ancrage.isBlank()) {

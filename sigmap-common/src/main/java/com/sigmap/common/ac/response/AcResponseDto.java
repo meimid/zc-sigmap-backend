@@ -8,6 +8,8 @@ import lombok.Data;
 public class AcResponseDto {
     private Integer id;
     private String nom;
+    private String abreviation;
+    private String nomAr;
     private String ancrage;
     private String contact;
     private String email;
