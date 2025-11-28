@@ -152,7 +152,7 @@ FROM com
 		<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
-		<variableExpression><![CDATA[$F{code}.equals("CPMP") ? $F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president}+" ." : ($F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president}+" ." :  "Le Comité Spécialisé de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president})]]></variableExpression>
+		<variableExpression><![CDATA[($F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président "+$P{president}+" ." :  "Le Comité Spécialisé de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président "+$P{president})]]></variableExpression>
 	</variable>
 	<title>
 		<band height="123" splitType="Stretch">
