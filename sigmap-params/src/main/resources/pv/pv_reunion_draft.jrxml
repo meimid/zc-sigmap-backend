@@ -162,9 +162,6 @@ FROM com
 	<variable name="intro" class="java.lang.String">
 		<variableExpression><![CDATA[$F{code}.equals("CPMP") ? $F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president}+" ." : ($F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president}+" ." :  "Le Comité Spécialisé de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president})]]></variableExpression>
 	</variable>
-	<variable name="title" class="java.lang.String">
-		<variableExpression><![CDATA["PROCES VERBAL\nN° " + $F{reunion_id} + "/" + $F{code} + "/" + new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) + " DU " + new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date})]]></variableExpression>
-	</variable>
 	<background>
 		<band height="600" splitType="Stretch">
 			<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.spreadsheet.SpreadsheetLayout"/>
@@ -316,7 +313,7 @@ FROM com
 				<textFieldExpression><![CDATA[$F{nom_tutel}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement style="ArialBold" x="183" y="100" width="186" height="40" uuid="be7cff91-bc95-47e3-850f-9e789a5ddcfa"/>
+				<reportElement style="ArialBold" x="183" y="100" width="197" height="40" uuid="be7cff91-bc95-47e3-850f-9e789a5ddcfa"/>
 				<box>
 					<pen lineWidth="1.5"/>
 					<topPen lineWidth="1.5" lineStyle="Solid" lineColor="#000000"/>
@@ -327,7 +324,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$V{title}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{code} : "") + "/" + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
 		</band>
 	</title>
