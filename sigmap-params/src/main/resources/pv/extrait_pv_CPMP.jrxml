@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="pv_reunion" pageWidth="595" pageHeight="842" whenNoDataType="NoPages" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="e73f6153-a7fd-4f39-8b39-ebdb9a75c501">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w1" value="486"/>
+	<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w2" value="500"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="379"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="616"/>
+	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+	<subDataset name="Dataset1" uuid="1e9c3bac-0dd9-4479-90a4-2802570853c9">
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<parameter name="reunion" class="java.lang.Integer"/>
+		<queryString language="SQL">
+			<![CDATA[SELECT reunion_id,
+	participant_id,
+	type,
+	nom,
+	prenom,
+	organisme,
+	fonction,
+	present
+FROM  participant
+where present=1
+and reunion_id= $P{reunion}
+and fonction_reunion ='MEMBRE']]>
+		</queryString>
+		<field name="reunion_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="participant_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="participant_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="participant_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="type" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="type"/>
+			<property name="com.jaspersoft.studio.field.label" value="type"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="nom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="nom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="prenom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="prenom"/>
+			<property name="com.jaspersoft.studio.field.label" value="prenom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="organisme" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="organisme"/>
+			<property name="com.jaspersoft.studio.field.label" value="organisme"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="fonction" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="fonction"/>
+			<property name="com.jaspersoft.studio.field.label" value="fonction"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<field name="present" class="java.lang.Boolean">
+			<property name="com.jaspersoft.studio.field.name" value="present"/>
+			<property name="com.jaspersoft.studio.field.label" value="present"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
+		</field>
+		<sortField name="type" order="Descending"/>
+		<group name="reunion_id">
+			<groupExpression><![CDATA[$F{reunion_id}]]></groupExpression>
+		</group>
+	</subDataset>
+	<parameter name="reunion" class="java.lang.Integer"/>
+	<parameter name="pathImg" class="java.io.InputStream"/>
+	<parameter name="president" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR1" class="java.io.InputStream"/>
+	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
+	<parameter name="SUBREPORT_DIR3" class="java.io.InputStream"/>
+	<queryString>
+		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
+	 reunion.com_id,
+	 reunion.reunion_date,
+	 reunion.emplacement,
+	 reunion.object,
+	 com.com_id,
+	 com.nom,
+	 com.decret_creation,
+	 com.special,
+	 ref_param.code
+FROM com
+	INNER JOIN  reunion ON
+	  reunion.com_id =  com.com_id
+	INNER JOIN  ref_param ON
+	  com.com_type_id =  ref_param.ref_param_id
+	  where reunion.reunion_id =  $P{reunion}
+	  and  ref_param.code='CPMP']]>
+	</queryString>
+	<field name="reunion_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="pv_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="pv_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="pv_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="com_id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="reunion_date" class="java.sql.Timestamp">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_date"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="emplacement" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="emplacement"/>
+		<property name="com.jaspersoft.studio.field.label" value="emplacement"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="object" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="object"/>
+		<property name="com.jaspersoft.studio.field.label" value="object"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
+	<field name="COLUMN_7" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
+	<field name="nom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
+	<field name="decret_creation" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="decret_creation"/>
+		<property name="com.jaspersoft.studio.field.label" value="decret_creation"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
+	<field name="special" class="java.lang.Boolean">
+		<property name="com.jaspersoft.studio.field.name" value="special"/>
+		<property name="com.jaspersoft.studio.field.label" value="special"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
+	<field name="code" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="code"/>
+		<property name="com.jaspersoft.studio.field.label" value="code"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
+	</field>
+	<variable name="intro" class="java.lang.String">
+		<variableExpression><![CDATA[$F{code}.equals("CPMP") ? $F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president}+" ." : ($F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president}+" ." :  "Le Comité Spécialisé de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président Monsieur "+$P{president})]]></variableExpression>
+	</variable>
+	<title>
+		<band height="127" splitType="Stretch">
+			<staticText>
+				<reportElement style="ArialBold" x="262" y="26" width="240" height="20" uuid="009a367b-5a8e-4bc5-af18-33e44bea4eeb"/>
+				<textElement textAlignment="Center">
+					<font size="9" isBold="true" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[RÉPUBLIOUE ISLAMIQUE DE MAURITANIE]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="ArialBold" x="262" y="39" width="240" height="20" uuid="f1630b90-45fd-4f72-b660-5ea3ab41270e"/>
+				<textElement textAlignment="Center">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Honneur - Fraternité - Justice]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="262" y="0" width="240" height="20" uuid="19756e1f-1d6c-49f7-b3e4-e7b16e606999"/>
+				<textElement textAlignment="Center">
+					<font fontName="Tahoma" isBold="true" pdfFontName="fonts/tahomabd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[الجمهورية الإسلامية الموريتانية]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="262" y="10" width="240" height="20" uuid="e1ae6214-da3a-4dc2-8e61-76e528e00c41"/>
+				<textElement textAlignment="Center">
+					<font fontName="Tahoma" isBold="true" pdfFontName="fonts/tahomabd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[شرف ـ إخاء ـ عدل]]></text>
+			</staticText>
+			<line>
+				<reportElement x="0" y="22" width="550" height="1" forecolor="#964C4B" uuid="8a021d0e-8aa5-449a-a7ff-c63dfad5d4de"/>
+			</line>
+			<staticText>
+				<reportElement style="ArialBold" x="2" y="36" width="248" height="33" uuid="aa1e88bd-2646-4436-8a8a-1b5fefa870cb"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ministère de la Transformation Numérique et de la Modernisation de l'Administration]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="4" y="23" width="246" height="17" uuid="e2d9ed5a-e4db-45d1-928a-9f3f2098d745"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[وزارة التحوّل الرقميّ وعصرنة الإدارة]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="ArialBold" x="206" y="106" width="140" height="20" uuid="87f14113-5830-4e7c-b173-8da01965c159"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[EXTRAIT DU PV]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="320" y="84" width="50" height="15" uuid="0cf6d48c-57cb-4e4a-a8eb-bb0caf2f11b7"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Date :]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="320" y="70" width="40" height="15" uuid="18208a55-0b26-4cd6-b31b-c58c78cb4d5c"/>
+				<textElement>
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[N° :]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="468" y="84" width="70" height="15" uuid="54d468e2-6d40-48f7-8270-601850539f5e"/>
+				<textElement textAlignment="Center">
+					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[التاريخ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="470" y="71" width="70" height="14" uuid="ebb28590-92ef-4f6a-9a4e-0fa1a575a7fa"/>
+				<textElement textAlignment="Center">
+					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[الرقم]]></text>
+			</staticText>
+			<image>
+				<reportElement x="488" y="0" width="50" height="50" uuid="43eb1076-4610-453e-ba70-1a9d16c81d2e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<imageExpression><![CDATA[$P{pathImg}]]></imageExpression>
+			</image>
+			<textField pattern="dd/MM/yyyy">
+				<reportElement x="370" y="84" width="111" height="15" uuid="cde0a669-7b66-45e3-8c93-0674edab10a8"/>
+				<textElement>
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{reunion_date}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="360" y="70" width="120" height="15" uuid="f97a816e-6394-4a7c-a41f-e8d78aa14466"/>
+				<textElement>
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{pv_id}]]></textFieldExpression>
+			</textField>
+			<line>
+				<reportElement x="70" y="68" width="90" height="1" uuid="5c00465c-d51f-4170-9b81-ef2b59411896"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="71" y="105" width="90" height="1" uuid="f341aa09-818b-4d44-965e-fdff3a4cb226"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<staticText>
+				<reportElement x="4" y="69" width="246" height="17" uuid="83c74818-8956-4270-a48c-75fb2cd0779a"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[وزارة التحوّل الرقميّ وعصرنة الإدارة]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="ArialBold" x="3" y="82" width="248" height="23" uuid="e1129b6f-b576-46c2-842a-1b683d074957"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Comission de Passation des Marchés Publics]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="142" splitType="Stretch">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToTallestObject" x="2" y="1" width="548" height="37" uuid="eb4fd808-8563-41d5-a9e9-df15ee5a58ed"/>
+				<textElement textAlignment="Justified" verticalAlignment="Justified">
+					<font fontName="Arial"/>
+					<paragraph lineSpacing="1_1_2" lineSpacingSize="1.5"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{intro}]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement stretchType="RelativeToTallestObject" x="-7" y="38" width="559" height="99" isRemoveLineWhenBlank="true" uuid="db445761-d928-4296-b0f4-31fd273ff4ea">
+					<property name="com.jaspersoft.studio.element.name" value="les presents"/>
+				</reportElement>
+				<subreportParameter name="reunion">
+					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR1}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="100" splitType="Stretch">
+			<subreport>
+				<reportElement key="" stretchType="RelativeToTallestObject" x="-7" y="0" width="559" height="100" isRemoveLineWhenBlank="true" uuid="543be4ec-4c99-4b27-a0f2-ee842ea65592">
+					<property name="com.jaspersoft.studio.element.name" value="les absents"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<subreportParameter name="reunion">
+					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR2}]]></subreportExpression>
+			</subreport>
+		</band>
+		<band height="148" splitType="Stretch">
+			<subreport overflowType="Stretch">
+				<reportElement stretchType="RelativeToTallestObject" x="-7" y="0" width="559" height="146" isRemoveLineWhenBlank="true" uuid="7c19e01d-7bf9-43dd-82ac-3fe4fb65c119">
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<printWhenExpression><![CDATA[$F{code}.equals("CPMP")]]></printWhenExpression>
+				</reportElement>
+				<subreportParameter name="reunion">
+					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR3}]]></subreportExpression>
+			</subreport>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="34" splitType="Stretch">
+			<staticText>
+				<reportElement x="10" y="17" width="542" height="15" uuid="7dd92c33-7104-49d1-bc0b-ba2e5ae69a04"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[562, Avenue du Roi Faissal, BP: 184 - Nouakchott - Mauritanie -Tél: +222 45 25 25 94]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="10" y="1" width="542" height="15" uuid="dea1979e-6b69-4da4-bd21-efe0bb876d95"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Tahoma" size="8" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<text><![CDATA[562، شارع الملك فيصل، ص.ب: 184 - نواكشوط - موريتانيا - هاتف: ‎+222 45 25 25 94
+]]></text>
+			</staticText>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="110" splitType="Stretch">
+			<staticText>
+				<reportElement style="ArialBold" x="206" y="6" width="194" height="17" uuid="478c225d-c310-4131-b3ac-02e418c191db"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[LE PRESIDENT]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement style="ArialBold" x="213" y="21" width="184" height="23" uuid="3c187fe6-a60c-44a0-8c02-552e3bcfe353"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true" isUnderline="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{president}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement style="ArialBold" x="4" y="44" width="194" height="17" uuid="7defe35b-4884-491c-9580-cf27f4276961"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true" isUnderline="true"/>
+				</textElement>
+				<text><![CDATA[Les signataires]]></text>
+			</staticText>
+			<componentElement>
+				<reportElement isPrintRepeatedValues="false" x="2" y="61" width="533" height="15" isRemoveLineWhenBlank="true" uuid="76699bfd-a552-45ef-afa9-9b2ac41d9789">
+					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.HorizontalRowLayout"/>
+					<property name="com.jaspersoft.studio.unit.y" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.element.name" value="presents"/>
+				</reportElement>
+				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
+					<datasetRun subDataset="Dataset1" uuid="86f6afa0-44ee-4da8-b9a6-20476eafeb63">
+						<datasetParameter name="reunion">
+							<datasetParameterExpression><![CDATA[$P{reunion}]]></datasetParameterExpression>
+						</datasetParameter>
+						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+					</datasetRun>
+					<jr:listContents height="15" width="533">
+						<textField isBlankWhenNull="true">
+							<reportElement x="0" y="0" width="533" height="15" uuid="ce39acc5-f326-4274-ae15-a444f608dd32">
+								<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
+							</reportElement>
+							<textElement>
+								<font fontName="Arial" size="9"/>
+							</textElement>
+							<textFieldExpression><![CDATA["- "+$F{prenom}+" "+$F{nom}+", "+$F{fonction}+" du "+$F{organisme}]]></textFieldExpression>
+						</textField>
+					</jr:listContents>
+				</jr:list>
+			</componentElement>
+		</band>
+	</summary>
+</jasperReport>
