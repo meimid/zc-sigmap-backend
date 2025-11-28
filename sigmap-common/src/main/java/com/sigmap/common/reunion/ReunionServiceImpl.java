@@ -907,6 +907,11 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
+    public List<Reunion> findAll(Specification<Reunion> spec) {
+        return repository.findAll(spec);
+    }
+
+    @Override
     public void delete(Integer id) throws ReunionNotFound {
         Reunion reunion= findById(id);
          if(reunion.getStatus()!=ReunionStatus.BROUILLON){
@@ -1053,18 +1058,18 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId)  {
+    public List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId,Specification<Reunion> specifications)  {
 
-        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        Specification<Reunion> spec= Specification.where(specifications).and(ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER)));
         return repository.findAll(spec);
     }
 
     @Override
-    public List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId, String userId) {
+    public List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId, String userId,Specification<Reunion> specifications) {
 
         List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
 
-        Specification<Reunion> spec= ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+        Specification<Reunion> spec= Specification.where(specifications).and(ReunionSpecifications.hasPpmId(ppmId).and(ReunionSpecifications.deleted(false)).and(ReunionSpecifications.status(ReunionStatus.CLOTURER)));
         return repository.findAll(spec)
                 .stream()
                 .filter(reunion ->
@@ -1073,7 +1078,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt) {
+    public List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt,Specification<Reunion> specifications) {
         List<String> roles = jwt.getClaim("resource_access") != null
                 ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
                 .getOrDefault("backend-common", Map.of())
@@ -1088,16 +1093,16 @@ public class ReunionServiceImpl implements ReunionService{
 
         List<Reunion> reunionList=new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
-            reunionList = findAllByPpmIdListForAdminCentralAndSuperAdmin(ppmId);}
+            reunionList = findAllByPpmIdListForAdminCentralAndSuperAdmin(ppmId,specifications);}
         else{
             String userId = jwt.getSubject();
-            reunionList=findAllByPpmIdListForUserCom(ppmId,userId);
+            reunionList=findAllByPpmIdListForUserCom(ppmId,userId,specifications);
 
         }
         return reunionList;
     }
 
-    /*this methode return dto because i will build some data from different services*/
+    /*this methode return dto because it will build some data from different services*/
     @Override
     public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) {
 
@@ -1180,6 +1185,39 @@ public class ReunionServiceImpl implements ReunionService{
             dto =particpantHistoryByReunionIdAndPPmIdForUserCom(reunionId,ppmId,userId);
         }
         return dto;
+    }
+
+    @Override
+    public List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications) {
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+        String userId = jwt.getSubject();
+
+        Specification<Reunion> spec = Specification.where(specifications)
+                .and(ReunionSpecifications.hasPpmId(ppmId))
+                .and(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER));
+
+        if (comId != null) {
+            if (!isAdminCentral && !isSuperAdmin) {
+                List<Integer> comIds = userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+                if (!comIds.contains(comId)) {
+                    throw new AuthorizationDeniedException("");
+                }
+            }
+            spec = spec.and(ReunionSpecifications.comId(comId));
+        }
+
+        return findAll(spec);
     }
 
     private Specification<Reunion> reunionSpecificationRoleAndComIds (Specification<Reunion> spec){
