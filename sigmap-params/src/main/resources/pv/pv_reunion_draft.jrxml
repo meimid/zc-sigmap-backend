@@ -173,7 +173,8 @@ FROM com
 		</band>
 	</background>
 	<title>
-		<band height="140" splitType="Stretch">
+		<band height="156" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<staticText>
 				<reportElement style="ArialBold" x="262" y="26" width="240" height="20" uuid="009a367b-5a8e-4bc5-af18-33e44bea4eeb"/>
 				<textElement textAlignment="Center">
@@ -235,7 +236,7 @@ FROM com
 				<textElement>
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<text><![CDATA[Numéro]]></text>
+				<text><![CDATA[Numéro ]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="460" y="56" width="70" height="15" uuid="54d468e2-6d40-48f7-8270-601850539f5e"/>
@@ -249,7 +250,7 @@ FROM com
 				<textElement textAlignment="Center">
 					<font fontName="Tahoma" size="9" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 				</textElement>
-				<text><![CDATA[الرقم]]></text>
+				<text><![CDATA[الرقم ]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement x="2" y="56" width="221" height="44" uuid="98c83fa4-32b9-45c4-aa42-7e3fef12a0d9"/>
@@ -271,20 +272,6 @@ FROM com
 				</reportElement>
 				<imageExpression><![CDATA[$P{pathImg}]]></imageExpression>
 			</image>
-			<textField pattern="dd/MM/yyyy">
-				<reportElement x="385" y="56" width="95" height="15" uuid="cde0a669-7b66-45e3-8c93-0674edab10a8"/>
-				<textElement>
-					<font fontName="Arial"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{reunion_date}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="369" y="70" width="100" height="15" uuid="f97a816e-6394-4a7c-a41f-e8d78aa14466"/>
-				<textElement>
-					<font fontName="Arial" size="9"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{pv_id}]]></textFieldExpression>
-			</textField>
 			<line>
 				<reportElement x="70" y="100" width="90" height="1" uuid="5c00465c-d51f-4170-9b81-ef2b59411896"/>
 				<graphicElement>
@@ -313,7 +300,7 @@ FROM com
 				<textFieldExpression><![CDATA[$F{nom_tutel}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement style="ArialBold" x="183" y="100" width="197" height="40" uuid="be7cff91-bc95-47e3-850f-9e789a5ddcfa"/>
+				<reportElement style="ArialBold" x="183" y="111" width="197" height="40" uuid="be7cff91-bc95-47e3-850f-9e789a5ddcfa"/>
 				<box>
 					<pen lineWidth="1.5"/>
 					<topPen lineWidth="1.5" lineStyle="Solid" lineColor="#000000"/>
@@ -326,6 +313,18 @@ FROM com
 				</textElement>
 				<textFieldExpression><![CDATA["PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{code} : "") + "/" + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
+			<line>
+				<reportElement x="350" y="80" width="129" height="1" uuid="dd4b2a5e-95a2-4ca6-8374-824f4500ebf8"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="368" y="66" width="99" height="1" uuid="bc1b275b-b4b3-4922-b324-67c7476cc452"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
 		</band>
 	</title>
 	<detail>

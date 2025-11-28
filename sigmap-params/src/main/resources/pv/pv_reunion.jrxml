@@ -162,7 +162,7 @@ FROM com
 		<variableExpression><![CDATA[$F{code}.equals("CPMP") ? $F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president}+" ." : ($F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president}+" ." :  "Le Comité Spécialisé de la "+$F{nom}+" s'est réuni en session ordinaire sur convocation de son président M. / Mme "+$P{president})]]></variableExpression>
 	</variable>
 	<title>
-		<band height="145" splitType="Stretch">
+		<band height="156" splitType="Stretch">
 			<staticText>
 				<reportElement style="ArialBold" x="262" y="26" width="240" height="20" uuid="009a367b-5a8e-4bc5-af18-33e44bea4eeb"/>
 				<textElement textAlignment="Center">
@@ -224,7 +224,7 @@ FROM com
 				<textElement>
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<text><![CDATA[Numéro]]></text>
+				<text><![CDATA[Numéro     ]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="460" y="56" width="70" height="15" uuid="54d468e2-6d40-48f7-8270-601850539f5e"/>
@@ -260,20 +260,6 @@ FROM com
 				</reportElement>
 				<imageExpression><![CDATA[$P{pathImg}]]></imageExpression>
 			</image>
-			<textField pattern="dd/MM/yyyy">
-				<reportElement x="385" y="56" width="95" height="15" uuid="cde0a669-7b66-45e3-8c93-0674edab10a8"/>
-				<textElement>
-					<font fontName="Arial"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{reunion_date}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="369" y="70" width="100" height="15" uuid="f97a816e-6394-4a7c-a41f-e8d78aa14466"/>
-				<textElement>
-					<font fontName="Arial" size="9"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{pv_id}]]></textFieldExpression>
-			</textField>
 			<line>
 				<reportElement x="70" y="100" width="90" height="1" uuid="5c00465c-d51f-4170-9b81-ef2b59411896"/>
 				<graphicElement>
@@ -302,7 +288,7 @@ FROM com
 				</graphicElement>
 			</line>
 			<textField isBlankWhenNull="true">
-				<reportElement style="ArialBold" x="183" y="100" width="196" height="40" uuid="ee556b46-a57c-43d8-afbe-ed127d4fd2c0"/>
+				<reportElement style="ArialBold" x="183" y="110" width="196" height="40" uuid="ee556b46-a57c-43d8-afbe-ed127d4fd2c0"/>
 				<box>
 					<pen lineWidth="1.5"/>
 					<topPen lineWidth="1.5" lineStyle="Solid" lineColor="#000000"/>
@@ -315,6 +301,18 @@ FROM com
 				</textElement>
 				<textFieldExpression><![CDATA["PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{code} : "") + "/" + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
+			<line>
+				<reportElement x="368" y="66" width="99" height="1" uuid="0481807b-9caf-4e39-844d-50655b4742e0"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="350" y="80" width="129" height="1" uuid="fe4153b0-fe69-446b-b89b-168852318a48"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
 		</band>
 	</title>
 	<detail>
