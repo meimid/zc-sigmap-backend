@@ -57,8 +57,8 @@ public interface PaaDetailedMapper {
     RealisationResponseDtoForPaa mapRealisation(Realisation realisation);
 
     @Mapping(target = "financementId", source = "id.financementId")
-    @Mapping(target = "realisationId", source = "id.realisation.id")
-    @Mapping(target = "realisationVer", source = "id.realisation.version")
+    @Mapping(target = "realisationId", source = "id.realisationId")
+    @Mapping(target = "realisationVer", source = "id.realisationVer")
     @Mapping(target = "monnaieId", source = "monnaie.id")
     @Mapping(target = "sourceFinancement", source = "sourceFinancement")
     @Mapping(target = "budgetEstimer", source = "budgetEstimer")
