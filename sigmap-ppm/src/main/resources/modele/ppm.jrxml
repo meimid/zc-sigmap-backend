@@ -70,7 +70,7 @@ SELECT p.ppm_id,
    GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
   m.libelle,
  f.description,
- r.budget_estime,
+ FORMAT(r.budget_estime, 0) as budget_estime,
    CASE
   WHEN MIN(ln.budget) IS NULL THEN NULL
  		ELSE GROUP_CONCAT(
@@ -110,8 +110,7 @@ p.ppm_id =  $P{ppm_id}
     r.date_prev_ap,
     m.libelle,
     f.description,
-    r.budget_estime
-]]>
+    r.budget_estime]]>
 		</queryString>
 		<field name="ppm_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="ppm_id"/>
@@ -185,8 +184,14 @@ p.ppm_id =  $P{ppm_id}
 			<property name="com.jaspersoft.studio.field.label" value="description"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 		</field>
-		<field name="budget_estime" class="java.math.BigDecimal"/>
-		<field name="budget_lots" class="java.lang.String"/>
+		<field name="budget_estime" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.label" value="budget_estime"/>
+		</field>
+		<field name="budget_lots" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="budget_lots"/>
+			<property name="com.jaspersoft.studio.field.label" value="budget_lots"/>
+		</field>
 		<sortField name="realisation_id"/>
 		<sortField name="realisation_ver"/>
 		<group name="ppm_id">
