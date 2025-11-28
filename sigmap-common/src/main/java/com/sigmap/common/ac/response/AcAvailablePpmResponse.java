@@ -13,5 +13,7 @@ import java.util.List;
 public class AcAvailablePpmResponse {
     private Integer acId;
     private String acName;
+    private String abreviation;
+    private String nomAr;
     private List<Integer> allowedYears;
 }

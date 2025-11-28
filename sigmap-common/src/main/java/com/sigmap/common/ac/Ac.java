@@ -26,6 +26,10 @@ public class Ac extends BaseEntity {
   @Column(name = "ac_id")
   private Integer id;
   private String nom;
+  @Column(name = "nom_ar")
+  private String nomAr;
+  @Column(name = "abrv")
+  private String abreviation;
   private String ancrage;
   private String contact;
   @ManyToOne

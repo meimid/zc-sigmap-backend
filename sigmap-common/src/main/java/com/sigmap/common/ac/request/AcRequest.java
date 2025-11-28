@@ -14,6 +14,8 @@ import java.util.List;
 public class AcRequest {
 
   private String nom;
+  private String abreviation;
+  private String nomAr;
   private List<String> userIds;
   private Integer tutelId;
   private String email;

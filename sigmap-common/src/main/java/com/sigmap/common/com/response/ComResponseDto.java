@@ -7,6 +7,8 @@ import lombok.Data;
 public class ComResponseDto {
   private Integer id;
   private String nom;
+  private String abreviation;
+  private String nomAr;
   private String decretCreation;
   //private String responsable;
   private Boolean special;

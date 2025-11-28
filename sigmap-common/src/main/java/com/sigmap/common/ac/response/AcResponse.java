@@ -18,6 +18,8 @@ import lombok.*;
 public class AcResponse {
   private Integer id;
   private String nom;
+    private String abreviation;
+    private String nomAr;
   private String ancrage;
   private String contact;
   //private List<UserDTO> users;

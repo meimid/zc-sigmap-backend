@@ -6,4 +6,6 @@ import lombok.Data;
 public class AcSelectResponseDto {
     private Integer id;
     private String nom;
+    private String abreviation;
+    private String nomAr;
 }
