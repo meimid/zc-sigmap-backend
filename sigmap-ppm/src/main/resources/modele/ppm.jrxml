@@ -504,7 +504,7 @@ d’attribution]]></text>
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
 								<text><![CDATA[Date prévue
-démarrage/Tvx/Prest]]></text>
+démarrage]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
@@ -528,7 +528,7 @@ démarrage/Tvx/Prest]]></text>
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
 								<text><![CDATA[Date prévue
-d’achèvement/Tvx/Prest
+d’achèvement
 ]]></text>
 							</staticText>
 						</jr:columnHeader>
