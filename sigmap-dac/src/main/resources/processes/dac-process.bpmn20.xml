@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
              xmlns:flowable="http://flowable.org/bpmn"
-             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-             xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC"
-             xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI"
-             typeLanguage="http://www.w3.org/2001/XMLSchema"
-             expressionLanguage="http://www.w3.org/1999/XPath"
-             targetNamespace="http://bpmn.io/schema/bpmn"
-             exporter="Flowable Open Source Modeler"
-             exporterVersion="6.8.0">
+             targetNamespace="http://bpmn.io/schema/bpmn">
 
   <process id="dacProcess" name="dac" isExecutable="true">
+
+    <!-- START -->
     <startEvent id="Event_06b8v8q" name="Début" flowable:formFieldValidation="true">
       <outgoing>Flow_1c4qwmp</outgoing>
     </startEvent>
 
-    <userTask id="saisieTask" name="Saisie DAC (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
+    <!-- Saisie -->
+    <userTask id="saisieTask" name="Saisie DAC (AC)" flowable:candidateGroups="REDACTEUR_AC">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="true"/>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_1c4qwmp</incoming>
       <outgoing>Flow_00iv1ya</outgoing>
     </userTask>
 
-    <userTask id="Activity_0m03i99" name="Validation (AC)" flowable:candidateGroups="VALIDATEUR_AC" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_1c4qwmp" sourceRef="Event_06b8v8q" targetRef="saisieTask"/>
+    <sequenceFlow id="Flow_00iv1ya" sourceRef="saisieTask" targetRef="Activity_0m03i99"/>
+
+    <!-- Validation AC -->
+    <userTask id="Activity_0m03i99" name="Validation (AC)" flowable:candidateGroups="VALIDATEUR_AC">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
       </extensionElements>
       <incoming>Flow_00iv1ya</incoming>
       <incoming>Flow_1faanus</incoming>
       <outgoing>Flow_0chj49b</outgoing>
     </userTask>
 
-    <userTask id="Activity_1d2aib2" name="Rectification (AC)" flowable:candidateGroups="REDACTEUR_AC" flowable:formFieldValidation="true">
+    <!-- Rectification -->
+    <userTask id="Activity_1d2aib2" name="Rectification (AC)" flowable:candidateGroups="REDACTEUR_AC">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="true"/>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_036s2iv</incoming>
       <incoming>Flow_1w0kye6</incoming>
@@ -44,21 +44,48 @@
       <outgoing>Flow_1faanus</outgoing>
     </userTask>
 
+    <sequenceFlow id="Flow_1faanus" sourceRef="Activity_1d2aib2" targetRef="Activity_0m03i99">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Passer pour validation"/>
+      </extensionElements>
+    </sequenceFlow>
+
+    <sequenceFlow id="Flow_0chj49b" sourceRef="Activity_0m03i99" targetRef="Gateway_13q8j1a"/>
+
+    <!-- Gateway AC -->
     <exclusiveGateway id="Gateway_13q8j1a">
       <incoming>Flow_0chj49b</incoming>
       <outgoing>Flow_036s2iv</outgoing>
       <outgoing>Flow_1dsmkbd</outgoing>
     </exclusiveGateway>
 
-    <userTask id="Task_1vmbdxo" name="Validation DAC (CPMP)" flowable:candidateGroups="CPMP-PLANIFICATEUR,CPMP-RAPPORTEUR" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_036s2iv" sourceRef="Gateway_13q8j1a" targetRef="Activity_1d2aib2">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"/>
+        <flowable:property name="actionLabel" value="Reject"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${valide == false}]]></conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="Flow_1dsmkbd" sourceRef="Gateway_13q8j1a" targetRef="Task_1vmbdxo">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Validate"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${valide == true}]]></conditionExpression>
+    </sequenceFlow>
+
+    <!-- Validation CPMP -->
+    <userTask id="Task_1vmbdxo" name="Validation DAC (CPMP)" flowable:candidateGroups="CPMP-PLANIFICATEUR,CPMP-RAPPORTEUR">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="meetingRequired" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_1dsmkbd</incoming>
       <outgoing>SequenceFlow_0whoqkh</outgoing>
     </userTask>
 
+    <sequenceFlow id="SequenceFlow_0whoqkh" sourceRef="Task_1vmbdxo" targetRef="ExclusiveGateway_1qgo4yf"/>
+
+    <!-- Gateway CPMP -->
     <exclusiveGateway id="ExclusiveGateway_1qgo4yf">
       <incoming>SequenceFlow_0whoqkh</incoming>
       <outgoing>Flow_1w0kye6</outgoing>
@@ -67,26 +94,52 @@
       <outgoing>Flow_0jshl3l</outgoing>
     </exclusiveGateway>
 
-    <endEvent id="EndEvent_0tr7b0f">
-      <incoming>Flow_1jdhasv</incoming>
-    </endEvent>
-
-    <sequenceFlow id="Flow_1c4qwmp" sourceRef="Event_06b8v8q" targetRef="saisieTask"/>
-    <sequenceFlow id="Flow_00iv1ya" sourceRef="saisieTask" targetRef="Activity_0m03i99"/>
-    <sequenceFlow id="Flow_1faanus" sourceRef="Activity_1d2aib2" targetRef="Activity_0m03i99"/>
-    <sequenceFlow id="Flow_0chj49b" sourceRef="Activity_0m03i99" targetRef="Gateway_13q8j1a"/>
-
-    <sequenceFlow id="Flow_036s2iv" name="Non Valide" sourceRef="Gateway_13q8j1a" targetRef="Activity_1d2aib2">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${valide==false}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_1dsmkbd" name="valide" sourceRef="Gateway_13q8j1a" targetRef="Task_1vmbdxo">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${valide==true}]]></conditionExpression>
+    <sequenceFlow id="Flow_1w0kye6" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Activity_1d2aib2">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Reject"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide == false}]]></conditionExpression>
     </sequenceFlow>
 
-    <sequenceFlow id="SequenceFlow_0whoqkh" sourceRef="Task_1vmbdxo" targetRef="ExclusiveGateway_1qgo4yf"/>
-    <sequenceFlow id="Flow_1w0kye6" name="cpmp_non_valide" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Activity_1d2aib2">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide==false}]]></conditionExpression>
+    <!-- FIXED: No stray CDATA -->
+    <sequenceFlow id="Flow_1y9t64n" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_0x68o40">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Validate"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[
+        ${cpmp_valide == true && isRestraint == true && parentDacId == null}
+      ]]></conditionExpression>
     </sequenceFlow>
+
+    <sequenceFlow id="Flow_1cduuxo" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_1is7nge">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Validate"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[
+        ${cpmp_valide == true && shortListing == false}
+      ]]></conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="Flow_0jshl3l" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Activity_0z9wkoj">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Transmettre"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[
+        ${cpmp_valide == true && shortListing == true && parentDacId != null}
+      ]]></conditionExpression>
+    </sequenceFlow>
+
+    <!-- Reserve CPMP -->
+    <userTask id="Task_11nk76a" name="Reserve (CPMP)" flowable:candidateGroups="CPMP-PLANIFICATEUR,CPMP-RAPPORTEUR">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="meetingRequired" type="boolean" default="true"/>
+      </extensionElements>
+      <incoming>SequenceFlow_1bxbg8j</incoming>
+      <outgoing>Flow_0a89jat</outgoing>
+    </userTask>
+
+    <sequenceFlow id="Flow_0a89jat" sourceRef="Task_11nk76a" targetRef="Gateway_0kkfgcl"/>
 
     <exclusiveGateway id="Gateway_0kkfgcl">
       <incoming>Flow_0a89jat</incoming>
@@ -94,49 +147,72 @@
       <outgoing>Flow_1f0e0oc</outgoing>
     </exclusiveGateway>
 
-    <userTask id="Task_0x68o40" name="(CNCMP) commission permanente Affectation" flowable:candidateGroups="CNCMP-PER-AFFECTATION" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_10ninyt" sourceRef="Gateway_0kkfgcl" targetRef="Task_0x68o40">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="commissionRequired" name="commissionRequired" type="boolean" default="true"/>
+        <flowable:property name="actionLabel" value="Validate"/>
       </extensionElements>
-      <incoming>Flow_10ninyt</incoming>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reserve_valide == true}]]></conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="Flow_1f0e0oc" sourceRef="Gateway_0kkfgcl" targetRef="Activity_1d2aib2">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Reject"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reserve_valide == false}]]></conditionExpression>
+    </sequenceFlow>
+
+    <!-- CNCMP Affectation -->
+    <userTask id="Task_0x68o40" name="(CNCMP) commission permanente Affectation"
+              flowable:candidateGroups="CNCMP-PER-AFFECTATION">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="commissionRequired" type="boolean" default="true"/>
+      </extensionElements>
       <incoming>Flow_1y9t64n</incoming>
+      <incoming>Flow_10ninyt</incoming>
       <outgoing>Flow_1elinq9</outgoing>
     </userTask>
 
-    <userTask id="Task_11nk76a" name="Reserve (CPMP)" flowable:candidateGroups="CPMP-PLANIFICATEUR,CPMP-RAPPORTEUR" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_1elinq9" sourceRef="Task_0x68o40" targetRef="Activity_08yp2o2">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"/>
+        <flowable:property name="actionLabel" value="Affecter"/>
       </extensionElements>
-      <incoming>SequenceFlow_1bxbg8j</incoming>
-      <outgoing>Flow_0a89jat</outgoing>
-    </userTask>
+    </sequenceFlow>
 
-    <userTask id="Activity_08yp2o2" name="(CNCMP) Avis sous-commission spécialisée" flowable:candidateGroups="CNCMP-SPE-PLANIFICATEUR,CNCMP-SPE-RAPPORTEUR" flowable:formFieldValidation="true">
+    <!-- Avis SPE -->
+    <userTask id="Activity_08yp2o2" name="(CNCMP) Avis sous-commission spécialisée"
+              flowable:candidateGroups="CNCMP-SPE-PLANIFICATEUR,CNCMP-SPE-RAPPORTEUR">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"/>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="meetingRequired" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_1elinq9</incoming>
       <outgoing>Flow_11s0knn</outgoing>
     </userTask>
 
-    <userTask id="Activity_1iyb3ly" name="(CNCMP) Décision commission permanente" flowable:candidateGroups="CNCMP-PER-PLANIFICATEUR,CNCMP-PER-RAPPORTEUR" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_11s0knn" sourceRef="Activity_08yp2o2" targetRef="Activity_1iyb3ly"/>
+
+    <!-- CNCMP Decision -->
+    <userTask id="Activity_1iyb3ly"
+              name="(CNCMP) Décision commission permanente"
+              flowable:candidateGroups="CNCMP-PER-PLANIFICATEUR,CNCMP-PER-RAPPORTEUR">
+
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"/>
-        <!-- enum decision used by gateways -->
-        <flowable:formProperty id="cncmpDecision" name="cncmpDecision" type="enum" required="true">
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="meetingRequired" type="boolean" default="true"/>
+        <flowable:formProperty id="cncmpDecision" type="enum" required="true">
           <flowable:value id="APPROVE" name="Approuver"/>
           <flowable:value id="REJECT" name="Réserver (CPMP)"/>
           <flowable:value id="CI" name="Révision SCS"/>
         </flowable:formProperty>
       </extensionElements>
+
       <incoming>Flow_11s0knn</incoming>
       <incoming>Flow_00u4k4q</incoming>
       <outgoing>Flow_0tt16gw</outgoing>
     </userTask>
+
+    <sequenceFlow id="Flow_0tt16gw" sourceRef="Activity_1iyb3ly" targetRef="ExclusiveGateway_0a8t8oz"/>
 
     <exclusiveGateway id="ExclusiveGateway_0a8t8oz">
       <incoming>Flow_0tt16gw</incoming>
@@ -145,266 +221,90 @@
       <outgoing>Flow_1xkshui</outgoing>
     </exclusiveGateway>
 
-    <userTask id="Activity_1lwas3w" name="(CNCMP) Révision sous-commission spécialisée" flowable:candidateGroups="CNCMP-SPE-PLANIFICATEUR,CNCMP-SPE-RAPPORTEUR" flowable:formFieldValidation="true">
+    <sequenceFlow id="SequenceFlow_1bxbg8j" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_11nk76a">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"/>
+        <flowable:property name="actionLabel" value="Reject"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision == 'REJECT'}]]></conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="Flow_0ympl8t" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_1lwas3w">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Additional information"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision == 'CI'}]]></conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="Activity_1lwas3w" name="(CNCMP) Révision sous-commission spécialisée"
+              flowable:candidateGroups="CNCMP-SPE-PLANIFICATEUR,CNCMP-SPE-RAPPORTEUR">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="meetingRequired" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_0ympl8t</incoming>
       <outgoing>Flow_00u4k4q</outgoing>
     </userTask>
 
-    <userTask id="Task_1is7nge" name="(AC) Publication" flowable:candidateGroups="PUB_AC" flowable:formFieldValidation="true">
+    <sequenceFlow id="Flow_00u4k4q" sourceRef="Activity_1lwas3w" targetRef="Activity_1iyb3ly">
       <extensionElements>
-        <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"/>
-        <flowable:formProperty id="isPublishable" name="isPublishable" type="boolean" default="true"/>
+        <flowable:property name="actionLabel" value="Passer pour validation"/>
+      </extensionElements>
+    </sequenceFlow>
+
+    <!-- Publication -->
+    <userTask id="Task_1is7nge" name="(AC) Publication" flowable:candidateGroups="PUB_AC">
+      <extensionElements>
+        <flowable:formProperty id="isUpdatable" type="boolean" default="false"/>
+        <flowable:formProperty id="isPublishable" type="boolean" default="true"/>
       </extensionElements>
       <incoming>Flow_1cduuxo</incoming>
       <outgoing>Flow_1jdhasv</outgoing>
     </userTask>
 
-    <serviceTask id="Activity_0u7tuz6" name="Transmission DAO + Lettre d’invitation aux candidats" flowable:delegateExpression="${transmissionDaoDelegate}" flowable:async="true">
+    <sequenceFlow id="Flow_1jdhasv" sourceRef="Task_1is7nge" targetRef="EndEvent_0tr7b0f"/>
+
+    <endEvent id="EndEvent_0tr7b0f"/>
+
+    <!-- Transmission DAO (APPROVE) -->
+    <sequenceFlow id="Flow_1xkshui" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_0u7tuz6">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Validate"/>
+      </extensionElements>
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision == 'APPROVE'}]]></conditionExpression>
+    </sequenceFlow>
+
+    <serviceTask id="Activity_0u7tuz6" name="Transmission DAO + Lettre d’invitation aux candidats"
+                 flowable:delegateExpression="${transmissionDaoDelegate}">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Transmettre"/>
+      </extensionElements>
       <incoming>Flow_1xkshui</incoming>
       <outgoing>Flow_04dfr0o</outgoing>
+      <outgoing>Flow_19wptwx</outgoing>
     </serviceTask>
 
-    <serviceTask id="Activity_0z9wkoj" name="Transmission DAO + Lettre d’invitation aux candidats" flowable:delegateExpression="${transmissionDaoDelegate}" flowable:async="true">
+    <sequenceFlow id="Flow_04dfr0o" sourceRef="Activity_0u7tuz6" targetRef="EndEvent_0ighw33"/>
+    <endEvent id="EndEvent_0ighw33"/>
+
+    <!-- Transmission DAO (restrained) -->
+    <serviceTask id="Activity_0z9wkoj" name="Transmission DAO + Lettre d’invitation aux candidats"
+                 flowable:delegateExpression="${transmissionDaoDelegate}">
+      <extensionElements>
+        <flowable:property name="actionLabel" value="Transmettre"/>
+      </extensionElements>
       <incoming>Flow_0jshl3l</incoming>
       <outgoing>Flow_036h7ls</outgoing>
+      <outgoing>Flow_0jttfam</outgoing>
     </serviceTask>
 
-    <endEvent id="Event_0ighw33">
-      <incoming>Flow_04dfr0o</incoming>
-    </endEvent>
+    <sequenceFlow id="Flow_036h7ls" sourceRef="Activity_0z9wkoj" targetRef="EndEvent_0zb5443"/>
+    <endEvent id="EndEvent_0zb5443"/>
 
-    <endEvent id="Event_0zb5443">
-      <incoming>Flow_036h7ls</incoming>
-    </endEvent>
+    <sequenceFlow id="Flow_0jttfam" sourceRef="Activity_0z9wkoj" targetRef="Event_0vnf8l7"/>
+    <endEvent id="Event_0vnf8l7"/>
 
-    <sequenceFlow id="Flow_0a89jat" sourceRef="Task_11nk76a" targetRef="Gateway_0kkfgcl"/>
-    <sequenceFlow id="Flow_10ninyt" name="reserve_valide" sourceRef="Gateway_0kkfgcl" targetRef="Task_0x68o40">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reserve_valide==true}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_1elinq9" sourceRef="Task_0x68o40" targetRef="Activity_08yp2o2"/>
-    <sequenceFlow id="SequenceFlow_1bxbg8j" name="cncmp_reject" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Task_11nk76a">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='REJECT'}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_11s0knn" sourceRef="Activity_08yp2o2" targetRef="Activity_1iyb3ly"/>
-    <sequenceFlow id="Flow_0tt16gw" sourceRef="Activity_1iyb3ly" targetRef="ExclusiveGateway_0a8t8oz"/>
-    <sequenceFlow id="Flow_0ympl8t" name="cncmp_ci" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_1lwas3w">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='CI'}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_00u4k4q" sourceRef="Activity_1lwas3w" targetRef="Activity_1iyb3ly"/>
-    <sequenceFlow id="Flow_1y9t64n" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_0x68o40">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide == true && isRestraint == true && parentDacId == null}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_1f0e0oc" sourceRef="Gateway_0kkfgcl" targetRef="Activity_1d2aib2">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${reserve_valide==false}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_1jdhasv" sourceRef="Task_1is7nge" targetRef="EndEvent_0tr7b0f"/>
-    <sequenceFlow id="Flow_1cduuxo" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_1is7nge">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide == true && shortListing == false}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_1xkshui" sourceRef="ExclusiveGateway_0a8t8oz" targetRef="Activity_0u7tuz6">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cncmpDecision=='APPROVE'}]]></conditionExpression>
-    </sequenceFlow>
-    <sequenceFlow id="Flow_04dfr0o" sourceRef="Activity_0u7tuz6" targetRef="Event_0ighw33"/>
-    <sequenceFlow id="Flow_036h7ls" sourceRef="Activity_0z9wkoj" targetRef="Event_0zb5443"/>
-    <sequenceFlow id="Flow_0jshl3l" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Activity_0z9wkoj">
-      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide == true && shortListing == true && parentDacId != null}]]></conditionExpression>
-    </sequenceFlow>
+    <sequenceFlow id="Flow_19wptwx" sourceRef="Activity_0u7tuz6" targetRef="Event_1eh3sit"/>
+    <endEvent id="Event_1eh3sit"/>
+
   </process>
-
-  <message id="Message_0vuhvgl" name="Message_0vuhvgl"/>
-
-  <bpmndi:BPMNDiagram id="BPMNDiagram_dacProcess">
-    <bpmndi:BPMNPlane id="BPMNPlane_dacProcess" bpmnElement="dacProcess">
-      <bpmndi:BPMNShape id="Event_06b8v8q_di" bpmnElement="Event_06b8v8q">
-        <omgdc:Bounds x="152" y="102" width="36" height="36"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="154" y="138" width="31" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="saisieTask_di" bpmnElement="saisieTask">
-        <omgdc:Bounds x="250" y="80" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_0m03i99_di" bpmnElement="Activity_0m03i99">
-        <omgdc:Bounds x="410" y="80" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_1d2aib2_di" bpmnElement="Activity_1d2aib2">
-        <omgdc:Bounds x="410" y="240" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Gateway_13q8j1a_di" bpmnElement="Gateway_13q8j1a" isMarkerVisible="true">
-        <omgdc:Bounds x="605" y="95" width="50" height="50"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Task_1vmbdxo_di" bpmnElement="Task_1vmbdxo">
-        <omgdc:Bounds x="880" y="240" width="100" height="80"/>
-        <bpmndi:BPMNLabel/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="ExclusiveGateway_1qgo4yf_di" bpmnElement="ExclusiveGateway_1qgo4yf" isMarkerVisible="true">
-        <omgdc:Bounds x="905" y="395" width="50" height="50"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="EndEvent_0tr7b0f_di" bpmnElement="EndEvent_0tr7b0f">
-        <omgdc:Bounds x="1382" y="262" width="36" height="36"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Gateway_0kkfgcl" bpmnElement="Gateway_0kkfgcl" isMarkerVisible="true">
-        <omgdc:Bounds x="405" y="555" width="50" height="50"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Task_0x68o40" bpmnElement="Task_0x68o40">
-        <omgdc:Bounds x="880" y="550" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Task_11nk76a" bpmnElement="Task_11nk76a">
-        <omgdc:Bounds x="380" y="740" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Activity_08yp2o2" bpmnElement="Activity_08yp2o2">
-        <omgdc:Bounds x="880" y="720" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_ExclusiveGateway_0a8t8oz" bpmnElement="ExclusiveGateway_0a8t8oz" isMarkerVisible="true">
-        <omgdc:Bounds x="905" y="1035" width="50" height="50"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Activity_1iyb3ly" bpmnElement="Activity_1iyb3ly">
-        <omgdc:Bounds x="880" y="860" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Activity_1lwas3w" bpmnElement="Activity_1lwas3w">
-        <omgdc:Bounds x="1220" y="860" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_Task_1is7nge" bpmnElement="Task_1is7nge">
-        <omgdc:Bounds x="1140" y="240" width="100" height="80"/>
-        <bpmndi:BPMNLabel/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_1w9fxt3_di" bpmnElement="Activity_0u7tuz6">
-        <omgdc:Bounds x="880" y="1190" width="100" height="80"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_0ighw33_di" bpmnElement="Event_0ighw33">
-        <omgdc:Bounds x="1332" y="1212" width="36" height="36"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_0ym5um6" bpmnElement="Activity_0z9wkoj">
-        <omgdc:Bounds x="1140" y="530" width="100" height="80"/>
-        <bpmndi:BPMNLabel/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="BPMNShape_1xewxsi" bpmnElement="Event_0zb5443">
-        <omgdc:Bounds x="1382" y="552" width="36" height="36"/>
-      </bpmndi:BPMNShape>
-
-      <bpmndi:BPMNEdge id="Flow_1c4qwmp_di" bpmnElement="Flow_1c4qwmp">
-        <omgdi:waypoint x="188" y="120"/>
-        <omgdi:waypoint x="250" y="120"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_00iv1ya_di" bpmnElement="Flow_00iv1ya">
-        <omgdi:waypoint x="350" y="120"/>
-        <omgdi:waypoint x="410" y="120"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1faanus_di" bpmnElement="Flow_1faanus">
-        <omgdi:waypoint x="460" y="240"/>
-        <omgdi:waypoint x="460" y="160"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_0chj49b_di" bpmnElement="Flow_0chj49b">
-        <omgdi:waypoint x="510" y="120"/>
-        <omgdi:waypoint x="605" y="120"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_036s2iv_di" bpmnElement="Flow_036s2iv">
-        <omgdi:waypoint x="630" y="145"/>
-        <omgdi:waypoint x="630" y="280"/>
-        <omgdi:waypoint x="510" y="280"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="644" y="223" width="53" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1w0kye6_di" bpmnElement="Flow_1w0kye6">
-        <omgdi:waypoint x="905" y="420"/>
-        <omgdi:waypoint x="460" y="420"/>
-        <omgdi:waypoint x="460" y="320"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="646" y="393" width="87" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1dsmkbd_di" bpmnElement="Flow_1dsmkbd">
-        <omgdi:waypoint x="655" y="120"/>
-        <omgdi:waypoint x="930" y="120"/>
-        <omgdi:waypoint x="930" y="240"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="934" y="174" width="28" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="SequenceFlow_0whoqkh_di" bpmnElement="SequenceFlow_0whoqkh">
-        <omgdi:waypoint x="930" y="320"/>
-        <omgdi:waypoint x="930" y="395"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_0a89jat" bpmnElement="Flow_0a89jat">
-        <omgdi:waypoint x="430" y="740"/>
-        <omgdi:waypoint x="430" y="605"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_10ninyt" bpmnElement="Flow_10ninyt">
-        <omgdi:waypoint x="455" y="580"/>
-        <omgdi:waypoint x="880" y="580"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="618" y="553" width="72" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_1elinq9" bpmnElement="Flow_1elinq9">
-        <omgdi:waypoint x="930" y="630"/>
-        <omgdi:waypoint x="930" y="720"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_SequenceFlow_1bxbg8j" bpmnElement="SequenceFlow_1bxbg8j">
-        <omgdi:waypoint x="905" y="1060"/>
-        <omgdi:waypoint x="430" y="1060"/>
-        <omgdi:waypoint x="430" y="820"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="781" y="1076" width="67" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_11s0knn" bpmnElement="Flow_11s0knn">
-        <omgdi:waypoint x="930" y="800"/>
-        <omgdi:waypoint x="930" y="860"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_0tt16gw" bpmnElement="Flow_0tt16gw">
-        <omgdi:waypoint x="930" y="940"/>
-        <omgdi:waypoint x="930" y="1035"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_0ympl8t" bpmnElement="Flow_0ympl8t">
-        <omgdi:waypoint x="955" y="1060"/>
-        <omgdi:waypoint x="1270" y="1060"/>
-        <omgdi:waypoint x="1270" y="940"/>
-        <bpmndi:BPMNLabel>
-          <omgdc:Bounds x="1066" y="1033" width="48" height="14"/>
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_Flow_00u4k4q" bpmnElement="Flow_00u4k4q">
-        <omgdi:waypoint x="1220" y="900"/>
-        <omgdi:waypoint x="980" y="900"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1y9t64n_di" bpmnElement="Flow_1y9t64n">
-        <omgdi:waypoint x="930" y="445"/>
-        <omgdi:waypoint x="930" y="550"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1f0e0oc_di" bpmnElement="Flow_1f0e0oc">
-        <omgdi:waypoint x="430" y="555"/>
-        <omgdi:waypoint x="430" y="320"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1jdhasv_di" bpmnElement="Flow_1jdhasv">
-        <omgdi:waypoint x="1240" y="280"/>
-        <omgdi:waypoint x="1382" y="280"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1cduuxo_di" bpmnElement="Flow_1cduuxo">
-        <omgdi:waypoint x="946" y="411"/>
-        <omgdi:waypoint x="1140" y="308"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1xkshui_di" bpmnElement="Flow_1xkshui">
-        <omgdi:waypoint x="930" y="1085"/>
-        <omgdi:waypoint x="930" y="1190"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_04dfr0o_di" bpmnElement="Flow_04dfr0o">
-        <omgdi:waypoint x="980" y="1230"/>
-        <omgdi:waypoint x="1332" y="1230"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="BPMNEdge_0gpemax" bpmnElement="Flow_036h7ls">
-        <omgdi:waypoint x="1240" y="570"/>
-        <omgdi:waypoint x="1382" y="570"/>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_0jshl3l_di" bpmnElement="Flow_0jshl3l">
-        <omgdi:waypoint x="948" y="427"/>
-        <omgdi:waypoint x="1190" y="530"/>
-      </bpmndi:BPMNEdge>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
 </definitions>
