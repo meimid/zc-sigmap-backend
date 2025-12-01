@@ -26,6 +26,7 @@ public class TaskDTO {
     private Integer version;
     private String nom;
     private String ref;
+    private String nomAc;
     private String modelAlfrescoId;
     private ProcessStatus newStatus;
     private Boolean validate;

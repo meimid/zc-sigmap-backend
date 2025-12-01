@@ -19,6 +19,8 @@ public class ComSpecifications {
 
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
+          criteriaBuilder.like(root.get("nomAr"), "%" + search + "%"),
+          criteriaBuilder.like(root.get("abreviation"), "%" + search + "%"),
           criteriaBuilder.like(root.get("decretCreation"), "%" + search + "%"),
           criteriaBuilder.like(root.get("responsableId"), "%" + search + "%"),
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
@@ -57,7 +59,23 @@ public class ComSpecifications {
       return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
     };
   }
+  /** nom.Ar */
+  public static Specification<Com> nomAr(String nomAr) {
 
+    return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
+            criteriaBuilder.lower(root.get("nomAr")),
+            nomAr.toLowerCase()
+    );
+  }
+
+  /** abreviation */
+  public static Specification<Com> abreviation(String abreviation) {
+
+    return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
+            criteriaBuilder.lower(root.get("abreviation")),
+            abreviation.toLowerCase()
+    );
+  }
   /** responsable. */
   public static Specification<Com> responsable(String responsable) {
     return (root, query, criteriaBuilder) -> {

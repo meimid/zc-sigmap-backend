@@ -12,6 +12,7 @@ import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
@@ -374,95 +375,273 @@ public class DacFlowableService {
     /* -------------------------------- next steps (dynamic) -------------------------------- */
 
     private List<NextStepDTO> getPossibleNextSteps(Task task) {
-        List<NextStepDTO> next = new ArrayList<>();
+
+        List<NextStepDTO> result = new ArrayList<>();
+
         try {
+            Map<String, Object> vars = runtimeService.getVariables(task.getExecutionId());
+            log.info("process Variables: {}", vars);
+
             BpmnModel model = repositoryService.getBpmnModel(task.getProcessDefinitionId());
             FlowElement te = model.getFlowElement(task.getTaskDefinitionKey());
-            if (te instanceof UserTask ut) {
-                for (SequenceFlow of : ut.getOutgoingFlows()) {
-                    FlowElement target = model.getFlowElement(of.getTargetRef());
-                    if (target instanceof ExclusiveGateway gw) {
-                        for (SequenceFlow gf : gw.getOutgoingFlows()) {
-                            String cond = gf.getConditionExpression();
-                            String var = extractVariableName(cond);
-                            String rhs = extractConditionValue(cond);
-                            FlowElement then = model.getFlowElement(gf.getTargetRef());
-                            String name = (then != null && then.getName() != null && !then.getName().isEmpty())
-                                    ? then.getName() : (then != null ? then.getId() : "Unknown");
 
-                            var n = new NextStepDTO();
-                            n.setValidationVariable(var);
-                            n.setValidationValue(rhs);
-                            n.setNextTaskName(name);
-                            if (then instanceof EndEvent) {
-                                n.setActionLabel("Publier");
-                            } else if ("true".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Validate");
-                            } else if ("false".equalsIgnoreCase(rhs)) {
-                                n.setActionLabel("Reject");
-                            } else {
-                                n.setActionLabel(var != null ? (var + " = " + rhs) : "Passer pour validation");
+            if (!(te instanceof UserTask ut)) return result;
+
+            for (SequenceFlow of : ut.getOutgoingFlows()) {
+
+                FlowElement target = model.getFlowElement(of.getTargetRef());
+
+            /* =============================================================
+               CASE 1 : OUTGOING → GATEWAY
+               ============================================================= */
+                if (target instanceof ExclusiveGateway gw) {
+
+                    for (SequenceFlow gf : gw.getOutgoingFlows()) {
+
+                        String cond = gf.getConditionExpression();
+                        String varsStr = extractVariableName(cond);
+
+                        log.info("------ Checking SequenceFlow {} ------", gf.getId());
+                        log.info("ConditionExpression = {}", cond);
+
+                        boolean matches = true;
+
+                    /* =============================================================
+                       UNIVERSAL CONDITION EVALUATION (EXCEPT valide / cpmp_valide / cncmpDecision)
+                       ============================================================= */
+                        if (cond != null) {
+
+                            String inner = cond.replace("${", "")
+                                    .replace("}", "")
+                                    .trim();
+
+                            String[] parts = inner.split("&&");
+
+                            for (String p : parts) {
+                                p = p.trim();
+                                log.info(" >> Evaluating condition part: '{}'", p);
+
+                                /* ALWAYS DISPLAY THESE OPTIONS — DO NOT FILTER */
+                                if (p.startsWith("valide")
+                                        || p.startsWith("cpmp_valide")
+                                        || p.startsWith("cncmpDecision")) {
+
+                                    log.info("    SKIP decision variable check for '{}'", p);
+                                    continue;
+                                }
+
+                                /* ============================ BOOLEAN TRUE ============================== */
+                                if (p.contains("== true")) {
+                                    String var = p.replace("== true", "").trim();
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} == true, actual={}", var, val);
+
+                                    if (!(val instanceof Boolean) || !((Boolean) val)) {
+                                        log.warn("    ✗ Flow hidden: variable {} is not true", var);
+                                        matches = false;
+                                    }
+                                }
+
+                                /* ============================ BOOLEAN FALSE ============================= */
+                                else if (p.contains("== false")) {
+                                    String var = p.replace("== false", "").trim();
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} == false, actual={}", var, val);
+
+                                    if (!(val instanceof Boolean) || ((Boolean) val)) {
+                                        log.warn("    ✗ Flow hidden: variable {} is not false", var);
+                                        matches = false;
+                                    }
+                                }
+
+                                /* ============================ NULL COMPARISON =========================== */
+                                else if (p.contains("== null")) {
+                                    String var = p.replace("== null", "").trim();
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} == null, actual={}", var, val);
+
+                                    if (val != null) {
+                                        log.warn("    ✗ Flow hidden: {} is not null", var);
+                                        matches = false;
+                                    }
+                                }
+
+                                else if (p.contains("!= null")) {
+                                    String var = p.replace("!= null", "").trim();
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} != null, actual={}", var, val);
+
+                                    if (val == null) {
+                                        log.warn("    ✗ Flow hidden: {} is null", var);
+                                        matches = false;
+                                    }
+                                }
+
+                                /* ============================ STRING EQUALITY =========================== */
+                                else if (p.contains("== '")) {
+                                    String[] seg = p.split("==");
+                                    String var = seg[0].trim();
+                                    String expected = seg[1].trim().replace("'", "");
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} == '{}', actual={}", var, expected, val);
+
+                                    if (val == null || !val.toString().equals(expected)) {
+                                        log.warn("    ✗ Flow hidden: {} value not equal to expected '{}'", var, expected);
+                                        matches = false;
+                                    }
+                                }
+
+                                else if (p.contains("!= '")) {
+                                    String[] seg = p.split("!=");
+                                    String var = seg[0].trim();
+                                    String expected = seg[1].trim().replace("'", "");
+                                    Object val = vars.get(var);
+                                    log.info("    Expect {} != '{}', actual={}", var, expected, val);
+
+                                    if (val != null && val.toString().equals(expected)) {
+                                        log.warn("    ✗ Flow hidden: {} equals forbidden '{}'", var, expected);
+                                        matches = false;
+                                    }
+                                }
+
+                                if (!matches) {
+                                    log.warn(" → RESULT: Flow '{}' is HIDDEN", gf.getId());
+                                    break;
+                                }
                             }
-                            next.add(n);
                         }
-                    } else {
-                        String name = (target != null && target.getName() != null && !target.getName().isEmpty())
-                                ? target.getName() : (target != null ? target.getId() : "Complete");
-                        var n = new NextStepDTO();
-                        n.setValidationVariable(null);
-                        n.setValidationValue(null);
-                        n.setNextTaskName(name);
-                        n.setActionLabel(target instanceof EndEvent ? "Publier" : "Passer pour validation");
-                        next.add(n);
+
+                        if (!matches) continue;
+
+                        log.info(" → RESULT: Flow '{}' is VISIBLE ✓", gf.getId());
+
+                    /* =============================================================
+                       BUILD NEXT STEP DTO
+                       ============================================================= */
+                        FlowElement next = model.getFlowElement(gf.getTargetRef());
+                        String nextName = next.getName();
+
+                        NextStepDTO dto = new NextStepDTO();
+                        dto.setValidationVariable(varsStr);
+
+                        dto.setValidationValue(extractConditionValue(cond));
+
+                        dto.setNextTaskName(nextName);
+
+                        String action = getActionLabelFromXml(gf);
+                        if (action == null) action = "Passer pour validation";
+                        dto.setActionLabel(action);
+
+                        result.add(dto);
                     }
                 }
+
+            /* =============================================================
+               CASE 2 : DIRECT SEQUENCE FLOW
+               ============================================================= */
+                else {
+
+                    FlowElement next = target;
+
+                    log.info("Direct sequence to: {}", next.getName());
+
+                    NextStepDTO dto = new NextStepDTO();
+                    dto.setValidationVariable(null);
+                    dto.setValidationValue(null);
+                    dto.setNextTaskName(next.getName());
+
+                    String action = getActionLabelFromXml(of);
+                    if (action == null) action = "Passer pour validation";
+                    dto.setActionLabel(action);
+
+                    result.add(dto);
+                }
             }
+
         } catch (Exception e) {
-            log.warn("getPossibleNextSteps failed for task {}", task.getId(), e);
-            var n = new NextStepDTO();
-            n.setNextTaskName("Unknown");
-            n.setActionLabel("Complete");
-            next.add(n);
+            log.error("Error in getPossibleNextSteps", e);
         }
-        return next;
+
+        return result;
     }
+
+
+    private String getActionLabelFromXml(SequenceFlow flow) {
+        if (flow.getExtensionElements() == null) return null;
+
+        List<ExtensionElement> props = flow.getExtensionElements().get("property");
+        if (props == null) return null;
+
+        for (ExtensionElement p : props) {
+            String name = p.getAttributeValue(null, "name");
+            if ("actionLabel".equals(name)) {
+                return p.getAttributeValue(null, "value");
+            }
+        }
+        return null;
+    }
+
+
+
 
     /* ======================= tiny parsing helpers ======================= */
 
     private String extractVariableName(String conditionExpression) {
-        if (conditionExpression == null) return null;
-        // Handle expressions like ${variable==true}, ${variable == false}, #{variable==true}, etc.
-        String cleanedExpression = conditionExpression.trim().replace("#{", "${");
-        // Regex to match variable names in expressions like ${variable==value} or ${variable == value}
-        Pattern pattern = Pattern.compile("\\$\\{([^\\s}]+?)\\s*(==|!=)\\s*(true|false|['\"][^'\"]+['\"])?\\}");
-        Matcher matcher = pattern.matcher(cleanedExpression);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
-        }
-        // Fallback for simpler expressions like ${variable}
-        if (cleanedExpression.startsWith("${") && cleanedExpression.endsWith("}")) {
-            String variableName = cleanedExpression.substring(2, cleanedExpression.length() - 1).trim();
-            if (!variableName.isEmpty()) return variableName;
-        }
-        log.info("No variable name matched in expression: {}", conditionExpression);
-        return null;
-    }
+        if (conditionExpression == null || conditionExpression.isBlank()) return null;
 
-    private String extractConditionValue(String conditionExpression) {
-        if (conditionExpression == null) return null;
         String cleaned = conditionExpression.trim().replace("#{", "${");
 
-        // boolean
-        Matcher m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*(true|false)\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2).toLowerCase(); // "true" or "false"
+        // Supprime les ${ et }
+        if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
+            cleaned = cleaned.substring(2, cleaned.length() - 1).trim();
+        }
 
-        // single-quoted string
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*'([^']+)'\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2); // e.g. CI / APPROVE / REJECT
+        // On cherche TOUTES les variables, mais on retourne UNIQUEMENT celle qui contient "valide"
+        Pattern varPattern = Pattern.compile("([a-zA-Z0-9_]+)\\s*(==|!=|<>|<=|>=|<|>)");
+        Matcher matcher = varPattern.matcher(cleaned);
 
-        // double-quoted string
-        m = Pattern.compile("\\$\\{[^}]*?(==|!=)\\s*\"([^\"]+)\"\\s*\\}").matcher(cleaned);
-        if (m.find()) return m.group(2);
+        while (matcher.find()) {
+            String candidate = matcher.group(1).trim();
+            if (candidate.toLowerCase().contains("valide")) {
+                log.info("[GATEWAY] Variable 'valide' détectée : {}", candidate);
+                return candidate; // ← ON RETOURNE LA PREMIÈRE QUI CONTIENT "valide"
+            }
+        }
+
+        // Fallback : on prend la première variable trouvée si aucune ne contient "valide"
+        matcher.reset();
+        if (matcher.find()) {
+            String first = matcher.group(1).trim();
+            log.warn("[GATEWAY] Aucune variable '_valide' trouvée, fallback sur première variable : {}", first);
+            return first;
+        }
+
+        log.info("[GATEWAY] Aucune variable trouvée dans l'expression : {}", conditionExpression);
+        return null;
+    }
+    private String extractConditionValue(String conditionExpression) {
+        if (conditionExpression == null || conditionExpression.isBlank())
+            return null;
+
+        String cleaned = conditionExpression.trim().replace("#{", "${");
+
+        // strip ${ ... }
+        if (cleaned.startsWith("${") && cleaned.endsWith("}")) {
+            cleaned = cleaned.substring(2, cleaned.length() - 1).trim();
+        }
+
+        // BOOLEAN PATTERN → returns only "true" or "false"
+        Matcher boolMatcher = Pattern.compile("==\\s*(true|false)", Pattern.CASE_INSENSITIVE)
+                .matcher(cleaned);
+        if (boolMatcher.find()) {
+            return boolMatcher.group(1).toLowerCase();  // ← FIX: return "true" or "false"
+        }
+
+        // STRING PATTERN → returns the literal value (ex: APPROVE)
+        Matcher strMatcher = Pattern.compile("==\\s*['\"]([^'\"]+)['\"]").matcher(cleaned);
+        if (strMatcher.find()) {
+            return strMatcher.group(1); // APPROVE / REJECT / CI
+        }
 
         return null;
     }
@@ -1110,12 +1289,7 @@ public class DacFlowableService {
         String processInstanceId = task.getProcessInstanceId();
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
-        // Complete task
-        taskService.complete(taskId);
-        log.info("[TASK] Task [{}] completed successfully", taskId);
 
-
-        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
 
         if (comIdSnapshot != null) {
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
@@ -1156,6 +1330,10 @@ public class DacFlowableService {
 
         resp.setStatus("Task validated successfully");
         log.info("[FLOW] ==== validateTask() completed for taskId={} ====", taskId);
+        // Complete task
+        taskService.complete(taskId);
+        log.info("[TASK] Task [{}] completed successfully", taskId);
+        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
         return resp;
     }
 
@@ -1399,6 +1577,7 @@ public class DacFlowableService {
 
         if (task == null) {
             resp.setHasTask(false);
+            resp.setProcessInstanceId(dac.getProcessInstanceId());
             resp.setStatus("DAC loaded successfully, no active task");
             return resp;
         }
@@ -1418,7 +1597,9 @@ public class DacFlowableService {
         resp.setCreated(task.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
         resp.setCandidateGroup(getCandidateGroup(task));
         resp.setTraceability(extractTraceability(runtimeService.getVariables(task.getProcessInstanceId())));
-
+        Integer comIdVar = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId"); // ADDED
+        if (comIdVar != null)
+            resp.setComId(comIdVar);
         Map<String, Boolean> props = getTaskProperties(task);
         resp.setIsUpdatable(props.get("isUpdatable"));
         resp.setIsPublishable(props.get("isPublishable"));
@@ -1473,5 +1654,135 @@ public class DacFlowableService {
             });
         }
     }
+
+    @Transactional(readOnly = true)
+    public TaskListResponseDTO getDacTasksByComId(Integer comId) {
+
+        TaskListResponseDTO response = new TaskListResponseDTO();
+
+        // Auth check
+        org.springframework.security.core.Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            response.setStatus("Invalid or missing JWT authentication");
+            return response;
+        }
+
+        if (comId == null) {
+            response.setStatus("comId must not be null");
+            return response;
+        }
+
+        // Collect process instances having this comId
+        List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
+                .variableValueEquals("comId", comId)
+                .list();
+
+        if (instances == null || instances.isEmpty()) {
+            response.setTenantId(TENANT_ID);
+            response.setTasks(Collections.emptyList());
+            response.setStatus("No active DAC process instances found for comId " + comId);
+            return response;
+        }
+
+        List<String> processInstanceIds = instances.stream()
+                .map(ProcessInstance::getId)
+                .collect(Collectors.toList());
+
+        // User candidate groups
+        List<String> userCandidateGroups = jwtAuth.getAuthorities().stream()
+                .map(a -> a.getAuthority().replace("ROLE_", ""))
+                .collect(Collectors.toList());
+
+        List<TaskDTO> taskList = new ArrayList<>();
+        int chunk = 1000;
+
+        for (int i = 0; i < processInstanceIds.size(); i += chunk) {
+
+            List<String> part = processInstanceIds.subList(i, Math.min(i + chunk, processInstanceIds.size()));
+
+            List<Task> tasks = taskService.createTaskQuery()
+                    .taskTenantId(TENANT_ID)
+                    .processInstanceIdIn(part)
+                    .active()
+                    .orderByTaskCreateTime().desc()
+                    .list();
+
+            for (Task task : tasks) {
+
+                if (!hasCandidateGroup(task, jwtAuth) && !hasAssign(task, jwtAuth)) {
+                    continue;
+                }
+
+                TaskDTO dto = new TaskDTO();
+                dto.setTaskId(task.getId());
+                dto.setTaskName(task.getName());
+                dto.setTaskDefinitionKey(task.getTaskDefinitionKey());
+                dto.setAssignee(task.getAssignee() != null ? task.getAssignee() : "");
+                dto.setProcessInstanceId(task.getProcessInstanceId());
+                dto.setCreated(task.getCreateTime().toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDateTime());
+                dto.setCandidateGroup(getCandidateGroup(task));
+
+                // Load process vars
+                Map<String, Object> vars = runtimeService.getVariables(task.getProcessInstanceId());
+                Integer dacId = (Integer) vars.get("id");
+                Integer dacVer = (Integer) vars.get("version");
+
+                // Load correct DAC information
+                if (dacId != null && dacVer != null) {
+                    try {
+                        Optional<Dac> dacOpt = dacService.findById(dacId, dacVer);
+                        if (dacOpt.isPresent()) {
+                            Dac dac = dacOpt.get();
+                            dto.setId(dacId);
+                            dto.setVersion(dacVer);
+                            dto.setRef(dac.getReference());
+                            dto.setNom(dac.getPpm().getNom());
+                            dto.setStatus(String.valueOf(dac.getStatus()));
+
+
+                            if (dac.getPpm().getAc() != null) {
+                                dto.setNomAc(dac.getPpm().getAc().getNom());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to load DAC id {} ver {}: {}", dacId, dacVer, e.getMessage());
+                    }
+                }
+
+                // Traceability
+                Map<String, Object> trace = new HashMap<>();
+                trace.put("decision", vars.getOrDefault("decision", ""));
+                trace.put("comment", vars.getOrDefault("comment", ""));
+                trace.put("dateComment", vars.getOrDefault("dateComment", ""));
+                trace.put("treater", vars.getOrDefault("treater", ""));
+                dto.setTraceability(trace);
+
+                // Task properties from BPMN
+                Map<String, Boolean> props = getTaskProperties(task);
+                dto.setIsUpdatable(props.get("isUpdatable"));
+                dto.setIsPublishable(props.get("isPublishable"));
+                dto.setCommissionRequired(props.get("commissionRequired"));
+                dto.setMeetingRequired(props.get("meetingRequired"));
+
+                // comId var
+                Integer comIdVar = (Integer) vars.get("comId");
+                if (comIdVar != null) dto.setComId(comIdVar);
+
+                taskList.add(dto);
+            }
+        }
+
+        response.setTenantId(TENANT_ID);
+        response.setTasks(taskList);
+        response.setCandidateGroup(
+                userCandidateGroups.isEmpty() ? null : String.join(", ", userCandidateGroups)
+        );
+        response.setStatus("DAC tasks retrieved successfully for comId " + comId);
+
+        return response;
+    }
+
+
 
 }

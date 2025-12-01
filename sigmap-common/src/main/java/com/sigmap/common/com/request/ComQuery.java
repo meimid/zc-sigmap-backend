@@ -1,5 +1,6 @@
 package com.sigmap.common.com.request;
 
+import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComSpecifications;
 import lombok.Data;
@@ -9,6 +10,8 @@ import org.springframework.data.jpa.domain.Specification;
 public class ComQuery {
   private String search;
   private String nom;
+  private String abreviation;
+  private String nomAr;
   private String decretCreation;
   private String responsable;
   private Boolean special;
@@ -33,7 +36,6 @@ public class ComQuery {
    *   <li>{@link ComSpecifications#ancrage(String)} if the ancrage property is not null or blank.
    *   <li>{@link ComSpecifications#contact(String)} if the contact property is not null or blank.
    *   <li>{@link ComSpecifications#adresse(String)} if the adresse * property is not null or blank.
-   *   <li>{@link ComSpecifications#membres(String)} if the membres property is not null or blank.
    *   <li>{@link ComSpecifications#deleted(boolean)} if the deleted property is true.
    * </ul>
    *
@@ -51,6 +53,12 @@ public class ComQuery {
     }
     if (nom != null && !nom.isBlank()) {
       spec = spec.and(ComSpecifications.nom(nom));
+    }
+    if (nomAr != null && !nomAr.isBlank()) {
+      spec = spec.and(ComSpecifications.nomAr(nomAr));
+    }
+    if (abreviation != null && !abreviation.isBlank()) {
+      spec=spec.and(ComSpecifications.abreviation(abreviation));
     }
 
     if (decretCreation != null && !decretCreation.isBlank()) {
