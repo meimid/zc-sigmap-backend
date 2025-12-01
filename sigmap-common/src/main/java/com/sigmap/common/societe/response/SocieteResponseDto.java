@@ -21,6 +21,7 @@ public class SocieteResponseDto {
     private Date dateNif;
     private String numCnss;
     private SocieteStatus status;
+    private boolean isBlackListed;
     private AdresseResponseDto address;
     private List<ActiviteResponseDtoSoft> activites;
 }

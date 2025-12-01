@@ -21,8 +21,8 @@ import java.time.LocalDateTime;
 public class SocieteBlackList extends BaseEntity {
 
     @Id
-   @Column(name = "balck_list_id")
-    private SocieteBlackListId id;
+    @Column(name = "balck_list_id")
+    private Integer id;
 
     @Id
     @Column(name = "societe_id")

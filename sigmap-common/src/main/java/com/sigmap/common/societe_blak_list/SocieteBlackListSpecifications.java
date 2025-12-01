@@ -56,8 +56,8 @@ public class SocieteBlackListSpecifications {
 
 
             return criteriaBuilder.or(
-                    criteriaBuilder.like(root.get("id").get("id").as(String.class), like),
-                    criteriaBuilder.like(root.get("id").get("societeId").as(String.class), like),
+                    criteriaBuilder.like(root.get("id").as(String.class), like),
+                    criteriaBuilder.like(root.get("societeId").as(String.class), like),
                     criteriaBuilder.like(root.get("natureDecision").as(String.class), like),
                     criteriaBuilder.like(root.get("reference").as(String.class), like),
                     criteriaBuilder.like(criteriaBuilder.lower(dateEffetFormatted), like.toLowerCase()),
@@ -99,11 +99,11 @@ public class SocieteBlackListSpecifications {
 
     // SIMPLE FILTERS
     public static Specification<SocieteBlackList> id(Integer id) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("id").get("id"), id);
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("id"), id);
     }
 
     public static Specification<SocieteBlackList> societeId(Integer societeId) {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("id").get("societeId"), societeId);
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("societeId"), societeId);
     }
 
     /** deleted. */

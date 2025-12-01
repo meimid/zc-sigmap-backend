@@ -10,6 +10,7 @@ import com.sigmap.common.societe_blak_list.exception.InvalidBlackListDecision;
 import com.sigmap.common.societe_blak_list.exception.SocieteAlreadyBlackListed;
 import com.sigmap.common.societe_blak_list.mappers.SocieteBlackListMapper;
 import com.sigmap.common.societe_blak_list.request.SocieteBlackListRequest;
+import com.sigmap.common.utils.SequenceGeneratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,10 +26,13 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
 
     private final SocieteBlackListRepository repository;
     private final SocieteService societeService;
+    private final SequenceGeneratorService sequenceGeneratorService;
 
-    public SocieteBlackListServiceImpl(SocieteBlackListRepository repository, SocieteService societeService) {
+
+    public SocieteBlackListServiceImpl(SocieteBlackListRepository repository, SocieteService societeService, SequenceGeneratorService sequenceGeneratorService) {
         this.repository = repository;
         this.societeService = societeService;
+        this.sequenceGeneratorService = sequenceGeneratorService;
     }
 
     @Override
@@ -71,7 +75,7 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
                         .and(SocieteBlackListSpecifications.societeId(societeId))
                 .and(SocieteBlackListSpecifications.deleted(true))
         );
-        return findOne(spec).orElseThrow();
+        return findOne(spec).orElseThrow(()->new BlackListNotFound("",id));
     }
 
     @Override
@@ -91,9 +95,9 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
 
         Societe societe = societeService.findById(societeId);
         SocieteBlackList societeBlackList= SocieteBlackListMapper.INSTANCE.map(request);
-        SocieteBlackListId societeBlackListId = new SocieteBlackListId();
-        societeBlackListId.setSocieteId(societe);
-        societeBlackList.setId(societeBlackListId);
+        societeBlackList.setId(sequenceGeneratorService.getNextId("societe_black_list_id_seq"));
+        societeBlackList.setSocieteId(societeId);
+        societeBlackList.setSociete(societe);
         SocieteBlackList saved= repository.save(societeBlackList);
         return  saved;
     }

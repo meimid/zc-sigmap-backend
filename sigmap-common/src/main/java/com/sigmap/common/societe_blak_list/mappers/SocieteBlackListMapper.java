@@ -15,8 +15,6 @@ import org.mapstruct.factory.Mappers;
 )
 public interface SocieteBlackListMapper {
     SocieteBlackListMapper INSTANCE = Mappers.getMapper(SocieteBlackListMapper.class);
-    @Mapping(target = "id", source = "id.id")
-    @Mapping(target = "societeId", source = "id.societeId")
     @Mapping(target = "nom", source = "societe.nom")
     @Mapping(target = "nif", source = "societe.nif")
     @Mapping(target = "pays", source = "societe.address.pays.description")
@@ -29,8 +27,6 @@ public interface SocieteBlackListMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     SocieteBlackListResponse toResponse(SocieteBlackList source);
     SocieteBlackList map(SocieteBlackListRequest source);
-    @Mapping(target = "id", source = "id.id")
-    @Mapping(target = "societeId", source = "id.societeId")
     @Mapping(target = "nom", source = "societe.nom")
     @Mapping(target = "nif", source = "societe.nif")
     @Mapping(target = "pays", source = "societe.address.pays.description")

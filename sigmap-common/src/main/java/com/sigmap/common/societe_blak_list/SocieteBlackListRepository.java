@@ -14,8 +14,8 @@ public interface SocieteBlackListRepository extends JpaRepository<SocieteBlackLi
 {
     @Modifying(clearAutomatically = true,flushAutomatically = true)
     @Transactional
-    @Query("UPDATE SocieteBlackList pr SET pr.isDeleted = true, pr.deletedAt = CURRENT_TIMESTAMP, pr.deletedBy = :#{principal.subject} " +
-            "WHERE pr.id.id = :id AND pr.id.societeId = :societeId")
+    @Query("UPDATE SocieteBlackList sb SET sb.isDeleted = true, sb.deletedAt = CURRENT_TIMESTAMP, sb.deletedBy = :#{principal.subject} " +
+            "WHERE sb.id = :id AND sb.societeId = :societeId")
     void softDelete(@Param("id") Integer id,
             @Param("societeId") Integer societeId);
 }
