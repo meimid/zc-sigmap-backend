@@ -138,6 +138,8 @@ public class SocieteController {
     public ResponseEntity<SocieteEnCourResponseDto> findById(@PathVariable Integer id) throws SocieteNotFound {
         Societe param = societeService.findById(id);
         SocieteEnCourResponseDto response = SocieteMapper.INSTANCE.toEnCourResponseDto(param);
+        boolean blacklisted = societeService.isCurrentlyBlackListed(param.getId());
+        response.setBlackListed(blacklisted);
         return ResponseEntity.ok(response);
     }
 
@@ -163,7 +165,8 @@ public class SocieteController {
     public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
-
+        boolean blacklisted = societeService.isCurrentlyBlackListed(id);
+        response.setBlackListed(blacklisted);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
@@ -181,6 +184,8 @@ public class SocieteController {
         Societe deleted = societeService.findDeletedById(id)
                 .orElseThrow();
         SocieteResponse response = SocieteMapper.INSTANCE.map(deleted);
+        boolean blacklisted = societeService.isCurrentlyBlackListed(id);
+        response.setBlackListed(blacklisted);
         return ResponseEntity.ok(response);
     }
 
@@ -386,6 +391,8 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
                     dto.setResponsablePrenom(responsable.getPrenom());
                     dto.setResponsableEmail(responsable.getEmail());
                 });
+        dto.setBlackListed(societeService.isCurrentlyBlackListed(s.getId()));
+
 
         return dto;
     }

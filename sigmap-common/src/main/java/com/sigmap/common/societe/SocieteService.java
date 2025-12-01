@@ -103,5 +103,5 @@ public interface SocieteService {
     Page<Societe> findAllWithStatus(Specification<Societe> societe, SocieteStatus status, Pageable pageable);
 
     Societe updateStatus(Integer societeId, boolean status) throws SocieteNotFound;
-
+    boolean isCurrentlyBlackListed(Integer societeId);
 }

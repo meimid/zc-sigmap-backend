@@ -428,5 +428,13 @@ public class SocieteServiceImpl implements SocieteService {
          }
          return userSocieteRequest;
      }
+    public boolean isCurrentlyBlackListed(Integer societeId) {
+        Specification<Societe> spec = Specification
+                .where(SocieteSpecifications.id(societeId))
+                .and(SocieteSpecifications.deleted(false)
+                .and(SocieteSpecifications.isCurrentlyBlackListed()));
+
+        return repository.exists(spec);
+    }
 
 }

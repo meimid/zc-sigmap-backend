@@ -12,7 +12,7 @@ public class SocieteResponseDtoSoft {
     private String responsablePrenom;
     private String responsableEmail;
     private String pays;
-    private boolean isBlackListed;
+    private boolean isBlackListed=false;
 
 
 }

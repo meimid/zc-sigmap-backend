@@ -8,7 +8,7 @@ CREATE SEQUENCE societe_black_list_id_seq INCREMENT BY 1 START WITH 1;
 CREATE TABLE IF NOT EXISTS societe_black_list (
     balck_list_id INT AUTO_INCREMENT NOT NULL,
     societe_id INT NOT NULL,
-    nature_decision ENUM('TEMPORIARE', 'DEFINTIVE') NULL,
+    nature_decision ENUM('TEMPORAIRE', 'DEFINITIVE') NULL,
     reference VARCHAR(255) NULL,
     date_effet DATETIME NULL,
     delai DATETIME NULL,

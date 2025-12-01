@@ -80,10 +80,10 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
 
     @Override
     public SocieteBlackList create(Integer societeId,SocieteBlackListRequest request) throws SocieteNotFound, InvalidBlackListDecision {
-        if(request.getNatureDecision().equals(BlackList.TEMPORIARE)&&request.getDelai()==null){
+        if(request.getNatureDecision().equals(BlackList.TEMPORAIRE)&&request.getDelai()==null){
             throw new DelaiRequired("");
         }
-        if(request.getNatureDecision().equals(BlackList.DEFINTIVE)&&request.getDateEffet()!=null){
+        if(request.getNatureDecision().equals(BlackList.DEFINITIVE)&&request.getDateEffet()!=null){
             request.setDelai(null);
         }
         Specification<SocieteBlackList> duplicateSpec =
@@ -104,10 +104,10 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
 
     @Override
     public SocieteBlackList update(Integer id, Integer societeId, SocieteBlackListRequest request) throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound {
-        if(request.getNatureDecision().equals(BlackList.TEMPORIARE)&&request.getDelai()==null){
+        if(request.getNatureDecision().equals(BlackList.TEMPORAIRE)&&request.getDelai()==null){
             throw new DelaiRequired("");
         }
-        if(request.getNatureDecision().equals(BlackList.DEFINTIVE)&&request.getDateEffet()!=null){
+        if(request.getNatureDecision().equals(BlackList.DEFINITIVE)&&request.getDateEffet()!=null){
             request.setDelai(null);
         }
         SocieteBlackList societeBlackList= findById(id, societeId);

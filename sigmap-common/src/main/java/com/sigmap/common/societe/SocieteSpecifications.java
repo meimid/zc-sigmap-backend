@@ -2,11 +2,15 @@ package com.sigmap.common.societe;
 
 import com.sigmap.common.activite.Activite;
 import com.sigmap.common.adresse.Adresse;
+import com.sigmap.common.config.BlackList;
 import com.sigmap.common.entity.SocieteStatus;
 import com.sigmap.common.ref_params.RefParam;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
+import com.sigmap.common.societe_blak_list.SocieteBlackList;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.time.LocalDateTime;
+
 /**
  * Specification for managing {@link Societe}.
  */
@@ -124,6 +128,36 @@ public class SocieteSpecifications {
             return cb.like(cb.lower(adresseJoin.get("email")),   email.toLowerCase() );
         };
     }
+    public static Specification<Societe> isCurrentlyBlackListed() {
+        return (root, query, cb) -> {
+            LocalDateTime now = LocalDateTime.now();
 
+            Subquery<SocieteBlackList> sq = query.subquery(SocieteBlackList.class);
+            Root<SocieteBlackList> bl = sq.from(SocieteBlackList.class);
+
+            Predicate linkedAndNotDeleted = cb.and(
+                    cb.equal(bl.get("societe"), root),
+                   cb.isFalse(bl.get("isDeleted"))
+            );
+
+            Predicate stillInEffect = cb.or(
+                    cb.and(
+                    cb.equal(bl.get("natureDecision"), BlackList.DEFINITIVE),
+                    cb.isFalse(bl.get("isDeleted"))),
+                    cb.and(
+                            cb.equal(bl.get("natureDecision"), BlackList.TEMPORAIRE),
+                            cb.lessThanOrEqualTo(bl.get("dateEffet"), now),
+                            cb.greaterThanOrEqualTo(bl.get("delai"), now),
+                            cb.isFalse(bl.get("isDeleted"))
+                    )
+            );
+
+            sq.select(bl)
+                    .where(cb.and(linkedAndNotDeleted, stillInEffect));
+
+            return cb.exists(sq);
+        };
+
+    }
 
 }
