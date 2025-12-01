@@ -14,14 +14,7 @@ public interface ModelDacRepository extends JpaRepository<ModelDac, ModelDacId> 
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("""
-           update ModelDac m
-              set m.isDeleted = true,
-                  m.deletedAt = current_timestamp,
-                  m.deletedBy = ?#{principal?.name}
-            where m.dacId  = :dacId
-              and m.dacVer = :dacVer
-           """)
+    @Query("update ModelDac m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.claims['sub']} where m.dacId  = :dacId and m.dacVer = :dacVer")
     void deleteByDacIdAndDacVer(@Param("dacId") Integer dacId,
                                 @Param("dacVer") Integer dacVer);
 

@@ -19,11 +19,10 @@ public interface FinancementMapper {
      */
     @Mappings({
             @Mapping(target = "financementId", source = "id.financementId"),
-            @Mapping(target = "realisationId", source = "id.realisation.id"),
-            @Mapping(target = "realisationVer", source = "id.realisation.version"),
+            @Mapping(target = "realisationId", source = "id.realisationId"),
+            @Mapping(target = "realisationVer", source = "id.realisationVer"),
             @Mapping(target = "sourceFinancement", source = "sourceFinancement"),
-            @Mapping(target = "budgetEstimer", source = "budgetEstimer"),
-
+            @Mapping(target = "budgetEstimer", source = "budgetEstimer")
     })
     FinancementResponse mapToDto(Financement source);
 

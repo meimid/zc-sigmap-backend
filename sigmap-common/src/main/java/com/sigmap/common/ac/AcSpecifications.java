@@ -21,6 +21,8 @@ public class AcSpecifications {
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("ancrage"), "%" + search + "%"),
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
+          criteriaBuilder.like(root.get("nomAr"), "%" + search + "%"),
+          criteriaBuilder.like(root.get("abreviation"), "%" + search + "%"),
           criteriaBuilder.like(root.get("contact"), "%" + search + "%") ,
           criteriaBuilder.like(root.get("email"), "%" + search + "%") ,
           criteriaBuilder.like(joinPays.get("description"), "%" + search + "%"),
@@ -59,7 +61,23 @@ public class AcSpecifications {
     );
   }
 
+  /** nom.Ar */
+  public static Specification<Ac> nomAr(String nomAr) {
 
+    return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
+            criteriaBuilder.lower(root.get("nomAr")),
+            nomAr.toLowerCase()
+    );
+  }
+
+  /** abreviation */
+  public static Specification<Ac> abreviation(String abreviation) {
+
+    return (root, query, criteriaBuilder) -> criteriaBuilder.equal(
+            criteriaBuilder.lower(root.get("abreviation")),
+            abreviation.toLowerCase()
+    );
+  }
 
   /** code. */
   public static Specification<Ac> contact(String contact) {

@@ -922,10 +922,31 @@ public class DacDocsServiceImpl implements DacDocsService{
                     allUpdatedDacDocs.add(updateDacDocsInPlace(req));
                 }
             } else {
-                // Versioning for non-BROUILLON status
+                // Check for changes before creating new version
+                boolean hasChanges = detectChanges(existingDac, dacRequests);
+                
+                if (!hasChanges) {
+                    log.info("No changes detected for DAC {}, returning existing DacDocs", dacId);
+                    // Return existing DacDocs for all requested fields
+                    for (DacDocsRequest req : dacRequests) {
+                        Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(req.getDynaDocsId());
+                        if (existingDynaDocs.isPresent()) {
+                            Optional<DacDocs> existingDacDoc = dacDocsRepository.findDacDocsBYPKs(
+                                    existingDac.getDacId(), existingDac.getDacVer(),
+                                    existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(),
+                                    req.getDynaFieldsId());
+                            existingDacDoc.ifPresent(allUpdatedDacDocs::add);
+                        }
+                    }
+                    continue;
+                }
+
+                log.info("Changes detected for DAC {}, creating new version", dacId);
+                // Create new version for non-BROUILLON status
+                int nextVer = existingDac.getDacVer() + 1;
                 Dac newDac = new Dac();
                 newDac.setDacId(existingDac.getDacId());
-                newDac.setDacVer(existingDac.getDacVer());
+                newDac.setDacVer(nextVer);
                 newDac.setPpm(existingDac.getPpm());
                 newDac.setRealisation(existingDac.getRealisation());
                 newDac.setTypeMarche(existingDac.getTypeMarche());
@@ -936,11 +957,14 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setPayant(existingDac.isPayant());
                 newDac.setShortListing(existingDac.isShortListing());
                 newDac.setParentDacId(existingDac.getParentDacId());
+                newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
+                newDac.setModePassation(existingDac.getModePassation());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
 
-                // Clone previous dac_docs snapshot to the new version
+                // First, clone ALL existing dac_docs to the new version (even with null fieldValue)
                 List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
+                Map<String, DacDocs> clonedDocsMap = new HashMap<>();
                 for (DacDocs prior : priorDocs) {
                     DacDocs clone = new DacDocs();
                     DacDocsId id = new DacDocsId();
@@ -953,11 +977,60 @@ public class DacDocsServiceImpl implements DacDocsService{
                     clone.setDac(newDac);
                     clone.setDynaField(prior.getDynaField());
                     clone.setSourceId(prior.getSourceId());
-                    clone.setFieldValue(prior.getFieldValue());
-                    dacDocsRepository.save(clone);
+                    // Set fieldValue to null initially - will be updated from request if provided
+                    clone.setFieldValue(null);
+                    DacDocs savedClone = dacDocsRepository.save(clone);
+                    
+                    // Clone ALL DacDocsDetails for this DacDocs to the new version
+                    List<DacDocsDetails> priorDetails = dacDocsDetailsRepository.findAll(
+                            Specification.where(DacDocsDetailsSpecification.byDacId(existingDac.getDacId()))
+                                    .and(DacDocsDetailsSpecification.byDacVer(existingDac.getDacVer()))
+                                    .and(DacDocsDetailsSpecification.byDynaDocsId(prior.getId().getDynaDocsId()))
+                                    .and(DacDocsDetailsSpecification.byDynaDocsVer(prior.getId().getDynaDocsVer()))
+                                    .and(DacDocsDetailsSpecification.byDynaFieldsId(prior.getId().getDynaFieldsId()))
+                    );
+                    
+                    if (!priorDetails.isEmpty()) {
+                        log.info("Cloning {} DacDocsDetails for field {} to new version", 
+                                priorDetails.size(), prior.getId().getDynaFieldsId());
+                        for (DacDocsDetails priorDetail : priorDetails) {
+                            DacDocsDetails detailClone = new DacDocsDetails();
+                            detailClone.setDacId(newDac.getDacId());
+                            detailClone.setDacVer(newDac.getDacVer());
+                            detailClone.setDynaDocsId(savedClone.getId().getDynaDocsId());
+                            detailClone.setDynaDocsVer(savedClone.getId().getDynaDocsVer());
+                            detailClone.setDynaFieldsId(savedClone.getId().getDynaFieldsId());
+                            detailClone.setRowId(priorDetail.getRowId());
+                            detailClone.setDynaFieldsDetailsId(priorDetail.getDynaFieldsDetailsId());
+                            detailClone.setSourceId(priorDetail.getSourceId());
+                            // Set fieldValue to null initially - will be updated from request if provided
+                            detailClone.setFieldValue(null);
+                            detailClone.setDac(savedClone);
+                            dacDocsDetailsRepository.save(detailClone);
+                        }
+                    }
+                    
+                    // Store in map for quick lookup
+                    String key = prior.getId().getDynaDocsId() + ":" + 
+                                prior.getId().getDynaDocsVer() + ":" + 
+                                prior.getId().getDynaFieldsId();
+                    clonedDocsMap.put(key, savedClone);
+                    log.info("Cloned DacDocs and {} details for new version: {}", priorDetails.size(), savedClone);
                 }
 
-                // Apply batch updates to the new DAC version
+                // Create a map of requests by key for quick lookup
+                Map<String, DacDocsRequest> requestsByKey = new HashMap<>();
+                for (DacDocsRequest req : dacRequests) {
+                    Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(req.getDynaDocsId());
+                    if (existingDynaDocs.isPresent()) {
+                        String key = existingDynaDocs.get().getId() + ":" + 
+                                    existingDynaDocs.get().getVersion() + ":" + 
+                                    req.getDynaFieldsId();
+                        requestsByKey.put(key, req);
+                    }
+                }
+
+                // Update cloned DacDocs with values from request, or create new ones if not in prior docs
                 for (DacDocsRequest req : dacRequests) {
                     Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(req.getDynaDocsId());
                     if (existingDynaDocs.isEmpty()) {
@@ -969,45 +1042,69 @@ public class DacDocsServiceImpl implements DacDocsService{
                         throw new RuntimeException("DynaField not found with id: " + req.getDynaFieldsId());
                     }
 
-                    //find all dacDocs with ids
-                    Optional<DacDocs> targetInNew = dacDocsRepository.findDacDocsBYPKs(
-                            newDac.getDacId(), newDac.getDacVer(), existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(), req.getDynaFieldsId());
-
-
-                    DacDocs currentDacDoc = targetInNew.orElse(null);
-                    // No-op check: If existing and new values are the same, skip update
-                    if (currentDacDoc != null && !Objects.equals(currentDacDoc.getFieldValue(), req.getFieldValue()) ) {
-                        allUpdatedDacDocs.add(currentDacDoc); // Add the existing one to the result
-                        continue;
+                    String key = existingDynaDocs.get().getId() + ":" + 
+                                existingDynaDocs.get().getVersion() + ":" + 
+                                req.getDynaFieldsId();
+                    
+                    DacDocs row;
+                    if (clonedDocsMap.containsKey(key)) {
+                        // Update existing cloned DacDocs with values from request
+                        row = clonedDocsMap.get(key);
+                    } else {
+                        // Create new DacDocs if it doesn't exist in prior version
+                        row = new DacDocs();
+                        DacDocsId id = new DacDocsId();
+                        id.setDacId(newDac.getDacId());
+                        id.setDacVer(newDac.getDacVer());
+                        id.setDynaDocsId(existingDynaDocs.get().getId());
+                        id.setDynaDocsVer(existingDynaDocs.get().getVersion());
+                        id.setDynaFieldsId(req.getDynaFieldsId());
+                        row.setId(id);
+                        row.setDac(newDac);
                     }
-
-                    DacDocs row = targetInNew.orElseGet(DacDocs::new); // Reuse or create new
-                    DacDocsId id = new DacDocsId();
-                    id.setDacId(newDac.getDacId());
-                    id.setDacVer(newDac.getDacVer());
-                    id.setDynaDocsId(existingDynaDocs.get().getId());
-                    id.setDynaDocsVer(existingDynaDocs.get().getVersion());
-                    id.setDynaFieldsId(req.getDynaFieldsId());
-                    row.setId(id);
-                    row.setDac(newDac);
+                    
                     DynaFields targetField = existingDynaFields.stream().
                             filter(f -> f.getDynaFieldsId().equals(req.getDynaFieldsId())).findFirst().orElse(null);
                     row.setDynaField(targetField);
                     row.setSourceId(req.getSourceId());
                     row.setFieldValue(req.getFieldValue());
                     DacDocs savedRow = dacDocsRepository.save(row);
-                    log.info("saved row is .......................... {}",savedRow);
+                    log.info("Saved DacDocs with values from request: dacId={}, dacVer={}, dynaFieldsId={}", 
+                            savedRow.getId().getDacId(), savedRow.getId().getDacVer(), savedRow.getId().getDynaFieldsId());
                     
-                    // Handle DacDocsDetails for TABLE/LIST fields
-                    log.info("*************** ****************** ********** ************* {}, {}",
-                             req.getDynaFieldsId(), 
-                            targetField.getType());
+                    // Verify savedRow has the new version
+                    if (!savedRow.getId().getDacVer().equals(newDac.getDacVer())) {
+                        log.error("ERROR: savedRow has wrong dacVer! Expected {}, got {}", 
+                                newDac.getDacVer(), savedRow.getId().getDacVer());
+                        throw new RuntimeException("DacDocs was saved with wrong version. Expected: " + 
+                                newDac.getDacVer() + ", got: " + savedRow.getId().getDacVer());
+                    }
                     
-                    if (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE) {
-                        log.info("Field type is TABLE/LIST, processing details... .......................................................");
+                    // Handle DacDocsDetails for TABLE/LIST fields - update with values from request
+                    if (targetField != null && (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE)) {
+                        log.info("Field type is TABLE/LIST, updating details for field {} with values from request. DacVer={}", 
+                                req.getDynaFieldsId(), savedRow.getId().getDacVer());
+                        
+                        // Clear any existing cloned details for this field (they were cloned with null values)
+                        // We'll replace them with values from request
+                        List<DacDocsDetails> detailsToDelete = dacDocsDetailsRepository.findAll(
+                                Specification.where(DacDocsDetailsSpecification.byDacId(newDac.getDacId()))
+                                        .and(DacDocsDetailsSpecification.byDacVer(newDac.getDacVer()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsId(existingDynaDocs.get().getId()))
+                                        .and(DacDocsDetailsSpecification.byDynaDocsVer(existingDynaDocs.get().getVersion()))
+                                        .and(DacDocsDetailsSpecification.byDynaFieldsId(req.getDynaFieldsId()))
+                        );
+                        log.info("Deleting {} cloned details (with null values) for field {} in version {}", 
+                                detailsToDelete.size(), req.getDynaFieldsId(), newDac.getDacVer());
+                        dacDocsDetailsRepository.deleteAll(detailsToDelete);
+                        
+                        // Create new DacDocsDetails from request (with actual values from request)
                         if (req.getDetails() != null && !req.getDetails().isEmpty()) {
-                            log.info("Creating {} details for field {} ..............................", req.getDetails().size(), req.getDynaFieldsId());
+                            log.info("Creating {} details for field {} from request. Using DacDocs with dacVer={}", 
+                                    req.getDetails().size(), req.getDynaFieldsId(), savedRow.getId().getDacVer());
                             List<DacDocsDetailsRequest> mapped = DacDocsMapper.INSTANCE.mapDetails(req.getDetails());
+                            log.info("Mapped {} detail requests for field {}", mapped.size(), req.getDynaFieldsId());
+                            
                             if (targetField.getType() == DynaFieldType.LIST) {
                                 List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
                                         savedRow.getId().getDynaDocsId(), savedRow.getId().getDynaDocsVer(), targetField.getDynaFieldsId());
@@ -1020,21 +1117,276 @@ public class DacDocsServiceImpl implements DacDocsService{
                                     }
                                 }
                             }
+                            
+                            // Verify savedRow version before creating details
+                            log.info("About to create details using DacDocs with dacId={}, dacVer={}", 
+                                    savedRow.getId().getDacId(), savedRow.getId().getDacVer());
+                            
                             List<DacDocsDetails> detailsList = dacDocsDetailsService.createAll(savedRow, mapped);
+                            log.info("Created {} DacDocsDetails entities for field {}", detailsList.size(), req.getDynaFieldsId());
+                            
+                            // Verify details were created with correct version
+                            for (DacDocsDetails detail : detailsList) {
+                                log.info("Created detail: rowId={}, colId={}, fieldValue='{}', dacId={}, dacVer={}", 
+                                        detail.getRowId(), detail.getDynaFieldsDetailsId(), detail.getFieldValue(),
+                                        detail.getDacId(), detail.getDacVer());
+                                
+                                // Verify version is correct
+                                if (!detail.getDacVer().equals(newDac.getDacVer())) {
+                                    log.error("ERROR: Detail created with wrong dacVer! Expected {}, got {}", 
+                                            newDac.getDacVer(), detail.getDacVer());
+                                    throw new RuntimeException("DacDocsDetails was created with wrong version. Expected: " + 
+                                            newDac.getDacVer() + ", got: " + detail.getDacVer());
+                                }
+                            }
+                            
                             savedRow.setDacDocsDetails(new HashSet<>(detailsList));
-                            // Save the entity again to ensure the details association is persisted
                             savedRow = dacDocsRepository.save(savedRow);
-                            log.info("Successfully created {} details", detailsList.size());
+                            
+                            // Load details explicitly from database to ensure they're persisted and loaded
+                            List<DacDocsDetails> loadedDetails = dacDocsDetailsRepository.findAll(
+                                    Specification.where(DacDocsDetailsSpecification.byDacId(savedRow.getId().getDacId()))
+                                            .and(DacDocsDetailsSpecification.byDacVer(savedRow.getId().getDacVer()))
+                                            .and(DacDocsDetailsSpecification.byDynaDocsId(savedRow.getId().getDynaDocsId()))
+                                            .and(DacDocsDetailsSpecification.byDynaDocsVer(savedRow.getId().getDynaDocsVer()))
+                                            .and(DacDocsDetailsSpecification.byDynaFieldsId(savedRow.getId().getDynaFieldsId()))
+                            );
+                            
+                            log.info("Loaded {} details from database for field {} in version {}", 
+                                    loadedDetails.size(), req.getDynaFieldsId(), savedRow.getId().getDacVer());
+                            
+                            // Verify all loaded details have correct version
+                            for (DacDocsDetails detail : loadedDetails) {
+                                if (!detail.getDacVer().equals(newDac.getDacVer())) {
+                                    log.error("ERROR: Loaded detail has wrong dacVer! Expected {}, got {}", 
+                                            newDac.getDacVer(), detail.getDacVer());
+                                }
+                            }
+                            
+                            savedRow.setDacDocsDetails(new HashSet<>(loadedDetails));
+                            
+                            // Verify the relationship is set
+                            log.info("DacDocs entity has {} details in relationship after loading", savedRow.getDacDocsDetails().size());
+                            
+                            log.info("Successfully created and loaded {} details from request for new version {}", 
+                                    loadedDetails.size(), newDac.getDacVer());
                         } else {
-                            log.info("No details to process for field {}", req.getDynaFieldsId());
+                            // Request explicitly has no details (empty list) - this means remove all details
+                            // Details are already deleted above, so just log
+                            log.info("No details in request for field {}, all details removed for new version", req.getDynaFieldsId());
                         }
                     } else {
-                        log.info("Field type is not TABLE/LIST: {}", targetField != null ? targetField.getType() : "null");
+                        // For non-TABLE/LIST fields, ensure details are empty
+                        savedRow.setDacDocsDetails(new HashSet<>());
                     }
                     allUpdatedDacDocs.add(savedRow);
                 }
             }
         }
         return allUpdatedDacDocs;
+    }
+
+    /**
+     * Detects if there are any changes between existing DacDocs/DacDocsDetails and the request values
+     * @param existingDac The existing DAC with latest version
+     * @param requests List of DacDocsRequest to compare against
+     * @return true if changes are detected, false otherwise
+     */
+    private boolean detectChanges(Dac existingDac, List<DacDocsRequest> requests) {
+        log.info("detectChanges called for DAC {} version {} with {} requests", 
+                existingDac.getDacId(), existingDac.getDacVer(), requests.size());
+        
+        for (DacDocsRequest req : requests) {
+            log.info("Checking changes for request: dacId={}, dynaFieldsId={}, dynaDocsId={}, detailsCount={}", 
+                    req.getDacId(), req.getDynaFieldsId(), req.getDynaDocsId(), 
+                    req.getDetails() != null ? req.getDetails().size() : 0);
+            Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(req.getDynaDocsId());
+            if (existingDynaDocs.isEmpty()) {
+                // New DynaDocs - this is a change
+                return true;
+            }
+
+            // Check DacDocs fieldValue change
+            Optional<DacDocs> existingDacDoc = dacDocsRepository.findDacDocsBYPKs(
+                    existingDac.getDacId(), existingDac.getDacVer(),
+                    existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(),
+                    req.getDynaFieldsId());
+
+            if (existingDacDoc.isEmpty()) {
+                // New field - this is a change
+                return true;
+            }
+
+            DacDocs existing = existingDacDoc.get();
+            
+            // Compare fieldValue
+            if (!Objects.equals(existing.getFieldValue(), req.getFieldValue())) {
+                log.info("Change detected in fieldValue for field {}: old='{}', new='{}'", 
+                        req.getDynaFieldsId(), existing.getFieldValue(), req.getFieldValue());
+                return true;
+            }
+
+            // Check DacDocsDetails changes for TABLE/LIST fields
+            List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(
+                    existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
+            DynaFields targetField = existingDynaFields.stream()
+                    .filter(f -> f.getDynaFieldsId().equals(req.getDynaFieldsId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (targetField != null && (targetField.getType() == DynaFieldType.LIST || targetField.getType() == DynaFieldType.TABLE)) {
+                // Get existing details
+                List<DacDocsDetails> existingDetails = dacDocsDetailsRepository.findAll(
+                        Specification.where(DacDocsDetailsSpecification.byDacId(existingDac.getDacId()))
+                                .and(DacDocsDetailsSpecification.byDacVer(existingDac.getDacVer()))
+                                .and(DacDocsDetailsSpecification.byDynaDocsId(existingDynaDocs.get().getId()))
+                                .and(DacDocsDetailsSpecification.byDynaDocsVer(existingDynaDocs.get().getVersion()))
+                                .and(DacDocsDetailsSpecification.byDynaFieldsId(req.getDynaFieldsId()))
+                );
+
+                log.info("Checking details changes for field {}: existing count={}, request count={}", 
+                        req.getDynaFieldsId(), 
+                        existingDetails.size(), 
+                        req.getDetails() != null ? req.getDetails().size() : 0);
+
+                // Compare details
+                if (req.getDetails() == null || req.getDetails().isEmpty()) {
+                    if (!existingDetails.isEmpty()) {
+                        log.info("Change detected in details for field {}: existing has {} details, request has none", 
+                                req.getDynaFieldsId(), existingDetails.size());
+                        return true;
+                    }
+                } else {
+                    // Create normalized copy of request details for comparison (don't modify original)
+                    List<DacDocsRequest.DacDocsDetail> normalizedRequestDetails = new ArrayList<>();
+                    for (DacDocsRequest.DacDocsDetail original : req.getDetails()) {
+                        DacDocsRequest.DacDocsDetail copy = new DacDocsRequest.DacDocsDetail();
+                        copy.setDynaFieldsDetailsId(original.getDynaFieldsDetailsId());
+                        copy.setSourceId(original.getSourceId());
+                        copy.setFieldValue(original.getFieldValue());
+                        copy.setRowId(original.getRowId());
+                        normalizedRequestDetails.add(copy);
+                    }
+                    
+                    // Normalize request details for LIST type
+                    if (targetField.getType() == DynaFieldType.LIST) {
+                        List<DynaFieldsDetails> cols = dynaFieldsDetailsRepository.findAllByDocAndField(
+                                existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion(), targetField.getDynaFieldsId());
+                        Integer singleColId = cols != null && !cols.isEmpty() ? cols.get(0).getDynaFieldsDetailsId() : null;
+                        if (singleColId != null) {
+                            for (DacDocsRequest.DacDocsDetail detail : normalizedRequestDetails) {
+                                if (detail.getDynaFieldsDetailsId() == null || detail.getDynaFieldsDetailsId().equals(targetField.getDynaFieldsId())) {
+                                    detail.setDynaFieldsDetailsId(singleColId);
+                                }
+                            }
+                        }
+                    }
+
+                    // Compare details count
+                    if (existingDetails.size() != normalizedRequestDetails.size()) {
+                        log.info("Change detected in details count for field {}: existing={}, request={}", 
+                                req.getDynaFieldsId(), existingDetails.size(), normalizedRequestDetails.size());
+                        return true;
+                    }
+
+                    // Log existing details for debugging
+                    log.info("Existing details for field {}:", req.getDynaFieldsId());
+                    for (DacDocsDetails existingDetail : existingDetails) {
+                        log.info("  - rowId={}, colId={}, fieldValue='{}'", 
+                                existingDetail.getRowId(), existingDetail.getDynaFieldsDetailsId(), existingDetail.getFieldValue());
+                    }
+                    
+                    // Log request details for debugging
+                    log.info("Request details for field {}:", req.getDynaFieldsId());
+                    for (DacDocsRequest.DacDocsDetail reqDetail : normalizedRequestDetails) {
+                        log.info("  - rowId={}, colId={}, fieldValue='{}'", 
+                                reqDetail.getRowId(), reqDetail.getDynaFieldsDetailsId(), reqDetail.getFieldValue());
+                    }
+                    
+                    // Build map of existing details by key (rowId:dynaFieldsDetailsId)
+                    Map<String, DacDocsDetails> existingDetailsMap = existingDetails.stream()
+                            .collect(Collectors.toMap(
+                                    d -> {
+                                        Integer rowId = d.getRowId() != null ? d.getRowId() : 0;
+                                        Integer colId = d.getDynaFieldsDetailsId() != null ? d.getDynaFieldsDetailsId() : 0;
+                                        return rowId + ":" + colId;
+                                    },
+                                    d -> d,
+                                    (a, b) -> {
+                                        log.warn("Duplicate key found in existing details, keeping first: {}", a);
+                                        return a;
+                                    }
+                            ));
+
+                    log.info("Comparing {} existing details with {} request details for field {}", 
+                            existingDetails.size(), normalizedRequestDetails.size(), req.getDynaFieldsId());
+                    
+                    // Compare each request detail with existing
+                    for (DacDocsRequest.DacDocsDetail reqDetail : normalizedRequestDetails) {
+                        Integer reqRowId = reqDetail.getRowId() != null ? reqDetail.getRowId() : 0;
+                        Integer reqColId = reqDetail.getDynaFieldsDetailsId() != null ? reqDetail.getDynaFieldsDetailsId() : 0;
+                        String key = reqRowId + ":" + reqColId;
+                        
+                        log.debug("Checking request detail: key='{}', rowId={}, colId={}, fieldValue='{}'", 
+                                key, reqRowId, reqColId, reqDetail.getFieldValue());
+                        
+                        DacDocsDetails existingDetail = existingDetailsMap.get(key);
+                        
+                        // If detail doesn't exist, it's a change
+                        if (existingDetail == null) {
+                            log.info("Change detected in details for field {}: new detail with key '{}' (rowId={}, colId={}) not found in existing", 
+                                    req.getDynaFieldsId(), key, reqRowId, reqColId);
+                            return true;
+                        }
+                        
+                        // Compare fieldValue (handle null/empty strings)
+                        String existingValue = existingDetail.getFieldValue() != null ? existingDetail.getFieldValue() : "";
+                        String requestValue = reqDetail.getFieldValue() != null ? reqDetail.getFieldValue() : "";
+                        
+                        log.debug("Comparing fieldValue for key '{}': existing='{}', request='{}'", 
+                                key, existingValue, requestValue);
+                        
+                        if (!existingValue.equals(requestValue)) {
+                            log.info("Change detected in details fieldValue for field {}: rowId={}, colId={}, old='{}', new='{}'", 
+                                    req.getDynaFieldsId(), reqRowId, reqColId, existingValue, requestValue);
+                            return true;
+                        }
+                        
+                        // Compare sourceId (handle null/empty strings)
+                        String existingSourceId = existingDetail.getSourceId() != null ? existingDetail.getSourceId() : "";
+                        String requestSourceId = reqDetail.getSourceId() != null ? reqDetail.getSourceId() : "";
+                        if (!existingSourceId.equals(requestSourceId)) {
+                            log.info("Change detected in details sourceId for field {}: rowId={}, colId={}, old='{}', new='{}'", 
+                                    req.getDynaFieldsId(), reqRowId, reqColId, existingSourceId, requestSourceId);
+                            return true;
+                        }
+                    }
+                    
+                    // Check if any existing details were removed (not present in request)
+                    Set<String> requestKeys = normalizedRequestDetails.stream()
+                            .map(d -> {
+                                Integer rowId = d.getRowId() != null ? d.getRowId() : 0;
+                                Integer colId = d.getDynaFieldsDetailsId() != null ? d.getDynaFieldsDetailsId() : 0;
+                                return rowId + ":" + colId;
+                            })
+                            .collect(Collectors.toSet());
+                    
+                    for (DacDocsDetails existingDetail : existingDetails) {
+                        Integer existingRowId = existingDetail.getRowId() != null ? existingDetail.getRowId() : 0;
+                        Integer existingColId = existingDetail.getDynaFieldsDetailsId() != null ? existingDetail.getDynaFieldsDetailsId() : 0;
+                        String existingKey = existingRowId + ":" + existingColId;
+                        if (!requestKeys.contains(existingKey)) {
+                            log.info("Change detected in details for field {}: existing detail with key '{}' (rowId={}, colId={}) removed", 
+                                    req.getDynaFieldsId(), existingKey, existingRowId, existingColId);
+                            return true;
+                        }
+                    }
+                }
+            } else {
+                log.debug("Field {} is not TABLE/LIST type, skipping details comparison", req.getDynaFieldsId());
+            }
+        }
+        log.info("No changes detected for DAC {} version {}", existingDac.getDacId(), existingDac.getDacVer());
+        return false;
     }
 }

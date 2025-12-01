@@ -6,7 +6,10 @@ import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.com.mapper.ComMapper;
+import com.sigmap.common.com.response.ComSelectResponseDto;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.docs.Docs;
@@ -30,26 +33,32 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionQuery;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.ReunionResponse;
-import com.sigmap.common.reunion.response.ReunionResponseDto;
+import com.sigmap.common.reunion.response.*;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import jakarta.mail.MessagingException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.lang.reflect.Field;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -385,5 +394,160 @@ public class ReunionController {
                 .findFirst()
                 .orElse(null);
     }
+
+
+ /*   @GetMapping("/list/ppm/{ppmId}")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
+    public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
+        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
+    }*/
+
+    @GetMapping("/history/{reunionId}/ppm/{ppmId}")
+    public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest) {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+
+        ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId, jwt);
+
+        return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
+    }
+   /* @GetMapping("/drop-list/ppm/{ppmId}")
+    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification());
+
+        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }*/
+
+    @GetMapping("/history/drop-list-com/ppm/{ppmId}")
+    public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Com> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification()).stream().map(r->r.getCom()).collect(Collectors.toList());
+
+        return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
+    }
+
+    @GetMapping("/history/pageable/ppm/{ppmId}")
+    public ResponseEntity<Page<ReunionSearchResponseDto>> findAllComByPpmIdAndComId(@AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,Pageable pageable,ReunionQuery query, @PathVariable Integer ppmId, @RequestParam(required = false) Integer comId) {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
+        List<Reunion> reunionList = reunionService.findAllByPpmIdAndOptionalComId(ppmId,comId,jwt,query.toSpecification());
+
+        List<ReunionSearchResponseDto> dtoList = reunionList.stream()
+                .map(ReunionMapper.INSTANCE::mapToReunionSearchResponseDto)
+                .peek(dto -> {
+                    reunionList.stream()
+                            .filter(re -> re.getId().equals(dto.getId()))
+                            .findFirst()
+                            .flatMap(re -> re.getReunionPpms().stream()
+                                    .filter(ppm -> ppm.getPpmId().equals(ppmId))
+                                    .findFirst()
+                            )
+                            .ifPresent(ppm -> dto.setDecision(ppm.getDecision()));
+                })
+                .collect(Collectors.toList());
+
+
+        dtoList = applySorting(dtoList, pageable, ReunionSearchResponseDto.class);
+
+        Page<ReunionSearchResponseDto> page = paginate(dtoList, pageable);
+
+        return ResponseEntity.ok(page);
+    }
+
+// global function for paginated a list
+    public static <T> Page<T> paginate(List<T> list, Pageable pageable) {
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), list.size());
+
+        List<T> pageContent;
+
+        if (start >= list.size()) {
+            pageContent = Collections.emptyList();
+        } else {
+            pageContent = list.subList(start, end);
+        }
+
+        return new PageImpl<>(pageContent, pageable, list.size());
+    }
+
+// global function for build field for sorting methode
+    private static <T> Comparator<T> buildFieldComparator(Class<T> type, String fieldName) {
+        try {
+            Field field = type.getDeclaredField(fieldName);
+            field.setAccessible(true);
+
+            return (o1, o2) -> {
+                try {
+                    Object v1 = field.get(o1);
+                    Object v2 = field.get(o2);
+
+                    if (v1 == null && v2 == null) return 0;
+                    if (v1 == null) return 1;
+                    if (v2 == null) return -1;
+
+                    if (v1 instanceof Comparable<?> && v2 instanceof Comparable<?>) {
+                        Comparable<Object> c1 = (Comparable<Object>) v1;
+                        return c1.compareTo(v2);
+                    }
+
+
+                    return 0;
+                } catch (IllegalAccessException e) {
+                    return 0;
+                }
+            };
+
+        } catch (NoSuchFieldException e) {
+            return null;
+        }
+    }
+//global  function for sorting
+    public static <T> List<T> applySorting(List<T> list, Pageable pageable, Class<T> type) {
+        if (pageable.getSort().isUnsorted() || list.isEmpty()) {
+            return list;
+        }
+
+        Comparator<T> globalComparator = null;
+
+        for (Sort.Order order : pageable.getSort()) {
+            Comparator<T> fieldComparator = buildFieldComparator(type, order.getProperty());
+
+            if (fieldComparator != null) {
+                if (order.isDescending()) {
+                    fieldComparator = fieldComparator.reversed();
+                }
+
+                globalComparator = (globalComparator == null)
+                        ? fieldComparator
+                        : globalComparator.thenComparing(fieldComparator);
+            }
+        }
+
+        if (globalComparator != null) {
+            return list.stream().sorted(globalComparator).toList();
+        }
+
+        return list;
+    }
+
+
 
 }

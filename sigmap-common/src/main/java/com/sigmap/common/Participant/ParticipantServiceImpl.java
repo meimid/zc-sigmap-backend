@@ -6,6 +6,7 @@ import com.sigmap.common.Participant.request.ParticipantInvitedRequest;
 import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
@@ -159,7 +160,8 @@ public class ParticipantServiceImpl implements ParticipantService {
 
             UserDTO userDetails = keycloakAdminService.getUserById(userId);
             ParticipantType type = Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantType.RESPONSABLE : ParticipantType.MEMBRE;
-            String fonction = String.valueOf(type);
+            ParticipantFonction fonctionReunion=Objects.equals(reunion.getCom().getResponsableId(), userId) ? ParticipantFonction.PRESIDENT : ParticipantFonction.MEMBRE;
+            String fonction = String.valueOf(fonctionReunion);
 
             if (participant == null) {
                 // Create new participant for new commission member
@@ -172,8 +174,8 @@ public class ParticipantServiceImpl implements ParticipantService {
                 participantRequest.setType(type);
                 participantRequest.setOrganisme(reunion.getCom().getNom());
                 participantRequest.setFonction(fonction);
-                participantRequest.setPresent(false); // Default for new participants
-
+                participantRequest.setFonctionReunion(fonctionReunion);
+                participantRequest.setPresent(false);
                 Participant newParticipant = create(participantRequest);
                 updatedParticipants.add(newParticipant);
                 participantsToSave.add(newParticipant);
@@ -183,8 +185,8 @@ public class ParticipantServiceImpl implements ParticipantService {
                 participant.setPrenom(userDetails.getLastName());
                 participant.setMail(userDetails.getEmail());
                 participant.setType(type); // Update role if RESPONSABLE changed
-                participant.setOrganisme(reunion.getCom().getNom());
                 participant.setFonction(fonction);
+                participant.setOrganisme(reunion.getCom().getNom());
                 participantsToSave.add(participant);
             }
 
@@ -243,7 +245,7 @@ public class ParticipantServiceImpl implements ParticipantService {
         // Iterate over participants and send emails
         for (Participant participant : participants) {
 
-            if(participant.getMail()!=null){
+            if(participant.getMail()!=null&&reunion.getReunionDate()!=null){
                 mailService.sendReunionInvitationEmail(reunion, participant, connectedUserId);
             }
         }

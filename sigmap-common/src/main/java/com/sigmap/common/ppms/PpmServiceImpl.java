@@ -24,6 +24,7 @@ import com.sigmap.common.financement.Financement;
 import com.sigmap.common.financement.FinancementId;
 import com.sigmap.common.financement.FinancementRepository;
 import com.sigmap.common.financement.request.FinancementRequest;
+import com.sigmap.common.keycloakAdmin.dto.UserComDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -50,6 +51,9 @@ import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_societe.exception.TokenRequired;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.*;
@@ -59,6 +63,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -97,6 +103,7 @@ public class PpmServiceImpl implements PpmService {
     private final FinancementRepository financementRepository;
     private final ModelPpmRepository modelPpmRepository;
     private final PpmRepository ppmRepository;
+    private final UserComRepository userComRepository;
 
     /**
      * Constructor.
@@ -110,7 +117,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -130,6 +137,7 @@ public class PpmServiceImpl implements PpmService {
         this.financementRepository = financementRepository;
         this.modelPpmRepository = modelPpmRepository;
         this.ppmRepository = ppmRepository;
+        this.userComRepository = userComRepository;
     }
 
     @Override
@@ -4741,8 +4749,8 @@ public class PpmServiceImpl implements PpmService {
             );
         }
         if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
-            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
+            Integer nextRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+log.info("nextRealisationId {}", nextRealisationId);
 
             List<Realisation> realisationsToSave = new ArrayList<>();
             for (RealisationWithLotsRequestDto realisationRequest : request.getRealisationsWithLots()) {
@@ -4800,7 +4808,7 @@ public class PpmServiceImpl implements PpmService {
 
                 // ADD: Handle Financements
                 Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
+                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId : 1;
 
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
                     log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
@@ -4816,34 +4824,45 @@ public class PpmServiceImpl implements PpmService {
                         }
 
                         Financement financement = new Financement();
-                        FinancementId financementId = new FinancementId();
 
-                        // assign simple fields
+                        // === FIXED: build correct composite ID ===
+                        FinancementId financementId = new FinancementId();
+                        financementId.setRealisationId(realisation.getId());
+                        financementId.setRealisationVer(realisation.getVersion());
                         financementId.setFinancementId(nextFinancementId++);
+
+                        // === Budget ===
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
+                        // === Monnaie + taux ===
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
 
-                        if (monnaie.getTaux() != null) {
-                            financement.setTauxApplicable(monnaie.getTaux());
-                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() +
-                                    " from Monnaie ID: " + monnaie.getId());
-                        } else {
-                            financement.setTauxApplicable(0.0);
-                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
-                        }
+                        financement.setMonnaie(monnaie);
+                        financement.setTauxApplicable(
+                                monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+                        );
 
-                        if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
-                            RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                        // === Source financement ===
+                        if (financementRequest.getSourceFinancement() != null &&
+                                financementRequest.getSourceFinancement().getId() != null) {
+
+                            RefParam sourceFinancement = refParamRepository.findById(
+                                            financementRequest.getSourceFinancement().getId())
+                                    .orElseThrow(() -> new EntityNotFoundException(
+                                            "Source Financement not found with ID: " +
+                                                    financementRequest.getSourceFinancement().getId()));
+
                             financement.setSourceFinancement(sourceFinancement);
                         }
 
-                        // relationships last
-                        financement.setMonnaie(monnaie);
-                        financementId.setRealisation(realisation);
+                        // === FIXED: bind parent Realisation (MapsId) ===
+                        financement.setRealisation(realisation);
+
+                        // === assign composite id ===
                         financement.setId(financementId);
+
+                        financement.setIsDeleted(false);
 
                         financements.add(financement);
 
@@ -4856,29 +4875,31 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setFinancements(financements);
                     log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
 
-                    // >>> CHANGED: compute converted budget Σ(budgetEstimer × Monnaie.taux)
+                    // === CHANGED: compute converted budget Σ(budgetEstimer × Monnaie.taux)
                     BigDecimal realisationBudgetFx = financements.stream()
                             .map(f -> {
                                 BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0;
+                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                        ? f.getMonnaie().getTaux()
+                                        : 0.0;
                                 return amt.multiply(BigDecimal.valueOf(taux));
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    // Set converted sum so the seuil check uses it
                     realisation.setBudgetEstime(realisationBudgetFx);
 
-                    // >>> Validate for PPM using the converted amounts
+                    // validate seuil AFTER setting budget
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
-
 
                 } else {
                     log.info("No financements provided for realisation ID: {}", realisation.getId());
+
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
 
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
                 }
+
 
                 realisationsToSave.add(realisation);
             }
@@ -4902,7 +4923,7 @@ public class PpmServiceImpl implements PpmService {
 
     @Override
     public Page<Ppm> findCurrentYearPpmsByUser(Pageable pageable) {
-        log.info("Retrieving current year's PPMs for connected user with pageable: {}", pageable);
+        log.info("Retrieving PPMs for current year and next year for connected user with pageable: {}", pageable);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
@@ -4911,21 +4932,30 @@ public class PpmServiceImpl implements PpmService {
             return Page.empty(pageable);
         }
 
-        // Validate ACs
+        // Validate ACs exist
         for (Integer acId : userAcIds) {
             try {
                 acService.findById(acId);
             } catch (Exception e) {
-                log.info("AC not found with ID: {}", acId);
-                return Page.empty(pageable); // Return empty page instead of throwing AcNotFound
+                log.warn("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
             }
         }
 
-        // Get current year
-        String currentYear = String.valueOf(LocalDate.now().getYear());
+        // Determine current year & next year
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        List<String> allowedYears = List.of(
+                String.valueOf(currentYear),
+                String.valueOf(nextYear)
+        );
+
+        log.info("Allowed PPM years for retrieval: {}", allowedYears);
 
         // Build specification
-        Specification<Ppm> spec = Specification.where(PpmSpecifications.annee(currentYear))
+        Specification<Ppm> spec = Specification
+                .where(PpmSpecifications.anneeIn(allowedYears))
                 .and(PpmSpecifications.ppmAc(userAcIds))
                 .and(PpmSpecifications.deleted(false))
                 .and(PpmSpecifications.isLatestVersion());
@@ -4934,13 +4964,17 @@ public class PpmServiceImpl implements PpmService {
         Page<Ppm> ppmsPage = repository.findAll(spec, pageable);
 
         if (ppmsPage.isEmpty()) {
-            log.info("No PPMs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            log.info("No PPMs found for years {} and {} for user ACs {}",
+                    currentYear, nextYear, userAcIds);
             return Page.empty(pageable);
         }
 
-        log.info("Retrieved {} PPMs for the current year {} and user ACs {}", ppmsPage.getContent().size(), currentYear, userAcIds);
+        log.info("Retrieved {} PPMs for years {} & {} for ACs {}",
+                ppmsPage.getContent().size(), currentYear, nextYear, userAcIds);
+
         return ppmsPage;
     }
+
 
     @Override
     public List<AcAvailablePpmResponse> getAcsWithoutPpmForCurrentYear() throws AcNotFound {
@@ -5144,11 +5178,12 @@ public class PpmServiceImpl implements PpmService {
                     realisation.getId(), realisation.getVersion());
 
             Set<Integer> requestedFinancementIds = financementRequests.stream()
-                    .filter(financementRequest -> financementRequest.getFinancementId() != null)
+                    .filter(fr -> fr.getFinancementId() != null)
                     .map(FinancementRequest::getFinancementId)
                     .collect(Collectors.toSet());
 
             for (FinancementRequest financementRequest : financementRequests) {
+
                 if (financementRequest.getMonnaieId() == null) {
                     System.out.println("Skipping financement with null monnaieId");
                     continue;
@@ -5159,46 +5194,41 @@ public class PpmServiceImpl implements PpmService {
 
                 System.out.println("Processing financement with ID: " + financementId);
 
+                // ==========================
+                // CASE 1: UPDATE EXISTING
+                // ==========================
                 if (financementId != null && financementId > 0) {
                     System.out.println("CASE: UPDATING existing financement with ID: " + financementId);
 
                     Optional<Financement> existingFinancementOpt = existingFinancements.stream()
-                            .filter(f -> f.getId().getFinancementId().equals(financementId) &&
-                                    !Boolean.TRUE.equals(f.getIsDeleted()))
+                            .filter(f -> f.getId().getFinancementId().equals(financementId)
+                                    && !Boolean.TRUE.equals(f.getIsDeleted()))
                             .findFirst();
 
                     if (existingFinancementOpt.isPresent()) {
                         financement = existingFinancementOpt.get();
-                        System.out.println("Found existing financement - UPDATING");
 
-                        // Update fields
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                        // Update monnaie and auto-assign taux
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " +
-                                        financementRequest.getMonnaieId() + " not found"));
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
                         financement.setMonnaie(monnaie);
 
-                        // AUTO-ASSIGN TAUX FROM MONNAIE
-                        if (monnaie.getTaux() != null) {
-                            financement.setTauxApplicable(monnaie.getTaux());
-                            System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() +
-                                    " from Monnaie ID: " + monnaie.getId());
-                        } else {
-                            financement.setTauxApplicable(0.0);
-                            System.out.println("Monnaie taux is null, set tauxApplicable to 0.0");
-                        }
+                        financement.setTauxApplicable(
+                                (monnaie.getTaux() != null) ? monnaie.getTaux() : 0.0
+                        );
 
-                        // Update source financement
                         if (financementRequest.getSourceFinancement() != null &&
                                 financementRequest.getSourceFinancement().getId() != null) {
-                            RefParam sourceFinancement = refParamRepository.findById(
+
+                            RefParam src = refParamRepository.findById(
                                             financementRequest.getSourceFinancement().getId())
                                     .orElseThrow(() -> new EntityNotFoundException(
-                                            "Source Financement with ID " +
-                                                    financementRequest.getSourceFinancement().getId() + " not found"));
-                            financement.setSourceFinancement(sourceFinancement);
+                                            "Source Financement not found with ID " +
+                                                    financementRequest.getSourceFinancement().getId()));
+
+                            financement.setSourceFinancement(src);
                         } else {
                             financement.setSourceFinancement(null);
                         }
@@ -5213,42 +5243,48 @@ public class PpmServiceImpl implements PpmService {
                     }
 
                 } else {
+
+                    // ==========================
+                    // CASE 2: CREATE NEW
+                    // ==========================
                     System.out.println("CASE: CREATING new financement (no ID provided)");
 
-                    // Create new financement
                     Integer newFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-                    newFinancementId = (newFinancementId != null) ? newFinancementId + 1 : 1;
+                    newFinancementId = (newFinancementId != null) ? newFinancementId : 1;
 
                     financement = new Financement();
+
+                    // >>> FIXED: correct composite ID
                     FinancementId compositeFinancementId = new FinancementId();
                     compositeFinancementId.setFinancementId(newFinancementId);
-                    compositeFinancementId.setRealisation(realisation);
+                    compositeFinancementId.setRealisationId(realisation.getId());
+                    compositeFinancementId.setRealisationVer(realisation.getVersion());
+
+                    // Bind parent realisation (MapsId)
+                    financement.setRealisation(realisation);
+                    financement.setId(compositeFinancementId);
 
                     Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                            .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " +
-                                    financementRequest.getMonnaieId() + " not found"));
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
+
                     financement.setMonnaie(monnaie);
-                    financement.setId(compositeFinancementId);
                     financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                    // AUTO-ASSIGN TAUX FROM MONNAIE
-                    if (monnaie.getTaux() != null) {
-                        financement.setTauxApplicable(monnaie.getTaux());
-                        System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() +
-                                " from Monnaie ID: " + monnaie.getId());
-                    } else {
-                        financement.setTauxApplicable(0.0);
-                        System.out.println("Monnaie taux is null, set tauxApplicable to 0.0");
-                    }
+                    financement.setTauxApplicable(
+                            monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+                    );
 
                     if (financementRequest.getSourceFinancement() != null &&
                             financementRequest.getSourceFinancement().getId() != null) {
-                        RefParam sourceFinancement = refParamRepository.findById(
+
+                        RefParam src = refParamRepository.findById(
                                         financementRequest.getSourceFinancement().getId())
                                 .orElseThrow(() -> new EntityNotFoundException(
-                                        "Source Financement with ID " +
-                                                financementRequest.getSourceFinancement().getId() + " not found"));
-                        financement.setSourceFinancement(sourceFinancement);
+                                        "Source Financement not found with ID " +
+                                                financementRequest.getSourceFinancement().getId()));
+
+                        financement.setSourceFinancement(src);
                     } else {
                         financement.setSourceFinancement(null);
                     }
@@ -5261,9 +5297,13 @@ public class PpmServiceImpl implements PpmService {
                 financements.add(financement);
             }
 
+            // ==========================
+            // SOFT DELETE MISSING
+            // ==========================
             for (Financement existingFinancement : existingFinancements) {
-                if (!requestedFinancementIds.contains(existingFinancement.getId().getFinancementId()) &&
-                        !Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+                if (!requestedFinancementIds.contains(existingFinancement.getId().getFinancementId())
+                        && !Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
+
                     existingFinancement.setIsDeleted(true);
                     financements.add(existingFinancement);
                     System.out.println("Marked financement with ID: " +
@@ -5274,16 +5314,18 @@ public class PpmServiceImpl implements PpmService {
 
             realisation.setFinancements(financements);
             financementRepository.saveAll(financements);
+
             System.out.println("Processed " + financements.size() + " financements for realisation ID: " + realisation.getId());
 
         } else {
-            // Clear financements if none provided
+
+            // CLEAR ALL IF REQUEST EMPTY
             if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
-                for (Financement existingFinancement : realisation.getFinancements()) {
-                    if (!Boolean.TRUE.equals(existingFinancement.getIsDeleted())) {
-                        existingFinancement.setIsDeleted(true);
+                for (Financement f : realisation.getFinancements()) {
+                    if (!Boolean.TRUE.equals(f.getIsDeleted())) {
+                        f.setIsDeleted(true);
                         System.out.println("Marked financement with ID: " +
-                                existingFinancement.getId().getFinancementId() +
+                                f.getId().getFinancementId() +
                                 " as deleted (no financements in request)");
                     }
                 }
@@ -5774,22 +5816,19 @@ public class PpmServiceImpl implements PpmService {
         System.out.println("=== PROCESSING FINANCEMENTS (existing version) ===");
         System.out.println("Realisation ID: " + realisation.getId() + ", Version: " + realisation.getVersion());
 
-        // If there is no DTO for this position, do nothing.
         if (realisationRequest == null) {
             System.out.println("No DTO for this realisation index → skipping financements");
             return false;
         }
 
-        // Load financements for THIS (id, version)
         List<Financement> existing = financementRepository
                 .findByRealisationIdAndVersion(realisation.getId(), realisation.getVersion());
         Map<Integer, Financement> existingById = existing.stream()
-                .collect(Collectors.toMap(f -> f.getId().getFinancementId(), f -> f, (a,b) -> a));
+                .collect(Collectors.toMap(f -> f.getId().getFinancementId(), f -> f, (a, b) -> a));
 
         List<FinancementRequest> reqs = realisationRequest.getFinancements();
         boolean hasChanges = false;
 
-        // Explicit “clear all” semantics when null OR empty
         if (reqs == null || reqs.isEmpty()) {
             boolean anyActive = false;
             for (Financement f : existing) {
@@ -5806,7 +5845,6 @@ public class PpmServiceImpl implements PpmService {
             return anyActive;
         }
 
-        // Process non-empty list
         Set<Integer> requestedIds = new HashSet<>();
         List<Financement> result = new ArrayList<>();
 
@@ -5821,41 +5859,54 @@ public class PpmServiceImpl implements PpmService {
 
             if (fid != null) {
                 requestedIds.add(fid);
-                target = existingById.get(fid); // only in THIS version
+                target = existingById.get(fid);
             }
 
+            // ==========================================================
+            // CASE: CREATE NEW FINANCEMENT IN THIS VERSION
+            // ==========================================================
             if (target == null) {
-                // Create for this version (use provided id or generate a new one)
                 if (fid == null) {
                     Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-                    fid = (next != null) ? next + 1 : 1;
+                    fid = (next != null) ? next : 1;
                 }
+
                 target = new Financement();
+
+                // >>> FIXED: Proper FinancementId structure
                 FinancementId cid = new FinancementId();
-                cid.setRealisation(realisation);
                 cid.setFinancementId(fid);
+                cid.setRealisationId(realisation.getId());
+                cid.setRealisationVer(realisation.getVersion());
+
+                // >>> FIXED: Bind parent realisation via @MapsId
+                target.setRealisation(realisation);
                 target.setId(cid);
-                hasChanges = true; // new row for this version
+
+                hasChanges = true;
             }
 
-            // Capture old values for change detection
             BigDecimal oldBudget = target.getBudgetEstimer();
             Integer oldMonnaieId = (target.getMonnaie() != null) ? target.getMonnaie().getId() : null;
-            Integer oldSourceId = (target.getSourceFinancement() != null) ? target.getSourceFinancement().getId() : null;
+            Integer oldSourceId = (target.getSourceFinancement() != null)
+                    ? target.getSourceFinancement().getId() : null;
             boolean oldDeleted = Boolean.TRUE.equals(target.getIsDeleted());
 
-            // Apply new values
             target.setBudgetEstimer(fr.getBudgetEstimer());
 
             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Monnaie with ID " + fr.getMonnaieId() + " not found"));
             target.setMonnaie(monnaie);
-            target.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+            target.setTauxApplicable(
+                    monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+            );
 
             if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
                 RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
                         .orElseThrow(() -> new EntityNotFoundException(
-                                "Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                                "Source Financement with ID " +
+                                        fr.getSourceFinancement().getId() + " not found"));
                 target.setSourceFinancement(src);
             } else {
                 target.setSourceFinancement(null);
@@ -5863,15 +5914,14 @@ public class PpmServiceImpl implements PpmService {
 
             target.setIsDeleted(false);
 
-            // Detect field changes (budget/monnaie/source/isDeleted)
             boolean changed =
-                    (oldBudget == null && target.getBudgetEstimer() != null)
-                            || (oldBudget != null && target.getBudgetEstimer() != null
-                            && oldBudget.compareTo(target.getBudgetEstimer()) != 0)
-                            || !Objects.equals(oldMonnaieId, monnaie.getId())
-                            || !Objects.equals(oldSourceId,
-                            target.getSourceFinancement() != null ? target.getSourceFinancement().getId() : null)
-                            || oldDeleted;
+                    (oldBudget == null && target.getBudgetEstimer() != null) ||
+                            (oldBudget != null && target.getBudgetEstimer() != null &&
+                                    oldBudget.compareTo(target.getBudgetEstimer()) != 0) ||
+                            !Objects.equals(oldMonnaieId, monnaie.getId()) ||
+                            !Objects.equals(oldSourceId,
+                                    target.getSourceFinancement() != null ? target.getSourceFinancement().getId() : null) ||
+                            oldDeleted;
 
             if (changed) hasChanges = true;
 
@@ -5879,7 +5929,9 @@ public class PpmServiceImpl implements PpmService {
             result.add(target);
         }
 
-        // Soft-delete financements on this version that were not requested
+        // ==========================================================
+        // SOFT DELETE UNREQUESTED FINANCEMENTS FOR THIS VERSION
+        // ==========================================================
         for (Financement f : existing) {
             Integer id = f.getId().getFinancementId();
             if (!requestedIds.contains(id) && !Boolean.TRUE.equals(f.getIsDeleted())) {
@@ -5892,9 +5944,11 @@ public class PpmServiceImpl implements PpmService {
         }
 
         realisation.setFinancements(result);
-        System.out.println("Processed " + result.size() + " financements for realisation " + realisation.getId()
-                + " v" + realisation.getVersion());
+
+        System.out.println("Processed " + result.size() + " financements for realisation " +
+                realisation.getId() + " v" + realisation.getVersion());
         System.out.println("=== FINANCEMENTS DONE ===");
+
         return hasChanges;
     }
 
@@ -6067,7 +6121,48 @@ public class PpmServiceImpl implements PpmService {
         return saved;
     }
 
+    @Override
+    public List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec) {
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec);
+    }
 
+    @Override
+    public List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId) {
+       List<Integer> comIds=userComRepository.findAllByUserIdAndIsDeletedFalse(userId).stream().map(UserCom::getComId).collect(Collectors.toList());
+        Specification<Ppm> finalSpec = Specification.where(spec)
+                .and(PpmSpecifications.isLatestVersion())
+                .and(Specification.not(PpmSpecifications.BROUILLON()))
+                .and(PpmSpecifications.isNotDeleted());
+        return repository.findAll(finalSpec).stream().filter(ppm->ppm.getComs().stream().map(Com::getId).anyMatch(comIds::contains)).collect(Collectors.toList());
 
+    }
+
+    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt) {
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
+
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+        List<Ppm> ppms = new ArrayList<>();
+        if(isAdminCentral||isSuperAdmin) {
+            ppms= findAllForSuperAdminAndAdminCentral(spec);
+        }
+        else {
+            String userId = jwt.getSubject();
+            ppms=findAllForComUser(spec,userId);
+        }
+        return ppms;
+    }
 
 }

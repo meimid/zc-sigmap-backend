@@ -168,8 +168,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JsonManagedReference
     private List<Docs> docs;
 
-    @OneToMany(mappedBy = "id.realisation",
-            cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "realisation", cascade = CascadeType.ALL)
     @JsonManagedReference("realisation-financements")
     private List<Financement> financements = new ArrayList<>();
 
@@ -190,9 +189,9 @@ public class Realisation extends BaseEntity implements DocumentHolder {
         }
         return this.docs;
     }
-
     @Override
     public int hashCode() {
-        return Objects.hash(id); // Only use simple fields
+        return Objects.hash(id, version);
     }
+
 }

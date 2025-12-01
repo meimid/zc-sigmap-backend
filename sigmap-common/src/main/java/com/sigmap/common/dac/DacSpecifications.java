@@ -1,12 +1,14 @@
 package com.sigmap.common.dac;
 
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
+import java.util.List;
 
 
 public class DacSpecifications {
@@ -118,6 +120,20 @@ public class DacSpecifications {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.equal(root.get("status"), status);
+        };
+    }
+
+    /**
+     * Filter by AC IDs (via Ppm -> Ac)
+     */
+    public static Specification<Dac> searchByAcIds(List<Integer> acIds) {
+        return (root, query, criteriaBuilder) -> {
+            if (acIds == null || acIds.isEmpty()) {
+                return criteriaBuilder.disjunction();
+            }
+            Join<Dac, Ppm> ppmJoin = root.join("ppm");
+            Join<Ppm, Ac> acJoin = ppmJoin.join("ac");
+            return acJoin.get("id").in(acIds);
         };
     }
 }

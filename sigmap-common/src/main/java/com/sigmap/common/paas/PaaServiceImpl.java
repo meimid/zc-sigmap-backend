@@ -528,13 +528,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
     restrictUpdatePaa(existingPaa);
 
-
-        if (existingPaa.getActualise() == null) {
-            existingPaa.setActualise(Boolean.FALSE);
-        }
-        if (existingPaa.getNbrActualisation() == null) {
-            existingPaa.setNbrActualisation(0);
-        }
+    if (existingPaa.getActualise() == null) {
+        existingPaa.setActualise(Boolean.FALSE);
+    }
+    if (existingPaa.getNbrActualisation() == null) {
+        existingPaa.setNbrActualisation(0);
+    }
 
     // === Simple fields
     existingPaa.setNom(request.getNom());
@@ -769,118 +768,93 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
                 }
 
-                // ---- Financements
-                if (rReq.getFinancements() != null) {
-                    Map<Integer, Financement> existingById = (realisation.getFinancements() == null ? (Map<Integer, Financement>) List.<Financement>of()
-                            : realisation.getFinancements().stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .collect(Collectors.toMap(f -> f.getId().getFinancementId(), f -> f, (a, b) -> a)));
+                // =========================== FINANCEMENTS (UPDATE EXISTING REALISATION) ===========================
+                if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
 
-                    if (realisation.getFinancements() == null) {
-                        realisation.setFinancements(new ArrayList<>());
+                    // 1) Soft-delete all existing financements
+                    List<Financement> allFins =
+                            (realisation.getFinancements() != null) ? realisation.getFinancements() : new ArrayList<>();
+                    for (Financement f : allFins) {
+                        if (!Boolean.TRUE.equals(f.getIsDeleted())) {
+                            f.setIsDeleted(true);
+                        }
                     }
 
-                    List<Financement> newState = new ArrayList<>();
-
+                    // 2) Create new financements from request
                     for (FinancementRequest fr : rReq.getFinancements()) {
                         if (fr.getMonnaieId() == null) {
                             log.warn("Skipping financement with null monnaieId for Realisation {}", realisation.getId());
                             continue;
                         }
 
-                        if (fr.getFinancementId() != null) {
-                            Financement fin = existingById.remove(fr.getFinancementId());
-                            if (fin == null) {
-                                throw new EntityNotFoundException("Financement with ID " + fr.getFinancementId() + " not found on this Realisation");
-                            }
-                            fin.setBudgetEstimer(fr.getBudgetEstimer());
+                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
-                            Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-                            fin.setMonnaie(monnaie);
-                            fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                        Financement fin = new Financement();
+                        FinancementId fid = new FinancementId(
+                                realisation.getId(),
+                                realisation.getVersion(),
+                                nextFinId
+                        );
+                        fin.setId(fid);
+                        fin.setRealisation(realisation);
 
-                            if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                                RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                        .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                                fin.setSourceFinancement(src);
-                            } else {
-                                fin.setSourceFinancement(null);
-                            }
+                        Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
+                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
 
-                            fin.setIsDeleted(false);
-                            newState.add(fin);
+                        fin.setMonnaie(monnaie);
+                        fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+
+                        if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
+                            RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
+                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                            fin.setSourceFinancement(src);
                         } else {
-                            Integer nextId = generateFinancementIdWithRetry();
-                            Financement fin = new Financement();
-
-                            FinancementId fid = new FinancementId();
-                            fid.setFinancementId(nextId);
-                            fid.setRealisation(realisation);
-                            fin.setId(fid);
-
-                            Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-                            fin.setMonnaie(monnaie);
-                            fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
-
-                            if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                                RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                        .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                                fin.setSourceFinancement(src);
-                            } else {
-                                fin.setSourceFinancement(null);
-                            }
-
-                            fin.setBudgetEstimer(fr.getBudgetEstimer());
-                            fin.setIsDeleted(false);
-
-                            // DO NOT save here
-                            newState.add(fin);
+                            fin.setSourceFinancement(null);
                         }
+
+                        fin.setBudgetEstimer(fr.getBudgetEstimer());
+                        fin.setIsDeleted(false);
+
+                        allFins.add(fin);
                     }
 
-                    // Soft-delete leftovers
-                    for (Financement leftover : existingById.values()) {
-                        if (!Boolean.TRUE.equals(leftover.getIsDeleted())) {
-                            leftover.setIsDeleted(true);
-                            log.info("Soft-deleting Financement ID: {}", leftover.getId().getFinancementId());
-                        }
-                        newState.add(leftover);
-                    }
+                    realisation.setFinancements(allFins);
+                    financementRepository.saveAll(allFins);
 
-                    realisation.setFinancements(newState);
-
-                    // === Recompute budget as Σ(budgetEstimer × Monnaie.taux)  << ONLY CHANGE HERE
-                    BigDecimal rb = newState.stream()
+                    // 3) Recompute budget from non-deleted financements
+                    BigDecimal rb = allFins.stream()
                             .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
                             .map(f -> {
                                 BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0;
+                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                        ? f.getMonnaie().getTaux()
+                                        : 0.0;
                                 return budget.multiply(BigDecimal.valueOf(taux));
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                     realisation.setBudgetEstime(rb);
+
                 } else {
                     // No financements array -> soft delete all
                     if (realisation.getFinancements() != null) {
                         realisation.getFinancements().forEach(f -> {
                             if (!Boolean.TRUE.equals(f.getIsDeleted())) f.setIsDeleted(true);
                         });
+                        financementRepository.saveAll(realisation.getFinancements());
                     } else {
                         realisation.setFinancements(new ArrayList<>());
                     }
                     realisation.setBudgetEstime(BigDecimal.ZERO);
                 }
+                // =========================== END FINANCEMENTS (UPDATE) ===========================
 
-                // ---- Seuil AFTER collections/budget are consistent (avoids auto-flush issues)
+                // ---- Seuil AFTER collections/budget are consistent
                 setSeuilApplicableForRealisation(realisation, requestAcId);
 
                 // link PAA if missing
                 if (realisation.getPaas() == null) realisation.setPaas(new ArrayList<>());
                 if (!realisation.getPaas().contains(existingPaa)) realisation.getPaas().add(existingPaa);
 
-                // Save the parent once
                 realisation = realisationRepository.save(realisation);
                 realisations.add(realisation);
 
@@ -933,7 +907,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     for (LotResponse lr : rReq.getLots()) {
                         Lot lot = new Lot();
                         Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                        lot.setId(lotId); // no +1
+                        lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lr.getDescription());
                         lot.setBudget(lr.getBudget());
@@ -943,21 +917,26 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     savedReal.setLots(lots);
                 }
 
-                // Financements (CREATE path)
+                // =========================== FINANCEMENTS (CREATE NEW REALISATION) ===========================
                 if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
                     List<Financement> fins = new ArrayList<>();
+
                     for (FinancementRequest fr : rReq.getFinancements()) {
                         if (fr.getMonnaieId() == null) {
                             log.warn("Skipping financement with null monnaieId for new Realisation {}", savedReal.getId());
                             continue;
                         }
-                        Integer nextFinId = generateFinancementIdWithRetry(); // no +1
+
+                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
                         Financement fin = new Financement();
-                        FinancementId fid = new FinancementId();
-                        fid.setFinancementId(nextFinId);
-                        fid.setRealisation(savedReal);
+                        FinancementId fid = new FinancementId(
+                                savedReal.getId(),
+                                savedReal.getVersion(),
+                                nextFinId
+                        );
                         fin.setId(fid);
+                        fin.setRealisation(savedReal);
 
                         Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
@@ -974,17 +953,20 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
                         fin.setBudgetEstimer(fr.getBudgetEstimer());
                         fin.setIsDeleted(false);
-                        fins.add(fin); // no explicit save
+
+                        fins.add(fin);
                     }
 
                     savedReal.setFinancements(fins);
+                    financementRepository.saveAll(fins);
 
-                    // === Compute budget as Σ(budgetEstimer × Monnaie.taux)  << ONLY CHANGE HERE
                     BigDecimal rb = fins.stream()
                             .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
                             .map(f -> {
                                 BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0;
+                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                        ? f.getMonnaie().getTaux()
+                                        : 0.0;
                                 return budget.multiply(BigDecimal.valueOf(taux));
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -993,6 +975,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     savedReal.setFinancements(new ArrayList<>());
                     savedReal.setBudgetEstime(BigDecimal.ZERO);
                 }
+                // =========================== END FINANCEMENTS (CREATE) ===========================
 
                 // Files
                 if (rReq.getRealisationFiles() != null) {
@@ -1021,7 +1004,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             for (Realisation ex : existingPaa.getRealisations()) {
                 if (!processedRealisationIds.contains(ex.getId()) && !Boolean.TRUE.equals(ex.getIsDeleted())) {
                     ex.setIsDeleted(true);
-                    // to be verified
                     ex.setBudgetEstime(BigDecimal.ZERO);
                     realisationRepository.save(ex);
                     log.info("Marked Realisation {} as deleted (not in request)", ex.getId());
@@ -1114,12 +1096,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     repository.save(savedPaa);
     copyForResponse.setBudgetEstime(budgetEstime);
 
-        copyForResponse.setActualise(savedPaa.getActualise());
-        copyForResponse.setNbrActualisation(savedPaa.getNbrActualisation());
+    copyForResponse.setActualise(savedPaa.getActualise());
+    copyForResponse.setNbrActualisation(savedPaa.getNbrActualisation());
 
-        log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
-        return copyForResponse;
-    }
+    log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
+    return copyForResponse;
+}
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
@@ -2506,7 +2488,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     }
     @Override
     public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
-        log.info("Retrieving current year's PAAs for connected user with pageable: {}", pageable);
+        log.info("Retrieving PAAs for current year and next year for connected user with pageable: {}", pageable);
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
@@ -2520,31 +2502,42 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             try {
                 acService.findById(acId);
             } catch (Exception e) {
-                log.info("AC not found with ID: {}", acId);
+                log.warn("AC not found with ID: {}", acId);
                 return Page.empty(pageable);
             }
         }
 
-        // Get current year
-        String currentYear = String.valueOf(LocalDate.now().getYear());
+        // Get current year and next year
+        int currentYear = LocalDate.now().getYear();
+        int nextYear = currentYear + 1;
+
+        List<String> allowedYears = List.of(
+                String.valueOf(currentYear),
+                String.valueOf(nextYear)
+        );
+
+        log.info("Allowed PAA years for retrieval: {}", allowedYears);
 
         // Build specification
-        Specification<Paa> spec = Specification.where(PaaSpecifications.annee(currentYear))
+        Specification<Paa> spec = Specification
+                .where(PaaSpecifications.anneeIn(allowedYears))
                 .and(PaaSpecifications.paaAc(userAcIds))
                 .and(PaaSpecifications.deleted(false))
                 .and(PaaSpecifications.isLatestVersion());
 
-        // Query PAAs with pagination
         Page<Paa> paasPage = repository.findAll(spec, pageable);
 
         if (paasPage.isEmpty()) {
-            log.info("No PAAs found for the current year {} and user ACs {}", currentYear, userAcIds);
+            log.info("No PAAs found for years {} and {} for user ACs {}", currentYear, nextYear, userAcIds);
             return Page.empty(pageable);
         }
 
-        log.info("Retrieved {} PAAs for the current year {} and user ACs {}", paasPage.getContent().size(), currentYear, userAcIds);
+        log.info("Retrieved {} PAAs for years {} & {} for user ACs {}",
+                paasPage.getContent().size(), currentYear, nextYear, userAcIds);
+
         return paasPage;
     }
+
 
     @Transactional
     @Override
@@ -2653,7 +2646,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         int currentYear = LocalDate.now().getYear();
         int nextYear = currentYear + 1;
 
-        // Rule: only current year or next year allowed
         if (requestedYear != currentYear && requestedYear != nextYear) {
             throw new IllegalArgumentException(
                     "Vous ne pouvez créer un PAA que pour l'année " + currentYear +
@@ -2713,7 +2705,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setNom(request.getNom());
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
-        paa.setAnnee(annee);  // <-- YEAR FROM REQUEST
+        paa.setAnnee(annee);
         setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatus(ProcessStatus.BROUILLON);
@@ -2757,14 +2749,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         // 6. REALISATIONS
         // --------------------------
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
-            Integer currentMaxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-            Integer nextRealisationId = (currentMaxRealisationId != null) ? currentMaxRealisationId : 1;
-
+            Integer nextRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
+log.info("Realisation ID {}", nextRealisationId);
             Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
-
-            Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-            Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId + 1 : 1;
 
             List<Realisation> realisationsToSave = new ArrayList<>();
 
@@ -2828,8 +2816,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 } else {
                     realisation.setLots(new ArrayList<>());
                 }
+                Realisation savedReal = realisationRepository.save(realisation);
 
-                // FINANCEMENTS
+                // ---------------------------------------------------------------------------
+                // --------------------------  FINANCEMENTS ----------------------------
+                // ---------------------------------------------------------------------------
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
 
                     List<Financement> financements = new ArrayList<>();
@@ -2838,20 +2829,34 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
                         if (financementRequest.getMonnaieId() == null) continue;
 
-                        Financement financement = new Financement();
-                        FinancementId financementId = new FinancementId();
-                        financementId.setRealisation(realisation);
+                        // Generate ID from sequence
+                        Integer generatedFinancementId =
+                                sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
+                        // Create financement
+                        Financement financement = new Financement();
+
+                        // Composite primary key
+                        FinancementId financementId = new FinancementId(
+                                realisation.getId(),
+                                realisation.getVersion(),
+                                generatedFinancementId
+                        );
+                        financement.setId(financementId);
+                        financement.setRealisation(realisation);
+
+                        // Monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() ->
-                                        new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId())
+                                        new EntityNotFoundException("Monnaie not found with ID: "
+                                                + financementRequest.getMonnaieId())
                                 );
 
                         financement.setMonnaie(monnaie);
-                        financement.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                        financement.setTauxApplicable(
+                                monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+                        );
 
-                        financementId.setFinancementId(nextFinancementId++);
-                        financement.setId(financementId);
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
                         if (financementRequest.getSourceFinancement() != null &&
@@ -2870,15 +2875,17 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
 
                     realisation.setFinancements(financements);
+                    financementRepository.saveAll(financements);
 
-                    // compute budget: Σ(budgetEstimer × taux)
+                    // compute budget
                     BigDecimal realisationBudget = financements.stream()
                             .map(f -> {
-                                BigDecimal budget = f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                        ? f.getMonnaie().getTaux()
-                                        : 0.0;
-                                return budget.multiply(BigDecimal.valueOf(taux));
+                                BigDecimal b = (f.getBudgetEstimer() != null) ?
+                                        f.getBudgetEstimer() : BigDecimal.ZERO;
+                                Double taux =
+                                        (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                                ? f.getMonnaie().getTaux() : 0.0;
+                                return b.multiply(BigDecimal.valueOf(taux));
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -2888,6 +2895,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
                 }
+
+                // ---------------------------------------------------------------------------
+                // --------------------- END OF  FINANCEMENTS --------------------------
+                // ---------------------------------------------------------------------------
 
                 setSeuilApplicableForRealisation(realisation, requestAcId);
 
