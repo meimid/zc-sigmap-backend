@@ -551,56 +551,49 @@ public class DacServiceImpl implements DacService {
     /**
      * Remplace le marqueur **nomTable** par un vrai tableau Word inséré à la bonne position
      */
-   private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
-        if (items == null || items.isEmpty()) {
-            log.debug("Aucun élément à afficher pour la liste: {}", listName);
-            return;
-        }
+    private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
+        if (items == null || items.isEmpty()) return;
 
-        log.debug("Traitement de la liste: {} avec {} éléments", listName, items.size());
-
-        // Créer une numérotation pour la liste
-       // XWPFNumbering numbering = document.createNumbering();
-       // BigInteger numID = numbering.addNum(BigInteger.ONE);
-
-        // Parcourir tous les paragraphes pour trouver le marqueur
-        // Utiliser une copie pour éviter ConcurrentModificationException
         List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+
         for (XWPFParagraph p : paragraphs) {
             String text = p.getText();
+
             if (text != null && text.contains("**list:" + listName + "**")) {
                 log.debug("Marqueur de liste trouvé: {}", text);
 
-                try {
-                    // Obtenir la position du curseur au paragraphe actuel
-                    XmlCursor cursor = p.getCTP().newCursor();
+                XmlCursor cursor = p.getCTP().newCursor();
 
-                    // Créer les éléments de la liste
-                    XWPFParagraph listItem = document.insertNewParagraph(cursor);
-                    for (String item : items) {
-                        if (item != null && !item.trim().isEmpty()) {
-                            log.debug("Ajout de l'élément de liste: {}", item);
+                // Insérer un seul paragraphe
+                XWPFParagraph listItem = document.insertNewParagraph(cursor);
+                listItem.setIndentationLeft(720);
 
-                            listItem.setIndentationLeft(720);
-                            XWPFRun run = listItem.createRun();
-                            run.setText("- " + item.trim());
+                for (int i = 0; i < items.size(); i++) {
+                    String item = items.get(i);
+
+                    if (item != null && !item.trim().isEmpty()) {
+
+                        // creation de item
+                        XWPFRun run = listItem.createRun();
+                        run.setText("- " + item.trim());
+
+                        // Ajouter un retour à la ligne *sauf pour le dernier élément*
+                        if (i < items.size() - 1) {
+                            run.addBreak();   // retour à la ligne Word
                         }
                     }
-
-                    // Supprimer le paragraphe vide qui contenait le marqueur
-                    int pos = document.getPosOfParagraph(p);
-                    if (pos != -1) {
-                        document.removeBodyElement(pos);
-                    }
-                    break; // Sortir après avoir traité le marqueur
-
-                } catch (Exception e) {
-                    log.error("Erreur lors de l'insertion de la liste '{}': {}", listName, e.getMessage(), e);
                 }
+
+                // Supprimer le paragraphe du marqueur
+                int pos = document.getPosOfParagraph(p);
+                if (pos != -1) {
+                    document.removeBodyElement(pos);
+                }
+
+                break;
             }
         }
-   }
-
+    }
 
     private void replacePatternsInParagraph(XWPFParagraph paragraph, Map<String, String> replacements) {
         String text = paragraph.getText();
