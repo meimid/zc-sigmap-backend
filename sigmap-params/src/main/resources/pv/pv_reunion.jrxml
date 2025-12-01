@@ -92,7 +92,8 @@ and fonction_reunion ='MEMBRE']]>
 	 com.nom_ar,
 	 ref_param.code,
 	 ac.nom as nom_tutel,
-	 ac.nom_ar as nom_ar_ac
+	 ac.nom_ar as nom_ar_ac,
+	 ac.abrv as abrv_ac
 FROM com
 	INNER JOIN  reunion ON
 	  reunion.com_id =  com.com_id
@@ -174,6 +175,11 @@ FROM com
 	<field name="nom_ar_ac" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nom_ar"/>
 		<property name="com.jaspersoft.studio.field.label" value="nom_ar_ac"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="abrv_ac" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="abrv"/>
+		<property name="com.jaspersoft.studio.field.label" value="abrv_ac"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
@@ -289,7 +295,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{code}.equals("CPMP")?"PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{code} : "") + "/" +  $F{abrv}+ "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "") : "PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{code} : "") + "/" + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
+				<textFieldExpression><![CDATA["PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/" +  $F{abrv_ac} + "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "") ]]></textFieldExpression>
 			</textField>
 			<line>
 				<reportElement x="368" y="66" width="99" height="1" uuid="0481807b-9caf-4e39-844d-50655b4742e0"/>

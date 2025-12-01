@@ -20,10 +20,10 @@
     CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
