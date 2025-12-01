@@ -53,6 +53,7 @@ import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -457,8 +458,10 @@ public class DacServiceImpl implements DacService {
         }
 
         // Parcourir tous les paragraphes pour trouver le marqueur
-        for (int i = 0; i < document.getParagraphs().size(); i++) {
-            XWPFParagraph p = document.getParagraphs().get(i);
+        // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
+        // on supprime des paragraphes
+        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+        for (XWPFParagraph p : paragraphs) {
             String text = p.getText();
             String marker = "**" + tableName + "**";
 
@@ -466,12 +469,17 @@ public class DacServiceImpl implements DacService {
                 log.debug("Marqueur de tableau trouvé: {}", marker);
 
                 try {
-                    // Créer un nouveau tableau
-                    XWPFTable table = document.createTable();
+                    // Obtenir la position du curseur au paragraphe actuel
+                    XmlCursor cursor = p.getCTP().newCursor();
+
+                    // Insérer le tableau à la position du curseur (juste avant le paragraphe)
+                    // Note: insertNewTbl insère le tableau à la position du curseur
+                    XWPFTable table = document.insertNewTbl(cursor);
 
                     // Ajouter les données
                     if (!tableData.isEmpty()) {
                         // Ajouter l'en-tête
+                        // XWPFTable vient avec une ligne par défaut
                         XWPFTableRow headerRow = table.getRow(0);
                         int colIndex = 0;
 
@@ -482,11 +490,7 @@ public class DacServiceImpl implements DacService {
                                 headerRow.createCell();
                             }
                             XWPFTableCell cell = headerRow.getCell(colIndex);
-                            // Créer un nouveau paragraphe et une nouvelle exécution pour le texte en gras
-                            XWPFParagraph para = cell.getParagraphs().get(0);
-                            XWPFRun run = para.createRun();
-                            run.setBold(true);  // Mettre en gras
-                            run.setText(header);
+                            setCellText(cell, header, true);
                             colIndex++;
                         }
 
@@ -502,16 +506,14 @@ public class DacServiceImpl implements DacService {
                         }
                     }
 
-                    // Remplacer le paragraphe du marqueur par le tableau
-                    document.setParagraph(p, document.getPosOfParagraph(p));
-
                     log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
 
-                    // Supprimer le marqueur du paragraphe
-                    for (XWPFRun run : p.getRuns()) {
-                        log.debug("Marqueur supprimé: {}", run.getText(0));
-                        run.setText("", 0);
+                    // Supprimer le paragraphe contenant le marqueur car il a été remplacé
+                    int pos = document.getPosOfParagraph(p);
+                    if (pos != -1) {
+                        document.removeBodyElement(pos);
                     }
+
                     return;
 
                 } catch (Exception e) {
@@ -520,7 +522,7 @@ public class DacServiceImpl implements DacService {
             }
         }
         log.warn("Aucun marqueur de tableau trouvé pour: {}", "**table:" + tableName + "**");
-   }
+    }
 
 
     // ADD THIS HELPER METHOD TO YOUR CLASS
@@ -558,39 +560,43 @@ public class DacServiceImpl implements DacService {
         log.debug("Traitement de la liste: {} avec {} éléments", listName, items.size());
 
         // Créer une numérotation pour la liste
-        XWPFNumbering numbering = document.createNumbering();
-        BigInteger numID = numbering.addNum(BigInteger.ONE);
+       // XWPFNumbering numbering = document.createNumbering();
+       // BigInteger numID = numbering.addNum(BigInteger.ONE);
 
         // Parcourir tous les paragraphes pour trouver le marqueur
-        for (XWPFParagraph p : new ArrayList<>(document.getParagraphs())) {
+        // Utiliser une copie pour éviter ConcurrentModificationException
+        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+        for (XWPFParagraph p : paragraphs) {
             String text = p.getText();
             if (text != null && text.contains("**list:" + listName + "**")) {
                 log.debug("Marqueur de liste trouvé: {}", text);
 
-                // Récupérer la position du paragraphe
-                int paraPos = document.getPosOfParagraph(p);
+                try {
+                    // Obtenir la position du curseur au paragraphe actuel
+                    XmlCursor cursor = p.getCTP().newCursor();
 
-                log.info("-*-*-*-**---*-*--*-*-*-*-*-*-*-*-*-*-** {} ",paraPos);
+                    // Créer les éléments de la liste
+                    XWPFParagraph listItem = document.insertNewParagraph(cursor);
+                    for (String item : items) {
+                        if (item != null && !item.trim().isEmpty()) {
+                            log.debug("Ajout de l'élément de liste: {}", item);
 
-                // Supprimer le marqueur
-                p.getRuns().forEach(r -> r.setText("", 0));
-
-                // Créer les éléments de la liste
-                for (String item : items) {
-                    if (item != null && !item.trim().isEmpty()) {
-                        log.debug("Ajout de l'élément de liste: {}", item);
-                        XWPFParagraph listItem = document.createParagraph();
-                        listItem.setNumID(numID);
-                        listItem.setIndentationLeft(720); // 0.5 pouce
-
-                        XWPFRun run = listItem.createRun();
-                        run.setText(item.trim());
+                            listItem.setIndentationLeft(720);
+                            XWPFRun run = listItem.createRun();
+                            run.setText("- " + item.trim());
+                        }
                     }
-                }
 
-                // Supprimer le paragraphe vide qui contenait le marqueur
-                document.removeBodyElement(paraPos);
-                break; // Sortir après avoir traité le marqueur
+                    // Supprimer le paragraphe vide qui contenait le marqueur
+                    int pos = document.getPosOfParagraph(p);
+                    if (pos != -1) {
+                        document.removeBodyElement(pos);
+                    }
+                    break; // Sortir après avoir traité le marqueur
+
+                } catch (Exception e) {
+                    log.error("Erreur lors de l'insertion de la liste '{}': {}", listName, e.getMessage(), e);
+                }
             }
         }
    }
