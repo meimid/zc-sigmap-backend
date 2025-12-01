@@ -26,6 +26,7 @@ public class ReunionResponse {
     private String emplacement;
     private String object;
     private ReunionStatus status;
+    private String note;
     private List<ReunionPpmResponse> reunionPpms;
     private List<ReunionDacResponse> reunionDacs;
     private List<ParticipantResponseDto> participants;

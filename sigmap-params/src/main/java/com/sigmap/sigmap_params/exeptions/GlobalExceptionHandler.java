@@ -1415,6 +1415,23 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NoteNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleNoteOnlyWhenMeetingEnCoursException() {
+
+        String message = messageSource.getMessage(
+                "note.only.encours",
+                new Object[] {},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 
 }
 
