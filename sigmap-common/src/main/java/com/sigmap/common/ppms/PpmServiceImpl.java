@@ -577,7 +577,7 @@ public class PpmServiceImpl implements PpmService {
 
     @Transactional
     @Override
-    public Ppm create(PpmRequest request) {
+    public Ppm create(PpmRequest request) throws AcNotFound {
         Integer id = request.getId();
         if (id == null) {
 //            Integer maxId = repository.findMaxId();
@@ -4604,13 +4604,21 @@ public class PpmServiceImpl implements PpmService {
      *
      * @param ppm the Ppm entity to set the reference for
      */
-    private void setRef(Ppm ppm) {
+    private void setRef(Ppm ppm) throws AcNotFound {
         if (ppm == null || ppm.getAc() == null || ppm.getAnnee() == null) {
             throw new IllegalArgumentException("Cannot set reference: ppm, ac, or year is null.");
         }
-        String acName =ppm.getAc().getNom();
-        String ref = "PPM_" +acName+"_" +ppm.getAnnee();
-        ppm.setRef(ref);
+        String ref ;
+        Ac ac = acService.findById(ppm.getAc().getId());
+        if (ac.getAbreviation()!=null && ac.getAbreviation().length()>0) {
+            ref = "PPM_" + ac.getAbreviation() + "_" + ppm.getAnnee();
+            ppm.setRef(ref);
+        }
+        else {
+            ref = "PPM_" + ac.getNom() + "_" + ppm.getAnnee();
+            ppm.setRef(ref);
+        }
+
     }
 
     @Override

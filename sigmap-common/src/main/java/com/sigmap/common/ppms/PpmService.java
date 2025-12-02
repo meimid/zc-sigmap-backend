@@ -114,7 +114,7 @@ public interface PpmService {
      * @param request the request to create the Ppm from
      * @return the created Ppm
      */
-    Ppm create(PpmRequest request);
+    Ppm create(PpmRequest request) throws AcNotFound;
 
     /**
      * Create a new PPM with full support for relationships including documents.

@@ -2479,12 +2479,21 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
      *
      * @param paa the Paa entity
      */
-    private void setRef(Paa paa) {
+    private void setRef(Paa paa) throws AcNotFound {
         if (paa == null || paa.getId() == null || paa.getAnnee() == null) {
             throw new IllegalArgumentException("Cannot set reference: paa, id, or year is null.");
         }
-        String ref = "PAA_" + paa.getAnnee() + "_" + paa.getId();
-        paa.setRef(ref);
+        String ref ;
+        Ac ac = acService.findById(paa.getAc().getId());
+        if (ac.getAbreviation()!=null && ac.getAbreviation().length()>0) {
+            ref = "PAA_" + ac.getAbreviation() + "_" + paa.getAnnee();
+            paa.setRef(ref);
+        }
+        else {
+             ref = "PAA_" + ac.getNom() + "_" + paa.getAnnee();
+            paa.setRef(ref);
+        }
+
     }
     @Override
     public Page<Paa> findCurrentYearPaasByUser(Pageable pageable) {
@@ -2706,11 +2715,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
         paa.setAnnee(annee);
-        setRef(paa);
         paa.setBudgetEstime(request.getBudgetEstime());
         paa.setStatus(ProcessStatus.BROUILLON);
         paa.setAc(ac);
-
+        setRef(paa);
         paa.setActualise(Boolean.FALSE);
         paa.setNbrActualisation(0);
 
