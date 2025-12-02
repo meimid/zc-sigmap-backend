@@ -9,6 +9,7 @@ package com.sigmap.common.agpm;
 import com.github.dockerjava.api.exception.NotFoundException;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.config.Constants;
@@ -360,7 +361,6 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm agpm = agpmMapper.toEntity(request);
         agpm.setId(id);
         agpm.setVersion(version);
-        setRef(agpm);
         List<UserAc> userAcs = currentUserService.getCurrentUserAc();
         if (userAcs == null || userAcs.isEmpty()) {
             throw new UserHaveNoAc("Aucun ID AC trouvé pour l'utilisateur connecté");
@@ -388,6 +388,7 @@ public class AgpmServiceImpl implements AgpmService {
                 }
             }
         }
+        setRef(agpm);
 
         if (request.getFiles() != null) {
             documentCommuneService.processAndSaveDocuments(request.getFiles(), agpm, Constants.PATH_ENTREPOT_GED);
@@ -962,12 +963,12 @@ public class AgpmServiceImpl implements AgpmService {
      *
      * @param agpm the Agpm entity to set the reference for
      */
-    private void setRef(Agpm agpm) {
+    private void setRef(Agpm agpm) throws AcNotFound {
         if (agpm == null || agpm.getId() == null) {
             throw new IllegalArgumentException("Cannot set reference: agpm or agpm ID is null.");
         }
-        int year = Calendar.getInstance().get(Calendar.YEAR);
-        String ref = "AGPM_" + year + "_" + agpm.getId();
+       Ac ac = acService.findById(agpm.getAc().getId());
+        String ref = "AGPM_" + ac.getNom() + "_" + agpm.getAnnee();
         agpm.setRef(ref);
     }
 
