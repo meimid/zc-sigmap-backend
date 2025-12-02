@@ -26,7 +26,7 @@ public class DynaDocsModelServiceImpl implements DynaDocsModelService {
     @Override
     public List<DynaDocsModel> findAll() {
         log.debug("Récupération de tous les modèles de documents dynamiques");
-        return dynaDocsModelRepository.findAll();
+        return dynaDocsModelRepository.findAllNotDeleted();
     }
 
     @Override
