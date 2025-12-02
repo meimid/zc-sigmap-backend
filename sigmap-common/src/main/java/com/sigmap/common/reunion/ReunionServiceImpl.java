@@ -24,6 +24,7 @@ import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
@@ -235,9 +236,7 @@ public class ReunionServiceImpl implements ReunionService{
             throw new NoteNotAllowedException("");
         }
         Reunion reunionToUpdate=findById(id);
-    /*    reunionToUpdate.setParticipants(new ArrayList<>(reunionToUpdate.getParticipants()));
-        reunionToUpdate.setReunionPpms(new ArrayList<>(reunionToUpdate.getReunionPpms()));
-        reunionToUpdate.setReunionDacs(new ArrayList<>(reunionToUpdate.getReunionDacs()));*/
+
         Calendar nowCal = Calendar.getInstance();
         nowCal.set(Calendar.HOUR_OF_DAY, 0);
         nowCal.set(Calendar.MINUTE, 0);
@@ -344,6 +343,13 @@ public class ReunionServiceImpl implements ReunionService{
         for (UserCom userCom : commissionMembers) {
 
             UserDTO userDetails = keycloakAdminService.getUserById(userCom.getUserId());
+            if (request.getParticipants() != null) {
+                for (ParticipantRequest invitedRequest : request.getParticipants()) {
+                    if(invitedRequest.getMail()!=null&&invitedRequest.getMail().equals(userDetails.getEmail())){
+                        throw new EmailOrUserNameAlreadyUsedForAnotherUser("Email or User name already used for another user");
+                    }
+                }
+            }
             ParticipantRequest participantRequest = new ParticipantRequest();
             participantRequest.setReunionId(reunion.getId());
             participantRequest.setNom(userDetails.getFirstName());
