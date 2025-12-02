@@ -4,6 +4,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcher
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
+import com.sigmap.common.Participant.exception.EmailAlreadyReservedForAotherUser;
 import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
@@ -1415,6 +1416,37 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NoteNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleNoteOnlyWhenMeetingEnCoursException() {
+
+        String message = messageSource.getMessage(
+                "note.only.encours",
+                new Object[] {},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(EmailAlreadyReservedForAotherUser.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyReservedForAnotherUser(EmailAlreadyReservedForAotherUser ex) {
+        String message = messageSource.getMessage(
+                "email.already.reserved.for.another.user",
+                new Object[]{ex.getEmail()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
 
 }
 

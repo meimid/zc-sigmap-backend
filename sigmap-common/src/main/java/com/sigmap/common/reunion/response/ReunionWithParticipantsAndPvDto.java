@@ -20,6 +20,7 @@ public class ReunionWithParticipantsAndPvDto {
     private Calendar reunionDate;
     private String emplacement;
     private String object;
+    private String note;
     private List<ParticipantResponseDto> participants;
     private ProcessVerbalReunionResponse processVerbal;
     private BaseEntityResponse metadata;

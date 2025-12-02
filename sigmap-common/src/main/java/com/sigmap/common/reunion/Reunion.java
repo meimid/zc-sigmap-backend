@@ -42,7 +42,9 @@ public class Reunion extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private ReunionStatus status;
-
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String note;
     @OneToMany(
             mappedBy = "reunion"
     )

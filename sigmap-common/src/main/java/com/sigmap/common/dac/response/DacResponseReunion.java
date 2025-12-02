@@ -11,5 +11,6 @@ public class DacResponseReunion {
     private Integer dacVer;
     private RefParamResponseDto typeMarche;
     private ProcessStatus status;
+    private String reference;
     private AcWebsiteResponse ac;
 }
