@@ -386,12 +386,13 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Transactional
     public void synchronizeParticipants(ReunionRequest request, Reunion reunionReq) {
-      /*  HashSet uniqueEmails = new HashSet();
+        HashSet uniqueEmails = new HashSet();
 
-        boolean emailCheckForDupliacation=request.getParticipants().stream().filter(p->!uniqueEmails.add(p.getMail())).distinct().count()==request.getParticipants().size();
-        if (emailCheckForDupliacation) {
+        List<String> emailList=request.getParticipants().stream().map(p->p.getMail()).collect(Collectors.toList());
+        uniqueEmails.addAll(emailList);
+        if (emailList.size()!=uniqueEmails.size()) {
             throw new EmailAlreadyReservedForAotherUser("","Email or User name already used for another user");
-        }*/
+        }
 
         long requestHasPresident = request.getParticipants().stream()
                 .filter(p -> p.getFonctionReunion() == ParticipantFonction.PRESIDENT).count();
