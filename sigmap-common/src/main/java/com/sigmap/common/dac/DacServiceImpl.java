@@ -565,22 +565,20 @@ public class DacServiceImpl implements DacService {
                 XmlCursor cursor = p.getCTP().newCursor();
 
                 // Insérer un seul paragraphe
-                XWPFParagraph listItem = document.insertNewParagraph(cursor);
-                listItem.setIndentationLeft(720);
-
-                for (int i = 0; i < items.size(); i++) {
-                    String item = items.get(i);
-
+                // Itérer sur les items et créer un paragraphe pour chacun
+                for (String item : items) {
                     if (item != null && !item.trim().isEmpty()) {
+                        // Insérer un nouveau paragraphe à la position du curseur
+                        XWPFParagraph listItem = document.insertNewParagraph(cursor);
+                        listItem.setIndentationLeft(720); // Indentation pour simuler une liste
 
-                        // creation de item
+                        // Créer le run et ajouter le texte
                         XWPFRun run = listItem.createRun();
                         run.setText("- " + item.trim());
 
-                        // Ajouter un retour à la ligne *sauf pour le dernier élément*
-                        if (i < items.size() - 1) {
-                            run.addBreak();   // retour à la ligne Word
-                        }
+                        // Déplacer le curseur après le paragraphe nouvellement inséré
+                        // pour que le prochain item soit inséré après celui-ci
+                        cursor = listItem.getCTP().newCursor();
                     }
                 }
 
@@ -595,37 +593,116 @@ public class DacServiceImpl implements DacService {
         }
     }
 
+    /**
+     * Remplace les marqueurs dans un paragraphe tout en préservant le style.
+     * 
+     * <p>
+     * Cette méthode commence par consolider les runs adjacents identiques pour
+     * gérer les cas
+     * où un marqueur serait coupé (ex: "**" dans un run et "KEY**" dans le
+     * suivant).
+     * Ensuite, elle itère sur les runs pour effectuer les remplacements.
+     * </p>
+     *
+     * @param paragraph    Le paragraphe à traiter
+     * @param replacements La map des remplacements (Nom du marqueur -> Valeur)
+     */
     private void replacePatternsInParagraph(XWPFParagraph paragraph, Map<String, String> replacements) {
-        String text = paragraph.getText();
-        if (text == null || !text.contains("**")) {
+        // 1. Consolider les runs pour éviter les marqueurs coupés
+        consolidateRuns(paragraph);
+
+        // Obtenir la liste des runs (segments de texte) du paragraphe
+        List<XWPFRun> runs = paragraph.getRuns();
+
+        // Si le paragraphe est vide, on arrête
+        if (runs == null || runs.isEmpty()) {
             return;
         }
 
-        // Faire une copie du texte pour le modifier
-        String newText = text;
+        // Parcourir chaque run pour chercher des marqueurs
+        for (XWPFRun run : runs) {
+            String text = run.getText(0); // 0 pour la position actuelle dans le run
 
-        // Remplacer chaque motif trouvé
-        for (Map.Entry<String, String> entry : replacements.entrySet()) {
-            // Ne traiter que les clés simples (pas de préfixe table: ou list:)
-            if (!entry.getKey().contains(":")) {
-                String pattern = "\\*\\*" + entry.getKey() + "\\*\\*";
-                String value = entry.getValue() != null ? entry.getValue() : "";
-                newText = newText.replaceAll(pattern, value);
+            // Vérifier si le texte du run contient au moins un début de marqueur "**"
+            if (text != null && text.contains("**")) {
+
+                // Faire une copie pour les modifications
+                String newText = text;
+                boolean replaced = false;
+
+                // Tester chaque remplacement possible
+                for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                    // Ignorer les clés complexes (table: ou list:) qui sont traitées ailleurs
+                    if (!entry.getKey().contains(":")) {
+                        // Construire le motif exact : **NOM_MARQUEUR**
+                        String pattern = "**" + entry.getKey() + "**";
+
+                        // Si le run contient ce marqueur spécifique
+                        if (newText.contains(pattern)) {
+                            String value = entry.getValue() != null ? entry.getValue() : "";
+                            // Remplacer le marqueur par sa valeur
+                            newText = newText.replace(pattern, value);
+                            replaced = true;
+                            log.debug("Remplacement effectué dans un run : {} -> {}", pattern, value);
+                        }
+                    }
+                }
+
+                // Si un remplacement a eu lieu, mettre à jour le texte du run
+                // Cela préserve le style car on modifie le contenu du run existant
+                if (replaced) {
+                    run.setText(newText, 0);
+                }
             }
         }
+    }
 
-        // Si le texte a changé, mettre à jour le paragraphe
-        if (!text.equals(newText)) {
-            // Supprimer tous les runs existants
-            while (!paragraph.getRuns().isEmpty()) {
-                paragraph.removeRun(0);
+    /**
+     * Tente de fusionner les runs adjacents qui ont des styles identiques.
+     * Cela permet de reconstituer des marqueurs qui auraient été coupés par Word.
+     */
+    private void consolidateRuns(XWPFParagraph paragraph) {
+        if (paragraph.getRuns().size() < 2)
+            return;
+
+        List<XWPFRun> runs = paragraph.getRuns();
+        for (int i = 0; i < runs.size() - 1; i++) {
+            XWPFRun run1 = runs.get(i);
+            XWPFRun run2 = runs.get(i + 1);
+
+            if (areRunsStyleIdentical(run1, run2)) {
+                // Fusionner run2 dans run1
+                String text1 = run1.getText(0) != null ? run1.getText(0) : "";
+                String text2 = run2.getText(0) != null ? run2.getText(0) : "";
+
+                run1.setText(text1 + text2, 0);
+
+                // Supprimer run2
+                paragraph.removeRun(i + 1);
+
+                // Reculer l'index pour vérifier à nouveau ce run fusionné avec le suivant
+                i--;
+                // Mettre à jour la liste locale car paragraph.getRuns() a changé
+                runs = paragraph.getRuns();
             }
-
-            // Ajouter le nouveau texte
-            XWPFRun newRun = paragraph.createRun();
-            newRun.setText(newText);
-            //newRun.setBold(true);  // Mettre le texte en gras
         }
+    }
+
+    /**
+     * Vérifie si deux runs ont le même style visuel (gras, italique, couleur, police, taille).
+     */
+    private boolean areRunsStyleIdentical(XWPFRun r1, XWPFRun r2) {
+        if (r1 == null || r2 == null)
+            return false;
+
+        // Comparer les propriétés principales
+        return r1.isBold() == r2.isBold() &&
+                r1.isItalic() == r2.isItalic() &&
+                r1.isStrikeThrough() == r2.isStrikeThrough() &&
+                Objects.equals(r1.getColor(), r2.getColor()) &&
+                Objects.equals(r1.getFontFamily(), r2.getFontFamily()) &&
+                r1.getFontSize() == r2.getFontSize() &&
+                r1.getUnderline() == r2.getUnderline();
     }
 
     private boolean isAnyPatternFound(XWPFDocument document) {
@@ -668,11 +745,11 @@ public class DacServiceImpl implements DacService {
         return tempFile.getAbsolutePath();
     }
 
-/**
- * This method processes both list and table type fields and inserts the corresponding tables into the document.
- * - For list fields: generates a table with 1 column (each value in a row)
- * - For table fields: generates a table with columns as defined in dyna_fields_details and rows from dac_docs_details
- */
+    /**
+     * This method processes both list and table type fields and inserts the corresponding tables into the document.
+     * - For list fields: generates a table with 1 column (each value in a row)
+     * - For table fields: generates a table with columns as defined in dyna_fields_details and rows from dac_docs_details
+     */
     /**
      * Traite les champs de type TABLE et LIST pour les insérer dans le document Word.
      * Les données sont récupérées depuis la base de données et formatées selon leur type.
