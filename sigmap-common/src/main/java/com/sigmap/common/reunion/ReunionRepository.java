@@ -42,6 +42,18 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
     Optional<Reunion> findByIdWithDacs(@Param("id") Integer id);
 
     List<Reunion> findAllByReunionDateBeforeAndStatus(Calendar date, ReunionStatus status);
+
+    @Query("""
+       SELECT r FROM Reunion r
+       JOIN ReunionPpm rp ON rp.reunionId = r.id
+       WHERE rp.ppmId = :ppmId AND rp.ppmVer = :ppmVer
+       ORDER BY r.reunionDate DESC
+       LIMIT 1
+       """)
+    Reunion findLatestByPpm(Integer ppmId, Integer ppmVer);
+
+
+
 }
 
 

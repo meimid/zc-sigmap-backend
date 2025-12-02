@@ -1,5 +1,9 @@
 package com.sigmap.sigmap_ppm.config;
 
+import com.sigmap.sigmap_ppm.services.listeners.PpmCncmpDecisionListener;
+import com.sigmap.sigmap_ppm.services.listeners.PpmCpmpDecisionListener;
+import com.sigmap.sigmap_ppm.services.listeners.PpmSousCommissionAvisListener;
+import org.flowable.common.engine.impl.cfg.SpringBeanFactoryProxyMap;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
@@ -7,10 +11,15 @@ import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.spring.SpringProcessEngineConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+
+import java.util.Map;
 
 /**
  * Configuration class for initializing the Flowable process engine and its core services.
@@ -34,6 +43,9 @@ import org.springframework.context.annotation.Primary;
  */
 @Configuration
 public class FlowableInitializer {
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     /**
      * JDBC URL for the Flowable database, injected from application.yml .
@@ -75,18 +87,30 @@ public class FlowableInitializer {
     @Primary
     public ProcessEngine processEngine() {
 
-        ProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration()
-                .setJdbcUrl(jdbcUrl)
-                .setJdbcUsername(jdbcUsername)
-                .setJdbcPassword(jdbcPassword)
-                .setJdbcDriver(jdbcDriver)
-                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+        StandaloneProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration();
 
-        ProcessEngine processEngine = cfg.buildProcessEngine();
-        System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
+        cfg.setJdbcUrl(jdbcUrl);
+        cfg.setJdbcUsername(jdbcUsername);
+        cfg.setJdbcPassword(jdbcPassword);
+        cfg.setJdbcDriver(jdbcDriver);
 
-        return processEngine;
+        cfg.setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+
+        // ✔️ Permet à Flowable d’utiliser les beans Spring @Component
+        cfg.setBeans(new SpringBeanFactoryProxyMap(applicationContext));
+
+        // ✔️ Déclarer explicitement TOUS les listeners utilisés par delegateExpression
+        cfg.setBeans(Map.of(
+                "ppmNotificationListenerCpmp", applicationContext.getBean(PpmCpmpDecisionListener.class),
+                "ppmNotificationListenerCncmp", applicationContext.getBean(PpmCncmpDecisionListener.class),
+                "ppmNotificationListenerSousCommission", applicationContext.getBean(PpmSousCommissionAvisListener.class)
+        ));
+
+        cfg.setAsyncExecutorActivate(true);
+
+        return cfg.buildProcessEngine();
     }
+
     /**
      * Provides the Flowable RepositoryService for managing process definitions and deployments.
      * <p>

@@ -333,4 +333,133 @@ public class MailService {
         return templateEngine.process("email/reunionAnnulationEmail", context);
     }
 
+    /**
+     * Construit le contenu HTML de l'email de notification de décision de commission.
+     *
+     * Exemple de contenu :
+     * Bonjour,
+     * Le dossier "nom du dossier" transféré à la commission "nom de la commission"
+     * a été traité lors de la réunion "date réunion".
+     * Décision: "Décision réunion", motif "xxxxx" (si réserves) si renseigné.
+     * Cordialement,
+     */
+    private String commissionDecisionEmailContext(String dossierName,
+                                                  String commissionName,
+                                                  String reunionDateLabel,
+                                                  String decisionLabel,
+                                                  String motif) throws IOException {
+
+        // 1. Charger et encoder le logo comme dans les autres emails
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
+        byte[] sourceLogo = IOUtils.toByteArray(logo);
+        String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
+        encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
+
+        // 2. Préparer le contexte Thymeleaf
+        Context context = new Context();
+        context.setVariable("dossierName", dossierName);
+        context.setVariable("commissionName", commissionName);
+        context.setVariable("reunionDate", reunionDateLabel);
+        context.setVariable("decision", decisionLabel);
+        context.setVariable("motif", motif);
+        context.setVariable("logo", encodedStringLogo);
+        context.setVariable("from", fromEmail);
+
+        // 3. Générer le HTML depuis le template
+        return templateEngine.process("email/commissionDecisionNotificationEmail", context);
+    }
+
+    /**
+     * Envoie un email de notification de décision de commission
+     * (utilisable pour CPMP -> AC et CNCMP -> CPMP).
+     *
+     * @param toEmail           Destinataire (AC, CPMP, etc.)
+     * @param dossierName       Nom du dossier
+     * @param commissionName    Nom de la commission (ex: "CPMP", "CNCMP")
+     * @param reunionDateLabel  Date de la réunion sous forme de String déjà formatée
+     * @param decisionLabel     Libellé de la décision
+     * @param motif             Motif si réserves (peut être null ou vide)
+     * @param adminId           Id de l'utilisateur qui déclenche l'envoi (pour EmailTrace)
+     * @param typeEmail         TypeEmail dédié (à ajouter dans ton enum)
+     */
+    public void sendCommissionDecisionNotificationEmail(String toEmail,
+                                                        String dossierName,
+                                                        String commissionName,
+                                                        String reunionDateLabel,
+                                                        String decisionLabel,
+                                                        String motif,
+                                                        String adminId,
+                                                        TypeEmail typeEmail) throws MessagingException, IOException {
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            // Sujet de l'email
+            String subject = "SIGMAP – Décision de la commission " + commissionName;
+
+            // Corps HTML via Thymeleaf
+            String content = commissionDecisionEmailContext(
+                    dossierName,
+                    commissionName,
+                    reunionDateLabel,
+                    decisionLabel,
+                    motif
+            );
+
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setFrom(fromEmail);
+            helper.setText(content, true); // HTML
+
+            // Envoi
+            javaMailSender.send(mimeMessage);
+
+            log.info("Commission decision email sent successfully to : {}", toEmail);
+
+            // Trace en base
+            emailService.saveEmailTrace(
+                    adminId,
+                    typeEmail,
+                    subject,
+                    content,
+                    toEmail,
+                    true,
+                    LocalDateTime.now()
+            );
+
+        } catch (Exception e) {
+            // En cas d'erreur : log + trace KO
+            String subject = "SIGMAP – Décision de la commission " + commissionName;
+            String content;
+            try {
+                content = commissionDecisionEmailContext(
+                        dossierName,
+                        commissionName,
+                        reunionDateLabel,
+                        decisionLabel,
+                        motif
+                );
+            } catch (IOException ioException) {
+                // Si même la génération du template plante, on log juste un contenu vide
+                log.error("Failed to generate email content for commission decision", ioException);
+                content = "";
+            }
+
+            emailService.saveEmailTrace(
+                    adminId,
+                    typeEmail,
+                    subject,
+                    content,
+                    toEmail,
+                    false,
+                    LocalDateTime.now()
+            );
+
+            log.error("Failed to send commission decision email to : {}", toEmail, e);
+            throw new MessagingException("Failed to send commission decision email", e);
+        }
+    }
+
+
+
 }

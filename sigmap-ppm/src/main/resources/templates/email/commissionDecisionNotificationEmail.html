@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Notification décision commission</title>
+</head>
+<body>
+<p>Bonjour,</p>
+
+<p>
+    Le dossier "<span th:text="${dossierName}">nom du dossier</span>"
+    transféré à la commission "<span th:text="${commissionName}">nom de la commission</span>"
+    a été traité lors de la réunion
+    "<span th:text="${reunionDate}">date réunion</span>".
+</p>
+
+<p>
+    Décision : "<span th:text="${decision}">Décision</span>"
+    <span th:if="${motif != null and #strings.isEmpty(motif) == false}">
+        , motif "<span th:text="${motif}">motif</span>"
+    </span>.
+</p>
+
+<p>Cordialement,</p>
+
+<p>
+    <img th:src="${logo}" alt="Logo SIGMAP" style="max-height: 60px;"/>
+</p>
+
+</body>
+</html>

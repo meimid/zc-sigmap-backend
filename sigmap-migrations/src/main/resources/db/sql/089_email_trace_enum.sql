@@ -1,0 +1,18 @@
+-- liquibase formatted sql
+
+-- changeset sigmap:1757950290-1
+
+ALTER TABLE email_trace
+    MODIFY COLUMN type_email ENUM(
+    'ACTIVATION_COMPTE',
+    'MODIFICATION_MOT_DE_PASSE',
+    'VALIDATION_AGPM',
+    'VALIDATION_PAA',
+    'VALIDATION_PPM',
+    'VALIDATION_DAC',
+    'REUNION_INVITATION',
+    'REUNION_ANNULER',
+    'PPM_CPMP_DECISION',
+    'PPM_CNCMP_DECISION',
+    'PPM_SOUS_COMMISSION_AVIS'
+    );
