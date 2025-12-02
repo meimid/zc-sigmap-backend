@@ -16,8 +16,11 @@
 	<parameter name="agpm_id" class="java.lang.Integer"/>
 	<parameter name="agpm_ver" class="java.lang.Integer"/>
 	<parameter name="nom" class="java.lang.String"/>
+	<parameter name="Image1Stream" class="java.io.InputStream"/>
+	<parameter name="CleanedHtml" class="java.lang.String"/>
+	<parameter name="ImagesMap" class="java.util.Map"/>
 	<queryString>
-		<![CDATA[SELECT d.adresse,
+		<![CDATA[SELECT d.adresse,d.comp_adresse,d.code_postal,d.ville,
 	 a.nom,
 	 p.ac_id,
 	 p.agpm_ver,
@@ -37,6 +40,21 @@ FROM  agpm p
 	<field name="adresse" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="adresse"/>
 		<property name="com.jaspersoft.studio.field.label" value="adresse"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="adresse"/>
+	</field>
+	<field name="comp_adresse" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="comp_adresse"/>
+		<property name="com.jaspersoft.studio.field.label" value="comp_adresse"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="adresse"/>
+	</field>
+	<field name="code_postal" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="code_postal"/>
+		<property name="com.jaspersoft.studio.field.label" value="code_postal"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="adresse"/>
+	</field>
+	<field name="ville" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ville"/>
+		<property name="com.jaspersoft.studio.field.label" value="ville"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="adresse"/>
 	</field>
 	<field name="nom" class="java.lang.String">
@@ -89,29 +107,38 @@ FROM  agpm p
 				<text><![CDATA[REPUBLIQUE ISLAMIQUE DE MAURITANIE]]></text>
 			</staticText>
 			<textField>
-				<reportElement stretchType="RelativeToTallestObject" x="80" y="36" width="620" height="30" uuid="fb58505e-4a80-4fcd-ace8-ff634385e61b"/>
+				<reportElement stretchType="RelativeToTallestObject" x="80" y="34" width="620" height="34" uuid="fb58505e-4a80-4fcd-ace8-ff634385e61b"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{nom} + ($F{adresse} != null ? " - " + $F{adresse} : "")]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{nom} + ($F{adresse} != null ? $F{adresse} : "") + 
+(($F{comp_adresse} != null ? " " + $F{comp_adresse} : "") + 
+ ($F{code_postal} != null ? "  " + $F{code_postal} : "") + 
+ ($F{ville} != null ? "  " + $F{ville} : ""))]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="false">
 				<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="164" y="70" width="500" height="30" uuid="23393395-85c9-46ad-ace7-1147f991fe67"/>
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="13" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["AVIS GENERAL DE PASSATION DES MARCHES "+$F{annee}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["AVIS GENERAL DE PASSATION DES MARCHES " + ($F{annee} == null ? "" : $F{annee})]]></textFieldExpression>
 			</textField>
 		</band>
 	</title>
 	<detail>
-		<band height="112" splitType="Stretch">
-			<textField>
-				<reportElement stretchType="RelativeToTallestObject" x="80" y="0" width="700" height="112" uuid="ce291622-a2d3-49fa-9116-bade68554c0c"/>
+		<band height="60">
+			<image hAlign="Center" vAlign="Middle">
+				<reportElement x="164" y="2" width="500" height="58" uuid="b1c07721-b951-47e3-81c4-4b5a914c4ecf"/>
+				<imageExpression><![CDATA[$P{Image1Stream}]]></imageExpression>
+			</image>
+		</band>
+		<band height="148" splitType="Stretch">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement x="20" y="0" width="740" height="140" uuid="ce291622-a2d3-49fa-9116-bade68554c0c"/>
 				<textElement textAlignment="Left" verticalAlignment="Top" markup="html">
 					<font fontName="Arial"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{contenu}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{CleanedHtml}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
