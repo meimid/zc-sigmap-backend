@@ -320,6 +320,9 @@ public class ReunionController {
                         if (dac.getPpm() != null) {
                             dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
                         }
+                        if(dac.getReference() != null) {
+                            dacResponse.setReference(dac.getReference());
+                        }
                     }
 
                     var rdResponse = new ReunionDacResponse();
@@ -435,8 +438,20 @@ public class ReunionController {
             throw new TokenRequired();
         }
         // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-        List<Com> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification()).stream().map(r->r.getCom()).collect(Collectors.toList());
-
+       // List<Com> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification()).stream().map(r->r.getCom()).distinct().collect(Collectors.toList());
+        List<Com> reunionList =
+                reunionService.findAllByPpmIdList(ppmId, jwt, query.toSpecification())
+                        .stream()
+                        .map(r -> r.getCom())
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toMap(
+                                Com::getId,
+                                com -> com,
+                                (existing, replacement) -> existing
+                        ))
+                        .values()
+                        .stream()
+                        .collect(Collectors.toList());
         return ResponseEntity.ok(reunionList.stream().map(ComMapper.INSTANCE::mapToSelectDto).collect(Collectors.toList()));
     }
 

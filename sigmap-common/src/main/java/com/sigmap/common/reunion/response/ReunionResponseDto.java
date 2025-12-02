@@ -15,6 +15,7 @@ public class ReunionResponseDto {
     private String emplacement;
     private String object;
     private ReunionStatus status;
+    private String note;
     private BaseEntityResponse metadata;
 
 }
