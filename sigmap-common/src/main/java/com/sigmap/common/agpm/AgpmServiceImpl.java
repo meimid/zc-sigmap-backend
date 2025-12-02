@@ -967,9 +967,16 @@ public class AgpmServiceImpl implements AgpmService {
         if (agpm == null || agpm.getId() == null) {
             throw new IllegalArgumentException("Cannot set reference: agpm or agpm ID is null.");
         }
+        String ref ;
        Ac ac = acService.findById(agpm.getAc().getId());
-        String ref = "AGPM_" + ac.getNom() + "_" + agpm.getAnnee();
-        agpm.setRef(ref);
+        if (ac.getAbreviation()!=null && ac.getAbreviation().length()>0) {
+             ref = "AGPM_" + ac.getAbreviation() + "_" + agpm.getAnnee();
+            agpm.setRef(ref);
+        }
+        else {
+         ref = "AGPM_" + ac.getNom() + "_" + agpm.getAnnee();
+            agpm.setRef(ref);
+        }
     }
 
     @Override
