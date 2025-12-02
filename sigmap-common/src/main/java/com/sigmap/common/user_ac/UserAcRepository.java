@@ -1,6 +1,7 @@
 package com.sigmap.common.user_ac;
 
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.user_com.UserCom;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,7 +38,12 @@ public interface UserAcRepository extends JpaRepository<UserAc, UserAcId>,
 
     UserAc findFirstByAcIdAndUserIdAndIsDeletedFalse(Integer acId, String userId);
 
+
+    @Query("SELECT ua.ac FROM UserAc ua WHERE ua.userId = :userId AND ua.isDeleted = false")
+    List<Ac> findAcsByUserIdAndIsDeletedFalse(@Param("userId") String userId);
+
     List<UserAc> findByUserIdAndIsDeletedFalse(String userId);
+
     @Query("SELECT ua.ac.id FROM UserAc ua WHERE ua.userId = :userId AND ua.isDeleted = false")
     List<Integer> findAcIdsByUserIdAndIsDeletedFalse(@Param("userId") String userId);
 
