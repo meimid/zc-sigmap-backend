@@ -661,8 +661,8 @@ public class DocumentCommuneService {
                                                       Integer acId,
                                                       Integer pvId,
                                                       String path) throws IOException {
-        String baseFolderPath = String.format("%s/%d/%d/%s",
-                path, acId, pvId, path);
+        String baseFolderPath = String.format("%s/%d/%d", path, acId, pvId);
+
 
         try {
             Docs document = mapperDocument(file, "PV_EXTRAIT", baseFolderPath);

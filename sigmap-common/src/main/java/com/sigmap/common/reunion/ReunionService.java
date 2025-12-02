@@ -8,6 +8,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
@@ -53,8 +54,8 @@ public interface ReunionService {
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
     List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
-
-
+    ProcessVerbalReunionExtrait injectExtraitForPpm(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
+    Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(Integer reunionId, Pageable pageable);
 
 
 
