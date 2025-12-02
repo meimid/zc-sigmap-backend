@@ -50,7 +50,11 @@ public class AgpmWebsiteResponse {
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
-            this.year = updatedAt.get(Calendar.YEAR);
+
+        }
+        if(agpm.getAnnee()!=null) {
+            this.year = Integer.valueOf(agpm.getAnnee());
+
         }
 
         // --- Logic from "generateCode" ---
@@ -58,15 +62,19 @@ public class AgpmWebsiteResponse {
         if (agpm.getNom() != null) {
             codeBuilder.append(agpm.getNom());
         }
-        if (agpm.getAc() != null && agpm.getAc().getNom() != null) {
+       /* if (agpm.getAc() != null && agpm.getAc().getNom() != null) {
             if (codeBuilder.length() > 0) codeBuilder.append(" ");
             codeBuilder.append(agpm.getAc().getNom());
         }
         if (this.year != null) { // Use the year we already calculated
             if (codeBuilder.length() > 0) codeBuilder.append(" ");
             codeBuilder.append(this.year);
+        }*/
+      //  this.code = codeBuilder.toString();
+        if(agpm.getNom()!=null) {
+            this.code=agpm.getNom();
+
         }
-        this.code = codeBuilder.toString();
 
     }
 }
