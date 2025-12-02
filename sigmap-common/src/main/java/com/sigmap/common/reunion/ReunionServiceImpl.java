@@ -4,6 +4,7 @@ import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.ParticipantService;
 
+import com.sigmap.common.Participant.exception.EmailAlreadyReservedForAotherUser;
 import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
 import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
 import com.sigmap.common.Participant.request.ParticipantRequest;
@@ -346,7 +347,7 @@ public class ReunionServiceImpl implements ReunionService{
             if (request.getParticipants() != null) {
                 for (ParticipantRequest invitedRequest : request.getParticipants()) {
                     if(invitedRequest.getMail()!=null&&invitedRequest.getMail().equals(userDetails.getEmail())){
-                        throw new EmailOrUserNameAlreadyUsedForAnotherUser("Email or User name already used for another user");
+                        throw new EmailAlreadyReservedForAotherUser("","Email or User name already used for another user");
                     }
                 }
             }
@@ -385,6 +386,13 @@ public class ReunionServiceImpl implements ReunionService{
 
     @Transactional
     public void synchronizeParticipants(ReunionRequest request, Reunion reunionReq) {
+      /*  HashSet uniqueEmails = new HashSet();
+
+        boolean emailCheckForDupliacation=request.getParticipants().stream().filter(p->!uniqueEmails.add(p.getMail())).distinct().count()==request.getParticipants().size();
+        if (emailCheckForDupliacation) {
+            throw new EmailAlreadyReservedForAotherUser("","Email or User name already used for another user");
+        }*/
+
         long requestHasPresident = request.getParticipants().stream()
                 .filter(p -> p.getFonctionReunion() == ParticipantFonction.PRESIDENT).count();
 
@@ -790,6 +798,7 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
             }
             updateParticipantsFonction(request, reunionToUpdate);
+            reunionToUpdate.setNote(request.getNote());
             return save(reunionToUpdate);
         }
         else {
@@ -824,6 +833,7 @@ public class ReunionServiceImpl implements ReunionService{
             if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
                 updateParticipantsFonction(request, reunionToUpdate);
             }
+            reunionToUpdate.setNote(request.getNote());
             return save(reunionToUpdate);
         }
         else {
