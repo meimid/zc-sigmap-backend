@@ -1104,11 +1104,24 @@ public class AgpmFlowableService {
                 throw new FileNotFoundException("Fichier agpm.jasper introuvable !");
             }
 
+            Agpm agpm = agpmService.findByIdAndVer(agpmId, agpmVers);
+            String contenuOriginal = agpm.getContenu();
+            HtmlProcessor.ProcessedContent processed = HtmlProcessor.processHtml(contenuOriginal);
+            //ByteArrayInputStream contenuStream = new ByteArrayInputStream(contenuOriginal.getBytes("UTF-8"));
             Map<String, Object> parametres = new HashMap<>();
             parametres.put("agpm_id", agpmId);
             parametres.put("agpm_ver", agpmVers);
             parametres.put("nom", signataire);
+            parametres.put("CleanedHtml", processed.cleanedHtml);
             parametres.put("REPORT_CONNECTION", conn);
+
+            if (processed.imageCount == 1) {
+                String imgKey = "image0";
+                parametres.put("Image1Stream", processed.images.get(imgKey));  // InputStream pour <image>
+            } else {
+                // Passe la Map entière (pour subreport/list en JRXML)
+                parametres.put("ImagesMap", processed.images);  // Map<String, InputStream>
+            }
 
             JasperPrint jasperPrint = JasperFillManager.fillReport(
                     mainReportStream, parametres, conn);
