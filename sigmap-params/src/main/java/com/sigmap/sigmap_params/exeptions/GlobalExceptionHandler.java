@@ -513,8 +513,8 @@ public class GlobalExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(AcAttributeRequire.class)
-    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AcAttributeRequire ex) {
+    @ExceptionHandler(AttributeRequire.class)
+    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AttributeRequire ex) {
         String message = messageSource.getMessage("ac.attributeRequire",new Object[] {ex.getNom()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
