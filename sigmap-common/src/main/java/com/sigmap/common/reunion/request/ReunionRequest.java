@@ -4,6 +4,7 @@ import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
+import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.reunionDac.request.ReunionDacRequest;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
 import lombok.AllArgsConstructor;
@@ -29,5 +30,6 @@ public class ReunionRequest {
     private List<ReunionDacRequest> reunionDacs = new ArrayList<>();
     private List<ParticipantRequest> participants = new ArrayList<>();
     private ProcessVerbalReunionRequest processVerbal;
+    private ProcessVerbalReunionExtraitRequest extraitRequest;
 
 }
