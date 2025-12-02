@@ -320,6 +320,9 @@ public class ReunionController {
                         if (dac.getPpm() != null) {
                             dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
                         }
+                        if(dac.getReference() != null) {
+                            dacResponse.setReference(dac.getReference());
+                        }
                     }
 
                     var rdResponse = new ReunionDacResponse();
