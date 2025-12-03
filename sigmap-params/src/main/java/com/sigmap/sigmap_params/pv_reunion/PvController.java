@@ -106,41 +106,18 @@ public class PvController {
                 .body(resource);
     }
 
-    @GetMapping("/extrait-pv-cpmp/{reunionId}/download")
+    @GetMapping("/extrait-pv-cpmp/{reunionId}/{acId}/download")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CPMP-RAPPORTEUR')")
 
-    public ResponseEntity<Resource> downloadExtraitCPMP(@PathVariable Integer reunionId) throws Exception {
+    public ResponseEntity<Resource> downloadExtraitCPMP(@PathVariable Integer reunionId ,@PathVariable Integer acId) throws Exception {
 
 
-        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCPMP(reunionId);
+        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCPMP(reunionId,acId);
 
         ByteArrayResource resource = new ByteArrayResource(pdfBytes);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Extrait_PV_CPMP_" + reunionId + ".pdf\"");
-        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.add("Pragma", "no-cache");
-        headers.add("Expires", "0");
-
-        return ResponseEntity.ok()
-                .headers(headers)
-                .contentLength(pdfBytes.length)
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(resource);
-    }
-
-    @GetMapping("/extrait-pv-CNPMP/{reunionId}/download")
-    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
-
-    public ResponseEntity<Resource> downloadExtraitCNPMP(@PathVariable Integer reunionId) throws Exception {
-
-
-        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNPMP(reunionId);
-
-        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Extrait_PV_CNPMP_" + reunionId + ".pdf\"");
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");

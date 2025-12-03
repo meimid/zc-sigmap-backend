@@ -77,6 +77,7 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="SUBREPORT_DIR1" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR3" class="java.io.InputStream"/>
+	<parameter name="acId" class="java.lang.Integer"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
 	 reunion.com_id,
@@ -330,6 +331,9 @@ FROM com
 				</reportElement>
 				<subreportParameter name="reunion">
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="acId">
+					<subreportParameterExpression><![CDATA[$P{acId}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR3}]]></subreportExpression>
