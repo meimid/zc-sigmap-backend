@@ -15,11 +15,9 @@ public interface ProcessVerbalReunionExtraitRepository
         extends JpaRepository<ProcessVerbalReunionExtrait, ExtraitId> {
 
     @Query("SELECT e FROM ProcessVerbalReunionExtrait e " +
-            "WHERE e.extraitId = :extraitId " +
-            "AND e.pvId = :pvId " +
+            "WHERE  e.pvId = :pvId " +
             "AND e.acId = :acId")
     Optional<ProcessVerbalReunionExtrait> findByIds(
-            @Param("extraitId") Integer extraitId,
             @Param("pvId") Integer pvId,
             @Param("acId") Integer acId
     );

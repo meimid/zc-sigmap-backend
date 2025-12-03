@@ -837,13 +837,51 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
+                // create extrait
+
+                //  COM type must be CNCMP
+                if (!"CNCMP".equals(reunionToUpdate.getCom().getComType().getCode())
+                ) {
+                    List<ReunionPpm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
+                            .filter(rp -> rp.getPpm() != null)
+                            .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
+                            .filter(rp -> rp.getPpm().getAc() != null)
+                            .toList();
+
+
+                    List<ProcessVerbalReunionExtrait> createdExtraits = new ArrayList<>();
+
+                    for (ReunionPpm rp : eligibleReunionPpms) {
+
+                        Ppm ppm = rp.getPpm();
+
+                        if (ppm.getAc() == null) {
+                            throw new ReunionPpmNoAcException("", id, ppm.getId());
+                        }
+
+                        Integer acId = ppm.getAc().getId();
+
+                        ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
+                        req.setPvId(processVerbalReunion.getId());
+                        req.setAcId(acId);
+                        req.setFile(null);
+
+                        ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.create(req);
+                        createdExtraits.add(created);
+                    }
+                }
+
 
             }
             if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
                 updateParticipantsFonction(request, reunionToUpdate);
             }
             reunionToUpdate.setNote(request.getNote());
+
+
             return save(reunionToUpdate);
+
+
         }
         else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());
@@ -856,13 +894,12 @@ public class ReunionServiceImpl implements ReunionService{
 
         if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
          ProcessVerbalReunion pv= processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
-            if (reunionToUpdate.getCom() == null
-                    || reunionToUpdate.getCom().getComType() == null
-                    || !"CNCMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+            if (!"CNCMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
 
             }
-        save(reunionToUpdate);
+
+         save(reunionToUpdate);
             return pv;
         }
         else {
@@ -1136,7 +1173,7 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
        //  COM type must be CNCMP
-        if (reunion.getCom() == null || reunion.getCom().getComType() == null
+       if (reunion.getCom() == null || reunion.getCom().getComType() == null
                 || !"CNCMP".equals(reunion.getCom().getComType().getCode())) {
 
             String typeCode = (reunion.getCom() != null && reunion.getCom().getComType() != null)
@@ -1147,11 +1184,11 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
         //  Reunion must have a PV with docs
-        if (reunion.getProcessVerbal() == null
+     /*   if (reunion.getProcessVerbal() == null
                 || reunion.getProcessVerbal().getDocuments() == null
                 || reunion.getProcessVerbal().getDocuments().isEmpty()) {
             throw new ReunionPvMissingException("", reunionId);
-        }
+        }*/
 
         Integer pvId = reunion.getProcessVerbal().getId();
 
@@ -1194,7 +1231,7 @@ public class ReunionServiceImpl implements ReunionService{
         req.setAcId(acId);
         req.setFile(file);
 
-        ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.create(req);
+        ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.update(req);
 
         //  Recompute completed ACs including this one
         acIdsWithCompletedExtrait = new HashSet<>(acIdsWithCompletedExtrait);
@@ -1217,9 +1254,9 @@ public class ReunionServiceImpl implements ReunionService{
     ) {
         Reunion reunion = findById(reunionId);
 
-        if (!ReunionStatus.CLOTURER.equals(reunion.getStatus())) {
+        /*if (!ReunionStatus.CLOTURER.equals(reunion.getStatus())) {
             throw new ReunionStatusException("", reunion.getStatus());
-        }
+        }*/
 
         if (reunion.getProcessVerbal() == null) {
             throw new ProcessVerbalReunionNotFound("", reunionId);
@@ -1260,6 +1297,16 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
         return new PageImpl<>(pageContent, pageable, extrais.size());
+    }
+
+    @Override
+    public List<Reunion> reunionCloutureListByAcId(Integer acId) {
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.hasAcId(acId))
+                .and(ReunionSpecifications.deleted(false)).
+                and(ReunionSpecifications.status(ReunionStatus.CLOTURER)).
+                and(ReunionSpecifications.comTypeCNCMP());
+            return findAll(spec);
     }
 
     @Override

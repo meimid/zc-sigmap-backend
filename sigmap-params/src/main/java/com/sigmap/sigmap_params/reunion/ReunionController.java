@@ -315,7 +315,7 @@ public class ReunionController {
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    @PostMapping("/{reunionId}/ac/{acId}/extraits")
+    @PutMapping("/{reunionId}/ac/{acId}/extraits")
     public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
             @PathVariable Integer reunionId,
             @PathVariable("acId") Integer acId,
@@ -453,7 +453,6 @@ public class ReunionController {
                 processVerbalReunionExtraitService.findAllByPvId(pvId);
 
         return extraits.stream()
-                .filter(extrait -> extrait.getDoc() != null && !extrait.getDoc().getIsDeleted())
                 .map(extrait -> {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
                     dto.setExtraitId(extrait.getExtraitId());
@@ -462,8 +461,10 @@ public class ReunionController {
                     if (extrait.getAc() != null) {
                         dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
                     }
+                    if(extrait.getDoc() != null) {
+                        dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
 
-                    dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
+                    }
 
                     return dto;
                 })

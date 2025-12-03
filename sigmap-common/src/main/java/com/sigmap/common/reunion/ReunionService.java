@@ -56,6 +56,8 @@ public interface ReunionService {
     List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
     ProcessVerbalReunionExtrait injectExtraitForPpm(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(Integer reunionId, Jwt jwt,Pageable pageable);
+
+    List<Reunion> reunionCloutureListByAcId(Integer acId);
     Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable);
 
 
