@@ -14,11 +14,6 @@ public class PpmCpmpDecisionListener implements ExecutionListener {
     @Autowired
     private PpmNotificationService notificationService;
 
-    @PostConstruct
-    public void test() {
-        System.out.println("BEAN LOADED: ppmNotificationListenerCpmp");
-    }
-
     @Override
     public void notify(DelegateExecution execution) {
         Integer ppmId  = (Integer) execution.getVariable("id");

@@ -96,15 +96,8 @@ public class FlowableInitializer {
 
         cfg.setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
-        // ✔️ Permet à Flowable d’utiliser les beans Spring @Component
         cfg.setBeans(new SpringBeanFactoryProxyMap(applicationContext));
 
-        // ✔️ Déclarer explicitement TOUS les listeners utilisés par delegateExpression
-        cfg.setBeans(Map.of(
-                "ppmNotificationListenerCpmp", applicationContext.getBean(PpmCpmpDecisionListener.class),
-                "ppmNotificationListenerCncmp", applicationContext.getBean(PpmCncmpDecisionListener.class),
-                "ppmNotificationListenerSousCommission", applicationContext.getBean(PpmSousCommissionAvisListener.class)
-        ));
 
         cfg.setAsyncExecutorActivate(true);
 

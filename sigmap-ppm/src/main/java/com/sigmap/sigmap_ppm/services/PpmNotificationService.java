@@ -15,12 +15,12 @@ import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.ComServiceImpl;
 import com.sigmap.common.ac.AcServiceImpl;
 
-import jakarta.mail.MessagingException;
 import lombok.extern.slf4j.Slf4j;
+
+import org.flowable.engine.RuntimeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -39,7 +39,22 @@ public class PpmNotificationService {
     @Autowired private ComServiceImpl comServiceImpl;
     @Autowired private ComRepository comRepository;
 
+    @Autowired private RuntimeService runtimeService;
+
     private static final DateTimeFormatter DATE_FR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+
+    private String safeEmail(Com com) {
+        if (com == null) return null;
+        if (com.getTheAdresse() == null) return null;
+        return com.getTheAdresse().getEmail();
+    }
+
+    private String safeName(Com com, String defaultName) {
+        if (com == null) return defaultName;
+        if (com.getNom() == null || com.getNom().isBlank()) return defaultName;
+        return com.getNom();
+    }
 
     private String extractReunionDate(Reunion reunion) {
         if (reunion == null || reunion.getReunionDate() == null) return "N/A";
@@ -56,38 +71,40 @@ public class PpmNotificationService {
         return reunionPpmRepository.findLatest(ppmId, ppmVer);
     }
 
-    /**
-     * CPMP → AC notification après décision CPMP
-     */
+
     public void notifyAcAfterCpmpDecision(Integer ppmId, Integer ppmVer) throws PpmNotFound {
 
         try {
+            // ---- PPM ----
             Ppm ppm = ppmRepository.findById(new CompositeId(ppmId, ppmVer))
                     .orElseThrow(() -> new PpmNotFound("PPM not found", List.of(ppmId), List.of(ppmVer)));
 
-            // 1️⃣ Email du AC
-            if (ppm== null || ppm.getAc()==null || ppm.getAc().getEmail()==null){
-                log.info("Ppm not found or email not found {} " , ppm.getAc().getEmail());
-                throw new RuntimeException("Ppm not found or email not found");
+            // ---- AC email ----
+            String acEmail = ppm.getAc() != null ? ppm.getAc().getEmail() : null;
+
+            if (acEmail == null || acEmail.isBlank()) {
+                log.warn("❌ AC email missing → no CPMP→AC email sent for PPM {}-{}", ppmId, ppmVer);
+                return;
             }
 
-            String acEmail = ppm.getAc().getEmail();
-            log.info("AC email: {}", acEmail);
+            // ---- CPMP name ----
+            Integer cpmpId = acServiceImpl.getComIdByAcId(ppm.getAc().getId());
+            Com cpmp = cpmpId != null ? comRepository.findById(cpmpId).orElse(null) : null;
 
-            // 2️⃣ Date de réunion
-            Reunion reunion = reunionRepository.findLatestByPpm(ppmId, ppmVer);
-            String reunionDate = extractReunionDate(reunion);
+            String cpmpName = safeName(cpmp, "CPMP");
 
-            // 3️⃣ Décision CPMP
+            // ---- Réunion & décision ----
+            String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
             ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
+
             String decision = rp != null && rp.getDecision() != null ? rp.getDecision() : "Non renseignée";
             String motif = rp != null && rp.getObservation() != null ? rp.getObservation() : "";
 
-            // 4️⃣ Envoi email
+            // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
                     acEmail,
                     ppm.getRef(),
-                    "CPMP",
+                    cpmpName,
                     reunionDate,
                     decision,
                     motif,
@@ -95,58 +112,48 @@ public class PpmNotificationService {
                     TypeEmail.PPM_CPMP_DECISION
             );
 
-            log.info("Notification CPMP→AC envoyée pour PPM {}-{}", ppmId, ppmVer);
+            log.info("✔ CPMP → AC email sent for PPM {}-{}", ppmId, ppmVer);
 
-        } catch (MessagingException | IOException e) {
-            log.error("Failed to send CPMP→AC notification for PPM {}-{}", ppmId, ppmVer, e);
+        } catch (Exception e) {
+            log.error("❌ Error CPMP→AC notif for PPM {}-{}", ppmId, ppmVer, e);
         }
     }
 
 
-    /**
-     * CNCMP → CPMP notification après décision CNCMP
-     */
     public void notifyCpmpAfterCncmpDecision(Integer ppmId, Integer ppmVer) throws PpmNotFound {
 
         try {
+            // ---- PPM ----
             Ppm ppm = ppmRepository.findById(new CompositeId(ppmId, ppmVer))
                     .orElseThrow(() -> new PpmNotFound("PPM not found", List.of(ppmId), List.of(ppmVer)));
 
-            // 1️⃣ Trouver CPMP via l'AC de ce PPM
-            Integer acId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-            if (acId == null) {
-                log.warn("AC not found on PPM {}-{}", ppmId, ppmVer);
+            // ---- CPMP ----
+            Integer cpmpId = acServiceImpl.getComIdByAcId(ppm.getAc().getId());
+            Com cpmp = cpmpId != null ? comRepository.findById(cpmpId).orElse(null) : null;
+
+            String cpmpEmail = safeEmail(cpmp);
+
+            if (cpmpEmail == null) {
+                log.warn("❌ No CPMP email → no CNCMP→CPMP email sent for PPM {}-{}", ppmId, ppmVer);
                 return;
             }
 
-            Integer cpmpId = acServiceImpl.getComIdByAcId(acId);
-            if (cpmpId == null) {
-                log.warn("No CPMP found for AC {} when notifying CNCMP→CPMP", acId);
-                return;
-            }
+            // ---- CNCMP name ----
+            Com cncmp = comServiceImpl.findCNCMPP();
+            String cncmpName = safeName(cncmp, "CNCMP");
 
-            Com cpmp = comRepository.findById(cpmpId).orElse(null);
-            if (cpmp == null || cpmp.getTheAdresse() == null || cpmp.getTheAdresse().getEmail() == null) {
-                log.warn("No CPMP email configured (comId={}) for ppm {}-{}", cpmpId, ppmId, ppmVer);
-                return;
-            }
+            // ---- Réunion & décision ----
+            String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
 
-            String cpmpEmail = cpmp.getTheAdresse().getEmail();
-
-            // 2️⃣ Date réunion CNCMP
-            Reunion reunion = reunionRepository.findLatestByPpm(ppmId, ppmVer);
-            String reunionDate = extractReunionDate(reunion);
-
-            // 3️⃣ Décision CNCMP
             ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
-            String decision = rp != null && rp.getDecision() != null ? rp.getDecision() : "Non renseignée";
-            String motif = rp != null && rp.getObservation() != null ? rp.getObservation() : "";
+            String decision = rp != null ? rp.getDecision() : "Non renseignée";
+            String motif = rp != null ? rp.getObservation() : "";
 
-            // 4️⃣ Envoi email
+            // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
                     cpmpEmail,
                     ppm.getRef(),
-                    "CNCMP",
+                    cncmpName,
                     reunionDate,
                     decision,
                     motif,
@@ -154,60 +161,52 @@ public class PpmNotificationService {
                     TypeEmail.PPM_CNCMP_DECISION
             );
 
-            log.info("Notification CNCMP→CPMP envoyée pour PPM {}-{}", ppmId, ppmVer);
+            log.info("✔ CNCMP → CPMP email sent for PPM {}-{}", ppmId, ppmVer);
 
-        } catch (MessagingException | IOException e) {
-            log.error("Failed to send CNCMP→CPMP notification for PPM {}-{}", ppmId, ppmVer, e);
+        } catch (Exception e) {
+            log.error("❌ Error CNCMP→CPMP email for PPM {}-{}", ppmId, ppmVer, e);
         }
     }
 
+
     public void notifyCncmpAfterSousCommissionAvis(Integer ppmId, Integer ppmVer) throws PpmNotFound {
         try {
+
+            // ---- PPM ----
             Ppm ppm = ppmRepository.findById(new CompositeId(ppmId, ppmVer))
                     .orElseThrow(() -> new PpmNotFound("PPM not found", List.of(ppmId), List.of(ppmVer)));
 
-            // 🔎 Trouver CNCMP (unique commission permanente)
+            // ---- SCS from variable ----
+            Integer scsId = ppm.getProcessInstanceId() != null
+                    ? (Integer) runtimeService.getVariable(ppm.getProcessInstanceId(), "scsId")
+                    : null;
+
+            Com scs = scsId != null ? comRepository.findById(scsId).orElse(null) : null;
+
+            String scsName = safeName(scs, "Sous-Commission spécialisée");
+
+            // ---- CNCMP ----
             Com cncmp = comServiceImpl.findCNCMPP();
+            String cncmpEmail = safeEmail(cncmp);
+            String cncmpName = safeName(cncmp, "CNCMP");
 
-            if (cncmp == null ||
-                    cncmp.getTheAdresse() == null ||
-                    cncmp.getTheAdresse().getEmail() == null) {
-
-                log.warn("❌ Aucun email CNCMP disponible pour notifier l'avis sous-commission du PPM {}-{}", ppmId, ppmVer);
+            if (cncmpEmail == null) {
+                log.warn("❌ CNCMP email missing → no Sous-Commission→CNCMP email for PPM {}-{}", ppmId, ppmVer);
                 return;
             }
 
-            String cncmpEmail = cncmp.getTheAdresse().getEmail();
+            // ---- Réunion & décision ----
+            String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
 
-            // 📅 Dernière réunion liée au PPM
-            Reunion reunion = reunionRepository.findLatestByPpm(ppmId, ppmVer);
+            ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
+            String decision = rp != null ? rp.getDecision() : "Non renseignée";
+            String motif = rp != null ? rp.getObservation() : "";
 
-            String reunionDate = "N/A";
-            if (reunion != null && reunion.getReunionDate() != null) {
-                LocalDate date = reunion.getReunionDate()
-                        .toInstant()
-                        .atZone(ZoneId.systemDefault())
-                        .toLocalDate();
-
-                reunionDate = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-            }
-
-            // 📝 Dernier avis de la sous-commission spécialisée
-            ReunionPpm rp = reunionPpmRepository.findLatest(ppmId, ppmVer);
-
-            String decision = (rp != null && rp.getDecision() != null)
-                    ? rp.getDecision()
-                    : "Non renseignée";
-
-            String motif = (rp != null && rp.getObservation() != null)
-                    ? rp.getObservation()
-                    : "";
-
-            // 📧 ENVOI EMAIL → CNCMP
+            // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
                     cncmpEmail,
                     ppm.getRef(),
-                    "SOUS-COMMISSION SPÉCIALISÉE",
+                    scsName,
                     reunionDate,
                     decision,
                     motif,
@@ -215,12 +214,10 @@ public class PpmNotificationService {
                     TypeEmail.PPM_SOUS_COMMISSION_AVIS
             );
 
-            log.info("✔ Email Avis Sous-Commission envoyé à CNCMP pour PPM {}-{}", ppmId, ppmVer);
+            log.info("✔ Sous-Commission → CNCMP email sent for PPM {}-{}", ppmId, ppmVer);
 
         } catch (Exception e) {
-            log.error("❌ Erreur envoi email sous-commission → CNCMP pour PPM {}-{}", ppmId, ppmVer, e);
-            throw new RuntimeException(e);
+            log.error("❌ Error Sous-Commission→CNCMP for PPM {}-{}", ppmId, ppmVer, e);
         }
     }
-
 }
