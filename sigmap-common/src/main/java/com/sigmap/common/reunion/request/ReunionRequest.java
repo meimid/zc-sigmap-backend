@@ -25,6 +25,7 @@ public class ReunionRequest {
     private String emplacement;
     private String object;
     private ReunionStatus status;
+    private String note;
     private List<ReunionPpmRequest> reunionPpms = new ArrayList<>();
     private List<ReunionDacRequest> reunionDacs = new ArrayList<>();
     private List<ParticipantRequest> participants = new ArrayList<>();

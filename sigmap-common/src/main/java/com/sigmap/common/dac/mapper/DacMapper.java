@@ -41,6 +41,7 @@ public interface DacMapper {
 
 
     @Mapping(target = "ac", source = "ppm.ac")
+    @Mapping(target = "reference", source = "reference")
     DacResponseReunion mapToDacResponseReunion(Dac source);
 
     @AfterMapping

@@ -77,6 +77,7 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="SUBREPORT_DIR1" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR3" class="java.io.InputStream"/>
+	<parameter name="acId" class="java.lang.Integer"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
 	 reunion.com_id,
@@ -87,12 +88,18 @@ and fonction_reunion ='MEMBRE']]>
 	 com.nom,
 	 com.decret_creation,
 	 com.special,
-	 ref_param.code
+	 com.abrv,
+	 com.nom_ar,
+	 ref_param.code,
+	 ac.nom as nom_tutel,
+	 ac.nom_ar as nom_ar_ac,
+	 ac.abrv as abrv_ac
 FROM com
 	INNER JOIN  reunion ON
 	  reunion.com_id =  com.com_id
 	INNER JOIN  ref_param ON
 	  com.com_type_id =  ref_param.ref_param_id
+	  left join  ac on com.tutel_id= ac.ac_id
 	  where reunion.reunion_id =  $P{reunion}
 	  and  ref_param.code='CPMP']]>
 	</queryString>
@@ -146,10 +153,35 @@ FROM com
 		<property name="com.jaspersoft.studio.field.label" value="special"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
 	</field>
+	<field name="abrv" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="abrv"/>
+		<property name="com.jaspersoft.studio.field.label" value="abrv"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
+	<field name="nom_ar" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom_ar"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom_ar"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+	</field>
 	<field name="code" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="code"/>
 		<property name="com.jaspersoft.studio.field.label" value="code"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
+	</field>
+	<field name="nom_tutel" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom_tutel"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="nom_ar_ac" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nom_ar"/>
+		<property name="com.jaspersoft.studio.field.label" value="nom_ar_ac"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="abrv_ac" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="abrv"/>
+		<property name="com.jaspersoft.studio.field.label" value="abrv_ac"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
 		<variableExpression><![CDATA[$F{nom}+" s'est réuni en session ordinaire sur convocation de son président "+$P{president}+" ."]]></variableExpression>
@@ -188,23 +220,13 @@ FROM com
 				<reportElement x="0" y="22" width="550" height="1" forecolor="#964C4B" uuid="8a021d0e-8aa5-449a-a7ff-c63dfad5d4de"/>
 			</line>
 			<staticText>
-				<reportElement style="ArialBold" x="2" y="36" width="248" height="33" uuid="aa1e88bd-2646-4436-8a8a-1b5fefa870cb"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="9" isBold="true"/>
-				</textElement>
-				<text><![CDATA[Ministère de la Transformation Numérique et de la Modernisation de l'Administration]]></text>
-			</staticText>
-			<staticText>
-				<reportElement x="4" y="23" width="246" height="17" uuid="e2d9ed5a-e4db-45d1-928a-9f3f2098d745"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
-				</textElement>
-				<text><![CDATA[وزارة التحوّل الرقميّ وعصرنة الإدارة]]></text>
-			</staticText>
-			<staticText>
 				<reportElement style="ArialBold" x="206" y="106" width="140" height="20" uuid="87f14113-5830-4e7c-b173-8da01965c159"/>
 				<box>
-					<pen lineWidth="0.5"/>
+					<pen lineWidth="0.75"/>
+					<topPen lineWidth="0.75"/>
+					<leftPen lineWidth="0.75"/>
+					<bottomPen lineWidth="0.75"/>
+					<rightPen lineWidth="0.75"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
@@ -246,46 +268,86 @@ FROM com
 				</reportElement>
 				<imageExpression><![CDATA[$P{pathImg}]]></imageExpression>
 			</image>
-			<textField pattern="dd/MM/yyyy">
-				<reportElement x="370" y="84" width="111" height="15" uuid="cde0a669-7b66-45e3-8c93-0674edab10a8"/>
-				<textElement>
-					<font fontName="Arial"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{reunion_date}]]></textFieldExpression>
-			</textField>
-			<textField>
-				<reportElement x="360" y="70" width="120" height="15" uuid="f97a816e-6394-4a7c-a41f-e8d78aa14466"/>
-				<textElement>
-					<font fontName="Arial" size="9"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{pv_id}]]></textFieldExpression>
-			</textField>
 			<line>
-				<reportElement x="70" y="68" width="90" height="1" uuid="5c00465c-d51f-4170-9b81-ef2b59411896"/>
+				<reportElement x="70" y="55" width="90" height="1" uuid="5c00465c-d51f-4170-9b81-ef2b59411896"/>
 				<graphicElement>
 					<pen lineWidth="0.5"/>
 				</graphicElement>
 			</line>
 			<line>
-				<reportElement x="71" y="105" width="90" height="1" uuid="f341aa09-818b-4d44-965e-fdff3a4cb226"/>
+				<reportElement x="71" y="100" width="90" height="1" uuid="f341aa09-818b-4d44-965e-fdff3a4cb226"/>
 				<graphicElement>
 					<pen lineWidth="0.5"/>
 				</graphicElement>
 			</line>
-			<staticText>
-				<reportElement x="4" y="69" width="246" height="17" uuid="83c74818-8956-4270-a48c-75fb2cd0779a"/>
+			<line>
+				<reportElement x="350" y="80" width="128" height="1" uuid="92162cb7-6505-40e5-b64b-410e6753e4ef"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<line>
+				<reportElement x="350" y="91" width="129" height="1" uuid="af728e65-faaa-470f-a2db-efc172b71efa"/>
+				<graphicElement>
+					<pen lineWidth="0.5"/>
+				</graphicElement>
+			</line>
+			<textField isBlankWhenNull="true">
+				<reportElement x="3" y="22" width="220" height="17" uuid="7b033a17-0281-4df8-8e2e-7fd1d85fd3e9">
+					<printWhenExpression><![CDATA[$F{code}.equals("CPMP")]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 				</textElement>
-				<text><![CDATA[وزارة التحوّل الرقميّ وعصرنة الإدارة]]></text>
-			</staticText>
-			<staticText>
-				<reportElement style="ArialBold" x="3" y="82" width="248" height="23" uuid="e1129b6f-b576-46c2-842a-1b683d074957"/>
+				<textFieldExpression><![CDATA[$F{nom_ar_ac}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement style="ArialBold" x="3" y="39" width="220" height="17" uuid="5ba8d830-3b57-4ba5-9357-54afb5656b5d">
+					<printWhenExpression><![CDATA[$F{code}.equals("CPMP")]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="9" isBold="true"/>
+					<font fontName="Arial" size="9" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Comission de Passation des Marchés Publics]]></text>
-			</staticText>
+				<textFieldExpression><![CDATA[$F{nom_tutel}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="2" y="77" width="221" height="23" uuid="eb3886aa-83ce-486a-8c84-306e5b9fcf80"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Tahoma" size="9" isBold="true" pdfFontName="fonts/tahoma.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nom_ar}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement style="ArialBold" x="2" y="56" width="221" height="23" uuid="df97b68a-de88-453f-b933-678520625244"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nom}]]></textFieldExpression>
+			</textField>
 		</band>
 	</title>
 	<detail>
@@ -330,6 +392,9 @@ FROM com
 				</reportElement>
 				<subreportParameter name="reunion">
 					<subreportParameterExpression><![CDATA[$F{reunion_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="acId">
+					<subreportParameterExpression><![CDATA[$P{acId}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR3}]]></subreportExpression>

@@ -140,17 +140,18 @@ public class AcServiceImpl implements AcService{
     @Transactional
     public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
-            throw new AcAttributeRequire("","nom");
+            throw new AttributeRequire("","nom");
         }
-         else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
-             throw new AcAttributeRequire("","tutel");
+          if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
+             throw new AttributeRequire("","tutel");
+        }
+         if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AttributeRequire("","email");
         }
        /*  else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }*/
-     /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
-            throw new AcAttributeRequire("","email");
-        }*/
+
       /*  else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
             throw new AcAttributeRequiredAndValid("", "email");
         }*/
@@ -166,7 +167,7 @@ public class AcServiceImpl implements AcService{
             ac.setTutel(tutel);
             }
             else {
-                throw new AcAttributeRequire("","tutel");
+                throw new AttributeRequire("","tutel");
             }
         }
         Specification<RefParam> specPays= RefParamSpecifications.code("MR");
@@ -241,10 +242,13 @@ public class AcServiceImpl implements AcService{
     @Transactional
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
-            throw new AcAttributeRequire("","nom");
+            throw new AttributeRequire("","nom");
         }
-        else if(request.getTutelId()==null&&!request.isIstTutel()){
-            throw new AcAttributeRequire("","tutel");
+         if(request.getTutelId()==null&&!request.isIstTutel()){
+            throw new AttributeRequire("","tutel");
+        }
+         if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AttributeRequire("","email");
         }
        /* else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
@@ -268,7 +272,7 @@ public class AcServiceImpl implements AcService{
                 ac.setTutel(tutel);
             }
             else {
-                throw new AcAttributeRequire("","tutel");
+                throw new AttributeRequire("","tutel");
             }
         }
         Specification<RefParam> specPays= RefParamSpecifications.code("MR");
