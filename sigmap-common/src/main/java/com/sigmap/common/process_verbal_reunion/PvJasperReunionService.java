@@ -59,7 +59,8 @@ public class PvJasperReunionService {
              InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
              InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
              InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1.jasper");
-             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper")) {
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper"))
+        {
 
             // Vérification des ressources
             validateResource(mainReportStream, "pv_reunion.jasper");

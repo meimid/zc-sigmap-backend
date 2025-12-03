@@ -837,21 +837,29 @@ public class ReunionServiceImpl implements ReunionService{
                 ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
                 ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
+
+
                 // create extrait
 
                 //  COM type must be CPMP
-                if ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
-                    List<ReunionPpm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
+                /*if ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+                    List<Ppm> eligiblePpms=new ArrayList<>();
+                    List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
+                            .filter(rd -> rd.getDac() != null)
+                            .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
+                            .filter(rd -> rd.getDac().getPpm() != null)
+                            .filter(rd -> rd.getDac().getPpm().getAc() != null).map(rd->rd.getDac().getPpm()).distinct()
+                            .collect(Collectors.toList());
+                    List<Ppm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
                             .filter(rp -> rp.getPpm() != null)
                             .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
-                            .filter(rp -> rp.getPpm().getAc() != null)
-                            .toList();
+                            .filter(rp -> rp.getPpm().getAc() != null).map(rp->rp.getPpm()).distinct()
+                            .collect(Collectors.toList());
+                    eligiblePpms.addAll(eligibleReunionPpms);
+                    eligiblePpms.addAll(eligibleReunionDacs);
+                    eligiblePpms.stream().distinct().collect(Collectors.toList());
 
-
-
-                    for (ReunionPpm rp : eligibleReunionPpms) {
-
-                        Ppm ppm = rp.getPpm();
+                    for (Ppm ppm : eligiblePpms) {
                         if (ppm.getAc() == null) {
                             throw new ReunionPpmNoAcException("", id, ppm.getId());
                         }
@@ -864,29 +872,65 @@ public class ReunionServiceImpl implements ReunionService{
                         req.setFile(null);
                          processVerbalReunionExtraitService.create(req);
                     }
-// 2) PPMs coming from ReunionDac -> Dac -> Ppm
-                    List<ReunionDac> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
+
+                }*/
+
+
+                //  COM type must be CPMP
+                if (reunionToUpdate.getCom() != null
+                        && reunionToUpdate.getCom().getComType() != null
+                        && "CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+
+                    List<Ppm> eligiblePpms = new ArrayList<>();
+
+                    // 1) PPMs coming from ReunionDac -> Dac -> Ppm
+                    List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
                             .filter(rd -> rd.getDac() != null)
                             .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
                             .filter(rd -> rd.getDac().getPpm() != null)
                             .filter(rd -> rd.getDac().getPpm().getAc() != null)
+                            .map(rd -> rd.getDac().getPpm())
                             .toList();
 
-                    for (ReunionDac rd : eligibleReunionDacs) {
-                        Ppm ppm = rd.getDac().getPpm();
+                    // 2) PPMs coming from ReunionPpm
+                    List<Ppm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
+                            .filter(rp -> rp.getPpm() != null)
+                            .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
+                            .filter(rp -> rp.getPpm().getAc() != null)
+                            .map(rp -> rp.getPpm())
+                            .toList();
 
+                    eligiblePpms.addAll(eligibleReunionPpms);
+                    eligiblePpms.addAll(eligibleReunionDacs);
+
+                    eligiblePpms = eligiblePpms.stream()
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toMap(
+                                    Ppm::getId,
+                                    Function.identity(),
+                                    (existing, replacement) -> existing
+                            ))
+                            .values()
+                            .stream()
+                            .collect(Collectors.toList());
+
+
+                    for (Ppm ppm : eligiblePpms) {
                         if (ppm.getAc() == null) {
                             throw new ReunionPpmNoAcException("", id, ppm.getId());
                         }
 
                         Integer acId = ppm.getAc().getId();
+
                         ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
                         req.setPvId(processVerbalReunion.getId());
                         req.setAcId(acId);
+                        req.setPpmId(ppm.getId());
+                        req.setPpmVer(ppm.getVersion());
                         req.setFile(null);
-                         processVerbalReunionExtraitService.create(req);
-                    }
 
+                        processVerbalReunionExtraitService.create(req);
+                    }
                 }
 
 
