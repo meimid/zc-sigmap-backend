@@ -29,7 +29,7 @@
 	 r.date_prev_lps,
 	 r.date_prev_ac,
 	 m.libelle,
-	 f.description
+	 f.description, rf.description as imputbudg
 FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.realisation_id =  p.realisation_id
 	      and r.realisation_ver =  p.realisation_ver
@@ -52,7 +52,8 @@ GROUP BY
     r.date_prev_lps,
     r.date_prev_ac,
     m.libelle,
-    f.description]]>
+    f.description,
+    rf.description]]>
 		</queryString>
 		<field name="realisation_envisagees" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="realisation_envisagees"/>
@@ -90,6 +91,11 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.label" value="description"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 		</field>
+		<field name="imputbudg" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="description"/>
+			<property name="com.jaspersoft.studio.field.label" value="imputbudg"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
+		</field>
 	</subDataset>
 	<parameter name="paa_id" class="java.lang.Integer"/>
 	<parameter name="paa_ver" class="java.lang.Integer"/>
@@ -113,7 +119,7 @@ INNER JOIN paa p on pr.paa_id =p.paa_id and pr.paa_ver=p.paa_ver
 INNER JOIN  ac a ON
 	 p.ac_id = a.ac_id
 WHERE pr.paa_id =   $P{paa_id} 
-    AND pr.paa_ver =   $P{paa_ver} ]]>
+    AND pr.paa_ver =   $P{paa_ver}]]>
 	</queryString>
 	<field name="nom" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nom"/>
@@ -184,7 +190,9 @@ WHERE pr.paa_id =   $P{paa_id}
 	<columnHeader>
 		<band height="46">
 			<rectangle>
-				<reportElement x="119" y="13" width="679" height="33" backcolor="#BFE1FF" uuid="f33f090f-c307-42c2-8b28-eab35fa1eca1"/>
+				<reportElement x="119" y="13" width="681" height="33" backcolor="#BFE1FF" uuid="f33f090f-c307-42c2-8b28-eab35fa1eca1">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
 				<graphicElement>
 					<pen lineWidth="0.75" lineStyle="Solid"/>
 				</graphicElement>
@@ -203,7 +211,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Objet de la consultation]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="409" y="12" width="100" height="34" uuid="6328e89a-5d64-44f5-baec-fb3b23c5ac04"/>
+				<reportElement style="ArialBold" x="496" y="12" width="70" height="34" uuid="6328e89a-5d64-44f5-baec-fb3b23c5ac04"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -213,7 +221,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Type de contrat]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="509" y="13" width="90" height="33" uuid="3c5c9962-6428-4a2a-9816-8f3eef80f963"/>
+				<reportElement style="ArialBold" x="567" y="13" width="71" height="33" uuid="3c5c9962-6428-4a2a-9816-8f3eef80f963"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -223,7 +231,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Mode de sélection]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="599" y="13" width="99" height="33" uuid="72bfad50-d0f3-492b-8b11-c3cc63ac0341"/>
+				<reportElement style="ArialBold" x="639" y="13" width="79" height="33" uuid="72bfad50-d0f3-492b-8b11-c3cc63ac0341"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -233,7 +241,9 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Date prévisionnelle de lancement]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="698" y="13" width="100" height="33" uuid="16f5106b-96f8-4fa7-804f-eba4afc38cfc"/>
+				<reportElement style="ArialBold" x="719" y="13" width="81" height="33" uuid="16f5106b-96f8-4fa7-804f-eba4afc38cfc">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
 				<box>
 					<rightPen lineWidth="0.0"/>
 				</box>
@@ -242,12 +252,22 @@ WHERE pr.paa_id =   $P{paa_id}
 				</textElement>
 				<text><![CDATA[Date prévisionnelle de lancement]]></text>
 			</staticText>
+			<staticText>
+				<reportElement style="ArialBold" x="410" y="12" width="85" height="34" uuid="fed70d58-44b0-4f96-bee3-3cadff431b57"/>
+				<box>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="9" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Imputation budgétaire]]></text>
+			</staticText>
 		</band>
 	</columnHeader>
 	<detail>
-		<band height="51" splitType="Prevent">
+		<band height="50" splitType="Prevent">
 			<componentElement>
-				<reportElement x="119" y="0" width="679" height="50" uuid="c698e70e-04fc-4b37-ab05-4da608299235">
+				<reportElement x="119" y="0" width="681" height="50" uuid="c698e70e-04fc-4b37-ab05-4da608299235">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Horizontal">
@@ -263,7 +283,7 @@ WHERE pr.paa_id =   $P{paa_id}
 						</datasetParameter>
 						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 					</datasetRun>
-					<jr:listContents height="50" width="679">
+					<jr:listContents height="50" width="681">
 						<textField isBlankWhenNull="true">
 							<reportElement x="0" y="0" width="290" height="50" uuid="e22399f7-35a7-4209-af4f-97cd3e1c9735">
 								<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -280,7 +300,9 @@ WHERE pr.paa_id =   $P{paa_id}
 							<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? " "+ $F{realisation_envisagees} + " :\n " + $F{lots}.replaceAll(" - ", "\n ") : " "+  $F{realisation_envisagees}]]></textFieldExpression>
 						</textField>
 						<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-							<reportElement x="481" y="0" width="98" height="50" uuid="d390d660-fd0b-4da5-8f6d-45108b369262"/>
+							<reportElement x="520" y="0" width="79" height="50" uuid="d390d660-fd0b-4da5-8f6d-45108b369262">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
 							<box>
 								<bottomPen lineWidth="0.5"/>
 								<rightPen lineWidth="0.5"/>
@@ -291,7 +313,9 @@ WHERE pr.paa_id =   $P{paa_id}
 							<textFieldExpression><![CDATA[$F{date_prev_lps}]]></textFieldExpression>
 						</textField>
 						<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-							<reportElement stretchType="RelativeToTallestObject" x="579" y="0" width="100" height="50" uuid="2e04a8ef-9b7b-4d37-b93c-2ce947534051"/>
+							<reportElement stretchType="RelativeToTallestObject" x="600" y="0" width="81" height="50" uuid="2e04a8ef-9b7b-4d37-b93c-2ce947534051">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
 							<box>
 								<bottomPen lineWidth="0.5"/>
 								<rightPen lineWidth="0.5"/>
@@ -302,7 +326,7 @@ WHERE pr.paa_id =   $P{paa_id}
 							<textFieldExpression><![CDATA[$F{date_prev_ac}]]></textFieldExpression>
 						</textField>
 						<textField isBlankWhenNull="true">
-							<reportElement x="290" y="0" width="100" height="50" uuid="caaecbb4-4f7d-45a3-ae34-c8321bfd5335">
+							<reportElement x="377" y="0" width="70" height="50" uuid="caaecbb4-4f7d-45a3-ae34-c8321bfd5335">
 								<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							</reportElement>
 							<box>
@@ -315,7 +339,9 @@ WHERE pr.paa_id =   $P{paa_id}
 							<textFieldExpression><![CDATA[$F{libelle}]]></textFieldExpression>
 						</textField>
 						<textField isBlankWhenNull="true">
-							<reportElement x="390" y="0" width="90" height="50" uuid="9eda4ec4-8ffc-4256-93b0-876b67b37b89"/>
+							<reportElement x="448" y="0" width="71" height="50" uuid="9eda4ec4-8ffc-4256-93b0-876b67b37b89">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
 							<box>
 								<bottomPen lineWidth="0.5"/>
 								<rightPen lineWidth="0.5"/>
@@ -324,6 +350,19 @@ WHERE pr.paa_id =   $P{paa_id}
 								<font fontName="Arial"/>
 							</textElement>
 							<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+						</textField>
+						<textField isBlankWhenNull="true">
+							<reportElement x="290" y="0" width="86" height="50" uuid="a4304783-80c7-4e00-9c6f-8fca42a77d5a">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
+							<box>
+								<bottomPen lineWidth="0.5"/>
+								<rightPen lineWidth="0.5"/>
+							</box>
+							<textElement textAlignment="Center" verticalAlignment="Middle">
+								<font fontName="Arial"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{imputbudg}]]></textFieldExpression>
 						</textField>
 					</jr:listContents>
 				</jr:list>
