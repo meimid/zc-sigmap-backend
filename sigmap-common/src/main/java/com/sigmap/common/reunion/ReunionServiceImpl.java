@@ -859,6 +859,8 @@ public class ReunionServiceImpl implements ReunionService{
                         ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
                         req.setPvId(processVerbalReunion.getId());
                         req.setAcId(acId);
+                        req.setPpmId(ppm.getId());
+                        req.setPpmVer(ppm.getVersion());
                         req.setFile(null);
                          processVerbalReunionExtraitService.create(req);
                     }
@@ -1277,7 +1279,7 @@ public class ReunionServiceImpl implements ReunionService{
         if (reunion.getProcessVerbal() == null) {
             throw new ProcessVerbalReunionNotFound("", reunionId);
         }
-        List<String> roles = jwt.getClaim("resource_access") != null
+     /*   List<String> roles = jwt.getClaim("resource_access") != null
                 ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
                 .getOrDefault("backend-common", Map.of())
                 .containsKey("roles")
@@ -1301,7 +1303,10 @@ public class ReunionServiceImpl implements ReunionService{
         }
         else {
             extrais = processVerbalReunionExtraitService.findAllByPvId(pvId);
-        }
+        }*/
+
+        List<ProcessVerbalReunionExtrait> extrais = processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId());
+
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), extrais.size());
 

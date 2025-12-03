@@ -10,6 +10,7 @@ public class ProcessVerbalReunionExtraitRequest {
     private Integer pvId;
 
     private Integer acId;
-
+    private Integer ppmId;
+    private Integer ppmVer;
     private MultipartFile file;
 }

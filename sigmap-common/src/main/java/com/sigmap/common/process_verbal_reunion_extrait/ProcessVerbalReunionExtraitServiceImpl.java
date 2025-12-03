@@ -4,6 +4,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
@@ -51,6 +52,9 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
         extrait.setPvId(request.getPvId());
         extrait.setAcId(request.getAcId());
+        extrait.setPpm(new Ppm());
+        extrait.getPpm().setId(request.getPpmId());
+        extrait.getPpm().setVersion(request.getPpmVer());
 
        /*     Docs doc = documentCommuneService.processAndSaveDocumentsForPvExtrait(
                     request.getFile(),

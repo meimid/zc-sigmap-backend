@@ -472,7 +472,7 @@ public class ReunionController {
                 .toList();
     }
     private boolean haveExtraitCheck(Reunion reunion) {
-        return !processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId()).isEmpty();
+        return reunion.getProcessVerbal()!=null?!processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId()).isEmpty():false;
 
     }
 
