@@ -48,20 +48,14 @@
 		<parameter name="paa_id" class="java.lang.Integer"/>
 		<parameter name="paa_ver" class="java.lang.Integer"/>
 		<queryString language="SQL">
-			<![CDATA[SELECT  p.paa_id,
-	 p.paa_ver,
-	 p.realisation_id,
-	 p.realisation_ver,
+			<![CDATA[SELECT  
 	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
 	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
-	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
-	 r.date_prev_dp,
-	 r.date_prev_ap,
-	 GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
 	 m.libelle,
-	 f.description, rf.description as imputbudg
+	 f.description, 
+	 rf.description as imputbudg
 FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.realisation_id =  p.realisation_id
 	      and r.realisation_ver =  p.realisation_ver
@@ -71,51 +65,21 @@ FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.type_marcher_id =  f.ref_param_id
 	  LEFT JOIN  ref_param  rf ON
 	  r.imputation_budgetaire_id =  rf.ref_param_id
-	  LEFT JOIN finacement fin
-    ON r.realisation_id= fin.realisation_id  and r.realisation_ver=fin.realisation_ver
     LEFT JOIN lots_realisation l
         ON r.realisation_id = l.realisation_id
         AND r.realisation_ver = l.realisation_ver
     LEFT JOIN lots ls
         ON l.lots_id = ls.lots_id
         AND l.lots_ver = ls.lots_ver
-LEFT JOIN ref_param rp
-    ON fin.source_de_financement_id = rp.ref_param_id
 where p.paa_id= $P{paa_id}     and p.paa_ver=  $P{paa_ver} 
 GROUP BY
-    p.paa_id,
-    p.paa_ver,
-    p.realisation_id,
-    p.realisation_ver,
     r.realisation_envisagees,
-    r.beneficiaire,
     r.date_prev_lps,
     r.date_prev_ac,
-    r.date_prev_dp,
-    r.date_prev_ap,
     m.libelle,
-    f.description]]>
+    f.description,
+    rf.description]]>
 		</queryString>
-		<field name="paa_id" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="paa_id"/>
-			<property name="com.jaspersoft.studio.field.label" value="paa_id"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
-		</field>
-		<field name="paa_ver" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="paa_ver"/>
-			<property name="com.jaspersoft.studio.field.label" value="paa_ver"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
-		</field>
-		<field name="realisation_id" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="realisation_id"/>
-			<property name="com.jaspersoft.studio.field.label" value="realisation_id"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
-		</field>
-		<field name="realisation_ver" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="realisation_ver"/>
-			<property name="com.jaspersoft.studio.field.label" value="realisation_ver"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="paa_realisation"/>
-		</field>
 		<field name="realisation_envisagees" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="realisation_envisagees"/>
 			<property name="com.jaspersoft.studio.field.label" value="realisation_envisagees"/>
@@ -124,11 +88,6 @@ GROUP BY
 		<field name="lots" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="lots"/>
 			<property name="com.jaspersoft.studio.field.label" value="lots"/>
-		</field>
-		<field name="beneficiaire" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="beneficiaire"/>
-			<property name="com.jaspersoft.studio.field.label" value="beneficiaire"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
 		</field>
 		<field name="date_prev_lps" class="java.sql.Date">
 			<property name="com.jaspersoft.studio.field.name" value="date_prev_lps"/>
@@ -141,22 +100,6 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.label" value="date_prev_ac"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
 			<fieldDescription><![CDATA[Date prévue d’attribution du contrat]]></fieldDescription>
-		</field>
-		<field name="date_prev_dp" class="java.sql.Date">
-			<property name="com.jaspersoft.studio.field.name" value="date_prev_dp"/>
-			<property name="com.jaspersoft.studio.field.label" value="date_prev_dp"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
-			<fieldDescription><![CDATA[Date prévue de démarrage des prestations]]></fieldDescription>
-		</field>
-		<field name="date_prev_ap" class="java.sql.Date">
-			<property name="com.jaspersoft.studio.field.name" value="date_prev_ap"/>
-			<property name="com.jaspersoft.studio.field.label" value="date_prev_ap"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="realisation"/>
-			<fieldDescription><![CDATA[Date prévue d’achèvement des prestations]]></fieldDescription>
-		</field>
-		<field name="sources_financement" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="sources_financement"/>
-			<property name="com.jaspersoft.studio.field.label" value="sources_financement"/>
 		</field>
 		<field name="libelle" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="libelle"/>
@@ -173,8 +116,6 @@ GROUP BY
 			<property name="com.jaspersoft.studio.field.label" value="imputbudg"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ref_param"/>
 		</field>
-		<sortField name="realisation_id"/>
-		<sortField name="realisation_ver"/>
 		<group name="paa_id">
 			<groupExpression><![CDATA[$F{paa_id}]]></groupExpression>
 		</group>
@@ -271,7 +212,7 @@ FROM  paa p
 					<property name="com.jaspersoft.studio.table.style.detail" value="Table_TD"/>
 				</reportElement>
 				<jr:table xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd">
-					<datasetRun subDataset="Dataset1" uuid="ac7d50a2-b09c-40e3-ab59-168332a391be">
+					<datasetRun subDataset="Dataset1" uuid="c9dace55-de9c-41c1-a376-f89c3115194a">
 						<datasetParameter name="paa_id">
 							<datasetParameterExpression><![CDATA[$F{paa_id}]]></datasetParameterExpression>
 						</datasetParameter>
@@ -279,37 +220,12 @@ FROM  paa p
 							<datasetParameterExpression><![CDATA[$F{paa_ver}]]></datasetParameterExpression>
 						</datasetParameter>
 					</datasetRun>
-					<jr:column width="30" uuid="9f1f3491-8d6f-4f11-aa6b-a20e1dd5b0ac">
+					<jr:column width="270" uuid="75407ed5-4ec4-4c74-8181-52bdf233a352">
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column1"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="30" height="50" uuid="f2e71504-8dd7-4979-af8e-3c550301a421"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8" isBold="true"/>
-								</textElement>
-								<text><![CDATA[Réf.]]></text>
-							</staticText>
-						</jr:columnHeader>
-						<jr:detailCell style="Table_TD" height="75">
-							<property name="com.jaspersoft.studio.unit.height" value="px"/>
-							<textField>
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="30" height="75" uuid="c7233e54-a085-43d6-b1d1-bb5665042f97">
-									<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
-								</reportElement>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}]]></textFieldExpression>
-							</textField>
-						</jr:detailCell>
-					</jr:column>
-					<jr:column width="145" uuid="75407ed5-4ec4-4c74-8181-52bdf233a352">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column2"/>
-						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
-							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<staticText>
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="145" height="50" uuid="fd87feaa-31dc-419a-b706-f53ef05223b4">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="270" height="50" uuid="fd87feaa-31dc-419a-b706-f53ef05223b4">
 									<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
 								</reportElement>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
@@ -320,66 +236,20 @@ FROM  paa p
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="145" height="75" uuid="83d0f665-bb37-4556-8a2f-98307192c844"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="270" height="75" uuid="83d0f665-bb37-4556-8a2f-98307192c844"/>
 								<textElement textAlignment="Left" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? $F{realisation_envisagees} + " : " + $F{lots} : $F{realisation_envisagees}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? " " +$F{realisation_envisagees} + " : " + $F{lots} :  " " +$F{realisation_envisagees}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="86" uuid="f3fa4ec6-7524-43aa-b2d5-1262cd20a304">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
+					<jr:column width="80" uuid="093342d1-c91b-472d-b938-0a37b11eba7e">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column2"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="86" height="50" uuid="2207a4e2-e698-46ac-82a7-33d34796e6f3"/>
-								<textElement textAlignment="Center" verticalAlignment="Bottom">
-									<font fontName="Arial" size="8" isBold="true"/>
-								</textElement>
-								<text><![CDATA[Service ou
-Direction Autorité Contractante
-]]></text>
-							</staticText>
-						</jr:columnHeader>
-						<jr:detailCell style="Table_TD" height="75">
-							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="86" height="75" uuid="71f5cdfd-b621-42fd-a8b3-cc8dbafe18eb"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$F{beneficiaire}]]></textFieldExpression>
-							</textField>
-						</jr:detailCell>
-					</jr:column>
-					<jr:column width="103" uuid="183b59e2-3a8a-4bc8-960d-69a3db1ab19c">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
-						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
-							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="103" height="50" uuid="8c96aa4f-447b-4522-a057-9bc33f3d2089"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8" isBold="true"/>
-								</textElement>
-								<text><![CDATA[Source de financement]]></text>
-							</staticText>
-						</jr:columnHeader>
-						<jr:detailCell style="Table_TD" height="75">
-							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="103" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
-									<font fontName="Arial" size="8"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$F{sources_financement}]]></textFieldExpression>
-							</textField>
-						</jr:detailCell>
-					</jr:column>
-					<jr:column width="60" uuid="093342d1-c91b-472d-b938-0a37b11eba7e">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column5"/>
-						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
-							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="6d9ddc04-e2ef-447d-a9b2-42f96a13a1c3"/>
+								<reportElement style="ArialBold" x="0" y="0" width="80" height="50" uuid="6d9ddc04-e2ef-447d-a9b2-42f96a13a1c3"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
@@ -389,7 +259,7 @@ Direction Autorité Contractante
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="75" uuid="1c346563-4665-4244-a676-60a306223f8f"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="80" height="75" uuid="1c346563-4665-4244-a676-60a306223f8f"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
@@ -397,21 +267,21 @@ Direction Autorité Contractante
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="0ae1fa93-ec90-4004-a2ec-ffc60a1045ca">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column6"/>
+					<jr:column width="70" uuid="0ae1fa93-ec90-4004-a2ec-ffc60a1045ca">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column3"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="e725642d-8606-4bfe-a725-e35a7061f2c9"/>
+								<reportElement style="ArialBold" x="0" y="0" width="70" height="50" uuid="e725642d-8606-4bfe-a725-e35a7061f2c9"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
-								<text><![CDATA[Type de marché]]></text>
+								<text><![CDATA[Type de contrat]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="75" uuid="7668a16b-c879-4673-8b09-e5e5eee463e7"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="75" uuid="7668a16b-c879-4673-8b09-e5e5eee463e7"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
@@ -419,21 +289,21 @@ Direction Autorité Contractante
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="558764e7-4890-426d-89dd-1fc259418efc">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column7"/>
+					<jr:column width="70" uuid="558764e7-4890-426d-89dd-1fc259418efc">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="9a6e3e44-4cca-45ea-bea4-7ade16424c58"/>
+								<reportElement style="ArialBold" x="0" y="0" width="70" height="50" uuid="9a6e3e44-4cca-45ea-bea4-7ade16424c58"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
-								<text><![CDATA[Mode de passation]]></text>
+								<text><![CDATA[Mode de sélection]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="75" uuid="02e4c7f0-307d-48a6-908f-850ea49fd7f7"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="75" uuid="02e4c7f0-307d-48a6-908f-850ea49fd7f7"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
@@ -441,23 +311,23 @@ Direction Autorité Contractante
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="61d3193e-efa5-4c68-b493-b4cafdf27e13">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column8"/>
+					<jr:column width="70" uuid="61d3193e-efa5-4c68-b493-b4cafdf27e13">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column5"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="ccc27487-68ee-4f0b-b6de-571d5ac95d81"/>
+								<reportElement style="ArialBold" x="0" y="0" width="70" height="50" uuid="ccc27487-68ee-4f0b-b6de-571d5ac95d81"/>
 								<textElement textAlignment="Center" verticalAlignment="Bottom">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
-								<text><![CDATA[Date prévue de
-lancement de la procédure de sélection
+								<text><![CDATA[Date prévisionnelle de
+lancement
 ]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="75" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="75" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
@@ -465,72 +335,26 @@ lancement de la procédure de sélection
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="c54f3829-f870-464b-afe6-b1d603a6282c">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column9"/>
+					<jr:column width="70" uuid="c54f3829-f870-464b-afe6-b1d603a6282c">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column6"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="54ea2593-cae1-446c-a1b6-934db0b7daf1"/>
+								<reportElement style="ArialBold" x="0" y="0" width="70" height="50" uuid="54ea2593-cae1-446c-a1b6-934db0b7daf1"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
-								<text><![CDATA[Date prévue
-d’attribution du contrat]]></text>
+								<text><![CDATA[Date prévisionnelle
+d’attribution]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="60" height="75" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="75" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{date_prev_ac}]]></textFieldExpression>
-							</textField>
-						</jr:detailCell>
-					</jr:column>
-					<jr:column width="71" uuid="eb20a5bc-ca8e-44c8-84f7-eb211b838745">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column10"/>
-						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
-							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="71" height="50" uuid="0874f7cb-fefe-4b74-810b-6c8258b3e4a0"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8" isBold="true"/>
-								</textElement>
-								<text><![CDATA[Date prévue
-de démarrage des prestations]]></text>
-							</staticText>
-						</jr:columnHeader>
-						<jr:detailCell style="Table_TD" height="75">
-							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="71" height="75" uuid="d393a1ff-8188-44d5-8668-a01358b62cee"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$F{date_prev_dp}]]></textFieldExpression>
-							</textField>
-						</jr:detailCell>
-					</jr:column>
-					<jr:column width="65" uuid="24ba38e5-4eb5-486b-9269-31ba2b183ac6">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column11"/>
-						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
-							<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="65" height="50" uuid="7d6ed298-2c4f-4c5e-9632-11ad2d6c308c"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8" isBold="true"/>
-								</textElement>
-								<text><![CDATA[Date prévue
-d’achèvement des prestations
-]]></text>
-							</staticText>
-						</jr:columnHeader>
-						<jr:detailCell style="Table_TD" height="75">
-							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="65" height="75" uuid="d33c07d8-28d8-4106-ba69-baa70cf5b307"/>
-								<textElement textAlignment="Center" verticalAlignment="Middle">
-									<font fontName="Arial" size="8"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$F{date_prev_ap}]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
