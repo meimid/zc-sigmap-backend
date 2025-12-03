@@ -71,6 +71,33 @@ public class PpmNotificationService {
         return reunionPpmRepository.findLatest(ppmId, ppmVer);
     }
 
+    private String normalizeDecision(String raw) {
+        if (raw == null) return "Avis";
+        String d = raw.trim().toUpperCase();
+        return switch (d) {
+            case "APPROVE", "VALIDATE", "TRUE" -> "Approuvé";
+            case "REJECT", "FALSE" -> "Rejeté";
+            case "CI" -> "Complément d'information";
+            default -> "Avis";
+        };
+    }
+    private String normalizeDecisionCpmp(String raw) {
+        if (raw == null) return "Avis";
+        String d = raw.trim().toUpperCase();
+        return switch (d) {
+            case "APPROVE", "VALIDATE", "TRUE" -> "Approuvé";
+            case "REJECT", "FALSE" -> "Reporté";
+            case "CI" -> "Complément d'information";
+            default -> "Avis";
+        };
+    }
+
+    private String normalizeMotif(String motif) {
+        if (motif == null || motif.isBlank()) return "";
+        return motif.trim();
+    }
+
+
 
     public void notifyAcAfterCpmpDecision(Integer ppmId, Integer ppmVer) throws PpmNotFound {
 
@@ -97,8 +124,9 @@ public class PpmNotificationService {
             String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
             ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
 
-            String decision = rp != null && rp.getDecision() != null ? rp.getDecision() : "Non renseignée";
-            String motif = rp != null && rp.getObservation() != null ? rp.getObservation() : "";
+            String decision = normalizeDecisionCpmp(rp != null ? rp.getDecision() : null);
+            String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
+
 
             // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
@@ -144,10 +172,11 @@ public class PpmNotificationService {
 
             // ---- Réunion & décision ----
             String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
-
             ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
-            String decision = rp != null ? rp.getDecision() : "Non renseignée";
-            String motif = rp != null ? rp.getObservation() : "";
+
+            String decision = normalizeDecision(rp != null ? rp.getDecision() : null);
+            String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
+
 
             // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
@@ -197,10 +226,11 @@ public class PpmNotificationService {
 
             // ---- Réunion & décision ----
             String reunionDate = extractReunionDate(reunionRepository.findLatestByPpm(ppmId, ppmVer));
-
             ReunionPpm rp = extractLatestDecision(ppmId, ppmVer);
-            String decision = rp != null ? rp.getDecision() : "Non renseignée";
-            String motif = rp != null ? rp.getObservation() : "";
+
+            String decision = normalizeDecision(rp != null ? rp.getDecision() : null);
+            String motif = normalizeMotif(rp != null ? rp.getObservation() : null);
+
 
             // ---- EMAIL ----
             mailService.sendCommissionDecisionNotificationEmail(
