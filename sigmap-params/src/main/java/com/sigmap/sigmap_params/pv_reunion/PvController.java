@@ -129,4 +129,27 @@ public class PvController {
                 .body(resource);
     }
 
+    @GetMapping("/extrait-pv-cncmp/{reunionId}/{acId}/download")
+    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
+
+    public ResponseEntity<Resource> downloadExtraitCNCMP(@PathVariable Integer reunionId ,@PathVariable Integer acId) throws Exception {
+
+
+        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMP(reunionId,acId);
+
+        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Extrait_PV_CNCMP_" + reunionId + ".pdf\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentLength(pdfBytes.length)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
+    }
+
 }
