@@ -107,7 +107,7 @@ public class PvController {
     }
 
     @GetMapping("/extrait-pv-cpmp/{reunionId}/{acId}/download")
-    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CPMP-RAPPORTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
 
     public ResponseEntity<Resource> downloadExtraitCPMP(@PathVariable Integer reunionId ,@PathVariable Integer acId) throws Exception {
 

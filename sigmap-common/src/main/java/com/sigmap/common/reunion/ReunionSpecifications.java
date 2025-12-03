@@ -215,8 +215,8 @@ public class ReunionSpecifications {
         };
     }
 
-    public static Specification<Reunion> comTypeCNCMP() {
-        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("comType").get("refType").get("code"), "CNCMP");
+    public static Specification<Reunion> comTypeCPMP() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("comType").get("refType").get("code"), "CPMP");
     }
 
 }

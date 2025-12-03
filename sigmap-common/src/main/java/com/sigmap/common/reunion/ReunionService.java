@@ -54,7 +54,7 @@ public interface ReunionService {
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
     List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
-    ProcessVerbalReunionExtrait injectExtraitForPpm(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
+    ProcessVerbalReunionExtrait injectExtraitForAc(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(Integer reunionId, Jwt jwt,Pageable pageable);
 
     List<Reunion> reunionCloutureListByAcId(Integer acId);

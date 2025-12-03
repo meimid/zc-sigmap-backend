@@ -839,9 +839,8 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
                 // create extrait
 
-                //  COM type must be CNCMP
-                if (!"CNCMP".equals(reunionToUpdate.getCom().getComType().getCode())
-                ) {
+                //  COM type must be CPMP
+                if ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
                     List<ReunionPpm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
                             .filter(rp -> rp.getPpm() != null)
                             .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
@@ -849,26 +848,43 @@ public class ReunionServiceImpl implements ReunionService{
                             .toList();
 
 
-                    List<ProcessVerbalReunionExtrait> createdExtraits = new ArrayList<>();
 
                     for (ReunionPpm rp : eligibleReunionPpms) {
 
                         Ppm ppm = rp.getPpm();
+                        if (ppm.getAc() == null) {
+                            throw new ReunionPpmNoAcException("", id, ppm.getId());
+                        }
+                        Integer acId = ppm.getAc().getId();
+                        ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
+                        req.setPvId(processVerbalReunion.getId());
+                        req.setAcId(acId);
+                        req.setFile(null);
+                         processVerbalReunionExtraitService.create(req);
+                    }
+// 2) PPMs coming from ReunionDac -> Dac -> Ppm
+                    List<ReunionDac> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
+                            .filter(rd -> rd.getDac() != null)
+                            .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
+                            .filter(rd -> rd.getDac().getPpm() != null)
+                            .filter(rd -> rd.getDac().getPpm().getAc() != null)
+                            .toList();
+
+                    for (ReunionDac rd : eligibleReunionDacs) {
+                        Ppm ppm = rd.getDac().getPpm();
 
                         if (ppm.getAc() == null) {
                             throw new ReunionPpmNoAcException("", id, ppm.getId());
                         }
 
                         Integer acId = ppm.getAc().getId();
-
                         ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
                         req.setPvId(processVerbalReunion.getId());
                         req.setAcId(acId);
                         req.setFile(null);
-
-                        ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.create(req);
-                        createdExtraits.add(created);
+                         processVerbalReunionExtraitService.create(req);
                     }
+
                 }
 
 
@@ -894,7 +910,7 @@ public class ReunionServiceImpl implements ReunionService{
 
         if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
          ProcessVerbalReunion pv= processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
-            if (!"CNCMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+            if (!"CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
 
             }
@@ -1156,7 +1172,7 @@ public class ReunionServiceImpl implements ReunionService{
 
 
 
-    public ProcessVerbalReunionExtrait injectExtraitForPpm(
+    public ProcessVerbalReunionExtrait injectExtraitForAc(
             Integer reunionId,
             Integer acId,
             MultipartFile file
@@ -1172,9 +1188,9 @@ public class ReunionServiceImpl implements ReunionService{
             throw new ExtraitFileRequiredException("", reunionId);
         }
 
-       //  COM type must be CNCMP
+       //  COM type must be CPMP
        if (reunion.getCom() == null || reunion.getCom().getComType() == null
-                || !"CNCMP".equals(reunion.getCom().getComType().getCode())) {
+                || !"CPMP".equals(reunion.getCom().getComType().getCode())) {
 
             String typeCode = (reunion.getCom() != null && reunion.getCom().getComType() != null)
                     ? reunion.getCom().getComType().getCode()
@@ -1305,7 +1321,7 @@ public class ReunionServiceImpl implements ReunionService{
                 .where(ReunionSpecifications.hasAcId(acId))
                 .and(ReunionSpecifications.deleted(false)).
                 and(ReunionSpecifications.status(ReunionStatus.CLOTURER)).
-                and(ReunionSpecifications.comTypeCNCMP());
+                and(ReunionSpecifications.comTypeCPMP());
             return findAll(spec);
     }
 

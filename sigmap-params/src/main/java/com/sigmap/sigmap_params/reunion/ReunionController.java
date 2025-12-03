@@ -116,7 +116,8 @@ public class ReunionController {
                           : null
           );
       }
-        response.setExtraits(mapExtraits(reunion));
+      //  response.setExtraits(mapExtraits(reunion));
+        response.setHaveExtraits(haveExtraitCheck(reunion));
 
         return ResponseEntity.ok(response);
     }
@@ -314,7 +315,7 @@ public class ReunionController {
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @PutMapping("/{reunionId}/ac/{acId}/extraits")
     public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
             @PathVariable Integer reunionId,
@@ -323,7 +324,7 @@ public class ReunionController {
     ) throws IOException {
 
         ProcessVerbalReunionExtrait extrait =
-                reunionService.injectExtraitForPpm(reunionId, acId, file);
+                reunionService.injectExtraitForAc(reunionId, acId, file);
 
         ProcessVerbalReunionExtraitRespons response =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
@@ -366,7 +367,7 @@ public class ReunionController {
                 })
                 .toList();
     }
-
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @GetMapping("/{reunionId}/extraits")
     public ResponseEntity<Page<ProcessVerbalReunionExtraitRespons>> getExtraitsByReunion(
             @PathVariable Integer reunionId,
@@ -470,7 +471,10 @@ public class ReunionController {
                 })
                 .toList();
     }
+    private boolean haveExtraitCheck(Reunion reunion) {
+        return !processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId()).isEmpty();
 
+    }
 
  /*   @GetMapping("/list/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
