@@ -1,9 +1,11 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
@@ -19,6 +21,12 @@ public class ReunionSpecifications {
             Join<Reunion, Com> comJoin = root.join("com", JoinType.LEFT);
             Join<Reunion, ReunionPpm> reunionPpmJoin = root.join("reunionPpms", JoinType.LEFT);
             Join<ReunionPpm, Ppm> ppmJoin = reunionPpmJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acFromPpmJoin = ppmJoin.join("ac", JoinType.LEFT);
+            Join<Reunion, ReunionDac> rdJoin = root.join("reunionDacs", JoinType.LEFT);
+            Join<ReunionDac, Dac> dacJoin = rdJoin.join("dac", JoinType.LEFT);
+            Join<Dac, Ppm> dacPpmJoin = dacJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acFromDacJoin = dacPpmJoin.join("ac", JoinType.LEFT);
+
             query.distinct(true);
             Expression<String> formattedDate = criteriaBuilder.function(
                     "DATE_FORMAT",
@@ -37,7 +45,11 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(root.get("note"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(formattedDate), "%" + search + "%"),
-                    criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%")
+                    criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromPpmJoin.get("id"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromDacJoin.get("id"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromPpmJoin.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromDacJoin.get("nom"), "%" + search + "%")
 
 
                     );

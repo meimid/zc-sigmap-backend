@@ -315,15 +315,15 @@ public class ReunionController {
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    @PostMapping("/{reunionId}/ppm/{ppmId}/extraits")
+    @PostMapping("/{reunionId}/ac/{acId}/extraits")
     public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
             @PathVariable Integer reunionId,
-            @PathVariable("ppmId") Integer ppmId,
+            @PathVariable("acId") Integer acId,
             @RequestParam("file") MultipartFile file
     ) throws IOException {
 
         ProcessVerbalReunionExtrait extrait =
-                reunionService.injectExtraitForPpm(reunionId, ppmId, file);
+                reunionService.injectExtraitForPpm(reunionId, acId, file);
 
         ProcessVerbalReunionExtraitRespons response =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);

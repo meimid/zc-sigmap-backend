@@ -1118,52 +1118,46 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
 
+
     public ProcessVerbalReunionExtrait injectExtraitForPpm(
             Integer reunionId,
-            Integer ppmId,
+            Integer acId,
             MultipartFile file
     ) throws IOException {
+
         Reunion reunion = findById(reunionId);
 
-        if(reunion.getStatus() == ReunionStatus.VALIDER &&file!=null) {
+        if (reunion.getStatus() != ReunionStatus.VALIDER) {
+            throw new ReunionStatusException("", reunion.getStatus());
+        }
 
         if (file == null || file.isEmpty()) {
             throw new ExtraitFileRequiredException("", reunionId);
         }
 
-        // COM type check from reunion.getCom()
-        if (reunion.getCom() == null
-                || reunion.getCom().getComType() == null
+       //  COM type must be CNCMP
+        if (reunion.getCom() == null || reunion.getCom().getComType() == null
                 || !"CNCMP".equals(reunion.getCom().getComType().getCode())) {
-            throw new ReunionComTypeInvalidException("", reunionId, reunion.getCom().getComType().getCode());
+
+            String typeCode = (reunion.getCom() != null && reunion.getCom().getComType() != null)
+                    ? reunion.getCom().getComType().getCode()
+                    : null;
+
+            throw new ReunionComTypeInvalidException("", reunionId, typeCode);
         }
 
-        if (reunion.getProcessVerbal() == null) {
+        //  Reunion must have a PV with docs
+        if (reunion.getProcessVerbal() == null
+                || reunion.getProcessVerbal().getDocuments() == null
+                || reunion.getProcessVerbal().getDocuments().isEmpty()) {
             throw new ReunionPvMissingException("", reunionId);
         }
+
         Integer pvId = reunion.getProcessVerbal().getId();
 
-        // Find the ReunionPpm for the given ppmId inside this reunion, with a decision
-        ReunionPpm targetReunionPpm = reunion.getReunionPpms().stream()
-                .filter(rp -> rp.getPpm() != null
-                        && rp.getDecision() != null
-                        && Objects.equals(rp.getPpm().getId(), ppmId))
-                .findFirst()
-                .orElseThrow(() -> new ReunionPpmNotFoundOrNoDecisionException("", reunionId, ppmId));
 
 
-        if (targetReunionPpm.getDecision().isBlank()) {
-            throw new ReunionPpmNotFoundOrNoDecisionException("", reunionId, ppmId);
-        }
-
-        // 6) Get AC from that PPM
-        Ppm ppm = targetReunionPpm.getPpm();
-        if (ppm.getAc() == null) {
-            throw new ReunionPpmNoAcException("", reunionId, ppmId);
-        }
-        Integer acId = ppm.getAc().getId();
-
-        //   ACs that SHOULD have an extrait in this reunion (all PPMs with decision)
+        //  Build ACs that SHOULD have an extrait in this reunion (all PPMs with decision)
         Set<Integer> acIdsFromPpmsWithDecision = reunion.getReunionPpms().stream()
                 .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
                 .map(ReunionPpm::getPpm)
@@ -1177,7 +1171,7 @@ public class ReunionServiceImpl implements ReunionService{
             throw new ReunionAcNotEligibleForExtraitException("", reunionId, acId);
         }
 
-        //  Find ACs that already have a COMPLETE extrait for this PV (doc != null)
+        //  ACs that already have a COMPLETE extrait for this PV (doc != null)
         List<ProcessVerbalReunionExtrait> extraits =
                 processVerbalReunionExtraitService.findAllByPvId(pvId);
 
@@ -1187,7 +1181,11 @@ public class ReunionServiceImpl implements ReunionService{
                 .collect(Collectors.toSet());
 
         if (acIdsWithCompletedExtrait.contains(acId)) {
-            throw new ReunionExtraitAlreadyExistsException("A completed extrait already exists for this PV and AC",pvId,acId);
+            throw new ReunionExtraitAlreadyExistsException(
+                    "A completed extrait already exists for this PV and AC",
+                    pvId,
+                    acId
+            );
         }
 
         //  Create the extrait
@@ -1198,7 +1196,7 @@ public class ReunionServiceImpl implements ReunionService{
 
         ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.create(req);
 
-        //  Recompute completed ACs set including this one
+        //  Recompute completed ACs including this one
         acIdsWithCompletedExtrait = new HashSet<>(acIdsWithCompletedExtrait);
         acIdsWithCompletedExtrait.add(acId);
 
@@ -1208,11 +1206,8 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
         return created;
-        }
-        else {
-            throw new ReunionStatusException("", reunion.getStatus());
-        }
     }
+
 
     @Override
     public Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(
@@ -1252,8 +1247,7 @@ public class ReunionServiceImpl implements ReunionService{
 
         }
         else {
-            extrais = processVerbalReunionExtraitService
-                    .findAllByPvId(pvId);
+            extrais = processVerbalReunionExtraitService.findAllByPvId(pvId);
         }
         int start = (int) pageable.getOffset();
         int end = Math.min(start + pageable.getPageSize(), extrais.size());
@@ -1268,6 +1262,10 @@ public class ReunionServiceImpl implements ReunionService{
         return new PageImpl<>(pageContent, pageable, extrais.size());
     }
 
+    @Override
+    public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable) {
+        return null;
+    }
 
 
 }
