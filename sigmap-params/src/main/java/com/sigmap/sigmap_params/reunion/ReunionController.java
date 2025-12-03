@@ -370,11 +370,16 @@ public class ReunionController {
     @GetMapping("/{reunionId}/extraits")
     public ResponseEntity<Page<ProcessVerbalReunionExtraitRespons>> getExtraitsByReunion(
             @PathVariable Integer reunionId,
-             Pageable pageable
+             Pageable pageable,
+             @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest
     ) {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
 
         Page<ProcessVerbalReunionExtrait> page =
-                reunionService.findAllProcessVerbalReunionExtraitByReunioId(reunionId, pageable);
+                reunionService.findAllProcessVerbalReunionExtraitByReunioId(reunionId,jwt, pageable);
 
 
 

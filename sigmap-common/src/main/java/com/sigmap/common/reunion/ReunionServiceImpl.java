@@ -1217,6 +1217,7 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(
             Integer reunionId,
+            Jwt jwt,
             Pageable pageable
     ) {
         Reunion reunion = findById(reunionId);
@@ -1228,28 +1229,43 @@ public class ReunionServiceImpl implements ReunionService{
         if (reunion.getProcessVerbal() == null) {
             throw new ProcessVerbalReunionNotFound("", reunionId);
         }
+        List<String> roles = jwt.getClaim("resource_access") != null
+                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
+                .getOrDefault("backend-common", Map.of())
+                .containsKey("roles")
+                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
+                .get("backend-common")).get("roles")
+                : List.of()
+                : List.of();
 
+        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
+        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+        List<ProcessVerbalReunionExtrait> extrais= new ArrayList<>();
         Integer pvId = reunion.getProcessVerbal().getId();
 
-        List<Integer> currentUserAcsIds = currentUserService.getCurrentUserAcIds();
+        if (isAdminCentral || isSuperAdmin) {
+            List<Integer> currentUserAcsIds = currentUserService.getCurrentUserAcIds();
+            extrais = processVerbalReunionExtraitService
+                    .findAllByPvId(pvId).stream()
+                    .filter(e -> currentUserAcsIds.contains(e.getAcId()))
+                    .toList();
 
-        List<ProcessVerbalReunionExtrait> filtered = processVerbalReunionExtraitService
-                .findAllByPvId(pvId).stream()
-                .filter(e -> currentUserAcsIds.contains(e.getAcId()))
-                .toList();
-
-        // Manual pagination
+        }
+        else {
+            extrais = processVerbalReunionExtraitService
+                    .findAllByPvId(pvId);
+        }
         int start = (int) pageable.getOffset();
-        int end = Math.min(start + pageable.getPageSize(), filtered.size());
+        int end = Math.min(start + pageable.getPageSize(), extrais.size());
 
         List<ProcessVerbalReunionExtrait> pageContent;
-        if (start >= filtered.size()) {
+        if (start >= extrais.size()) {
             pageContent = Collections.emptyList();
         } else {
-            pageContent = filtered.subList(start, end);
+            pageContent = extrais.subList(start, end);
         }
 
-        return new PageImpl<>(pageContent, pageable, filtered.size());
+        return new PageImpl<>(pageContent, pageable, extrais.size());
     }
 
 
