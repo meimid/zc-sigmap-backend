@@ -38,7 +38,7 @@
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
         <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"></flowable:formProperty>
-      </extensionElements>
+        <flowable:executionListener event="end" delegateExpression="${ppmNotificationListenerCpmp}"/>      </extensionElements>
     </userTask>
 
     <exclusiveGateway id="ExclusiveGateway_1qgo4yf"></exclusiveGateway>
@@ -54,6 +54,7 @@
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
         <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"></flowable:formProperty>
+        <flowable:executionListener event="end" delegateExpression="${ppmNotificationListenerSousCommission}" />
       </extensionElements>
     </userTask>
 
@@ -61,6 +62,7 @@
       <extensionElements>
         <flowable:formProperty id="isUpdatable" name="isUpdatable" type="boolean" default="false"></flowable:formProperty>
         <flowable:formProperty id="meetingRequired" name="meetingRequired" type="boolean" default="true"></flowable:formProperty>
+        <flowable:executionListener event="end" delegateExpression="${ppmNotificationListenerCncmp}"/>
         <!-- NEW: enum decision used by gateways -->
         <flowable:formProperty id="cncmpDecision" name="cncmpDecision" type="enum" required="true">
           <flowable:value id="APPROVE" name="Approuver"/>
