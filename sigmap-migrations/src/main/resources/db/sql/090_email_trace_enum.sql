@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950290-1
+-- changeset sigmap:1757950291-1
 
 ALTER TABLE email_trace
     MODIFY COLUMN type_email ENUM(
