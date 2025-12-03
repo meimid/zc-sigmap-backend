@@ -329,66 +329,69 @@ public class RealisationServiceImpl implements RealisationService {
             for (FinancementBaseRequestDto financementRequest : request.getFinancementRequests()) {
                 log.info("Processing Financement request: {}", financementRequest);
 
-                // Create FinancementId (composite key)
+                // === composite key creation ===
+                Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+
                 FinancementId financementId = new FinancementId();
+                financementId.setFinancementId(nextFinId);
+                financementId.setRealisationId(savedRealisation.getId());
+                financementId.setRealisationVer(savedRealisation.getVersion());
 
-                // Generate unique financement ID for each financement
-                Integer nextFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-                financementId.setFinancementId(nextFinancementId);
-
-                financementId.setRealisation(savedRealisation);
-                financementId.setFinancementId(nextFinancementId);
-
-                log.info("Generated Financement ID: {}", nextFinancementId);
-
-                // Create Financement entity
+                // === Create entity ===
                 Financement financement = new Financement();
                 financement.setId(financementId);
+                financement.setRealisation(savedRealisation); // @MapsId binds realisationId + ver
                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                financement.setIsDeleted(false);
 
-                // Set Monnaie
-                if (financementRequest.getMonnaieId() != null) {
-                    log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
-                    Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                            .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-
-                    if (monnaie.getTaux() != null) {
-                        financement.setTauxApplicable(monnaie.getTaux());
-                        System.out.println("Auto-assigned tauxApplicable: " + monnaie.getTaux() + " from Monnaie ID: " + monnaie.getId());
-                    } else {
-                        financement.setTauxApplicable(0.0);
-                        System.out.println("Monnaie taux is null, set tauxApplicable to 0.0 for Monnaie ID: " + monnaie.getId());
-                    }
-                    financement.setMonnaie(monnaie);
-                } else {
+                // === Set Monnaie ===
+                if (financementRequest.getMonnaieId() == null) {
                     throw new IllegalArgumentException("Monnaie ID is required for each Financement");
                 }
 
-                // Set source financement if provided
-                if (financementRequest.getSourceFinancement() != null && financementRequest.getSourceFinancement().getId() != null) {
+                log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
+                Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
+                        .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
+
+                financement.setMonnaie(monnaie);
+                financement.setTauxApplicable(
+                        monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+                );
+
+                // === Set Source Financement  ===
+                if (financementRequest.getSourceFinancement() != null &&
+                        financementRequest.getSourceFinancement().getId() != null) {
+
                     log.info("Fetching SourceFinancement with ID: {}", financementRequest.getSourceFinancement().getId());
                     RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + financementRequest.getSourceFinancement().getId()));
+                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " +
+                                    financementRequest.getSourceFinancement().getId()));
+
                     financement.setSourceFinancement(sourceFinancement);
                 }
 
+                // === Persist financing ===
                 Financement savedFinancement = financementRepository.save(financement);
                 log.info("Created and saved Financement: {}", savedFinancement);
 
                 createdFinancements.add(savedFinancement);
             }
 
+            // === Attach financing list to realisation ===
             savedRealisation.setFinancements(createdFinancements);
 
+            // === Recompute Realisation budget from financements ===
             BigDecimal totalFx = createdFinancements.stream()
                     .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
                     .map(f -> {
-                        BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                        double taux = (f.getTauxApplicable() != null) ? f.getTauxApplicable()
-                                : ((f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0);
+                        BigDecimal amt = f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                        Double taux = f.getTauxApplicable() != null
+                                ? f.getTauxApplicable()
+                                : (f.getMonnaie() != null && f.getMonnaie().getTaux() != null ? f.getMonnaie().getTaux() : 0.0);
                         return amt.multiply(BigDecimal.valueOf(taux));
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+
             savedRealisation.setBudgetEstime(totalFx);
 
             savedRealisation = repository.save(savedRealisation);
@@ -1278,46 +1281,65 @@ public class RealisationServiceImpl implements RealisationService {
     private List<Financement> createUpdatedFinancements(List<Financement> existingFinancements,
                                                         List<FinancementRequest> updates,
                                                         Realisation newVersionRealisation) {
+
         List<Financement> newFinancements = new ArrayList<>();
         if (updates == null || updates.isEmpty()) return newFinancements;
 
         for (FinancementRequest update : updates) {
-            // Build composite id pointing to the NEW realisation version
-            FinancementId fid = new FinancementId();
-            fid.setRealisation(newVersionRealisation);
-            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            fid.setFinancementId(next);
 
+            // === Generate unique financement ID ( ===
+            Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+
+            // === Build composite ID with REALISATION id + version ===
+            FinancementId fid = new FinancementId();
+            fid.setRealisationId(newVersionRealisation.getId());
+            fid.setRealisationVer(newVersionRealisation.getVersion());
+            fid.setFinancementId(nextFinId);
+
+            // === Create entity ===
             Financement f = new Financement();
             f.setId(fid);
+            f.setRealisation(newVersionRealisation);
+            f.setIsDeleted(false);
 
-            // Monnaie (+ tauxApplicable from monnaie.taux, default 0.0)
+            // === Monnaie (+ tauxApplicable) ===
             Monnaie monnaie = monnaieRepository.findById(update.getMonnaieId())
-                    .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + update.getMonnaieId()));
-            f.setMonnaie(monnaie);
-            f.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                    .orElseThrow(() -> new EntityNotFoundException(
+                            "Monnaie not found with ID: " + update.getMonnaieId()));
 
-            // Budget (normalize)
-            BigDecimal amt = BigDecimal.ZERO;
-            if (update.getBudgetEstimer() != null) {
-                amt = BigDecimal.valueOf(update.getBudgetEstimer().doubleValue());
-            }
+            f.setMonnaie(monnaie);
+            f.setTauxApplicable(
+                    monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+            );
+
+            // === BudgetEstimer  ===
+            BigDecimal amt = update.getBudgetEstimer() != null
+                    ? update.getBudgetEstimer()
+                    : BigDecimal.ZERO;
             f.setBudgetEstimer(amt);
 
-            // Source financement (optional)
-            if (update.getSourceFinancement() != null && update.getSourceFinancement().getId() != null) {
-                RefParam src = refParamRepository.findById(update.getSourceFinancement().getId())
-                        .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " + update.getSourceFinancement().getId()));
+            // === Source de financement ===
+            if (update.getSourceFinancement() != null &&
+                    update.getSourceFinancement().getId() != null) {
+
+                RefParam src = refParamRepository.findById(
+                                update.getSourceFinancement().getId())
+                        .orElseThrow(() -> new EntityNotFoundException(
+                                "Source Financement not found with ID: "
+                                        + update.getSourceFinancement().getId()));
+
                 f.setSourceFinancement(src);
             }
 
-            // Persist row (safer if there’s no cascade from Realisation)
+            // === Persist ===
             f = financementRepository.save(f);
+
             newFinancements.add(f);
         }
 
         return newFinancements;
     }
+
 
     /**
      * Copy existing financements to new realisation version (when no financement changes)
@@ -1330,27 +1352,44 @@ public class RealisationServiceImpl implements RealisationService {
         for (Financement old : existingFinancements) {
             if (Boolean.TRUE.equals(old.getIsDeleted())) continue;
 
-            FinancementId fid = new FinancementId();
-            fid.setRealisation(newVersionRealisation);
-            Integer next = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ) + 1;
-            fid.setFinancementId(next);
+            // === Generate financement ID  ===
+            Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
+            // === Create composite key for NEW realisation version ===
+            FinancementId fid = new FinancementId();
+            fid.setRealisationId(newVersionRealisation.getId());
+            fid.setRealisationVer(newVersionRealisation.getVersion());
+            fid.setFinancementId(nextFinId);
+
+            // === Create new financement entity ===
             Financement f = new Financement();
             f.setId(fid);
+            f.setRealisation(newVersionRealisation); // MapsId binding
+            f.setIsDeleted(false);
+
+            // === Copy financement fields ===
             f.setMonnaie(old.getMonnaie());
             f.setBudgetEstimer(old.getBudgetEstimer());
             f.setSourceFinancement(old.getSourceFinancement());
-            // keep taux if present, else derive from monnaie
-            f.setTauxApplicable(old.getTauxApplicable() != null
-                    ? old.getTauxApplicable()
-                    : (old.getMonnaie() != null && old.getMonnaie().getTaux() != null ? old.getMonnaie().getTaux() : 0.0));
 
+            // Copy tauxApplicable if exists, else derive from monnaie.taux
+            f.setTauxApplicable(
+                    old.getTauxApplicable() != null
+                            ? old.getTauxApplicable()
+                            : (old.getMonnaie() != null && old.getMonnaie().getTaux() != null
+                            ? old.getMonnaie().getTaux()
+                            : 0.0)
+            );
+
+            // === Persist financing ===
             f = financementRepository.save(f);
+
             copied.add(f);
         }
 
         return copied;
     }
+
 
 
 

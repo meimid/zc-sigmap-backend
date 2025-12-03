@@ -13,6 +13,8 @@ import java.util.List;
 @NoArgsConstructor
 public class ComRequest {
   private String nom;
+ private String abreviation;
+ private String nomAr;
   private String decretCreation;
  // private boolean responsable;
   private Boolean special;

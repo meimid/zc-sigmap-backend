@@ -13,7 +13,7 @@ public interface ModelPpmRepository extends JpaRepository<ModelPpm, ModelPpmId> 
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
-    @Query("update ModelPpm m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.name}where m.ppmId  = :ppmId and m.ppmVer = :ppmVer")
+    @Query("update ModelPpm m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.subject} where m.ppmId  = :ppmId and m.ppmVer = :ppmVer")
     void deleteByPpmIdAndPpmVer(Integer ppmId, Integer ppmVer);
 
     boolean existsByPpmIdAndPpmVer(Integer ppmId, Integer ppmVer);

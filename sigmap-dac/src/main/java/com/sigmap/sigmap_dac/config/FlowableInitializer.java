@@ -1,9 +1,13 @@
 package com.sigmap.sigmap_dac.config;
 
 import com.sigmap.sigmap_dac.services.delegates.TransmissionDaoDelegate;
+import org.flowable.common.engine.impl.cfg.SpringBeanFactoryProxyMap;
 import org.flowable.engine.*;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.spring.SpringProcessEngineConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -32,6 +36,9 @@ import java.util.Map;
  */
 @Configuration
 public class FlowableInitializer {
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     /**
      * JDBC URL for the Flowable database, injected from application.yml .
@@ -73,32 +80,24 @@ public class FlowableInitializer {
     @Primary
     public ProcessEngine processEngine() {
 
-        StandaloneProcessEngineConfiguration cfg = (StandaloneProcessEngineConfiguration) new StandaloneProcessEngineConfiguration()
-                .setJdbcUrl(jdbcUrl)
-                .setJdbcUsername(jdbcUsername)
-                .setJdbcPassword(jdbcPassword)
-                .setJdbcDriver(jdbcDriver)
-                .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+        StandaloneProcessEngineConfiguration cfg = new StandaloneProcessEngineConfiguration();
 
-        // 🔹 Register custom delegates manually (since this is standalone)
+        cfg.setJdbcUrl(jdbcUrl);
+        cfg.setJdbcUsername(jdbcUsername);
+        cfg.setJdbcPassword(jdbcPassword);
+        cfg.setJdbcDriver(jdbcDriver);
+
+        cfg.setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
+
+        cfg.setBeans(new SpringBeanFactoryProxyMap(applicationContext));
+
         cfg.setBeans(Map.of(
-                "transmissionDaoDelegate", new TransmissionDaoDelegate()
+                "transmissionDaoDelegate", applicationContext.getBean(TransmissionDaoDelegate.class)
         ));
 
-        // ✅ Enable async execution
         cfg.setAsyncExecutorActivate(true);
-        cfg.setAsyncExecutorDefaultAsyncJobAcquireWaitTime(1000);
-        cfg.setAsyncExecutorMaxAsyncJobsDuePerAcquisition(5);
 
-        ProcessEngine processEngine = cfg.buildProcessEngine();
-
-        if (cfg.getAsyncExecutor() != null && !cfg.getAsyncExecutor().isActive()) {
-            cfg.getAsyncExecutor().start();
-            System.out.println("✅ Flowable Async Job Executor started successfully.");
-        }
-
-        System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
-        return processEngine;
+        return cfg.buildProcessEngine();
     }
 
 

@@ -177,7 +177,7 @@ public class PpmController {
      * @return the created ppm
      */
     @PostMapping
-    public ResponseEntity<PpmResponseDto> create(@RequestBody PpmRequest request) {
+    public ResponseEntity<PpmResponseDto> create(@RequestBody PpmRequest request) throws AcNotFound {
         Ppm ppm = ppmService.create(request);
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

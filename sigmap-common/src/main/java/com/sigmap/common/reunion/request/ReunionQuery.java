@@ -16,6 +16,8 @@ public class ReunionQuery {
     private ReunionStatus status;
     private Calendar reunionDateAfter;
     private Calendar reunionDateBefore;
+    private String nom;
+    private String note;
     private boolean deleted;
 
     /**
@@ -45,7 +47,9 @@ public class ReunionQuery {
         if (comId != null) {
             spec = spec.and(ReunionSpecifications.comId(comId));
         }
-
+        if (nom != null) {
+            spec = spec.and(ReunionSpecifications.comNom(nom));
+        }
         if (status != null) {
             spec = spec.and(ReunionSpecifications.status(status));
         }

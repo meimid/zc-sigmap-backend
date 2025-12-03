@@ -6,6 +6,7 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.AcSpecifications;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.ac.exception.AcAlreadyHaveCom;
+import com.sigmap.common.ac.exception.AttributeRequire;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.exception.DuplicateAcIdsException;
 import com.sigmap.common.adresse.AdressService;
@@ -39,7 +40,6 @@ import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
 import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
-import com.sigmap.common.user_commission_historique.exception.SwitchStatueException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
@@ -139,6 +139,11 @@ public class ComServiceImpl implements ComService {
   @Override
   public Com create(ComRequest request)
           throws RefParamNotFound, AcNotFound, DuplicateAcIdsException, ComNotFound, IOException {
+
+      if(request.getTheAdresse().getEmail() == null || request.getTheAdresse().getEmail().isEmpty()) {
+            throw new AttributeRequire("","email");
+      }
+
       if (request.getResponsableId() == null || request.getResponsableId().isBlank()) {
           throw new ResponsableRequired("");
       }
@@ -259,6 +264,9 @@ public class ComServiceImpl implements ComService {
  // @Transactional
   public Com update(Integer id, ComRequest request)
           throws ComNotFound, RefParamNotFound, AcNotFound, DuplicateAcIdsException, DocNotFound, IOException {
+      if(request.getTheAdresse().getEmail() == null || request.getTheAdresse().getEmail().isEmpty()) {
+          throw new AttributeRequire("","email");
+      }
       if (request.getResponsableId() == null || request.getResponsableId().isBlank()) {
           throw new ResponsableRequired("");
       }
