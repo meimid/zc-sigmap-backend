@@ -3,6 +3,7 @@ package com.sigmap.common.process_verbal_reunion;
 import com.sigmap.common.entity.BaseEntity;
 
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import lombok.*;
 import jakarta.persistence.*;
 
@@ -32,4 +33,8 @@ public class ProcessVerbalReunion extends BaseEntity {
     @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
     @EqualsAndHashCode.Exclude
     private List<ProcessVerbalReunionDoc> documents = new ArrayList<>();
+
+   /* @OneToMany(mappedBy = "processVerbal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @EqualsAndHashCode.Exclude
+    private List<ProcessVerbalReunionExtrait> extraits = new ArrayList<>();*/
 }

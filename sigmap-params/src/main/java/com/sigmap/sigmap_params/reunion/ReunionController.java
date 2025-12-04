@@ -26,6 +26,10 @@ import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMappe
 import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.process_verbal_reunion_extrait.mapper.ProcessVerbalReunionExtraitMapper;
+import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionService;
@@ -48,6 +52,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -67,9 +72,10 @@ import java.util.stream.Collectors;
 public class ReunionController {
 
     private final ReunionService reunionService;
-
-    public ReunionController(ReunionService reunionService) {
+    private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    public ReunionController(ReunionService reunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService) {
         this.reunionService = reunionService;
+        this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
     }
 
     @GetMapping
@@ -110,6 +116,9 @@ public class ReunionController {
                           : null
           );
       }
+       response.setExtraits(mapExtraits(reunion));
+        response.setHaveExtraits(haveExtraitCheck(reunion));
+
         return ResponseEntity.ok(response);
     }
 
@@ -305,6 +314,23 @@ public class ReunionController {
 
         return ResponseEntity.ok().build();
     }
+
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @PutMapping("/{reunionId}/ac/{acId}/extraits")
+    public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
+            @PathVariable Integer reunionId,
+            @PathVariable("acId") Integer acId,
+            @RequestParam("file") MultipartFile file
+    ) throws IOException {
+
+        ProcessVerbalReunionExtrait extrait =
+                reunionService.injectExtraitForAc(reunionId, acId, file);
+
+        ProcessVerbalReunionExtraitRespons response =
+                ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
+
+        return ResponseEntity.ok(response);
+    }
     private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
         if (reunionDacs == null) return List.of();
 
@@ -316,6 +342,7 @@ public class ReunionController {
                         dacResponse.setDacId(dac.getDacId());
                         dacResponse.setDacVer(dac.getDacVer());
                         dacResponse.setStatus(dac.getStatus());
+                        dacResponse.setPpmId(dac.getPpm().getId());
                         dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getTypeMarche()));
                         if (dac.getPpm() != null) {
                             dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
@@ -340,6 +367,39 @@ public class ReunionController {
                 })
                 .toList();
     }
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @GetMapping("/{reunionId}/extraits")
+    public ResponseEntity<Page<ProcessVerbalReunionExtraitRespons>> getExtraitsByReunion(
+            @PathVariable Integer reunionId,
+             Pageable pageable,
+             @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest
+    ) {
+        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new TokenRequired();
+        }
+
+        Page<ProcessVerbalReunionExtrait> page =
+                reunionService.findAllProcessVerbalReunionExtraitByReunioId(reunionId,jwt, pageable);
+
+
+
+        return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
+    }
+
+  /*  @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @GetMapping("/{acId}/{ppmId}/{ppmVersion}")
+    public ResponseEntity<List<ProcessVerbalReunionExtraitRespons>> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(
+            @PathVariable Integer acId,
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVersion
+    ) {
+
+        List<ProcessVerbalReunionExtrait> list =
+                reunionService.findAllExtraitsByAcIdAndPpmIdAndPpmVersion(acId,ppmId, ppmVersion);
+        return ResponseEntity.ok(list.stream().map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto).collect(Collectors.toList()));
+    }*/
+
     private List<ReunionPpmResponse> mapReunionPpms(List<com.sigmap.common.reunionPpm.ReunionPpm> reunionPpms) {
         if (reunionPpms == null) return List.of();
 
@@ -397,7 +457,37 @@ public class ReunionController {
                 .findFirst()
                 .orElse(null);
     }
+    private List<ProcessVerbalReunionExtraitRespons> mapExtraits(Reunion reunion) {
+        if (reunion == null || reunion.getProcessVerbal() == null) return List.of();
 
+        Integer pvId = reunion.getProcessVerbal().getId();
+
+        // Fetch all extraits for this PV
+        List<ProcessVerbalReunionExtrait> extraits =
+                processVerbalReunionExtraitService.findAllByPvId(pvId);
+
+        return extraits.stream()
+                .map(extrait -> {
+                    ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
+                    dto.setExtraitId(extrait.getExtraitId());
+                    dto.setPvId(extrait.getPvId());
+
+                    if (extrait.getAc() != null) {
+                        dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
+                    }
+                    if(extrait.getDoc() != null) {
+                        dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
+
+                    }
+
+                    return dto;
+                })
+                .toList();
+    }
+    private boolean haveExtraitCheck(Reunion reunion) {
+        return reunion.getProcessVerbal()!=null?!processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId()).isEmpty():false;
+
+    }
 
  /*   @GetMapping("/list/ppm/{ppmId}")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
@@ -485,6 +575,7 @@ public class ReunionController {
 
         return ResponseEntity.ok(page);
     }
+
 
 // global function for paginated a list
     public static <T> Page<T> paginate(List<T> list, Pageable pageable) {

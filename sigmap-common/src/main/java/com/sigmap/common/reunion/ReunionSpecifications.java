@@ -1,9 +1,11 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.ac.Ac;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
@@ -19,6 +21,12 @@ public class ReunionSpecifications {
             Join<Reunion, Com> comJoin = root.join("com", JoinType.LEFT);
             Join<Reunion, ReunionPpm> reunionPpmJoin = root.join("reunionPpms", JoinType.LEFT);
             Join<ReunionPpm, Ppm> ppmJoin = reunionPpmJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acFromPpmJoin = ppmJoin.join("ac", JoinType.LEFT);
+            Join<Reunion, ReunionDac> rdJoin = root.join("reunionDacs", JoinType.LEFT);
+            Join<ReunionDac, Dac> dacJoin = rdJoin.join("dac", JoinType.LEFT);
+            Join<Dac, Ppm> dacPpmJoin = dacJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acFromDacJoin = dacPpmJoin.join("ac", JoinType.LEFT);
+
             query.distinct(true);
             Expression<String> formattedDate = criteriaBuilder.function(
                     "DATE_FORMAT",
@@ -37,7 +45,11 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(root.get("note"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(formattedDate), "%" + search + "%"),
-                    criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%")
+                    criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromPpmJoin.get("id"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromDacJoin.get("id"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromPpmJoin.get("nom"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromDacJoin.get("nom"), "%" + search + "%")
 
 
                     );
@@ -138,10 +150,73 @@ public class ReunionSpecifications {
      */
     public static Specification<Reunion> hasPpmId(Integer ppmId) {
         return (root, query, cb) -> {
-            var join = root.join("reunionPpms"); // join Reunion -> ReunionPpm
+            var join = root.join("reunionPpms");
             return cb.equal(join.get("ppmId"), ppmId);
         };
     }
+    public static Specification<Reunion> hasAcId(Integer acId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
 
+            // via ReunionPpm -> Ppm -> Ac
+            Join<Reunion, ReunionPpm> rpJoin = root.join("reunionPpms", JoinType.LEFT);
+            Join<ReunionPpm, Ppm> ppmJoin = rpJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acJoin = ppmJoin.join("ac", JoinType.LEFT);
+
+            // via ReunionDac -> Dac -> Ppm -> Ac
+            Join<Reunion, ReunionDac> rdJoin = root.join("reunionDacs", JoinType.LEFT);
+            Join<ReunionDac, Dac> dacJoin = rdJoin.join("dac", JoinType.LEFT);
+            Join<Dac, Ppm> dacPpmJoin = dacJoin.join("ppm", JoinType.LEFT);
+            Join<Ppm, Ac> acJoin2 = dacPpmJoin.join("ac", JoinType.LEFT);
+
+
+            // PPM (from ReunionPpm path)
+            var ppmNotDeleted = cb.or(
+                    cb.isFalse(ppmJoin.get("isDeleted"))
+            );
+
+            // PPM (from DAC path)
+            var dacPpmNotDeleted = cb.or(
+                    cb.isFalse(dacPpmJoin.get("isDeleted"))
+            );
+
+            // DAC
+            var dacNotDeleted = cb.or(
+                    cb.isFalse(dacJoin.get("isDeleted"))
+            );
+
+            // AC from PPM
+            var acNotDeleted = cb.or(
+                    cb.isFalse(acJoin.get("isDeleted"))
+            );
+
+            // AC from DAC
+            var ac2NotDeleted = cb.or(
+                    cb.isFalse(acJoin2.get("isDeleted"))
+            );
+
+            // reunion is linked to this AC if:
+            //  - path via PPM: AC matches + AC/PPM not deleted
+            //  OR
+            //  - path via DAC: AC matches + AC/PPM/DAC not deleted
+            return cb.or(
+                    cb.and(
+                            acNotDeleted,
+                            ppmNotDeleted,
+                            cb.equal(acJoin.get("id"), acId)
+                    ),
+                    cb.and(
+                            ac2NotDeleted,
+                            dacPpmNotDeleted,
+                            dacNotDeleted,
+                            cb.equal(acJoin2.get("id"), acId)
+                    )
+            );
+        };
+    }
+
+    public static Specification<Reunion> comTypeCPMP() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("comType").get("refType").get("code"), "CPMP");
+    }
 
 }

@@ -47,7 +47,7 @@ import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.parametrage_process_dac.exeptions.ParametrageProcessDacNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
-import com.sigmap.common.process_verbal_reunion.exception.ProcessVerbalReunionNotFound;
+import com.sigmap.common.process_verbal_reunion.exception.*;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -1443,6 +1443,89 @@ public class GlobalExceptionHandler {
                 getLocal()
         );
 
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ExtraitFileRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleExtraitFileRequired(ExtraitFileRequiredException ex) {
+        String message = messageSource.getMessage(
+                "reunion.extrait.file.required",
+                new Object[]{ex.getReunionId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionComTypeInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleComTypeInvalid(ReunionComTypeInvalidException ex) {
+        String message = messageSource.getMessage(
+                "reunion.comtype.invalid",
+                new Object[]{ex.getReunionId(), ex.getComTypeCode()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPvMissingException.class)
+    public ResponseEntity<ErrorResponse> handlePvMissing(ReunionPvMissingException ex) {
+        String message = messageSource.getMessage(
+                "reunion.pv.missing",
+                new Object[]{ex.getReunionId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPpmNotFoundOrNoDecisionException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNotFoundOrNoDecision(ReunionPpmNotFoundOrNoDecisionException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ppm.notInReunionOrNoDecision",
+                new Object[]{ex.getReunionId(), ex.getPpmId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPpmNoAcException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNoAc(ReunionPpmNoAcException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ppm.noAc",
+                new Object[]{ex.getReunionId(), ex.getPpmId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionAcNotEligibleForExtraitException.class)
+    public ResponseEntity<ErrorResponse> handleAcNotEligible(ReunionAcNotEligibleForExtraitException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ac.notEligibleForExtrait",
+                new Object[]{ex.getReunionId(), ex.getAcId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ReunionExtraitAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleExtraitAlreadyExists(ReunionExtraitAlreadyExistsException ex) {
+        String message = messageSource.getMessage(
+                "reunion.extrait.alreadyExists",
+                new Object[]{ex.getPvId(), ex.getAcId()},
+                getLocal()
+        );
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
