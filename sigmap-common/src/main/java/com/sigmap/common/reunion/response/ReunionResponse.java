@@ -4,6 +4,7 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.com.response.ComResponseDto;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
+import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.response.BaseEntityResponse;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
@@ -12,6 +13,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -31,6 +33,8 @@ public class ReunionResponse {
     private List<ReunionDacResponse> reunionDacs;
     private List<ParticipantResponseDto> participants;
      private ProcessVerbalReunionResponse processVerbal;
+    List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
+    boolean haveExtraits = false;
     private BaseEntityResponse metadata;
 
 }
