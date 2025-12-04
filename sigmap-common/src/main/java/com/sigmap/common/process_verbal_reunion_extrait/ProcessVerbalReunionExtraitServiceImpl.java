@@ -99,4 +99,9 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
                 .toList();
     }
 
+    @Override
+    public List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {
+        return repository.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+    }
+
 }

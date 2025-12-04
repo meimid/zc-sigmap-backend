@@ -24,4 +24,10 @@ public interface ProcessVerbalReunionExtraitRepository
 
     Page<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId, Pageable pageable);
     List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId);
+
+    @Query("SELECT e FROM ProcessVerbalReunionExtrait e " +
+            "WHERE  e.ppm.id = :ppmId " +
+            "AND e.ppm.version = :ppmVersion " +
+            "AND e.acId = :acId " )
+    List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
 }

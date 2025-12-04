@@ -59,6 +59,7 @@ public interface ReunionService {
 
     List<Reunion> reunionCloutureListByAcId(Integer acId);
     Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable);
+    List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
 
 
 

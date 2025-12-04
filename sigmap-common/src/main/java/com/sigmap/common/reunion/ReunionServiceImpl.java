@@ -554,6 +554,10 @@ public class ReunionServiceImpl implements ReunionService{
                     if (ppmReq.getDecision() != null) {
                         link.setDecision(ppmReq.getDecision());
                     }
+                   /* if(reunion.getStatus().equals(ReunionStatus.EN_COURS) &&ppmReq.getDecision() == "Reject"){
+
+
+                    }*/
                     if (ppmReq.getObservation() != null) {
                         link.setObservation(ppmReq.getObservation());
                     }
@@ -1377,6 +1381,11 @@ public class ReunionServiceImpl implements ReunionService{
     @Override
     public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable) {
         return null;
+    }
+
+    @Override
+    public List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {
+        return processVerbalReunionExtraitService.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
     }
 
 

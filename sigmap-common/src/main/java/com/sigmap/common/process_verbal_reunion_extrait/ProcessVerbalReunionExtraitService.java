@@ -15,6 +15,8 @@ public interface ProcessVerbalReunionExtraitService {
     ProcessVerbalReunionExtrait findByIds(ProcessVerbalReunionExtraitRequest request);
     ProcessVerbalReunionExtrait update( ProcessVerbalReunionExtraitRequest request) throws IOException;
     List<Integer> findAcIdsWithExtraitByPvId(Integer pvId);
+    List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
+
 
 
 }

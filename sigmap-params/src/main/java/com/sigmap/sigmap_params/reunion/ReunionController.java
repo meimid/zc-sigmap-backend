@@ -387,6 +387,19 @@ public class ReunionController {
         return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
     }
 
+  /*  @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @GetMapping("/{acId}/{ppmId}/{ppmVersion}")
+    public ResponseEntity<List<ProcessVerbalReunionExtraitRespons>> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(
+            @PathVariable Integer acId,
+            @PathVariable Integer ppmId,
+            @PathVariable Integer ppmVersion
+    ) {
+
+        List<ProcessVerbalReunionExtrait> list =
+                reunionService.findAllExtraitsByAcIdAndPpmIdAndPpmVersion(acId,ppmId, ppmVersion);
+        return ResponseEntity.ok(list.stream().map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto).collect(Collectors.toList()));
+    }*/
+
     private List<ReunionPpmResponse> mapReunionPpms(List<com.sigmap.common.reunionPpm.ReunionPpm> reunionPpms) {
         if (reunionPpms == null) return List.of();
 
