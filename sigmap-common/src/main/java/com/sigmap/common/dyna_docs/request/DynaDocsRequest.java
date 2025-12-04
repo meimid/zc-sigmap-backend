@@ -19,7 +19,7 @@ public class DynaDocsRequest {
 
   private Integer modePassationId;
 
-  private Integer dynaDocOrder;
+  private Integer dynaDocOrder = null;
 
   private ActiveStatus status = ActiveStatus.NON_ACTIF;
 

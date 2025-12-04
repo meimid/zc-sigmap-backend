@@ -136,12 +136,12 @@ public class DacServiceImpl implements DacService {
                 docKeyPairs.put(key, new int[]{ddId, ddVer});
                 // Use the relation via field -> dynaDocs to get order when available
                 Integer order = null;
-                try {
+               /* try {
                     if (doc.getDynaField() != null && doc.getDynaField().getDynaDocs() != null) {
                         order = doc.getDynaField().getDynaDocs().getDynaDocOrder();
                     }
                 } catch (Exception ignore) {
-                }
+                }*/
                 // Fallback to a large number to avoid NPEs; ordering will still be stable
                 docKeyToOrder.put(key, order != null ? order : Integer.MAX_VALUE);
             }
@@ -551,34 +551,31 @@ public class DacServiceImpl implements DacService {
     /**
      * Remplace le marqueur **nomTable** par un vrai tableau Word inséré à la bonne position
      */
-    private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
+   private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
         if (items == null || items.isEmpty()) return;
-
-        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
-
-        for (XWPFParagraph p : paragraphs) {
+        
+        // Parcourir tous les paragraphes du document
+        for (int i = 0; i < document.getParagraphs().size(); i++) {
+            XWPFParagraph p = document.getParagraphs().get(i);
             String text = p.getText();
 
             if (text != null && text.contains("**list:" + listName + "**")) {
                 log.debug("Marqueur de liste trouvé: {}", text);
 
+                // Créer un curseur à la position du marqueur
                 XmlCursor cursor = p.getCTP().newCursor();
 
-                // Insérer un seul paragraphe
-                // Itérer sur les items et créer un paragraphe pour chacun
+                // Insérer chaque élément comme un nouveau paragraphe
                 for (String item : items) {
                     if (item != null && !item.trim().isEmpty()) {
-                        // Insérer un nouveau paragraphe à la position du curseur
-                        XWPFParagraph listItem = document.insertNewParagraph(cursor);
-                        listItem.setIndentationLeft(720); // Indentation pour simuler une liste
-
-                        // Créer le run et ajouter le texte
-                        XWPFRun run = listItem.createRun();
-                        run.setText("- " + item.trim());
-
-                        // Déplacer le curseur après le paragraphe nouvellement inséré
-                        // pour que le prochain item soit inséré après celui-ci
-                        cursor = listItem.getCTP().newCursor();
+                        // Créer un nouveau paragraphe à la position du curseur
+                        XWPFParagraph newPara = document.insertNewParagraph(cursor);
+                        newPara.setIndentationLeft(720);
+                        newPara.createRun().setText("- " + item.trim());
+                        
+                        // Déplacer le curseur après le paragraphe inséré
+                        cursor = newPara.getCTP().newCursor();
+                        cursor.toNextSibling();
                     }
                 }
 
@@ -591,7 +588,7 @@ public class DacServiceImpl implements DacService {
                 break;
             }
         }
-    }
+   }
 
     /**
      * Remplace les marqueurs dans un paragraphe tout en préservant le style.
