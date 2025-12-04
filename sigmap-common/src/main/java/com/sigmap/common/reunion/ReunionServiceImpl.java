@@ -964,6 +964,12 @@ public class ReunionServiceImpl implements ReunionService{
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
 
             }
+            else{
+            List<ProcessVerbalReunionExtrait> extrais = processVerbalReunionExtraitService.findAllByPvId(reunionToUpdate.getProcessVerbal().getId()).stream().filter(p->p.getDoc()==null).collect(Collectors.toList());
+            if(extrais.isEmpty()){
+                reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
+            }
+            }
 
          save(reunionToUpdate);
             return pv;
@@ -1303,7 +1309,8 @@ public class ReunionServiceImpl implements ReunionService{
         acIdsWithCompletedExtrait = new HashSet<>(acIdsWithCompletedExtrait);
         acIdsWithCompletedExtrait.add(acId);
 
-        if (acIdsWithCompletedExtrait.containsAll(acIdsFromPpmsWithDecision)) {
+        if (acIdsWithCompletedExtrait.containsAll(acIdsFromPpmsWithDecision)
+                && reunion.getProcessVerbal().getDocuments().stream().anyMatch(ProcessVerbalReunionDoc::isPv)) {
             reunion.setStatus(ReunionStatus.CLOTURER);
             save(reunion);
         }
