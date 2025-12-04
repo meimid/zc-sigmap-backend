@@ -25,7 +25,7 @@ public class ReunionWithParticipantsAndPvDto {
     private String note;
     private List<ParticipantResponseDto> participants;
     private ProcessVerbalReunionResponse processVerbal;
-    //List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
+    List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
     boolean haveExtraits = false;
     private BaseEntityResponse metadata;
     private String createdBy;

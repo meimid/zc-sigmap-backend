@@ -116,7 +116,7 @@ public class ReunionController {
                           : null
           );
       }
-      //  response.setExtraits(mapExtraits(reunion));
+       response.setExtraits(mapExtraits(reunion));
         response.setHaveExtraits(haveExtraitCheck(reunion));
 
         return ResponseEntity.ok(response);
