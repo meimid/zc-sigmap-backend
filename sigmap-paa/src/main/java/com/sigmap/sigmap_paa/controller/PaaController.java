@@ -39,7 +39,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.propertyeditors.CustomCollectionEditor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -90,10 +92,12 @@ public class PaaController {
      * @param pageable the pageable to use
      * @return a page of paas
      */
-
     @GetMapping
     public ResponseEntity<Page<PaaResponseWithRealisations>> findAll(
-            PaaQuery query, Pageable pageable) throws PaaNotFound, AcNotFound {
+            PaaQuery query,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) throws PaaNotFound, AcNotFound {
+
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getPrincipal();
@@ -101,8 +105,10 @@ public class PaaController {
 
         Page<Paa> paas = paaService.findAll(query.toSpecification(), pageable);
         Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
+
         return ResponseEntity.ok(responses);
     }
+
 
     @GetMapping("/current_year")
     public ResponseEntity<PaaResponseWithRealisations> getPaaOfCurrentYear() {
@@ -112,7 +118,8 @@ public class PaaController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<Page<PaaResponseWithRealisations>> getCurrentYearPaasByUser(Pageable pageable) {
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getCurrentYearPaasByUser(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<Paa> paas = paaService.findCurrentYearPaasByUser(pageable);
         Page<PaaResponseWithRealisations> responses = paas.map(PaaDetailedMapper.INSTANCE::mapDetailed);
         return ResponseEntity.ok(responses);
