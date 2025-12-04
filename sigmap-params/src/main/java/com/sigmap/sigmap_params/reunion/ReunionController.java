@@ -19,6 +19,7 @@ import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
@@ -116,6 +117,7 @@ public class ReunionController {
                           : null
           );
       }
+
        response.setExtraits(mapExtraits(reunion));
         response.setHaveExtraits(haveExtraitCheck(reunion));
 
@@ -479,6 +481,9 @@ public class ReunionController {
                         dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
 
                     }
+                    if(extrait.getPpm() != null) {
+                     dto.setPpm(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(extrait.getPpm()));
+                    }
 
                     return dto;
                 })
@@ -506,6 +511,8 @@ public class ReunionController {
         // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
 
         ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId, jwt);
+        reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
+
 
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }

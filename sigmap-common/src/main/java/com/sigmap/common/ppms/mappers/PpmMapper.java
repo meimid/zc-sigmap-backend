@@ -126,5 +126,5 @@ public interface PpmMapper {
 
 
     PpmDropListDto mapToDropListDto(Ppm ppm);
-
+    PpmIdVerResponseDto mapToPpmIdVerResponseDto(Ppm ppm);
 }
