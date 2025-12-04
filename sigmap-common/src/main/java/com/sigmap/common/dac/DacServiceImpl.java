@@ -326,18 +326,19 @@ public class DacServiceImpl implements DacService {
         log.debug("Found {} DacDocs entries for Dac ID: {}, Version: {}", dacDocsList.size(), dacId, dacVersion);
 
         // Process DacDocs entries, filtering by document and sorting by field order
+        //eliminated sorting by field order with new generation methode
         List<DacDocs> filteredDacDocs = dacDocsList.stream()
                 .filter(dacDoc ->
                         dacDoc.getId().getDynaDocsId().equals(dynaDocsId) &&
                                 dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
 
                 )
-                .filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
+                /*.filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
                     return order1.compareTo(order2);
-                })
+                })*/
                 .toList();
         dacDocsList.stream()
                 .filter(dacDoc -> {
@@ -346,11 +347,11 @@ public class DacServiceImpl implements DacService {
                             field.getDynaDocs().getId().equals(dynaDocsId) &&
                             field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
-                .sorted((d1, d2) -> {
+                /*.sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
                     return order1.compareTo(order2);
-                })
+                })*/
                 .forEach(dacDoc -> {
                     String bookmarkName = dacDoc.getDynaField().getName();
                     String fieldValue = dacDoc.getFieldValue();
