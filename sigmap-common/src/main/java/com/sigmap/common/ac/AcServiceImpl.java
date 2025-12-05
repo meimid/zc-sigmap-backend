@@ -324,10 +324,11 @@ public class AcServiceImpl implements AcService{
             Path targetPath = logoDir.resolve(newFilename);
 
             if (savedAc.getLogo() != null) {
-                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
-                Files.deleteIfExists(oldFilePath);
+                Path oldFilePath = logoDir.resolve(savedAc.getLogo());
+                if (Files.exists(oldFilePath) && Files.isRegularFile(oldFilePath)) {
+                    Files.delete(oldFilePath);
+                }
             }
-            Files.createDirectories(targetPath.getParent());
 
             request.getLogoFile().transferTo(targetPath.toFile());
 
