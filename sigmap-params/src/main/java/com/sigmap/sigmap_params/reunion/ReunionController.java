@@ -380,6 +380,7 @@ public class ReunionController {
         return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
     }
 
+
   /*  @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @GetMapping("/{acId}/{ppmId}/{ppmVersion}")
     public ResponseEntity<List<ProcessVerbalReunionExtraitRespons>> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(
@@ -494,25 +495,13 @@ public class ReunionController {
 
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) {
-
-        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-
         ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId);
         reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
-
-
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
-   /* @GetMapping("/drop-list/ppm/{ppmId}")
-    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-        List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification());
-
-        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    /*@GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")
+    public ResponseEntity<List<PvAndComResponse>> findAllDropListByPpmId(@RequestParam List<Integer> comIds,@PathVariable Integer ppmId,@PathVariable Integer ppmVer){
+        return ResponseEntity.ok(reunionService.listPvComByPpm(comIds,ppmId,ppmVer));
     }*/
 
     @GetMapping("/history/drop-list-com/ppm/{ppmId}")

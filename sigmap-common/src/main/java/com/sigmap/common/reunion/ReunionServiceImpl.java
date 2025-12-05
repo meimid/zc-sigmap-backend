@@ -12,7 +12,9 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
+import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
@@ -35,6 +37,7 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.exception.*;
+import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMapper;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
@@ -45,6 +48,7 @@ import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.PvAndComResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
@@ -1330,19 +1334,80 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> reunionCloutureListByAcId(Integer acId) {
+    public List<PvAndComResponse> listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+        List<PvAndComResponse> listPvs=new ArrayList<>();
+        PvAndComResponse dto = new PvAndComResponse();
+        for(Integer comId : comIds) {
+
+
+
+        Optional<Com> com=comService.findOne(Specification.where(ComSpecifications.deleted(false).and(ComSpecifications.id(comId))));
         Specification<Reunion> spec = Specification
-                .where(ReunionSpecifications.hasAcId(acId))
-                .and(ReunionSpecifications.deleted(false)).
-                and(ReunionSpecifications.status(ReunionStatus.CLOTURER)).
-                and(ReunionSpecifications.comTypeCPMP());
-            return findAll(spec);
+                .where(ReunionSpecifications.deleted(false)).
+                and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                .and(ReunionSpecifications.comId(comId))
+                .and(ReunionSpecifications.hasPpmId(ppmId))
+                .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+            String typeCom=com.get().getComType().getCode();
+            if(Objects.equals(typeCom, "CPMP")) {
+                listPvs= findAll(spec).stream()
+                        .filter(r -> {
+                            String code = r.getCom().getComType().getCode();
+                            return "CPMP".equals(code) || "CNCMP-P".equals(code);
+                        }).map(r->{
+                            if(typeCom.equals("CPMP")) {
+                                dto.getCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            if(typeCom.equals("CNCMP-P")) {
+                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            return dto;
+                        })
+                        .collect(Collectors.toList());
+            }
+
+             else if (Objects.equals(typeCom, "CNCMP-S")) {
+                listPvs= findAll(spec).stream()
+                        .filter(r -> {
+                            String code = r.getCom().getComType().getCode();
+                            return "CPMP-S".equals(code) || "CNCMP-P".equals(code);
+                        })
+                        .map(r->{
+                            if(typeCom.equals("CPMP-S")) {
+                                dto.getCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            if(typeCom.equals("CNCMP-P")) {
+                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            return dto;
+                        })
+                        .collect(Collectors.toList());
+
+            }
+
+            else if (Objects.equals(typeCom, "CNCMP-P")) {
+                listPvs= findAll(spec).stream()
+                        .map(r->{
+                            if(typeCom.equals("CPMP-S")) {
+                                dto.getCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            if(typeCom.equals("CNCMP-P")) {
+                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                            }
+                            if(typeCom.equals("CNCMP")){
+                                dto.getCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+
+                            }
+                            return dto;
+                        }).collect(Collectors.toList());
+
+            }
+        }
+             return listPvs;
+
     }
 
-    @Override
-    public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Specification<Reunion> specifications, Pageable pageable) {
-        return null;
-    }
+
 
     @Override
     public List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {

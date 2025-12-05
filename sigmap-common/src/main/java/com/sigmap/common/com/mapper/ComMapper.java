@@ -25,5 +25,6 @@ public interface ComMapper {
     Com map(ComRequest source);
     void updateFromRequest(ComRequest source, @MappingTarget Com target);
     ComResponseDto mapToDto(Com source);
+    @Mapping(target = "typeCommission",source = "com.comType.code")
     ComSelectResponseDto mapToSelectDto(Com com);
 }
