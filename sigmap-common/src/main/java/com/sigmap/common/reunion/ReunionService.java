@@ -49,16 +49,16 @@ public interface ReunionService {
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
     List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId,Specification<Reunion> specifications) ;
     List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId,String userId,Specification<Reunion> specifications) ;
-    List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt,Specification<Reunion> specifications);
+    List<Reunion> findAllByPpmIdList(Integer ppmId,Specification<Reunion> specifications);
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
-    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
-    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) ;
+    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Specification<Reunion> specifications);
     ProcessVerbalReunionExtrait injectExtraitForAc(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
-    Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(Integer reunionId, Jwt jwt,Pageable pageable);
+    Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
 
     List<Reunion> reunionCloutureListByAcId(Integer acId);
-    Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable);
+    Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Specification<Reunion> specifications,Pageable pageable);
     List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
 
 

@@ -608,7 +608,8 @@ public class ComServiceImpl implements ComService {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority()
                                                .and(ComSpecifications.deleted(false)
                                                .and(Specification.not(ComSpecifications.cncmp()))
-                                               .and(Specification.not(ComSpecifications.special())));
+                                               .and(Specification.not(ComSpecifications.special()))
+                                               );
     return repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
   }
 
