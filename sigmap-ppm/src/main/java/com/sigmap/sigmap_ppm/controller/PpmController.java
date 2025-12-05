@@ -52,7 +52,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -105,7 +107,10 @@ public class PpmController {
      */
     @GetMapping
     public ResponseEntity<Page<PpmResponseDto>> findAll(
-            PpmQuery query, Pageable pageable) throws PpmNotFound, AcNotFound {
+            PpmQuery query,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) throws PpmNotFound, AcNotFound {
+
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getPrincipal();
@@ -113,7 +118,9 @@ public class PpmController {
 
         Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
         logger.debug("Found -------------- {} ppms", ppms.getTotalElements());
+
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+
         return ResponseEntity.ok(responses);
     }
 
@@ -1229,9 +1236,12 @@ public class PpmController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPaasByUser(Pageable pageable) {
+    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPpmsByUser(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
         Page<Ppm> ppms = ppmService.findCurrentYearPpmsByUser(pageable);
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+
         return ResponseEntity.ok(responses);
     }
 
