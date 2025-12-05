@@ -14,7 +14,6 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
-import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
@@ -28,7 +27,6 @@ import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
@@ -37,7 +35,6 @@ import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion.exception.*;
-import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMapper;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
@@ -48,7 +45,8 @@ import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.PvAndComResponse;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
@@ -73,7 +71,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -1334,8 +1331,8 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public PvAndComResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
-        PvAndComResponse dto = new PvAndComResponse();
+    public PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+        PvResponse dto = new PvResponse();
         for(Integer comId : comIds) {
 
         Optional<Com> com=comService.findOne(Specification.where(ComSpecifications.deleted(false).and(ComSpecifications.id(comId))));
@@ -1353,10 +1350,10 @@ public class ReunionServiceImpl implements ReunionService{
                             return "CPMP".equals(code) || "CNCMP-P".equals(code);
                         }).map(r->{
                             if(typeCom.equals("CPMP")) {
-                                dto.getCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             if(typeCom.equals("CNCMP-P")) {
-                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             return dto;
                         })
@@ -1371,10 +1368,10 @@ public class ReunionServiceImpl implements ReunionService{
                         })
                         .map(r->{
                             if(typeCom.equals("CPMP-S")) {
-                                dto.getCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             if(typeCom.equals("CNCMP-P")) {
-                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             return dto;
                         })
@@ -1386,13 +1383,13 @@ public class ReunionServiceImpl implements ReunionService{
                 findAll(spec).stream()
                         .map(r->{
                             if(typeCom.equals("CPMP-S")) {
-                                dto.getCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             if(typeCom.equals("CNCMP-P")) {
-                                dto.getCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCNCMPPermanente().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
                             }
                             if(typeCom.equals("CNCMP")){
-                                dto.getCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
+                                dto.getPvCPMP().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
 
                             }
                             return dto;
@@ -1406,10 +1403,10 @@ public class ReunionServiceImpl implements ReunionService{
 
 
     @Override
-    public PvAndComResponse findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId,
-                                                                       Integer ppmId,
-                                                                       Integer ppmVersion) {
-        PvAndComResponse dto = new PvAndComResponse();
+    public ExtraitResponse findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId,
+                                                                 Integer ppmId,
+                                                                 Integer ppmVersion) {
+        ExtraitResponse dto = new ExtraitResponse();
 
         List<ProcessVerbalReunionExtrait> extraits =
                 processVerbalReunionExtraitService.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
@@ -1424,12 +1421,13 @@ public class ReunionServiceImpl implements ReunionService{
                     return;
                 }
 
-                if ("CPMP-S".equals(typeCom)) {
+                /*if ("CPMP-S".equals(typeCom)) {
                     dto.getCNCMPSpecialise().add(alfrescoId);
                 } else if ("CNCMP-P".equals(typeCom)) {
                     dto.getCNCMPPermanente().add(alfrescoId);
-                } else if ("CPMP".equals(typeCom)) {
-                    dto.getCPMP().add(alfrescoId);
+                } else */
+                    if ("CPMP".equals(typeCom)) {
+                    dto.getExtraitCPMP().add(alfrescoId);
                 }
             });
         });
