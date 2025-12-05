@@ -1334,12 +1334,9 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<PvAndComResponse> listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
-        List<PvAndComResponse> listPvs=new ArrayList<>();
+    public PvAndComResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
         PvAndComResponse dto = new PvAndComResponse();
         for(Integer comId : comIds) {
-
-
 
         Optional<Com> com=comService.findOne(Specification.where(ComSpecifications.deleted(false).and(ComSpecifications.id(comId))));
         Specification<Reunion> spec = Specification
@@ -1350,7 +1347,7 @@ public class ReunionServiceImpl implements ReunionService{
                 .and(ReunionSpecifications.hasPpmVer(ppmVersion));
             String typeCom=com.get().getComType().getCode();
             if(Objects.equals(typeCom, "CPMP")) {
-                listPvs= findAll(spec).stream()
+                findAll(spec).stream()
                         .filter(r -> {
                             String code = r.getCom().getComType().getCode();
                             return "CPMP".equals(code) || "CNCMP-P".equals(code);
@@ -1367,7 +1364,7 @@ public class ReunionServiceImpl implements ReunionService{
             }
 
              else if (Objects.equals(typeCom, "CNCMP-S")) {
-                listPvs= findAll(spec).stream()
+                findAll(spec).stream()
                         .filter(r -> {
                             String code = r.getCom().getComType().getCode();
                             return "CPMP-S".equals(code) || "CNCMP-P".equals(code);
@@ -1386,7 +1383,7 @@ public class ReunionServiceImpl implements ReunionService{
             }
 
             else if (Objects.equals(typeCom, "CNCMP-P")) {
-                listPvs= findAll(spec).stream()
+                findAll(spec).stream()
                         .map(r->{
                             if(typeCom.equals("CPMP-S")) {
                                 dto.getCNCMPSpecialise().add(r.getProcessVerbal().getDocuments().stream().filter(p->p.isPv()).findFirst().get().getDoc().getAlfresco_id());
@@ -1403,15 +1400,41 @@ public class ReunionServiceImpl implements ReunionService{
 
             }
         }
-             return listPvs;
+             return dto;
 
     }
 
 
-
     @Override
-    public List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {
-        return processVerbalReunionExtraitService.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+    public PvAndComResponse findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId,
+                                                                       Integer ppmId,
+                                                                       Integer ppmVersion) {
+        PvAndComResponse dto = new PvAndComResponse();
+
+        List<ProcessVerbalReunionExtrait> extraits =
+                processVerbalReunionExtraitService.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+
+        extraits.stream().forEach(ex -> {
+            Optional<Reunion> reunionOpt = repository.findByProcessVerbalId(ex.getPvId());
+
+            reunionOpt.ifPresent(reunion -> {
+                String typeCom = reunion.getCom().getComType().getCode();
+                String alfrescoId = ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                if (alfrescoId == null) {
+                    return;
+                }
+
+                if ("CPMP-S".equals(typeCom)) {
+                    dto.getCNCMPSpecialise().add(alfrescoId);
+                } else if ("CNCMP-P".equals(typeCom)) {
+                    dto.getCNCMPPermanente().add(alfrescoId);
+                } else if ("CPMP".equals(typeCom)) {
+                    dto.getCPMP().add(alfrescoId);
+                }
+            });
+        });
+
+        return dto;
     }
 
 

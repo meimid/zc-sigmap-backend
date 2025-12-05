@@ -52,6 +52,9 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
        """)
     Reunion findLatestByPpm(Integer ppmId, Integer ppmVer);
 
+    @Query("SELECT r FROM Reunion r WHERE r.processVerbal.id = :pvId")
+    Optional<Reunion> findByProcessVerbalId(@Param("pvId") Integer pvId);
+
 
 
 }

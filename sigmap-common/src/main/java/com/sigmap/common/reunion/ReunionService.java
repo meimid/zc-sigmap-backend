@@ -58,8 +58,8 @@ public interface ReunionService {
     ProcessVerbalReunionExtrait injectExtraitForAc(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
 
-    public List<PvAndComResponse> listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) ;
-    List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
+    PvAndComResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) ;
+     PvAndComResponse findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
 
 
 

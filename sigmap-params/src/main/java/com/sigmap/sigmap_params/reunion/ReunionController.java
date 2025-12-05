@@ -499,10 +499,15 @@ public class ReunionController {
         reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
-    /*@GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")
-    public ResponseEntity<List<PvAndComResponse>> findAllDropListByPpmId(@RequestParam List<Integer> comIds,@PathVariable Integer ppmId,@PathVariable Integer ppmVer){
+    @GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")
+    public ResponseEntity<PvAndComResponse> findAllDropListByPpmId(@RequestParam List<Integer> comIds,@PathVariable Integer ppmId,@PathVariable Integer ppmVer){
         return ResponseEntity.ok(reunionService.listPvComByPpm(comIds,ppmId,ppmVer));
-    }*/
+    }
+
+    @GetMapping("/{acId}/{ppmId}/{ppmVer}")
+    public ResponseEntity<PvAndComResponse> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(@PathVariable Integer acId,@PathVariable Integer ppmId,@PathVariable Integer ppmVer){
+        return ResponseEntity.ok(reunionService.findAllExtraitsByAcIdAndPpmIdAndPpmVersion(acId,ppmId,ppmVer));
+    }
 
     @GetMapping("/history/drop-list-com/ppm/{ppmId}")
     public ResponseEntity<List<ComSelectResponseDto>> findAllComDropListByPpmId(@PathVariable Integer ppmId,ReunionQuery query) {

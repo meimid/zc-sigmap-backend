@@ -29,5 +29,5 @@ public interface ProcessVerbalReunionExtraitRepository
             "WHERE  e.ppm.id = :ppmId " +
             "AND e.ppm.version = :ppmVersion " +
             "AND e.acId = :acId " )
-    List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
+    List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(@Param("acId")Integer acId, @Param("ppmId") Integer ppmId,@Param("ppmVersion") Integer ppmVersion);
 }
