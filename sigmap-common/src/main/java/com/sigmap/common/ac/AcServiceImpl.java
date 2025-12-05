@@ -455,7 +455,7 @@ public class AcServiceImpl implements AcService{
 
         // Step 3: Filter out those whose ID is in the used set
         return repository.findAll(spec).stream()
-                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted())
+                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted()&& !(ac.getCom().getComType().getCode() =="CPMP"))
                 .collect(Collectors.toList());
     }
 

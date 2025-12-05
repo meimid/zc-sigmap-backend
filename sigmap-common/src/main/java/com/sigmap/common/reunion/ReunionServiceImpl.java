@@ -59,6 +59,7 @@ import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
+import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -1012,24 +1013,18 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt,Specification<Reunion> specifications) {
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+    public List<Reunion> findAllByPpmIdList(Integer ppmId, Specification<Reunion> specifications) {
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
 
         List<Reunion> reunionList=new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
             reunionList = findAllByPpmIdListForAdminCentralAndSuperAdmin(ppmId,specifications);}
         else{
-            String userId = jwt.getSubject();
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
+
             reunionList=findAllByPpmIdListForUserCom(ppmId,userId,specifications);
 
         }
@@ -1096,45 +1091,28 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId, Jwt jwt) {
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+    public ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) {
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
         ReunionWithParticipantsAndPvDto dto =new ReunionWithParticipantsAndPvDto();
         if(isAdminCentral||isSuperAdmin) {
             dto = particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(reunionId, ppmId);
         }
         else {
-            String userId = jwt.getSubject();
-
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
             dto =particpantHistoryByReunionIdAndPPmIdForUserCom(reunionId,ppmId,userId);
         }
         return dto;
     }
 
     @Override
-    public List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications) {
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+    public List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Specification<Reunion> specifications) {
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-        String userId = jwt.getSubject();
+
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+        String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
 
         Specification<Reunion> spec = Specification.where(specifications)
                 .and(ReunionSpecifications.hasPpmId(ppmId))
@@ -1319,10 +1297,11 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
 
+
+
     @Override
-    public Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunioId(
+    public Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(
             Integer reunionId,
-            Jwt jwt,
             Pageable pageable
     ) {
         Reunion reunion = findById(reunionId);
@@ -1334,31 +1313,6 @@ public class ReunionServiceImpl implements ReunionService{
         if (reunion.getProcessVerbal() == null) {
             throw new ProcessVerbalReunionNotFound("", reunionId);
         }
-     /*   List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
-
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
-        List<ProcessVerbalReunionExtrait> extrais= new ArrayList<>();
-        Integer pvId = reunion.getProcessVerbal().getId();
-
-        if (isAdminCentral || isSuperAdmin) {
-            List<Integer> currentUserAcsIds = currentUserService.getCurrentUserAcIds();
-            extrais = processVerbalReunionExtraitService
-                    .findAllByPvId(pvId).stream()
-                    .filter(e -> currentUserAcsIds.contains(e.getAcId()))
-                    .toList();
-
-        }
-        else {
-            extrais = processVerbalReunionExtraitService.findAllByPvId(pvId);
-        }*/
 
         List<ProcessVerbalReunionExtrait> extrais = processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId());
 
@@ -1386,7 +1340,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Jwt jwt, Specification<Reunion> specifications,Pageable pageable) {
+    public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Specification<Reunion> specifications, Pageable pageable) {
         return null;
     }
 

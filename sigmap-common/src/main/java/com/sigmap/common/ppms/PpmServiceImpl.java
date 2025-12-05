@@ -50,14 +50,17 @@ import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_societe.exception.TokenRequired;
+import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.*;
 import lombok.extern.slf4j.Slf4j;
+import org.jfree.util.Log;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -65,6 +68,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -6225,25 +6229,20 @@ public class PpmServiceImpl implements PpmService {
 
     }
 
-    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt) {
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+    public List<Ppm> findAllPpms(Specification<Ppm> spec) {
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+        System.out.println("-----------------------"+String.valueOf(isAdminCentral));
+        System.out.println("-----------------------"+String.valueOf(isSuperAdmin));
+
 
         List<Ppm> ppms = new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
             ppms= findAllForSuperAdminAndAdminCentral(spec);
         }
         else {
-            String userId = jwt.getSubject();
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
             ppms=findAllForComUser(spec,userId);
         }
         return ppms;

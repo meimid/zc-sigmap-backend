@@ -61,6 +61,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -1446,13 +1447,9 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest)  {
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
         Specification specification = query.toSpecification();
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-        List<Ppm> ppms=ppmService.findAllPpms(specification,jwt);
+        List<Ppm> ppms=ppmService.findAllPpms(specification);
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
