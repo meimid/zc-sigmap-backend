@@ -55,6 +55,7 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
 import com.sigmap.common.societe.exception.*;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
@@ -1524,6 +1525,17 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage(
                 "reunion.extrait.alreadyExists",
                 new Object[]{ex.getPvId(), ex.getAcId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(SeuilGeneralNotFound.class)
+    public ResponseEntity<ErrorResponse> handleExtraitAlreadyExists(SeuilGeneralNotFound ex) {
+        String message = messageSource.getMessage("seuil.general.not.found",new Object[]{ex.getId()},
                 getLocal()
         );
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
