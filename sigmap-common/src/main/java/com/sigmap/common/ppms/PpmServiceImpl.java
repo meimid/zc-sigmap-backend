@@ -12,7 +12,10 @@ import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
@@ -41,6 +44,8 @@ import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
@@ -50,6 +55,11 @@ import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.ReunionRepository;
+import com.sigmap.common.reunion.ReunionSpecifications;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
@@ -108,6 +118,10 @@ public class PpmServiceImpl implements PpmService {
     private final ModelPpmRepository modelPpmRepository;
     private final PpmRepository ppmRepository;
     private final UserComRepository userComRepository;
+    private final ComService comService;
+    private final ReunionRepository reunionRepository;
+    private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+
 
     /**
      * Constructor.
@@ -121,7 +135,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository, ComService comService, ReunionRepository reunionRepository, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -142,6 +156,9 @@ public class PpmServiceImpl implements PpmService {
         this.modelPpmRepository = modelPpmRepository;
         this.ppmRepository = ppmRepository;
         this.userComRepository = userComRepository;
+        this.comService = comService;
+        this.reunionRepository = reunionRepository;
+        this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
     }
 
     @Override
@@ -187,6 +204,7 @@ public class PpmServiceImpl implements PpmService {
     @Override
     public Optional<Ppm> findById(Integer ppmId, Integer ppmVer)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+
         log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
 
         // Step 1: Validate input
@@ -195,107 +213,271 @@ public class PpmServiceImpl implements PpmService {
             throw new IllegalArgumentException("PPM ID cannot be null");
         }
 
-        // Step 2: Get user's AC IDs and comIds
+        // Step 2: Get user's AC IDs and COM IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         List<Integer> userComIds = currentUserService.getCurrentUserComIds();
-        log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
 
-        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
-            log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
-            throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
+        log.info("User AC IDs: {}, User COM IDs: {}", userAcIds, userComIds);
+
+        if ((userAcIds == null || userAcIds.isEmpty()) &&
+                (userComIds == null || userComIds.isEmpty())) {
+            throw new AcNotFound(
+                    "Aucun ID AC ou comId trouvé pour l'utilisateur connecté",
+                    Collections.emptyList()
+            );
         }
 
-        // Step 3: Validate ACs if any exist
-        if (userAcIds != null && !userAcIds.isEmpty()) {
+        // Step 3: Validate AC list
+        if (userAcIds != null) {
             for (Integer acId : userAcIds) {
-                try {
-                    log.debug("Validation de l'AC ID: {}", acId);
-                    acService.findById(acId);
-                } catch (AcNotFound e) {
-                    log.warn("AC non trouvé avec ID: {}", acId);
-                    throw e;
-                }
+                acService.findById(acId);
             }
         }
 
-        // Step 4: Determine the version to use
-        Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
+        // Step 4: Determine correct version
+        Integer targetVersion =
+                (ppmVer != null) ? ppmVer : repository.findMaxVersionById(ppmId);
+
         if (targetVersion == null) {
-            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId),
+            throw new PpmNotFound("Aucun PPM trouvé pour l'ID",
+                    List.of(ppmId),
                     ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
         }
-        log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
 
-        // Step 5: Retrieve the PPM
+        // Step 5: Retrieve PPM
         Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
+
         if (ppmOpt.isEmpty()) {
-            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
+            throw new PpmNotFound(
+                    "Aucun PPM trouvé pour l'ID et la version",
+                    List.of(ppmId),
+                    List.of(targetVersion)
+            );
         }
 
         Ppm ppm = ppmOpt.get();
-        log.debug("PPM récupéré: ID={}, Version={}, AC={}",
-                ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
 
-        // Step 6: Check if the PPM is deleted
+        // Step 6: Deleted check
         if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
-            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
             throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
         }
 
-        // Step 7: Validate AC or com association
+        // Step 7: Validate AC or COM association
         Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-        boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+
+        boolean hasMatchingAc =
+                ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+
         boolean hasMatchingCom = false;
 
-        if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
+        if (ppm.getComs() != null && userComIds != null) {
             for (Com com : ppm.getComs()) {
                 if (com != null && userComIds.contains(com.getId())) {
                     hasMatchingCom = true;
-                    log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
                     break;
                 }
             }
         }
 
         if (!hasMatchingAc && !hasMatchingCom) {
-            log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
-                    ppmId, ppmAcId, userAcIds, userComIds);
             throw new PpmNotAssociatedWithUserAcException(
-                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
+                    "PPM non associé à un AC ou COM de l'utilisateur",
                     List.of(ppmId.longValue()),
                     List.of(targetVersion)
             );
         }
-        log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-        Integer effectiveVer = targetVersion;
-        String modelAlfrescoId = modelPpmRepository
-                .findModelAlfrescoId(ppmId, effectiveVer)
-                .orElse(null);
-        if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
+        // Step 8: Load signed model if exists
+        String modelAlfrescoId =
+                modelPpmRepository.findModelAlfrescoId(ppmId, targetVersion).orElse(null);
+        if (modelAlfrescoId != null) {
             ppm.setModelAlfrescoId(modelAlfrescoId);
         }
 
+        // Step 9: Clean financements
         if (ppm.getRealisations() != null) {
-            ppm.getRealisations().forEach(realisation -> {
-                if (realisation.getFinancements() != null) {
-                    realisation.setFinancements(
-                            realisation.getFinancements()
-                                    .stream()
+            ppm.getRealisations().forEach(real -> {
+                if (real.getFinancements() != null) {
+                    real.setFinancements(
+                            real.getFinancements().stream()
                                     .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                                    .collect(java.util.stream.Collectors.toList())
+                                    .collect(Collectors.toList())
                     );
                 }
             });
         }
 
+        // Step 10: PV + Extrait rules (INSERTED HERE)
+        populateVisiblePvs(ppm, userAcIds, userComIds);
 
         Ppm responsePpm = createFilteredResponsePpm(ppm);
-        log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
+
         return Optional.ofNullable(responsePpm);
     }
+
+    private void populateVisiblePvs(Ppm ppm, List<Integer> acIds, List<Integer> comIds) {
+
+        log.warn("populateVisiblePvs: acIds={}, comIds={}", acIds, comIds);
+
+        if (acIds != null && !acIds.isEmpty()) {
+
+            Integer acId = acIds.get(0);
+
+            log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
+
+            ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
+
+            log.warn("Extraits returned = {}", extrait.getExtraitCPMP());
+
+            ppm.setExtraitPvs(extrait.getExtraitCPMP());
+        }
+
+        if (comIds != null && !comIds.isEmpty()) {
+
+            log.warn("Fetching PVs for comIds {}, ppm {}, ver {}", comIds, ppm.getId(), ppm.getVersion());
+
+            PvResponse pvResponse = listPvComByPpm(comIds, ppm.getId(), ppm.getVersion());
+
+            log.warn("PV CPMP = {}", pvResponse.getPvCPMP());
+            log.warn("PV Permanente = {}", pvResponse.getPvCNCMPPermanente());
+            log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
+
+            ppm.setPvCpmp(pvResponse.getPvCPMP());
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente());
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise());
+        }
+    }
+
+
+    private PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+
+        PvResponse dto = new PvResponse();
+
+        log.warn("START listPvComByPpm: comIds={}, ppmId={}, ver={}", comIds, ppmId, ppmVersion);
+
+        for (Integer comId : comIds) {
+
+            log.warn("Processing comId {}", comId);
+
+            Optional<Com> comOpt = comService.findOne(
+                    Specification.where(
+                            ComSpecifications.deleted(false)
+                                    .and(ComSpecifications.id(comId))
+                    )
+            );
+
+            if (comOpt.isEmpty()) {
+                log.error("COM {} not found or deleted!", comId);
+                continue;
+            }
+
+            String userComType = comOpt.get().getComType().getCode().trim();
+            log.warn("COM {} type = {}", comId, userComType);
+
+            Specification<Reunion> spec = Specification
+                    .where(ReunionSpecifications.deleted(false))
+                    .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                    .and(ReunionSpecifications.comId(comId))
+                    .and(ReunionSpecifications.hasPpmId(ppmId))
+                    .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+            List<Reunion> reunions = reunionRepository.findAll(spec);
+
+            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
+
+            for (Reunion r : reunions) {
+
+                String pvAlfrescoId =
+                        r.getProcessVerbal()
+                                .getDocuments()
+                                .stream()
+                                .filter(doc -> doc.isPv())
+                                .findFirst()
+                                .map(doc -> doc.getDoc().getAlfresco_id())
+                                .orElse(null);
+
+                log.warn("Reunion {} PV={}", r.getId(), pvAlfrescoId);
+
+                if (pvAlfrescoId == null) continue;
+
+                String reunionComType = r.getCom().getComType().getCode().trim();
+
+                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        // Permanent CNCMP sees only permanent PVs
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        // Specialized CNCMP sees specialized PVs + permanent PVs
+                        if ("CNCMP-S".equals(reunionComType)) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
+
+
+    private ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
+
+        ExtraitResponse dto = new ExtraitResponse();
+
+        List<ProcessVerbalReunionExtrait> extraits =
+                processVerbalReunionExtraitService
+                        .findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+
+        for (ProcessVerbalReunionExtrait ex : extraits) {
+
+            Optional<Reunion> reunionOpt =
+                    reunionRepository.findByProcessVerbalId(ex.getPvId());
+
+            if (reunionOpt.isEmpty()) continue;
+
+            Reunion reunion = reunionOpt.get();
+
+            String typeCom = reunion.getCom().getComType().getCode();
+
+            if (!"CPMP".equals(typeCom)) continue;
+
+            String alfrescoId =
+                    ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+
+            if (alfrescoId != null) {
+                dto.getExtraitCPMP().add(alfrescoId);
+            }
+        }
+
+        return dto;
+    }
+
 
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
@@ -323,6 +505,10 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
         filteredPpm.setModelAlfrescoId(ppm.getModelAlfrescoId());
+        filteredPpm.setExtraitPvs(ppm.getExtraitPvs());
+        filteredPpm.setPvCncmpPermanente(ppm.getPvCncmpPermanente());
+        filteredPpm.setPvCpmp(ppm.getPvCpmp());
+        filteredPpm.setPvCncmpSpecialisee(ppm.getPvCncmpSpecialisee());
         filteredPpm.setEtapeProcess(ppm.getEtapeProcess());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
