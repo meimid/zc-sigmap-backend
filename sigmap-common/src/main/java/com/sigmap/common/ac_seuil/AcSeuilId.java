@@ -29,8 +29,4 @@ public class AcSeuilId implements Serializable {
     @ManyToOne
     @JoinColumn(name = "type_marcher_id")
     private RefParam typeMarcher;
-
-    @ManyToOne
-    @JoinColumn(name = "mode_passation_id", referencedColumnName = "mode_passation_id")
-    private ModeDePassationSelection modePassation;
 }

@@ -5228,8 +5228,7 @@ public class PpmServiceImpl implements PpmService {
         if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
             try {
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
                 if (acSeuilOpt.isPresent()) {
                     realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
@@ -6066,9 +6065,7 @@ public class PpmServiceImpl implements PpmService {
                         realisation.getModePassation().getId());
 
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
-
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
 
                 if (acSeuilOpt.isPresent()) {

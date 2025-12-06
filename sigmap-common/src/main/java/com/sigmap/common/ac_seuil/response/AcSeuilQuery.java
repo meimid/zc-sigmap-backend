@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 public class AcSeuilQuery {
     private Integer acId;
     private Integer typeMarcherId;
-    private Integer modePassationId;
     private BigDecimal seuilMin;
     private BigDecimal seuilMax;
     private BigDecimal seuilExact;
@@ -26,9 +25,6 @@ public class AcSeuilQuery {
             spec = spec.and(AcSeuilSpecifications.typeMarcherId(typeMarcherId));
         }
 
-        if (modePassationId != null) {
-            spec = spec.and(AcSeuilSpecifications.modePassationId(modePassationId));
-        }
 
         if (seuilMin != null) {
             spec = spec.and(AcSeuilSpecifications.seuilMin(seuilMin));
