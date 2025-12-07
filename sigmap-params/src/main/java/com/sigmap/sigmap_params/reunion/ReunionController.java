@@ -12,19 +12,13 @@ import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.response.ComSelectResponseDto;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.response.DacResponseReunion;
-import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
-import com.sigmap.common.docs.Response.DocsResponse;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
-import com.sigmap.common.process_verbal.ProcessVerbal;
-import com.sigmap.common.process_verbal.response.ProcessVerbalResponse;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
-import com.sigmap.common.process_verbal_reunion.mapper.ProcessVerbalReunionMapper;
-import com.sigmap.common.process_verbal_reunion.response.ProcessVerbalReunionResponse;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
@@ -44,21 +38,14 @@ import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
-import com.sigmap.common.user_societe.exception.TokenRequired;
 import jakarta.mail.MessagingException;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -380,6 +367,7 @@ public class ReunionController {
         return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
     }
 
+
   /*  @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @GetMapping("/{acId}/{ppmId}/{ppmVersion}")
     public ResponseEntity<List<ProcessVerbalReunionExtraitRespons>> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(
@@ -494,25 +482,18 @@ public class ReunionController {
 
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) {
-
-        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-
         ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId);
         reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
-
-
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
-   /* @GetMapping("/drop-list/ppm/{ppmId}")
-    public ResponseEntity<List<ReunionDropListDto>> findAllDropListByPpmId(@PathVariable Integer ppmId, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest,ReunionQuery query) throws PpmNotFound, AcNotFound {
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-        // List<String> roles = keycloakJwtConverter.extractRealmRoles(jwt);
-        List<Reunion> reunionList=reunionService.findAllByPpmIdList(ppmId,jwt,query.toSpecification());
+   /* @GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")
+    public ResponseEntity<PvResponse> findAllDropListByPpmId(@RequestParam List<Integer> comIds, @PathVariable Integer ppmId, @PathVariable Integer ppmVer){
+        return ResponseEntity.ok(reunionService.listPvComByPpm(comIds,ppmId,ppmVer));
+    }
 
-        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    @GetMapping("/{acId}/{ppmId}/{ppmVer}")
+    public ResponseEntity<ExtraitResponse> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(@PathVariable Integer acId, @PathVariable Integer ppmId, @PathVariable Integer ppmVer){
+        return ResponseEntity.ok(reunionService.findAllExtraitsByAcIdAndPpmIdAndPpmVersion(acId,ppmId,ppmVer));
     }*/
 
     @GetMapping("/history/drop-list-com/ppm/{ppmId}")

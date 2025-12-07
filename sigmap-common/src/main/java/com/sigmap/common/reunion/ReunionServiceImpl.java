@@ -12,6 +12,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
@@ -26,7 +27,6 @@ import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
-import com.sigmap.common.keycloak_website_admin.exception.EmailOrUserNameAlreadyUsedForAnotherUser;
 import com.sigmap.common.mail.MailService;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
@@ -45,6 +45,8 @@ import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
@@ -69,7 +71,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDeniedException;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -1329,25 +1330,6 @@ public class ReunionServiceImpl implements ReunionService{
         return new PageImpl<>(pageContent, pageable, extrais.size());
     }
 
-    @Override
-    public List<Reunion> reunionCloutureListByAcId(Integer acId) {
-        Specification<Reunion> spec = Specification
-                .where(ReunionSpecifications.hasAcId(acId))
-                .and(ReunionSpecifications.deleted(false)).
-                and(ReunionSpecifications.status(ReunionStatus.CLOTURER)).
-                and(ReunionSpecifications.comTypeCPMP());
-            return findAll(spec);
-    }
-
-    @Override
-    public Page<ProcessVerbalReunionExtrait> findAllByAcIdAndOptionalReunionId(Integer AcId, Integer reunionId, Specification<Reunion> specifications, Pageable pageable) {
-        return null;
-    }
-
-    @Override
-    public List<ProcessVerbalReunionExtrait> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {
-        return processVerbalReunionExtraitService.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
-    }
 
 
 }

@@ -10,6 +10,7 @@ import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Calendar;
@@ -148,12 +149,69 @@ public class ReunionSpecifications {
     /**
      * Filter Reunion by PPM ID through ReunionPpm relationship.
      */
-    public static Specification<Reunion> hasPpmId(Integer ppmId) {
+    /*public static Specification<Reunion> hasPpmId(Integer ppmId) {
         return (root, query, cb) -> {
             var join = root.join("reunionPpms");
             return cb.equal(join.get("ppmId"), ppmId);
         };
     }
+
+    public static Specification<Reunion> hasPpmVer(Integer ppmVer) {
+        return (root, query, cb) -> {
+            var join = root.join("reunionPpms");
+            return cb.equal(join.get("ppmVer"), ppmVer);
+        };
+    }*/
+    public static Specification<Reunion> hasPpmId(Integer ppmId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionPpm> reunionPpmJoin =
+                    root.join("reunionPpms", JoinType.LEFT);
+            Predicate viaReunionPpm =
+                    cb.equal(reunionPpmJoin.get("ppmId"), ppmId);
+
+            // Via ReunionDac -> Dac -> Ppm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Join<ReunionDac, Dac> dacJoin =
+                    reunionDacJoin.join("dac", JoinType.LEFT);
+            Join<Dac, Ppm> ppmJoin =
+                    dacJoin.join("ppm", JoinType.LEFT);
+
+            Predicate viaReunionDacPpm =
+                    cb.equal(ppmJoin.get("id"), ppmId);
+
+            return cb.or(viaReunionPpm, viaReunionDacPpm);
+        };
+    }
+
+    public static Specification<Reunion> hasPpmVer(Integer ppmVer) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionPpm> reunionPpmJoin =
+                    root.join("reunionPpms", JoinType.LEFT);
+            Predicate viaReunionPpm =
+                    cb.equal(reunionPpmJoin.get("ppmVer"), ppmVer);
+
+            // Via ReunionDac -> Dac -> Ppm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Join<ReunionDac, Dac> dacJoin =
+                    reunionDacJoin.join("dac", JoinType.LEFT);
+            Join<Dac, Ppm> ppmJoin =
+                    dacJoin.join("ppm", JoinType.LEFT);
+
+            Predicate viaReunionDacPpm =
+                    cb.equal(ppmJoin.get("version"), ppmVer);
+
+            return cb.or(viaReunionPpm, viaReunionDacPpm);
+        };
+    }
+
     public static Specification<Reunion> hasAcId(Integer acId) {
         return (root, query, cb) -> {
             query.distinct(true);
