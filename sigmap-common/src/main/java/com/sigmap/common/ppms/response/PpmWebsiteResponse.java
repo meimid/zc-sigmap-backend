@@ -74,7 +74,7 @@ public class PpmWebsiteResponse implements Serializable {
             codeBuilder.append(this.year);
         }*/
         if(ppm.getNom() != null) {
-            this.code = ppm.getNom();
+            this.code = ppm.getRef();
         }
 
         List<Realisation> sourceRealisations = ppm.getRealisations();
