@@ -446,8 +446,8 @@ public class AcServiceImpl implements AcService{
         // Step 1: Spec to get Ac with com == null
         Specification<Ac> spec = AcSpecifications.hasComNull();
 
-        // Step 2: Get all Ac IDs that are used as 'tutel' in any Com
-        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted())
+        // Step 2: Get all Ac IDs that are used as 'tutel' in any CPMP
+        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted() && com.getComType().getCode().equals("CPMP"))
                 .map(Com::getTutel)           // get the Ac used as tutel
                 .filter(Objects::nonNull)
                 .map(Ac::getId)
@@ -455,7 +455,7 @@ public class AcServiceImpl implements AcService{
 
         // Step 3: Filter out those whose ID is in the used set
         return repository.findAll(spec).stream()
-                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted()&& !(ac.getCom().getComType().getCode() =="CPMP"))
+                .filter(ac -> !usedTutelAcIds.contains(ac.getId())&&!ac.getIsDeleted())
                 .collect(Collectors.toList());
     }
 

@@ -6262,7 +6262,7 @@ public class PpmServiceImpl implements PpmService {
                         .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
 
-                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(acId)
+                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(realisation.getTypeMarcher().getId())
                         .and(SeuilGeneralSpecifications.deleted(false));
                 Optional<SeuilGeneral> seuilGeneralOpt = seuilGeneralService.findOne(seuilGeneralSpec);
 
@@ -6302,7 +6302,7 @@ public class PpmServiceImpl implements PpmService {
                                 realisation.getId(), budgetEstime, seuilGeneral);
                         throw new RealisationBudgetExceedsAcSeuilException(
                                 String.format(
-                                        "La réalisation %s a un budget estimé %s inférieur au seuil generale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        "La réalisation %s a un budget estimé %s inférieur au seuil générale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
                                         realisation.getRealisationEnvisagees(), budgetEstime, seuilGeneral
                                 ));
                     }
