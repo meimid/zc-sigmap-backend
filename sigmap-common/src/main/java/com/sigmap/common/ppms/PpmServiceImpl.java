@@ -50,6 +50,7 @@ import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.exceptions.RealisationBudgetBelowAcSeuilForPpmException;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetExceedsAcSeuilException;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
@@ -61,6 +62,9 @@ import com.sigmap.common.reunion.ReunionSpecifications;
 import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.seuil_general.SeuilGeneral;
+import com.sigmap.common.seuil_general.SeuilGeneralService;
+import com.sigmap.common.seuil_general.SeuilGeneralSpecifications;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
@@ -121,6 +125,8 @@ public class PpmServiceImpl implements PpmService {
     private final ComService comService;
     private final ReunionRepository reunionRepository;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    private final SeuilGeneralService seuilGeneralService;
+
 
 
     /**
@@ -135,7 +141,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository, ComService comService, ReunionRepository reunionRepository, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository, ComService comService, ReunionRepository reunionRepository, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, SeuilGeneralService seuilGeneralService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -159,6 +165,8 @@ public class PpmServiceImpl implements PpmService {
         this.comService = comService;
         this.reunionRepository = reunionRepository;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
+        this.seuilGeneralService = seuilGeneralService;
+
     }
 
     @Override
@@ -6254,6 +6262,10 @@ public class PpmServiceImpl implements PpmService {
                         .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
 
+                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(acId)
+                        .and(SeuilGeneralSpecifications.deleted(false));
+                Optional<SeuilGeneral> seuilGeneralOpt = seuilGeneralService.findOne(seuilGeneralSpec);
+
                 if (acSeuilOpt.isPresent()) {
                     BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
                     realisation.setSeuilApplicable(acSeuil);
@@ -6276,7 +6288,26 @@ public class PpmServiceImpl implements PpmService {
                         throw new RealisationBudgetBelowAcSeuilForPpmException(msg);
                     }
 
-                } else {
+                }else if(seuilGeneralOpt.isPresent()){
+                    BigDecimal seuilGeneral = seuilGeneralOpt.get().getMontant();
+                    realisation.setSeuilApplicable(seuilGeneral);
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // Validate Realisation budget against AcSeuil
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO;
+                    if (budgetEstime.compareTo(seuilGeneral) < 0) {
+                        log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
+                                realisation.getId(), budgetEstime, seuilGeneral);
+                        throw new RealisationBudgetExceedsAcSeuilException(
+                                String.format(
+                                        "La réalisation %s a un budget estimé %s inférieur au seuil generale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        realisation.getRealisationEnvisagees(), budgetEstime, seuilGeneral
+                                ));
+                    }
+                }
+                else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
                     log.warn("[PPM] No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
                             acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
