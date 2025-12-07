@@ -20,6 +20,7 @@ public class AgpmQuery {
     private Integer year;
     private Boolean actualise;
     private Integer nbrActualisation;
+    private String annee;
 
     public Specification<Agpm> toSpecification() {
         Specification<Agpm> spec = Specification.where(AgpmSpecifications.deleted(deleted));
@@ -62,6 +63,10 @@ public class AgpmQuery {
 
         if (nbrActualisation != null) {
             spec = spec.and(AgpmSpecifications.nbrActualisation(nbrActualisation));
+        }
+
+        if (annee != null) {
+            spec = spec.and(AgpmSpecifications.annee(annee));
         }
 
         return spec;

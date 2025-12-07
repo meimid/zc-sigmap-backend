@@ -3,6 +3,7 @@ package com.sigmap.common.agpm;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.ppms.Ppm;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -19,6 +20,7 @@ public class AgpmSpecifications {
                     criteriaBuilder.like(root.get("ref"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("status"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("annee"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("nom"), "%" + search + "%")
             );
         };
@@ -160,6 +162,18 @@ public class AgpmSpecifications {
                         criteriaBuilder.function("YEAR", Integer.class, root.get("updatedAt")),
                         year
                 );
+    }
+
+    /**
+     * Filter by annee.
+     */
+    public static Specification<Agpm> annee(String annee) {
+        return (root, query, criteriaBuilder) -> {
+            if (annee == null || annee.isBlank()) {
+                return criteriaBuilder.conjunction(); // Return all if null/empty
+            }
+            return criteriaBuilder.equal(root.get("annee"), annee);
+        };
     }
 
     /**
