@@ -1,8 +1,6 @@
 package com.sigmap.common.ac_seuil;
 
-import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
-import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -20,7 +18,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -33,12 +30,12 @@ public class AcSeuilServiceImpl implements AcSeuilService {
     private final ModeDePassationSelectionRepository modePassationRepository;
 
     @Override
-    public AcSeuil save(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound {
+    public AcSeuil save(AcSeuilRequest request) throws AcNotFound, RefParamNotFound {
 
         AcSeuil acSeuil = new AcSeuil();
         // all Requests must have acId, typeMarcherId, modePassationId, and seuil
-        if (request.getAcId() == null || request.getTypeMarcherId() == null || request.getModePassationId() == null || request.getSeuil() == null) {
-            throw new RuntimeException("AcSeuilRequest must have acId, typeMarcherId, modePassationId, and seuil");
+        if (request.getAcId() == null || request.getTypeMarcherId() == null || request.getSeuil() == null) {
+            throw new RuntimeException("AcSeuilRequest must have acId, typeMarcherId, and seuil");
         }
         // Initialize the embedded ID
         AcSeuilId id = new AcSeuilId();
@@ -54,11 +51,6 @@ public class AcSeuilServiceImpl implements AcSeuilService {
                 .orElseThrow(() -> new RefParamNotFound("", List.of(request.getTypeMarcherId())));
         acSeuil.getId().setTypeMarcher(typeMarcher);
 
-        // Fetch modePassation by modePassation ID
-        ModeDePassationSelection modePassation = modePassationRepository.findById(request.getModePassationId())
-                .orElseThrow(() -> new ModeDePassationSelectionNotFound("", request.getModePassationId()));
-        acSeuil.getId().setModePassation(modePassation);
-
         // Set seuil
         acSeuil.setSeuil(request.getSeuil());
 
@@ -67,10 +59,10 @@ public class AcSeuilServiceImpl implements AcSeuilService {
 
 
     @Override
-    public AcSeuil update(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound, AcSeuilNotFound {
+    public AcSeuil update(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, AcSeuilNotFound {
         // Validate request
-        if (request.getAcId() == null || request.getTypeMarcherId() == null || request.getModePassationId() == null || request.getSeuil() == null) {
-            throw new RuntimeException("AcSeuilRequest must have acId, typeMarcherId, modePassationId, and seuil");
+        if (request.getAcId() == null || request.getTypeMarcherId() == null || request.getSeuil() == null) {
+            throw new RuntimeException("AcSeuilRequest must have acId, typeMarcherId and seuil");
         }
 
         // Create composite key for lookup
@@ -86,14 +78,9 @@ public class AcSeuilServiceImpl implements AcSeuilService {
                 .orElseThrow(() -> new RefParamNotFound("", List.of(request.getTypeMarcherId())));
         acSeuilId.setTypeMarcher(typeMarcher);
 
-        // Fetch modePassation by modePassation ID
-        ModeDePassationSelection modePassation = modePassationRepository.findById(request.getModePassationId())
-                .orElseThrow(() -> new ModeDePassationSelectionNotFound("", request.getModePassationId()));
-        acSeuilId.setModePassation(modePassation);
-
         // Find existing AcSeuil by composite ID
         AcSeuil acSeuil = acSeuilRepository.findById(acSeuilId)
-                .orElseThrow(() -> new AcSeuilNotFound("AcSeuil not found for provided composite key", request.getAcId(), request.getTypeMarcherId(), request.getModePassationId()));
+                .orElseThrow(() -> new AcSeuilNotFound("AcSeuil not found for provided composite key", request.getAcId(), request.getTypeMarcherId()));
 
         // Update seuil value
         acSeuil.setSeuil(request.getSeuil());

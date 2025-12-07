@@ -3083,8 +3083,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             try {
                 log.info("************** ac id : {} type marche id : {} mode de passation : {}", acId,  realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
                 if (acSeuilOpt.isPresent()) {
                     BigDecimal acSeuil = acSeuilOpt.get().getSeuil();

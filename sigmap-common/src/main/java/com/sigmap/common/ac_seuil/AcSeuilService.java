@@ -14,9 +14,9 @@ import java.util.Optional;
 
 public interface AcSeuilService {
 
-    AcSeuil save(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound;
+    AcSeuil save(AcSeuilRequest request) throws AcNotFound, RefParamNotFound;
 
-    AcSeuil update(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound, AcSeuilNotFound;
+    AcSeuil update(AcSeuilRequest request) throws AcNotFound, RefParamNotFound, AcSeuilNotFound;
 
     Page<AcSeuil> getAllAcSeuils(Specification<AcSeuil> spec, Pageable pageable);
 
