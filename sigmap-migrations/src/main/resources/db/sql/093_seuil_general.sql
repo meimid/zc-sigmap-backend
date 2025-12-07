@@ -12,7 +12,7 @@ CREATE TABLE seuil_general ( seuil_id INT AUTO_INCREMENT NOT NULL,
                              deleted_at datetime DEFAULT NULL NULL,
                              deleted_by VARCHAR(100) NULL,
                              is_deleted TINYINT(1) DEFAULT 0 NOT NULL,
-                             CONSTRAINT PK_SEUIL_GENERAL PRIMARY KEY (seuil_id)
+                             CONSTRAINT PK_SEUIL_GENERAL PRIMARY KEY (seuil_id),
                              CONSTRAINT UK_SEUIL_TYPE UNIQUE (type_marcher_id));
 
 
