@@ -1,5 +1,6 @@
 package com.sigmap.common.seuil_general;
 
+import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -13,6 +14,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Slf4j
@@ -79,5 +81,11 @@ public class SeuilGeneralServiceImpl implements SeuilGeneralService {
             throw new SeuilGeneralNotFound(id);
         }
         seuilGeneralRepository.softDelete(id);
+    }
+
+    @Override
+    public Optional<SeuilGeneral> findOne(Specification<SeuilGeneral> specification) {
+        log.info("--------------- Finding seuil general by specification {}", specification);
+        return seuilGeneralRepository.findOne(specification);
     }
 }

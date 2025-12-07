@@ -48,6 +48,9 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.seuil_general.SeuilGeneral;
+import com.sigmap.common.seuil_general.SeuilGeneralService;
+import com.sigmap.common.seuil_general.SeuilGeneralSpecifications;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityManager;
@@ -93,11 +96,13 @@ public class PaaServiceImpl implements PaaService {
     private final EntityManager entityManager;
     private final ModelPaaRepository modelPaaRepository;
 
+    private final SeuilGeneralService seuilGeneralService;
+
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
     public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, EntityManager entityManager, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
-                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1, ModelPaaRepository modelPaaRepository) {
+                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1, ModelPaaRepository modelPaaRepository, SeuilGeneralService seuilGeneralService) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -114,6 +119,8 @@ public class PaaServiceImpl implements PaaService {
         this.refParamRepository = refParamRepository1;
         this.entityManager = entityManager;
         this.modelPaaRepository = modelPaaRepository;
+        this.seuilGeneralService = seuilGeneralService;
+
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -3085,6 +3092,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
                         .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+
+                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(acId)
+                        .and(SeuilGeneralSpecifications.deleted(false));
+                Optional<SeuilGeneral> seuilGeneralOpt = seuilGeneralService.findOne(seuilGeneralSpec);
+
                 if (acSeuilOpt.isPresent()) {
                     BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
                     realisation.setSeuilApplicable(acSeuil);
@@ -3103,7 +3115,26 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                                         realisation.getRealisationEnvisagees(), budgetEstime, acSeuil
                                 ));
                     }
-                } else {
+                } else if(seuilGeneralOpt.isPresent()){
+                    BigDecimal seuilGeneral = seuilGeneralOpt.get().getMontant();
+                    realisation.setSeuilApplicable(seuilGeneral);
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // Validate Realisation budget against AcSeuil
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO;
+                    if (budgetEstime.compareTo(seuilGeneral) > 0) {
+                        log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
+                                realisation.getId(), budgetEstime, seuilGeneral);
+                        throw new RealisationBudgetExceedsAcSeuilException(
+                                String.format(
+                                        "La réalisation %s a un budget estimé %s supérieur au seuil generale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        realisation.getRealisationEnvisagees(), budgetEstime, seuilGeneral
+                                ));
+                    }
+                    }
+                else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
                     log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
                             acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
