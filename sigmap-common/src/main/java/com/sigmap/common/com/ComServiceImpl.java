@@ -173,7 +173,7 @@ public class ComServiceImpl implements ComService {
               com.setComType(null);
           }
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              Specification<Com> specCom = ComSpecifications.deleted(false);
               if(refParamService.findById(request.getComTypeId()).getCode().equals("CPMP")){
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
@@ -292,7 +292,7 @@ public class ComServiceImpl implements ComService {
           ComMapper.INSTANCE.updateFromRequest(request, com);
 
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              Specification<Com> specCom = ComSpecifications.deleted(false);
               if(refParamService.findById(request.getComTypeId()).getCode().equals("CPMP")){
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
