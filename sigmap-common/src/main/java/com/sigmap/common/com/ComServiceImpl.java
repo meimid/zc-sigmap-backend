@@ -174,7 +174,7 @@ public class ComServiceImpl implements ComService {
           }
           if (request.getTutelId() != null) {
               Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false)).and(Specification.not(ComSpecifications.cpmp()));
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()&& Objects.equals(comType.getCode(), "CPMP")) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
@@ -291,7 +291,7 @@ public class ComServiceImpl implements ComService {
           if (request.getTutelId() != null) {
               Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false)).and(Specification.not(ComSpecifications.cpmp()));
 
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())) {
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
