@@ -73,7 +73,7 @@ public class PpmWebsiteResponse implements Serializable {
             if (codeBuilder.length() > 0) codeBuilder.append(" ");
             codeBuilder.append(this.year);
         }*/
-        if(ppm.getNom() != null) {
+        if(ppm.getRef() != null) {
             this.code = ppm.getRef();
         }
 
