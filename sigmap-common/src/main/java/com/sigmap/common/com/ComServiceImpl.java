@@ -173,7 +173,7 @@ public class ComServiceImpl implements ComService {
               com.setComType(null);
           }
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false)).and(Specification.not(ComSpecifications.cpmp()));
               if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
@@ -289,7 +289,8 @@ public class ComServiceImpl implements ComService {
           ComMapper.INSTANCE.updateFromRequest(request, com);
 
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
+              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false)).and(Specification.not(ComSpecifications.cpmp()));
+
               if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
