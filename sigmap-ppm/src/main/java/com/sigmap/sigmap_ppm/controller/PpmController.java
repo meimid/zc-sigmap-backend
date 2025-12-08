@@ -52,13 +52,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -105,7 +108,10 @@ public class PpmController {
      */
     @GetMapping
     public ResponseEntity<Page<PpmResponseDto>> findAll(
-            PpmQuery query, Pageable pageable) throws PpmNotFound, AcNotFound {
+            PpmQuery query,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) throws PpmNotFound, AcNotFound {
+
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
                 .getPrincipal();
@@ -113,7 +119,9 @@ public class PpmController {
 
         Page<Ppm> ppms = ppmService.findAll(query.toSpecification(), pageable);
         logger.debug("Found -------------- {} ppms", ppms.getTotalElements());
+
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+
         return ResponseEntity.ok(responses);
     }
 
@@ -1229,9 +1237,12 @@ public class PpmController {
     }
 
     @GetMapping("/current_year/user")
-    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPaasByUser(Pageable pageable) {
+    public ResponseEntity<Page<PpmResponseDto>> getCurrentYearPpmsByUser(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
         Page<Ppm> ppms = ppmService.findCurrentYearPpmsByUser(pageable);
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
+
         return ResponseEntity.ok(responses);
     }
 
@@ -1436,13 +1447,9 @@ public class PpmController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query, @AuthenticationPrincipal Jwt jwt, HttpServletRequest servletRequest)  {
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
         Specification specification = query.toSpecification();
-        String authHeader = servletRequest.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new TokenRequired();
-        }
-        List<Ppm> ppms=ppmService.findAllPpms(specification,jwt);
+        List<Ppm> ppms=ppmService.findAllPpms(specification);
          List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }

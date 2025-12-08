@@ -386,4 +386,17 @@ public class AcController {
                 .toList();
         return ResponseEntity.ok(acs);
     }
+
+    @GetMapping("/acs-tutel-list-with-no-com-cpmp")
+    public ResponseEntity<List<AcSelectResponseDto>> findAllAsListWithNoComCPMP(
+            @RequestParam(required = false) Integer comId,
+            @RequestParam Integer typeComId) throws RefParamNotFound {
+
+        List<Ac> acs = acService.findAllAcsWithNoComCPMP(comId, typeComId);
+
+        List<AcSelectResponseDto> responses = AcMapper.INSTANCE.mapToSelectDto(acs);
+
+        return ResponseEntity.ok(responses);
+    }
+
 }

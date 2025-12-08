@@ -173,8 +173,11 @@ public class ComServiceImpl implements ComService {
               com.setComType(null);
           }
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()) {
+              Specification<Com> specCom = ComSpecifications.deleted(false);
+              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
+                  specCom.and(Specification.not(ComSpecifications.cpmp()));
+              }
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()&& Objects.equals(comType.getCode(), "CPMP")) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
@@ -289,8 +292,12 @@ public class ComServiceImpl implements ComService {
           ComMapper.INSTANCE.updateFromRequest(request, com);
 
           if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.hasTute(request.getTutelId()).and(ComSpecifications.deleted(false));
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())) {
+              Specification<Com> specCom = ComSpecifications.deleted(false);
+              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
+                  specCom.and(Specification.not(ComSpecifications.cpmp()));
+              }
+
+              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
@@ -608,7 +615,8 @@ public class ComServiceImpl implements ComService {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority()
                                                .and(ComSpecifications.deleted(false)
                                                .and(Specification.not(ComSpecifications.cncmp()))
-                                               .and(Specification.not(ComSpecifications.special())));
+                                               .and(Specification.not(ComSpecifications.special()))
+                                               );
     return repository.findAll(spec).stream().filter(com->!com.getTutel().getId().equals(acId)).collect(Collectors.toList());
   }
 

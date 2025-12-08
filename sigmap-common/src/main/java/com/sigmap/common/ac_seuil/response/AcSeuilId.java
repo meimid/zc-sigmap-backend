@@ -9,5 +9,4 @@ import lombok.Data;
 public class AcSeuilId {
     private AcResponseDto ac;
     private RefParamResponseDto typeMarcher;
-    private ModeDePassationSelection modePassation;
 }

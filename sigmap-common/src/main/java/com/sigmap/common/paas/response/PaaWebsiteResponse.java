@@ -44,28 +44,21 @@ public class PaaWebsiteResponse {
                 this.logo = paa.getAc().getLogo();
             }
         }
+        if(paa.getAnnee() != null) {
+            this.year = Integer.valueOf(paa.getAnnee());
+        }
 
         Calendar updatedAt = paa.getUpdatedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
-            this.year = updatedAt.get(Calendar.YEAR);
         }
 
-        // --- Logic from "generateCode" ---
-        StringBuilder codeBuilder = new StringBuilder();
-        if (paa.getNom() != null) {
-            codeBuilder.append(paa.getNom());
+
+        if(paa.getNom() != null) {
+            this.code=paa.getNom();
         }
-        if (paa.getAc() != null && paa.getAc().getNom() != null) {
-            if (codeBuilder.length() > 0) codeBuilder.append(" ");
-            codeBuilder.append(paa.getAc().getNom());
-        }
-        if (this.year != null) { // Use the year we already calculated
-            if (codeBuilder.length() > 0) codeBuilder.append(" ");
-            codeBuilder.append(this.year);
-        }
-        this.code = codeBuilder.toString();
+      //  this.code = codeBuilder.toString();
 
         List<Realisation> sourceRealisations = paa.getRealisations();
         if (sourceRealisations == null) {

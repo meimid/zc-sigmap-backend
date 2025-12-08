@@ -50,16 +50,18 @@ public class PpmWebsiteResponse implements Serializable {
                     this.logo = ppm.getAc().getLogo();
                 }
         }
+        if(ppm.getAnnee() != null) {
+            this.year = Integer.valueOf(ppm.getAnnee());
+        }
 
         Calendar updatedAt = ppm.getUpdatedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
-            this.year = updatedAt.get(Calendar.YEAR);
         }
 
         // --- Logic from "generateCode" ---
-        StringBuilder codeBuilder = new StringBuilder();
+        /*StringBuilder codeBuilder = new StringBuilder();
         if (ppm.getNom() != null) {
             codeBuilder.append(ppm.getNom());
         }
@@ -70,8 +72,10 @@ public class PpmWebsiteResponse implements Serializable {
         if (this.year != null) { // Use the year we already calculated
             if (codeBuilder.length() > 0) codeBuilder.append(" ");
             codeBuilder.append(this.year);
+        }*/
+        if(ppm.getRef() != null) {
+            this.code = ppm.getRef();
         }
-        this.code = codeBuilder.toString();
 
         List<Realisation> sourceRealisations = ppm.getRealisations();
         if (sourceRealisations == null) {

@@ -48,6 +48,9 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.seuil_general.SeuilGeneral;
+import com.sigmap.common.seuil_general.SeuilGeneralService;
+import com.sigmap.common.seuil_general.SeuilGeneralSpecifications;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityManager;
@@ -93,11 +96,13 @@ public class PaaServiceImpl implements PaaService {
     private final EntityManager entityManager;
     private final ModelPaaRepository modelPaaRepository;
 
+    private final SeuilGeneralService seuilGeneralService;
+
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
     public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService, EntityManager entityManager, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository, RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService, AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
-                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1, ModelPaaRepository modelPaaRepository) {
+                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, RefParamRepository refParamRepository1, ModelPaaRepository modelPaaRepository, SeuilGeneralService seuilGeneralService) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -114,6 +119,8 @@ public class PaaServiceImpl implements PaaService {
         this.refParamRepository = refParamRepository1;
         this.entityManager = entityManager;
         this.modelPaaRepository = modelPaaRepository;
+        this.seuilGeneralService = seuilGeneralService;
+
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -2635,11 +2642,15 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
     @Transactional
     @Override
-    public Paa createPaaPerAc(PaaRequestGlobal request) throws AcNotFound, PaaCreationLimitExceededException, IOException {
+    public Paa createPaaPerAc(PaaRequestGlobal request)
+            throws AcNotFound, PaaCreationLimitExceededException, IOException {
+
+        log.info("\n==================[ START CREATE PAA ]==================");
 
         // --------------------------
         // 1. Validate request year
         // --------------------------
+        log.info("[STEP 1] Validating year...");
         String annee = request.getAnnee();
         if (annee == null || annee.isBlank()) {
             throw new IllegalArgumentException("L'année est obligatoire pour créer un PAA.");
@@ -2661,31 +2672,34 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                             " ou " + nextYear + ". Année reçue : " + requestedYear
             );
         }
-
-        log.info("Requested PAA creation for AC with year {}", requestedYear);
+        log.info(" → Year validated = {}", requestedYear);
 
         // --------------------------
         // 2. Validate AC access
         // --------------------------
+        log.info("[STEP 2] Validating AC access...");
         Integer requestAcId = request.getAcId();
+
         if (requestAcId == null) {
             throw new IllegalArgumentException("AC ID is required to create a PAA.");
         }
 
+        log.info(" → Requested AC = {}", requestAcId);
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            throw new AcNotFound("No AC IDs found for the connected user", Collections.emptyList());
-        }
+        log.info(" → User AC permissions = {}", userAcIds);
 
         if (!userAcIds.contains(requestAcId)) {
             throw new AcNotFound("User does not have permission for AC ID: " + requestAcId, List.of(requestAcId));
         }
 
         Ac ac = acService.findById(requestAcId);
+        log.info(" ✔ AC found: {}", ac.getId());
 
         // --------------------------
-        // 3. Uniqueness check for REQUESTED year
+        // 3. Uniqueness check
         // --------------------------
+        log.info("[STEP 3] Checking PAA uniqueness for year {}...", annee);
+
         Specification<Paa> spec = PaaSpecifications.annee(annee)
                 .and(PaaSpecifications.paaAc(requestAcId))
                 .and(PaaSpecifications.deleted(false));
@@ -2694,6 +2708,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         if (!existingPaas.isEmpty()) {
             Paa existingPaa = existingPaas.get(0);
+            log.info(" ❌ Existing PAA found: ID={}, VER={}", existingPaa.getId(), existingPaa.getVersion());
             throw new PaaCreationLimitExceededException(
                     "Un PAA existe déjà pour l'AC " + requestAcId + " pour l'année " + annee + ".",
                     existingPaa.getId(),
@@ -2702,15 +2717,19 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             );
         }
 
+        log.info(" ✔ No PAA exists for this AC and year");
+
         // --------------------------
-        // 4. Create the new PAA
+        // 4. Create new PAA
         // --------------------------
+        log.info("[STEP 4] Creating PAA...");
+
         Integer paaId = sequenceGeneratorService.getNextId(Constants.PAA_ID_SEQ);
-        Integer paaVersion = 1;
+        log.info(" → Generated PAA ID = {}", paaId);
 
         Paa paa = new Paa();
         paa.setId(paaId);
-        paa.setVersion(paaVersion);
+        paa.setVersion(1);
         paa.setNom(request.getNom());
         paa.setModePassation(request.getModePassation());
         paa.setRemarque(request.getRemarque());
@@ -2726,18 +2745,23 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setDocs(new ArrayList<>());
 
         Paa savedPaa = repository.save(paa);
+        log.info(" ✔ PAA SAVED → ID={}, VER=1", savedPaa.getId());
 
         // --------------------------
-        // 5. Attach Documents
+        // 5. Documents
         // --------------------------
+        log.info("[STEP 5] Processing PAA documents...");
         if (request.getDocIds() != null && !request.getDocIds().isEmpty()) {
+            log.info(" → {} documents to process", request.getDocIds().size());
+
             List<Docs> docs = new ArrayList<>();
             for (Integer docId : request.getDocIds()) {
                 Docs doc = docsRepository.findById(docId)
                         .orElseThrow(() -> new EntityNotFoundException("Document with ID " + docId + " not found"));
-                if (doc.getPaas() == null) {
-                    doc.setPaas(new ArrayList<>());
-                }
+
+                log.info("   • Attaching doc ID {}", docId);
+
+                if (doc.getPaas() == null) doc.setPaas(new ArrayList<>());
                 doc.getPaas().add(savedPaa);
                 docs.add(doc);
                 docsRepository.save(doc);
@@ -2746,6 +2770,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         }
 
         if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
+            log.info(" → Processing {} uploaded PAA files", request.getPaaFiles().size());
             documentCommuneService.processAndSaveDocuments(
                     request.getPaaFiles(),
                     savedPaa,
@@ -2756,34 +2781,46 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         // --------------------------
         // 6. REALISATIONS
         // --------------------------
-        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
-            Integer nextRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);;
-log.info("Realisation ID {}", nextRealisationId);
-            Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-            Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
+        log.info("[STEP 6] Processing Realisations...");
 
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+
+            log.info(" → {} realisations to create", request.getRealisations().size());
             List<Realisation> realisationsToSave = new ArrayList<>();
 
             for (RealisationRequestForPaa realisationRequest : request.getRealisations()) {
 
-                Realisation realisation = new Realisation();
-                LocalDate lps = realisationRequest.getDatePrevLps();
+                log.info("\n-----------------[ NEW REALISATION ]-----------------");
 
-                realisation.setId(nextRealisationId++);
+                Realisation realisation = new Realisation();
+
+                Integer realisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+                realisation.setId(realisationId);
                 realisation.setVersion(1);
+
+                log.info(" ✔ REALISATION CREATED → ID={}, VER=1", realisationId);
+
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
                 realisation.setImputationBudgetaire(realisationRequest.getImputationBudgetaire());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
                 realisation.setModePassation(realisationRequest.getModePassation());
+
+                LocalDate lps = realisationRequest.getDatePrevLps();
                 realisation.setDatePrevLps(lps);
                 realisation.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
+
                 realisation.setIsPublished(realisationRequest.getIsPublished());
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
 
-                // FILES
-                if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
+                log.info("   • Realisation details: envisagée='{}', bénéficiaire='{}'",
+                        realisation.getRealisationEnvisagees(), realisation.getBeneficiaire());
+
+                // Files
+                if (realisationRequest.getRealisationFiles() != null &&
+                        !realisationRequest.getRealisationFiles().isEmpty()) {
+                    log.info("   • Processing {} realisation files...", realisationRequest.getRealisationFiles().size());
                     documentCommuneService.processAndSaveDocuments(
                             realisationRequest.getRealisationFiles(),
                             realisation,
@@ -2791,24 +2828,32 @@ log.info("Realisation ID {}", nextRealisationId);
                     );
                 }
 
-                if (realisation.getPaas() == null) {
-                    realisation.setPaas(new ArrayList<>());
-                }
+                if (realisation.getPaas() == null) realisation.setPaas(new ArrayList<>());
                 realisation.getPaas().add(savedPaa);
+
                 savedPaa.getRealisations().add(realisation);
 
+                // --------------------------
                 // LOTS
+                // --------------------------
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
+                    log.info("   • {} lots to create", realisationRequest.getLots().size());
+
                     List<Lot> lots = new ArrayList<>();
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
-                        if (lotRequest.getDescription() == null || lotRequest.getDescription().isEmpty()) {
-                            continue;
-                        }
-                        Lot lot = new Lot();
-                        Integer lotId = lotRequest.getId();
-                        if (lotId == null) lotId = nextLotId++;
-                        CompositeId compositeId = new CompositeId(lotId, 1);
 
+                        if (lotRequest.getDescription() == null || lotRequest.getDescription().isEmpty()) continue;
+
+                        Lot lot = new Lot();
+
+                        Integer lotId = lotRequest.getId();
+                        if (lotId == null) {
+                            lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                        }
+
+                        log.info("      LOT CREATED → ID={}", lotId);
+
+                        CompositeId compositeId = new CompositeId(lotId, 1);
                         if (lotRepository.existsById(compositeId)) {
                             throw new IllegalStateException("Generated lot ID " + lotId + " already exists");
                         }
@@ -2820,61 +2865,65 @@ log.info("Realisation ID {}", nextRealisationId);
 
                         lots.add(lotRepository.save(lot));
                     }
+
                     realisation.setLots(lots);
                 } else {
+                    log.info("   • No lots provided");
                     realisation.setLots(new ArrayList<>());
                 }
+
                 Realisation savedReal = realisationRepository.save(realisation);
 
-                // ---------------------------------------------------------------------------
-                // --------------------------  FINANCEMENTS ----------------------------
-                // ---------------------------------------------------------------------------
+                // --------------------------
+                // FINANCEMENTS
+                // --------------------------
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
+
+                    log.info("   • {} financements to create", realisationRequest.getFinancements().size());
 
                     List<Financement> financements = new ArrayList<>();
 
                     for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
 
+                        log.info("      → Processing financement: monnaie={}, budget={}, sourceFin={}",
+                                financementRequest.getMonnaieId(),
+                                financementRequest.getBudgetEstimer(),
+                                financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null
+                        );
+
                         if (financementRequest.getMonnaieId() == null) continue;
 
-                        // Generate ID from sequence
-                        Integer generatedFinancementId =
-                                sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                        Integer finId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
-                        // Create financement
                         Financement financement = new Financement();
 
-                        // Composite primary key
                         FinancementId financementId = new FinancementId(
                                 realisation.getId(),
                                 realisation.getVersion(),
-                                generatedFinancementId
+                                finId
                         );
+
                         financement.setId(financementId);
                         financement.setRealisation(realisation);
 
-                        // Monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                                .orElseThrow(() ->
-                                        new EntityNotFoundException("Monnaie not found with ID: "
-                                                + financementRequest.getMonnaieId())
-                                );
+                                .orElseThrow(() -> new EntityNotFoundException("Monnaie not found"));
 
                         financement.setMonnaie(monnaie);
                         financement.setTauxApplicable(
                                 monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
                         );
-
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+
+                        log.info("        FINANCEMENT CREATED → realisation={}, financementId={}, taux={}",
+                                realisationId, finId, financement.getTauxApplicable());
 
                         if (financementRequest.getSourceFinancement() != null &&
                                 financementRequest.getSourceFinancement().getId() != null) {
 
                             RefParam src = refParamRepository.findById(
                                             financementRequest.getSourceFinancement().getId())
-                                    .orElseThrow(() ->
-                                            new EntityNotFoundException("Source Financement not found")
-                                    );
+                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement not found"));
 
                             financement.setSourceFinancement(src);
                         }
@@ -2885,30 +2934,37 @@ log.info("Realisation ID {}", nextRealisationId);
                     realisation.setFinancements(financements);
                     financementRepository.saveAll(financements);
 
-                    // compute budget
-                    BigDecimal realisationBudget = financements.stream()
+                    BigDecimal budget = financements.stream()
                             .map(f -> {
-                                BigDecimal b = (f.getBudgetEstimer() != null) ?
-                                        f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux =
-                                        (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                                ? f.getMonnaie().getTaux() : 0.0;
-                                return b.multiply(BigDecimal.valueOf(taux));
+
+                                BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                        ? f.getMonnaie().getTaux()
+                                        : 0.0;
+
+                                BigDecimal converted = amt.multiply(BigDecimal.valueOf(taux));
+
+                                log.info("        → conversion: {} * {} = {}", amt, taux, converted);
+
+                                return converted;
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    realisation.setBudgetEstime(realisationBudget);
+                    realisation.setBudgetEstime(budget);
+                    log.info("   ✔ Realisation {} BUDGET ESTIME = {}", realisationId, budget);
 
                 } else {
+                    log.info("   • No financements");
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
                 }
 
-                // ---------------------------------------------------------------------------
-                // --------------------- END OF  FINANCEMENTS --------------------------
-                // ---------------------------------------------------------------------------
-
+                // --------------------------
+                // Seuil
+                // --------------------------
                 setSeuilApplicableForRealisation(realisation, requestAcId);
+
+                log.info("   ✔ Realisation {} SEUIL = {}", realisationId, realisation.getSeuilApplicable());
 
                 realisationsToSave.add(realisation);
             }
@@ -2917,9 +2973,15 @@ log.info("Realisation ID {}", nextRealisationId);
         }
 
         // --------------------------
-        // 7. Validate and compute global budget
+        // 7. Compute global budget
         // --------------------------
+        log.info("[STEP 7] Validating and computing global budget...");
+
         validateRealisations(savedPaa);
+
+        savedPaa.getRealisations().forEach(r ->
+                log.info("   • Realisation {} → budget={}", r.getId(), r.getBudgetEstime())
+        );
 
         BigDecimal totalBudget = savedPaa.getRealisations().stream()
                 .map(r -> r.getBudgetEstime() != null ? r.getBudgetEstime() : BigDecimal.ZERO)
@@ -2927,11 +2989,19 @@ log.info("Realisation ID {}", nextRealisationId);
 
         savedPaa.setBudgetEstime(totalBudget);
 
+        log.info(" ✔ TOTAL PAA BUDGET = {}", totalBudget);
+
+        // Ensure seuil not negative (safety)
         for (Realisation r : savedPaa.getRealisations()) {
             if (r.getSeuilApplicable() != null && r.getSeuilApplicable().compareTo(BigDecimal.ZERO) < 0) {
                 r.setSeuilApplicable(BigDecimal.ZERO);
             }
         }
+
+        log.info("[FINAL] ✔ PAA CREATED SUCCESSFULLY → ID={} with {} realisations",
+                savedPaa.getId(), savedPaa.getRealisations().size());
+
+        log.info("==================[ END CREATE PAA ]==================\n");
 
         return repository.save(savedPaa);
     }
@@ -3020,9 +3090,13 @@ log.info("Realisation ID {}", nextRealisationId);
             try {
                 log.info("************** ac id : {} type marche id : {} mode de passation : {}", acId,  realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+
+                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(realisation.getTypeMarcher().getId())
+                        .and(SeuilGeneralSpecifications.deleted(false));
+                Optional<SeuilGeneral> seuilGeneralOpt = seuilGeneralService.findOne(seuilGeneralSpec);
+
                 if (acSeuilOpt.isPresent()) {
                     BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
                     realisation.setSeuilApplicable(acSeuil);
@@ -3041,7 +3115,26 @@ log.info("Realisation ID {}", nextRealisationId);
                                         realisation.getRealisationEnvisagees(), budgetEstime, acSeuil
                                 ));
                     }
-                } else {
+                } else if(seuilGeneralOpt.isPresent()){
+                    BigDecimal seuilGeneral = seuilGeneralOpt.get().getMontant();
+                    realisation.setSeuilApplicable(seuilGeneral);
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // Validate Realisation budget against AcSeuil
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO;
+                    if (budgetEstime.compareTo(seuilGeneral) > 0) {
+                        log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
+                                realisation.getId(), budgetEstime, seuilGeneral);
+                        throw new RealisationBudgetExceedsAcSeuilException(
+                                String.format(
+                                        "La réalisation %s a un budget estimé %s supérieur au seuil générale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        realisation.getRealisationEnvisagees(), budgetEstime, seuilGeneral
+                                ));
+                    }
+                    }
+                else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
                     log.warn("No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
                             acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
