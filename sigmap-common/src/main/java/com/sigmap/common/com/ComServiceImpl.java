@@ -174,7 +174,7 @@ public class ComServiceImpl implements ComService {
           }
           if (request.getTutelId() != null) {
               Specification<Com> specCom = ComSpecifications.deleted(false);
-              if(refParamService.findById(request.getComTypeId()).getCode().equals("CPMP")){
+              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
               if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()&& Objects.equals(comType.getCode(), "CPMP")) {
@@ -293,7 +293,7 @@ public class ComServiceImpl implements ComService {
 
           if (request.getTutelId() != null) {
               Specification<Com> specCom = ComSpecifications.deleted(false);
-              if(refParamService.findById(request.getComTypeId()).getCode().equals("CPMP")){
+              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
 

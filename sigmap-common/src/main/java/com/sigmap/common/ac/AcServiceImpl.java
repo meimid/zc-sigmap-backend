@@ -534,9 +534,10 @@ public class AcServiceImpl implements AcService{
 
     @Override
     public List<Ac> findAllAcsWithNoComCPMP(Integer comId, Integer typeComId) throws RefParamNotFound {
-
+        System.out.println("*****************"+typeComId);
         // Get the type of COM
-        RefParam typeCom = refParamService.findById(typeComId);
+        RefParam typeCom = refParamService.findByIdWithoutSystemType(typeComId);
+        System.out.println("------------+ "+typeCom);
         boolean isCpmp = "CPMP".equals(typeCom.getCode());
 
         //  Base list: all ACs not deleted AND tutel = true
