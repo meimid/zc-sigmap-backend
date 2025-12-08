@@ -5,6 +5,7 @@ import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
+import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.seuil_general.request.SeuilGeneralRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,10 @@ public class SeuilGeneralServiceImpl implements SeuilGeneralService {
             throw new IllegalArgumentException("SeuilGeneralRequest must have typeMarcherId and montant");
         }
 
+        SeuilGeneral seuil= seuilGeneralRepository.findByTypeMarcherId(request.getTypeMarcherId());
+        if (seuil != null) {
+            throw new SeuilWithTypeMarcheExiste(request.getTypeMarcherId());
+        }
         SeuilGeneral seuilGeneral = new SeuilGeneral();
 
         RefParam typeMarcher = refParamRepository.findById(request.getTypeMarcherId())
