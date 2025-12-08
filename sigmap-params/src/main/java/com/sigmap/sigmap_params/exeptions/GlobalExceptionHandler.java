@@ -56,6 +56,7 @@ import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
+import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
@@ -1532,14 +1533,24 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ResponseStatus(HttpStatus.CONFLICT)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(SeuilGeneralNotFound.class)
     public ResponseEntity<ErrorResponse> handleExtraitAlreadyExists(SeuilGeneralNotFound ex) {
         String message = messageSource.getMessage("seuil.general.not.found",new Object[]{ex.getId()},
                 getLocal()
         );
-        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
-        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SeuilWithTypeMarcheExiste.class)
+    public ResponseEntity<ErrorResponse> seuilWithTypeMarcheExists(SeuilWithTypeMarcheExiste ex) {
+        String message = messageSource.getMessage("seuil.general.with.typeMarche.existe",new Object[]{ex.getId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
 
