@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Ref;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -530,5 +531,39 @@ public class AcServiceImpl implements AcService{
                 .map(ac -> ac.getCom() != null ? ac.getCom().getId() : null)
                 .orElseThrow(() -> new AcNotAssociatedCom ("Aucune commission n’est liée à cet AC. "));
     }
+
+    @Override
+    public List<Ac> findAllAcsWithNoComCPMP(Integer comId, Integer typeComId) throws RefParamNotFound {
+
+        // Get the type of COM
+        RefParam typeCom = refParamService.findByIdWithoutSystemType(typeComId);
+        boolean isCpmp = "CPMP".equals(typeCom.getCode());
+
+        //  Base list: all ACs not deleted AND tutel = true
+        List<Ac> baseAcs = repository.findAll().stream()
+                .filter(ac -> !Boolean.TRUE.equals(ac.getIsDeleted()))
+                .filter(Ac::isIstTutel)
+                .collect(Collectors.toList());
+
+        if (!isCpmp) {
+            return baseAcs;
+        }
+
+        // If CPMP → collect tutels already used in OTHER CPMP COMs
+        Set<Integer> usedCpmpTutelIds = comService.findAll().stream()
+                .filter(com -> !Boolean.TRUE.equals(com.getIsDeleted()))
+                .filter(com -> com.getComType() != null
+                        && "CPMP".equals(com.getComType().getCode()))
+                .filter(com -> com.getTutel() != null)
+                // ignore the current COM when updating, so its tutel stays allowed
+                .filter(com -> comId == null || !comId.equals(com.getId()))
+                .map(com -> com.getTutel().getId())
+                .collect(Collectors.toSet());
+
+        return baseAcs.stream()
+                .filter(ac -> !usedCpmpTutelIds.contains(ac.getId()))
+                .collect(Collectors.toList());
+    }
+
 
 }
