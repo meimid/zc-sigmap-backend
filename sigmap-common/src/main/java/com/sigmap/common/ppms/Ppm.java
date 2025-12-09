@@ -133,5 +133,17 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     @Column(name = "etape_process", length = 255)
     private String etapeProcess;
 
+    @Transient
+    private List<String> pvCpmp = new ArrayList<>();
+
+    @Transient
+    private List<String> pvCncmpPermanente = new ArrayList<>();
+
+    @Transient
+    private List<String> pvCncmpSpecialisee = new ArrayList<>();
+
+    @Transient
+    private List<String> extraitPvs = new ArrayList<>();
+
 
 }

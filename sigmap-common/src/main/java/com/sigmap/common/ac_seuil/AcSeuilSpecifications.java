@@ -10,7 +10,7 @@ import java.util.List;
 public class AcSeuilSpecifications {
 
 
-    public static Specification<AcSeuil> findById(Integer acId, Integer typeMarcherId, Integer modePassationId) {
+    public static Specification<AcSeuil> findById(Integer acId, Integer typeMarcherId) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -22,11 +22,6 @@ public class AcSeuilSpecifications {
             // Filter by typeMarcherId
             if (typeMarcherId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("id").get("typeMarcher").get("id"), typeMarcherId));
-            }
-
-            // Filter by modePassationId
-            if (modePassationId != null) {
-                predicates.add(criteriaBuilder.equal(root.get("id").get("modePassation").get("id"), modePassationId));
             }
 
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
@@ -48,15 +43,6 @@ public class AcSeuilSpecifications {
                 return null;
             }
             return criteriaBuilder.equal(root.get("id").get("typeMarcher").get("id"), typeMarcherId);
-        };
-    }
-
-    public static Specification<AcSeuil> modePassationId(Integer modePassationId) {
-        return (root, query, criteriaBuilder) -> {
-            if (modePassationId == null) {
-                return null;
-            }
-            return criteriaBuilder.equal(root.get("id").get("modePassation").get("id"), modePassationId);
         };
     }
 

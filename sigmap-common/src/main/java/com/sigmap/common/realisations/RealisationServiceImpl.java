@@ -198,50 +198,56 @@ public class RealisationServiceImpl implements RealisationService {
     @Transactional
     @Override
     public Realisation create(RealisationRequest request) throws RealisationAlreadyExistsException {
+
         log.info("Starting create with request: {}", request);
+
         Integer id = request.getId();
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
 
-        // Generate ID if not provided
+
         if (id == null) {
-            id = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ) + 1;
+            id = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             log.info("Generated Realisation ID: {}", id);
         }
 
         CompositeId compositeId = new CompositeId(id, version);
         log.info("CompositeId: {}", compositeId);
 
-        // Check if realisation already exists
+        // Check existence
         if (repository.existsById(compositeId)) {
             throw new RealisationAlreadyExistsException(
                     "Realisation with ID " + id + " and version " + version + " already exists in the database.",
                     List.of(id), List.of(version));
         }
 
-        // Map request to entity
+        // === Mapping ===
         Realisation realisation = RealisationMapper.INSTANCE.toEntity(request);
         realisation.setId(compositeId.getId());
         realisation.setVersion(version);
         log.info("Realisation after mapping: {}", realisation);
 
-        // Set empty associations initially
+        // === Init empty collections ===
         realisation.setPaas(new ArrayList<>());
         realisation.setPpms(new ArrayList<>());
         realisation.setLots(new ArrayList<>());
         realisation.setDocs(new ArrayList<>());
         realisation.setFinancements(new ArrayList<>());
 
+        // === Imputation Budgetaire ===
         if (request.getImputationBudgetaire() != null) {
-            log.info("Fetching ImputationBudgetaire with ID: {}", request.getImputationBudgetaire().getId());
-            realisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
+            realisation.setImputationBudgetaire(
+                    refParamRepository.findById(request.getImputationBudgetaire().getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found"))
+            );
         }
+
+        // === Beneficiaire ===
         if (request.getBeneficiaire() != null) {
             realisation.setBeneficiaire(request.getBeneficiaire());
         }
 
-        // Fetch associated PAAs if needed
+        // === Associate PAAs ===
         if (request.getPaaIds() != null && !request.getPaaIds().isEmpty()) {
             List<Paa> paas = request.getPaaIds().stream()
                     .peek(paaId -> log.info("Associating PAA ID: {}, Version: {}", paaId.getId(), paaId.getVersion()))
@@ -249,11 +255,12 @@ public class RealisationServiceImpl implements RealisationService {
                     .filter(Optional::isPresent)
                     .map(Optional::get)
                     .collect(Collectors.toCollection(ArrayList::new));
+
             realisation.getPaas().addAll(paas);
             log.info("Associated PAAs: {}", paas);
         }
 
-        // Fetch and set PPMs
+        // === Associate PPMs ===
         if (request.getPpmIds() != null) {
             List<Ppm> ppms = request.getPpmIds().stream()
                     .map(ppmId -> ppmRepository.findById(new CompositeId(ppmId.getId(), ppmId.getVersion())))
@@ -264,26 +271,27 @@ public class RealisationServiceImpl implements RealisationService {
             log.info("Associated PPMs: {}", ppms);
         }
 
-        // Handle Lots
+        // === Lots creation ===
         if (request.getLots() != null && !request.getLots().isEmpty()) {
+
             Set<Lot> lots = new HashSet<>();
+
             for (LotResponse lotResponse : request.getLots()) {
 
                 Lot newLot = new Lot();
                 newLot.setVersion(1);
 
-                // Generate a unique Lot ID
                 Integer generatedLotId;
                 do {
-                    generatedLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
+                    generatedLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                 } while (lotRepository.existsById(new CompositeId(generatedLotId, 1)));
+
                 newLot.setId(generatedLotId);
 
                 // Description
                 if (lotResponse.getDescription() != null) {
                     newLot.setDescription(lotResponse.getDescription());
                 } else if (lotResponse.getId() != null) {
-                    // If an ID was provided, try to copy description from existing lot (best-effort clone semantics)
                     lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
                             .ifPresent(existing -> newLot.setDescription(existing.getDescription()));
                 }
@@ -302,7 +310,7 @@ public class RealisationServiceImpl implements RealisationService {
                 Lot savedLot = lotRepository.save(newLot);
 
                 if (lotResponse.getId() != null) {
-                    log.warn("Cloned existing Lot id={} (ver={}) into new Lot id={} (ver=1) for Realisation {} to avoid cross-linking",
+                    log.warn("Cloned existing Lot id={} (ver={}) into new Lot id={} (ver=1) for Realisation {}",
                             lotResponse.getId(), lotResponse.getVersion(), savedLot.getId(), realisation.getId());
                 } else {
                     log.info("Created new Lot id={} v=1 desc='{}' budget={}",
@@ -311,25 +319,25 @@ public class RealisationServiceImpl implements RealisationService {
 
                 lots.add(savedLot);
             }
+
             realisation.getLots().addAll(lots);
             log.info("Associated Lots: {}", lots);
         }
 
         log.info("Realisation before save: {}", realisation);
         realisation.setStatut(RealisationStatus.NON_PUBLIE);
+
         Realisation savedRealisation = repository.save(realisation);
         log.info("Saved Realisation: {}", savedRealisation);
 
-        // Create financements for the saved realisation
+        // === Financements ===
         if (request.getFinancementRequests() != null && !request.getFinancementRequests().isEmpty()) {
-            log.info("Creating {} Financements for saved Realisation", request.getFinancementRequests().size());
 
+            log.info("Creating {} Financements for saved Realisation", request.getFinancementRequests().size());
             List<Financement> createdFinancements = new ArrayList<>();
 
             for (FinancementBaseRequestDto financementRequest : request.getFinancementRequests()) {
-                log.info("Processing Financement request: {}", financementRequest);
 
-                // === composite key creation ===
                 Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
                 FinancementId financementId = new FinancementId();
@@ -337,55 +345,40 @@ public class RealisationServiceImpl implements RealisationService {
                 financementId.setRealisationId(savedRealisation.getId());
                 financementId.setRealisationVer(savedRealisation.getVersion());
 
-                // === Create entity ===
                 Financement financement = new Financement();
                 financement.setId(financementId);
-                financement.setRealisation(savedRealisation); // @MapsId binds realisationId + ver
+                financement.setRealisation(savedRealisation);
                 financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
                 financement.setIsDeleted(false);
 
-                // === Set Monnaie ===
-                if (financementRequest.getMonnaieId() == null) {
-                    throw new IllegalArgumentException("Monnaie ID is required for each Financement");
-                }
-
-                log.info("Fetching Monnaie with ID: {}", financementRequest.getMonnaieId());
+                // Set monnaie
                 Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
-                        .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
-
+                        .orElseThrow(() -> new IllegalArgumentException("Monnaie not found"));
                 financement.setMonnaie(monnaie);
-                financement.setTauxApplicable(
-                        monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
-                );
+                financement.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
-                // === Set Source Financement  ===
+                // Source financement
                 if (financementRequest.getSourceFinancement() != null &&
                         financementRequest.getSourceFinancement().getId() != null) {
 
-                    log.info("Fetching SourceFinancement with ID: {}", financementRequest.getSourceFinancement().getId());
-                    RefParam sourceFinancement = refParamRepository.findById(financementRequest.getSourceFinancement().getId())
-                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found with ID: " +
-                                    financementRequest.getSourceFinancement().getId()));
-
-                    financement.setSourceFinancement(sourceFinancement);
+                    RefParam src = refParamRepository.findById(
+                                    financementRequest.getSourceFinancement().getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Source Financement not found"));
+                    financement.setSourceFinancement(src);
                 }
 
-                // === Persist financing ===
-                Financement savedFinancement = financementRepository.save(financement);
-                log.info("Created and saved Financement: {}", savedFinancement);
-
-                createdFinancements.add(savedFinancement);
+                Financement savedFin = financementRepository.save(financement);
+                createdFinancements.add(savedFin);
             }
 
-            // === Attach financing list to realisation ===
             savedRealisation.setFinancements(createdFinancements);
 
-            // === Recompute Realisation budget from financements ===
+            // Compute budget
             BigDecimal totalFx = createdFinancements.stream()
                     .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
                     .map(f -> {
                         BigDecimal amt = f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                        Double taux = f.getTauxApplicable() != null
+                        Double taux = (f.getTauxApplicable() != null)
                                 ? f.getTauxApplicable()
                                 : (f.getMonnaie() != null && f.getMonnaie().getTaux() != null ? f.getMonnaie().getTaux() : 0.0);
                         return amt.multiply(BigDecimal.valueOf(taux));
@@ -393,8 +386,8 @@ public class RealisationServiceImpl implements RealisationService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             savedRealisation.setBudgetEstime(totalFx);
-
             savedRealisation = repository.save(savedRealisation);
+
             log.info("Updated Realisation with {} financements", createdFinancements.size());
         }
 

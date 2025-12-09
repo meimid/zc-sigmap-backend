@@ -336,6 +336,32 @@ public class AcController {
         List<AcSelectResponseDto> responses= AcMapper.INSTANCE.mapToSelectDto(acs);
         return ResponseEntity.ok(responses);
     }
+
+    @GetMapping("/list-um")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    public ResponseEntity<List<AcResponse>> getAcsForCreateUser() {
+
+        List<Ac> acs = null;
+        boolean isAdminAcOnly = Authentication.hasRole("ADMIN_AC")
+                && !Authentication.hasRole("SUPER_ADMIN")
+                && !Authentication.hasRole("ADMIN_CENTRAL");
+
+        if (isAdminAcOnly) {
+            acs = userAcRepository.findAcsByUserIdAndIsDeletedFalse(Authentication.getCurrentUserId().get());
+        }
+        else {
+            acs = acService.findAll();
+        }
+        List<AcResponse> acsR = acs.stream()
+                .map(ac -> {
+                    AcResponse response = AcMapper.INSTANCE.map(ac);
+                    return response;
+                })
+                .toList();
+
+        return ResponseEntity.ok(acsR);
+    }
+
     @GetMapping("/acs_list_with_no_com")
     public ResponseEntity<List<AcSelectResponseDto>> findAllAsListWithNoCom() {
         List<Ac> acs=acService.findAllAcsWithNoCom();
@@ -360,4 +386,17 @@ public class AcController {
                 .toList();
         return ResponseEntity.ok(acs);
     }
+
+    @GetMapping("/acs-tutel-list-with-no-com-cpmp")
+    public ResponseEntity<List<AcSelectResponseDto>> findAllAsListWithNoComCPMP(
+            @RequestParam(required = false) Integer comId,
+            @RequestParam Integer typeComId) throws RefParamNotFound {
+
+        List<Ac> acs = acService.findAllAcsWithNoComCPMP(comId, typeComId);
+
+        List<AcSelectResponseDto> responses = AcMapper.INSTANCE.mapToSelectDto(acs);
+
+        return ResponseEntity.ok(responses);
+    }
+
 }

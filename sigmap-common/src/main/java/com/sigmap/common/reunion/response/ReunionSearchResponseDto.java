@@ -14,5 +14,7 @@ public class ReunionSearchResponseDto {
     private String object;
     private ReunionStatus status;
     private String decision;
+    private String note;
+    boolean haveExtraits = false;
     private BaseEntityResponse metadata;
 }

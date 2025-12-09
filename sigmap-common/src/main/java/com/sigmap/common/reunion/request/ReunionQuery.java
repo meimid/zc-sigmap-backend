@@ -17,6 +17,7 @@ public class ReunionQuery {
     private Calendar reunionDateAfter;
     private Calendar reunionDateBefore;
     private String nom;
+    private String note;
     private boolean deleted;
 
     /**

@@ -12,7 +12,10 @@ import com.sigmap.common.ac_seuil.AcSeuil;
 import com.sigmap.common.ac_seuil.AcSeuilService;
 import com.sigmap.common.ac_seuil.AcSeuilSpecifications;
 import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
@@ -41,23 +44,37 @@ import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
 import com.sigmap.common.realisations.exceptions.RealisationBudgetBelowAcSeuilForPpmException;
+import com.sigmap.common.realisations.exceptions.RealisationBudgetExceedsAcSeuilException;
 import com.sigmap.common.realisations.request.RealisationBaseRequestDto;
 import com.sigmap.common.realisations.request.RealisationRequest;
 import com.sigmap.common.realisations.request.RealisationWithLotsRequestDto;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
+import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.ReunionRepository;
+import com.sigmap.common.reunion.ReunionSpecifications;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.security.Authentication;
+import com.sigmap.common.seuil_general.SeuilGeneral;
+import com.sigmap.common.seuil_general.SeuilGeneralService;
+import com.sigmap.common.seuil_general.SeuilGeneralSpecifications;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_societe.exception.TokenRequired;
+import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.*;
 import lombok.extern.slf4j.Slf4j;
+import org.jfree.util.Log;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -65,6 +82,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -104,6 +122,12 @@ public class PpmServiceImpl implements PpmService {
     private final ModelPpmRepository modelPpmRepository;
     private final PpmRepository ppmRepository;
     private final UserComRepository userComRepository;
+    private final ComService comService;
+    private final ReunionRepository reunionRepository;
+    private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    private final SeuilGeneralService seuilGeneralService;
+
+
 
     /**
      * Constructor.
@@ -117,7 +141,7 @@ public class PpmServiceImpl implements PpmService {
      * @param docsService
      * @param acService
      */
-    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository) {
+    public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService, CurrentUserService currentUserService, AcRepository acRepository, RealisationRepository realisationRepository, RefParamRepository refParamRepository, DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository, MonnaieRepository monnaieRepository, FinancementRepository financementRepository, ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository, ComService comService, ReunionRepository reunionRepository, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, SeuilGeneralService seuilGeneralService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -138,6 +162,11 @@ public class PpmServiceImpl implements PpmService {
         this.modelPpmRepository = modelPpmRepository;
         this.ppmRepository = ppmRepository;
         this.userComRepository = userComRepository;
+        this.comService = comService;
+        this.reunionRepository = reunionRepository;
+        this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
+        this.seuilGeneralService = seuilGeneralService;
+
     }
 
     @Override
@@ -183,6 +212,7 @@ public class PpmServiceImpl implements PpmService {
     @Override
     public Optional<Ppm> findById(Integer ppmId, Integer ppmVer)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
+
         log.info("Recherche du PPM avec ID: {} et version: {}", ppmId, ppmVer);
 
         // Step 1: Validate input
@@ -191,107 +221,271 @@ public class PpmServiceImpl implements PpmService {
             throw new IllegalArgumentException("PPM ID cannot be null");
         }
 
-        // Step 2: Get user's AC IDs and comIds
+        // Step 2: Get user's AC IDs and COM IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         List<Integer> userComIds = currentUserService.getCurrentUserComIds();
-        log.info("User AC IDs: {}, User comIds: {}", userAcIds, userComIds);
 
-        if ((userAcIds == null || userAcIds.isEmpty()) && (userComIds == null || userComIds.isEmpty())) {
-            log.warn("Aucun ID AC ou comId trouvé pour l'utilisateur connecté. userAcIds: {}, userComIds: {}", userAcIds, userComIds);
-            throw new AcNotFound("Aucun ID AC ou comId trouvé pour l'utilisateur connecté", Collections.emptyList());
+        log.info("User AC IDs: {}, User COM IDs: {}", userAcIds, userComIds);
+
+        if ((userAcIds == null || userAcIds.isEmpty()) &&
+                (userComIds == null || userComIds.isEmpty())) {
+            throw new AcNotFound(
+                    "Aucun ID AC ou comId trouvé pour l'utilisateur connecté",
+                    Collections.emptyList()
+            );
         }
 
-        // Step 3: Validate ACs if any exist
-        if (userAcIds != null && !userAcIds.isEmpty()) {
+        // Step 3: Validate AC list
+        if (userAcIds != null) {
             for (Integer acId : userAcIds) {
-                try {
-                    log.debug("Validation de l'AC ID: {}", acId);
-                    acService.findById(acId);
-                } catch (AcNotFound e) {
-                    log.warn("AC non trouvé avec ID: {}", acId);
-                    throw e;
-                }
+                acService.findById(acId);
             }
         }
 
-        // Step 4: Determine the version to use
-        Integer targetVersion = ppmVer != null ? ppmVer : repository.findMaxVersionById(ppmId);
+        // Step 4: Determine correct version
+        Integer targetVersion =
+                (ppmVer != null) ? ppmVer : repository.findMaxVersionById(ppmId);
+
         if (targetVersion == null) {
-            log.warn("Aucun PPM trouvé pour l'ID: {}", ppmId);
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID", List.of(ppmId),
+            throw new PpmNotFound("Aucun PPM trouvé pour l'ID",
+                    List.of(ppmId),
                     ppmVer != null ? List.of(ppmVer) : Collections.emptyList());
         }
-        log.debug("Version cible pour le PPM ID {}: {}", ppmId, targetVersion);
 
-        // Step 5: Retrieve the PPM
+        // Step 5: Retrieve PPM
         Optional<Ppm> ppmOpt = repository.findById(new CompositeId(ppmId, targetVersion));
+
         if (ppmOpt.isEmpty()) {
-            log.warn("Aucun PPM trouvé pour l'ID: {} et la version: {}", ppmId, targetVersion);
-            throw new PpmNotFound("Aucun PPM trouvé pour l'ID et la version", List.of(ppmId), List.of(targetVersion));
+            throw new PpmNotFound(
+                    "Aucun PPM trouvé pour l'ID et la version",
+                    List.of(ppmId),
+                    List.of(targetVersion)
+            );
         }
 
         Ppm ppm = ppmOpt.get();
-        log.debug("PPM récupéré: ID={}, Version={}, AC={}",
-                ppm.getId(), ppm.getVersion(), ppm.getAc() != null ? ppm.getAc().getId() : "null");
 
-        // Step 6: Check if the PPM is deleted
+        // Step 6: Deleted check
         if (Boolean.TRUE.equals(ppm.getIsDeleted())) {
-            log.warn("PPM avec ID {} est marqué comme supprimé", ppmId);
             throw new PpmNotFound("PPM est supprimé", List.of(ppmId), List.of(targetVersion));
         }
 
-        // Step 7: Validate AC or com association
+        // Step 7: Validate AC or COM association
         Integer ppmAcId = ppm.getAc() != null ? ppm.getAc().getId() : null;
-        boolean hasMatchingAc = ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+
+        boolean hasMatchingAc =
+                ppmAcId != null && userAcIds != null && userAcIds.contains(ppmAcId);
+
         boolean hasMatchingCom = false;
 
-        if (ppm.getComs() != null && !ppm.getComs().isEmpty() && userComIds != null && !userComIds.isEmpty()) {
+        if (ppm.getComs() != null && userComIds != null) {
             for (Com com : ppm.getComs()) {
                 if (com != null && userComIds.contains(com.getId())) {
                     hasMatchingCom = true;
-                    log.debug("Match trouvé pour comId: {} dans ppmId: {}", com.getId(), ppmId);
                     break;
                 }
             }
         }
 
         if (!hasMatchingAc && !hasMatchingCom) {
-            log.warn("PPM avec ID {} n'est pas associé à un AC ou comId de l'utilisateur. AC du PPM: {}, ACs de l'utilisateur: {}, comIds de l'utilisateur: {}",
-                    ppmId, ppmAcId, userAcIds, userComIds);
             throw new PpmNotAssociatedWithUserAcException(
-                    "Le PPM avec l'ID " + ppmId + " n'est pas associé à un AC ou comId de l'utilisateur connecté",
+                    "PPM non associé à un AC ou COM de l'utilisateur",
                     List.of(ppmId.longValue()),
                     List.of(targetVersion)
             );
         }
-        log.debug("Validation réussie: PPM avec ID {} est associé à un AC ou comId de l'utilisateur", ppmId);
 
-        Integer effectiveVer = targetVersion;
-        String modelAlfrescoId = modelPpmRepository
-                .findModelAlfrescoId(ppmId, effectiveVer)
-                .orElse(null);
-        if (modelAlfrescoId != null && !modelAlfrescoId.isBlank()) {
+        // Step 8: Load signed model if exists
+        String modelAlfrescoId =
+                modelPpmRepository.findModelAlfrescoId(ppmId, targetVersion).orElse(null);
+        if (modelAlfrescoId != null) {
             ppm.setModelAlfrescoId(modelAlfrescoId);
         }
 
+        // Step 9: Clean financements
         if (ppm.getRealisations() != null) {
-            ppm.getRealisations().forEach(realisation -> {
-                if (realisation.getFinancements() != null) {
-                    realisation.setFinancements(
-                            realisation.getFinancements()
-                                    .stream()
+            ppm.getRealisations().forEach(real -> {
+                if (real.getFinancements() != null) {
+                    real.setFinancements(
+                            real.getFinancements().stream()
                                     .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                                    .collect(java.util.stream.Collectors.toList())
+                                    .collect(Collectors.toList())
                     );
                 }
             });
         }
 
+        // Step 10: PV + Extrait rules (INSERTED HERE)
+        populateVisiblePvs(ppm, userAcIds, userComIds);
 
         Ppm responsePpm = createFilteredResponsePpm(ppm);
-        log.info("PPM avec ID {} récupéré avec succès pour l'utilisateur", ppmId);
+
         return Optional.ofNullable(responsePpm);
     }
+
+    private void populateVisiblePvs(Ppm ppm, List<Integer> acIds, List<Integer> comIds) {
+
+        log.warn("populateVisiblePvs: acIds={}, comIds={}", acIds, comIds);
+
+        if (acIds != null && !acIds.isEmpty()) {
+
+            Integer acId = acIds.get(0);
+
+            log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
+
+            ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
+
+            log.warn("Extraits returned = {}", extrait.getExtraitCPMP());
+
+            ppm.setExtraitPvs(extrait.getExtraitCPMP());
+        }
+
+        if (comIds != null && !comIds.isEmpty()) {
+
+            log.warn("Fetching PVs for comIds {}, ppm {}, ver {}", comIds, ppm.getId(), ppm.getVersion());
+
+            PvResponse pvResponse = listPvComByPpm(comIds, ppm.getId(), ppm.getVersion());
+
+            log.warn("PV CPMP = {}", pvResponse.getPvCPMP());
+            log.warn("PV Permanente = {}", pvResponse.getPvCNCMPPermanente());
+            log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
+
+            ppm.setPvCpmp(pvResponse.getPvCPMP());
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente());
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise());
+        }
+    }
+
+
+    private PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+
+        PvResponse dto = new PvResponse();
+
+        log.warn("START listPvComByPpm: comIds={}, ppmId={}, ver={}", comIds, ppmId, ppmVersion);
+
+        for (Integer comId : comIds) {
+
+            log.warn("Processing comId {}", comId);
+
+            Optional<Com> comOpt = comService.findOne(
+                    Specification.where(
+                            ComSpecifications.deleted(false)
+                                    .and(ComSpecifications.id(comId))
+                    )
+            );
+
+            if (comOpt.isEmpty()) {
+                log.error("COM {} not found or deleted!", comId);
+                continue;
+            }
+
+            String userComType = comOpt.get().getComType().getCode().trim();
+            log.warn("COM {} type = {}", comId, userComType);
+
+            Specification<Reunion> spec = Specification
+                    .where(ReunionSpecifications.deleted(false))
+                    .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                    .and(ReunionSpecifications.comId(comId))
+                    .and(ReunionSpecifications.hasPpmId(ppmId))
+                    .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+            List<Reunion> reunions = reunionRepository.findAll(spec);
+
+            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
+
+            for (Reunion r : reunions) {
+
+                String pvAlfrescoId =
+                        r.getProcessVerbal()
+                                .getDocuments()
+                                .stream()
+                                .filter(doc -> doc.isPv())
+                                .findFirst()
+                                .map(doc -> doc.getDoc().getAlfresco_id())
+                                .orElse(null);
+
+                log.warn("Reunion {} PV={}", r.getId(), pvAlfrescoId);
+
+                if (pvAlfrescoId == null) continue;
+
+                String reunionComType = r.getCom().getComType().getCode().trim();
+
+                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        // Permanent CNCMP sees only permanent PVs
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        // Specialized CNCMP sees specialized PVs + permanent PVs
+                        if ("CNCMP-S".equals(reunionComType)) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
+
+
+    private ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
+
+        ExtraitResponse dto = new ExtraitResponse();
+
+        List<ProcessVerbalReunionExtrait> extraits =
+                processVerbalReunionExtraitService
+                        .findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+
+        for (ProcessVerbalReunionExtrait ex : extraits) {
+
+            Optional<Reunion> reunionOpt =
+                    reunionRepository.findByProcessVerbalId(ex.getPvId());
+
+            if (reunionOpt.isEmpty()) continue;
+
+            Reunion reunion = reunionOpt.get();
+
+            String typeCom = reunion.getCom().getComType().getCode();
+
+            if (!"CPMP".equals(typeCom)) continue;
+
+            String alfrescoId =
+                    ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+
+            if (alfrescoId != null) {
+                dto.getExtraitCPMP().add(alfrescoId);
+            }
+        }
+
+        return dto;
+    }
+
 
 
     public Optional<Ppm> findLatestById(Integer ppmId) throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
@@ -319,6 +513,10 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
         filteredPpm.setModelAlfrescoId(ppm.getModelAlfrescoId());
+        filteredPpm.setExtraitPvs(ppm.getExtraitPvs());
+        filteredPpm.setPvCncmpPermanente(ppm.getPvCncmpPermanente());
+        filteredPpm.setPvCpmp(ppm.getPvCpmp());
+        filteredPpm.setPvCncmpSpecialisee(ppm.getPvCncmpSpecialisee());
         filteredPpm.setEtapeProcess(ppm.getEtapeProcess());
         filteredPpm.setCreatedAt(ppm.getCreatedAt());
         filteredPpm.setCreatedBy(ppm.getCreatedBy());
@@ -577,7 +775,7 @@ public class PpmServiceImpl implements PpmService {
 
     @Transactional
     @Override
-    public Ppm create(PpmRequest request) {
+    public Ppm create(PpmRequest request) throws AcNotFound {
         Integer id = request.getId();
         if (id == null) {
 //            Integer maxId = repository.findMaxId();
@@ -4148,8 +4346,10 @@ public class PpmServiceImpl implements PpmService {
                 } else {
                     realisation = new Realisation();
 
-                    Integer maxRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-                    Integer realisationId = (maxRealisationId != null) ? maxRealisationId + 1 : 1;
+                    Integer realisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+                    if (realisationId == null) {
+                        realisationId = 1;
+                    }
 
                     realisation.setId(realisationId);
                     realisation.setVersion(1);
@@ -4264,8 +4464,10 @@ public class PpmServiceImpl implements PpmService {
                             newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
                             newLot.setIsDeleted(false);
 
-                            Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
+                            Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
+                            if (lotId == null) {
+                                lotId = 1;
+                            }
                             newLot.setId(lotId);
 
                             Lot savedLot = lotRepository.save(newLot);
@@ -4604,13 +4806,21 @@ public class PpmServiceImpl implements PpmService {
      *
      * @param ppm the Ppm entity to set the reference for
      */
-    private void setRef(Ppm ppm) {
+    private void setRef(Ppm ppm) throws AcNotFound {
         if (ppm == null || ppm.getAc() == null || ppm.getAnnee() == null) {
             throw new IllegalArgumentException("Cannot set reference: ppm, ac, or year is null.");
         }
-        String acName =ppm.getAc().getNom();
-        String ref = "PPM_" +acName+"_" +ppm.getAnnee();
-        ppm.setRef(ref);
+        String ref ;
+        Ac ac = acService.findById(ppm.getAc().getId());
+        if (ac.getAbreviation()!=null && ac.getAbreviation().length()>0) {
+            ref = "PPM_" + ac.getAbreviation() + "_" + ppm.getAnnee();
+            ppm.setRef(ref);
+        }
+        else {
+            ref = "PPM_" + ac.getNom() + "_" + ppm.getAnnee();
+            ppm.setRef(ref);
+        }
+
     }
 
     @Override
@@ -4637,6 +4847,8 @@ public class PpmServiceImpl implements PpmService {
     public Ppm createPpmPerAc(PpmWithLotsRequestDto request)
             throws PpmCreationLimitExceededException, AcNotFound, IOException {
 
+        log.info("\n==================[ START CREATE PPM ]==================");
+
         // ----------------------
         // 1. Validate request year
         // ----------------------
@@ -4655,7 +4867,6 @@ public class PpmServiceImpl implements PpmService {
         int currentYear = LocalDate.now().getYear();
         int nextYear = currentYear + 1;
 
-        // Allowed years: current or next
         if (requestedYear != currentYear && requestedYear != nextYear) {
             throw new IllegalArgumentException(
                     "Vous ne pouvez créer un PPM que pour l'année " + currentYear +
@@ -4663,7 +4874,7 @@ public class PpmServiceImpl implements PpmService {
             );
         }
 
-        log.info("Creating PPM for allowed year {}", requestedYear);
+        log.info("[STEP 1] Year validated = {}", requestedYear);
 
         // ----------------------
         // 2. Validate AC and permissions
@@ -4673,16 +4884,23 @@ public class PpmServiceImpl implements PpmService {
             throw new IllegalArgumentException("AC ID is required.");
         }
 
+        log.info("[STEP 2] Requested AC = {}", requestAcId);
+
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
+        log.info("         User allowed ACs = {}", userAcIds);
+
         if (!userAcIds.contains(requestAcId)) {
             throw new AcNotFound("User not allowed for AC " + requestAcId, List.of(requestAcId));
         }
 
         Ac ac = acService.findById(requestAcId);
+        log.info("         AC found: {}", ac.getId());
 
         // ----------------------
         // 3. Check PPM uniqueness for REQUESTED YEAR
         // ----------------------
+        log.info("[STEP 3] Checking PPM uniqueness for year {}", requestedYear);
+
         Specification<Ppm> spec = PpmSpecifications.annee(String.valueOf(requestedYear))
                 .and(PpmSpecifications.ppmAc(requestAcId))
                 .and(PpmSpecifications.deleted(false));
@@ -4691,6 +4909,7 @@ public class PpmServiceImpl implements PpmService {
 
         if (!existingPpms.isEmpty()) {
             Ppm existing = existingPpms.get(0);
+            log.info(" ❌ Existing PPM found: ID={}, VER={}", existing.getId(), existing.getVersion());
             throw new PpmCreationLimitExceededException(
                     "Un PPM existe déjà pour l'AC " + requestAcId +
                             " pour l'année " + requestedYear + ".",
@@ -4700,10 +4919,15 @@ public class PpmServiceImpl implements PpmService {
             );
         }
 
+        log.info("         No existing PPM detected");
+
         // ----------------------
         // 4. Create PPM entity
         // ----------------------
+        log.info("[STEP 4] Creating PPM entity...");
+
         Integer ppmId = sequenceGeneratorService.getNextId(Constants.PPM_ID_SEQ);
+        log.info("         Sequence returned PPM_ID = {}", ppmId);
 
         Ppm ppm = new Ppm();
         ppm.setId(ppmId);
@@ -4719,14 +4943,17 @@ public class PpmServiceImpl implements PpmService {
         ppm.setNbrActualisation(0);
         setRef(ppm);
 
-        log.info("PPM created with validated year {}", ppm.getAnnee());
+        log.info("         PPM created with ref={}, annee={}", ppm.getRef(), ppm.getAnnee());
 
         Ppm savedPpm = repository.save(ppm);
+        log.info(" ✔ PPM SAVED → ID={}, VER=1", savedPpm.getId());
 
         // ----------------------
         // 5. Handle documents
         // ----------------------
+        log.info("[STEP 5] Handling documents...");
         if (request.getDocIds() != null) {
+            log.info("         {} docIds provided", request.getDocIds().size());
             List<Docs> docs = new ArrayList<>();
             for (Integer docId : request.getDocIds()) {
                 Docs doc = docsRepository.findById(docId)
@@ -4748,15 +4975,30 @@ public class PpmServiceImpl implements PpmService {
                     Constants.PATH_ENTREPOT_GED_PPM
             );
         }
-        if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
-            Integer nextRealisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-log.info("nextRealisationId {}", nextRealisationId);
 
+        // ----------------------
+        // 6. Realisations + Lots + Financements
+        // ----------------------
+        log.info("[STEP 6] Handling Realisations, Lots and Financements...");
+
+        if (request.getRealisationsWithLots() != null && !request.getRealisationsWithLots().isEmpty()) {
+
+            log.info("         {} Realisations to create", request.getRealisationsWithLots().size());
             List<Realisation> realisationsToSave = new ArrayList<>();
+
             for (RealisationWithLotsRequestDto realisationRequest : request.getRealisationsWithLots()) {
+
+                log.info("\n-----------------[ NEW REALISATION ]-----------------");
+
                 Realisation realisation = new Realisation();
-                realisation.setId(nextRealisationId++);
+
+                // 🔐 FIX: safe Realisation ID generation (no ++)
+                Integer realisationId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
+                realisation.setId(realisationId);
                 realisation.setVersion(1);
+
+                log.info("         REALISATION CREATED → ID={}, VER=1", realisationId);
+
                 realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees());
                 realisation.setBeneficiaire(realisationRequest.getBeneficiaire());
                 realisation.setTypeMarcher(realisationRequest.getTypeMarcher());
@@ -4769,7 +5011,7 @@ log.info("nextRealisationId {}", nextRealisationId);
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
 
-                // Handle realisation files
+                // Files
                 if (realisationRequest.getRealisationFiles() != null && !realisationRequest.getRealisationFiles().isEmpty()) {
                     documentCommuneService.processAndSaveDocuments(
                             realisationRequest.getRealisationFiles(),
@@ -4778,72 +5020,97 @@ log.info("nextRealisationId {}", nextRealisationId);
                     );
                 }
 
-                // Set bidirectional relationship with PPM
+                // PPM <-> Realisation relation
                 if (realisation.getPpms() == null) {
                     realisation.setPpms(new ArrayList<>());
                 }
                 realisation.getPpms().add(savedPpm);
                 savedPpm.getRealisations().add(realisation);
 
-                // Handle Lots
+                // ----------------------
+                // LOTS
+                // ----------------------
                 if (realisationRequest.getLots() != null && !realisationRequest.getLots().isEmpty()) {
-                    Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId : 1;
+                    log.info("         [LOTS] {} lots to create for Realisation {}", realisationRequest.getLots().size(), realisationId);
+
                     List<Lot> lots = new ArrayList<>();
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
                         Lot lot = new Lot();
                         Integer lotId = lotRequest.getId();
+
+                        // 🔐 FIX: if no ID, generate a fresh one; no manual ++
                         if (lotId == null) {
-                            lotId = nextLotId++;
+                            lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                         }
+
                         lot.setId(lotId);
                         lot.setVersion(1);
                         lot.setDescription(lotRequest.getDescription());
                         lot.setBudget(lotRequest.getBudget());
                         lot = lotRepository.save(lot);
+
+                        log.info("             LOT CREATED → ID={}, VER=1, budget={}", lotId, lot.getBudget());
                         lots.add(lot);
                     }
                     realisation.setLots(lots);
+                } else {
+                    log.info("         [LOTS] No lots for Realisation {}", realisationId);
                 }
 
-                // ADD: Handle Financements
-                Integer currentMaxFinancementId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-                Integer nextFinancementId = (currentMaxFinancementId != null) ? currentMaxFinancementId : 1;
-
+                // ----------------------
+                // FINANCEMENTS
+                // ----------------------
                 if (realisationRequest.getFinancements() != null && !realisationRequest.getFinancements().isEmpty()) {
-                    log.info("Processing {} financements for realisation ID: {}", realisationRequest.getFinancements().size(), realisation.getId());
+                    log.info("         [FINANCEMENTS] {} financements to create for Realisation {}",
+                            realisationRequest.getFinancements().size(), realisationId);
 
                     List<Financement> financements = new ArrayList<>();
 
                     for (FinancementRequest financementRequest : realisationRequest.getFinancements()) {
-                        log.info("Processing financement with monnaieId: {}", financementRequest.getMonnaieId());
+
+                        log.info("             Incoming FinancementRequest: monnaieId={}, budgetEstimer={}, sourceFinId={}",
+                                financementRequest.getMonnaieId(),
+                                financementRequest.getBudgetEstimer(),
+                                financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null
+                        );
 
                         if (financementRequest.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for realisation ID: {}", realisation.getId());
+                            log.warn("             Skipping financement with null monnaieId for realisation ID: {}", realisationId);
                             continue;
                         }
 
                         Financement financement = new Financement();
 
-                        // === FIXED: build correct composite ID ===
+                        // 🔐 FIX: generate financementId from sequence, no ++
+                        Integer financementIdSeq = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
                         FinancementId financementId = new FinancementId();
                         financementId.setRealisationId(realisation.getId());
                         financementId.setRealisationVer(realisation.getVersion());
-                        financementId.setFinancementId(nextFinancementId++);
+                        financementId.setFinancementId(financementIdSeq);
 
-                        // === Budget ===
+                        financement.setId(financementId);
+                        financement.setRealisation(realisation);
+
+                        // budget
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
 
-                        // === Monnaie + taux ===
+                        // monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException("Monnaie not found with ID: " + financementRequest.getMonnaieId()));
 
                         financement.setMonnaie(monnaie);
-                        financement.setTauxApplicable(
-                                monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
+                        Double taux = (monnaie.getTaux() != null) ? monnaie.getTaux() : 0.0;
+                        financement.setTauxApplicable(taux);
+
+                        log.info("             FINANCEMENT CREATED → (realisationId={}, financementId={}) budgetEstimer={}, monnaieId={}, taux={}",
+                                realisationId,
+                                financementIdSeq,
+                                financementRequest.getBudgetEstimer(),
+                                monnaie.getId(),
+                                taux
                         );
 
-                        // === Source financement ===
+                        // source financement
                         if (financementRequest.getSourceFinancement() != null &&
                                 financementRequest.getSourceFinancement().getId() != null) {
 
@@ -4856,60 +5123,68 @@ log.info("nextRealisationId {}", nextRealisationId);
                             financement.setSourceFinancement(sourceFinancement);
                         }
 
-                        // === FIXED: bind parent Realisation (MapsId) ===
-                        financement.setRealisation(realisation);
-
-                        // === assign composite id ===
-                        financement.setId(financementId);
-
                         financement.setIsDeleted(false);
-
                         financements.add(financement);
-
-                        log.info("Created financement with ID: {}, MonnaieId: {}, Budget: {}",
-                                financementId.getFinancementId(),
-                                financementRequest.getMonnaieId(),
-                                financementRequest.getBudgetEstimer());
                     }
 
                     realisation.setFinancements(financements);
-                    log.info("Assigned {} financements to realisation ID: {}", financements.size(), realisation.getId());
+                    log.info("         [FINANCEMENTS] {} financements assigned to Realisation {}",
+                            financements.size(), realisationId);
 
-                    // === CHANGED: compute converted budget Σ(budgetEstimer × Monnaie.taux)
+                    // === compute converted budget Σ(budgetEstimer × Monnaie.taux)
                     BigDecimal realisationBudgetFx = financements.stream()
                             .map(f -> {
                                 BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
                                 Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
                                         ? f.getMonnaie().getTaux()
                                         : 0.0;
-                                return amt.multiply(BigDecimal.valueOf(taux));
+                                BigDecimal converted = amt.multiply(BigDecimal.valueOf(taux));
+                                log.info("             -> conversion for financementId={} : amt={} * taux={} = {}",
+                                        f.getId() != null ? f.getId().getFinancementId() : null,
+                                        amt, taux, converted);
+                                return converted;
                             })
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     realisation.setBudgetEstime(realisationBudgetFx);
 
+                    log.info("         >>> Realisation {} BUDGET ESTIME (after sum) = {}", realisationId, realisationBudgetFx);
+
                     // validate seuil AFTER setting budget
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
+                    log.info("         >>> Realisation {} FINAL BUDGET ESTIME (after seuil check) = {}, seuilApplicable={}",
+                            realisationId, realisation.getBudgetEstime(), realisation.getSeuilApplicable());
 
                 } else {
-                    log.info("No financements provided for realisation ID: {}", realisation.getId());
+                    log.info("         [FINANCEMENTS] None provided for Realisation {}", realisationId);
 
                     realisation.setFinancements(new ArrayList<>());
                     realisation.setBudgetEstime(BigDecimal.ZERO);
 
                     setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
+                    log.info("         >>> Realisation {} FINAL BUDGET ESTIME (no financements) = {}, seuilApplicable={}",
+                            realisationId, realisation.getBudgetEstime(), realisation.getSeuilApplicable());
                 }
-
 
                 realisationsToSave.add(realisation);
             }
-            realisationRepository.saveAll(realisationsToSave);
 
+            log.info("[STEP 6] Saving {} Realisations in DB...", realisationsToSave.size());
+            realisationRepository.saveAll(realisationsToSave);
+        } else {
+            log.info("         No Realisations provided in request.");
         }
+
         // ----------------------
         // FINAL STEPS
         // ----------------------
+        log.info("[STEP 7] validateRealisations...");
         validateRealisations(savedPpm);
+
+        log.info("[STEP 8] Computing TOTAL PPM budget from Realisations...");
+        savedPpm.getRealisations().forEach(r ->
+                log.info("         Realisation ID={} → budgetEstime={}", r.getId(), r.getBudgetEstime())
+        );
 
         BigDecimal totalBudget = savedPpm.getRealisations().stream()
                 .map(r -> r.getBudgetEstime() != null ? r.getBudgetEstime() : BigDecimal.ZERO)
@@ -4917,8 +5192,15 @@ log.info("nextRealisationId {}", nextRealisationId);
 
         savedPpm.setBudgetEstime(totalBudget);
 
+        log.info("[FINAL] ✔ PPM CREATED SUCCESSFULLY");
+        log.info("         → PPM ID = {}", savedPpm.getId());
+        log.info("         → Total Realisations = {}", savedPpm.getRealisations().size());
+        log.info("         → TOTAL BUDGET = {}", totalBudget);
+        log.info("==================[ END CREATE PPM ]==================\n");
+
         return repository.save(savedPpm);
     }
+
 
 
     @Override
@@ -5140,8 +5422,7 @@ log.info("nextRealisationId {}", nextRealisationId);
         if (realisation.getTypeMarcher() != null && realisation.getModePassation() != null) {
             try {
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
                 if (acSeuilOpt.isPresent()) {
                     realisation.setSeuilApplicable(acSeuilOpt.get().getSeuil());
@@ -5978,10 +6259,12 @@ log.info("nextRealisationId {}", nextRealisationId);
                         realisation.getModePassation().getId());
 
                 Specification<AcSeuil> acSeuilSpec = AcSeuilSpecifications.acId(acId)
-                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()))
-                        .and(AcSeuilSpecifications.modePassationId(realisation.getModePassation().getId()));
-
+                        .and(AcSeuilSpecifications.typeMarcherId(realisation.getTypeMarcher().getId()));
                 Optional<AcSeuil> acSeuilOpt = acSeuilService.findOne(acSeuilSpec);
+
+                Specification<SeuilGeneral> seuilGeneralSpec = SeuilGeneralSpecifications.typeMarcherId(realisation.getTypeMarcher().getId())
+                        .and(SeuilGeneralSpecifications.deleted(false));
+                Optional<SeuilGeneral> seuilGeneralOpt = seuilGeneralService.findOne(seuilGeneralSpec);
 
                 if (acSeuilOpt.isPresent()) {
                     BigDecimal acSeuil = acSeuilOpt.get().getSeuil();
@@ -6005,7 +6288,26 @@ log.info("nextRealisationId {}", nextRealisationId);
                         throw new RealisationBudgetBelowAcSeuilForPpmException(msg);
                     }
 
-                } else {
+                }else if(seuilGeneralOpt.isPresent()){
+                    BigDecimal seuilGeneral = seuilGeneralOpt.get().getMontant();
+                    realisation.setSeuilApplicable(seuilGeneral);
+                    log.info("Set seuilApplicable to {} for Realisation ID: {} with AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}",
+                            realisation.getSeuilApplicable(), realisation.getId(), acId,
+                            realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
+
+                    // Validate Realisation budget against AcSeuil
+                    BigDecimal budgetEstime = realisation.getBudgetEstime() != null ? realisation.getBudgetEstime() : BigDecimal.ZERO;
+                    if (budgetEstime.compareTo(seuilGeneral) < 0) {
+                        log.error("Realisation ID {} budgetEstime {} exceeds Ac seuil {} for PAA",
+                                realisation.getId(), budgetEstime, seuilGeneral);
+                        throw new RealisationBudgetExceedsAcSeuilException(
+                                String.format(
+                                        "La réalisation %s a un budget estimé %s inférieur au seuil générale %s. Cette activité est compatible avec le PPM, mais pas avec le PAA.",
+                                        realisation.getRealisationEnvisagees(), budgetEstime, seuilGeneral
+                                ));
+                    }
+                }
+                else {
                     realisation.setSeuilApplicable(BigDecimal.ZERO);
                     log.warn("[PPM] No AcSeuil found for AC ID: {}, TypeMarcher ID: {}, ModePassation ID: {}. Setting seuilApplicable to 0.",
                             acId, realisation.getTypeMarcher().getId(), realisation.getModePassation().getId());
@@ -6141,25 +6443,20 @@ log.info("nextRealisationId {}", nextRealisationId);
 
     }
 
-    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt) {
-        List<String> roles = jwt.getClaim("resource_access") != null
-                ? ((Map<String, Map<String, Object>>) jwt.getClaim("resource_access"))
-                .getOrDefault("backend-common", Map.of())
-                .containsKey("roles")
-                ? (List<String>) ((Map<String, Object>) ((Map<String, Object>) jwt.getClaim("resource_access"))
-                .get("backend-common")).get("roles")
-                : List.of()
-                : List.of();
+    public List<Ppm> findAllPpms(Specification<Ppm> spec) {
 
-        boolean isSuperAdmin = roles.contains("SUPER_ADMIN");
-        boolean isAdminCentral = roles.contains("ADMIN_CENTRAL");
+        boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
+        boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
+        System.out.println("-----------------------"+String.valueOf(isAdminCentral));
+        System.out.println("-----------------------"+String.valueOf(isSuperAdmin));
+
 
         List<Ppm> ppms = new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
             ppms= findAllForSuperAdminAndAdminCentral(spec);
         }
         else {
-            String userId = jwt.getSubject();
+            String userId = Authentication.getCurrentUserId().orElseThrow(()->new UserIdRequiredException(""));
             ppms=findAllForComUser(spec,userId);
         }
         return ppms;

@@ -107,4 +107,6 @@ public interface AcService {
      List<Ac> getAcsByUserId(String userId);
 
     Integer getComIdByAcId(Integer acId) throws AcNotAssociatedCom;
+
+    List<Ac> findAllAcsWithNoComCPMP(Integer comId, Integer typeComId) throws RefParamNotFound;
 }

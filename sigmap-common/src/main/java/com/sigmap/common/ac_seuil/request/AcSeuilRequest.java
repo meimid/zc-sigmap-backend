@@ -14,6 +14,5 @@ import java.math.BigDecimal;
 public class AcSeuilRequest {
     private Integer acId;
     private Integer typeMarcherId;
-    private Integer modePassationId;
     private BigDecimal seuil;
 }

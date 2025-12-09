@@ -28,6 +28,7 @@ public class PaaSpecifications {
                     criteriaBuilder.like(root.get("ref"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("status"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("annee"), "%" + search + "%"),
                     criteriaBuilder.like(join.get("nom"), "%" + search + "%") // Assumes Ac has 'nom'
             );
         };

@@ -1,21 +1,21 @@
 package com.sigmap.common.reunion;
 
-import com.sigmap.common.Participant.request.ParticipantRequest;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
-import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
+import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import jakarta.mail.MessagingException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -48,13 +48,13 @@ public interface ReunionService {
      boolean checkParticipantPresenceWithReunionId(Integer id) throws ReunionNotFound;
     List<Reunion> findAllByPpmIdListForAdminCentralAndSuperAdmin(Integer ppmId,Specification<Reunion> specifications) ;
     List<Reunion> findAllByPpmIdListForUserCom(Integer ppmId,String userId,Specification<Reunion> specifications) ;
-    List<Reunion> findAllByPpmIdList(Integer ppmId, Jwt jwt,Specification<Reunion> specifications);
+    List<Reunion> findAllByPpmIdList(Integer ppmId,Specification<Reunion> specifications);
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForAdminCentralAndSuperAdmin(Integer reunionId, Integer ppmId) ;
     ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmIdForUserCom(Integer reunionId, Integer ppmId,String userId) ;
-    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId,Jwt jwt) ;
-    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Jwt jwt, Specification<Reunion> specifications);
-
-
+    ReunionWithParticipantsAndPvDto particpantHistoryByReunionIdAndPPmId(Integer reunionId, Integer ppmId) ;
+    List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Specification<Reunion> specifications);
+    ProcessVerbalReunionExtrait injectExtraitForAc(Integer reunionId, Integer ppmId, MultipartFile file) throws IOException;
+    Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
 
 
 

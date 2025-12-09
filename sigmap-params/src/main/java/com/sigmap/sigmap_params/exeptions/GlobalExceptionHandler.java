@@ -4,6 +4,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.DuplicateTypeMarcher
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionAlredyExist;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
+import com.sigmap.common.Participant.exception.EmailAlreadyReservedForAotherUser;
 import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
 import com.sigmap.common.Participant.exception.ParticipantNotFound;
 import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
@@ -46,7 +47,7 @@ import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.parametrage_process_dac.exeptions.ParametrageProcessDacNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
-import com.sigmap.common.process_verbal_reunion.exception.ProcessVerbalReunionNotFound;
+import com.sigmap.common.process_verbal_reunion.exception.*;
 import com.sigmap.common.realisations.exceptions.RealisationAlreadyExistsException;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.realisations.exceptions.RealisationsMinimumRequirement;
@@ -54,6 +55,8 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
+import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
@@ -512,8 +515,8 @@ public class GlobalExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(AcAttributeRequire.class)
-    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AcAttributeRequire ex) {
+    @ExceptionHandler(AttributeRequire.class)
+    public ResponseEntity<ErrorResponse> AcAttibuteRequireException(AttributeRequire ex) {
         String message = messageSource.getMessage("ac.attributeRequire",new Object[] {ex.getNom()}, getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
@@ -1415,6 +1418,141 @@ public class GlobalExceptionHandler {
 
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(NoteNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleNoteOnlyWhenMeetingEnCoursException() {
+
+        String message = messageSource.getMessage(
+                "note.only.encours",
+                new Object[] {},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                message
+        );
+
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(EmailAlreadyReservedForAotherUser.class)
+    public ResponseEntity<ErrorResponse> handleEmailAlreadyReservedForAnotherUser(EmailAlreadyReservedForAotherUser ex) {
+        String message = messageSource.getMessage(
+                "email.already.reserved.for.another.user",
+                new Object[]{ex.getEmail()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ExtraitFileRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleExtraitFileRequired(ExtraitFileRequiredException ex) {
+        String message = messageSource.getMessage(
+                "reunion.extrait.file.required",
+                new Object[]{ex.getReunionId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionComTypeInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleComTypeInvalid(ReunionComTypeInvalidException ex) {
+        String message = messageSource.getMessage(
+                "reunion.comtype.invalid",
+                new Object[]{ex.getReunionId(), ex.getComTypeCode()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPvMissingException.class)
+    public ResponseEntity<ErrorResponse> handlePvMissing(ReunionPvMissingException ex) {
+        String message = messageSource.getMessage(
+                "reunion.pv.missing",
+                new Object[]{ex.getReunionId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPpmNotFoundOrNoDecisionException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNotFoundOrNoDecision(ReunionPpmNotFoundOrNoDecisionException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ppm.notInReunionOrNoDecision",
+                new Object[]{ex.getReunionId(), ex.getPpmId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionPpmNoAcException.class)
+    public ResponseEntity<ErrorResponse> handlePpmNoAc(ReunionPpmNoAcException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ppm.noAc",
+                new Object[]{ex.getReunionId(), ex.getPpmId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ReunionAcNotEligibleForExtraitException.class)
+    public ResponseEntity<ErrorResponse> handleAcNotEligible(ReunionAcNotEligibleForExtraitException ex) {
+        String message = messageSource.getMessage(
+                "reunion.ac.notEligibleForExtrait",
+                new Object[]{ex.getReunionId(), ex.getAcId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ReunionExtraitAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleExtraitAlreadyExists(ReunionExtraitAlreadyExistsException ex) {
+        String message = messageSource.getMessage(
+                "reunion.extrait.alreadyExists",
+                new Object[]{ex.getPvId(), ex.getAcId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SeuilGeneralNotFound.class)
+    public ResponseEntity<ErrorResponse> handleExtraitAlreadyExists(SeuilGeneralNotFound ex) {
+        String message = messageSource.getMessage("seuil.general.not.found",new Object[]{ex.getId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(SeuilWithTypeMarcheExiste.class)
+    public ResponseEntity<ErrorResponse> seuilWithTypeMarcheExists(SeuilWithTypeMarcheExiste ex) {
+        String message = messageSource.getMessage("seuil.general.with.typeMarche.existe",new Object[]{ex.getId()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
 
 }
 

@@ -35,7 +35,7 @@ public class AcSeuilController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<AcSeuilResponse> createAcSeuil(@RequestBody AcSeuilRequest request) throws
-            AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound {
+            AcNotFound, RefParamNotFound {
         AcSeuil savedAcSeuil = acSeuilService.save(request);
         AcSeuilResponse acSeuilResponse = AcSeuilMapper.INSTANCE.map(savedAcSeuil);
         return ResponseEntity.ok(acSeuilResponse);
@@ -44,7 +44,7 @@ public class AcSeuilController {
     @PutMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<AcSeuilResponse> updateAcSeuil(@RequestBody AcSeuilRequest request)
-            throws AcNotFound, RefParamNotFound, ModeDePassationSelectionNotFound, AcSeuilNotFound {
+            throws AcNotFound, RefParamNotFound, AcSeuilNotFound {
         AcSeuil updatedAcSeuil = acSeuilService.update(request);
         AcSeuilResponse response = AcSeuilMapper.INSTANCE.map(updatedAcSeuil);
         return ResponseEntity.ok(response);
