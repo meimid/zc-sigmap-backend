@@ -334,8 +334,6 @@ public interface PpmService {
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
     List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
-    public List<Ppm> findAllPpms(Specification<Ppm> spec);
-
-
+     public List<Ppm> findAllPpms(Specification<Ppm> spec);
 }
 
