@@ -443,23 +443,21 @@ public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBlackListed(
         SocieteBlackList entry = blackListService.findById(id, societeId);
         return ResponseEntity.ok(SocieteBlackListMapper.INSTANCE.toResponse(entry));
     }
-    @PostMapping("/{societeId}/blacklist")
+    @PostMapping("/blacklist")
     public ResponseEntity<SocieteBlackListResponse> create(
-            @PathVariable Integer societeId,
             @RequestBody SocieteBlackListRequest request
     ) throws SocieteNotFound, InvalidBlackListDecision {
 
-        SocieteBlackList entry = blackListService.create(societeId,request);
+        SocieteBlackList entry = blackListService.create(request);
         return ResponseEntity.ok(SocieteBlackListMapper.INSTANCE.toResponse(entry));
     }
-    @PutMapping("/{societeId}/blacklist/{id}")
+    @PutMapping("/blacklist/{id}")
     public ResponseEntity<SocieteBlackListResponse> update(
-            @PathVariable Integer societeId,
             @PathVariable Integer id,
             @RequestBody SocieteBlackListRequest request
     ) throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound {
 
-        SocieteBlackList updated = blackListService.update(id, societeId, request);
+        SocieteBlackList updated = blackListService.update(id,  request);
 
         return ResponseEntity.ok(
                 SocieteBlackListMapper.INSTANCE.toResponse(updated)

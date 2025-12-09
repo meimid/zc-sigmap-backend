@@ -79,7 +79,7 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
     }
 
     @Override
-    public SocieteBlackList create(Integer societeId,SocieteBlackListRequest request) throws SocieteNotFound, InvalidBlackListDecision {
+    public SocieteBlackList create(SocieteBlackListRequest request) throws SocieteNotFound, InvalidBlackListDecision {
         if(request.getNatureDecision().equals(BlackList.TEMPORAIRE)&&request.getDelai()==null){
             throw new DelaiRequired("");
         }
@@ -87,30 +87,30 @@ public class SocieteBlackListServiceImpl implements SocieteBlackListService {
             request.setDelai(null);
         }
         Specification<SocieteBlackList> duplicateSpec =
-                SocieteBlackListSpecifications.societeId(societeId)
+                SocieteBlackListSpecifications.societeId(request.getSocieteId())
                         .and(SocieteBlackListSpecifications.deleted(false));
         if (findOne(duplicateSpec).isPresent()) {
             throw new SocieteAlreadyBlackListed("");
         }
 
-        Societe societe = societeService.findById(societeId);
+        Societe societe = societeService.findById(request.getSocieteId());
         SocieteBlackList societeBlackList= SocieteBlackListMapper.INSTANCE.map(request);
         societeBlackList.setId(sequenceGeneratorService.getNextId("societe_black_list_id_seq"));
-        societeBlackList.setSocieteId(societeId);
+        societeBlackList.setSocieteId(request.getSocieteId());
         societeBlackList.setSociete(societe);
         SocieteBlackList saved= repository.save(societeBlackList);
         return  saved;
     }
 
     @Override
-    public SocieteBlackList update(Integer id, Integer societeId, SocieteBlackListRequest request) throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound {
+    public SocieteBlackList update(Integer id, SocieteBlackListRequest request) throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound {
         if(request.getNatureDecision().equals(BlackList.TEMPORAIRE)&&request.getDelai()==null){
             throw new DelaiRequired("");
         }
         if(request.getNatureDecision().equals(BlackList.DEFINITIVE)&&request.getDateEffet()!=null){
             request.setDelai(null);
         }
-        SocieteBlackList societeBlackList= findById(id, societeId);
+        SocieteBlackList societeBlackList= findById(id, request.getSocieteId());
         SocieteBlackListMapper.INSTANCE.updateFromRequest(request,societeBlackList);
         return  repository.save(societeBlackList);
 

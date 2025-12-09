@@ -2,6 +2,7 @@ package com.sigmap.common.societe_blak_list.response;
 
 import com.sigmap.common.config.BlackList;
 import com.sigmap.common.response.BaseEntityResponse;
+import com.sigmap.common.societe.response.SocieteResponseDto;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 public class SocieteBlackListResponse {
 
     private Integer id;
-    private Integer societeId;
+    private SocieteResponseDto societe;
     private String nom;
     private String nif;
     private String pays;

@@ -25,10 +25,10 @@ public interface SocieteBlackListService {
     SocieteBlackList findDeletedById(Integer id, Integer societeId) throws BlackListNotFound;
 
 
-    SocieteBlackList create(Integer societeId,SocieteBlackListRequest request)
+    SocieteBlackList create(SocieteBlackListRequest request)
             throws SocieteNotFound, InvalidBlackListDecision;
 
-    SocieteBlackList update(Integer id, Integer societeId, SocieteBlackListRequest request)
+    SocieteBlackList update(Integer id,SocieteBlackListRequest request)
             throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound;
 
     void delete(Integer id, Integer societeId) throws BlackListNotFound;

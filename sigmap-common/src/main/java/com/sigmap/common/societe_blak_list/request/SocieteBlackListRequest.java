@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class SocieteBlackListRequest {
+    private Integer societeId;
     private BlackList natureDecision;
     private String reference;
     private LocalDateTime dateEffet;
