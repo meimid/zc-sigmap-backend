@@ -32,6 +32,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.JsonNode;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -649,6 +650,25 @@ public class DocumentCommuneService {
 
             docsRepository.save(document);
             return document.getId();
+        } catch (Exception e) {
+            log.error("Failed to process DAC model file: OriginalName={}, Error={}",
+                    file.getOriginalFilename(), e.getMessage());
+            throw new IOException("Failed to process or upload DAC model document: " + e.getMessage(), e);
+        }
+    }
+
+    public Docs processAndSaveDocumentsForPvExtrait(MultipartFile file,
+                                                      Integer acId,
+                                                      Integer pvId,
+                                                      String path) throws IOException {
+        String baseFolderPath = String.format("%s/%d/%d", path, acId, pvId);
+
+
+        try {
+            Docs document = mapperDocument(file, "PV_EXTRAIT", baseFolderPath);
+
+           Docs savedDoc= docsRepository.save(document);
+            return savedDoc;
         } catch (Exception e) {
             log.error("Failed to process DAC model file: OriginalName={}, Error={}",
                     file.getOriginalFilename(), e.getMessage());

@@ -21,8 +21,9 @@ public interface ReunionDacMapper {
     @Mapping(source = "dac", target = "dac")
     @Mapping(source ="dac.ppm.ac",target = "dac.ac")
     @Mapping(target = "docs", expression = "java(mapDocs(reunionDac.getReunionDacDocs()))")
-
+    @Mapping(source ="dac.reference",target = "dac.reference")
     ReunionDacResponse toResponse(ReunionDac reunionDac);
+    @Mapping(source ="dac.reference",target = "dac.reference")
     List<ReunionDacResponse> toResponses(List<ReunionDac> reunionDacs);
     default List<DocsResponseDTO> mapDocs(List<ReunionDacDoc> reunionDacDocs) {
         if (reunionDacDocs == null) return null;

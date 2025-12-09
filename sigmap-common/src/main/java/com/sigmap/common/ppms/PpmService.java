@@ -15,6 +15,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.io.IOException;
 import java.util.List;
@@ -114,7 +115,7 @@ public interface PpmService {
      * @param request the request to create the Ppm from
      * @return the created Ppm
      */
-    Ppm create(PpmRequest request);
+    Ppm create(PpmRequest request) throws AcNotFound;
 
     /**
      * Create a new PPM with full support for relationships including documents.
@@ -333,7 +334,7 @@ public interface PpmService {
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
     List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
-    public List<Ppm> findAllPpms(Specification<Ppm> spec, Jwt jwt);
+    public List<Ppm> findAllPpms(Specification<Ppm> spec);
 
 
 }

@@ -28,6 +28,10 @@ public class PpmResponse {
     private Boolean actualise;
     private Integer nbrActualisation;
     private String etapeProcess;
+    private List<String> pvCpmp;
+    private List<String> pvCncmpPermanente;
+    private List<String> pvCncmpSpecialisee;
+    private List<String> extraitPvs;
     private BaseEntityResponse metadata;
 
 }

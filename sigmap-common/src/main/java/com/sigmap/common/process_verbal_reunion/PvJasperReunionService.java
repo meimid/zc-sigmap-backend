@@ -59,7 +59,8 @@ public class PvJasperReunionService {
              InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
              InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
              InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1.jasper");
-             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper")) {
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper"))
+        {
 
             // Vérification des ressources
             validateResource(mainReportStream, "pv_reunion.jasper");
@@ -153,7 +154,7 @@ public class PvJasperReunionService {
         }
     }
 
-    public byte[] generateExtraitProcesVerbalCPMP(Integer reunionId) throws Exception {
+    public byte[] generateExtraitProcesVerbalCPMP(Integer reunionId, Integer acId) throws Exception {
         // Validation initiale
         if (reunionId == null) {
             throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
@@ -176,19 +177,20 @@ public class PvJasperReunionService {
              InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
              InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
              InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
-             InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1.jasper")) {
+             InputStream sub3Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub1AC.jasper")) {
 
             // Vérification des ressources
             validateResource(mainReportStream, "extrait_pv_CPMP.jasper");
             validateResource(logoStream, "logo.png");
             validateResource(sub1Stream, "pv_reunion_presents.jasper");
             validateResource(sub2Stream, "pv_reunion_absents.jasper");
-            validateResource(sub3Stream, "pv_reunion_sub1.jasper");
+            validateResource(sub3Stream, "pv_reunion_sub1AC.jasper");
 
             // Configuration des paramètres
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("acId", acId);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR3", sub3Stream);
@@ -208,7 +210,7 @@ public class PvJasperReunionService {
         }
     }
 
-    public byte[] generateExtraitProcesVerbalCNPMP(Integer reunionId) throws Exception {
+    public byte[] generateExtraitProcesVerbalCNCMP(Integer reunionId, Integer acId) throws Exception {
         // Validation initiale
         if (reunionId == null) {
             throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
@@ -227,27 +229,29 @@ public class PvJasperReunionService {
 
         // Gestion des ressources avec try-with-resources
         try (Connection conn = dataSource.getConnection();
-             InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/extrait_pv_CNPMP.jasper");
+             InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/extrait_pv_CNCMP.jasper");
              InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
              InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
              InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
-             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2.jasper")) {
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2AC.jasper")) {
 
             // Vérification des ressources
-            validateResource(mainReportStream, "extrait_pv_CNPMP.jasper");
+            validateResource(mainReportStream, "extrait_pv_CNCMP.jasper");
             validateResource(logoStream, "logo.png");
             validateResource(sub1Stream, "pv_reunion_presents.jasper");
             validateResource(sub2Stream, "pv_reunion_absents.jasper");
-            validateResource(sub4Stream, "pv_reunion_sub2.jasper");
+            validateResource(sub4Stream, "pv_reunion_sub2AC.jasper");
 
             // Configuration des paramètres
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("acId", acId);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR4", sub4Stream);
             parameters.put("REPORT_CONNECTION", conn);
+
 
             // Génération du rapport
             JasperPrint jasperPrint = JasperFillManager.fillReport(mainReportStream, parameters, conn);

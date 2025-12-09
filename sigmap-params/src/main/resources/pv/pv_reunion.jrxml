@@ -295,7 +295,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/" +  $F{abrv_ac} + "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "") ]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{code}.equals("CPMP")?"PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/" +  $F{abrv_ac} + "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "") : "PROCES VERBAL\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/PM/"  +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
 			<line>
 				<reportElement x="368" y="66" width="99" height="1" uuid="0481807b-9caf-4e39-844d-50655b4742e0"/>
@@ -361,7 +361,7 @@ FROM com
 					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
 				</box>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font fontName="Arial" size="9"/>
+					<font fontName="Arial" size="9" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{nom}]]></textFieldExpression>
 			</textField>

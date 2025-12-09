@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Ref;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -140,17 +141,18 @@ public class AcServiceImpl implements AcService{
     @Transactional
     public Ac create(AcRequest request) throws ComNotFound, RefParamNotFound, AcNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
-            throw new AcAttributeRequire("","nom");
+            throw new AttributeRequire("","nom");
         }
-         else if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
-             throw new AcAttributeRequire("","tutel");
+          if(request.getTutelId()==null&&(!request.isIstTutel()) ) {
+             throw new AttributeRequire("","tutel");
+        }
+         if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AttributeRequire("","email");
         }
        /*  else if(request.getContact() == null || request.getContact().isEmpty()) {
              throw new AcAttributeRequire("","contact");
         }*/
-     /*   else if(request.getEmail() == null || request.getEmail().isEmpty()) {
-            throw new AcAttributeRequire("","email");
-        }*/
+
       /*  else if (!request.getEmail().matches(Constants.EMAIL_REGEX)) {
             throw new AcAttributeRequiredAndValid("", "email");
         }*/
@@ -166,7 +168,7 @@ public class AcServiceImpl implements AcService{
             ac.setTutel(tutel);
             }
             else {
-                throw new AcAttributeRequire("","tutel");
+                throw new AttributeRequire("","tutel");
             }
         }
         Specification<RefParam> specPays= RefParamSpecifications.code("MR");
@@ -241,10 +243,13 @@ public class AcServiceImpl implements AcService{
     @Transactional
     public Ac update(Integer id, AcRequest request) throws AcNotFound, ComNotFound, DuplicateComIdsException, UserAcDefaultStatus, RefParamNotFound, IOException {
         if(request.getNom() == null || request.getNom().isEmpty()) {
-            throw new AcAttributeRequire("","nom");
+            throw new AttributeRequire("","nom");
         }
-        else if(request.getTutelId()==null&&!request.isIstTutel()){
-            throw new AcAttributeRequire("","tutel");
+         if(request.getTutelId()==null&&!request.isIstTutel()){
+            throw new AttributeRequire("","tutel");
+        }
+         if(request.getEmail() == null || request.getEmail().isEmpty()) {
+            throw new AttributeRequire("","email");
         }
        /* else if(request.getContact() == null || request.getContact().isEmpty()) {
             throw new AcAttributeRequire("","contact");
@@ -268,7 +273,7 @@ public class AcServiceImpl implements AcService{
                 ac.setTutel(tutel);
             }
             else {
-                throw new AcAttributeRequire("","tutel");
+                throw new AttributeRequire("","tutel");
             }
         }
         Specification<RefParam> specPays= RefParamSpecifications.code("MR");
@@ -320,10 +325,11 @@ public class AcServiceImpl implements AcService{
             Path targetPath = logoDir.resolve(newFilename);
 
             if (savedAc.getLogo() != null) {
-                Path oldFilePath = logoDir.resolve(Paths.get(savedAc.getLogo()).getFileName());
-                Files.deleteIfExists(oldFilePath);
+                Path oldFilePath = logoDir.resolve(savedAc.getLogo());
+                if (Files.exists(oldFilePath) && Files.isRegularFile(oldFilePath)) {
+                    Files.delete(oldFilePath);
+                }
             }
-            Files.createDirectories(targetPath.getParent());
 
             request.getLogoFile().transferTo(targetPath.toFile());
 
@@ -441,8 +447,8 @@ public class AcServiceImpl implements AcService{
         // Step 1: Spec to get Ac with com == null
         Specification<Ac> spec = AcSpecifications.hasComNull();
 
-        // Step 2: Get all Ac IDs that are used as 'tutel' in any Com
-        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted())
+        // Step 2: Get all Ac IDs that are used as 'tutel' in any CPMP
+        Set<Integer> usedTutelAcIds = comService.findAll().stream().filter(com->!com.getIsDeleted() && com.getComType().getCode().equals("CPMP"))
                 .map(Com::getTutel)           // get the Ac used as tutel
                 .filter(Objects::nonNull)
                 .map(Ac::getId)
@@ -525,5 +531,39 @@ public class AcServiceImpl implements AcService{
                 .map(ac -> ac.getCom() != null ? ac.getCom().getId() : null)
                 .orElseThrow(() -> new AcNotAssociatedCom ("Aucune commission n’est liée à cet AC. "));
     }
+
+    @Override
+    public List<Ac> findAllAcsWithNoComCPMP(Integer comId, Integer typeComId) throws RefParamNotFound {
+
+        // Get the type of COM
+        RefParam typeCom = refParamService.findByIdWithoutSystemType(typeComId);
+        boolean isCpmp = "CPMP".equals(typeCom.getCode());
+
+        //  Base list: all ACs not deleted AND tutel = true
+        List<Ac> baseAcs = repository.findAll().stream()
+                .filter(ac -> !Boolean.TRUE.equals(ac.getIsDeleted()))
+                .filter(Ac::isIstTutel)
+                .collect(Collectors.toList());
+
+        if (!isCpmp) {
+            return baseAcs;
+        }
+
+        // If CPMP → collect tutels already used in OTHER CPMP COMs
+        Set<Integer> usedCpmpTutelIds = comService.findAll().stream()
+                .filter(com -> !Boolean.TRUE.equals(com.getIsDeleted()))
+                .filter(com -> com.getComType() != null
+                        && "CPMP".equals(com.getComType().getCode()))
+                .filter(com -> com.getTutel() != null)
+                // ignore the current COM when updating, so its tutel stays allowed
+                .filter(com -> comId == null || !comId.equals(com.getId()))
+                .map(com -> com.getTutel().getId())
+                .collect(Collectors.toSet());
+
+        return baseAcs.stream()
+                .filter(ac -> !usedCpmpTutelIds.contains(ac.getId()))
+                .collect(Collectors.toList());
+    }
+
 
 }
