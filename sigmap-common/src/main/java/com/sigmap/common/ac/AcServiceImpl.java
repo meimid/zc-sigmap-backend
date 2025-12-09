@@ -539,10 +539,9 @@ public class AcServiceImpl implements AcService{
         RefParam typeCom = refParamService.findByIdWithoutSystemType(typeComId);
         boolean isCpmp = "CPMP".equals(typeCom.getCode());
 
-        //  Base list: all ACs not deleted AND tutel = true
+        //  Base list: all ACs not deleted
         List<Ac> baseAcs = repository.findAll().stream()
                 .filter(ac -> !Boolean.TRUE.equals(ac.getIsDeleted()))
-                .filter(Ac::isIstTutel)
                 .collect(Collectors.toList());
 
         if (!isCpmp) {

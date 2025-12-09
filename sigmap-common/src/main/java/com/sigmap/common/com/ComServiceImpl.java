@@ -177,7 +177,7 @@ public class ComServiceImpl implements ComService {
               if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty()&& Objects.equals(comType.getCode(), "CPMP")) {
+              if ((Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) && Objects.equals(comType.getCode(), "CPMP")) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
@@ -297,11 +297,11 @@ public class ComServiceImpl implements ComService {
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
 
-              if (com.getTutel()!=null&&!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())) {
+              if (com.getTutel()!=null&&(Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())) {
 
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
-              else if(com.getTutel()==null&!findAll(specCom, Pageable.ofSize(1)).isEmpty() && Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())){
+              else if(com.getTutel()==null&(Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) && Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())){
 
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
@@ -590,32 +590,27 @@ public class ComServiceImpl implements ComService {
     }
   }
 
-  @Override
-  public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
-    Ac ac=acService.findById(acId);
-    if(!ac.isIstTutel()){
-    Specification<Com> specCom=ComSpecifications.hasTute(acId).and(ComSpecifications.deleted(false)
-            .and(Specification.not(ComSpecifications.cncmp()))
-            .and(Specification.not(ComSpecifications.special())));
-    Page<Com> page = findAll(specCom, Pageable.ofSize(1));
-    if (page.hasContent() ) {
-      Com com= page.getContent().get(0);
-      return com;
-    } else {
-      throw new ComNotFound("Com not found for ac :",null);
-    }
-    }else{
-      if(ac.getCom()!=null){
-        Com com= ac.getCom();
-        return com;
-      }
-      else{
-        throw new ComNotFound("Com not found for ac ",null);
-      }
-    }
-  }
+    @Override
+    public Com getCommissionPrivee(Integer acId) throws ComNotFound, AcNotFound {
+        Ac ac = acService.findById(acId);
+        if (ac.getCom() != null) {
+            return ac.getCom();
+        }
+        Specification<Com> specCom =
+                ComSpecifications.hasTute(acId)
+                        .and(ComSpecifications.deleted(false))
+                        .and(Specification.not(ComSpecifications.cncmp()))
+                        .and(Specification.not(ComSpecifications.special()));
 
-  @Override
+        Page<Com> page = findAll(specCom, Pageable.ofSize(1));
+        if (page.hasContent()) {
+            return page.getContent().get(0);
+        }
+        throw new ComNotFound("Com not found for ac :", null);
+    }
+
+
+    @Override
   public List<Com> getAllCommissionsDeTutelles(Integer acId) {
     Specification<Com> spec = ComSpecifications.findActiveComsWithActiveTutelAuthority()
                                                .and(ComSpecifications.deleted(false)
