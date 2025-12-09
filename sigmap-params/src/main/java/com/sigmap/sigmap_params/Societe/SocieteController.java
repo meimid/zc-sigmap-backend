@@ -21,6 +21,7 @@ import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.*;
+import com.sigmap.common.societe.response.SocieteDropListDto;
 import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDtoSoft;
@@ -474,6 +475,13 @@ public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBlackListed(
         SocieteBlackListResponse response=SocieteBlackListMapper.INSTANCE.toResponse(entry);
         return ResponseEntity.ok(response);
     }
+    @GetMapping("/all-validee-list")
+    public ResponseEntity<List<SocieteDropListDto>> findAllValidee(
+            SocieteQuery query) {
+        List<Societe> list =
+                societeService.findAllValidee(query.toSpecification());
 
+        return ResponseEntity.ok(list.stream().map(SocieteMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }
 
 }

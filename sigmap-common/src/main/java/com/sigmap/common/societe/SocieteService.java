@@ -104,4 +104,6 @@ public interface SocieteService {
 
     Societe updateStatus(Integer societeId, boolean status) throws SocieteNotFound;
     boolean isCurrentlyBlackListed(Integer societeId);
+
+    List<Societe> findAllValidee(Specification<Societe> specification);
 }
