@@ -40,7 +40,7 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "realisation_ver")
     private Integer version;
 
-    @Column(name = "realisation_envisagees", length = 100)
+    @Column(name = "realisation_envisagees", length = 255)
     private String realisationEnvisagees;
 
     @Column(name = "beneficiaire")
