@@ -297,7 +297,7 @@ public class ComServiceImpl implements ComService {
                   specCom.and(Specification.not(ComSpecifications.cpmp()));
               }
 
-              if (!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())) {
+              if (com.getTutel()!=null&&!findAll(specCom, Pageable.ofSize(1)).isEmpty() && !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())) {
                   throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
               }
               else {
