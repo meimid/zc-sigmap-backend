@@ -1,6 +1,7 @@
 package com.sigmap.common.compte_bancaire;
 import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireRequestDTO;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -77,14 +78,14 @@ public interface CompteBancaireService {
      * @param request the request to create the CompteBancaire from
      * @return the created CompteBancaire
      */
-    CompteBancaire create(CompteBancaireRequest request)throws RefParamNotFound, SocieteNotFound;
+    CompteBancaire create(CompteBancaireRequestDTO request)throws RefParamNotFound, SocieteNotFound;
     /**
      * update CompteBancaire.
      *
      * @param request the request to update the CompteBancaire from
      * @return the updated CompteBancaire
      */
-    CompteBancaire update(Integer id,CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound;
+    CompteBancaire update(Integer id,CompteBancaireRequestDTO request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound;
     /**
      * Delete a CompteBancaire.
      *

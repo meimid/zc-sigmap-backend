@@ -2,6 +2,7 @@ package com.sigmap.common.compte_bancaire.mapper;
 
 import com.sigmap.common.compte_bancaire.CompteBancaire;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireRequestDTO;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireUnderSocieteRequest;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponseDto;
@@ -22,7 +23,8 @@ public interface CompteBancaireMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     CompteBancaireResponse map(CompteBancaire source);
     CompteBancaire map(CompteBancaireRequest source);
-    void updateFromRequest(CompteBancaireRequest source, @MappingTarget CompteBancaire target);
+    CompteBancaire map(CompteBancaireRequestDTO source);
+    void updateFromRequest(CompteBancaireRequestDTO source, @MappingTarget CompteBancaire target);
     CompteBancaire mapFromUnderUnderSocieteRequest(CompteBancaireUnderSocieteRequest source);
     CompteBancaireResponseDto mapToDtoResponse(CompteBancaire source);
 }
