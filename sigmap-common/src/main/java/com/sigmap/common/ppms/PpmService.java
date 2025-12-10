@@ -335,5 +335,6 @@ public interface PpmService {
     List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
+     Integer ppmPublishedMaxVersion(Integer ppmId);
 }
 

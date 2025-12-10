@@ -982,9 +982,7 @@ public class AgpmServiceImpl implements AgpmService {
     @Override
     public Page<Agpm> findAllForWebsite(Specification<Agpm> spec, Pageable pageable) {
         Specification<Agpm> finalSpec = Specification.where(spec)
-                .and(AgpmSpecifications.isLatestVersion())
-                .and(AgpmSpecifications.isPublished())
-                .and(AgpmSpecifications.isNotDeleted());
+                .and(AgpmSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 

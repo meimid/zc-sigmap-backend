@@ -3,6 +3,7 @@ package com.sigmap.common.agpm;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
@@ -228,6 +229,36 @@ public class AgpmSpecifications {
                 return cb.greaterThanOrEqualTo(root.get("nbrActualisation"), min);
             }
             return cb.lessThanOrEqualTo(root.get("nbrActualisation"), max);
+        };
+    }
+
+    public static Specification<Agpm> isLatestPublishedVersion() {
+        return (root, query, cb) -> {
+            // subquery to get MAX(version) among PUBLISHED, not deleted Agpms with same id
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Agpm> subRoot = subquery.from(Agpm.class);
+
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(
+                            cb.equal(subRoot.get("id"), root.get("id")),
+                            cb.equal(subRoot.get("status"), ProcessStatus.PUBLIE),
+                            cb.equal(subRoot.get("isDeleted"), false)
+                    );
+
+            return cb.and(
+                    cb.equal(root.get("status"), ProcessStatus.PUBLIE),
+                    cb.equal(root.get("isDeleted"), false),
+                    cb.equal(root.get("version"), subquery)
+            );
+        };
+    }
+
+    public static Specification<Agpm> agpmId(Integer id) {
+        return (root, query, cb) -> {
+            if (id == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("id"), id);
         };
     }
 }

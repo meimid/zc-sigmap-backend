@@ -1,11 +1,8 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
-import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
-import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -216,5 +213,33 @@ public class PaaSpecifications {
     public static Specification<Paa> anneeIn(List<String> annees) {
         return (root, query, cb) -> root.get("annee").in(annees);
     }
+    public static Specification<Paa> isLatestPublishedVersion() {
+        return (root, query, cb) -> {
+            // subquery to get MAX(version) among PUBLISHED, not deleted Paas with same id
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Paa> subRoot = subquery.from(Paa.class);
 
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(
+                            cb.equal(subRoot.get("id"), root.get("id")),
+                            cb.equal(subRoot.get("status"), ProcessStatus.PUBLIE),
+                            cb.equal(subRoot.get("isDeleted"), false)
+                    );
+
+            return cb.and(
+                    cb.equal(root.get("status"), ProcessStatus.PUBLIE),
+                    cb.equal(root.get("isDeleted"), false),
+                    cb.equal(root.get("version"), subquery)
+            );
+        };
+    }
+
+    public static Specification<Paa> paaId(Integer id) {
+        return (root, query, cb) -> {
+            if (id == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("id"), id);
+        };
+    }
 }

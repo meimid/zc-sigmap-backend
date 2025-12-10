@@ -5334,9 +5334,7 @@ public class PpmServiceImpl implements PpmService {
     @Override
     public Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) {
         Specification<Ppm> finalSpec = Specification.where(spec)
-                .and(PpmSpecifications.isLatestVersion())
-                .and(PpmSpecifications.isPublished())
-                .and(PpmSpecifications.isNotDeleted());
+                .and(PpmSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 
@@ -6447,9 +6445,6 @@ public class PpmServiceImpl implements PpmService {
 
         boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
         boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
-        System.out.println("-----------------------"+String.valueOf(isAdminCentral));
-        System.out.println("-----------------------"+String.valueOf(isSuperAdmin));
-
 
         List<Ppm> ppms = new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
@@ -6460,6 +6455,11 @@ public class PpmServiceImpl implements PpmService {
             ppms=findAllForComUser(spec,userId);
         }
         return ppms;
+    }
+
+    @Override
+    public Integer ppmPublishedMaxVersion(Integer ppmId) {
+        return 0;
     }
 
 }
