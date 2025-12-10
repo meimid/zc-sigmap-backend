@@ -196,7 +196,7 @@ public class ComServiceImpl implements ComService {
                           .and(ComSpecifications.cpmp());
 
                   boolean alreadyExists = findAll(spec, Pageable.ofSize(1))
-                          .get().count() > 0;
+                          .hasContent();
 
                   if (alreadyExists) {
                       throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
@@ -344,7 +344,7 @@ public class ComServiceImpl implements ComService {
                           .and(ComSpecifications.cpmp()).and(Specification.not(ComSpecifications.id(id)));
 
                   boolean alreadyExists = findAll(spec, Pageable.ofSize(1))
-                          .get().count() > 0;
+                          .hasContent();
 
                   if (alreadyExists) {
                       throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
