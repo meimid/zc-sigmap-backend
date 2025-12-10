@@ -172,19 +172,7 @@ public class ComServiceImpl implements ComService {
           } else {
               com.setComType(null);
           }
-         /* if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.deleted(false);
-              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
-                  specCom.and(Specification.not(ComSpecifications.cpmp()));
-              }
-              if ((Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) && Objects.equals(comType.getCode(), "CPMP")) {
-                  throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
-              }
-              else {
-                  Ac tutel = acService.findById(request.getTutelId());
-                  com.setTutel(tutel);
-              }
-          }*/
+
 
           if (request.getTutelId() != null) {
 
@@ -310,29 +298,6 @@ public class ComServiceImpl implements ComService {
           }
           RefParam comType = refParamService.findByIdWithoutSystemType(request.getComTypeId());
           ComMapper.INSTANCE.updateFromRequest(request, com);
-
-      /*    if (request.getTutelId() != null) {
-              Specification<Com> specCom = ComSpecifications.deleted(false).and(ComSpecifications.hasTute(request.getTutelId()));
-              if(refParamService.findByIdWithoutSystemType(request.getComTypeId()).getCode().equals("CPMP")){
-                  specCom.and(Specification.not(ComSpecifications.cpmp()));
-              }
-
-              if (com.getTutel()!=null&&
-                      (Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) &&
-                      !Objects.equals(request.getTutelId(), com.getTutel().getId())&& Objects.equals(comType.getCode(), "CPMP")&&
-                      !Objects.equals(id,com.getId())) {
-
-                  throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
-              }
-              else if(com.getTutel()==null&(Objects.equals(findAll(specCom, Pageable.ofSize(1)).get().findFirst().get().getTutel().getId(), request.getTutelId())) && Objects.equals(comType.getCode(), "CPMP")&&!Objects.equals(id,com.getId())){
-
-                  throw new AcAlreadyHaveCom("Tutel already have com", request.getTutelId());
-              }
-              else {
-                  Ac tutel = acService.findById(request.getTutelId());
-                  com.setTutel(tutel);
-              }
-          }*/
 
           if (request.getTutelId() != null) {
 
