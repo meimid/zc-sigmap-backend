@@ -3,43 +3,32 @@ package com.sigmap.sigmap_webmaster.services;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
 import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmRepository;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
-import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
-import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.model_agpm.ModelAgpm;
-import com.sigmap.common.model_agpm.ModelAgpmRepository;
 import com.sigmap.common.model_agpm.ModelAgpmService;
 import com.sigmap.common.model_paa.ModelPaa;
-import com.sigmap.common.model_paa.ModelPaaRepository;
 import com.sigmap.common.model_paa.ModelPaaService;
 import com.sigmap.common.model_ppm.ModelPpm;
-import com.sigmap.common.model_ppm.ModelPpmRepository;
 import com.sigmap.common.model_ppm.ModelPpmService;
 import com.sigmap.common.paas.Paa;
-import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
-import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.response.PaaDetailsWebsite;
 import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
-import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
-import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.response.RealisationPaaWebSite;
 import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import lombok.extern.slf4j.Slf4j;
@@ -68,7 +57,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     private final AgpmService agpmService;
 
 
-    public WebMasterServiceImpl(PpmRepository ppmRepository, PaaRepository paaRepository, AgpmRepository agpmRepository, ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService) {
+    public WebMasterServiceImpl( ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService) {
 
         this.modelPpmService = modelPpmService;
         this.modelPaaService = modelPaaService;

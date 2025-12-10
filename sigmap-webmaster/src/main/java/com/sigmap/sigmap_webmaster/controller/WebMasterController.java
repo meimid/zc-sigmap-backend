@@ -77,30 +77,20 @@ import java.util.stream.Collectors;
 @RequestMapping("/api")
 @Slf4j
 public class WebMasterController {
-    private final PpmService ppmService;
-    private final PaaService paaService;
-    private final AgpmService agpmService;
+
     private final AcService acService;
     private final WebMasterService webMasterService;
     private final DocsService docsService;
-    private final ModelPaaRepository modelPaaRepository;
-    private final ModelAgpmRepository modelAgpmRepository;
-    private final ModelPpmRepository modelPpmRepository;
     private final RefParamService refParamService;
     private final ActiviteService  activiteService;
     private final SocieteService societeService;
     @Value("${file.upload.ac-logo-path}")
     private String acLogoPath;
-    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService, WebMasterService webMasterService, DocsService docsService, ModelPaaRepository modelPaaRepository, ModelAgpmRepository modelAgpmRepository, ModelPpmRepository modelPpmRepository, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
-        this.ppmService = ppmService;
-        this.paaService = paaService;
-        this.agpmService = agpmService;
+    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
+
         this.acService = acService;
         this.webMasterService = webMasterService;
         this.docsService = docsService;
-        this.modelPaaRepository = modelPaaRepository;
-        this.modelAgpmRepository = modelAgpmRepository;
-        this.modelPpmRepository = modelPpmRepository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
         this.societeService = societeService;
@@ -138,9 +128,8 @@ public class WebMasterController {
     @GetMapping("/agpm")
     public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(AgpmQuery query, Pageable pageable)  {
         Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Agpm> agpmPage = agpmService.findAllForWebsite(spec,pageable);
-        Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmWebsiteResponse::new);
-        return ResponseEntity.ok(agpmResponsePage);
+        Page<AgpmWebsiteResponse> responses = webMasterService.findAgpmAllForWebsite(spec,pageable);
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/agpm/{agpmId}")
@@ -155,12 +144,11 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/download/{alfrescoId}")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable String alfrescoId) throws DocsNotFoundException, IOException {
-
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId)
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId));
-        byte[] fileContent = webMasterService.downloadDocument(alfrescoId);
+    @PostMapping("/download")
+    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocument(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
