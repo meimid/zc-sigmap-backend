@@ -3,6 +3,7 @@ package com.sigmap.common.dac;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.dac.exception.NoActiveAAOException;
+import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -22,6 +23,7 @@ import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
@@ -51,12 +53,14 @@ import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
+import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
@@ -70,7 +74,6 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
-import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 
 @Slf4j
 @Service
@@ -94,10 +97,9 @@ public class DacServiceImpl implements DacService {
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
     private final DacPrixRepository dacPrixRepository;
     private final DynaDocsModelRepository dynaDocsModelRepository;
-    private final CurrentUserService currentUserService;
+
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
-
         log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
 
         // Step 1: Validate parameters
@@ -134,11 +136,12 @@ public class DacServiceImpl implements DacService {
                 docKeyPairs.put(key, new int[]{ddId, ddVer});
                 // Use the relation via field -> dynaDocs to get order when available
                 Integer order = null;
-                try {
+               /* try {
                     if (doc.getDynaField() != null && doc.getDynaField().getDynaDocs() != null) {
                         order = doc.getDynaField().getDynaDocs().getDynaDocOrder();
                     }
-                } catch (Exception ignore) {}
+                } catch (Exception ignore) {
+                }*/
                 // Fallback to a large number to avoid NPEs; ordering will still be stable
                 docKeyToOrder.put(key, order != null ? order : Integer.MAX_VALUE);
             }
@@ -187,8 +190,7 @@ public class DacServiceImpl implements DacService {
             }
 
             String templateFileName = dynaDoc.getTemplateFileName();
-            log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}",
-                    dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
+            log.debug("Processing DynaDocs ID: {}, Version: {}, Template: {}", dynaDoc.getId(), dynaDoc.getVersion(), templateFileName);
 
             File templateFile = new File(basePath, templateFileName);
             if (!templateFile.exists()) {
@@ -316,13 +318,6 @@ public class DacServiceImpl implements DacService {
         }
     }
 
-    private List<DynaDocs> getActiveDynaDocsForDac(Integer categoryId) {
-        return dynaDocsRepository.findAllActifForTypeMarche(categoryId)
-                .stream()
-                .sorted(Comparator.comparing(DynaDocs::getDynaDocOrder))
-                .collect(Collectors.toList());
-    }
-
     private Map<String, String> createBookmarkMap(Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer) {
         Map<String, String> bookmarks = new HashMap<>();
 
@@ -331,18 +326,19 @@ public class DacServiceImpl implements DacService {
         log.debug("Found {} DacDocs entries for Dac ID: {}, Version: {}", dacDocsList.size(), dacId, dacVersion);
 
         // Process DacDocs entries, filtering by document and sorting by field order
+        //eliminated sorting by field order with new generation methode
         List<DacDocs> filteredDacDocs = dacDocsList.stream()
                 .filter(dacDoc ->
                         dacDoc.getId().getDynaDocsId().equals(dynaDocsId) &&
                                 dacDoc.getId().getDynaDocsVer().equals(dynaDocsVer)
 
                 )
-                .filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
+                /*.filter(d -> d.getDynaField() != null && !"__DEFAULT__".equals(d.getDynaField().getName()))
                 .sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
                     return order1.compareTo(order2);
-                })
+                })*/
                 .toList();
         dacDocsList.stream()
                 .filter(dacDoc -> {
@@ -351,11 +347,11 @@ public class DacServiceImpl implements DacService {
                             field.getDynaDocs().getId().equals(dynaDocsId) &&
                             field.getDynaDocs().getVersion().equals(dynaDocsVer);
                 })
-                .sorted((d1, d2) -> {
+                /*.sorted((d1, d2) -> {
                     Integer order1 = d1.getDynaField().getDynaFieldsOrder();
                     Integer order2 = d2.getDynaField().getDynaFieldsOrder();
                     return order1.compareTo(order2);
-                })
+                })*/
                 .forEach(dacDoc -> {
                     String bookmarkName = dacDoc.getDynaField().getName();
                     String fieldValue = dacDoc.getFieldValue();
@@ -368,63 +364,81 @@ public class DacServiceImpl implements DacService {
         return bookmarks;
     }
 
-    /**
-     * Replaces bookmarks in the document with values from the provided map.
-     * If a bookmark is not found in paragraphs, attempts to write in table cells as a fallback.
-     */
-    private void replaceBookmarks(XWPFDocument document, Map<String, String> bookmarks) {
-        // Loop through all paragraphs in the document
-        document.getParagraphs().stream()
-                .filter(paragraph -> paragraph.getCTP().getBookmarkStartList() != null
-                        && !paragraph.getCTP().getBookmarkStartList().isEmpty())
-                .forEach(paragraph -> {
-                    // For each bookmark found in the paragraph
-                    paragraph.getCTP().getBookmarkStartList().forEach(bookmark -> {
-                        String bookmarkName = bookmark.getName();
-                        // If the bookmark name is in our map
-                        if (bookmarks.containsKey(bookmarkName)) {
-                            // Create a run and set the text to the bookmark value
-                            XWPFRun run = paragraph.createRun();
-                            run.setText(bookmarks.get(bookmarkName));
-                            // Insert the run before the bookmark in the paragraph
-                            paragraph.getCTP().getDomNode().insertBefore(run.getCTR().getDomNode(), bookmark.getDomNode());
-                        }
+    private void replaceBookmarks(XWPFDocument document, Map<String, String> replacements) {
+        // Convertir les remplacements en Map<Object> pour gérer les types complexes
+        Map<String, Object> complexReplacements = new HashMap<>();
+        replacements.forEach(complexReplacements::put);
+
+        // Avant d'appeler processComplexPatterns
+        log.debug("Tentative de remplacement avec les données suivantes:");
+        for (Map.Entry<String, Object> entry : complexReplacements.entrySet()) {
+            log.debug("Clé: {}, Type: {}, Valeur: {}",
+                    entry.getKey(),
+                    entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "null",
+                    entry.getValue());
+        }
+
+        // Ensuite, appelez processComplexPatterns
+
+        // Remplacer d'abord les motifs complexes (tableaux et listes)
+        processComplexPatterns(document, complexReplacements);
+
+        // Ensuite remplacer les valeurs simples
+        replaceSimplePatterns(document, replacements);
+
+        // Enfin, utiliser l'ancienne méthode en tant que fallback si nécessaire
+        if (!isAnyPatternFound(document)) {
+            document.getParagraphs().stream()
+                    .filter(paragraph -> paragraph.getCTP().getBookmarkStartList() != null
+                            && !paragraph.getCTP().getBookmarkStartList().isEmpty())
+                    .forEach(paragraph -> {
+                        paragraph.getCTP().getBookmarkStartList().forEach(bookmark -> {
+                            String bookmarkName = bookmark.getName();
+                            if (replacements.containsKey(bookmarkName)) {
+                                XWPFRun run = paragraph.createRun();
+                                run.setText(replacements.get(bookmarkName));
+                                paragraph.getCTP().getDomNode().insertBefore(run.getCTR().getDomNode(), bookmark.getDomNode());
+                            }
+                        });
                     });
-                });
-        // Fallback: For any bookmark not found in paragraphs, try to write in table cells
-        for (String bookmarkName : bookmarks.keySet()) {
-            if (!isBookmarkInParagraphs(document, bookmarkName)) {
-                // If not found in paragraphs, write in table cell
-                writeSingleRowAtBkInTbl(document, bookmarkName, bookmarks.get(bookmarkName));
-            }
         }
     }
 
-    /**
-     * Checks if a bookmark exists in any paragraph in the document.
-     */
-    private boolean isBookmarkInParagraphs(XWPFDocument document, String bookmarkName) {
-        // Loop through all paragraphs
-        for (XWPFParagraph paragraph : document.getParagraphs()) {
-            // Check if the paragraph contains bookmarks
-            if (paragraph.getCTP().getBookmarkStartList() != null) {
-                for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
-                    // If the bookmark name matches, return true
-                    if (bookmarkName.equals(bookmark.getName())) {
-                        return true;
+    private void processComplexPatterns(XWPFDocument document, Map<String, Object> replacements) {
+        log.debug("Début du traitement des motifs complexes");
+
+        for (Map.Entry<String, Object> entry : replacements.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            log.debug("Traitement de la clé: {}, Type: {}", key,
+                    value != null ? value.getClass().getSimpleName() : "null");
+
+            if (value instanceof List) {
+                List<?> listValue = (List<?>) value;
+                if (!listValue.isEmpty()) {
+                    if (key.startsWith("list:") && listValue.get(0) instanceof String) {
+                        // C'est une liste simple
+                        String listName = key.substring(5); // Enlève le préfixe "list:"
+                        log.debug("Appel de replaceListPattern pour la liste: {}", listName);
+                        replaceListPattern(document, listName, (List<String>) listValue);
+                    } else if (listValue.get(0) instanceof Map) {
+                        // C'est un tableau
+                        log.debug("Appel de replaceTablePattern avec {} lignes", listValue.size());
+                        replaceTablePattern(document, key, (List<Map<String, String>>) listValue);
                     }
                 }
             }
         }
-        // Not found
-        return false;
     }
 
-    /**
-     * Fallback: Write a value at a bookmark inside a table cell if not found in paragraphs.
-     */
-    private void writeSingleRowAtBkInTbl(XWPFDocument document, String bookmarkName, String bookmarkValue) {
-        // Loop through all tables in the document
+    private void replaceSimplePatterns(XWPFDocument document, Map<String, String> replacements) {
+        // Remplacer dans les paragraphes normaux
+        for (XWPFParagraph paragraph : document.getParagraphs()) {
+            replacePatternsInParagraph(paragraph, replacements);
+        }
+
+        // Remplacer dans les tableaux
         for (XWPFTable table : document.getTables()) {
             // Loop through all rows in the table
             for (XWPFTableRow row : table.getRows()) {
@@ -432,25 +446,286 @@ public class DacServiceImpl implements DacService {
                 for (XWPFTableCell cell : row.getTableCells()) {
                     // Loop through all paragraphs in the cell
                     for (XWPFParagraph paragraph : cell.getParagraphs()) {
-                        // Check if the paragraph contains bookmarks
-                        if (paragraph.getCTP().getBookmarkStartList() != null) {
-                            for (CTBookmark bookmark : paragraph.getCTP().getBookmarkStartList()) {
-                                // If the bookmark name matches
-                                if (bookmarkName.equals(bookmark.getName())) {
-                                    // Remove the first paragraph (optional, to clear old content)
-                                    cell.removeParagraph(0);
-                                    // Set the cell text to the bookmark value
-                                    cell.setText(bookmarkValue);
-                                    return;
-                                }
-                            }
-                        }
+                        replacePatternsInParagraph(paragraph, replacements);
                     }
                 }
             }
         }
     }
-    private String saveTempDocument(XWPFDocument document, String templateFileName, String customDirPath,Integer docOrder) {
+   private void replaceTablePattern(XWPFDocument document, String tableName, List<Map<String, String>> tableData) {
+        if (tableData == null || tableData.isEmpty()) {
+            log.warn("Aucune donnée de tableau fournie pour le tableau: {}", tableName);
+            return;
+        }
+
+        // Parcourir tous les paragraphes pour trouver le marqueur
+        // Utiliser une copie de la liste pour éviter ConcurrentModificationException si
+        // on supprime des paragraphes
+        List<XWPFParagraph> paragraphs = new ArrayList<>(document.getParagraphs());
+        for (XWPFParagraph p : paragraphs) {
+            String text = p.getText();
+            String marker = "**" + tableName + "**";
+
+            if (text != null && text.contains(marker)) {
+                log.debug("Marqueur de tableau trouvé: {}", marker);
+
+                try {
+                    // Obtenir la position du curseur au paragraphe actuel
+                    XmlCursor cursor = p.getCTP().newCursor();
+
+                    // Insérer le tableau à la position du curseur (juste avant le paragraphe)
+                    // Note: insertNewTbl insère le tableau à la position du curseur
+                    XWPFTable table = document.insertNewTbl(cursor);
+
+                    // Ajouter les données
+                    if (!tableData.isEmpty()) {
+                        // Ajouter l'en-tête
+                        // XWPFTable vient avec une ligne par défaut
+                        XWPFTableRow headerRow = table.getRow(0);
+                        int colIndex = 0;
+
+                        // Utiliser les clés de la première ligne comme en-têtes
+                        Map<String, String> firstRow = tableData.get(0);
+                        for (String header : firstRow.keySet()) {
+                            if (colIndex > 0) {
+                                headerRow.createCell();
+                            }
+                            XWPFTableCell cell = headerRow.getCell(colIndex);
+                            setCellText(cell, header, true);
+                            colIndex++;
+                        }
+
+                        // Ajouter les données
+                        for (int j = 1; j < tableData.size(); j++) {
+                            Map<String, String> rowData = tableData.get(j);
+                            XWPFTableRow dataRow = table.createRow();
+                            colIndex = 0;
+                            for (String value : rowData.values()) {
+                                dataRow.getCell(colIndex).setText(value != null ? value : "");
+                                colIndex++;
+                            }
+                        }
+                    }
+
+                    log.debug("Tableau '{}' inséré avec succès avec {} lignes", tableName, tableData.size());
+
+                    // Supprimer le paragraphe contenant le marqueur car il a été remplacé
+                    int pos = document.getPosOfParagraph(p);
+                    if (pos != -1) {
+                        document.removeBodyElement(pos);
+                    }
+
+                    return;
+
+                } catch (Exception e) {
+                    log.error("Erreur lors de l'insertion du tableau '{}': {}", tableName, e.getMessage(), e);
+                }
+            }
+        }
+        log.warn("Aucun marqueur de tableau trouvé pour: {}", "**table:" + tableName + "**");
+    }
+
+
+    // ADD THIS HELPER METHOD TO YOUR CLASS
+   private void setCellText(XWPFTableCell cell, String text, boolean bold) {
+        // Remove all extra paragraphs (keep only first)
+        while (cell.getParagraphs().size() > 1) {
+            cell.removeParagraph(1);
+        }
+
+        XWPFParagraph paragraph = cell.getParagraphs().get(0);
+        if (paragraph == null) {
+            paragraph = cell.addParagraph();
+        }
+
+        // Clear all runs
+        while (!paragraph.getRuns().isEmpty()) {
+            paragraph.removeRun(0);
+        }
+
+        // Create new run with desired text and style
+        XWPFRun run = paragraph.createRun();
+        run.setText(text != null ? text : "");
+        run.setBold(bold);
+    }
+
+    /**
+     * Remplace le marqueur **nomTable** par un vrai tableau Word inséré à la bonne position
+     */
+   private void replaceListPattern(XWPFDocument document, String listName, List<String> items) {
+        if (items == null || items.isEmpty()) return;
+        
+        // Parcourir tous les paragraphes du document
+        for (int i = 0; i < document.getParagraphs().size(); i++) {
+            XWPFParagraph p = document.getParagraphs().get(i);
+            String text = p.getText();
+
+            if (text != null && text.contains("**list:" + listName + "**")) {
+                log.debug("Marqueur de liste trouvé: {}", text);
+
+                // Créer un curseur à la position du marqueur
+                XmlCursor cursor = p.getCTP().newCursor();
+
+                // Insérer chaque élément comme un nouveau paragraphe
+                for (String item : items) {
+                    if (item != null && !item.trim().isEmpty()) {
+                        // Créer un nouveau paragraphe à la position du curseur
+                        XWPFParagraph newPara = document.insertNewParagraph(cursor);
+                        newPara.setIndentationLeft(720);
+                        newPara.createRun().setText("- " + item.trim());
+                        
+                        // Déplacer le curseur après le paragraphe inséré
+                        cursor = newPara.getCTP().newCursor();
+                        cursor.toNextSibling();
+                    }
+                }
+
+                // Supprimer le paragraphe du marqueur
+                int pos = document.getPosOfParagraph(p);
+                if (pos != -1) {
+                    document.removeBodyElement(pos);
+                }
+
+                break;
+            }
+        }
+   }
+
+    /**
+     * Remplace les marqueurs dans un paragraphe tout en préservant le style.
+     * 
+     * <p>
+     * Cette méthode commence par consolider les runs adjacents identiques pour
+     * gérer les cas
+     * où un marqueur serait coupé (ex: "**" dans un run et "KEY**" dans le
+     * suivant).
+     * Ensuite, elle itère sur les runs pour effectuer les remplacements.
+     * </p>
+     *
+     * @param paragraph    Le paragraphe à traiter
+     * @param replacements La map des remplacements (Nom du marqueur -> Valeur)
+     */
+    private void replacePatternsInParagraph(XWPFParagraph paragraph, Map<String, String> replacements) {
+        // 1. Consolider les runs pour éviter les marqueurs coupés
+        consolidateRuns(paragraph);
+
+        // Obtenir la liste des runs (segments de texte) du paragraphe
+        List<XWPFRun> runs = paragraph.getRuns();
+
+        // Si le paragraphe est vide, on arrête
+        if (runs == null || runs.isEmpty()) {
+            return;
+        }
+
+        // Parcourir chaque run pour chercher des marqueurs
+        for (XWPFRun run : runs) {
+            String text = run.getText(0); // 0 pour la position actuelle dans le run
+
+            // Vérifier si le texte du run contient au moins un début de marqueur "**"
+            if (text != null && text.contains("**")) {
+
+                // Faire une copie pour les modifications
+                String newText = text;
+                boolean replaced = false;
+
+                // Tester chaque remplacement possible
+                for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                    // Ignorer les clés complexes (table: ou list:) qui sont traitées ailleurs
+                    if (!entry.getKey().contains(":")) {
+                        // Construire le motif exact : **NOM_MARQUEUR**
+                        String pattern = "**" + entry.getKey() + "**";
+
+                        // Si le run contient ce marqueur spécifique
+                        if (newText.contains(pattern)) {
+                            String value = entry.getValue() != null ? entry.getValue() : "";
+                            // Remplacer le marqueur par sa valeur
+                            newText = newText.replace(pattern, value);
+                            replaced = true;
+                            log.debug("Remplacement effectué dans un run : {} -> {}", pattern, value);
+                        }
+                    }
+                }
+
+                // Si un remplacement a eu lieu, mettre à jour le texte du run
+                // Cela préserve le style car on modifie le contenu du run existant
+                if (replaced) {
+                    run.setText(newText, 0);
+                }
+            }
+        }
+    }
+
+    /**
+     * Tente de fusionner les runs adjacents qui ont des styles identiques.
+     * Cela permet de reconstituer des marqueurs qui auraient été coupés par Word.
+     */
+    private void consolidateRuns(XWPFParagraph paragraph) {
+        if (paragraph.getRuns().size() < 2)
+            return;
+
+        List<XWPFRun> runs = paragraph.getRuns();
+        for (int i = 0; i < runs.size() - 1; i++) {
+            XWPFRun run1 = runs.get(i);
+            XWPFRun run2 = runs.get(i + 1);
+
+            if (areRunsStyleIdentical(run1, run2)) {
+                // Fusionner run2 dans run1
+                String text1 = run1.getText(0) != null ? run1.getText(0) : "";
+                String text2 = run2.getText(0) != null ? run2.getText(0) : "";
+
+                run1.setText(text1 + text2, 0);
+
+                // Supprimer run2
+                paragraph.removeRun(i + 1);
+
+                // Reculer l'index pour vérifier à nouveau ce run fusionné avec le suivant
+                i--;
+                // Mettre à jour la liste locale car paragraph.getRuns() a changé
+                runs = paragraph.getRuns();
+            }
+        }
+    }
+
+    /**
+     * Vérifie si deux runs ont le même style visuel (gras, italique, couleur, police, taille).
+     */
+    private boolean areRunsStyleIdentical(XWPFRun r1, XWPFRun r2) {
+        if (r1 == null || r2 == null)
+            return false;
+
+        // Comparer les propriétés principales
+        return r1.isBold() == r2.isBold() &&
+                r1.isItalic() == r2.isItalic() &&
+                r1.isStrikeThrough() == r2.isStrikeThrough() &&
+                Objects.equals(r1.getColor(), r2.getColor()) &&
+                Objects.equals(r1.getFontFamily(), r2.getFontFamily()) &&
+                r1.getFontSize() == r2.getFontSize() &&
+                r1.getUnderline() == r2.getUnderline();
+    }
+
+    private boolean isAnyPatternFound(XWPFDocument document) {
+        // Vérifier dans les paragraphes normaux
+        for (XWPFParagraph p : document.getParagraphs()) {
+            if (p.getText() != null && p.getText().contains("**")) {
+                return true;
+            }
+        }
+        // Vérifier dans les tableaux
+        for( XWPFTable table :document.getTables())  {
+            for (XWPFTableRow row : table.getRows()) {
+                for (XWPFTableCell cell : row.getTableCells()) {
+                    for (XWPFParagraph p : cell.getParagraphs()) {
+                        if (p.getText() != null && p.getText().contains("**")) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+}
+
+    private String saveTempDocument(XWPFDocument document, String templateFileName, String customDirPath, Integer docOrder) {
         File customDir = new File(customDirPath);
         if (!customDir.exists()) {
             customDir.mkdirs();
@@ -467,48 +742,110 @@ public class DacServiceImpl implements DacService {
 
         return tempFile.getAbsolutePath();
     }
+
     /**
      * This method processes both list and table type fields and inserts the corresponding tables into the document.
      * - For list fields: generates a table with 1 column (each value in a row)
      * - For table fields: generates a table with columns as defined in dyna_fields_details and rows from dac_docs_details
      */
+    /**
+     * Traite les champs de type TABLE et LIST pour les insérer dans le document Word.
+     * Les données sont récupérées depuis la base de données et formatées selon leur type.
+     * 
+     * @param document Le document Word à modifier
+     * @param dacId L'identifiant du DAC
+     * @param dacVersion La version du DAC
+     * @param dynaDocsId L'identifiant du modèle de document
+     * @param dynaDocsVer La version du modèle de document
+     */
     private void processTableAndListBookmarks(XWPFDocument document, Integer dacId, Integer dacVersion, Integer dynaDocsId, Integer dynaDocsVer) {
+        // Map pour stocker tous les remplacements à effectuer
+        // Clé : nom du champ avec préfixe (table: ou list:)
+        // Valeur : List<String> pour les listes ou List<Map> pour les tableaux
+        Map<String, Object> replacements = new HashMap<>();
 
-        // Fetch all DynaFields for the document template and version
+        // Récupération de tous les champs dynamiques pour le modèle de document
         List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dynaDocsId, dynaDocsVer);
 
+        log.debug("dynaFieldsList : " + dynaFieldsList);
+
+        // Parcours de chaque champ dynamique
         for (DynaFields dynaField : dynaFieldsList) {
+            // Ignorer le champ par défaut
             if ("__DEFAULT__".equals(dynaField.getName())) {
                 continue;
             }
+            
+            // Récupération du type de champ (TABLE ou LIST)
             DynaFieldType typeCode = dynaField.getType();
+            String fieldName = dynaField.getName();
 
-            // Get the bookmark name for this field
-            String bookmarkName = dynaField.getName();
+            // Récupération des détails des colonnes pour ce champ
+            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findAllByDocAndField(
+                dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
 
-            // Fetch ONLY the columns of the requested snapshot version
-            List<DynaFieldsDetails> columns = dynaFieldsDetailsRepository.findAllByDocAndField(dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+            // Traitement différent selon qu'il s'agit d'une liste ou d'un tableau
             if (DynaFieldType.TABLE.equals(typeCode) || DynaFieldType.LIST.equals(typeCode)) {
-                // in liste case when there is only one column
+                
+                // CAS 1: LISTE (une seule colonne)
                 if (columns.size() < 2) {
-                    // Treat as list (single column)
-                    List<String> rows = dacDocsRepository.findListRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-                    List<String> values = new ArrayList<>();
-                    if (!rows.isEmpty() && !columns.isEmpty()) {
-                        values.addAll(rows.stream()
-                                .filter(Objects::nonNull)
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty()).toList());
+                    log.info(" column liste ......... {}",typeCode);
+                    // Récupération des données de la liste depuis la base de données
+                    List<String> rows = dacDocsRepository.findListRowsForField(
+                        dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
 
+                    log.info(" rows liste ......... {}",rows);
+                    // Nettoyage des données : suppression des valeurs nulles, espaces superflus et lignes vides
+                    List<String> values = rows.stream()
+                        .filter(Objects::nonNull)           // Supprime les valeurs nulles
+                        .map(String::trim)                  // Supprime les espaces au début et à la fin
+                        .filter(s -> !s.isEmpty())          // Supprime les chaînes vides
+                        .collect(Collectors.toList());      // Collecte les résultats dans une nouvelle liste
+
+                    log.info(" column liste values ......... {}",values);
+                    // Si on a des valeurs, on les ajoute à la map des remplacements avec le préfixe "list:"
+                    if (!values.isEmpty()) {
+                        replacements.put("list:" + fieldName, values);
                     }
-                    insertSingleColumnTableAtBookmark(document, bookmarkName, columns, values);
-
-                    // in table case when there is more than one column
-                } else {
-                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
-                    insertMultiColumnTableAtBookmark(document, bookmarkName, columns, rows);
+                } 
+                
+                // CAS 2: TABLEAU (plusieurs colonnes)
+                else {
+                    // Récupération des données du tableau depuis la base de données
+                    List<Map<String, String>> rows = dacDocsRepository.findTableRowsForField(
+                        dacId, dacVersion, dynaDocsId, dynaDocsVer, dynaField.getDynaFieldsId());
+                    
+                    // Filtrage des lignes nulles ou vides
+                    List<Map<String, String>> filteredRows = rows.stream()
+                        .filter(row -> row != null && !row.isEmpty())
+                        .collect(Collectors.toList());
+                    
+                    // Si on a des données valides
+                    if (!filteredRows.isEmpty()) {
+                        // Création d'une nouvelle liste pour stocker les lignes formatées
+                        List<Map<String, String>> formattedRows = new ArrayList<>();
+                        
+                        // Création de la ligne d'en-tête avec les noms de colonnes
+                        Map<String, String> headerRow = new LinkedHashMap<>(); // LinkedHashMap pour conserver l'ordre
+                        for (DynaFieldsDetails column : columns) {
+                            // Utilisation de getColumnName() pour le nom de la colonne
+                            headerRow.put(column.getColumnName(), column.getColumnName());
+                        }
+                        formattedRows.add(headerRow); // Ajout de l'en-tête en première ligne
+                        
+                        // Ajout de toutes les lignes de données
+                        formattedRows.addAll(filteredRows);
+                        
+                        // Ajout du tableau à la map des remplacements avec le préfixe "table:"
+                        replacements.put("table:" + fieldName, formattedRows);
+                    }
                 }
             }
+        }
+        
+        // Une fois tous les remplacements préparés, on les applique au document
+        if (!replacements.isEmpty()) {
+            processComplexPatterns(document, replacements);
         }
     }
 
@@ -649,7 +986,6 @@ public class DacServiceImpl implements DacService {
 
         // Enforce: a realisation can be linked to at most 2 DACs (by distinct dacId)
         Integer dacCountForReal = dacRepository.countDistinctDacByRealisation(request.getRealisationId(), request.getRealisationVer());
-        log.info("Dac count for realisation: {} ------------------------ ", dacCountForReal);
         if (dacCountForReal != null && dacCountForReal >= 2) {
             throw new RuntimeException("Maximum number of DACs (2) already created for this realisation");
         }
@@ -767,33 +1103,18 @@ public class DacServiceImpl implements DacService {
 
     @Override
     public List <Dac> findAll() {
-        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        Specification<Dac> spec = Specification.where(DacSpecifications.searchByDeleted(false));
-        if (userAcIds != null && !userAcIds.isEmpty()) {
-            spec = spec.and(DacSpecifications.searchByAcIds(userAcIds));
-        }
+        Specification<Dac> spec = DacSpecifications.searchByDeleted(false);
         return dacRepository.findAll(spec);
     }
 
     @Override
     public Page<Dac> findAll(Specification<Dac> spec, Pageable pageable) {
-        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
         Specification<Dac> specification = Specification.where(DacSpecifications.searchByDeleted(false));
-        if (spec != null) {
-            specification = specification.and(spec);
-        }
-        if (userAcIds != null && !userAcIds.isEmpty()) {
-            specification = specification.and(DacSpecifications.searchByAcIds(userAcIds));
-        }
         return dacRepository.findAll(specification, pageable);
     }
 
     public Page<Dac> findAllLatest(Pageable pageable) {
-        List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds == null || userAcIds.isEmpty()) {
-            return Page.empty(pageable);
-        }
-        return dacRepository.findLatestPerDacByAcIds(userAcIds, pageable);
+        return dacRepository.findLatestPerDac(pageable);
     }
 
     @Override
