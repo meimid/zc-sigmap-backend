@@ -20,6 +20,7 @@ import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.model_agpm.ModelAgpmRepository;
 import com.sigmap.common.model_paa.ModelPaaRepository;
@@ -145,10 +146,10 @@ public class WebMasterController {
     }
 
     @PostMapping("/download")
-    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AgpmNotFound, PaaNotFound, DocNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[] fileContent = webMasterService.downloadDocument(alfrescoId.getId());
+        byte[] fileContent = webMasterService.downloadDocument(alfrescoId.getId(),docInfo.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");

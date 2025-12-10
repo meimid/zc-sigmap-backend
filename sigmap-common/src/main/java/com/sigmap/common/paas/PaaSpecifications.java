@@ -1,6 +1,7 @@
 package com.sigmap.common.paas;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import jakarta.persistence.criteria.Join;
@@ -242,4 +243,14 @@ public class PaaSpecifications {
             return cb.equal(root.get("id"), id);
         };
     }
+
+    public static Specification<Paa> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Paa, Docs> docsJoin = root.join("docs");
+            return cb.equal(docsJoin.get("id"), docId);
+        };
+    }
+
 }

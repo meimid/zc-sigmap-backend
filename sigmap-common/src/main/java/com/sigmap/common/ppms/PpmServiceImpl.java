@@ -40,6 +40,7 @@ import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -6458,8 +6459,10 @@ public class PpmServiceImpl implements PpmService {
     }
 
     @Override
-    public Integer ppmPublishedMaxVersion(Integer ppmId) {
-        return 0;
+    public Optional<Ppm> findByDocId(Integer docId) throws PpmNotFound {
+        return findOne(PpmSpecifications.isLatestPublishedVersion().and(PpmSpecifications.docId(docId)));
     }
+
+
 
 }

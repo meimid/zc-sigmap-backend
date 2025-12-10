@@ -181,4 +181,6 @@ public interface AgpmService {
     Agpm actualise(Integer agpmId)
             throws AgpmNotFound, AgpmInvalidStatusException, AgpmNotAssociatedWithUserAcException;
 
+    Optional<Agpm> findByDocId(Integer docId) throws AgpmNotFound;
+
 }

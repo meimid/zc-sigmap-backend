@@ -3251,6 +3251,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         return createFilteredResponsePaa(saved);
     }
 
+    @Override
+    public Optional<Paa> findByDocId(Integer docId) throws PaaNotFound {
+       return findOne(PaaSpecifications.isLatestPublishedVersion().
+               and(PaaSpecifications.docId(docId)));
+    }
 
 
 }

@@ -26,6 +26,8 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.model_agpm.ModelAgpmRepository;
 import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.paas.PaaSpecifications;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.user_ac.UserAc;
@@ -1067,5 +1069,10 @@ public class AgpmServiceImpl implements AgpmService {
         Agpm saved = repository.save(next);
 
         return createFilteredResponseAgpm(saved);
+    }
+
+    @Override
+    public Optional<Agpm> findByDocId(Integer docId) throws AgpmNotFound {
+       return findOne(AgpmSpecifications.isLatestPublishedVersion().and(AgpmSpecifications.docId(docId)));
     }
 }

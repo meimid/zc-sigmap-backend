@@ -5,6 +5,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -31,7 +32,7 @@ public interface WebMasterService {
 
     Optional<DocumentResponseDTO> getDocumentInformation(String alfrescoId);
 
-    byte[] downloadDocument(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadDocument(String alfrescoId,Integer docId) throws IOException, DocsNotFoundException, PaaNotFound, PpmNotFound, AgpmNotFound, DocNotFound;
 
     Page<PpmWebsiteResponse> findAllPpmForWebsite(Specification<Ppm> spec, Pageable pageable);
     Page<PaaWebsiteResponse> findPaaAllForWebsite(Specification<Paa> spec, Pageable pageable);

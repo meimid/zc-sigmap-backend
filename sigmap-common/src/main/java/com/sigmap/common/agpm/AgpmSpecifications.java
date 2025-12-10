@@ -1,6 +1,7 @@
 package com.sigmap.common.agpm;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
@@ -259,6 +260,15 @@ public class AgpmSpecifications {
                 return cb.conjunction();
             }
             return cb.equal(root.get("id"), id);
+        };
+    }
+
+    public static Specification<Agpm> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Agpm, Docs> docsJoin = root.join("docs");
+            return cb.equal(docsJoin.get("id"), docId);
         };
     }
 }

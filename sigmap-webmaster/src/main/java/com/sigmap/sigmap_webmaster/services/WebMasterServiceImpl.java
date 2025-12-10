@@ -8,6 +8,7 @@ import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.model_agpm.ModelAgpm;
 import com.sigmap.common.model_agpm.ModelAgpmService;
@@ -143,7 +144,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
     @Override
-    public byte[] downloadDocument(String alfrescoId) throws IOException {
+    public byte[] downloadDocument(String alfrescoId,Integer docId) throws IOException, PaaNotFound, PpmNotFound, AgpmNotFound, DocNotFound {
+
+       Optional <Paa> ppa=paaService.findByDocId(docId);
+        Optional<Ppm> ppm=ppmService.findByDocId(docId);
+        Optional<Agpm> agpm=agpmService.findByDocId(docId);
+        if(!ppa.isPresent() && !ppm.isPresent() && !agpm.isPresent()) {
+            throw new DocNotFound("",null);
+        }
+
 
         DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
         if (dummyContent.getFile()!=null) {

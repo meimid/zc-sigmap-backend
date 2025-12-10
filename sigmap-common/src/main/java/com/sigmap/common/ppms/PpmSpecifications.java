@@ -2,8 +2,10 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
@@ -253,5 +255,13 @@ public class PpmSpecifications {
         };
     }
 
+    public static Specification<Ppm> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Ppm, Docs> docsJoin = root.join("docs");
+            return cb.equal(docsJoin.get("id"), docId);
+        };
+    }
 
 }
