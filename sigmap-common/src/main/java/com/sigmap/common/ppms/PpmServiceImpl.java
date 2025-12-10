@@ -6458,10 +6458,6 @@ public class PpmServiceImpl implements PpmService {
         return ppms;
     }
 
-    @Override
-    public Optional<Ppm> findByDocId(Integer docId) throws PpmNotFound {
-        return findOne(PpmSpecifications.isLatestPublishedVersion().and(PpmSpecifications.docId(docId)));
-    }
 
 
 

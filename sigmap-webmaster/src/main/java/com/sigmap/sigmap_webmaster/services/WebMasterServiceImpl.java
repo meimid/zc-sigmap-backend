@@ -144,13 +144,42 @@ public class WebMasterServiceImpl implements WebMasterService {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
     @Override
-    public byte[] downloadDocument(String alfrescoId,Integer docId) throws IOException, PaaNotFound, PpmNotFound, AgpmNotFound, DocNotFound {
+    public byte[] downloadDocument(String alfrescoId) throws IOException, DocNotFound {
 
-       Optional <Paa> ppa=paaService.findByDocId(docId);
-        Optional<Ppm> ppm=ppmService.findByDocId(docId);
-        Optional<Agpm> agpm=agpmService.findByDocId(docId);
-        if(!ppa.isPresent() && !ppm.isPresent() && !agpm.isPresent()) {
-            throw new DocNotFound("",null);
+        boolean valid = false;
+
+        //  Check PAA
+        List<Paa> paas = paaService.findAllForWebsite(null, Pageable.unpaged()).getContent();
+        for (Paa p : paas) {
+            if (matchesPaa(alfrescoId, p)) {
+                valid = true;
+                break;
+            }
+        }
+
+        //  Check PPM
+        if (!valid) {
+            List<Ppm> ppms = ppmService.findAllForWebsite(null, Pageable.unpaged()).getContent();
+            for (Ppm p : ppms) {
+                if (matchesPpm(alfrescoId, p)) {
+                    valid = true;
+                    break;
+                }
+            }
+        }
+
+        //  Check AGPM
+        if (!valid) {
+            List<Agpm> agpms = agpmService.findAllForWebsite(null, Pageable.unpaged()).getContent();
+            for (Agpm a : agpms) {
+                if (matchesAgpm(alfrescoId, a)) {
+                    valid = true;
+                    break;
+                }
+            }
+        }
+        if (!valid) {
+            throw new DocNotFound("Document not associated with latest published entity", null);
         }
 
 
@@ -242,4 +271,44 @@ public class WebMasterServiceImpl implements WebMasterService {
         return new PageImpl<>(responses, pageable, agpmPage.getTotalElements());
 
     }
+
+    private boolean matchesPaa(String alfrescoId, Paa paa) {
+        Optional<ModelPaa> model = modelPaaService.getModel(paa.getId(), paa.getVersion());
+
+        if (model.isPresent()
+                && model.get().getDoc() != null
+                && !model.get().getDoc().getIsDeleted()) {
+
+            return alfrescoId.equals(model.get().getDoc().getAlfresco_id());
+        }
+        return false;
+    }
+
+    private boolean matchesPpm(String alfrescoId, Ppm ppm) {
+        Optional<ModelPaa> model = modelPaaService.getModel(ppm.getId(), ppm.getVersion());
+
+        if (model.isPresent()
+                && model.get().getDoc() != null
+                && !model.get().getDoc().getIsDeleted()) {
+
+            return alfrescoId.equals(model.get().getDoc().getAlfresco_id());
+        }
+        return false;
+    }
+
+
+    private boolean matchesAgpm(String alfrescoId, Agpm agpm) {
+        Optional<ModelPaa> model = modelPaaService.getModel(agpm.getId(), agpm.getVersion());
+
+        if (model.isPresent()
+                && model.get().getDoc() != null
+                && !model.get().getDoc().getIsDeleted()) {
+
+            return alfrescoId.equals(model.get().getDoc().getAlfresco_id());
+        }
+        return false;
+    }
+
+
+
 }

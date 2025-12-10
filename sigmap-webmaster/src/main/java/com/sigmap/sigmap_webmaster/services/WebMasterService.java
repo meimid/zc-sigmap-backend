@@ -32,7 +32,7 @@ public interface WebMasterService {
 
     Optional<DocumentResponseDTO> getDocumentInformation(String alfrescoId);
 
-    byte[] downloadDocument(String alfrescoId,Integer docId) throws IOException, DocsNotFoundException, PaaNotFound, PpmNotFound, AgpmNotFound, DocNotFound;
+    byte[] downloadDocument(String alfrescoId) throws IOException, DocNotFound;
 
     Page<PpmWebsiteResponse> findAllPpmForWebsite(Specification<Ppm> spec, Pageable pageable);
     Page<PaaWebsiteResponse> findPaaAllForWebsite(Specification<Paa> spec, Pageable pageable);

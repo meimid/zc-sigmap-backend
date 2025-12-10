@@ -244,13 +244,4 @@ public class PaaSpecifications {
         };
     }
 
-    public static Specification<Paa> docId(Integer docId) {
-        return (root, query, cb) -> {
-            query.distinct(true);
-
-            Join<Paa, Docs> docsJoin = root.join("docs");
-            return cb.equal(docsJoin.get("id"), docId);
-        };
-    }
-
 }

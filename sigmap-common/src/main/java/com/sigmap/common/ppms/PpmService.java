@@ -337,7 +337,6 @@ public interface PpmService {
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
 
-   Optional <Ppm> findByDocId(Integer docId) throws PpmNotFound;
 
 }
 

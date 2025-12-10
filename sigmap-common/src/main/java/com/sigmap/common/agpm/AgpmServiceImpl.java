@@ -1071,8 +1071,5 @@ public class AgpmServiceImpl implements AgpmService {
         return createFilteredResponseAgpm(saved);
     }
 
-    @Override
-    public Optional<Agpm> findByDocId(Integer docId) throws AgpmNotFound {
-       return findOne(AgpmSpecifications.isLatestPublishedVersion().and(AgpmSpecifications.docId(docId)));
-    }
+
 }

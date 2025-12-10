@@ -213,7 +213,7 @@ public interface PaaService {
     Paa actualise(Integer paaId)
             throws PaaNotFound, PaaInvalidStatusException, PaaNotAssociatedWithUserAcException;
 
-   Optional <Paa> findByDocId(Integer docId) throws PaaNotFound;
+   Optional <Paa> findByDocId(String modelAlfrescoId,Integer paaId) throws PaaNotFound;
 
 
 }
