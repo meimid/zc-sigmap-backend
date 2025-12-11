@@ -2,8 +2,10 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
@@ -222,4 +224,44 @@ public class PpmSpecifications {
         return (root, query, criteriaBuilder) ->
                 criteriaBuilder.equal(root.get("status"), "BROUILLON");
     }
+
+    public static Specification<Ppm> isLatestPublishedVersion() {
+        return (root, query, cb) -> {
+            // subquery to get MAX(version) among PUBLISHED, not deleted PPMs with same id
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(
+                            cb.equal(subRoot.get("id"), root.get("id")),
+                            cb.equal(subRoot.get("status"), ProcessStatus.PUBLIE),
+                            cb.equal(subRoot.get("isDeleted"), false)
+                    );
+
+            return cb.and(
+                    cb.equal(root.get("status"), ProcessStatus.PUBLIE),
+                    cb.equal(root.get("isDeleted"), false),
+                    cb.equal(root.get("version"), subquery)
+            );
+        };
+    }
+
+    public static Specification<Ppm> ppmId(Integer id) {
+        return (root, query, cb) -> {
+            if (id == null) {
+                return cb.conjunction();
+            }
+            return cb.equal(root.get("id"), id);
+        };
+    }
+
+    public static Specification<Ppm> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Ppm, Docs> docsJoin = root.join("docs");
+            return cb.equal(docsJoin.get("id"), docId);
+        };
+    }
+
 }

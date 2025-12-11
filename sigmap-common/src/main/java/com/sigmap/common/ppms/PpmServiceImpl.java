@@ -40,6 +40,7 @@ import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaDefaultStatus;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
@@ -5334,9 +5335,7 @@ public class PpmServiceImpl implements PpmService {
     @Override
     public Page<Ppm> findAllForWebsite(Specification<Ppm> spec, Pageable pageable) {
         Specification<Ppm> finalSpec = Specification.where(spec)
-                .and(PpmSpecifications.isLatestVersion())
-                .and(PpmSpecifications.isPublished())
-                .and(PpmSpecifications.isNotDeleted());
+                .and(PpmSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 
@@ -6447,9 +6446,6 @@ public class PpmServiceImpl implements PpmService {
 
         boolean isSuperAdmin =Authentication.hasRole("SUPER_ADMIN");
         boolean isAdminCentral = Authentication.hasRole("ADMIN_CENTRAL");
-        System.out.println("-----------------------"+String.valueOf(isAdminCentral));
-        System.out.println("-----------------------"+String.valueOf(isSuperAdmin));
-
 
         List<Ppm> ppms = new ArrayList<>();
         if(isAdminCentral||isSuperAdmin) {
@@ -6461,5 +6457,8 @@ public class PpmServiceImpl implements PpmService {
         }
         return ppms;
     }
+
+
+
 
 }

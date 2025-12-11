@@ -20,6 +20,7 @@ import com.sigmap.common.config.RefTypes;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.model_agpm.ModelAgpmRepository;
 import com.sigmap.common.model_paa.ModelPaaRepository;
@@ -77,30 +78,20 @@ import java.util.stream.Collectors;
 @RequestMapping("/api")
 @Slf4j
 public class WebMasterController {
-    private final PpmService ppmService;
-    private final PaaService paaService;
-    private final AgpmService agpmService;
+
     private final AcService acService;
     private final WebMasterService webMasterService;
     private final DocsService docsService;
-    private final ModelPaaRepository modelPaaRepository;
-    private final ModelAgpmRepository modelAgpmRepository;
-    private final ModelPpmRepository modelPpmRepository;
     private final RefParamService refParamService;
     private final ActiviteService  activiteService;
     private final SocieteService societeService;
     @Value("${file.upload.ac-logo-path}")
     private String acLogoPath;
-    public WebMasterController(PpmService ppmService, PaaService paaService, AgpmService agpmService, AcService acService, WebMasterService webMasterService, DocsService docsService, ModelPaaRepository modelPaaRepository, ModelAgpmRepository modelAgpmRepository, ModelPpmRepository modelPpmRepository, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
-        this.ppmService = ppmService;
-        this.paaService = paaService;
-        this.agpmService = agpmService;
+    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
+
         this.acService = acService;
         this.webMasterService = webMasterService;
         this.docsService = docsService;
-        this.modelPaaRepository = modelPaaRepository;
-        this.modelAgpmRepository = modelAgpmRepository;
-        this.modelPpmRepository = modelPpmRepository;
         this.refParamService = refParamService;
         this.activiteService = activiteService;
         this.societeService = societeService;
@@ -108,12 +99,10 @@ public class WebMasterController {
 
 
         @GetMapping("/ppm")
-    public ResponseEntity<Page<PpmWebsiteResponse>> findAllForWebsite(PpmQuery query, Pageable pageable)  {
+    public ResponseEntity<Page<PpmWebsiteResponse>> findPpmAllForWebsite(PpmQuery query, Pageable pageable)  {
         Specification<Ppm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Ppm> ppmPage = ppmService.findAllForWebsite(spec,pageable);
-        // Page<PpmWebsiteResponse> ppmResponsePage = ppmPage.map(PpmMapper.INSTANCE::toWebsiteResponse);
-        Page<PpmWebsiteResponse> paaResponsePage = ppmPage.map(PpmWebsiteResponse::new);
-            return ResponseEntity.ok(paaResponsePage);
+        Page<PpmWebsiteResponse> responses = webMasterService.findAllPpmForWebsite(spec,pageable);
+            return ResponseEntity.ok(responses);
         }
 
     @GetMapping("/ppm/{ppmId}")
@@ -125,12 +114,10 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/paa")
-    public ResponseEntity<Page<PaaWebsiteResponse>> findAllForWebsite(PaaQuery query, Pageable pageable)  {
+    public ResponseEntity<Page<PaaWebsiteResponse>> findPaaAllForWebsite(PaaQuery query, Pageable pageable)  {
         Specification<Paa> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Paa> paaPage = paaService.findAllForWebsite(spec,pageable);
-        Page<PaaWebsiteResponse> paaResponsePage = paaPage.map(PaaWebsiteResponse::new);
-
-        return ResponseEntity.ok(paaResponsePage);
+        Page<PaaWebsiteResponse> responses = webMasterService.findPaaAllForWebsite(spec,pageable);
+        return ResponseEntity.ok(responses);
     }
     @GetMapping("/paa/{paaId}")
     public ResponseEntity<PaaDetailsWebsite> findPaaForWebsiteByIdAndVersion(@PathVariable Integer paaId,
@@ -142,9 +129,8 @@ public class WebMasterController {
     @GetMapping("/agpm")
     public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(AgpmQuery query, Pageable pageable)  {
         Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
-        Page<Agpm> agpmPage = agpmService.findAllForWebsite(spec,pageable);
-        Page<AgpmWebsiteResponse> agpmResponsePage = agpmPage.map(AgpmWebsiteResponse::new);
-        return ResponseEntity.ok(agpmResponsePage);
+        Page<AgpmWebsiteResponse> responses = webMasterService.findAgpmAllForWebsite(spec,pageable);
+        return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/agpm/{agpmId}")
@@ -159,25 +145,44 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/download/{id}/{ver}")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id,@PathVariable Integer ver) throws DocsNotFoundException, IOException {
-        String alfrescoId;
-        Optional<String> optionalAlfrescoIdPpm=modelPpmRepository.findModelAlfrescoId(id,ver);
-        Optional<String> optionalAlfrescoIdPaa=modelPaaRepository.findModelAlfrescoId(id,ver);
-        Optional<String> optionalAlfrescoIdAgpm=modelAgpmRepository.findModelAlfrescoId(id,ver);
-        if (optionalAlfrescoIdPpm.isPresent()){
-            alfrescoId = optionalAlfrescoIdPpm.get();
-        }else if(optionalAlfrescoIdPaa.isPresent()){
-            alfrescoId = optionalAlfrescoIdPaa.get();
-        }else if(optionalAlfrescoIdAgpm.isPresent()){
-            alfrescoId = optionalAlfrescoIdAgpm.get();
-        }
-        else {
-            throw new DocsNotFoundException("document not found.");
-        }
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId)
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId));
-        byte[] fileContent = webMasterService.downloadDocument(alfrescoId,id,ver);
+    @PostMapping("/download/agpm")
+    public ResponseEntity<Resource> downloadDocumentAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentAgpm(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+    @PostMapping("/download/ppm")
+    public ResponseEntity<Resource> downloadDocumentPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentPpm(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/paa")
+    public ResponseEntity<Resource> downloadDocumentPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentPaa(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
