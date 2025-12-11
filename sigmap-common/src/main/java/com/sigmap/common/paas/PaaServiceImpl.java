@@ -3251,16 +3251,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         return createFilteredResponsePaa(saved);
     }
 
-    @Override
-    public Optional<Paa> findByDocId(String modelAlfrescoId,Integer paaId) throws PaaNotFound {
-        List<Paa> all = repository.findAll(
-                PaaSpecifications.isLatestPublishedVersion().and(PaaSpecifications.paaId(paaId))
-        );
 
-        return all.stream()
-                .filter(p -> modelAlfrescoId.equals(p.getModelAlfrescoId()))
-                .findFirst();
-    }
 
 
 }
