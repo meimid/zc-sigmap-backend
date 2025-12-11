@@ -46,15 +46,6 @@ public interface DacMapper {
 
     DacResponseReunion mapToDacResponseReunion(Dac source);
 
-    @AfterMapping
-    default void debugMapping(@MappingTarget DacResponseReunion target, Dac source) {
-        System.out.println("=== DEBUG MAPPING ===");
-        System.out.println("Source Dac ID: " + (source != null ? source.getDacId() : "null"));
-        System.out.println("Source PPM: " + (source != null ? source.getPpm() : "null"));
-        System.out.println("Source AC: " + (source != null && source.getPpm() != null ? source.getPpm().getAc() : "null"));
-        System.out.println("Target AC: " + (target != null ? target.getAc() : "null"));
-        System.out.println("=====================");
-    }
 }
 
 

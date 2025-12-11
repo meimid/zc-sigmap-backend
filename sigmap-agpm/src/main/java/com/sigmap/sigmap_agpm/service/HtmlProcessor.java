@@ -1,4 +1,5 @@
 package com.sigmap.sigmap_agpm.service;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -6,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+@Slf4j
 public class HtmlProcessor {
     public static class ProcessedContent {
         public String cleanedHtml;
@@ -48,9 +50,9 @@ public class HtmlProcessor {
                     img.attr("src", placeholder);
                     imgId++;
                     result.imageCount++;
-                    System.out.println("Image extraite : " + placeholder + " (taille: " + imgBytes.length + " bytes)");
+                   log.info("Image extraite : {} taille: {} bytes" + placeholder , imgBytes.length);
                 } catch (IllegalArgumentException e) {
-                    System.err.println("Erreur décodage base64 pour img " + imgId + ": " + e.getMessage());
+                    log.error("Erreur décodage base64 pour img {} : {}" , imgId , e.getMessage());
                     // Option : Supprime l'img ou garde le src original
                     img.remove();
                 }
@@ -58,7 +60,7 @@ public class HtmlProcessor {
         }
 
         result.cleanedHtml = doc.html();  // HTML nettoyé, prêt pour Jasper markup
-        System.out.println("Traitement terminé : " + result.imageCount + " images extraites.");
+        log.info("Traitement terminé : {} images extraites." , result.imageCount );
         return result;
     }
 
@@ -90,7 +92,7 @@ public class HtmlProcessor {
             h2.tagName("p");
         }
 
-        System.out.println("Conversion CSS → balises HTML terminée.");
+        log.info("Conversion CSS → balises HTML terminée.");
     }
 
     // Méthode helper pour nettoyer les CSS (ajoute/ajuste styles inline)
@@ -118,6 +120,6 @@ public class HtmlProcessor {
         }
 
         // Ajoute d'autres règles ici si besoin (ex. : .ql-indent-1 → padding-left: 40px;)
-        System.out.println("CSS nettoyé : classes converties en inline styles.");
+        log.info("CSS nettoyé : classes converties en inline styles.");
     }
 }

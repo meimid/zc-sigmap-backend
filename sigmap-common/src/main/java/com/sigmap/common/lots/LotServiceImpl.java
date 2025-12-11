@@ -11,6 +11,7 @@ import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.*;
-
+@Slf4j
 @Service
 public class LotServiceImpl implements LotService {
     private final LotRepository repository;
@@ -88,7 +89,7 @@ public class LotServiceImpl implements LotService {
         if (id == null) {
             Integer maxId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
             id = (maxId != null) ? maxId + 1 : 1;
-            System.out.println("Generated Lot ID: " + id);
+            log.info("Generated Lot ID: {}" , id);
         }
 
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
@@ -165,12 +166,12 @@ public class LotServiceImpl implements LotService {
         }
 
         // Log the current state and request
-        System.out.println("Updating Lot ID: " + lotId + ", Current Version: " + lotVer);
-        System.out.println("Request data: " + request);
-        System.out.println("Current description: " + existingLot.getDescription());
-        System.out.println("New description: " + request.getDescription());
-        System.out.println("Current budget: " + existingLot.getBudget());
-        System.out.println("New budget: " + request.getBudget());
+        log.info("Updating Lot ID: {}  Current Version:  {}" ,lotId , lotVer);
+        log.info("Request data: {}" , request);
+        log.info("Current description: {}" , existingLot.getDescription());
+        log.info("New description: {}" , request.getDescription());
+        log.info("Current budget: {}" , existingLot.getBudget());
+        log.info("New budget: {}" , request.getBudget());
 
         // Create a temporary lot to check for changes
         Lot tempLot = new Lot();
@@ -183,27 +184,27 @@ public class LotServiceImpl implements LotService {
         boolean hasChanges = !areDescriptionsIdentical(existingLot.getDescription(), tempLot.getDescription()) ||
                 !areBudgetsIdentical(existingLot.getBudget(), tempLot.getBudget());
 
-        System.out.println("Existing description: '" + existingLot.getDescription() + "'");
-        System.out.println("New description: '" + tempLot.getDescription() + "'");
-        System.out.println("Existing budget: '" + existingLot.getBudget() + "'");
-        System.out.println("New budget: '" + tempLot.getBudget() + "'");
-        System.out.println("Has changes: " + hasChanges);
+        log.info("Existing description: {}" , existingLot.getDescription());
+        log.info("New description: {}" , tempLot.getDescription() );
+        log.info("Existing budget: {}" , existingLot.getBudget());
+        log.info("New budget: {}" , tempLot.getBudget() );
+        log.info("Has changes: {}" , hasChanges);
 
         // Handle realisations separately if provided
         // Update realisations without triggering version increment
         if (request.getRealisationIds() != null && !request.getRealisationIds().isEmpty()) {
             updateLotRealisations(existingLot, request.getRealisationIds());
-            System.out.println("Updated realisations relationship without incrementing version");
+            log.info("Updated realisations relationship without incrementing version");
         }
 
         // If no changes to description or budget, return the existing lot with possibly updated realisations
         if (!hasChanges) {
-            System.out.println("No changes detected in description or budget, returning existing version: " + lotVer);
+            log.info("No changes detected in description or budget, returning existing version: {}" , lotVer);
             return existingLot;
         }
 
         // If there are changes to description or budget, create a new version
-        System.out.println("Changes detected in description or budget, creating new version: " + (lotVer + 1));
+        log.info("Changes detected in description or budget, creating new version: {}" , (lotVer + 1));
 
         Lot newLot = new Lot();
         newLot.setId(lotId);
@@ -310,7 +311,7 @@ public class LotServiceImpl implements LotService {
             throw new RuntimeException("No versions found for Lot with ID: " + lotId);
         }
 
-        System.out.println("Found latest version for Lot ID " + lotId + ": " + latestVersion);
+        log.info("Found latest version for Lot ID {} : {}" + lotId + ": " + latestVersion);
 
         // Call the version-specific method with the latest version
         return updateWithVersioning(lotId, latestVersion, request);

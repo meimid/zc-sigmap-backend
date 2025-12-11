@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,7 @@ import org.springframework.web.cors.CorsConfiguration;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Slf4j
 public class SecurityConfig {
 
     @Value("${cors.origins}")
@@ -85,7 +87,7 @@ public class SecurityConfig {
     @Bean
     public JwtDecoder jwtDecoder() {
         String issuerUri = env.getProperty("keycloak.server-url") + "/realms/" + env.getProperty("keycloak.realm");
-        System.out.println("Issuer URI: " + issuerUri);
+        log.info("Issuer URI: {}" , issuerUri);
 
         NimbusJwtDecoder jwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
 
@@ -96,8 +98,8 @@ public class SecurityConfig {
         );
 
         jwtDecoder.setJwtValidator(token -> {
-            System.out.println("VALIDATE JWT CALLED");
-            System.out.println("Token aud: " + token.getAudience());
+            log.info("VALIDATE JWT CALLED");
+            log.info("Token aud: {}" , token.getAudience());
 
             for (String aud : token.getAudience()) {
                 if (validAudiences.contains(aud)) {
