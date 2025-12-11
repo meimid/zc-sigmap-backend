@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_paa.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import org.flowable.engine.ProcessEngine;
@@ -37,6 +38,7 @@ import java.util.Scanner;
  * @see org.flowable.engine.ProcessEngine
  * @see org.springframework.context.annotation.Configuration
  */
+@Slf4j
 @Configuration
 public class TenantAwareFlowableConfig {
 
@@ -100,9 +102,9 @@ public class TenantAwareFlowableConfig {
                         .name("PAA Process Deployment")
                         .addInputStream(fileName, resource.getInputStream())
                         .deploy();
-                System.out.println("Deployed: " + fileName);
+                log.info("Deployed: {}" , fileName);
             } else {
-                System.out.println("Skipped (no changes): " + fileName);
+                log.info("Skipped (no changes): {}" , fileName);
             }
         }
 

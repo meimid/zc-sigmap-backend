@@ -373,7 +373,6 @@ public class RefParamServiceImpl implements RefParamService {
     public RefParam findByIdWithoutSystemType(Integer id) throws RefParamNotFound {
         Specification<RefParam> specification = RefParamSpecifications.id(id)
                 .and(RefParamSpecifications.deleted(false));
-        System.out.println("-----------------------------------------"+specification);
         RefParam ref= findOneWithoutSystemType(specification)
                 .orElseThrow(() -> new RefParamNotFound("", List.of(id)));
         return ref;

@@ -94,8 +94,8 @@ public class SecurityConfig {
         );
 
         jwtDecoder.setJwtValidator(token -> {
-            System.out.println("VALIDATE JWT CALLED");
-            System.out.println("Token aud: " + token.getAudience());
+            log.info("VALIDATE JWT CALLED");
+            log.info("Token aud: {}" , token.getAudience());
 
             for (String aud : token.getAudience()) {
                 if (validAudiences.contains(aud)) {
