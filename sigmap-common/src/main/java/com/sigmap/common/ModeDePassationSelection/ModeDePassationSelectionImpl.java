@@ -112,8 +112,10 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
             }
             modeDePassationSelection.getTypeMarchers().add(typeMarcher);
         }
-        if(request.isRestraint()){
+        if (request.isRestraint()) {
             modeDePassationSelection.setRestraint(true);
+        } else {
+            modeDePassationSelection.setRestraint(false);
         }
         return save(modeDePassationSelection);
     }
@@ -159,10 +161,12 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
                     modeDePassationSelection.getTypeMarchers().remove(typeMarcher);
             }
         }
-
-        if(request.isRestraint()){
+        if (request.isRestraint()) {
             modeDePassationSelection.setRestraint(true);
+        } else {
+            modeDePassationSelection.setRestraint(false);
         }
+
         modeDePassationSelection.setType(request.getType());
         modeDePassationSelection.setEtapes(request.getEtapes());
         return save(modeDePassationSelection);
