@@ -285,7 +285,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     private boolean matchesPpm(String alfrescoId, Ppm ppm) {
-        Optional<ModelPaa> model = modelPaaService.getModel(ppm.getId(), ppm.getVersion());
+        Optional<ModelPpm> model = modelPpmService.getModel(ppm.getId(), ppm.getVersion());
 
         if (model.isPresent()
                 && model.get().getDoc() != null
@@ -298,11 +298,13 @@ public class WebMasterServiceImpl implements WebMasterService {
 
 
     private boolean matchesAgpm(String alfrescoId, Agpm agpm) {
-        Optional<ModelPaa> model = modelPaaService.getModel(agpm.getId(), agpm.getVersion());
+        Optional<ModelAgpm> model = modelAgpmService.getModel(agpm.getId(), agpm.getVersion());
 
         if (model.isPresent()
                 && model.get().getDoc() != null
                 && !model.get().getDoc().getIsDeleted()) {
+
+            log.info("Matching agpm: {}" , model.get().getDoc().getAlfresco_id());
 
             return alfrescoId.equals(model.get().getDoc().getAlfresco_id());
         }
