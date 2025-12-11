@@ -144,8 +144,37 @@ public class WebMasterServiceImpl implements WebMasterService {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
     @Override
-    public byte[] downloadDocument(String alfrescoId) throws IOException, DocNotFound {
+    public byte[] downloadDocumentAgpm(String alfrescoId) throws IOException, DocNotFound {
 
+        boolean valid = false;
+
+
+        //  Check AGPM
+        if (!valid) {
+            List<Agpm> agpms = agpmService.findAllForWebsite(null, Pageable.unpaged()).getContent();
+            for (Agpm a : agpms) {
+                if (matchesAgpm(alfrescoId, a)) {
+                    valid = true;
+                    break;
+                }
+            }
+        }
+        if (!valid) {
+            throw new DocNotFound("Document not associated with latest published entity", null);
+        }
+
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile()!=null) {
+            return dummyContent.getFile();
+        }
+        else {
+            throw new IOException("Error while downloading document.");
+        }
+
+    }
+
+    @Override
+    public byte[] downloadDocumentPaa(String alfrescoId) throws IOException, DocNotFound {
         boolean valid = false;
 
         //  Check PAA
@@ -156,23 +185,27 @@ public class WebMasterServiceImpl implements WebMasterService {
                 break;
             }
         }
+        if (!valid) {
+            throw new DocNotFound("Document not associated with latest published entity", null);
+        }
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile()!=null) {
+            return dummyContent.getFile();
+        }
+        else {
+            throw new IOException("Error while downloading document.");
+        }
+    }
+
+    @Override
+    public byte[] downloadDocumentPpm(String alfrescoId) throws IOException, DocNotFound {
+        boolean valid = false;
 
         //  Check PPM
         if (!valid) {
             List<Ppm> ppms = ppmService.findAllForWebsite(null, Pageable.unpaged()).getContent();
             for (Ppm p : ppms) {
                 if (matchesPpm(alfrescoId, p)) {
-                    valid = true;
-                    break;
-                }
-            }
-        }
-
-        //  Check AGPM
-        if (!valid) {
-            List<Agpm> agpms = agpmService.findAllForWebsite(null, Pageable.unpaged()).getContent();
-            for (Agpm a : agpms) {
-                if (matchesAgpm(alfrescoId, a)) {
                     valid = true;
                     break;
                 }
@@ -190,7 +223,6 @@ public class WebMasterServiceImpl implements WebMasterService {
         else {
             throw new IOException("Error while downloading document.");
         }
-
     }
 
     @Override

@@ -145,11 +145,44 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/download")
-    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+    @PostMapping("/download/agpm")
+    public ResponseEntity<Resource> downloadDocumentAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[] fileContent = webMasterService.downloadDocument(alfrescoId.getId());
+        byte[] fileContent = webMasterService.downloadDocumentAgpm(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+    @PostMapping("/download/ppm")
+    public ResponseEntity<Resource> downloadDocumentPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentPpm(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/paa")
+    public ResponseEntity<Resource> downloadDocumentPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException,  DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentPaa(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
