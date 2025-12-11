@@ -7,6 +7,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.RequiredValue;
 import com.sigmap.common.ModeDePassationSelection.mappers.ModeDePassationSelectionMapper;
 import com.sigmap.common.ModeDePassationSelection.request.ModeDePassationSelectionRequest;
 
+import com.sigmap.common.ac.exception.AttributeRequire;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
@@ -84,6 +85,13 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
 
     @Override
     public ModeDePassationSelection create(ModeDePassationSelectionRequest request) throws RefParamNotFound {
+        if(request.getType() == null ) {
+            throw new AttributeRequire("","type");
+        }
+
+        if(request.getEtapes() == null ) {
+            throw new AttributeRequire("","etapes");
+        }
 
         if(request.getLibelle()==null||request.getLibelle().isEmpty()) {
             throw new RequiredValue("");
@@ -114,6 +122,14 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
     public ModeDePassationSelection update(Integer id, ModeDePassationSelectionRequest request) throws ModeDePassationSelectionNotFound, RefParamNotFound {
         ModeDePassationSelection modeDePassationSelection = findById(id);
 
+        if(request.getType() == null ) {
+            throw new AttributeRequire("","type");
+        }
+
+        if(request.getEtapes() == null ) {
+            throw new AttributeRequire("","etapes");
+        }
+
         if(!request.getTypeMarchersIds().isEmpty()) {
             getSizeList(request.getTypeMarchersIds());
         }
@@ -121,6 +137,7 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
         if(request.getLibelle()==null||request.getLibelle().isEmpty()) {
             throw new RequiredValue("");
         }
+
         else {
             Specification<ModeDePassationSelection> specification = ModeDePassationSelectionSpecifications.deleted(false).and(ModeDePassationSelectionSpecifications.libelle(request.getLibelle()));
             Optional<ModeDePassationSelection> modeDePassationSelection1 = findOne(specification);
@@ -146,6 +163,8 @@ public class ModeDePassationSelectionImpl implements ModeDePassationSelectionSer
         if(request.isRestraint()){
             modeDePassationSelection.setRestraint(true);
         }
+        modeDePassationSelection.setType(request.getType());
+        modeDePassationSelection.setEtapes(request.getEtapes());
         return save(modeDePassationSelection);
     }
 
