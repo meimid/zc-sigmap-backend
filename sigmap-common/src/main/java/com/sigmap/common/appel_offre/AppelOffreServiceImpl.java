@@ -1,19 +1,23 @@
 package com.sigmap.common.appel_offre;
 
-import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
-import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
 import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
-import com.sigmap.common.appel_offre.response.AppelOffreResponse;
-import com.sigmap.common.dac.Dac;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.security.Authentication;
+import com.sigmap.common.user_ac.UserAc;
+import com.sigmap.common.user_ac.UserAcRepository;
+import com.sigmap.common.user_ac.UserAcSpecifications;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,7 +26,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -32,7 +38,8 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final AppelOffreRepository appelOffreRepository;
     private final PpmRepository ppmRepository;
     private final RealisationRepository realisationRepository;
-    private final AppelOffreMapper appelOffreMapper;
+    private final UserAcRepository userAcRepository;
+    private final AcService acService;
 
     private static int lastYear = java.time.Year.now().getValue();
     private static int counter = 0;
@@ -121,9 +128,48 @@ public class AppelOffreServiceImpl implements AppelOffreService {
 
         existingAppelOffre.setNom(request.getNom());
         existingAppelOffre.setDescription(request.getDescription());
+        existingAppelOffre.setLotSepares(request.getLotSepares());
 
         save(existingAppelOffre);
         return existingAppelOffre;
+    }
+
+    @Override
+    public List<Ppm> getAllPpmsWithAcsforConnectedUser() {
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        if (currentUserId.isEmpty()) {
+            throw new RuntimeException(" user Id not found");
+        }
+        List<Ac> acList = acService.getAcsByUserId(currentUserId.get());
+        List<Integer> acIds = acList.stream().map(Ac::getId).toList();
+
+        // get all ppm that are published, not deleted, have realisation and their acs are for connected user
+        Specification<Ppm> specification = PpmSpecifications.isPublished()
+                .and(PpmSpecifications.isNotDeleted())
+                .and(PpmSpecifications.ppmAc(acIds))
+                .and(PpmSpecifications.hasRealisations())
+                .and(PpmSpecifications.isLatestPublishedVersion());
+
+        List<Ppm> foundPpms = ppmRepository.findAll(specification);
+        return foundPpms;
+    }
+
+    @Override
+    public List<Realisation> getRealisationsNotRelatedToAppelOffreWithStatusCreeOrCloturer(Integer ppmId,Integer ppmVer) {
+        List<StatusAppelOffre> statuses = Arrays.asList(StatusAppelOffre.cree, StatusAppelOffre.cloturer);
+        List<Realisation> foundRealisation =realisationRepository.findRealisationsNotLinkedToAppelOffreWithStatus(ppmId, ppmVer, statuses);
+        return foundRealisation;
+    }
+
+    public List<Ac> getAcsByUserId() {
+        Optional<String> currentUserId = Authentication.getCurrentUserId();
+        if (currentUserId.isEmpty()){
+            throw new RuntimeException(" user Id not found");
+        }
+        Specification<UserAc> specification= UserAcSpecifications.activeAcsByUserId(currentUserId.get());
+        List<UserAc> userAcs = userAcRepository.findAll(specification);
+        List<Ac> acList = userAcs.stream().map(UserAc::getAc).toList();
+        return acList;
     }
 
 
