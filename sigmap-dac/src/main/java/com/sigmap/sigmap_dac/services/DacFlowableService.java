@@ -254,9 +254,9 @@ public class DacFlowableService {
         Map<String, Object> vars = new HashMap<>();
         vars.put("id", id);
         vars.put("version", version);
-        Integer acId = (dac.getPpm() != null && dac.getPpm().getAc() != null) ? dac.getPpm().getAc().getId() : null;
+        Integer acId = (dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) ? dac.getAppelOffre().getPpm().getAc().getId() : null;
         if (acId != null) vars.put("acId", acId);
-        vars.put("isRestraint", dac.getModePassation() != null && dac.getModePassation().isRestraint());
+        vars.put("isRestraint", dac.getAppelOffre().getRealisation().getModePassation() != null && dac.getAppelOffre().getRealisation().getModePassation().isRestraint());
         vars.put("shortListing", dac.isShortListing());
         vars.put("parentDacId", dac.getParentDacId());
 
@@ -808,7 +808,7 @@ public class DacFlowableService {
 
             // refresh gateway-driving vars from DAC
             runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
-                    latestDac.getModePassation() != null && latestDac.getModePassation().isRestraint());
+                    latestDac.getAppelOffre().getRealisation().getModePassation() != null && latestDac.getAppelOffre().getRealisation().getModePassation().isRestraint());
             runtimeService.setVariable(task.getProcessInstanceId(), "shortListing", latestDac.isShortListing());
             runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
 
@@ -907,8 +907,8 @@ public class DacFlowableService {
         // --- Dynamic COM wiring (approve path), AC inside DAC via DAC→PPM→AC ---
         if (Boolean.TRUE.equals(request.getValidate())) {
             log.info("[COM] Evaluating dynamic commission wiring for validation path");
-            Integer acIdFromDac = (latestDac.getPpm() != null && latestDac.getPpm().getAc() != null)
-                    ? latestDac.getPpm().getAc().getId() : null;
+            Integer acIdFromDac = (latestDac.getAppelOffre().getPpm() != null && latestDac.getAppelOffre().getPpm().getAc() != null)
+                    ? latestDac.getAppelOffre().getPpm().getAc().getId() : null;
 
             // Case: current = AC validation (no meeting) and next requires meeting → set CPMP for the AC
             if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
@@ -1737,12 +1737,12 @@ public class DacFlowableService {
                             dto.setId(dacId);
                             dto.setVersion(dacVer);
                             dto.setRef(dac.getReference());
-                            dto.setNom(dac.getPpm().getNom());
+                            dto.setNom(dac.getAppelOffre().getPpm().getNom());
                             dto.setStatus(String.valueOf(dac.getStatus()));
 
 
-                            if (dac.getPpm().getAc() != null) {
-                                dto.setNomAc(dac.getPpm().getAc().getNom());
+                            if (dac.getAppelOffre().getPpm().getAc() != null) {
+                                dto.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
                             }
                         }
                     } catch (Exception e) {

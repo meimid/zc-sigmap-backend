@@ -1,21 +1,22 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
-import com.sigmap.common.dac.exception.NoActiveAAOException;
-import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
+import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
+import com.sigmap.common.dac.request.CreateDacFromAoRequest;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.realisations.Realisation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,4 +56,38 @@ public interface DacService {
      * @return List of published DACs for the given realisation
      */
     List<Dac> findPublishedDacsByRealisationIdAndVersion(Integer realisationId, Integer realisationVer);
+
+    /**
+     * Create DAC(s) from an existing Appel d'Offre.
+     * Based on etapeDac ("1" or "2"), creates one or two DACs.
+     * Validates request and populates reference data from AO/PPM/Realisation.
+     *
+     * @param request The DAC creation request containing AO reference and user inputs
+     * @return List of created DACs
+     * @throws AppelOffreNotFound if the specified AO doesn't exist
+     * @throws InvalidDacRequestException if validation fails
+     */
+    List<Dac> createFromAppelOffre(CreateDacFromAoRequest request) 
+            throws AppelOffreNotFound, InvalidDacRequestException;
+
+    /**
+     * Get DAC with full reference data from associated AO, PPM, and Realisation.
+     *
+     * @param dacId The DAC ID
+     * @param dacVer The DAC version
+     * @return DAC with populated reference data
+     * @throws DacNotFound if DAC doesn't exist
+     */
+    DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
+            throws DacNotFound;
+
+    /**
+     * Get list of CPMP commission members for a given AC.
+     *
+     * @param acId The AC (Autorité Contractante) ID
+     * @return List of CPMP commission members/participants
+     * @throws AcNotFound if AC doesn't exist
+     */
+    List<ParticipantResponse> getCpmpMembersByAc(Integer acId) 
+            throws AcNotFound;
 }

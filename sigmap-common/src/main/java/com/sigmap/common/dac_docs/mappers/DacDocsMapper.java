@@ -81,11 +81,9 @@ public interface DacDocsMapper {
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
     @Mapping(target = "status", source = "status")
-    @Mapping(target = "ppm", source = "ppm")
-    @Mapping(target = "ppm.acId", source = "ppm.ac.id")
-    @Mapping(target = "typeMarche", source = "typeMarche")
-    @Mapping(target = "modePassation", source = "modePassation")
-    @Mapping(target = "realisation", source = "realisation")
+    @Mapping(target = "ppm", source = "appelOffre.ppm")
+    @Mapping(target = "ppm.acId", source = "appelOffre.ppm.ac.id")
+    @Mapping(target = "realisation", source = "appelOffre.realisation")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
     DacResponseDTO toDacResponse(Dac dac);
 

@@ -1,6 +1,6 @@
 package com.sigmap.sigmap_dac.exeptions;
 
-import com.sigmap.common.dac.exception.NoActiveAAOException;
+import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.globalExceptions.BadRequest;

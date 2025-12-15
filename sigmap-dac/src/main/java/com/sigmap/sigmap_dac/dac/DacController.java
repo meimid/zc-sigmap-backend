@@ -1,18 +1,24 @@
 package com.sigmap.sigmap_dac.dac;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
+import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -358,5 +364,60 @@ public class DacController {
     List<Dac> dacs = dacService.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
     List<DacResponce> dacResponse = dacs.stream().map(DacMapper.INSTANCE::map).toList();
     return ResponseEntity.ok(dacResponse);
+  }
+
+  @PostMapping("/create-from-ao")
+  @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
+  public ResponseEntity<?> createDacFromAo(@Valid @RequestBody CreateDacFromAoRequest request) {
+    try {
+      log.debug("REST request to create DAC(s) from AO with ID: {}", request.getAppelOffreId());
+      List<Dac> createdDacs = dacService.createFromAppelOffre(request);
+      List<DacResponce> response = createdDacs.stream()
+              .map(DacMapper.INSTANCE::map)
+              .toList();
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    } catch (InvalidDacRequestException e) {
+      log.error("Validation error while creating DAC from AO: {}", e.getMessage());
+      return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    } catch (AppelOffreNotFound e) {
+      log.error("AppelOffre not found: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+    } catch (Exception e) {
+      log.error("Error creating DAC from AO: {}", e.getMessage(), e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body(Map.of("error", "An error occurred while creating DAC"));
+    }
+  }
+
+  @GetMapping("/{dacId}/{dacVer}/with-ao-reference")
+  public ResponseEntity<?> getDacWithAoReference(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    try {
+      log.debug("REST request to get DAC with AO reference for ID: {}, Version: {}", dacId, dacVer);
+      DacWithAoReferenceResponse response = dacService.getDacWithAoReference(dacId, dacVer);
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      log.error("Error getting DAC with AO reference: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", "DAC not found"));
+    }
+  }
+
+  @GetMapping("/cpmp-members/{acId}")
+  public ResponseEntity<?> getCpmpMembers(@PathVariable Integer acId) {
+    try {
+      log.debug("REST request to get CPMP members for AC ID: {}", acId);
+      List<ParticipantResponse> members = dacService.getCpmpMembersByAc(acId);
+      return ResponseEntity.ok(members);
+    } catch (AcNotFound e) {
+      log.error("AC not found: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", e.getMessage()));
+    } catch (Exception e) {
+      log.error("Error getting CPMP members: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+              .body(Map.of("error", "An error occurred while fetching CPMP members"));
+    }
   }
 }

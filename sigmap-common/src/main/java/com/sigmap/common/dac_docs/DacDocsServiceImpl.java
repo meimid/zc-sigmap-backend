@@ -624,9 +624,11 @@ public class DacDocsServiceImpl implements DacDocsService{
         Dac newDac = new Dac();
         newDac.setDacId(existingDac.getDacId());
         newDac.setDacVer(nextVer);
-        newDac.setPpm(existingDac.getPpm());
-        newDac.setRealisation(existingDac.getRealisation());
-        newDac.setTypeMarche(existingDac.getTypeMarche());
+        newDac.setAppelOffre(existingDac.getAppelOffre());
+        newDac.setResponsableDacId(existingDac.getResponsableDacId());
+        newDac.setConditionsParticipation(existingDac.getConditionsParticipation());
+        newDac.setEtapeDac(existingDac.getEtapeDac());
+        newDac.setEtapeProcess(existingDac.getEtapeProcess());
         newDac.setStatus(existingDac.getStatus());
         newDac.setReference(existingDac.getReference());
         newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
@@ -786,46 +788,46 @@ public class DacDocsServiceImpl implements DacDocsService{
         DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
             case "ppm": {
-                if (dac.getPpm() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null) return null;
                 switch (sourceField) {
-                    case "nom": return dac.getPpm().getNom();
+                    case "nom": return dac.getAppelOffre().getPpm().getNom();
                     case "created_at":
-                        if (dac.getPpm().getUpdatedAt() != null) {
-                            return sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
+                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
                         }
                         return null;
                     default: return null;
                 }
             }
             case "ac": {
-                if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null || dac.getAppelOffre().getPpm().getAc() == null) return null;
                 switch (sourceField) {
-                    case "nom": return dac.getPpm().getAc().getNom();
-                    case "email": return dac.getPpm().getAc().getEmail();
+                    case "nom": return dac.getAppelOffre().getPpm().getAc().getNom();
+                    case "email": return dac.getAppelOffre().getPpm().getAc().getEmail();
                     case "adresse":
-                        if (dac.getPpm().getAc().getAdresse() != null) {
-                            return (dac.getPpm().getAc().getAdresse().getAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
-                                    dac.getPpm().getAc().getAdresse().getVille());
+                        if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
+                            return (dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getVille());
                         }
                         return null;
                     default: return null;
                 }
             }
             case "realisation": {
-                if (dac.getRealisation() == null) return null;
+                if (dac.getAppelOffre().getRealisation() == null) return null;
                 switch (sourceField) {
                     case "realisationEnvisagees", "realisation_envisagees":
-                        return dac.getRealisation().getRealisationEnvisagees();
+                        return dac.getAppelOffre().getRealisation().getRealisationEnvisagees();
                     case "beneficiaire":
-                        return dac.getRealisation().getBeneficiaire();
+                        return dac.getAppelOffre().getRealisation().getBeneficiaire();
                     case "sourceFinancement", "source_financement": {
-                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) return null;
+                        if (dac.getAppelOffre().getRealisation().getFinancements() == null || dac.getAppelOffre().getRealisation().getFinancements().isEmpty()) return null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
-                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                        for (Financement fin : dac.getAppelOffre().getRealisation().getFinancements()) {
                             if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
                             String label = getRefParamLabel(fin.getSourceFinancement());
                             if (label == null) continue;
@@ -838,17 +840,17 @@ public class DacDocsServiceImpl implements DacDocsService{
                         return sb.isEmpty() ? null : sb.toString();
                     }
                     case "typeMarcher", "type_marcher":
-                        return dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
+                        return dac.getAppelOffre().getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getTypeMarcher()) : null;
                     case "modeSelection", "mode_selection":
-                        return dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                        return dac.getAppelOffre().getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getModeSelection()) : null;
                     case "modePassation", "mode_passation":
-                        return dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                        return dac.getAppelOffre().getRealisation().getModePassation() != null ? dac.getAppelOffre().getRealisation().getModePassation().getLibelle() : null;
                     case "nomLot", "nom_lot": {
-                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) return null;
+                        if (dac.getAppelOffre().getRealisation().getLots() == null || dac.getAppelOffre().getRealisation().getLots().isEmpty()) return null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
-                        for (Lot lot : dac.getRealisation().getLots()) {
+                        for (Lot lot : dac.getAppelOffre().getRealisation().getLots()) {
                             if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
                             String name = lot.getDescription();
                             if (name == null) continue;
@@ -861,15 +863,15 @@ public class DacDocsServiceImpl implements DacDocsService{
                         return sb.isEmpty() ? null : sb.toString();
                     }
                     case "budgetEstime", "budget_estime":
-                        return toString(dac.getRealisation().getBudgetEstime());
+                        return toString(dac.getAppelOffre().getRealisation().getBudgetEstime());
                     case "date_prev_lps":
-                        return dac.getRealisation().getDatePrevLps() != null ? dac.getRealisation().getDatePrevLps().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevLps() != null ? dac.getAppelOffre().getRealisation().getDatePrevLps().format(localDateFormatter) : null;
                     case "date_prev_ac":
-                        return dac.getRealisation().getDatePrevAc() != null ? dac.getRealisation().getDatePrevAc().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevAc() != null ? dac.getAppelOffre().getRealisation().getDatePrevAc().format(localDateFormatter) : null;
                     case "date_prev_dp":
-                        return dac.getRealisation().getDatePrevDp() != null ? dac.getRealisation().getDatePrevDp().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevDp() != null ? dac.getAppelOffre().getRealisation().getDatePrevDp().format(localDateFormatter) : null;
                     case "date_prev_ap":
-                        return dac.getRealisation().getDatePrevAp() != null ? dac.getRealisation().getDatePrevAp().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevAp() != null ? dac.getAppelOffre().getRealisation().getDatePrevAp().format(localDateFormatter) : null;
                     default:
                         return null;
                 }
@@ -947,9 +949,11 @@ public class DacDocsServiceImpl implements DacDocsService{
                 Dac newDac = new Dac();
                 newDac.setDacId(existingDac.getDacId());
                 newDac.setDacVer(nextVer);
-                newDac.setPpm(existingDac.getPpm());
-                newDac.setRealisation(existingDac.getRealisation());
-                newDac.setTypeMarche(existingDac.getTypeMarche());
+                newDac.setAppelOffre(existingDac.getAppelOffre());
+                newDac.setResponsableDacId(existingDac.getResponsableDacId());
+                newDac.setConditionsParticipation(existingDac.getConditionsParticipation());
+                newDac.setEtapeDac(existingDac.getEtapeDac());
+                newDac.setEtapeProcess(existingDac.getEtapeProcess());
                 newDac.setStatus(existingDac.getStatus());
                 newDac.setReference(existingDac.getReference());
                 newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
@@ -958,7 +962,6 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setShortListing(existingDac.isShortListing());
                 newDac.setParentDacId(existingDac.getParentDacId());
                 newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
-                newDac.setModePassation(existingDac.getModePassation());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
 
