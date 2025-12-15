@@ -22,7 +22,7 @@ public class AppelOffreResponse {
     private String nom;
     private String description;
     private String etape;
-    private ModePassationType modePassation;
+    private String modePassation;
     private Boolean lotSepares;
     private StatusAppelOffre statusAppelOffre;
     private BaseEntityResponse metadata;

@@ -16,6 +16,7 @@ public interface AppelOffreMapper {
 
     @Mapping(target = "ppm", source = "ppm")
     @Mapping(target = "realisation", source = "realisation")
+    @Mapping(target = "modePassation", source = "realisation.modePassation.type")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
     @Mapping(target = "metadata.updatedAt", source = "updatedAt")

@@ -27,11 +27,6 @@ public class AppelOffreSpecifications {
 
             // enums
             try {
-                ModePassationType mode = ModePassationType.valueOf(search);
-                predicates.add(cb.equal(root.get("modePassation"), mode));
-            } catch (Exception ignored) {}
-
-            try {
                 StatusAppelOffre st = StatusAppelOffre.valueOf(search);
                 predicates.add(cb.equal(root.get("statusAppelOffre"), st));
             } catch (Exception ignored) {}
@@ -82,9 +77,6 @@ public class AppelOffreSpecifications {
     }
 
     // Enums
-    public static Specification<AppelOffre> modePassation(ModePassationType mp) {
-        return (root, query, cb) -> cb.equal(root.get("modePassation"), mp);
-    }
 
     public static Specification<AppelOffre> statusAppelOffre(StatusAppelOffre st) {
         return (root, query, cb) -> cb.equal(root.get("statusAppelOffre"), st);

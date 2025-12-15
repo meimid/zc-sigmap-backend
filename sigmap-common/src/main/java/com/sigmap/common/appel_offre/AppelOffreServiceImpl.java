@@ -110,7 +110,6 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         appelOffre.setNom(request.getNom());
         appelOffre.setDescription(request.getDescription());
         appelOffre.setEtape(request.getEtape());
-        appelOffre.setModePassation(realisation.getModePassation().getType());
         appelOffre.setLotSepares(request.getLotSepares());
         appelOffre.setStatusAppelOffre(request.getStatusAppelOffre());
 

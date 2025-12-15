@@ -16,7 +16,6 @@ public class AppelOffreQuerry {
     private String description;
     private String etape;
 
-    private ModePassationType modePassation;
     private StatusAppelOffre statusAppelOffre;
     private Boolean lotSepares;
 
@@ -47,10 +46,6 @@ public class AppelOffreQuerry {
 
         if (etape != null && !etape.isBlank()) {
             spec = spec.and(AppelOffreSpecifications.etape(etape));
-        }
-
-        if (modePassation != null) {
-            spec = spec.and(AppelOffreSpecifications.modePassation(modePassation));
         }
 
         if (statusAppelOffre != null) {

@@ -15,10 +15,9 @@ public class CreateAppelOffreRequest {
     private Integer ppmVer;
     private Integer realisationId;
     private Integer realisationVer;
-    private String reference;
     private String nom;
     private String description;
     private String etape;
     private Boolean lotSepares;
-    private StatusAppelOffre statusAppelOffre;
+    private StatusAppelOffre statusAppelOffre = StatusAppelOffre.CREE;
 }

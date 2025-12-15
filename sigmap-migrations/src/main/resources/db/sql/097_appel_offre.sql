@@ -13,7 +13,6 @@ CREATE TABLE appel_offre(
     description        VARCHAR(255),
     etape              VARCHAR(255),
 
-    mode_passation     ENUM('NATIONAL', 'INTERNATIONAL') NOT NULL,
     status_appel_offre ENUM('CREE', 'REJETER', 'CLOTURER') DEFAULT 'CREE' NOT NULL,
     lot_separes        TINYINT(1) DEFAULT NULL NULL,
 
