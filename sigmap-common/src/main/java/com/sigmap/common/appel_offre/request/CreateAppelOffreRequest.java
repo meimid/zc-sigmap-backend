@@ -20,7 +20,6 @@ public class CreateAppelOffreRequest {
     private String nom;
     private String description;
     private String etape;
-    private ModePassation modePassation;
     private Boolean lotSepares;
     private StatusAppelOffre statusAppelOffre;
 }

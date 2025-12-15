@@ -3,19 +3,17 @@ package com.sigmap.sigmap_dac.appel_offre;
 import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.appel_offre.AppelOffreService;
 import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
+import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
 import com.sigmap.common.appel_offre.response.AppelOffreQuerry;
 import com.sigmap.common.appel_offre.response.AppelOffreResponse;
-import com.sigmap.common.authority.exeption.AuthorityNotFound;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
-import com.sigmap.common.menu_item.MenuItem;
-import com.sigmap.common.menu_item.exception.MenuItemAlreadyExistsExeption;
-import com.sigmap.common.menu_item.exception.MenuItemNotFound;
-import com.sigmap.common.menu_item.mappers.MenuItemMapper;
-import com.sigmap.common.menu_item.request.MenuItemQuery;
-import com.sigmap.common.menu_item.request.MenuItemRequest;
-import com.sigmap.common.menu_item.response.MenuItemResponse;
+import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
+import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/appel-offre")
@@ -57,6 +56,38 @@ public class AppelOffreController {
         AppelOffre appelOffre = appelOffreService.create(request);
         AppelOffreResponse response = AppelOffreMapper.INSTANCE.map(appelOffre);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<AppelOffreResponse> Update(@PathVariable Integer id,@RequestBody AppelOffreEditRequest request) {
+        AppelOffre appelOffre = appelOffreService.update(id,request);
+        AppelOffreResponse response = AppelOffreMapper.INSTANCE.map(appelOffre);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+
+
+    @GetMapping("/ppm")
+    public ResponseEntity<List<PpmResponseSoftDtoWithMetaData>> getAllPpmsWithAcsforConnectedUser() {
+
+        List<Ppm> ppms = appelOffreService.getAllPpmsWithAcsforConnectedUser();
+        List<PpmResponseSoftDtoWithMetaData> ppmResponseDtoWithMetdata =
+                ppms.stream()
+                        .map(PpmMapper.INSTANCE::mapToDtoWithMetaData)
+                        .collect(Collectors.toList());
+        return ResponseEntity.ok(ppmResponseDtoWithMetdata);
+    }
+
+    @GetMapping("/ppm/realisation/{ppmId}/{ppmVer}")
+    public ResponseEntity<List<RealisationResponseDTO>> getRealisationsFromSelectedPpm(@PathVariable Integer ppmId, @PathVariable Integer ppmVer) {
+
+        List<Realisation> realisations =
+                appelOffreService.getRealisationsNotRelatedToAppelOffreWithStatusCreeOrCloturer(ppmId, ppmVer);
+
+        List<RealisationResponseDTO> dtoList = realisations.stream()
+                        .map(RealisationMapper.INSTANCE::mapWithDTO).toList();
+
+        return ResponseEntity.ok(dtoList);
     }
 
 }
