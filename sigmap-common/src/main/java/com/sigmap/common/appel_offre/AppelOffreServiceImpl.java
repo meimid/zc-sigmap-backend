@@ -105,7 +105,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
 
         //fro the ref it take ppm.nom/annéé/number
         //String reference = "";
-        appelOffre.setReference(ppm.getNom().concat(generateReference()));
+        appelOffre.setReference(ppm.getRef().concat(" ".concat(generateReference())));
 
         appelOffre.setNom(request.getNom());
         appelOffre.setDescription(request.getDescription());
