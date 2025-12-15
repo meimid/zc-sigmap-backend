@@ -15,11 +15,13 @@ import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
+import com.sigmap.sigmap_webmaster.dto.TypeMarcheStatProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 public interface WebMasterService {
@@ -41,5 +43,5 @@ public interface WebMasterService {
     Page<PpmWebsiteResponse> findAllPpmForWebsite(Specification<Ppm> spec, Pageable pageable);
     Page<PaaWebsiteResponse> findPaaAllForWebsite(Specification<Paa> spec, Pageable pageable);
     Page<AgpmWebsiteResponse> findAgpmAllForWebsite(Specification <Agpm> spec, Pageable pageable);
-
+    List<TypeMarcheStatProjection> getTypeMarcheStats();
 }

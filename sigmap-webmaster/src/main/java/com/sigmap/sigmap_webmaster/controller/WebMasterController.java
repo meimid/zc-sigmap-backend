@@ -54,6 +54,7 @@ import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe.response.SocieteResponse;
+import com.sigmap.sigmap_webmaster.dto.TypeMarcheStatProjection;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import jakarta.annotation.security.PermitAll;
 import lombok.extern.slf4j.Slf4j;
@@ -249,6 +250,11 @@ public class WebMasterController {
         Societe societe = societeService.create(request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(societe);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/stats/type-marche")
+    public ResponseEntity<List<TypeMarcheStatProjection>> getTypeMarcheStats() {
+        return ResponseEntity.ok(webMasterService.getTypeMarcheStats());
     }
 
 }

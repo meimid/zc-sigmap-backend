@@ -32,6 +32,8 @@ import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
 import com.sigmap.common.realisations.response.RealisationPaaWebSite;
 import com.sigmap.common.realisations.response.RealisationPpmWebsite;
+import com.sigmap.sigmap_webmaster.dto.TypeMarcheStatProjection;
+import com.sigmap.sigmap_webmaster.repositories.WebMasterStatsRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -56,9 +58,10 @@ public class WebMasterServiceImpl implements WebMasterService {
     private final PpmService ppmService;
     private final PaaService paaService;
     private final AgpmService agpmService;
+    private final WebMasterStatsRepository webMasterStatsRepository;
 
 
-    public WebMasterServiceImpl( ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService) {
+    public WebMasterServiceImpl(ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterStatsRepository webMasterStatsRepository) {
 
         this.modelPpmService = modelPpmService;
         this.modelPaaService = modelPaaService;
@@ -67,6 +70,7 @@ public class WebMasterServiceImpl implements WebMasterService {
         this.ppmService = ppmService;
         this.paaService = paaService;
         this.agpmService = agpmService;
+        this.webMasterStatsRepository = webMasterStatsRepository;
     }
 
     @Override
@@ -342,6 +346,12 @@ public class WebMasterServiceImpl implements WebMasterService {
         }
         return false;
     }
+
+    @Override
+    public List<TypeMarcheStatProjection> getTypeMarcheStats() {
+        return webMasterStatsRepository.countRealisationsByTypeMarche();
+    }
+
 
 
 
