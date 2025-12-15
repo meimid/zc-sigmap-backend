@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1749671959097-1
+-- changeset sigmap:1749671959098-1
 ALTER TABLE dac ADD COLUMN IF NOT EXISTS responsable_dac_id VARCHAR(255) NULL;
 
 ALTER TABLE dac ADD COLUMN IF NOT EXISTS conditions_participation LONGTEXT NULL;
