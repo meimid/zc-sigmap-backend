@@ -59,6 +59,10 @@ import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
 import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
+import com.sigmap.common.societe_blak_list.exception.BlackListNotFound;
+import com.sigmap.common.societe_blak_list.exception.DelaiRequired;
+import com.sigmap.common.societe_blak_list.exception.InvalidBlackListDecision;
+import com.sigmap.common.societe_blak_list.exception.SocieteAlreadyBlackListed;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.type_agrement.exception.OrganismeDeDeliveranceAgrementsRequired;
@@ -1560,6 +1564,64 @@ public class GlobalExceptionHandler {
         String message = messageSource.getMessage("doc.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
         ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(BlackListNotFound.class)
+    public ResponseEntity<ErrorResponse> handleBlackListNotFound(BlackListNotFound ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.notFound",
+                new Object[]{ex.getId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DelaiRequired.class)
+    public ResponseEntity<ErrorResponse> handleDelaiRequired(DelaiRequired ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.delaiRequired",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidBlackListDecision.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDecision(InvalidBlackListDecision ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.invalidDecision",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(SocieteAlreadyBlackListed.class)
+    public ResponseEntity<ErrorResponse> handleSocieteAlreadyBlackListed(SocieteAlreadyBlackListed ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.societeAlreadyBlackListed",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 }
 
