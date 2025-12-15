@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1749671959095-2
+-- changeset sigmap:1749671959096-3
 CREATE TABLE appel_offre(
     appel_offre_id     INT AUTO_INCREMENT NOT NULL,
     ppm_id             INT NOT NULL,
@@ -13,8 +13,8 @@ CREATE TABLE appel_offre(
     description        VARCHAR(255),
     etape              VARCHAR(255),
 
-    mode_passation     ENUM('International', 'National') NOT NULL,
-    status_appel_offre ENUM('cree', 'rejete', 'cloturer') DEFAULT 'cree' NOT NULL,
+    mode_passation     ENUM('NATIONAL', 'INTERNATIONAL') NOT NULL,
+    status_appel_offre ENUM('CREE', 'REJETER', 'CLOTURER') DEFAULT 'CREE' NOT NULL,
     lot_separes        TINYINT(1) DEFAULT NULL NULL,
 
     created_at datetime DEFAULT NULL NULL,
@@ -28,12 +28,12 @@ CREATE TABLE appel_offre(
 );
 
 
--- changeset sigmap:1749671959095-3
+-- changeset sigmap:1749671959096-4
 ALTER TABLE appel_offre ADD CONSTRAINT fk_appel_offre_ppm_id_ver FOREIGN KEY (ppm_id,ppm_ver)
     REFERENCES ppm (ppm_id,ppm_ver) ON UPDATE NO ACTION ON DELETE NO ACTION;
 
 
--- changeset sigmap:1749671959095-4
+-- changeset sigmap:1749671959096-5
 ALTER TABLE appel_offre ADD CONSTRAINT fk_realisation_id_ver FOREIGN KEY (realisation_id,realisation_ver)
     REFERENCES realisation (realisation_id,realisation_ver) ON UPDATE NO ACTION ON DELETE NO ACTION;
 

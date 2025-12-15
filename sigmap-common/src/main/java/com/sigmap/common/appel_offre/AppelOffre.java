@@ -1,5 +1,6 @@
 package com.sigmap.common.appel_offre;
 
+import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ModePassation;
 import com.sigmap.common.entity.StatusAppelOffre;
@@ -51,7 +52,7 @@ public class AppelOffre extends BaseEntity {
     private String etape;
 
     @Enumerated(EnumType.STRING)
-    private ModePassation modePassation;
+    private ModePassationType modePassation;
 
     @Column(name = "lot_separes")
     private Boolean lotSepares;

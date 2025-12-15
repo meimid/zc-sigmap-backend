@@ -81,9 +81,8 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         //AppelOffre appelOffre = appelOffreMapper.createRequestToEntity(request);
 
         if (request.getPpmId() == null || request.getPpmVer() == null ||
-            request.getRealisationId() == null || request.getRealisationVer() == null ||
-            request.getModePassation() == null){
-            throw new RuntimeException("AppelOffre must have ppmId, ppmVer, realisationId, realisationVer and modePassation");
+            request.getRealisationId() == null || request.getRealisationVer() == null){
+            throw new RuntimeException("AppelOffre must have ppmId, ppmVer, realisationId and  realisationVer  ");
         }
 
         AppelOffre appelOffre = new AppelOffre();
@@ -111,7 +110,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         appelOffre.setNom(request.getNom());
         appelOffre.setDescription(request.getDescription());
         appelOffre.setEtape(request.getEtape());
-        appelOffre.setModePassation(request.getModePassation());
+        appelOffre.setModePassation(realisation.getModePassation().getType());
         appelOffre.setLotSepares(request.getLotSepares());
         appelOffre.setStatusAppelOffre(request.getStatusAppelOffre());
 
