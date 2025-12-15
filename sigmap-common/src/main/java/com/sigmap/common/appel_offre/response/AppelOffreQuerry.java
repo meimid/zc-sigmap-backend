@@ -2,7 +2,7 @@ package com.sigmap.common.appel_offre.response;
 
 import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.appel_offre.AppelOffreSpecifications;
-import com.sigmap.common.entity.ModePassation;
+import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.StatusAppelOffre;
 import lombok.Data;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,7 +16,7 @@ public class AppelOffreQuerry {
     private String description;
     private String etape;
 
-    private ModePassation modePassation;
+    private ModePassationType modePassation;
     private StatusAppelOffre statusAppelOffre;
     private Boolean lotSepares;
 

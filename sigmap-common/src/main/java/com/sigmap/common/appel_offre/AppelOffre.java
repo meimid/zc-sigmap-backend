@@ -2,7 +2,6 @@ package com.sigmap.common.appel_offre;
 
 import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.BaseEntity;
-import com.sigmap.common.entity.ModePassation;
 import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
