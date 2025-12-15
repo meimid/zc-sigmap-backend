@@ -27,6 +27,7 @@ import com.sigmap.common.dac_dyna_form.exceptions.DacDynaFormNotFoundException;
 import com.sigmap.common.direction.exception.*;
 import com.sigmap.common.doc_soumission.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
@@ -1388,6 +1389,13 @@ public class GlobalExceptionHandler {
       ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), message);
       return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
+  @ResponseStatus(HttpStatus.NOT_FOUND)
+  @ExceptionHandler(DocNotFound.class)
+  public ResponseEntity<ErrorResponse> handleDocNotFoundException(DocNotFound ex) {
+    String message = messageSource.getMessage("doc.notfound",new Object[] { } , getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
   }
 
 

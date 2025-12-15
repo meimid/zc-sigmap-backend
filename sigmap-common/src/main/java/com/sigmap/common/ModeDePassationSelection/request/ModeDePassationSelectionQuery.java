@@ -2,6 +2,8 @@ package com.sigmap.common.ModeDePassationSelection.request;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionSpecifications;
+import com.sigmap.common.config.ModePassationEtape;
+import com.sigmap.common.config.ModePassationType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,6 +19,8 @@ public class ModeDePassationSelectionQuery {
     private String libelle;
     private boolean deleted;
     private boolean isRestraint;
+    private String type;
+    private String etapes;
 
 
     /**
@@ -48,6 +52,12 @@ public class ModeDePassationSelectionQuery {
         }
         if (isRestraint) {
             spec = spec.and(ModeDePassationSelectionSpecifications.isRestraint(isRestraint));
+        }
+        if (type != null ) {
+            spec = spec.and(ModeDePassationSelectionSpecifications.type(type));
+        }
+        if (etapes != null) {
+            spec = spec.and(ModeDePassationSelectionSpecifications.etapes(etapes));
         }
 
         return spec;

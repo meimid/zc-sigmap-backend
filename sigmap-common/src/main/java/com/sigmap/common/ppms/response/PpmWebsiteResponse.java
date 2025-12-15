@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Response.DocsResponse;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
@@ -26,13 +27,12 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class PpmWebsiteResponse implements Serializable {
     private Integer id;
-    private Integer version;
     private String code;
     private String title;
     private String publicationDate;
     private Integer year;
     private Integer nombreActivite;
-    private DocsResponseDTO doc;
+    private DocsResponseWebsiteDTO doc;
     private String logo;
     private Integer acId;
 
@@ -40,7 +40,6 @@ public class PpmWebsiteResponse implements Serializable {
     public PpmWebsiteResponse(Ppm ppm) {
         // --- Direct Mappings ---
         this.id = ppm.getId();
-        this.version = ppm.getVersion();
 
         // --- Logic from "title" mapping ---
         if (ppm.getAc() != null) {
