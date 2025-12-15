@@ -6,6 +6,7 @@ import com.sigmap.common.compte_bancaire.exception.CompteBancaireNotFound;
 import com.sigmap.common.compte_bancaire.mapper.CompteBancaireMapper;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireQuery;
 import com.sigmap.common.compte_bancaire.request.CompteBancaireRequest;
+import com.sigmap.common.compte_bancaire.request.CompteBancaireRequestDTO;
 import com.sigmap.common.compte_bancaire.response.CompteBancaireResponse;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.societe.exception.SocieteNotFound;
@@ -84,7 +85,7 @@ public class CompteBancaireController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<CompteBancaireResponse> create(@RequestBody CompteBancaireRequest request)throws RefParamNotFound, SocieteNotFound {
+    public ResponseEntity<CompteBancaireResponse> create(@RequestBody CompteBancaireRequestDTO request)throws RefParamNotFound, SocieteNotFound {
         CompteBancaire CompteBancaire = compteBancaireService.create(request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -97,7 +98,7 @@ public class CompteBancaireController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
-    public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequest request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
+    public ResponseEntity<CompteBancaireResponse> update(@PathVariable Integer id,@RequestBody CompteBancaireRequestDTO request) throws CompteBancaireNotFound, RefParamNotFound, SocieteNotFound{
         CompteBancaire CompteBancaire = compteBancaireService.update(id,request);
         CompteBancaireResponse response = CompteBancaireMapper.INSTANCE.map(CompteBancaire);
         return ResponseEntity.status(HttpStatus.OK).body(response);

@@ -1,9 +1,9 @@
 -- liquibase formatted sql
 
--- changeset sigmap:1757950295-1
+-- changeset sigmap:1757950297-1
 CREATE SEQUENCE societe_black_list_id_seq INCREMENT BY 1 START WITH 1;
 
--- changeset sigmap:1757950295-2
+-- changeset sigmap:1757950297-2
 
 CREATE TABLE IF NOT EXISTS societe_black_list (
     balck_list_id INT AUTO_INCREMENT NOT NULL,

@@ -3012,9 +3012,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     @Override
     public Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> finalSpec = Specification.where(spec)
-                .and(PaaSpecifications.isLatestVersion())
-                .and(PaaSpecifications.isPublished())
-                .and(PaaSpecifications.isNotDeleted());
+                .and(PaaSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 
@@ -3252,6 +3250,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return createFilteredResponsePaa(saved);
     }
+
 
 
 

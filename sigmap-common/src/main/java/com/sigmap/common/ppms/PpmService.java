@@ -6,6 +6,7 @@ import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
@@ -334,7 +335,7 @@ public interface PpmService {
             throws PpmNotFound, PpmInvalidStatusException, PpmNotAssociatedWithUserAcException;
     List<Ppm> findAllForSuperAdminAndAdminCentral(Specification<Ppm> spec);
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
-    public List<Ppm> findAllPpms(Specification<Ppm> spec);
+     public List<Ppm> findAllPpms(Specification<Ppm> spec);
 
 
 }
