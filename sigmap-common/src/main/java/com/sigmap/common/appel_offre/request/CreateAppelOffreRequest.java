@@ -1,6 +1,5 @@
 package com.sigmap.common.appel_offre.request;
 
-import com.sigmap.common.entity.ModePassation;
 import com.sigmap.common.entity.StatusAppelOffre;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -155,7 +155,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
 
     @Override
     public List<Realisation> getRealisationsNotRelatedToAppelOffreWithStatusCreeOrCloturer(Integer ppmId,Integer ppmVer) {
-        List<StatusAppelOffre> statuses = Arrays.asList(StatusAppelOffre.cree, StatusAppelOffre.cloturer);
+        List<StatusAppelOffre> statuses = Arrays.asList(StatusAppelOffre.CREE, StatusAppelOffre.CLOTURER);
         List<Realisation> foundRealisation =realisationRepository.findRealisationsNotLinkedToAppelOffreWithStatus(ppmId, ppmVer, statuses);
         return foundRealisation;
     }

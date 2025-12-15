@@ -1,8 +1,7 @@
 package com.sigmap.common.appel_offre;
 
-import com.sigmap.common.entity.ModePassation;
+import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.StatusAppelOffre;
-import com.sigmap.common.menu_item.MenuItem;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.realisations.Realisation;
 import jakarta.persistence.criteria.Join;
@@ -28,7 +27,7 @@ public class AppelOffreSpecifications {
 
             // enums
             try {
-                ModePassation mode = ModePassation.valueOf(search);
+                ModePassationType mode = ModePassationType.valueOf(search);
                 predicates.add(cb.equal(root.get("modePassation"), mode));
             } catch (Exception ignored) {}
 
@@ -83,7 +82,7 @@ public class AppelOffreSpecifications {
     }
 
     // Enums
-    public static Specification<AppelOffre> modePassation(ModePassation mp) {
+    public static Specification<AppelOffre> modePassation(ModePassationType mp) {
         return (root, query, cb) -> cb.equal(root.get("modePassation"), mp);
     }
 
