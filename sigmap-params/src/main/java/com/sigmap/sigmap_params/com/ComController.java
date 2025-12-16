@@ -23,6 +23,7 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.mappers.UserComMpapper;
 import com.sigmap.common.user_com.response.UserComResponse;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueSpecifications;
 import com.sigmap.common.user_commission_historique.request.UserCommissionHistoriqueQuery;
@@ -35,6 +36,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -377,4 +379,9 @@ public class ComController {
         return ResponseEntity.ok(responses);
     }
 
+    @GetMapping("/cpmp-members/{acId}")
+    public ResponseEntity<List<UserComSoftResponse>> getCpmpMembers(@PathVariable Integer acId) throws AcNotFound {
+            List<UserComSoftResponse> members = comService.getCpmpMembersByAc(acId);
+            return ResponseEntity.ok(members);
+    }
 }

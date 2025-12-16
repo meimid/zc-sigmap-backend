@@ -81,13 +81,4 @@ public interface DacService {
     DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
             throws DacNotFound;
 
-    /**
-     * Get list of CPMP commission members for a given AC.
-     *
-     * @param acId The AC (Autorité Contractante) ID
-     * @return List of CPMP commission members/participants
-     * @throws AcNotFound if AC doesn't exist
-     */
-    List<ParticipantResponse> getCpmpMembersByAc(Integer acId) 
-            throws AcNotFound;
 }

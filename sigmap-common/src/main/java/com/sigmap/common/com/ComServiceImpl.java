@@ -20,6 +20,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -37,6 +38,7 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
 import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
@@ -656,4 +658,49 @@ public class ComServiceImpl implements ComService {
     throw new CNCMPPNotFound("");
   }
 
+    @Override
+    public List<UserComSoftResponse> getCpmpMembersByAc(Integer acId) throws AcNotFound {
+
+        Ac ac = acService.findById(acId);
+        Specification<Com> specCom =
+                ComSpecifications.deleted(false)
+                        .and(ComSpecifications.comByAc(acId))
+                        .and(ComSpecifications.cpmp());
+
+        Com cpmpCom = findOne(specCom)
+                .orElseThrow(() ->
+                        new AcNotFound("Com not found for ac :", List.of(acId))
+                );
+
+        List<UserCom> users =
+                userComRepository.findAllByComIdAndIsDeletedFalse(cpmpCom.getId());
+
+        if (users.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<String> userIds = users.stream()
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+
+        Map<String, UserDTO> kcUsers =
+                keycloakAdminService.fetchUsersInBatch(userIds);
+
+        return users.stream()
+                .map(userCom -> {
+                    UserDTO userDTO = kcUsers.get(userCom.getUserId());
+
+                    if (userDTO == null) {
+                        return null; // user not found in KC
+                    }
+
+                    return new UserComSoftResponse(
+                            userCom.getUserId(),
+                            userDTO.getLastName(),
+                            userDTO.getFirstName()
+                    );
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
 }

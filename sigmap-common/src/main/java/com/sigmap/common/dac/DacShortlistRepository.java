@@ -10,6 +10,8 @@ import java.util.List;
 
 @Repository
 public interface DacShortlistRepository extends JpaRepository<DacShortlist, Integer> {
+
+    @Query("SELECT s FROM DacShortlist s WHERE s.isDeleted = false")
     List<DacShortlist> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
 
     @Modifying

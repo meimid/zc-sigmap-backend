@@ -17,6 +17,7 @@ import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -401,23 +402,6 @@ public class DacController {
       log.error("Error getting DAC with AO reference: {}", e.getMessage());
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
               .body(Map.of("error", "DAC not found"));
-    }
-  }
-
-  @GetMapping("/cpmp-members/{acId}")
-  public ResponseEntity<?> getCpmpMembers(@PathVariable Integer acId) {
-    try {
-      log.debug("REST request to get CPMP members for AC ID: {}", acId);
-      List<ParticipantResponse> members = dacService.getCpmpMembersByAc(acId);
-      return ResponseEntity.ok(members);
-    } catch (AcNotFound e) {
-      log.error("AC not found: {}", e.getMessage());
-      return ResponseEntity.status(HttpStatus.NOT_FOUND)
-              .body(Map.of("error", e.getMessage()));
-    } catch (Exception e) {
-      log.error("Error getting CPMP members: {}", e.getMessage());
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .body(Map.of("error", "An error occurred while fetching CPMP members"));
     }
   }
 }

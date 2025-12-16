@@ -1301,6 +1301,9 @@ public class DacServiceImpl implements DacService {
         newDac.setResponsableDacId(base.getResponsableDacId());
         newDac.setConditionsParticipation(base.getConditionsParticipation());
         newDac.setEtapeDac(base.getEtapeDac());
+        newDac.setStatus(base.getStatus());
+        newDac.setReference(base.getReference());
+        newDac.setProcessInstanceId(base.getProcessInstanceId());
         // Add other fields as needed...
         return newDac;
     }
@@ -1314,34 +1317,40 @@ public class DacServiceImpl implements DacService {
 
         // Compute next version
         Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
+
+        int dacIdInut = dacId;
+
+        int dacVerInput = dacVer;
+
         int nextVer = latest.getDacVer() + 1;
-
-        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
-        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacId, dacVer);
-        for (DacPrix dacPrix : prixDac) {
-            dacPrix.getId().getDac().setDacVer(nextVer);
-            dacPrixRepository.save(dacPrix);
-        }
-
         // Create new DAC version using mapper
         Dac newDac = cloneWithNewVersion(base, nextVer);
 
-        newDac.setStatus(base.getStatus());
-        newDac.setReference(base.getReference());
-        newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
+        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
+        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacIdInut, dacVerInput);
+        for (DacPrix dacPrix : prixDac) {
+            DacPrixId newId = new DacPrixId();
+            newId.setDac(newDac);
+            newId.setMonnaie(dacPrix.getId().getMonnaie());
+            DacPrix copy = new DacPrix();
+            copy.setId(newId);
+            copy.setPrix(dacPrix.getPrix());
+            dacPrixRepository.save(copy);
+        }
         // Clone DacShortlist if shortListing is true
-        if (Boolean.TRUE.equals(newDac.isShortListing())) {
+       if (Boolean.TRUE.equals(newDac.isShortListing())) {
              List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(base.getDacId(), base.getDacVer());
              for (DacShortlist source : existingShortlist) {
                  DacShortlist copy = new DacShortlist();
                  copy.setDacId(newDac.getDacId());
-                 copy.setDacVer(newDac.getDacVer());
+                 copy.setDacVer(nextVer);
+                 copy.setDac(newDac);
                  copy.setSociete(source.getSociete());
                  dacShortlistRepository.save(copy);
              }
-        }
+       }
 
         // Load latest active DynaDocs for DAC with typeMarche, modePassation and modelId
         Integer typeMarcheIdForNew = newDac.getAppelOffre().getRealisation().getTypeMarcher().getId();
@@ -1350,11 +1359,10 @@ public class DacServiceImpl implements DacService {
         if(typeMarcheIdForNew==null || modePassationIdForNew==null || modelIdForNew==null){
             throw new RuntimeException("could not load latest active DynaDocs for DAC with typeMarche, modePassation and modelId ");
         }
-        //List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
+        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
         // get all dyna docs with last version
-        List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
-
+        //List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
         Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
@@ -1429,6 +1437,7 @@ public class DacServiceImpl implements DacService {
                 }
                 dacDocsRepository.save(row);
 
+                log.info("666666666666666666666666666666666666666");
                 // Handle LIST/TABLE snapshot for dac_docs_details
                 if (f.getType() == DynaFieldType.LIST || f.getType() == DynaFieldType.TABLE) {
                     // Determine target columns in latest design
@@ -1502,6 +1511,7 @@ public class DacServiceImpl implements DacService {
                                 copy.setDac(row);
                                 dacDocsDetailsRepository.save(copy);
                             }
+                            log.info("7777777777777777777777");
                         }
                     } else {
                         // No prior rows: do nothing (empty snapshot). Rows will be created when user inputs data.
@@ -2183,18 +2193,6 @@ public class DacServiceImpl implements DacService {
         
         return response;
     }
-    
-    @Override
-    @Transactional(readOnly = true)
-    public List<ParticipantResponse> getCpmpMembersByAc(Integer acId) throws AcNotFound {
-        log.debug("Getting CPMP commission members for AC ID: {}", acId);
-        
-        // TODO: Implement logic to find CPMP commission for the AC and get its members
-        // This is a placeholder implementation
-        // You should implement the actual logic based on your data model
-        // For now, returning an empty list
-        
-        return new ArrayList<>();
-    }
+
 }
 
