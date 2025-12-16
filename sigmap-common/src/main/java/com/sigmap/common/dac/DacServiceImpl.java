@@ -85,6 +85,8 @@ import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.config.ModePassationEtape;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
+import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
 
 @Slf4j
 @Service
@@ -110,6 +112,8 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsModelRepository dynaDocsModelRepository;
     private final AppelOffreRepository appelOffreRepository;
     private final MonnaieRepository monnaieRepository;
+    private final DacShortlistRepository dacShortlistRepository;
+    private final SocieteRepository societeRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -1327,6 +1331,18 @@ public class DacServiceImpl implements DacService {
         newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
+        // Clone DacShortlist if shortListing is true
+        if (Boolean.TRUE.equals(newDac.isShortListing())) {
+             List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(base.getDacId(), base.getDacVer());
+             for (DacShortlist source : existingShortlist) {
+                 DacShortlist copy = new DacShortlist();
+                 copy.setDacId(newDac.getDacId());
+                 copy.setDacVer(newDac.getDacVer());
+                 copy.setSociete(source.getSociete());
+                 dacShortlistRepository.save(copy);
+             }
+        }
+
         // Load latest active DynaDocs for DAC with typeMarche, modePassation and modelId
         Integer typeMarcheIdForNew = newDac.getAppelOffre().getRealisation().getTypeMarcher().getId();
         Integer modePassationIdForNew = newDac.getAppelOffre().getRealisation().getModePassation() != null ? newDac.getAppelOffre().getRealisation().getModePassation().getId() : null;
@@ -1935,6 +1951,26 @@ public class DacServiceImpl implements DacService {
                 log.debug("Created DacPrix with amount: {} in currency: {}", 
                          request.getMontantPayant(), currency.getCode());
             }
+
+            // Handle Shortlist members
+            if (savedDac.isShortListing() && request.getShortlistIds() != null && !request.getShortlistIds().isEmpty()) {
+                log.info("Adding {} shortlist members for DAC ID: {}", request.getShortlistIds().size(), savedDac.getDacId());
+                for (Integer societeId : request.getShortlistIds()) {
+                    try {
+                        Societe societe = societeRepository.findById(societeId)
+                                .orElseThrow(() -> new RuntimeException("Societe not found for ID: " + societeId));
+                        
+                        DacShortlist shortlist = new DacShortlist();
+                        shortlist.setDacId(savedDac.getDacId());
+                        shortlist.setDacVer(savedDac.getDacVer());
+                        shortlist.setSociete(societe);
+                        
+                        dacShortlistRepository.save(shortlist);
+                    } catch (Exception e) {
+                        log.warn("Error adding Societe ID {} to shortlist: {}", societeId, e.getMessage());
+                    }
+                }
+            }
             
             createdDacs.add(savedDac);
             
@@ -2026,6 +2062,24 @@ public class DacServiceImpl implements DacService {
         response.setEtapeDac(dac.getEtapeDac());
         response.setShortListing(dac.isShortListing());
         response.setParentDacId(dac.getParentDacId());
+        
+        // Set shortlist members if enabled
+        if (Boolean.TRUE.equals(dac.isShortListing())) {
+            List<DacShortlist> shortlists = dacShortlistRepository.findByDacIdAndDacVer(dacId, dacVer);
+            if (!shortlists.isEmpty()) {
+                List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
+                        .map(sl -> {
+                            Societe s = sl.getSociete();
+                            return new DacWithAoReferenceResponse.ShortlistMemberData(
+                                    s.getId(),
+                                    s.getNom(),
+                                    s.getNif()
+                            );
+                        })
+                        .collect(Collectors.toList());
+                response.setShortlistMembers(members);
+            }
+        }
         
         // Set AO reference data
         if (dac.getAppelOffre() != null) {

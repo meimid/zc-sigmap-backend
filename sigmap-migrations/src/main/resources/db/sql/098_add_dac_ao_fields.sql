@@ -37,4 +37,23 @@ ALTER TABLE dac DROP COLUMN IF EXISTS mode_passation_id;
 ALTER TABLE dac DROP COLUMN IF EXISTS realisation_id;
 ALTER TABLE dac DROP COLUMN IF EXISTS realisation_ver;
 
+-- changeset sigmap:1749671959098-7
+CREATE TABLE dac_shortlist (
+                               id INT AUTO_INCREMENT NOT NULL,
+                               dac_id INT NOT NULL,
+                               dac_ver INT NOT NULL,
+                               societe_id INT NOT NULL,
+                               created_at datetime DEFAULT NULL,
+                               created_by VARCHAR(100) NULL,
+                               updated_at datetime DEFAULT NULL,
+                               updated_by VARCHAR(100) NULL,
+                               deleted_at datetime DEFAULT NULL,
+                               deleted_by VARCHAR(100) NULL,
+                               is_deleted TINYINT(1) DEFAULT 0 NOT NULL,
+                               CONSTRAINT PK_DAC_SHORTLIST PRIMARY KEY (id)
+);
 
+-- changeset sigmap:1749671959098-8
+ALTER TABLE dac_shortlist ADD CONSTRAINT FK_DAC_SHORTLIST_DAC FOREIGN KEY (dac_id, dac_ver) REFERENCES dac (dac_id, dac_ver) ON DELETE NO ACTION ON UPDATE NO ACTION;
+
+ALTER TABLE dac_shortlist ADD CONSTRAINT FK_DAC_SHORTLIST_SOCIETE FOREIGN KEY (societe_id) REFERENCES societe (societe_id) ON DELETE NO ACTION ON UPDATE NO ACTION;

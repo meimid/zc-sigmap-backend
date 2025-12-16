@@ -4,6 +4,7 @@ import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.DacDocsResponse;
 import com.sigmap.common.dac_docs.response.DacDocsResponseFullEntities;
 import com.sigmap.common.dac_docs.DacDocs;
@@ -40,8 +41,8 @@ public class DacDocsController {
 
     @PostMapping("/batch-versionning")
     @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
-    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody List<DacDocsRequest> requests) {
-        List<DacDocs> dacDocsList = dacDocsService.createDacDocsBatch(requests);
+    public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody DacWithDacDocsRequest request) {
+        List<DacDocs> dacDocsList = dacDocsService.createDacWithDacDocsBatch(request);
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
     }

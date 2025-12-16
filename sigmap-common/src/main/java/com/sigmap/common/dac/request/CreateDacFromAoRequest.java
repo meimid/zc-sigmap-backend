@@ -41,7 +41,7 @@ public class CreateDacFromAoRequest {
 
     private Boolean shortListing;
 
-    private List<String> shortlistIds;
+    private List<Integer> shortlistIds;
 
     private Integer dynaDocsModelId;
 }

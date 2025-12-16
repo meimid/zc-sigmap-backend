@@ -22,6 +22,9 @@ public interface DacPrixRepository extends JpaRepository<DacPrix, DacPrixId>, Jp
     @Query("SELECT dp FROM DacPrix dp  WHERE dp.id.dac.dacId =:dacId AND dp.id.dac.dacVer =:dacVer AND dp.id.monnaie.id =:monnaieId and dp.isDeleted = false")
     Optional<DacPrix> findById( @Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("monnaieId") Integer monnaieId);
 
+    @Query(value = "SELECT * FROM dac_prix WHERE dac_id = :dacId AND dac_ver = :dacVer AND monnaie_id = :monnaieId", nativeQuery = true)
+    Optional<DacPrix> findIncludeDeleted(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("monnaieId") Integer monnaieId);
+
     @Query("SELECT dp FROM DacPrix dp  WHERE dp.id.dac.dacId =:dacId AND dp.id.dac.dacVer =:dacVer ")
     List<DacPrix> findByDac (@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer );
 

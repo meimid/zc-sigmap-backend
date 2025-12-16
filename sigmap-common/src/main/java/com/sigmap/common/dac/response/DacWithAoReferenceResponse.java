@@ -1,6 +1,5 @@
 package com.sigmap.common.dac.response;
 
-import com.sigmap.common.entity.ModePassation;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,6 +30,7 @@ public class DacWithAoReferenceResponse {
     private String etapeDac;
     private Boolean shortListing;
     private Integer parentDacId;
+    private List<ShortlistMemberData> shortlistMembers;
 
     // Reference data from AO
     private AoReferenceData aoReference;
@@ -106,5 +106,15 @@ public class DacWithAoReferenceResponse {
         private Integer lotVer;
         private String description;
         private BigDecimal budget;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ShortlistMemberData {
+        private Integer societeId;
+        private String nom;
+        private String nif;
     }
 }
