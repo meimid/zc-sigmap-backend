@@ -104,13 +104,11 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         //set the other fields
 
         //fro the ref it take ppm.nom/annéé/number
-        //String reference = "";
-        appelOffre.setReference(ppm.getNom().concat(generateReference()));
+        //String reference = "";  AO_AbreviationAC_Annee_Num inc
+        appelOffre.setReference("AO_".concat(ppm.getAc().getNom().concat(generateReference())));
 
         appelOffre.setNom(request.getNom());
         appelOffre.setDescription(request.getDescription());
-        appelOffre.setEtape(request.getEtape());
-        appelOffre.setModePassation(realisation.getModePassation().getType());
         appelOffre.setLotSepares(request.getLotSepares());
         appelOffre.setStatusAppelOffre(request.getStatusAppelOffre());
 

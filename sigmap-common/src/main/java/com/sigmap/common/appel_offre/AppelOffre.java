@@ -50,8 +50,8 @@ public class AppelOffre extends BaseEntity {
     @Column(name = "etape")
     private String etape;
 
-    @Enumerated(EnumType.STRING)
-    private ModePassationType modePassation;
+    /*@Enumerated(EnumType.STRING)
+    private ModePassationType modePassation;*/
 
     @Column(name = "lot_separes")
     private Boolean lotSepares;
