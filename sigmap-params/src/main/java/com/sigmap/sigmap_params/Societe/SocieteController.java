@@ -21,10 +21,7 @@ import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.*;
-import com.sigmap.common.societe.response.SocieteDropListDto;
-import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
-import com.sigmap.common.societe.response.SocieteResponse;
-import com.sigmap.common.societe.response.SocieteResponseDtoSoft;
+import com.sigmap.common.societe.response.*;
 
 import com.sigmap.common.societe_blak_list.SocieteBlackList;
 import com.sigmap.common.societe_blak_list.SocieteBlackListService;
@@ -485,18 +482,12 @@ public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBlackListed(
     }
 
     @GetMapping("/all-valid-not-black-listed")
-    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllValidNotBlackListed(
+    public ResponseEntity<Page<SocieteResponseDto>> findAllValidNotBlackListed(
             SocieteQuery query, Pageable pageable) {
-        Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.VALIDEE, pageable);
-        List<SocieteResponseDtoSoft> filteredContent = mapToSocieteResponseDtoSoftPage(params, pageable)
-                .stream().filter(s->!s.isBlackListed())
-                .toList();
-        Page<SocieteResponseDtoSoft> result =
-                new PageImpl<>(filteredContent, pageable, filteredContent.size());
-
-        return ResponseEntity.ok(result);
+        Page<Societe> params = societeService.findAllValideNotBlackListed(query.toSpecification(), pageable);
+        Page<SocieteResponseDto> page=params.map(SocieteMapper.INSTANCE::toResponseDto);
+        return ResponseEntity.ok(page);
     }
-
 
 
 }
