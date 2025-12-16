@@ -44,4 +44,6 @@ public class CreateDacFromAoRequest {
     private List<Integer> shortlistIds;
 
     private Integer dynaDocsModelId;
+
+    private String etapeDac;
 }

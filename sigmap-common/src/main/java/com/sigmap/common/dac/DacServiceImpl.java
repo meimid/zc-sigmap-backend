@@ -1359,10 +1359,10 @@ public class DacServiceImpl implements DacService {
         if(typeMarcheIdForNew==null || modePassationIdForNew==null || modelIdForNew==null){
             throw new RuntimeException("could not load latest active DynaDocs for DAC with typeMarche, modePassation and modelId ");
         }
-        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
+//        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
         // get all dyna docs with last version
-        //List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
+        List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
         Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
@@ -1437,7 +1437,6 @@ public class DacServiceImpl implements DacService {
                 }
                 dacDocsRepository.save(row);
 
-                log.info("666666666666666666666666666666666666666");
                 // Handle LIST/TABLE snapshot for dac_docs_details
                 if (f.getType() == DynaFieldType.LIST || f.getType() == DynaFieldType.TABLE) {
                     // Determine target columns in latest design
@@ -1852,43 +1851,91 @@ public class DacServiceImpl implements DacService {
         int numberOfDacsToCreate;
         String etapeForDac;
         
-        if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
-            // For ETAPE_UNIQUE: Only allow 1 DAC total
-            if (!existingDacs.isEmpty()) {
-                throw new InvalidDacRequestException(
-                    "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
+        // Use user provided etapeDac if available, otherwise auto-calculate
+        if (request.getEtapeDac() != null && !request.getEtapeDac().isEmpty()) {
+            etapeForDac = request.getEtapeDac();
+            // Validation for user provided etape
+            if (!"1".equals(etapeForDac) && !"2".equals(etapeForDac)) {
+                 throw new InvalidDacRequestException("Invalid etapeDac value. Must be '1' or '2'");
             }
-            numberOfDacsToCreate = 1;
-            etapeForDac = "1";
-            log.info("Creating 1 DAC for ETAPE_UNIQUE mode");
             
-        } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
-            // For DEUX_ETAPES: Allow max 2 DACs (one for each etape)
-            if (existingDacs.isEmpty()) {
-                // No existing DAC, create first one (etape 1)
+            if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
+                if (!"1".equals(etapeForDac)) {
+                    throw new InvalidDacRequestException("Cannot create DAC for etape " + etapeForDac + " in ETAPE_UNIQUE mode");
+                }
+                if (!existingDacs.isEmpty()) {
+                     throw new InvalidDacRequestException(
+                    "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
+                }
+                numberOfDacsToCreate = 1;
+                 log.info("Creating 1 DAC for ETAPE_UNIQUE mode (User specified)");
+            } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
+                 if ("1".equals(etapeForDac)) {
+                     // Check if etape 1 already exists
+                     boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
+                     if (etape1Exists) {
+                         throw new InvalidDacRequestException("DAC for etape 1 already exists");
+                     }
+                      numberOfDacsToCreate = 1;
+                      log.info("Creating DAC for etape 1 (User specified)");
+                 } else { // etape 2
+                      // Check if etape 1 exists
+                     boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
+                      if (!etape1Exists) {
+                         throw new InvalidDacRequestException("Cannot create DAC for etape 2 before etape 1 is created");
+                     }
+                      // Check if etape 2 already exists
+                      boolean etape2Exists = existingDacs.stream().anyMatch(d -> "2".equals(d.getEtapeDac()));
+                      if (etape2Exists) {
+                           throw new InvalidDacRequestException("DAC for etape 2 already exists");
+                      }
+                      numberOfDacsToCreate = 1;
+                      log.info("Creating DAC for etape 2 (User specified)");
+                 }
+            } else {
+                 throw new InvalidDacRequestException("Invalid Mode de Passation Etape: " + modePassation.getEtapes());
+            }
+
+        } else {
+            // Auto-calculation logic (fallback)
+            if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
+                // For ETAPE_UNIQUE: Only allow 1 DAC total
+                if (!existingDacs.isEmpty()) {
+                    throw new InvalidDacRequestException(
+                        "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
+                }
                 numberOfDacsToCreate = 1;
                 etapeForDac = "1";
-                log.info("Creating first DAC (etape 1) for DEUX_ETAPES mode");
-            } else if (existingDacs.size() == 1) {
-                // One existing DAC, check if it's etape 1
-                Dac firstDac = existingDacs.get(0);
-                if ("1".equals(firstDac.getEtapeDac())) {
-                    // Create second DAC (etape 2)
+                log.info("Creating 1 DAC for ETAPE_UNIQUE mode");
+                
+            } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
+                // For DEUX_ETAPES: Allow max 2 DACs (one for each etape)
+                if (existingDacs.isEmpty()) {
+                    // No existing DAC, create first one (etape 1)
                     numberOfDacsToCreate = 1;
-                    etapeForDac = "2";
-                    log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
+                    etapeForDac = "1";
+                    log.info("Creating first DAC (etape 1) for DEUX_ETAPES mode");
+                } else if (existingDacs.size() == 1) {
+                    // One existing DAC, check if it's etape 1
+                    Dac firstDac = existingDacs.get(0);
+                    if ("1".equals(firstDac.getEtapeDac())) {
+                        // Create second DAC (etape 2)
+                        numberOfDacsToCreate = 1;
+                        etapeForDac = "2";
+                        log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
+                    } else {
+                        throw new InvalidDacRequestException(
+                            "Cannot create additional DAC. Existing DAC is not etape 1");
+                    }
                 } else {
+                    // Already have 2 or more DACs
                     throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Existing DAC is not etape 1");
+                        "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
                 }
             } else {
-                // Already have 2 or more DACs
                 throw new InvalidDacRequestException(
-                    "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
+                    "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
             }
-        } else {
-            throw new InvalidDacRequestException(
-                "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
         }
         
         List<Dac> createdDacs = new ArrayList<>();
@@ -1924,7 +1971,18 @@ public class DacServiceImpl implements DacService {
             dac.setPayant(request.getPayant());
             dac.setResponsableDacId(request.getResponsableDacId());
             dac.setConditionsParticipation(request.getConditionsParticipation());
-            dac.setShortListing(request.getShortListing() != null ? request.getShortListing() : false);
+            // Determine logic for shortListing
+            boolean isRestraintMode = modePassation.isRestraint();
+            boolean isSecondStepDac = modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES && "2".equals(etapeForDac);
+
+            if (isRestraintMode || isSecondStepDac) {
+                if (request.getShortlistIds() == null || request.getShortlistIds().isEmpty()) {
+                    throw new InvalidDacRequestException("Shortlist IDs are required for this Mode de Passation configuration");
+                }
+                dac.setShortListing(true);
+            } else {
+                dac.setShortListing(request.getShortlistIds() != null && !request.getShortlistIds().isEmpty() ? true : (request.getShortListing() != null ? request.getShortListing() : false));
+            }
             
             // Set process-related fields
             dac.setStatus(ProcessStatus.BROUILLON);
