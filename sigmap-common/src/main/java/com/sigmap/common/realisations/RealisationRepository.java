@@ -1,6 +1,7 @@
 package com.sigmap.common.realisations;
 
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import com.sigmap.common.repository.SoftDeleteRepository;
@@ -59,7 +60,12 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
             "AND r.version = (SELECT MAX(r2.version) FROM Realisation r2 WHERE r2.id = :id AND r2.isDeleted = false)")
     Optional<Realisation> findLatestVersionById(@Param("id") Integer id);
 
-
+    @Query("SELECT r FROM Realisation r JOIN r.ppms ppm WHERE ppm.id = :ppmId AND ppm.version = :ppmVer " +
+           " AND NOT EXISTS (SELECT 1 FROM AppelOffre ao WHERE ao.realisation.id = r.id AND ao.realisation.version = r.version " +
+           "AND ao.statusAppelOffre IN :statuses)")
+    List<Realisation> findRealisationsNotLinkedToAppelOffreWithStatus( @Param("ppmId") Integer ppmId,
+                                                                       @Param("ppmVer") Integer ppmVer,
+                                                                       @Param("statuses") List<StatusAppelOffre> statuses );
 }
 
 //public interface RealisationRepository extends JpaRepository<Realisation, RealisationId>,
