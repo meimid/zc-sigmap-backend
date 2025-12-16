@@ -484,4 +484,19 @@ public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBlackListed(
         return ResponseEntity.ok(list.stream().map(SocieteMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
     }
 
+    @GetMapping("/all-valid-not-black-listed")
+    public ResponseEntity<Page<SocieteResponseDtoSoft>> findAllValidNotBlackListed(
+            SocieteQuery query, Pageable pageable) {
+        Page<Societe> params = societeService.findAllWithStatus(query.toSpecification(),SocieteStatus.VALIDEE, pageable);
+        List<SocieteResponseDtoSoft> filteredContent = mapToSocieteResponseDtoSoftPage(params, pageable)
+                .stream().filter(s->!s.isBlackListed())
+                .toList();
+        Page<SocieteResponseDtoSoft> result =
+                new PageImpl<>(filteredContent, pageable, filteredContent.size());
+
+        return ResponseEntity.ok(result);
+    }
+
+
+
 }
