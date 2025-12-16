@@ -441,20 +441,20 @@ public class RealisationServiceImpl implements RealisationService {
 
             // Log document changes
             if (!requestedDocIds.equals(activeExistingDocIds)) {
-                System.out.println("Document changes detected for Realisation update ID: " + realisationId);
+                log.info("Document changes detected for Realisation update ID: {}" , realisationId);
 
                 // Find new documents
                 Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
                 newDocIds.removeAll(activeExistingDocIds);
                 if (!newDocIds.isEmpty()) {
-                    System.out.println("  - New documents added: " + newDocIds);
+                    log.info("  - New documents added: {}" , newDocIds);
                 }
 
                 // Find removed documents
                 Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
                 removedDocIds.removeAll(requestedDocIds);
                 if (!removedDocIds.isEmpty()) {
-                    System.out.println("  - Documents marked as deleted: " + removedDocIds);
+                    log.info("  - Documents marked as deleted: {}" , removedDocIds);
                 }
             }
 
@@ -477,7 +477,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingDoc.setIsDeleted(true);
                         docsRepository.save(existingDoc);
                         updatedDocs.add(existingDoc); // Keep it in the collection but as deleted
-                        System.out.println("Marked document with ID " + existingDoc.getId() + " as deleted (not in request)");
+                        log.info("Marked document with ID {} as deleted (not in request)" , existingDoc.getId() );
                     }
                 }
             }
@@ -500,7 +500,7 @@ public class RealisationServiceImpl implements RealisationService {
                 docsRepository.save(doc);
 
                 updatedDocs.add(doc);
-                System.out.println("Added new document with ID " + doc.getId() + " to Realisation");
+                log.info("Added new document with ID {}  to Realisation" , doc.getId());
             }
 
             // Update the Realisation with the final docs list
@@ -512,7 +512,7 @@ public class RealisationServiceImpl implements RealisationService {
                 if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
                     doc.setIsDeleted(true);
                     docsRepository.save(doc);
-                    System.out.println("Marked document with ID " + doc.getId() + " as deleted (no docIds provided)");
+                    log.info("Marked document with ID {} as deleted (no docIds provided)" , doc.getId() );
                 }
             }
             // Keep the existing docs list to preserve relationships (just all marked as deleted)
@@ -542,7 +542,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingLot.setIsDeleted(true);
                         lotRepository.save(existingLot);
                         updatedLots.add(existingLot); // Keep it in the collection but as deleted
-                        System.out.println("Marked lot with ID " + existingLot.getId() + " as deleted (not in request)");
+                        log.info("Marked lot with ID {}  as deleted (not in request)" , existingLot.getId() );
                     }
                 }
             }
@@ -563,7 +563,7 @@ public class RealisationServiceImpl implements RealisationService {
                     // Save the new lot
                     Lot savedLot = lotRepository.save(newLot);
                     updatedLots.add(savedLot);
-                    System.out.println("Created new Lot with ID: " + savedLot.getId());
+                    log.info("Created new Lot with ID: {}" , savedLot.getId());
                 } else if (!updatedLots.stream().anyMatch(lot -> lot.getId().equals(lotResponse.getId()))) {
                     // Existing lot not yet in our collection
                     lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
@@ -584,7 +584,7 @@ public class RealisationServiceImpl implements RealisationService {
                 if (!Boolean.TRUE.equals(lot.getIsDeleted())) {
                     lot.setIsDeleted(true);
                     lotRepository.save(lot);
-                    System.out.println("Marked lot with ID " + lot.getId() + " as deleted (no lots provided)");
+                    log.info("Marked lot with ID {}  as deleted (no lots provided)" , lot.getId() );
                 }
             }
         }
@@ -956,11 +956,11 @@ public class RealisationServiceImpl implements RealisationService {
     private boolean hasChanges(Realisation tempRealisation, Realisation existingRealisation, List<Integer> requestDocIds) {
         // Check realisationEnvisagees
         if (!Objects.equals(tempRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees())) {
-            System.out.println("Change detected in realisationEnvisagees: " + existingRealisation.getRealisationEnvisagees() + " -> " + tempRealisation.getRealisationEnvisagees());
+            log.info("Change detected in realisationEnvisagees: {} -> {}" , existingRealisation.getRealisationEnvisagees() , tempRealisation.getRealisationEnvisagees());
             return true;
         }
         if (!Objects.equals(tempRealisation.getBeneficiaire(), existingRealisation.getBeneficiaire())) {
-            System.out.println("Change detected in Beneficaire: " + existingRealisation.getBeneficiaire() + " -> " + tempRealisation.getBeneficiaire());
+            log.info("Change detected in Beneficaire: {} -> {}" , existingRealisation.getBeneficiaire() , tempRealisation.getBeneficiaire());
             return true;
         }
 
@@ -968,7 +968,7 @@ public class RealisationServiceImpl implements RealisationService {
         if (tempRealisation.getImputationBudgetaire() != existingRealisation.getImputationBudgetaire() &&
                 (tempRealisation.getImputationBudgetaire() == null || existingRealisation.getImputationBudgetaire() == null ||
                         !tempRealisation.getImputationBudgetaire().getId().equals(existingRealisation.getImputationBudgetaire().getId()))) {
-            System.out.println("Change detected in imputationBudgetaire");
+            log.info("Change detected in imputationBudgetaire");
             return true;
         }
 
@@ -976,7 +976,7 @@ public class RealisationServiceImpl implements RealisationService {
         if (tempRealisation.getMonnaie() != existingRealisation.getMonnaie() &&
                 (tempRealisation.getMonnaie() == null || existingRealisation.getMonnaie() == null ||
                         !tempRealisation.getMonnaie().getId().equals(existingRealisation.getMonnaie().getId()))) {
-            System.out.println("Change detected in monnaie");
+            log.info("Change detected in monnaie");
             return true;
         }
 
@@ -984,7 +984,7 @@ public class RealisationServiceImpl implements RealisationService {
         if (tempRealisation.getTypeMarcher() != existingRealisation.getTypeMarcher() &&
                 (tempRealisation.getTypeMarcher() == null || existingRealisation.getTypeMarcher() == null ||
                         !tempRealisation.getTypeMarcher().getId().equals(existingRealisation.getTypeMarcher().getId()))) {
-            System.out.println("Change detected in typeMarcher");
+            log.info("Change detected in typeMarcher");
             return true;
         }
 
@@ -992,31 +992,31 @@ public class RealisationServiceImpl implements RealisationService {
         if (tempRealisation.getModePassation() != existingRealisation.getModePassation() &&
                 (tempRealisation.getModePassation() == null || existingRealisation.getModePassation() == null ||
                         !tempRealisation.getModePassation().getId().equals(existingRealisation.getModePassation().getId()))) {
-            System.out.println("Change detected in modePassation");
+            log.info("Change detected in modePassation");
             return true;
         }
 
         // Check datePrevLps
         if (!Objects.equals(tempRealisation.getDatePrevLps(), existingRealisation.getDatePrevLps())) {
-            System.out.println("Change detected in datePrevLps");
+            log.info("Change detected in datePrevLps");
             return true;
         }
 
         // Check datePrevAc
         if (!Objects.equals(tempRealisation.getDatePrevAc(), existingRealisation.getDatePrevAc())) {
-            System.out.println("Change detected in datePrevAc");
+            log.info("Change detected in datePrevAc");
             return true;
         }
 
         // Check datePrevDp
         if (!Objects.equals(tempRealisation.getDatePrevDp(), existingRealisation.getDatePrevDp())) {
-            System.out.println("Change detected in datePrevDp");
+            log.info("Change detected in datePrevDp");
             return true;
         }
 
         // Check datePrevAp
         if (!Objects.equals(tempRealisation.getDatePrevAp(), existingRealisation.getDatePrevAp())) {
-            System.out.println("Change detected in datePrevAp");
+            log.info("Change detected in datePrevAp");
             return true;
         }
 
@@ -1024,24 +1024,24 @@ public class RealisationServiceImpl implements RealisationService {
         BigDecimal newB = tempRealisation.getBudgetEstime();
 
         if (!equalByValue(newB, oldB)) {
-            System.out.println("Change detected in budgetEstime: " + oldB + " -> " + newB);
+            log.info("Change detected in budgetEstime: {} -> {}" , oldB , newB);
             return true;
         }
 
         // Check isPublished
         if (!Objects.equals(tempRealisation.getIsPublished(), existingRealisation.getIsPublished())) {
-            System.out.println("Change detected in isPublished");
+            log.info("Change detected in isPublished");
             return true;
         }
 
         // Check publishedAt
         if (!Objects.equals(tempRealisation.getPublishedAt(), existingRealisation.getPublishedAt())) {
-            System.out.println("Change detected in publishedAt");
+            log.info("Change detected in publishedAt");
             return true;
         }
 
 
-        System.out.println("No field changes detected for Realisation ID: " + existingRealisation.getId());
+        log.info("No field changes detected for Realisation ID: {}" , existingRealisation.getId());
         return false;
     }
 
@@ -1131,7 +1131,7 @@ public class RealisationServiceImpl implements RealisationService {
                     "No versions found for Realisation with ID: " + realisationId,realisationId, null);
         }
 
-        System.out.println("Found latest version for Realisation ID " + realisationId + ": " + latestVersion);
+        log.info("Found latest version for Realisation ID {} : {}" , realisationId , latestVersion);
 
         // Call the version-specific method with the latest version
         return updateWithVersioning(realisationId, latestVersion, request);

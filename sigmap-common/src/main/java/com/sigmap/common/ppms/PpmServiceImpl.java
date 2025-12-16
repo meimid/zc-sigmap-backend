@@ -1372,15 +1372,15 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
-        System.out.printf("DEDUPE GUARD: hasFiles=%s, direct=%s, realisations=%s, docs=%s%n",
+        log.info("DEDUPE GUARD: hasFiles= {}, direct= {} , realisations= {} , docs= {}",
                 hasFiles, directFieldsChanged, realisationsChanged, documentsChanged);
 
         if (!hasFiles && !directFieldsChanged && !realisationsChanged && !documentsChanged) {
-            System.out.println("Current request hash: " + requestHash);
-            System.out.println("Previous request hash: " + previousRequestHash);
+            log.info("Current request hash: {}" , requestHash);
+            log.info("Previous request hash: {}" , previousRequestHash);
 
             if (requestHash != null && requestHash.equals(previousRequestHash)) {
-                System.out.println("Duplicate request detected (no changes + same hash), returning existing PPM without changes");
+                log.info("Duplicate request detected (no changes + same hash), returning existing PPM without changes");
 
                 Ppm copyForResponse = new Ppm();
                 BeanUtils.copyProperties(existingPpm, copyForResponse);
@@ -1422,16 +1422,16 @@ public class PpmServiceImpl implements PpmService {
 
         boolean shouldCreateNewVersion = directFieldsChanged || realisationsChanged || documentsChanged || hasFiles;
 
-        System.out.println("Versioning decision inputs:");
-        System.out.println("  - Direct changes: " + directFieldsChanged);
-        System.out.println("  - Realisations changed: " + realisationsChanged + " (phase=" + realisationsPhaseChanged + ", financements=" + financementsChanged + ")");
-        System.out.println("  - Documents changed: " + documentsChanged);
-        System.out.println("  - Has files: " + hasFiles);
+        log.info("Versioning decision inputs:");
+        log.info("  - Direct changes: {}" , directFieldsChanged);
+        log.info("  - Realisations changed: {} (phase= {} , financements=  {})" , realisationsChanged , realisationsPhaseChanged ,financementsChanged );
+        log.info("  - Documents changed: {}" , documentsChanged);
+        log.info("  - Has files: {}" , hasFiles);
 
         logVersionDecision(shouldCreateNewVersion, directFieldsChanged, realisationsChanged, documentsChanged);
 
         if (!shouldCreateNewVersion) {
-            System.out.println("No changes detected, returning existing PPM without creating new version");
+            log.info("No changes detected, returning existing PPM without creating new version");
             return existingPpm;
         }
 
@@ -1447,7 +1447,7 @@ public class PpmServiceImpl implements PpmService {
             if (existingPpm.getDocs() != null) {
                 for (Docs existingDoc : existingPpm.getDocs()) {
                     Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
-                    if (docToProcess == null) { System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping"); continue; }
+                    if (docToProcess == null) { log.info("Warning: Document {} no longer exists in database, skipping" , existingDoc.getId() ); continue; }
                     if (requestedDocIds.contains(docToProcess.getId())) {
                         docToProcess.setIsDeleted(false);
                         docToProcess = docsRepository.save(docToProcess);
@@ -1477,7 +1477,7 @@ public class PpmServiceImpl implements PpmService {
                 docToProcess.setIsDeleted(true);
                 docToProcess = docsRepository.save(docToProcess);
                 rootDocsForNewVersion.add(docToProcess);
-                System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
+                log.info("Marked document with ID {}  as deleted (no docIds provided)", docToProcess.getId() );
             }
         } else {
             rootDocsForNewVersion = new ArrayList<>();
@@ -1488,7 +1488,7 @@ public class PpmServiceImpl implements PpmService {
         tempPpmForValidation.setRealisations(updatedRealisations);
         validateRealisations(tempPpmForValidation);
 
-        System.out.println("Creating new PPM version: " + (ppmVer + 1));
+        log.info("Creating new PPM version: {}" , (ppmVer + 1));
         Ppm newPpm = createAndSaveNewPpmVersion(ppmId, ppmVer, tempPpm, updatedRealisations, rootDocsForNewVersion, existingPpm);
 
         // Carry over persistent fields
@@ -1512,16 +1512,17 @@ public class PpmServiceImpl implements PpmService {
         newPpm.setBudgetEstime(ppmBudgetFromRealisations);
         newPpm = repository.save(newPpm);
 
-        System.out.println("PPM post-versioning fields set: annee=" + newPpm.getAnnee()
-                + ", budgetEstime=" + newPpm.getBudgetEstime()
-                + " (computed from " + (updatedRealisations != null ? updatedRealisations.size() : 0) + " realisations)");
+        log.info("PPM post-versioning fields set: annee= {} , budgetEstime= {} (computed from {} , realisations  )" ,
+                newPpm.getAnnee()
+                , newPpm.getBudgetEstime(),
+                (updatedRealisations != null ? updatedRealisations.size() : 0) );
 
         // PPM-level files
         if (request instanceof PpmWithLotsRequestDto) {
             PpmWithLotsRequestDto lotsRequest = (PpmWithLotsRequestDto) request;
             if (lotsRequest.getPpmFiles() != null && !lotsRequest.getPpmFiles().isEmpty()) {
                 try {
-                    System.out.println("Processing " + lotsRequest.getPpmFiles().size() + " new files for PPM");
+                    log.info("Processing {} new files for PPM" , lotsRequest.getPpmFiles().size() );
                     documentCommuneService.processAndSaveDocuments(lotsRequest.getPpmFiles(), newPpm, Constants.PATH_ENTREPOT_GED_PPM);
                     newPpm = repository.save(newPpm);
 
@@ -1554,8 +1555,8 @@ public class PpmServiceImpl implements PpmService {
                     .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                     .collect(Collectors.toList());
 
-            System.out.println("Filtered docs for response: " + filteredDocs.size() + " docs (from " + (newPpm.getDocs() != null ? newPpm.getDocs().size() : 0) + " total)");
-            System.out.println("Filtered doc IDs: " + filteredDocs.stream().map(Docs::getId).collect(Collectors.toList()));
+            log.info("Filtered docs for response: {}  docs (from {} total" + filteredDocs.size() , (newPpm.getDocs() != null ? newPpm.getDocs().size() : 0) );
+            log.info("Filtered doc IDs: {}" , filteredDocs.stream().map(Docs::getId).collect(Collectors.toList()));
 
             responseVersion.setDocs(filteredDocs);
         }
@@ -1586,14 +1587,14 @@ public class PpmServiceImpl implements PpmService {
         if (responseVersion.getRealisations() != null && !responseVersion.getRealisations().isEmpty()) {
             List<Realisation> latestRealisations = filterLatestRealisationVersions(responseVersion.getRealisations());
             responseVersion.setRealisations(latestRealisations);
-            System.out.println("FINAL FILTER: Showing only latest versions");
+            log.info("FINAL FILTER: Showing only latest versions");
             for (Realisation r : latestRealisations) {
-                System.out.println("  - Final version: Realisation ID: " + r.getId() + ", Version: " + r.getVersion());
+                log.info("  - Final version: Realisation ID: {}, Version: {}" , r.getId() ,+ r.getVersion());
             }
         }
 
-        System.out.println("Returning filtered PPM version: " + responseVersion.getVersion());
-        System.out.println("Returning filtered new PPM version: " + responseVersion.getVersion());
+        log.info("Returning filtered PPM version: {}" , responseVersion.getVersion());
+        log.info("Returning filtered new PPM version: {}" , responseVersion.getVersion());
         return responseVersion;
     }
 
@@ -1665,15 +1666,14 @@ public class PpmServiceImpl implements PpmService {
     @Transactional
     @Override
     public Ppm updateWithVersioning(Integer ppmId, PpmBaseRequestDto request) {
-        System.out.println("the request is");
-        System.out.println(request.toString());
+       log.info("the request is {}",request.toString());
         Integer latestVersion = repository.findMaxVersionById(ppmId);
 
         if (latestVersion == null) {
             throw new RuntimeException("No versions found for PPM with ID: " + ppmId);
         }
 
-        System.out.println("Found latest version for PPM ID " + ppmId + ": " + latestVersion);
+        log.info("Found latest version for PPM ID {} latestVersion {}" , ppmId , latestVersion);
 
         // Call the version-specific method with the latest version
         return updateWithVersioning(ppmId, latestVersion, request);
@@ -1699,20 +1699,20 @@ public class PpmServiceImpl implements PpmService {
     @Transactional
     @Override
     public Ppm updateWithVersioningWithLots(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request) {
-        System.out.println("============== UPDATE WITH VERSIONING WITH LOTS START ==============");
-        System.out.println("Updating PPM ID: " + ppmId + ", Version: " + ppmVer + " with lots");
+        log.info("============== UPDATE WITH VERSIONING WITH LOTS START ==============");
+        log.info("Updating PPM ID: {}, version {} with lots" , ppmId , ppmVer);
 
         // Log request structure
-        System.out.println("Request details:");
-        System.out.println(" - Has PPM Files: " + (request.getPpmFiles() != null ? request.getPpmFiles().size() : "none"));
+        log.info("Request details:");
+        log.info(" - Has PPM Files: {}" , (request.getPpmFiles() != null ? request.getPpmFiles().size() : "none"));
 
         // Log realisation files in the request
         if (request.getRealisationsWithLots() != null) {
-            System.out.println(" - RealisationsWithLots count: " + request.getRealisationsWithLots().size());
+            log.info(" - RealisationsWithLots count: {}" , request.getRealisationsWithLots().size());
             for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                 RealisationWithLotsRequestDto real = request.getRealisationsWithLots().get(i);
-                System.out.println("   - Realisation " + i + " with ID " + (real.getId() != null ? real.getId() : "new"));
-                System.out.println("     - Has files: " + (real.getRealisationFiles() != null ?
+                log.info("   - Realisation {}  with ID {}" , i , (real.getId() != null ? real.getId() : "new"));
+                log.info("     - Has files: {}" , (real.getRealisationFiles() != null ?
                         (!real.getRealisationFiles().isEmpty() ?
                                 real.getRealisationFiles().size() + " files" : "empty list") :
                         "null"));
@@ -1722,17 +1722,17 @@ public class PpmServiceImpl implements PpmService {
                     for (int j = 0; j < real.getRealisationFiles().size(); j++) {
                         MultipartFile file = real.getRealisationFiles().get(j);
                         if (file != null) {
-                            System.out.println("       - File " + j + ": name=" + file.getOriginalFilename() +
-                                    ", size=" + file.getSize() +
-                                    ", content-type=" + file.getContentType());
+                            log.info(" - File {} : name= {} , size={} , content-type={}" , j , file.getOriginalFilename()
+                                    , file.getSize()
+                                     , file.getContentType());
                         } else {
-                            System.out.println("       - File " + j + ": NULL");
+                            log.info("- File {} : NULL" , j);
                         }
                     }
                 }
             }
         } else if (request.getRealisations() != null) {
-            System.out.println(" - Regular Realisations count: " + request.getRealisations().size());
+            log.info(" - Regular Realisations count: {}" , request.getRealisations().size());
             // Check if any are actually RealisationWithLotsRequestDto with files
             boolean hasRealisationsWithFiles = false;
             for (RealisationBaseRequestDto real : request.getRealisations()) {
@@ -1740,17 +1740,17 @@ public class PpmServiceImpl implements PpmService {
                     RealisationWithLotsRequestDto withLots = (RealisationWithLotsRequestDto) real;
                     if (withLots.getRealisationFiles() != null && !withLots.getRealisationFiles().isEmpty()) {
                         hasRealisationsWithFiles = true;
-                        System.out.println("   - Found RealisationWithLotsRequestDto with " +
-                                withLots.getRealisationFiles().size() + " files in regular realisations list");
+                        log.info("   - Found RealisationWithLotsRequestDto with {}" ,
+                                withLots.getRealisationFiles().size() );
                         break;
                     }
                 }
             }
             if (!hasRealisationsWithFiles) {
-                System.out.println("   - No realisations with files found in regular realisations list");
+                log.info("   - No realisations with files found in regular realisations list");
             }
         } else {
-            System.out.println(" - No realisations in request");
+            log.info(" - No realisations in request");
         }
 
         // Convert PpmWithLotsRequestDto to PpmBaseRequestDto for core functionality
@@ -1777,17 +1777,17 @@ public class PpmServiceImpl implements PpmService {
             for (RealisationWithLotsRequestDto realisationWithLots : realisationsWithLots) {
                 // Verify if files are present in the DTO
                 if (realisationWithLots.getRealisationFiles() != null && !realisationWithLots.getRealisationFiles().isEmpty()) {
-                    System.out.println("Realisation with ID " +
-                            (realisationWithLots.getId() != null ? realisationWithLots.getId() : "new") +
-                            " has " + realisationWithLots.getRealisationFiles().size() + " files:");
+                    log.info("Realisation with ID {}  has {} files " ,
+                            (realisationWithLots.getId() != null ? realisationWithLots.getId() : "new")
+                             , realisationWithLots.getRealisationFiles().size() );
                     for (int i = 0; i < realisationWithLots.getRealisationFiles().size(); i++) {
                         MultipartFile file = realisationWithLots.getRealisationFiles().get(i);
                         if (file != null) {
-                            System.out.println(" - File " + i + ": " + file.getOriginalFilename() +
-                                    ", size=" + file.getSize() +
-                                    ", empty=" + file.isEmpty());
+                            log.info(" - File {} : {} size {} empty {}" , i , file.getOriginalFilename() ,
+                                      file.getSize() ,
+                                    file.isEmpty());
                         } else {
-                            System.out.println(" - File " + i + ": NULL");
+                            log.info(" - File {} NULL" , i );
                         }
                     }
                 }
@@ -1825,40 +1825,40 @@ public class PpmServiceImpl implements PpmService {
                 baseRealisation.setRealisationFiles(realisationWithLots.getRealisationFiles());
 
                 if (baseRealisation.getRealisationFiles() != null) {
-                    System.out.println("Files successfully copied to base realisation DTO: " +
-                            baseRealisation.getRealisationFiles().size() + " files");
+                    log.info("Files successfully copied to base realisation DTO: {} files" ,
+                            baseRealisation.getRealisationFiles().size());
                 } else {
-                    System.out.println("No files in base realisation DTO after copying");
+                   log.info("No files in base realisation DTO after copying");
                 }
 
                 baseRealisations.add(baseRealisation);
             }
 
             baseRequest.setRealisations(baseRealisations);
-            System.out.println("Set " + baseRealisations.size() + " realisations on base request");
+            log.info("Set {}  realisations on base request" , baseRealisations.size() );
         } else {
             // If no realisationsWithLots provided, just use the regular realisations
             baseRequest.setRealisations(request.getRealisations());
-            System.out.println("Using regular realisations: " +
-                    (request.getRealisations() != null ? request.getRealisations().size() : 0));
+            log.info("Using regular realisations: {}" ,
+                    request.getRealisations() != null ? request.getRealisations().size() : 0);
         }
 
         // Use the existing updateWithVersioning method with the populated base request
-        System.out.println("Calling core updateWithVersioning method");
+        log.info("Calling core updateWithVersioning method");
         Ppm result = updateWithVersioning(ppmId, ppmVer, baseRequest);
-        System.out.println("Update complete, returning PPM version: " + result.getVersion());
+        log.info("Update complete, returning PPM version: {}" , result.getVersion());
 
         // Log the doc counts in the returned PPM
-        System.out.println("Returned PPM has " + (result.getDocs() != null ? result.getDocs().size() : 0) + " documents");
+        log.info("Returned PPM has {} documents" , (result.getDocs() != null ? result.getDocs().size() : 0) );
         if (result.getRealisations() != null) {
-            System.out.println("Returned PPM has " + result.getRealisations().size() + " realisations:");
+            log.info("Returned PPM has {} realisations" + result.getRealisations().size());
             for (Realisation real : result.getRealisations()) {
-                System.out.println(" - Realisation " + real.getId() + ", version " + real.getVersion() +
-                        " has " + (real.getDocs() != null ? real.getDocs().size() : 0) + " documents");
+                log.info(" - Realisation {} version {} has {} documents" , real.getId() , real.getVersion()
+                        , (real.getDocs() != null ? real.getDocs().size() : 0) );
             }
         }
 
-        System.out.println("============== UPDATE WITH VERSIONING WITH LOTS END ==============");
+        log.info("============== UPDATE WITH VERSIONING WITH LOTS END ==============");
         return result;
     }
 
@@ -1890,15 +1890,15 @@ public class PpmServiceImpl implements PpmService {
     // --- Helper Methods for updateWithVersioning ---
 
     private void logUpdateRequest(Integer ppmId, Integer ppmVer, PpmBaseRequestDto request) {
-        System.out.println("Updating PPM ID: " + ppmId + ", Current Version: " + ppmVer);
-        System.out.println("Request data: " + request);
+        log.info("Updating PPM ID: {} Current Version: {}" , ppmId , ppmVer);
+        log.info("Request data: {}" , request);
     }
 
     private void logVersionDecision(boolean shouldCreate, boolean direct, boolean real, boolean docs) {
-        System.out.println("Should create new PPM version: " + shouldCreate);
-        System.out.println("  - Direct changes: " + direct);
-        System.out.println("  - Realisations changed: " + real);
-        System.out.println("  - Documents changed: " + docs);
+        log.info("Should create new PPM version:  {}" , shouldCreate);
+        log.info("  - Direct changes: {}" , direct);
+        log.info("  - Realisations changed: {}" , real);
+        log.info("  - Documents changed: {}" , docs);
     }
 
     private boolean isDuplicateRequest(Integer ppmId, Integer ppmVer, PpmBaseRequestDto request) {
@@ -1946,8 +1946,8 @@ public class PpmServiceImpl implements PpmService {
      */
     @Transactional
     public boolean processRealisationsWithLotLogic(Ppm existingPpm, PpmBaseRequestDto request, List<Realisation> updatedRealisations)   {
-        System.out.println("============== REALISATION PROCESSING LOG START ==============");
-        System.out.println("Processing realisations for PPM ID " + existingPpm.getId() + ", version " + existingPpm.getVersion());
+        log.info("============== REALISATION PROCESSING LOG START ==============");
+        log.info("Processing realisations for PPM ID {} , version  {}" , existingPpm.getId() , existingPpm.getVersion());
 
         boolean realisationsChanged = false;
         Map<String, Lot> newLotsMap = new HashMap<>();
@@ -1960,12 +1960,12 @@ public class PpmServiceImpl implements PpmService {
         boolean hasWithLotsRealisations = (request instanceof PpmWithLotsRequestDto)
                 && ((PpmWithLotsRequestDto) request).getRealisationsWithLots() != null
                 && !((PpmWithLotsRequestDto) request).getRealisationsWithLots().isEmpty();
-        System.out.println("Payload: hasBaseRealisations=" + hasBaseRealisations + ", hasWithLotsRealisations=" + hasWithLotsRealisations);
+        log.info("Payload: hasBaseRealisations= {} , hasWithLotsRealisations= {}",   hasBaseRealisations , hasWithLotsRealisations);
 
         if (request instanceof PpmWithLotsRequestDto) {
             PpmWithLotsRequestDto withLotsRequest = (PpmWithLotsRequestDto) request;
             if (withLotsRequest.getRealisationsWithLots() != null) {
-                System.out.println("Request contains " + withLotsRequest.getRealisationsWithLots().size() + " realisations with lots");
+                log.info("Request contains {} realisations with lots" , withLotsRequest.getRealisationsWithLots().size() );
                 for (RealisationWithLotsRequestDto realisationDto : withLotsRequest.getRealisationsWithLots()) {
                     if (realisationDto.getId() != null) {
                         existingRealisationIdsInRequest.add(realisationDto.getId());
@@ -1980,7 +1980,7 @@ public class PpmServiceImpl implements PpmService {
                 existingRealisationsMap.put(existingRealisation.getId(), existingRealisation);
             }
         }
-        System.out.println("Existing realisations map size: " + existingRealisationsMap.size());
+        log.info("Existing realisations map size: {}" , existingRealisationsMap.size());
 
         List<? extends RealisationBaseRequestDto> realisationsToProcess = null;
         if (request instanceof PpmWithLotsRequestDto) {
@@ -1994,14 +1994,14 @@ public class PpmServiceImpl implements PpmService {
         }
 
         if (realisationsToProcess != null && !realisationsToProcess.isEmpty()) {
-            System.out.println("Request contains " + realisationsToProcess.size() + " realisations");
+            log.info("Request contains {} realisations" , realisationsToProcess.size() );
 
             for (RealisationBaseRequestDto realisationDto : realisationsToProcess) {
                 Integer realisationId = realisationDto.getId();
-                System.out.println("-- Realisation loop start: requestedId=" + realisationId);
+                log.info("-- Realisation loop start: requestedId= {}" , realisationId);
 
                 if (realisationId != null && processedRealisationIds.contains(realisationId)) {
-                    System.out.println("   Skipping duplicate realisation ID: " + realisationId);
+                    log.info("   Skipping duplicate realisation ID: {}" , realisationId);
                     continue;
                 }
 
@@ -2028,15 +2028,27 @@ public class PpmServiceImpl implements PpmService {
                             (reqBudget != null && exBudget != null && reqBudget.compareTo(exBudget) == 0);
                     boolean chBudget = !budgetEqual;
 
-                    System.out.println("   Scalar compare: chRealisationEnvisagees=" + chRealisationEnvisagees
-                            + ", chBeneficiaire=" + chBeneficiaire
-                            + ", chTypeMarcher=" + chTypeMarcher
-                            + ", chModePassation=" + chModePassation
-                            + ", chDatePrevLps=" + chDatePrevLps
-                            + ", chDatePrevAc=" + chDatePrevAc
-                            + ", chDatePrevDp=" + chDatePrevDp
-                            + ", chDatePrevAp=" + chDatePrevAp
-                            + ", chBudget=" + chBudget + " (req=" + reqBudget + ", ex=" + exBudget + ")");
+                    log.info(" Scalar compare:" +
+                                    " chRealisationEnvisagees= {}" +
+                                    " chBeneficiaire= {} , " +
+                                    "chTypeMarcher= {}," +
+                                    " chModePassation= {} ," +
+                                    " chDatePrevLps= {} ," +
+                                    " chDatePrevAc= {} " +
+                                    ",chDatePrevDp= {}," +
+                                    "chDatePrevAp= {} ," +
+                                    " chBudget= {}" +
+                                    "  (req= {} ," +
+                                    " ex= {} )"
+                             , chRealisationEnvisagees
+                            , chBeneficiaire
+                             , chTypeMarcher
+                            , chModePassation
+                             , chDatePrevLps
+                            , chDatePrevAc
+                             , chDatePrevDp
+                             , chDatePrevAp
+                            , chBudget , reqBudget , exBudget);
 
                     // --------- LOTS CHANGE DETECTION ---------
                     List<Lot> existingLotsActive = (existingReal.getLots() == null)
@@ -2054,9 +2066,9 @@ public class PpmServiceImpl implements PpmService {
                     }
 
                     boolean hasLotsInRequest = (lotDtos != null);
-                    System.out.println("   Lots section: hasLotsInRequest=" + hasLotsInRequest
-                            + ", existingActiveLots=" + existingLotsActive.size()
-                            + ", incomingLots=" + (lotDtos != null ? lotDtos.size() : 0));
+                    log.info("   Lots section: hasLotsInRequest= {} , existingActiveLots= {} , incomingLots= {}" , hasLotsInRequest
+                           , existingLotsActive.size()
+                            ,(lotDtos != null ? lotDtos.size() : 0));
 
                     if (lotDtos != null) {
                         boolean chLotsCount = lotDtos.size() != existingLotsActive.size();
@@ -2098,10 +2110,10 @@ public class PpmServiceImpl implements PpmService {
                         }
                     }
 
-                    System.out.println("   FINAL changed for realisationId=" + realisationId + " => " + changed);
+                    log.info("   FINAL changed for realisationId= {} => {}" , realisationId , changed);
 
                     if (!changed) {
-                        System.out.println("   NO CHANGE: Reusing existing realisation [id=" + existingReal.getId() + ", ver=" + existingReal.getVersion() + "]");
+                        log.info("   NO CHANGE: Reusing existing realisation [id= {} , ver= {} ]" , existingReal.getId(), existingReal.getVersion());
                         updatedRealisations.add(existingReal);
                         processedRealisationIds.add(realisationId);
                         continue;
@@ -2130,17 +2142,19 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setLots(updatedLots);
 
                     realisation = realisationRepository.save(realisation);
-                    System.out.println("   Saved NEW VERSION realisation ID " + realisation.getId() + " version " + realisation.getVersion() +
-                            " with " + (realisation.getLots() != null ? realisation.getLots().size() : 0) + " lots");
+                    log.info("Saved NEW VERSION realisation ID {} version {} with {} lots",
+                            realisation.getId() ,
+                            realisation.getVersion() ,
+                             (realisation.getLots() != null ? realisation.getLots().size() : 0) );
 
                     updatedRealisations.add(realisation);
                     processedRealisationIds.add(realisationId);
                     realisationsChanged = true;
-                    System.out.println("   Marked realisationsChanged=true (updated existing realisation)");
+                    log.info("   Marked realisationsChanged=true (updated existing realisation)");
 
                 } else {
                     // --------- NEW REALISATION (no id) ---------
-                    System.out.println("   NEW realisation (no id provided)");
+                    log.info("   NEW realisation (no id provided)");
 
                     Integer newRealId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
                     newRealId = (newRealId != null) ? newRealId + 1 : 1;
@@ -2165,16 +2179,16 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setLots(updatedLots);
 
                     realisation = realisationRepository.save(realisation);
-                    System.out.println("   Saved NEW realisation ID " + realisation.getId() + " version " + realisation.getVersion() +
-                            " with " + (realisation.getLots() != null ? realisation.getLots().size() : 0) + " lots");
+                    log.info("   Saved NEW realisation ID {} version {} with {} lots" , realisation.getId() ,realisation.getVersion() ,
+                            (realisation.getLots() != null ? realisation.getLots().size() : 0));
 
                     updatedRealisations.add(realisation);
                     processedRealisationIds.add(realisation.getId());
                     realisationsChanged = true;
-                    System.out.println("   Marked realisationsChanged=true (created new realisation)");
+                    log.info("   Marked realisationsChanged=true (created new realisation)");
                 }
 
-                System.out.println("-- Realisation loop end: requestedId=" + realisationId);
+                log.info("-- Realisation loop end: requestedId= {}" , realisationId);
             }
         } else {
             System.out.println("No realisations provided in the request payload.");
