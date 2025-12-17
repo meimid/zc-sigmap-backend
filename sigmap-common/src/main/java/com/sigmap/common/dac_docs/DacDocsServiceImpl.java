@@ -4,6 +4,7 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
@@ -349,6 +350,8 @@ public class DacDocsServiceImpl implements DacDocsService{
             return new ArrayList<>();
         }
 
+        validateDacWithDacDocsRequest(request);
+
         Integer dacId = null;
         if (!request.getDacDocsRequests().isEmpty()) {
             dacId = request.getDacDocsRequests().get(0).getDacId();
@@ -515,7 +518,8 @@ public class DacDocsServiceImpl implements DacDocsService{
                             dacShortlistRepository.save(existing);
                         }
                     } else {
-                        Societe dateSoc = societeRepository.findById(sid).orElseThrow(() -> new RuntimeException("Societe not found: " + sid));
+                        Societe dateSoc = societeRepository.findById(sid)
+                                .orElseThrow(() -> new InvalidDacRequestException("Societe not found: " + sid));
                         DacShortlist ds = new DacShortlist();
                         ds.setDacId(targetDac.getDacId());
                         ds.setDacVer(targetDac.getDacVer());
@@ -544,6 +548,51 @@ public class DacDocsServiceImpl implements DacDocsService{
             results.add(createDacDocs(req));
         }
         return results;
+    }
+
+    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request) {
+        List<String> errors = new ArrayList<>();
+
+        if (request.getDateLimiteSoumission() == null) {
+            errors.add("Date limite de soumission is required");
+        }
+
+        if (request.getDateLimiteRecptionDemande() == null) {
+            errors.add("Date limite de réception des demandes is required");
+        }
+
+        if (request.getPayant() == null) {
+            errors.add("Payant field is required");
+        }
+
+        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
+            errors.add("Responsable DAC ID is required");
+        }
+
+        Calendar now = Calendar.getInstance();
+        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
+            errors.add("Date limite de soumission must be in the future");
+        }
+
+        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
+            errors.add("Date limite de réception des demandes must be in the future");
+        }
+
+        if (Boolean.TRUE.equals(request.getPayant())) {
+            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
+                errors.add("Montant payant is required and must be greater than zero when payant is true");
+            }
+        }
+
+        if (Boolean.TRUE.equals(request.getShortListing())) {
+            if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
+                errors.add("Shortlist members are required when shortListing is true");
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            throw new InvalidDacRequestException("Validation failed: " + String.join(", ", errors));
+        }
     }
 
     @Override

@@ -4,7 +4,9 @@ import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.globalExceptions.BadRequest;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
@@ -123,6 +125,14 @@ public class GlobalExceptionHandler {
     String message = messageSource.getMessage("realisation.associated",new Object[] {ex.getId(),ex.getVersion()}, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+  }
+
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(InvalidDacRequestException.class)
+  public ResponseEntity<Map<String, String>> handleInvalidDacRequestException(InvalidDacRequestException ex) {
+    return ResponseEntity
+        .status(HttpStatus.BAD_REQUEST)
+        .body(Collections.singletonMap("error", ex.getMessage()));
   }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
