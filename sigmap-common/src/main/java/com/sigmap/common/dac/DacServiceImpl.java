@@ -1850,92 +1850,35 @@ public class DacServiceImpl implements DacService {
         // Determine number of DACs to create based on ModePassationEtape
         int numberOfDacsToCreate;
         String etapeForDac;
-        
-        // Use user provided etapeDac if available, otherwise auto-calculate
-        if (request.getEtapeDac() != null && !request.getEtapeDac().isEmpty()) {
-            etapeForDac = request.getEtapeDac();
-            // Validation for user provided etape
-            if (!"1".equals(etapeForDac) && !"2".equals(etapeForDac)) {
-                 throw new InvalidDacRequestException("Invalid etapeDac value. Must be '1' or '2'");
-            }
-            
-            if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
-                if (!"1".equals(etapeForDac)) {
-                    throw new InvalidDacRequestException("Cannot create DAC for etape " + etapeForDac + " in ETAPE_UNIQUE mode");
-                }
-                if (!existingDacs.isEmpty()) {
-                     throw new InvalidDacRequestException(
-                    "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
-                }
-                numberOfDacsToCreate = 1;
-                 log.info("Creating 1 DAC for ETAPE_UNIQUE mode (User specified)");
-            } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
-                 if ("1".equals(etapeForDac)) {
-                     // Check if etape 1 already exists
-                     boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
-                     if (etape1Exists) {
-                         throw new InvalidDacRequestException("DAC for etape 1 already exists");
-                     }
-                      numberOfDacsToCreate = 1;
-                      log.info("Creating DAC for etape 1 (User specified)");
-                 } else { // etape 2
-                      // Check if etape 1 exists
-                     boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
-                      if (!etape1Exists) {
-                         throw new InvalidDacRequestException("Cannot create DAC for etape 2 before etape 1 is created");
-                     }
-                      // Check if etape 2 already exists
-                      boolean etape2Exists = existingDacs.stream().anyMatch(d -> "2".equals(d.getEtapeDac()));
-                      if (etape2Exists) {
-                           throw new InvalidDacRequestException("DAC for etape 2 already exists");
-                      }
-                      numberOfDacsToCreate = 1;
-                      log.info("Creating DAC for etape 2 (User specified)");
-                 }
-            } else {
-                 throw new InvalidDacRequestException("Invalid Mode de Passation Etape: " + modePassation.getEtapes());
-            }
 
-        } else {
-            // Auto-calculation logic (fallback)
-            if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
-                // For ETAPE_UNIQUE: Only allow 1 DAC total
-                if (!existingDacs.isEmpty()) {
-                    throw new InvalidDacRequestException(
+        if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
+            if (!existingDacs.isEmpty()) {
+                throw new InvalidDacRequestException(
                         "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
-                }
+            }
+            numberOfDacsToCreate = 1;
+            etapeForDac = "1";
+            log.info("Creating DAC for ETAPE_UNIQUE mode");
+
+        } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
+            boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
+            boolean etape2Exists = existingDacs.stream().anyMatch(d -> "2".equals(d.getEtapeDac()));
+
+            if (!etape1Exists) {
                 numberOfDacsToCreate = 1;
                 etapeForDac = "1";
-                log.info("Creating 1 DAC for ETAPE_UNIQUE mode");
-                
-            } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
-                // For DEUX_ETAPES: Allow max 2 DACs (one for each etape)
-                if (existingDacs.isEmpty()) {
-                    // No existing DAC, create first one (etape 1)
-                    numberOfDacsToCreate = 1;
-                    etapeForDac = "1";
-                    log.info("Creating first DAC (etape 1) for DEUX_ETAPES mode");
-                } else if (existingDacs.size() == 1) {
-                    // One existing DAC, check if it's etape 1
-                    Dac firstDac = existingDacs.get(0);
-                    if ("1".equals(firstDac.getEtapeDac())) {
-                        // Create second DAC (etape 2)
-                        numberOfDacsToCreate = 1;
-                        etapeForDac = "2";
-                        log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
-                    } else {
-                        throw new InvalidDacRequestException(
-                            "Cannot create additional DAC. Existing DAC is not etape 1");
-                    }
-                } else {
-                    // Already have 2 or more DACs
-                    throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
-                }
+                log.info("Creating first DAC (etape 1) for DEUX_ETAPES mode");
+            } else if (!etape2Exists) {
+                numberOfDacsToCreate = 1;
+                etapeForDac = "2";
+                log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
             } else {
                 throw new InvalidDacRequestException(
-                    "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
+                        "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
             }
+        } else {
+            throw new InvalidDacRequestException(
+                    "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
         }
         
         List<Dac> createdDacs = new ArrayList<>();
@@ -1943,8 +1886,12 @@ public class DacServiceImpl implements DacService {
         
         // For DEUX_ETAPES with existing etape 1, set parent reference
         if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES 
-                && !existingDacs.isEmpty() && "2".equals(etapeForDac)) {
-            parentDacId = existingDacs.get(0).getDacId();
+                && "2".equals(etapeForDac)) {
+            parentDacId = existingDacs.stream()
+                    .filter(d -> "1".equals(d.getEtapeDac()))
+                    .findFirst()
+                    .map(Dac::getDacId)
+                    .orElse(null);
         }
         
         // 5. Create DAC(s)
@@ -1964,28 +1911,15 @@ public class DacServiceImpl implements DacService {
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);
             
-            // Set user-provided fields
-            dac.setEtapeDac(etapeForDac);  // Use auto-determined etape based on mode
-            dac.setDateLimiteSoumission(request.getDateLimiteSoumission());
-            dac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
-            dac.setPayant(request.getPayant());
-            dac.setResponsableDacId(request.getResponsableDacId());
-            dac.setConditionsParticipation(request.getConditionsParticipation());
-            // Determine logic for shortListing
+            // Configure DAC defaults
+            dac.setEtapeDac(etapeForDac);
+            dac.setStatus(ProcessStatus.BROUILLON);
+            dac.setPayant(false);
             boolean isRestraintMode = modePassation.isRestraint();
             boolean isSecondStepDac = modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES && "2".equals(etapeForDac);
+            dac.setShortListing(isRestraintMode || isSecondStepDac);
 
-            if (isRestraintMode || isSecondStepDac) {
-                if (request.getShortlistIds() == null || request.getShortlistIds().isEmpty()) {
-                    throw new InvalidDacRequestException("Shortlist IDs are required for this Mode de Passation configuration");
-                }
-                dac.setShortListing(true);
-            } else {
-                dac.setShortListing(request.getShortlistIds() != null && !request.getShortlistIds().isEmpty() ? true : (request.getShortListing() != null ? request.getShortListing() : false));
-            }
-            
             // Set process-related fields
-            dac.setStatus(ProcessStatus.BROUILLON);
             
             // Set dynamic docs model if provided
             if (request.getDynaDocsModelId() != null) {
@@ -2002,44 +1936,6 @@ public class DacServiceImpl implements DacService {
             // Save DAC
             Dac savedDac = dacRepository.save(dac);
             
-            // Create DacPrix if payment is required
-            if (Boolean.TRUE.equals(request.getPayant()) && request.getMontantPayant() != null) {
-                // Get currency - use provided monnaieId or default to 1 (typically MRU for Mauritania)
-                Integer currencyId = request.getMonnaieId() != null ? request.getMonnaieId() : 1;
-                Monnaie currency = monnaieRepository.findById(currencyId)
-                        .orElseThrow(() -> new InvalidDacRequestException("Currency not found with ID: " + currencyId));
-                
-                DacPrix dacPrix = new DacPrix();
-                DacPrixId dacPrixId = new DacPrixId();
-                dacPrixId.setDac(savedDac);
-                dacPrixId.setMonnaie(currency);
-                dacPrix.setId(dacPrixId);
-                dacPrix.setPrix(request.getMontantPayant());
-                dacPrixRepository.save(dacPrix);
-                log.debug("Created DacPrix with amount: {} in currency: {}", 
-                         request.getMontantPayant(), currency.getCode());
-            }
-
-            // Handle Shortlist members
-            if (savedDac.isShortListing() && request.getShortlistIds() != null && !request.getShortlistIds().isEmpty()) {
-                log.info("Adding {} shortlist members for DAC ID: {}", request.getShortlistIds().size(), savedDac.getDacId());
-                for (Integer societeId : request.getShortlistIds()) {
-                    try {
-                        Societe societe = societeRepository.findById(societeId)
-                                .orElseThrow(() -> new RuntimeException("Societe not found for ID: " + societeId));
-                        
-                        DacShortlist shortlist = new DacShortlist();
-                        shortlist.setDacId(savedDac.getDacId());
-                        shortlist.setDacVer(savedDac.getDacVer());
-                        shortlist.setSociete(societe);
-                        
-                        dacShortlistRepository.save(shortlist);
-                    } catch (Exception e) {
-                        log.warn("Error adding Societe ID {} to shortlist: {}", societeId, e.getMessage());
-                    }
-                }
-            }
-            
             createdDacs.add(savedDac);
             
             log.info("Created DAC with ID: {}, Version: {}", savedDac.getDacId(), savedDac.getDacVer());
@@ -2049,50 +1945,8 @@ public class DacServiceImpl implements DacService {
     }
     
     private void validateDacFromAoRequest(CreateDacFromAoRequest request) {
-        List<String> errors = new ArrayList<>();
-        
-        // Check required fields
         if (request.getAppelOffreId() == null) {
-            errors.add("Appel d'Offre ID is required");
-        }
-        
-        // etapeDac removed from validation - it's now auto-determined from ModeDePassationSelection
-        
-        if (request.getDateLimiteSoumission() == null) {
-            errors.add("Date limite de soumission is required");
-        }
-        
-        if (request.getDateLimiteRecptionDemande() == null) {
-            errors.add("Date limite de réception des demandes is required");
-        }
-        
-        if (request.getPayant() == null) {
-            errors.add("Payant field is required");
-        }
-        
-        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
-            errors.add("Responsable DAC ID is required");
-        }
-        
-        // Validate dates are in the future
-        Calendar now = Calendar.getInstance();
-        if (request.getDateLimiteSoumission() != null && request.getDateLimiteSoumission().before(now)) {
-            errors.add("Date limite de soumission must be in the future");
-        }
-        
-        if (request.getDateLimiteRecptionDemande() != null && request.getDateLimiteRecptionDemande().before(now)) {
-            errors.add("Date limite de réception des demandes must be in the future");
-        }
-        
-        // Validate montant if payant
-        if (Boolean.TRUE.equals(request.getPayant())) {
-            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
-                errors.add("Montant payant is required and must be greater than zero when payant is true");
-            }
-        }
-        
-        if (!errors.isEmpty()) {
-            throw new InvalidDacRequestException("Validation failed: " + String.join(", ", errors));
+            throw new InvalidDacRequestException("Validation failed: Appel d'Offre ID is required");
         }
     }
     
