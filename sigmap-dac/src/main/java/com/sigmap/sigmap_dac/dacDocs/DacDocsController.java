@@ -11,9 +11,12 @@ import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Locale;
 import java.util.Optional;
 import java.util.List;
 import org.springframework.http.MediaType;
@@ -25,6 +28,10 @@ import org.springframework.web.multipart.MultipartFile;
 public class DacDocsController {
 
     private final DacDocsService dacDocsService;
+
+    private Locale getLocal() {
+        return LocaleContextHolder.getLocale();
+    }
 
     public DacDocsController(DacDocsService dacDocsService) {
         this.dacDocsService = dacDocsService;
@@ -42,7 +49,7 @@ public class DacDocsController {
     @PostMapping("/batch-versionning")
     @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody DacWithDacDocsRequest request) {
-        List<DacDocs> dacDocsList = dacDocsService.createDacWithDacDocsBatch(request);
+        List<DacDocs> dacDocsList = dacDocsService.createDacWithDacDocsBatch(request,getLocal());
         List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
         return ResponseEntity.ok(response);
     }

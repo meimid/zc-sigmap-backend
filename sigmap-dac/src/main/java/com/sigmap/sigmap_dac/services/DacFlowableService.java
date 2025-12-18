@@ -832,7 +832,7 @@ public class DacFlowableService {
             for (DacDocsRequest u : updates) u.setDacId(id);
 
             log.debug("[DAC] Creating Dac + batch of {} DAC docs for DAC {}", updates.size(), id);
-            dacDocsService.createDacWithDacDocsBatch(dacWithDocs);
+            dacDocsService.createDacWithDacDocsBatch(dacWithDocs,null);
 
             // refresh DAC to latest version
             latestDac = dacService.findById(id, null).orElse(latestDac);

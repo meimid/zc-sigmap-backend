@@ -1226,7 +1226,22 @@ public class DacServiceImpl implements DacService {
         }
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
-
+        if (Boolean.TRUE.equals(dac.isShortListing())) {
+            List<DacShortlist> shortlists = dacShortlistRepository.findByDacIdAndDacVer(dacId, dacVer);
+            if (!shortlists.isEmpty()) {
+                List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
+                        .map(sl -> {
+                            Societe s = sl.getSociete();
+                            return new DacWithAoReferenceResponse.ShortlistMemberData(
+                                    s.getId(),
+                                    s.getNom(),
+                                    s.getNif()
+                            );
+                        })
+                        .collect(Collectors.toList());
+                dacResponse.setDacShortlist(members);
+            }
+        }
         List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dacId, dacVer);
         if (dacPrixList != null && !dacPrixList.isEmpty()) {
             List<DacPrixResponce> dacPrixResponces = mapDacPrixToDacPrixResponceList(dacPrixList);
@@ -1824,12 +1839,12 @@ public class DacServiceImpl implements DacService {
         // 3. Get PPM and Realisation from AO
         Ppm ppm = appelOffre.getPpm();
         if (ppm == null) {
-            throw new InvalidDacRequestException("Appel d'Offre must have an associated PPM");
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à un PPM");
         }
         
         Realisation realisation = appelOffre.getRealisation();
         if (realisation == null) {
-            throw new InvalidDacRequestException("Appel d'Offre must have an associated Realisation");
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à une Réalisation.");
         }
         
         // Get ModeDePassationSelection from Realisation to check etapes
@@ -1852,7 +1867,7 @@ public class DacServiceImpl implements DacService {
         if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
             if (!existingDacs.isEmpty()) {
                 throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation est ÉTAPE_UNIQUE et un DAC existe déjà pour cet Appel d'Offres.");
             }
             numberOfDacsToCreate = 1;
             etapeForDac = "1";
@@ -1872,11 +1887,11 @@ public class DacServiceImpl implements DacService {
                 log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
             } else {
                 throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation DEUX_ETAPES autorise un maximum de 2 DAC et ils existent déjà.");
             }
         } else {
             throw new InvalidDacRequestException(
-                    "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
+                    "Mode de Passation Etape invalide: " + modePassation.getEtapes());
         }
         
         List<Dac> createdDacs = new ArrayList<>();
@@ -1924,7 +1939,7 @@ public class DacServiceImpl implements DacService {
     
     private void validateDacFromAoRequest(CreateDacFromAoRequest request) {
         if (request.getAppelOffreId() == null) {
-            throw new InvalidDacRequestException("Validation failed: Appel d'Offre ID is required");
+            throw new InvalidDacRequestException("Échec de la validation : l'ID de l'Appel d'Offres est requis.");
         }
     }
     
@@ -1935,7 +1950,7 @@ public class DacServiceImpl implements DacService {
         
         // Load DAC
         Dac dac = dacRepository.findById(new DacId(dacId, dacVer))
-                .orElseThrow(() -> new DacNotFound("DAC not found with ID: {} and  Version: {}" ,dacId, dacVer));
+                .orElseThrow(() -> new DacNotFound("DAC non trouvé avec l'ID : {} et la Version : {}." ,dacId, dacVer));
         
         // Build response
         DacWithAoReferenceResponse response = new DacWithAoReferenceResponse();

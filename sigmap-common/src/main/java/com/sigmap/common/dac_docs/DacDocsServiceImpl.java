@@ -345,12 +345,12 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     @Override
     @Transactional
-    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request) {
+    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) {
         if (request == null || request.getDacDocsRequests() == null) {
             return new ArrayList<>();
         }
 
-        validateDacWithDacDocsRequest(request);
+        validateDacWithDacDocsRequest(request, lang);
 
         Integer dacId = null;
         if (!request.getDacDocsRequests().isEmpty()) {
@@ -549,48 +549,127 @@ public class DacDocsServiceImpl implements DacDocsService{
         return results;
     }
 
-    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request) {
-        List<String> errors = new ArrayList<>();
+    /*private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
 
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
         if (request.getDateLimiteSoumission() == null) {
-            errors.add("Date limite de soumission is required");
+            errorsFR.append("Date limite de soumission est obligatoire");
+            errorsENG.append("Date limite de soumission is required");
         }
 
         if (request.getDateLimiteRecptionDemande() == null) {
-            errors.add("Date limite de réception des demandes is required");
+            errorsFR.append("Date limite de réception des demandes is required");
+            errorsENG.append("Date limite de réception des demandes is required");
         }
 
         if (request.getPayant() == null) {
-            errors.add("Payant field is required");
+            errorsFR.append("Payant field is required");
+            errorsENG.append("Payant field is required");
         }
 
         if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
-            errors.add("Responsable DAC ID is required");
+            errorsFR.append("Responsable DAC ID is required");
+            errorsENG.append("Responsable DAC ID is required");
         }
 
         Calendar now = Calendar.getInstance();
         if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errors.add("Date limite de soumission must be in the future");
+            errorsFR.append("Date limite de soumission must be in the future");
+            errorsENG.append("Date limite de soumission must be in the future");
         }
 
         if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errors.add("Date limite de réception des demandes must be in the future");
+            errorsFR.append("Date limite de réception des demandes must be in the future");
+            errorsENG.append("Date limite de réception des demandes must be in the future");
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {
             if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
-                errors.add("Montant payant is required and must be greater than zero when payant is true");
+                errorsFR.append("Montant payant is required and must be greater than zero when payant is true");
+                errorsENG.append("Montant payant is required and must be greater than zero when payant is true");
             }
         }
 
         if (Boolean.TRUE.equals(request.getShortListing())) {
             if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
-                errors.add("Shortlist members are required when shortListing is true");
+                errorsFR.append("Shortlist members are required when shortListing is true");
+                errorsENG.append("Shortlist members are required when shortListing is true");
             }
         }
 
-        if (!errors.isEmpty()) {
-            throw new InvalidDacRequestException("Validation failed: " + String.join(", ", errors));
+        if ( lang.equals("fr") && !errorsFR.isEmpty() ) {
+            throw new InvalidDacRequestException(errorsFR.toString());
+        }
+        else if (lang.equals("en") && !errorsENG.isEmpty()) {
+            throw new InvalidDacRequestException(errorsENG.toString());
+        }
+    }*/
+
+
+
+    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
+
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
+        if (request.getDateLimiteSoumission() == null) {
+            errorsFR.append("La date limite de soumission est obligatoire");
+            errorsENG.append("Submission deadline is required");
+        }
+
+        if (request.getDateLimiteRecptionDemande() == null) {
+            errorsFR.append("La date limite de réception des demandes est obligatoire");
+            errorsENG.append("Deadline for receipt of requests is required");
+        }
+
+        if (request.getPayant() == null) {
+            errorsFR.append("le champ payant est obligatoire, ");
+            errorsENG.append("Payant field is required");
+        }
+
+        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
+            errorsFR.append("Le responsable du DAC est obligatoire");
+            errorsENG.append("DAC responsible is required");
+        }
+
+        Calendar now = Calendar.getInstance();
+        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
+            errorsFR.append("La date limite de soumission doit être dans le futur");
+            errorsENG.append("Submission deadline must be in the future");;
+        }
+
+        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
+            errorsFR.append("La date limite de réception des demandes doit être dans le futur");
+            errorsENG.append("Deadline for receipt of requests must be in the future");
+        }
+
+        if (Boolean.TRUE.equals(request.getPayant())) {
+            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
+                errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
+                errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+            }
+        }
+
+        if (Boolean.TRUE.equals(request.getShortListing())) {
+            if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
+                errorsFR.append("Les membres de la shortlist sont obligatoires lorsque shortListing est vrai");
+                errorsENG.append("Shortlist members are required when shortListing is true");
+            }
+        }
+
+        if (!errorsFR.isEmpty() || !errorsENG.isEmpty() ){
+            if ( lang.getLanguage().equals("fr") ) {
+                throw new InvalidDacRequestException(errorsFR.toString());
+            }
+            if (lang.getLanguage().equals("en") ) {
+                throw new InvalidDacRequestException(errorsENG.toString());
+            }
         }
     }
 
