@@ -1045,7 +1045,6 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
                     existing.setIsDeleted(false);
 
-                    // Save in place (comme PPM)
                     existing = financementRepository.save(existing);
                     result.add(existing);
                     usedIds.add(financementId);
