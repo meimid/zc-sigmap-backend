@@ -1928,11 +1928,6 @@ public class DacServiceImpl implements DacService {
                 dac.setDynaDocsModel(dynaDocsModel);
             }
             
-            // Set etape process indicator for DEUX_ETAPES mode
-            if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
-                dac.setEtapeProcess("1".equals(etapeForDac) ? "ETAPE_1" : "ETAPE_2");
-            }
-            
             // Save DAC
             Dac savedDac = dacRepository.save(dac);
             
