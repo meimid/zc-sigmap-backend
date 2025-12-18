@@ -36,6 +36,7 @@ ALTER TABLE dac DROP COLUMN IF EXISTS category_id;
 ALTER TABLE dac DROP COLUMN IF EXISTS mode_passation_id;
 ALTER TABLE dac DROP COLUMN IF EXISTS realisation_id;
 ALTER TABLE dac DROP COLUMN IF EXISTS realisation_ver;
+ALTER TABLE dac DROP COLUMN IF EXISTS parent_dac_id;
 
 -- changeset sigmap:1749671959098-7
 CREATE TABLE dac_shortlist (

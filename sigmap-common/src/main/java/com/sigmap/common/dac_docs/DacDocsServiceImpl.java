@@ -388,7 +388,6 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setDateLimiteRecptionDemande(dac.getDateLimiteRecptionDemande());
              newDac.setPayant(dac.isPayant());
              newDac.setShortListing(dac.isShortListing());
-             newDac.setParentDacId(dac.getParentDacId());
              newDac.setDynaDocsModel(dac.getDynaDocsModel());
              newDac.setProcessInstanceId(dac.getProcessInstanceId());
              newDac = dacRepository.save(newDac);
@@ -897,7 +896,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
         newDac.setPayant(existingDac.isPayant());
         newDac.setShortListing(existingDac.isShortListing());
-        newDac.setParentDacId(existingDac.getParentDacId());
         newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
         newDac = dacRepository.save(newDac);
 
@@ -1234,7 +1232,6 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
                 newDac.setPayant(existingDac.isPayant());
                 newDac.setShortListing(existingDac.isShortListing());
-                newDac.setParentDacId(existingDac.getParentDacId());
                 newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);

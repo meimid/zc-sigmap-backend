@@ -1053,7 +1053,6 @@ public class DacServiceImpl implements DacService {
         dac.setDacVer(1);
         dac.setReference(generateDacRef(sequenceNumber, nom_ac));
         dac.setStatus(ProcessStatus.BROUILLON);
-        dac.setParentDacId(request.getParentDacId());
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
         Dac savedCdac = dacRepository.save(dac);
@@ -1296,7 +1295,6 @@ public class DacServiceImpl implements DacService {
         newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
         newDac.setPayant(base.isPayant());
         newDac.setShortListing(base.isShortListing());
-        newDac.setParentDacId(base.getParentDacId());
         newDac.setDynaDocsModel(base.getDynaDocsModel());
         newDac.setResponsableDacId(base.getResponsableDacId());
         newDac.setConditionsParticipation(base.getConditionsParticipation());
@@ -1882,17 +1880,6 @@ public class DacServiceImpl implements DacService {
         }
         
         List<Dac> createdDacs = new ArrayList<>();
-        Integer parentDacId = null;
-        
-        // For DEUX_ETAPES with existing etape 1, set parent reference
-        if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES 
-                && "2".equals(etapeForDac)) {
-            parentDacId = existingDacs.stream()
-                    .filter(d -> "1".equals(d.getEtapeDac()))
-                    .findFirst()
-                    .map(Dac::getDacId)
-                    .orElse(null);
-        }
         
         // 5. Create DAC(s)
         for (int i = 0; i < numberOfDacsToCreate; i++) {
@@ -1903,10 +1890,6 @@ public class DacServiceImpl implements DacService {
             dac.setDacId(newDacId);
             dac.setDacVer(1);
             dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
-            // Set parent DAC reference if creating etape 2 in DEUX_ETAPES mode
-            if (parentDacId != null) {
-                dac.setParentDacId(parentDacId);
-            }
             
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);
@@ -1978,8 +1961,6 @@ public class DacServiceImpl implements DacService {
         response.setConditionsParticipation(dac.getConditionsParticipation());
         response.setEtapeDac(dac.getEtapeDac());
         response.setShortListing(dac.isShortListing());
-        response.setParentDacId(dac.getParentDacId());
-        
         // Set shortlist members if enabled
         if (Boolean.TRUE.equals(dac.isShortListing())) {
             List<DacShortlist> shortlists = dacShortlistRepository.findByDacIdAndDacVer(dacId, dacVer);

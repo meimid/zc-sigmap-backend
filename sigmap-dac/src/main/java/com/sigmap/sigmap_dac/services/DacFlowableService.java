@@ -258,7 +258,7 @@ public class DacFlowableService {
         if (acId != null) vars.put("acId", acId);
         vars.put("isRestraint", dac.getAppelOffre().getRealisation().getModePassation() != null && dac.getAppelOffre().getRealisation().getModePassation().isRestraint());
         vars.put("shortListing", dac.isShortListing());
-        vars.put("parentDacId", dac.getParentDacId());
+//        vars.put("parentDacId", dac.getParentDacId());
 
         ProcessInstance pi = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, vars, TENANT_ID);
 
@@ -810,7 +810,7 @@ public class DacFlowableService {
             runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
                     latestDac.getAppelOffre().getRealisation().getModePassation() != null && latestDac.getAppelOffre().getRealisation().getModePassation().isRestraint());
             runtimeService.setVariable(task.getProcessInstanceId(), "shortListing", latestDac.isShortListing());
-            runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
+//            runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
 
             log.info("[DAC] Updated process vars after versioning: version={}, isRestraint={}, shortListing={}, parentDacId={}",
                     latestDac.getDacVer(),
