@@ -28,6 +28,7 @@ public interface DacMapper {
     @Mapping(target = "payant", source = "payant")
     @Mapping(target = "dynaDocsModel", source = "dynaDocsModel")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
+    @Mapping(target = "etapeDac", source = "etapeDac")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
