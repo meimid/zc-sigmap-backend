@@ -379,9 +379,9 @@ public class ComController {
         return ResponseEntity.ok(responses);
     }
 
-    @GetMapping("/cpmp-members/{acId}")
-    public ResponseEntity<List<UserComSoftResponse>> getCpmpMembers(@PathVariable Integer acId) throws AcNotFound {
-            List<UserComSoftResponse> members = comService.getCpmpMembersByAc(acId);
+    @GetMapping("/cpmp-members/{dacId}")
+    public ResponseEntity<List<UserComSoftResponse>> getCpmpMembers(@PathVariable Integer dacId) throws AcNotFound {
+            List<UserComSoftResponse> members = comService.getCpmpMembersByAc(dacId);
             return ResponseEntity.ok(members);
     }
 }

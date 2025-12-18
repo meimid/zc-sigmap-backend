@@ -11,7 +11,6 @@ import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
@@ -21,20 +20,17 @@ import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.DacPrixService;
-import com.sigmap.common.dac_prix.exceptions.DacPrixAlreadyExist;
-import com.sigmap.common.dac_prix.request.DacPrixRequest;
 import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
-import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
-import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.entity.MethodePaiement;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
@@ -44,10 +40,11 @@ import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.dac.DacShortlist;
-import com.sigmap.common.dac.DacShortlistRepository;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacID;
+import com.sigmap.common.societe_dac.SocieteDacRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +54,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
@@ -94,7 +90,7 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Autowired
     private MonnaieRepository monnaieRepository;
     @Autowired
-    private DacShortlistRepository dacShortlistRepository;
+    private SocieteDacRepository societeDacRepository;
     @Autowired
     private SocieteRepository societeRepository;
     @Override
@@ -392,15 +388,19 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setProcessInstanceId(dac.getProcessInstanceId());
              newDac = dacRepository.save(newDac);
              
-             if (Boolean.TRUE.equals(dac.isShortListing())) {
-                 List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
-                 for (DacShortlist source : existingShortlist) {
+             if (dac.isShortListing()) {
+                 List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+                 for (SocieteDac source : existingShortlist) {
                      if (!Boolean.TRUE.equals(source.getIsDeleted())) {
-                         DacShortlist copy = new DacShortlist();
-                         copy.setDacId(newDac.getDacId());
-                         copy.setDacVer(newDac.getDacVer());
-                         copy.setSociete(source.getSociete());
-                         dacShortlistRepository.save(copy);
+                         SocieteDacID societeDacID = new  SocieteDacID();
+                         societeDacID.setDac(newDac);
+                         societeDacID.setSociete(source.getId().getSociete());
+                         SocieteDac copy = new SocieteDac();
+                         copy.setId(societeDacID);
+                         copy.setMethodePaiement(source.getMethodePaiement());
+                         copy.setStatusPaiement(source.isStatusPaiement());
+                         copy.setJustifPaiementId(source.getJustifPaiementId());
+                         societeDacRepository.save(copy);
                      }
                  }
              }
@@ -499,45 +499,47 @@ public class DacDocsServiceImpl implements DacDocsService{
              }
         }
 
-        if (Boolean.TRUE.equals(targetDac.isShortListing())) {
+        if (targetDac.isShortListing()) {
             if (request.getShortlistMembers() != null) {
-                List<DacShortlist> existingList = dacShortlistRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
-                Map<Integer, DacShortlist> existingMap = existingList.stream()
-                        .collect(Collectors.toMap(s -> s.getSociete().getId(), s -> s));
+                List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+                Map<Integer, SocieteDac> existingMap = existingList.stream()
+                        .collect(Collectors.toMap(s -> s.getId().getSociete().getId(), s -> s));
 
                 Set<Integer> requestedIds = new HashSet<>(request.getShortlistMembers());
 
                 for (Integer sid : request.getShortlistMembers()) {
                     if (existingMap.containsKey(sid)) {
-                        DacShortlist existing = existingMap.get(sid);
+                        SocieteDac existing = existingMap.get(sid);
                         if (Boolean.TRUE.equals(existing.getIsDeleted())) {
                             existing.setIsDeleted(false);
                             existing.setDeletedAt(null);
                             existing.setDeletedBy(null);
-                            dacShortlistRepository.save(existing);
+                            societeDacRepository.save(existing);
                         }
                     } else {
                         Societe dateSoc = societeRepository.findById(sid)
                                 .orElseThrow(() -> new InvalidDacRequestException("Societe not found: " + sid));
-                        DacShortlist ds = new DacShortlist();
-                        ds.setDacId(targetDac.getDacId());
-                        ds.setDacVer(targetDac.getDacVer());
-                        ds.setSociete(dateSoc);
-                        ds.setIsDeleted(false);
-                        dacShortlistRepository.save(ds);
+                        SocieteDacID sdID = new SocieteDacID();
+                        sdID.setDac(targetDac);
+                        sdID.setSociete(dateSoc);
+                        SocieteDac sd = new SocieteDac();
+                        sd.setId(sdID);
+                        sd.setMethodePaiement(MethodePaiement.NON_ATTRIBUE);
+                        sd.setIsDeleted(false);
+                        societeDacRepository.save(sd);
                     }
                 }
-                List<DacShortlist> toDelete = existingList.stream()
-                        .filter(s -> !requestedIds.contains(s.getSociete().getId()))
+                List<SocieteDac> toDelete = existingList.stream()
+                        .filter(s -> !requestedIds.contains(s.getId().getSociete().getId()))
                         .collect(Collectors.toList());
                 if (!toDelete.isEmpty()) {
-                    dacShortlistRepository.softDelete(toDelete);
+                    societeDacRepository.softDelete(toDelete);
                 }
             }
         } else {
-             List<DacShortlist> existingList = dacShortlistRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+             List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
              if (!existingList.isEmpty()) {
-                 dacShortlistRepository.softDelete(existingList);
+                 societeDacRepository.softDelete(existingList);
              }
         }
 
@@ -979,14 +981,18 @@ public class DacDocsServiceImpl implements DacDocsService{
         newDac = dacRepository.save(newDac);
 
         // Clone DacShortlist if shortListing is true
-        if (Boolean.TRUE.equals(newDac.isShortListing())) {
-             List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
-             for (DacShortlist source : existingShortlist) {
-                 DacShortlist copy = new DacShortlist();
-                 copy.setDacId(newDac.getDacId());
-                 copy.setDacVer(newDac.getDacVer());
-                 copy.setSociete(source.getSociete());
-                 dacShortlistRepository.save(copy);
+        if (newDac.isShortListing()) {
+             List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
+             for (SocieteDac source : existingShortlist) {
+                 SocieteDacID sdId = new SocieteDacID();
+                 sdId.setDac(newDac);
+                 sdId.setSociete(source.getId().getSociete());
+                 SocieteDac sd = new SocieteDac();
+                 sd.setId(sdId);
+                 sd.setJustifPaiementId(source.getJustifPaiementId());
+                 sd.setStatusPaiement(source.isStatusPaiement());
+                 sd.setMethodePaiement(source.getMethodePaiement());
+                 societeDacRepository.save(sd);
              }
         }
 
@@ -1776,10 +1782,10 @@ public class DacDocsServiceImpl implements DacDocsService{
 
         // 3. Check Shortlist (only if shortlisting is true and list provided)
         if (Boolean.TRUE.equals(request.getShortListing()) && request.getShortlistMembers() != null) {
-            List<DacShortlist> existing = dacShortlistRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            List<SocieteDac> existing = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
             Set<Integer> existingIds = existing.stream()
                     .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted())) // compare against active ones
-                    .map(s -> s.getSociete().getId()).collect(Collectors.toSet());
+                    .map(s -> s.getId().getSociete().getId()).collect(Collectors.toSet());
             Set<Integer> newIds = new HashSet<>(request.getShortlistMembers());
             if (!existingIds.equals(newIds)) return true;
         }

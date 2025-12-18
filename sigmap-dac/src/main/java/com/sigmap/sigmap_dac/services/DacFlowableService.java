@@ -820,9 +820,11 @@ public class DacFlowableService {
             log.info("[DAC] Task marked as updatable; processing DacWithDacDocs batch");
 
             DacWithDacDocsRequest dacWithDocs = request.getDacWithDacDocsRequest();
+            log.info("[DAC] DacWithDacDocsRequest: {}", dacWithDocs);
             List<DacDocsRequest> updates = (dacWithDocs != null) ? dacWithDocs.getDacDocsRequests() : null;
-
+log.info("[DAC] DacDocsRequest: {}", updates);
             if (dacWithDocs == null || updates == null || updates.isEmpty()) {
+
                 log.error("[DAC] No DacWithDacDocsRequest / dacDocsRequests provided for updatable task {}", taskId);
                 TaskDTO error = new TaskDTO();
                 error.setStatus("DacWithDacDocsRequest with at least one dacDocsRequests is required when isUpdatable=true");

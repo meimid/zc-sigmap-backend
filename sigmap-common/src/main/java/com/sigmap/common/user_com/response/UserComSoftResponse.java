@@ -11,6 +11,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class UserComSoftResponse {
     private String userId;
-    private String nom;
-    private String prenom;
+    private String lastName;
+    private String firstName;
 }

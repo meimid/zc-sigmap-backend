@@ -16,6 +16,9 @@ import com.sigmap.common.com.exception.*;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
@@ -75,9 +78,10 @@ public class ComServiceImpl implements ComService {
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
   private final UserCommissionHistoriqueService userCommissionHistoriqueService;
+  private final DacRepository dacRepository;
 
   public ComServiceImpl(
-          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService) {
+          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService, DacRepository dacRepository) {
     this.repository = repository;
     this.refParamService = refParamService;
     this.acRepository = acRepository;
@@ -86,6 +90,7 @@ public class ComServiceImpl implements ComService {
       this.documentCommuneService = documentCommuneService;
       this.docsRepository = docsRepository;
       this.userCommissionHistoriqueService = userCommissionHistoriqueService;
+      this.dacRepository = dacRepository;
   }
 
   @Override
@@ -659,8 +664,12 @@ public class ComServiceImpl implements ComService {
   }
 
     @Override
-    public List<UserComSoftResponse> getCpmpMembersByAc(Integer acId) throws AcNotFound {
-
+    public List<UserComSoftResponse> getCpmpMembersByAc(Integer dacId) throws AcNotFound, DacNotFound {
+        Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (dac==null) {
+            throw new DacNotFound("Dac not found with id {}", dacId, null);
+        }
+        var acId = dac.getAppelOffre().getPpm().getAc().getId();
         Ac ac = acService.findById(acId);
         Specification<Com> specCom =
                 ComSpecifications.deleted(false)

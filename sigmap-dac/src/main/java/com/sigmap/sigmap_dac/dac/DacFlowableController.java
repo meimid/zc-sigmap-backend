@@ -106,19 +106,19 @@ public class DacFlowableController {
      * @throws IOException   if an error occurs during processing
      * @throws ComNotFound   if a commission is not found
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group/{idReu}")
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
-            @RequestParam("requestsJson") String requestsJson,
-            @PathVariable Integer idReu
+            @RequestParam("requestsJson") String requestsJson
+//            @PathVariable Integer idReu
             )
             throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
 
-        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
-        if (!present) {
-            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
-        }
-
-        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
+        //Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
+//        if (!present) {
+//            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
+//        }
+//
+//        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
 
         List<GroupValidationRequest> requests;
         try {
