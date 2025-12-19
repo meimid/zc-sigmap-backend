@@ -170,7 +170,7 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + pair[0] + ", Version: " + pair[1])))
-                .sorted(java.util.Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
+                .sorted(Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
                 .toList();
 
         List<String> generatedFilePaths = new ArrayList<>();
@@ -1188,8 +1188,8 @@ public class DacServiceImpl implements DacService {
         boolean noSnapshot = dacDocsSnapshot.isEmpty();
 
         // Distinct (dynaDocsId, dynaDocsVer) keys preserving relative order by dynaDocOrder when resolvable
-        java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
+        LinkedHashMap<String, int[]> docPairs = new LinkedHashMap<>();
+        Map<String, Integer> orderByKey = new HashMap<>();
         if (noSnapshot) {
             // New DAC without snapshot: return latest docs for its typeMarche, modePassation and modelId (do not persist)
             Integer typeMarcheIdForDac = dac.getAppelOffre().getRealisation().getTypeMarcher().getId();
@@ -1256,8 +1256,8 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElse(null))
-                .filter(java.util.Objects::nonNull)
-                .sorted(java.util.Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
                 .map(dynaDocs -> {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
@@ -1636,7 +1636,7 @@ public class DacServiceImpl implements DacService {
                         if (realisation.getFinancements() == null || realisation.getFinancements().isEmpty()) yield null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
-                        Set<String> seen = new java.util.LinkedHashSet<>();
+                        Set<String> seen = new LinkedHashSet<>();
                         for (Financement fin : realisation.getFinancements()) {
                             // Skip soft-deleted financements
                             if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
@@ -1829,7 +1829,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     @Transactional
-    public List<Dac> createFromAppelOffre(CreateDacFromAoRequest request) 
+    public Dac createFromAppelOffre(CreateDacFromAoRequest request) 
             throws AppelOffreNotFound, InvalidDacRequestException {
         log.info("Creating DAC(s) from Appel d'Offre with ID: {}", request.getAppelOffreId());
         
@@ -1897,22 +1897,24 @@ public class DacServiceImpl implements DacService {
             throw new InvalidDacRequestException(
                     "Mode de Passation Etape invalide: " + modePassation.getEtapes());
         }
-        
+
         List<Dac> createdDacs = new ArrayList<>();
-        
+
         // 5. Create DAC(s)
+        Dac dac = null;
+        Dac savedDac = null;
         for (int i = 0; i < numberOfDacsToCreate; i++) {
-            Dac dac = new Dac();
-            
+            dac = new Dac();
+
             // Generate new DAC ID and set version
             Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
             dac.setDacId(newDacId);
             dac.setDacVer(1);
             dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
-            
+
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);
-            
+
             // Configure DAC defaults
             dac.setEtapeDac(etapeForDac);
             dac.setStatus(ProcessStatus.BROUILLON);
@@ -1922,23 +1924,22 @@ public class DacServiceImpl implements DacService {
             dac.setShortListing(isRestraintMode || isSecondStepDac);
 
             // Set process-related fields
-            
+
             // Set dynamic docs model if provided
             if (request.getDynaDocsModelId() != null) {
                 DynaDocsModel dynaDocsModel = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
                         .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
                 dac.setDynaDocsModel(dynaDocsModel);
             }
-            
+
             // Save DAC
-            Dac savedDac = dacRepository.save(dac);
-            
+            savedDac = dacRepository.save(dac);
+
             createdDacs.add(savedDac);
-            
             log.info("Created DAC with ID: {}, Version: {}", savedDac.getDacId(), savedDac.getDacVer());
         }
-        
-        return createdDacs;
+
+        return savedDac;
     }
     
     private void validateDacFromAoRequest(CreateDacFromAoRequest request) {

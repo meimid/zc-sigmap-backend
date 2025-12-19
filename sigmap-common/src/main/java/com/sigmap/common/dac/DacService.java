@@ -67,7 +67,7 @@ public interface DacService {
      * @throws AppelOffreNotFound if the specified AO doesn't exist
      * @throws InvalidDacRequestException if validation fails
      */
-    List<Dac> createFromAppelOffre(CreateDacFromAoRequest request) 
+    Dac createFromAppelOffre(CreateDacFromAoRequest request)
             throws AppelOffreNotFound, InvalidDacRequestException;
 
     /**
