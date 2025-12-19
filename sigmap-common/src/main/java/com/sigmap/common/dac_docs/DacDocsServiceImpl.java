@@ -463,8 +463,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
-        if (request.getEtapeDac() != null) targetDac.setEtapeDac(request.getEtapeDac());
-        if (request.getShortListing() != null) targetDac.setShortListing(request.getShortListing());
 
         targetDac = dacRepository.save(targetDac);
 
@@ -675,12 +673,6 @@ public class DacDocsServiceImpl implements DacDocsService{
 
         }
 
-        if (Boolean.TRUE.equals(request.getShortListing())) {
-            if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
-                errorsFR.append("Les membres de la shortlist sont obligatoires lorsque shortListing est vrai");
-                errorsENG.append("Shortlist members are required when shortListing is true");
-            }
-        }
 
         if (!errorsFR.isEmpty() || !errorsENG.isEmpty() ){
             if ( lang.getLanguage().equals("fr") ) {
@@ -1787,8 +1779,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getPayant() != null && !Objects.equals(dac.isPayant(), request.getPayant())) return true;
         if (request.getResponsableDacId() != null && !Objects.equals(dac.getResponsableDacId(), request.getResponsableDacId())) return true;
         if (request.getConditionsParticipation() != null && !Objects.equals(dac.getConditionsParticipation(), request.getConditionsParticipation())) return true;
-        if (request.getEtapeDac() != null && !Objects.equals(dac.getEtapeDac(), request.getEtapeDac())) return true;
-        if (request.getShortListing() != null && !Objects.equals(dac.isShortListing(), request.getShortListing())) return true;
 
         // 2. Check Payment Amount (only if payant is true and amount provided)
         if (Boolean.TRUE.equals(request.getPayant()) && request.getDacPrixRequests() != null) {
@@ -1819,7 +1809,7 @@ public class DacDocsServiceImpl implements DacDocsService{
         }
 
         // 3. Check Shortlist (only if shortlisting is true and list provided)
-        if (Boolean.TRUE.equals(request.getShortListing()) && request.getShortlistMembers() != null) {
+        if (request.getShortlistMembers() != null) {
             List<SocieteDac> existing = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
             Set<Integer> existingIds = existing.stream()
                     .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted())) // compare against active ones

@@ -46,7 +46,7 @@ public class DacDocsController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/batch-versionning")
+    @PostMapping("/batch-versioning")
     @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
     public ResponseEntity<List<DacDocsResponseFullEntities>> createDacDocsBatchWithVersionning(@RequestBody DacWithDacDocsRequest request) throws MonnaieNotFound {
         List<DacDocs> dacDocsList = dacDocsService.createDacWithDacDocsBatch(request,getLocal());

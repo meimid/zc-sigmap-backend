@@ -24,6 +24,7 @@ public class DacResponce {
     private Integer dacId;
     private Integer dacVer;
     private String reference;
+    private Integer aoId;
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;

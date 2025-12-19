@@ -1,6 +1,5 @@
 package com.sigmap.common.dac;
 
-import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.dac_docs.DacDocs;
 import java.util.List;
 import java.util.Optional;
@@ -94,6 +93,20 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   Integer findMaxVersionById(@Param("id") Integer id);
 
   /**
+   * Find latest version of DACs for a specific Appel d'Offre.
+   * Returns only the latest version of each DAC where appelOffre.id matches.
+   *
+   * @param appelOffreId The Appel d'Offre ID to filter by
+   * @param pageable Pagination information
+   * @return Page of latest DACs for the specified Appel d'Offre
+   */
+  @Query("SELECT d FROM Dac d " +
+         "WHERE d.appelOffre.id = :appelOffreId " +
+         "AND d.isDeleted = false " +
+         "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
+  Page<Dac> findLatestDacsByAppelOffre(@Param("appelOffreId") Integer appelOffreId, Pageable pageable);
+
+  /**
    * Find all published DACs for the website.
    * Returns only the latest version of each DAC where status is PUBLIE,
    * shortListing is false, and etapeDac is "1".
@@ -114,7 +127,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   /**
    * Find published DACs for a specific user based on their associated societies.
    * Returns only DACs where shortListing=true or etapeDac='2', and only the latest version.
-   * 
+   *
    * @param userId The authenticated user ID
    * @param pageable Pagination information
    * @return Page of published DACs for the user

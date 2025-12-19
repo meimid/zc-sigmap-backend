@@ -7,6 +7,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.request.CreateDacFromAoRequest;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
@@ -43,6 +44,8 @@ public interface DacService {
     DacResponseDTO synchronizeToLatestDynaDocs(Integer dacId, Integer dacVer);
 
     Page<Dac> findAllLatest(org.springframework.data.domain.Pageable pageable);
+
+    Page<Dac> findAllLatestWithQuery(DacQuery query, org.springframework.data.domain.Pageable pageable);
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
     Integer findLatestVersionById(Integer ppmId);
 
@@ -66,7 +69,7 @@ public interface DacService {
      * @throws AppelOffreNotFound if the specified AO doesn't exist
      * @throws InvalidDacRequestException if validation fails
      */
-    List<Dac> createFromAppelOffre(CreateDacFromAoRequest request) 
+    Dac createFromAppelOffre(CreateDacFromAoRequest request)
             throws AppelOffreNotFound, InvalidDacRequestException;
 
     /**
