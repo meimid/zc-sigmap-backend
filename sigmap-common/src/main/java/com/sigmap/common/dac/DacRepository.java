@@ -92,4 +92,22 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT MAX(d.dacVer) FROM Dac d WHERE d.dacId = :id AND d.isDeleted = false")
   Integer findMaxVersionById(@Param("id") Integer id);
 
+  /**
+   * Find all published DACs for the website.
+   * Returns only the latest version of each DAC where status is PUBLIE,
+   * shortListing is false, and etapeDac is "1".
+   * Results are ordered by updatedAt descending (most recently modified first).
+   *
+   * @param pageable Pagination information
+   * @return Page of published DACs
+   */
+  @Query("SELECT d FROM Dac d " +
+         "WHERE d.status = 'PUBLIE' " +
+         "AND d.shortListing = false " +
+         "AND d.etapeDac = '1' " +
+         "AND d.isDeleted = false " +
+         "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+         "ORDER BY d.updatedAt DESC")
+  Page<Dac> findPublishedDacsForWebsite(Pageable pageable);
+
 }

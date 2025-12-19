@@ -49,6 +49,9 @@ import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import jakarta.persistence.criteria.Root;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,8 +69,11 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
@@ -88,6 +94,9 @@ import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.config.ModePassationEtape;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Subquery;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 
@@ -2099,6 +2108,59 @@ public class DacServiceImpl implements DacService {
         }
         
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable) {
+        // Use the custom repository query that handles filtering, latest version selection, and sorting
+        Page<Dac> dacPage = dacRepository.findPublishedDacsForWebsite(pageable);
+
+        return dacPage.map(dac -> {
+            DacWebsiteResponse response = new DacWebsiteResponse();
+
+            // 1. Days remaining
+            if (dac.getDateLimiteSoumission() != null) {
+                ZonedDateTime deadline = dac.getDateLimiteSoumission().toInstant()
+                        .atZone(ZoneId.systemDefault());
+                ZonedDateTime now = ZonedDateTime.now();
+                long daysRemainingInclusive = ChronoUnit.DAYS.between(now.toLocalDate(), deadline.toLocalDate()) ;
+                long daysRemaining = Math.max(0, daysRemainingInclusive);
+
+                response.setNbrJoursRestants(daysRemaining);
+            }
+
+            // 2. ModePassation libelle
+            if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                    && dac.getAppelOffre().getRealisation().getModePassation() != null) {
+                response.setModePassation(dac.getAppelOffre().getRealisation().getModePassation().getLibelle());
+            }
+
+            // 3. Nom of AppelOffre
+            if (dac.getAppelOffre() != null) {
+                response.setNomAppelOffre(dac.getAppelOffre().getNom());
+            }
+
+            // 4. TypeMarche description
+            if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                    && dac.getAppelOffre().getRealisation().getTypeMarcher() != null) {
+                response.setDescriptionTypeMarche(dac.getAppelOffre().getRealisation().getTypeMarcher().getDescription());
+            }
+
+            // 5. DateLimiteSoumission
+            response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+
+            // 6. Alfresco ID of isAAO=true doc
+            List<DacDocs> docs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            docs.stream()
+                .filter(d -> d.getDynaField() != null && d.getDynaField().getDynaDocs() != null
+                        && Boolean.TRUE.equals(d.getDynaField().getDynaDocs().getIsAAO())
+                        && d.getDocs() != null)
+                .findFirst()
+                .ifPresent(d -> response.setAlfrescoId(d.getDocs().getAlfresco_id()));
+
+            return response;
+        });
     }
 
 }

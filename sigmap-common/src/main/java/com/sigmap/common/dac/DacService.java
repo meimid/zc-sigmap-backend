@@ -9,6 +9,7 @@ import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.request.CreateDacFromAoRequest;
 import com.sigmap.common.dac.request.CreateDacRequest;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.entity.ProcessStatus;
@@ -80,5 +81,12 @@ public interface DacService {
      */
     DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
             throws DacNotFound;
+
+    /**
+     * Find all published DACs for the website.
+     * @param pageable Pagination information
+     * @return Page of DacWebsiteResponse
+     */
+    Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable);
 
 }

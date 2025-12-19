@@ -17,6 +17,8 @@ import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.config.RefTypes;
+import com.sigmap.common.dac.DacService;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
@@ -63,7 +65,9 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -86,9 +90,10 @@ public class WebMasterController {
     private final RefParamService refParamService;
     private final ActiviteService  activiteService;
     private final SocieteService societeService;
+    private final DacService dacService;
     @Value("${file.upload.ac-logo-path}")
     private String acLogoPath;
-    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
+    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService,DacService dacService) {
 
         this.acService = acService;
         this.webMasterService = webMasterService;
@@ -96,6 +101,7 @@ public class WebMasterController {
         this.refParamService = refParamService;
         this.activiteService = activiteService;
         this.societeService = societeService;
+        this.dacService = dacService;
     }
 
 
@@ -255,6 +261,13 @@ public class WebMasterController {
     @GetMapping("/stats/type-marche")
     public ResponseEntity<List<TypeMarcheStatProjection>> getTypeMarcheStats() {
         return ResponseEntity.ok(webMasterService.getTypeMarcheStats());
+    }
+
+    @GetMapping("/dac")
+    public ResponseEntity<Page<DacWebsiteResponse>> findPublishedDacsForWebsite(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<DacWebsiteResponse> response = dacService.findPublishedDacsForWebsite(pageable);
+        return ResponseEntity.ok(response);
     }
 
 }
