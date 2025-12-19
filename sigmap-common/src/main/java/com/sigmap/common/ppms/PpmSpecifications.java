@@ -264,4 +264,8 @@ public class PpmSpecifications {
         };
     }
 
+    public static Specification<Ppm> hasRealisations() {
+        return (root, query, cb) -> cb.isNotEmpty(root.get("realisations"));
+    }
+
 }

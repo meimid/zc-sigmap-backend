@@ -445,4 +445,11 @@ public class SocieteServiceImpl implements SocieteService {
 
     }
 
+    @Override
+    public Page<Societe> findAllValideNotBlackListed(Specification<Societe> specification,Pageable pageable) {
+        Specification<Societe> validateSociete = specification.and(SocieteSpecifications.status(SocieteStatus.VALIDEE))
+                .and(SocieteSpecifications.deleted(false)).and(Specification.not(SocieteSpecifications.isCurrentlyBlackListed()));
+        return repository.findAll(validateSociete,pageable);
+    }
+
 }

@@ -775,85 +775,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
                 }
 
-                // =========================== FINANCEMENTS (UPDATE EXISTING REALISATION) ===========================
-                if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
+                // =========================== FINANCEMENTS ===========================
+                processFinancementsForRealisationPaa(realisation, rReq.getFinancements());
 
-                    // 1) Soft-delete all existing financements
-                    List<Financement> allFins =
-                            (realisation.getFinancements() != null) ? realisation.getFinancements() : new ArrayList<>();
-                    for (Financement f : allFins) {
-                        if (!Boolean.TRUE.equals(f.getIsDeleted())) {
-                            f.setIsDeleted(true);
-                        }
-                    }
-
-                    // 2) Create new financements from request
-                    for (FinancementRequest fr : rReq.getFinancements()) {
-                        if (fr.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for Realisation {}", realisation.getId());
-                            continue;
-                        }
-
-                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-
-                        Financement fin = new Financement();
-                        FinancementId fid = new FinancementId(
-                                realisation.getId(),
-                                realisation.getVersion(),
-                                nextFinId
-                        );
-                        fin.setId(fid);
-                        fin.setRealisation(realisation);
-
-                        Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-
-                        fin.setMonnaie(monnaie);
-                        fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
-
-                        if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                            RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                            fin.setSourceFinancement(src);
-                        } else {
-                            fin.setSourceFinancement(null);
-                        }
-
-                        fin.setBudgetEstimer(fr.getBudgetEstimer());
-                        fin.setIsDeleted(false);
-
-                        allFins.add(fin);
-                    }
-
-                    realisation.setFinancements(allFins);
-                    financementRepository.saveAll(allFins);
-
-                    // 3) Recompute budget from non-deleted financements
-                    BigDecimal rb = allFins.stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .map(f -> {
-                                BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                        ? f.getMonnaie().getTaux()
-                                        : 0.0;
-                                return budget.multiply(BigDecimal.valueOf(taux));
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    realisation.setBudgetEstime(rb);
-
-                } else {
-                    // No financements array -> soft delete all
-                    if (realisation.getFinancements() != null) {
-                        realisation.getFinancements().forEach(f -> {
-                            if (!Boolean.TRUE.equals(f.getIsDeleted())) f.setIsDeleted(true);
-                        });
-                        financementRepository.saveAll(realisation.getFinancements());
-                    } else {
-                        realisation.setFinancements(new ArrayList<>());
-                    }
-                    realisation.setBudgetEstime(BigDecimal.ZERO);
-                }
-                // =========================== END FINANCEMENTS (UPDATE) ===========================
 
                 // ---- Seuil AFTER collections/budget are consistent
                 setSeuilApplicableForRealisation(realisation, requestAcId);
@@ -924,65 +848,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     savedReal.setLots(lots);
                 }
 
-                // =========================== FINANCEMENTS (CREATE NEW REALISATION) ===========================
-                if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
-                    List<Financement> fins = new ArrayList<>();
+                // =========================== FINANCEMENTS  ===========================
+                processFinancementsForRealisationPaa(savedReal, rReq.getFinancements());
 
-                    for (FinancementRequest fr : rReq.getFinancements()) {
-                        if (fr.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for new Realisation {}", savedReal.getId());
-                            continue;
-                        }
-
-                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-
-                        Financement fin = new Financement();
-                        FinancementId fid = new FinancementId(
-                                savedReal.getId(),
-                                savedReal.getVersion(),
-                                nextFinId
-                        );
-                        fin.setId(fid);
-                        fin.setRealisation(savedReal);
-
-                        Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-                        fin.setMonnaie(monnaie);
-                        fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
-
-                        if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                            RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                            fin.setSourceFinancement(src);
-                        } else {
-                            fin.setSourceFinancement(null);
-                        }
-
-                        fin.setBudgetEstimer(fr.getBudgetEstimer());
-                        fin.setIsDeleted(false);
-
-                        fins.add(fin);
-                    }
-
-                    savedReal.setFinancements(fins);
-                    financementRepository.saveAll(fins);
-
-                    BigDecimal rb = fins.stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .map(f -> {
-                                BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                        ? f.getMonnaie().getTaux()
-                                        : 0.0;
-                                return budget.multiply(BigDecimal.valueOf(taux));
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    savedReal.setBudgetEstime(rb);
-                } else {
-                    savedReal.setFinancements(new ArrayList<>());
-                    savedReal.setBudgetEstime(BigDecimal.ZERO);
-                }
-                // =========================== END FINANCEMENTS (CREATE) ===========================
 
                 // Files
                 if (rReq.getRealisationFiles() != null) {
@@ -1109,6 +977,175 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     log.info("Updated PAA ID: {}, budgetEstime: {}", paaId, budgetEstime);
     return copyForResponse;
 }
+
+    private void processFinancementsForRealisationPaa(Realisation realisation,
+                                                      List<FinancementRequest> financementRequests) {
+
+        List<Financement> existingFinancements =
+                financementRepository.findByRealisationIdAndVersion(realisation.getId(), realisation.getVersion());
+
+        if (existingFinancements == null) existingFinancements = new ArrayList<>();
+
+        Set<Integer> usedIds = existingFinancements.stream()
+                .map(Financement::getId)
+                .filter(Objects::nonNull)
+                .map(FinancementId::getFinancementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // On va reconstruire l’état final
+        List<Financement> result = new ArrayList<>();
+
+        if (financementRequests != null && !financementRequests.isEmpty()) {
+
+            Set<Integer> requestedIds = financementRequests.stream()
+                    .map(FinancementRequest::getFinancementId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            for (FinancementRequest fr : financementRequests) {
+
+                if (fr.getMonnaieId() == null) {
+                    log.warn("Skipping financement with null monnaieId for Realisation {}", realisation.getId());
+                    continue;
+                }
+
+                Integer financementId = fr.getFinancementId();
+
+                // ==========================
+                // CASE 1: UPDATE EXISTING
+                // ==========================
+                if (financementId != null && financementId > 0) {
+
+                    Financement existing = existingFinancements.stream()
+                            .filter(f -> f.getId() != null
+                                    && Objects.equals(f.getId().getFinancementId(), financementId))
+                            .findFirst()
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Financement with ID " + financementId +
+                                            " not found for Realisation ID: " + realisation.getId()
+                            ));
+
+                    Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Monnaie with ID " + fr.getMonnaieId() + " not found"));
+
+                    existing.setMonnaie(monnaie);
+                    existing.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                    existing.setBudgetEstimer(fr.getBudgetEstimer());
+
+                    if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
+                        RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                        existing.setSourceFinancement(src);
+                    } else {
+                        existing.setSourceFinancement(null);
+                    }
+
+                    existing.setIsDeleted(false);
+
+                    existing = financementRepository.save(existing);
+                    result.add(existing);
+                    usedIds.add(financementId);
+
+                } else {
+
+                    // ==========================
+                    // CASE 2: CREATE NEW
+                    // ==========================
+                    Integer newId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                    if (newId == null) newId = 1;
+
+                    int guard = 0;
+                    while (usedIds.contains(newId)) {
+                        newId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                        if (newId == null) newId = 1;
+                        if (++guard > 1000) {
+                            throw new IllegalStateException("Unable to generate unique financementId for Realisation " + realisation.getId());
+                        }
+                    }
+                    usedIds.add(newId);
+
+                    Financement fin = new Financement();
+
+                    FinancementId fid = new FinancementId(
+                            realisation.getId(),
+                            realisation.getVersion(),
+                            newId
+                    );
+
+                    fin.setId(fid);
+                    fin.setRealisation(realisation);
+
+                    Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Monnaie with ID " + fr.getMonnaieId() + " not found"));
+
+                    fin.setMonnaie(monnaie);
+                    fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                    fin.setBudgetEstimer(fr.getBudgetEstimer());
+
+                    if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
+                        RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                        fin.setSourceFinancement(src);
+                    } else {
+                        fin.setSourceFinancement(null);
+                    }
+
+                    fin.setIsDeleted(false);
+
+                    fin = financementRepository.save(fin);
+                    result.add(fin);
+                }
+            }
+
+            // ==========================
+            // SOFT DELETE MISSING
+            // ==========================
+            for (Financement ex : existingFinancements) {
+                Integer exId = (ex.getId() != null) ? ex.getId().getFinancementId() : null;
+
+                if (exId != null && !requestedIds.contains(exId) && !Boolean.TRUE.equals(ex.getIsDeleted())) {
+                    ex.setIsDeleted(true);
+                    result.add(ex);
+                }
+            }
+
+            financementRepository.saveAll(result);
+            realisation.setFinancements(result);
+
+            // Recompute budget
+            BigDecimal rb = result.stream()
+                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                    .map(f -> {
+                        BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                        Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                ? f.getMonnaie().getTaux()
+                                : 0.0;
+                        return budget.multiply(BigDecimal.valueOf(taux));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            realisation.setBudgetEstime(rb);
+
+        } else {
+            // Request vide => soft-delete tout
+            if (!existingFinancements.isEmpty()) {
+                for (Financement f : existingFinancements) {
+                    if (!Boolean.TRUE.equals(f.getIsDeleted())) {
+                        f.setIsDeleted(true);
+                    }
+                }
+                financementRepository.saveAll(existingFinancements);
+            }
+            realisation.setFinancements(existingFinancements);
+            realisation.setBudgetEstime(BigDecimal.ZERO);
+        }
+    }
+
 
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
