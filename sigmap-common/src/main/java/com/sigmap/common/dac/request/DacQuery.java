@@ -16,6 +16,7 @@ public class DacQuery {
     private Integer ppmVer;
     private Integer realisationId;
     private Integer realisationVer;
+    private Integer appelOffreId;
     private Integer typeMarcheId;
     private ProcessStatus status;
     private boolean deleted;
@@ -49,6 +50,10 @@ public class DacQuery {
 
         if (realisationId != null && realisationVer != null) {
             spec = spec.and(DacSpecifications.searchByRealisation(realisationId, realisationVer));
+        }
+
+        if (appelOffreId != null) {
+            spec = spec.and(DacSpecifications.searchByAppelOffre(appelOffreId));
         }
 
         return spec;

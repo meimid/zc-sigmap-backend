@@ -136,4 +136,16 @@ public class DacSpecifications {
             return acJoin.get("id").in(acIds);
         };
     }
+
+    /**
+     * Filter by AppelOffre ID
+     */
+    public static Specification<Dac> searchByAppelOffre(Integer appelOffreId) {
+        return (root, query, criteriaBuilder) -> {
+            if (appelOffreId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("appelOffre").get("id"), appelOffreId);
+        };
+    }
 }

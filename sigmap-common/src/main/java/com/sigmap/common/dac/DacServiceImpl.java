@@ -9,6 +9,7 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
@@ -1126,6 +1127,17 @@ public class DacServiceImpl implements DacService {
     }
 
     public Page<Dac> findAllLatest(Pageable pageable) {
+        return dacRepository.findLatestPerDac(pageable);
+    }
+
+    @Override
+    public Page<Dac> findAllLatestWithQuery(DacQuery query, Pageable pageable) {
+        // For now, only support appelOffreId filter
+        if (query.getAppelOffreId() != null) {
+            return dacRepository.findLatestDacsByAppelOffre(query.getAppelOffreId(), pageable);
+        }
+        
+        // If no appelOffreId, return all latest DACs
         return dacRepository.findLatestPerDac(pageable);
     }
 

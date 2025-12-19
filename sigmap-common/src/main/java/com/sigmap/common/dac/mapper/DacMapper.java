@@ -22,7 +22,7 @@ public interface DacMapper {
     @Mapping(target = "modePassation", source = "appelOffre.realisation.modePassation")
     @Mapping(target = "realisation", source = "appelOffre.realisation")
     @Mapping(target = "reference", source = "reference")
-
+    @Mapping(target = "aoId", source = "appelOffre.id")
     @Mapping(target = "dateLimiteSoumission", source = "dateLimiteSoumission")
     @Mapping(target = "dateLimiteRecptionDemande", source = "dateLimiteRecptionDemande")
     @Mapping(target = "payant", source = "payant")
