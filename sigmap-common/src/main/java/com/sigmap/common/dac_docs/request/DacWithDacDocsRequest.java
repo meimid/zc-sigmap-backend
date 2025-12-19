@@ -21,8 +21,6 @@ public class DacWithDacDocsRequest {
     private List<DacPrixRequestForDac> dacPrixRequests;
     private String responsableDacId;
     private String conditionsParticipation;
-    private String etapeDac;
-    private Boolean shortListing;
     private List<Integer> shortlistMembers;
     List<DacDocsRequest> dacDocsRequests;
 }
