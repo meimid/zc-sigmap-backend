@@ -1,6 +1,5 @@
 package com.sigmap.common.dac_doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacIdRequired;

@@ -1,7 +1,7 @@
 package com.sigmap.common.dac_dyna_form;
 
 import com.sigmap.common.dyna_form.DynaForm;
-import com.sigmap.common.entity.TypeDossier;
+import com.sigmap.common.type_dossier.TypeDossier;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,13 +19,17 @@ public class DacDynaFormSpecifications {
 
             Join<DacDynaForm, DynaForm> join = root.join("dynaForm", JoinType.LEFT);
 
+            Join<DynaForm, TypeDossier> typeDossierJoin =
+                    join.join("typeDossier", JoinType.LEFT);
             String likeSearch = "%" + search.trim().toLowerCase() + "%";
             return cb.or(
                     cb.like(cb.lower(root.get("dacId").as(String.class)), likeSearch),
                     cb.like(cb.lower(root.get("dacVer").as(String.class)), likeSearch),
                     cb.like(cb.lower(root.get("dynaFormId").as(String.class)), likeSearch),
                     cb.like(cb.lower(join.get("name").as(String.class)), likeSearch),
-                    cb.like(cb.lower(join.get("typeDossier").as(String.class)), likeSearch)
+                    cb.like(cb.lower(typeDossierJoin.get("code")), likeSearch),
+                    cb.like(cb.lower(typeDossierJoin.get("libelle")), likeSearch),
+                    cb.like(cb.lower(typeDossierJoin.get("description")), likeSearch)
             );
         };
     }
@@ -37,9 +41,19 @@ public class DacDynaFormSpecifications {
      *  - It is not soft-deleted.
      *  - It does not have a non-deleted record in dac_dyna_form for the DAC.
      */
-    public static Specification<DynaForm> unattachedToDac(Integer dacId, Integer dacVer, TypeDossier type) {
+    public static Specification<DynaForm> unattachedToDac(Integer dacId, Integer dacVer, Integer typeDossierId ) {
         return (root, query, cb) -> {
-            var typePredicate = cb.equal(root.get("typeDossier"), type);
+            if (typeDossierId == null ) {
+                return cb.conjunction();
+            }
+
+
+
+            var typePredicate = cb.equal(
+                    root.get("typeDossier").get("id"),
+                    typeDossierId
+            );
+
             var notDeleted = cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted")));
 
             var subquery = query.subquery(Long.class);
@@ -99,16 +113,31 @@ public class DacDynaFormSpecifications {
         };
     }
 
-    /**  Filter by TypeDossier (Administrative / Financière / Technique) */
-    public static Specification<DacDynaForm> byTypeDossier(TypeDossier typeDossier) {
+    /**  Filter by TypeDossier (ADM / TECH / FIN) */
+    public static Specification<DacDynaForm> byTypeDossierCode(String typeDossierCode) {
         return (root, query, cb) -> {
-            if (typeDossier == null) {
+            if (typeDossierCode == null) {
                 return cb.conjunction();
             }
 
             Join<DacDynaForm, DynaForm> join = root.join("dynaForm", JoinType.LEFT);
-            return cb.equal(join.get("typeDossier"), typeDossier);
-        };
+            return cb.equal(
+                    cb.upper(join.get("typeDossier").get("code")),
+                    typeDossierCode.trim().toUpperCase()
+            );        };
+    }
+
+    public static Specification<DacDynaForm> byTypeDossierId(String typeDossierId) {
+        return (root, query, cb) -> {
+            if (typeDossierId == null) {
+                return cb.conjunction();
+            }
+
+            Join<DacDynaForm, DynaForm> join = root.join("dynaForm", JoinType.LEFT);
+            return cb.equal(
+                    cb.upper(join.get("typeDossier").get("id")),
+                    typeDossierId.trim()
+            );        };
     }
 
     /**  Filter by display (true / false) */

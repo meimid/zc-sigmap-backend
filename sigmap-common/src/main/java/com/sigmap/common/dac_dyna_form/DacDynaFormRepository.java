@@ -1,7 +1,5 @@
 package com.sigmap.common.dac_dyna_form;
 
-import com.sigmap.common.dyna_form.DynaForm;
-import com.sigmap.common.entity.TypeDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,9 +23,9 @@ public interface DacDynaFormRepository
     @Query("""
            SELECT d FROM DacDynaForm d
            JOIN DynaForm f ON d.dynaFormId = f.id AND d.dynaFormVer = f.version
-           WHERE f.typeDossier = :type
+           WHERE f.typeDossier.id = :typeDossierId
            """)
-    Page<DacDynaForm> findByTypeDossier(TypeDossier type, Pageable pageable);
+    Page<DacDynaForm> findByTypeDossier(@Param("typeDossierId")Integer typeDossierId, Pageable pageable);
 
     @Query("""
     SELECT d FROM DacDynaForm d

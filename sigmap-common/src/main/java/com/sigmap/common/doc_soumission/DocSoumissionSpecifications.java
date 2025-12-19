@@ -1,7 +1,9 @@
 package com.sigmap.common.doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
+import com.sigmap.common.type_dossier.TypeDossier;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -10,9 +12,14 @@ public class DocSoumissionSpecifications {
     /** search. */
     public static Specification<DocSoumission> search(String search) {
         return (root, query, criteriaBuilder) -> {
+            Join<DocSoumission, TypeDossier> typeJoin =
+                    root.join("typeDossier", JoinType.LEFT);
             return criteriaBuilder.or(
-                    criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("typeDossier"), "%" + search + "%"));
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("nom")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("code")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("libelle")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("description")), "%" + search + "%")
+            );
         };
     }
 
@@ -31,17 +38,25 @@ public class DocSoumissionSpecifications {
     }
 
     /** typeDossier. */
+
+
     public static Specification<DocSoumission> typeDossier(String typeDossier) {
         return (root, query, criteriaBuilder) -> {
-            try {
-                TypeDossier dossierType = TypeDossier.valueOf(typeDossier.toUpperCase());
-                return criteriaBuilder.equal(root.get("typeDossier"), dossierType);
-            } catch (IllegalArgumentException e) {
-                // If the provided type doesn't match any enum constant, return false condition
-                return criteriaBuilder.disjunction();
+
+            if (typeDossier == null || typeDossier.isBlank()) {
+                return criteriaBuilder.conjunction();
             }
+
+            Join<DocSoumission, TypeDossier> join =
+                    root.join("typeDossier", JoinType.INNER);
+
+            return criteriaBuilder.equal(
+                    criteriaBuilder.upper(join.get("code")),
+                    typeDossier.toUpperCase()
+            );
         };
     }
+
     /** Documents linked to a given DAC */
     public static Specification<DocSoumission>notInDac (Integer dacId) {
         return (root, query, cb) -> {
@@ -71,6 +86,32 @@ public class DocSoumissionSpecifications {
             return root.get("id").in(subquery);
         };
     }
+    public static Specification<DocSoumission> hasTypeDossierId(Integer typeDossierId) {
+        return (root, query, criteriaBuilder) -> {
+            if (typeDossierId == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(
+                    root.get("typeDossier").get("id"),
+                    typeDossierId
+            );
+        };
+    }
+
+    public static Specification<DocSoumission> hasTypeDossierCode(String code) {
+        return (root, query, criteriaBuilder) -> {
+
+            if (code == null || code.isBlank()) {
+                return criteriaBuilder.conjunction();
+            }
+
+            return criteriaBuilder.equal(
+                    criteriaBuilder.upper(root.get("typeDossier").get("code")),
+                    code.toUpperCase()
+            );
+        };
+    }
+
 
 
 }

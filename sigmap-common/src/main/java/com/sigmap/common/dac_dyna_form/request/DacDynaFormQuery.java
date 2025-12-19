@@ -2,7 +2,6 @@ package com.sigmap.common.dac_dyna_form.request;
 
 import com.sigmap.common.dac_dyna_form.DacDynaForm;
 import com.sigmap.common.dac_dyna_form.DacDynaFormSpecifications;
-import com.sigmap.common.entity.TypeDossier;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.jpa.domain.Specification;
@@ -15,7 +14,7 @@ public class DacDynaFormQuery {
     private Integer dacId;
     private Integer dacVer;
     private Integer dynaFormId;
-    private TypeDossier typeDossier;
+    private String typeDossier;
     private Boolean display;
 
     /**
@@ -34,7 +33,7 @@ public class DacDynaFormQuery {
             spec = spec.and(DacDynaFormSpecifications.byDynaFormId(dynaFormId));
 
         if (typeDossier != null)
-            spec = spec.and(DacDynaFormSpecifications.byTypeDossier(typeDossier));
+            spec = spec.and(DacDynaFormSpecifications.byTypeDossierCode(typeDossier));
 
         if (display != null)
             spec = spec.and(DacDynaFormSpecifications.byDisplay(display));

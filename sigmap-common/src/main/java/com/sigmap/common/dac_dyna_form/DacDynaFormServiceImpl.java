@@ -12,7 +12,6 @@ import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
-import com.sigmap.common.entity.TypeDossier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -142,10 +141,10 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     @Override
     public List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                                    Integer dacVer,
-                                                                   TypeDossier type,
+                                                                   Integer typeDossierId,
                                                                    Pageable pageable) {
         List<DynaForm> unattachedForms = formRepo.findAll(
-                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type)
+                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, typeDossierId)
         );
 
         List<DynaFormResponse> responses = unattachedForms
@@ -195,8 +194,8 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
-    public Page<DacDynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable) {
-        Page<DacDynaForm> page = repo.findByTypeDossier(type, pageable);
+    public Page<DacDynaFormResponse> findByTypeDossier(Integer typeDossierId, Pageable pageable) {
+        Page<DacDynaForm> page = repo.findByTypeDossier(typeDossierId, pageable);
         List<DacDynaFormResponse> filtered = page.stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .map(mapper::toResponse)

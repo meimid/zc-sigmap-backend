@@ -1,6 +1,6 @@
 package com.sigmap.common.doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
+import com.sigmap.common.type_dossier.TypeDossier;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -14,7 +14,7 @@ public class DocSoumission {
     private Integer id;
     private String nom;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type_dossier")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "type_dossier_id", nullable = false)
     private TypeDossier typeDossier;
 }

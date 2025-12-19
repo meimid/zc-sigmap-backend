@@ -1,5 +1,6 @@
 package com.sigmap.common.dyna_form;
 
+import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.request.DynaFormRequest;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
@@ -10,22 +11,24 @@ import com.sigmap.common.dyna_form_fields.mappers.DynaFormFieldMapper;
 import com.sigmap.common.dyna_form_fields.request.DynaFormFieldRequest;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.entity.TypeDossier;
+import com.sigmap.common.type_dossier.TypeDossier;
+import com.sigmap.common.type_dossier.TypeDossierService;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DynaFormServiceImpl implements DynaFormService {
 
     private final DynaFormRepository formRepo;
@@ -35,6 +38,7 @@ public class DynaFormServiceImpl implements DynaFormService {
     private final DynaFormFieldMapper fieldMapper;
     private final SequenceGeneratorService seq;
     private final EntityManager em;
+    private final TypeDossierService typeDossierService;
 
     private static final String FORM_SEQ = "dyna_form_id_seq";
 
@@ -50,7 +54,11 @@ public class DynaFormServiceImpl implements DynaFormService {
         if (req.getFormType() != null) {
             f.setFormType(req.getFormType());
         }
-
+        if(req.getTypeDossierId() == null) {
+            throw new TypeDossierRequired("Type dossier id is required");
+        }
+        TypeDossier typeDossier=typeDossierService.findById(req.getTypeDossierId());
+        f.setTypeDossier(typeDossier);
         formRepo.save(f);
         fieldSvc.createNewFieldsForVersion(f.getId(), f.getVersion(), req.getFields(), f);
 
@@ -133,6 +141,9 @@ public class DynaFormServiceImpl implements DynaFormService {
         if (latestVer == null) {
             return create(request);
         }
+        if(request.getTypeDossierId() == null) {
+            throw new TypeDossierRequired("Type dossier id is required");
+        }
 
         DynaForm latest = formRepo.findActiveByIdAndVersion(id, latestVer)
                 .orElseThrow(() -> new IllegalStateException("Form not found: id=" + id + ", ver=" + latestVer));
@@ -156,6 +167,8 @@ public class DynaFormServiceImpl implements DynaFormService {
 
         boolean headerChanged = mapper.headerChanged(latest, request);
 
+        log.info(headerChanged ? "headerChanged" : "not headerChanged");
+
         boolean keptEdits = incoming.stream().anyMatch(rf -> {
             DynaFormField oldF = existingById.get(rf.getDynaFormFieldsId());
             if (oldF == null) return false;
@@ -172,6 +185,12 @@ public class DynaFormServiceImpl implements DynaFormService {
         });
 
         boolean fieldsChanged = keptEdits || !toAdd.isEmpty() || !toDropIds.isEmpty();
+
+        log.info("fieldsChanged: " + fieldsChanged);
+        log.info("keptEdits: " + keptEdits);
+        log.info("toDropIds: " + toDropIds);
+        log.info("toAdd: " + toAdd);
+
         if (!headerChanged && !fieldsChanged) {
             return mapper.toResponse(latest);
         }
@@ -182,6 +201,8 @@ public class DynaFormServiceImpl implements DynaFormService {
         next.setVersion(newVer);
         next.setStatus(request.getStatus() != null ? request.getStatus() : latest.getStatus());
         next.setFormType(request.getFormType() != null ? request.getFormType() : latest.getFormType());
+        TypeDossier typeDossier=typeDossierService.findById(request.getTypeDossierId());
+        next.setTypeDossier(typeDossier);
         formRepo.save(next);
 
         int fallbackOrder = 0;
@@ -255,8 +276,8 @@ public class DynaFormServiceImpl implements DynaFormService {
 
     /** -------------------- FIND BY TYPE -------------------- **/
     @Override
-    public Page<DynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable) {
-        Page<DynaForm> page = formRepo.findByTypeDossier(type, pageable);
+    public Page<DynaFormResponse> findByTypeDossier(Integer typeDossierId, Pageable pageable) {
+        Page<DynaForm> page = formRepo.findByTypeDossier(typeDossierId, pageable);
         return page.map(mapper::toResponse);
     }
 }

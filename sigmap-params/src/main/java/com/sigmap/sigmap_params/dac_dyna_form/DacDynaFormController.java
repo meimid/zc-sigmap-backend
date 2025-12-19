@@ -5,7 +5,6 @@ import com.sigmap.common.dac_dyna_form.DacDynaFormService;
 import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
-import com.sigmap.common.entity.TypeDossier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -65,10 +64,10 @@ public class DacDynaFormController {
     @PostMapping("/unattached")
     public ResponseEntity<List<DynaFormResponse>> getUnattachedForms(
             @RequestBody DacDynaFormRequest request,
-            @RequestParam(required = false) TypeDossier type,
+            @RequestParam(required = false) Integer typeDossierId,
             Pageable pageable) {
         List<DynaFormResponse> page =
-                service.findUnattachedFormsByTypeDossier(request.getDacId(), request.getDacVer(), type, pageable);
+                service.findUnattachedFormsByTypeDossier(request.getDacId(), request.getDacVer(), typeDossierId, pageable);
         return ResponseEntity.ok(page);
     }
 
@@ -97,9 +96,9 @@ public class DacDynaFormController {
     // ------------------------------------------------------------
     @GetMapping("/filter-by-type")
     public ResponseEntity<Page<DacDynaFormResponse>> filterByTypeDossier(
-            @RequestParam TypeDossier type,
+            @RequestParam Integer typeDossierId,
             Pageable pageable) {
-        Page<DacDynaFormResponse> page = service.findByTypeDossier(type, pageable);
+        Page<DacDynaFormResponse> page = service.findByTypeDossier(typeDossierId, pageable);
         return ResponseEntity.ok(page);
     }
 
