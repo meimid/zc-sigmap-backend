@@ -10,6 +10,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.model_dac.ModelDacService;
 import com.sigmap.common.model_dac.exceptions.DacModelShouldExiste;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
@@ -106,19 +107,19 @@ public class DacFlowableController {
      * @throws IOException   if an error occurs during processing
      * @throws ComNotFound   if a commission is not found
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group")
+    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group/{idReu}")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
-            @RequestParam("requestsJson") String requestsJson
-//            @PathVariable Integer idReu
+            @RequestParam("requestsJson") String requestsJson,
+            @PathVariable Integer idReu
             )
-            throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+            throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound, MonnaieNotFound {
 
-        //Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
-//        if (!present) {
-//            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
-//        }
-//
-//        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
+        Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
+        if (!present) {
+            throw new ParticipantPresenceConflict("Participant not present for meeting ID: " + idReu);
+        }
+
+        log.info("Validating group of DAC tasks with requests JSON for meeting {}", idReu);
 
         List<GroupValidationRequest> requests;
         try {
@@ -155,7 +156,7 @@ public class DacFlowableController {
             MissingAcIdException,
             MissingComIdException,
             UserNotAssociatedWithAcException,
-            UserNotAssociatedWithComException {
+            UserNotAssociatedWithComException, MonnaieNotFound {
         log.info("Validating DAC taskId={} with request={}", taskId, request);
         TaskDTO response = dacFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
@@ -209,7 +210,7 @@ public class DacFlowableController {
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
             @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile
-    ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound {
+    ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound, MonnaieNotFound {
 
         if (modelDacFile == null || modelDacFile.isEmpty()) {
             throw new DacModelShouldExiste("Le fichier Model DAC est requis.");

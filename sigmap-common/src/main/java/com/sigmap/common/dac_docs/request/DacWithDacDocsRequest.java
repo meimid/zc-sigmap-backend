@@ -7,6 +7,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
 import java.util.Calendar;
+import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import java.util.List;
 @Data
 @NoArgsConstructor
@@ -17,7 +18,7 @@ public class DacWithDacDocsRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private Calendar dateLimiteRecptionDemande;
     private Boolean payant;
-    private BigDecimal montantPayant;
+    private List<DacPrixRequestForDac> dacPrixRequests;
     private String responsableDacId;
     private String conditionsParticipation;
     private String etapeDac;

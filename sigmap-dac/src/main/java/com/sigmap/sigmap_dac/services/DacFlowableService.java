@@ -32,6 +32,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
@@ -679,7 +680,7 @@ public class DacFlowableService {
             throws DacNotFound, DocNotFound, AcNotFound,
             MissingComIdException, MissingAcIdException,
             UserNotAssociatedWithAcException, UserNotAssociatedWithComException,
-            ComNotFound, IOException {
+            ComNotFound, IOException, MonnaieNotFound {
 
         List<TaskDTO> responses = new ArrayList<>();
 
@@ -705,7 +706,7 @@ public class DacFlowableService {
             MissingAcIdException, MissingComIdException,
             UserNotAssociatedWithAcException,
             UserNotAssociatedWithComException,
-            ComNotFound {
+            ComNotFound, MonnaieNotFound {
 
         log.info("[FLOW] ==== Enter validateTask() for taskId={} ====", taskId);
         log.debug("[FLOW] Incoming ValidationRequest: {}", request);

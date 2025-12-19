@@ -341,7 +341,7 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     @Override
     @Transactional
-    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) {
+    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) throws MonnaieNotFound {
         if (request == null || request.getDacDocsRequests() == null) {
             return new ArrayList<>();
         }
@@ -469,28 +469,36 @@ public class DacDocsServiceImpl implements DacDocsService{
         targetDac = dacRepository.save(targetDac);
 
         if (Boolean.TRUE.equals(targetDac.isPayant())) {
-            if (request.getMontantPayant() != null) {
-                Integer monnaieId = 1;
-                Optional<DacPrix> existingPrix = dacPrixRepository.findIncludeDeleted(targetDac.getDacId(), targetDac.getDacVer(), monnaieId);
-                DacPrix dacPrix;
-                if (existingPrix.isPresent()) {
-                    dacPrix = existingPrix.get();
-                    dacPrix.setPrix(request.getMontantPayant());
-                    if (Boolean.TRUE.equals(dacPrix.getIsDeleted())) {
-                        dacPrix.setIsDeleted(false);
-                        dacPrix.setDeletedAt(null);
-                        dacPrix.setDeletedBy(null);
-                    }
-                } else {
-                    dacPrix = new DacPrix();
-                    DacPrixId pid = new DacPrixId();
-                    pid.setDac(targetDac);
-                    pid.setMonnaie(monnaieRepository.findById(monnaieId).orElseThrow(() -> new RuntimeException("Monnaie 1 not found"))); 
-                    dacPrix.setId(pid);
-                    dacPrix.setPrix(request.getMontantPayant());
-                    dacPrix.setIsDeleted(false);
+            if (request.getDacPrixRequests() != null && !request.getDacPrixRequests().isEmpty()) {
+
+                List<DacPrixRequestForDac> prixRequests = request.getDacPrixRequests();
+                
+                 // 1-1Fetch existing DacPrix in DB
+                List<DacPrix> existingPrixList = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+
+                //1-2 Determine which Monnaies are requested
+                Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                        .map(DacPrixRequestForDac::getMonnaieId)
+                        .collect(Collectors.toSet());
+
+                // 1-3 Delete DacPrix not present in request but present in DB
+                List<DacPrix> toDelete = existingPrixList.stream()
+                        .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+                 if (!toDelete.isEmpty() && targetDac.getStatus() != ProcessStatus.BROUILLON) {
+                    dacPrixRepository.softDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
                 }
-                dacPrixRepository.save(dacPrix);
+
+                if (!toDelete.isEmpty() && targetDac.getStatus() == ProcessStatus.BROUILLON) {
+                    dacPrixService.defenitiveDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                for (DacPrixRequestForDac prixRequest : prixRequests) {
+                    savePrixDac(prixRequest,targetDac.getDacId(),targetDac.getDacVer());
+                    log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),targetDac.getDacId(),targetDac.getDacVer());
+                }
             }
         } else {
              List<DacPrix> existing = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
@@ -652,10 +660,19 @@ public class DacDocsServiceImpl implements DacDocsService{
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {
-            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
-                errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
-                errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+            if (request.getDacPrixRequests() == null || request.getDacPrixRequests().isEmpty()) {
+                errorsFR.append("Le prix du dac est obligatoire");
+                errorsENG.append("The dac price is required");
             }
+            if(request.getDacPrixRequests() != null){
+                for (DacPrixRequestForDac req : request.getDacPrixRequests()){
+                    if (req.getPrix() == null || req.getPrix().compareTo(BigDecimal.ZERO) <= 0) {
+                        errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
+                        errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+                    }
+                }
+            }
+
         }
 
         if (Boolean.TRUE.equals(request.getShortListing())) {
@@ -1774,10 +1791,31 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getShortListing() != null && !Objects.equals(dac.isShortListing(), request.getShortListing())) return true;
 
         // 2. Check Payment Amount (only if payant is true and amount provided)
-        if (Boolean.TRUE.equals(request.getPayant()) && request.getMontantPayant() != null) {
-            Optional<DacPrix> prix = dacPrixRepository.findIncludeDeleted(dac.getDacId(), dac.getDacVer(), 1);
-            if (prix.isEmpty()) return true; // changed from none to some
-            if (prix.get().getPrix().compareTo(request.getMontantPayant()) != 0) return true;
+        if (Boolean.TRUE.equals(request.getPayant()) && request.getDacPrixRequests() != null) {
+            List<DacPrix> existingPrixList = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+            
+            // Map existing prices by Monnaie ID
+            Map<Integer, BigDecimal> existingMap = existingPrixList.stream()
+                     .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted())) // Compare against active
+                     .collect(Collectors.toMap(p -> p.getId().getMonnaie().getId(), DacPrix::getPrix));
+            
+            // Map requested prices by Monnaie ID
+            Map<Integer, BigDecimal> requestedMap = request.getDacPrixRequests().stream()
+                    .collect(Collectors.toMap(DacPrixRequestForDac::getMonnaieId, DacPrixRequestForDac::getPrix));
+            
+            // Compare key sets (Monnaie IDs)
+            if (!existingMap.keySet().equals(requestedMap.keySet())) {
+                 return true;
+            }
+            
+            // Compare values (Prices)
+            for (Integer monnaieId : requestedMap.keySet()) {
+                BigDecimal reqPrice = requestedMap.get(monnaieId);
+                BigDecimal existPrice = existingMap.get(monnaieId);
+                if (reqPrice.compareTo(existPrice) != 0) { // check equality of values
+                    return true;
+                }
+            }
         }
 
         // 3. Check Shortlist (only if shortlisting is true and list provided)
