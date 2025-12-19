@@ -6,6 +6,7 @@ import com.sigmap.common.ac.response.AcWebsiteResponse;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac.response.DacResponseReunion;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

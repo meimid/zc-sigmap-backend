@@ -38,7 +38,6 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
             .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
             .toList();
 
-    System.out.println("Authorities " + authorities);
     return authorities;
   }
 
@@ -54,7 +53,6 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
       return List.of();
     }
 
-    System.out.println("Realm access" + realmAccess);
 
     return (List<String>) realmAccess.get("roles");
   }
@@ -69,7 +67,6 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
     Object claim = jwt.getClaim("resource_access");
     if (!(claim instanceof Map)) return List.of();
     Map<String, Object> resourceAccess = (Map<String, Object>) claim;
-    System.out.println("Resource access >>" + resourceAccess);
 
     Set<String> roles = new LinkedHashSet<>();
     for (String clientId : clientIds) {

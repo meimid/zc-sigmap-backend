@@ -2110,57 +2110,62 @@ public class DacServiceImpl implements DacService {
         return response;
     }
 
-    @Override
     @Transactional(readOnly = true)
     public Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable) {
-        // Use the custom repository query that handles filtering, latest version selection, and sorting
         Page<Dac> dacPage = dacRepository.findPublishedDacsForWebsite(pageable);
+        return dacPage.map(this::mapToWebsiteResponse);
+    }
 
-        return dacPage.map(dac -> {
-            DacWebsiteResponse response = new DacWebsiteResponse();
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable) {
+        Page<Dac> dacs = dacRepository.findPublishedDacsForUser(userId, pageable);
+        return dacs.map(this::mapToWebsiteResponse);
+    }
 
-            // 1. Days remaining
-            if (dac.getDateLimiteSoumission() != null) {
-                ZonedDateTime deadline = dac.getDateLimiteSoumission().toInstant()
-                        .atZone(ZoneId.systemDefault());
-                ZonedDateTime now = ZonedDateTime.now();
-                long daysRemainingInclusive = ChronoUnit.DAYS.between(now.toLocalDate(), deadline.toLocalDate()) ;
-                long daysRemaining = Math.max(0, daysRemainingInclusive);
+    private DacWebsiteResponse mapToWebsiteResponse(Dac dac) {
+        DacWebsiteResponse response = new DacWebsiteResponse();
 
-                response.setNbrJoursRestants(daysRemaining);
-            }
+        // 1. Days remaining
+        if (dac.getDateLimiteSoumission() != null) {
+            ZonedDateTime deadline = dac.getDateLimiteSoumission().toInstant()
+                    .atZone(ZoneId.systemDefault());
+            ZonedDateTime now = ZonedDateTime.now();
+            long daysRemainingInclusive = ChronoUnit.DAYS.between(now.toLocalDate(), deadline.toLocalDate());
+            long daysRemaining = Math.max(0, daysRemainingInclusive);
+            response.setNbrJoursRestants(daysRemaining);
+        }
 
-            // 2. ModePassation libelle
-            if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
-                    && dac.getAppelOffre().getRealisation().getModePassation() != null) {
-                response.setModePassation(dac.getAppelOffre().getRealisation().getModePassation().getLibelle());
-            }
+        // 2. ModePassation libelle
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getModePassation() != null) {
+            response.setModePassation(dac.getAppelOffre().getRealisation().getModePassation().getLibelle());
+        }
 
-            // 3. Nom of AppelOffre
-            if (dac.getAppelOffre() != null) {
-                response.setNomAppelOffre(dac.getAppelOffre().getNom());
-            }
+        // 3. Nom of AppelOffre
+        if (dac.getAppelOffre() != null) {
+            response.setNomAppelOffre(dac.getAppelOffre().getNom());
+        }
 
-            // 4. TypeMarche description
-            if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
-                    && dac.getAppelOffre().getRealisation().getTypeMarcher() != null) {
-                response.setDescriptionTypeMarche(dac.getAppelOffre().getRealisation().getTypeMarcher().getDescription());
-            }
+        // 4. TypeMarche description
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getTypeMarcher() != null) {
+            response.setDescriptionTypeMarche(dac.getAppelOffre().getRealisation().getTypeMarcher().getDescription());
+        }
 
-            // 5. DateLimiteSoumission
-            response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+        // 5. DateLimiteSoumission
+        response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
-            // 6. Alfresco ID of isAAO=true doc
-            List<DacDocs> docs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
-            docs.stream()
+        // 6. Alfresco ID of isAAO=true doc
+        List<DacDocs> docs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+        docs.stream()
                 .filter(d -> d.getDynaField() != null && d.getDynaField().getDynaDocs() != null
                         && Boolean.TRUE.equals(d.getDynaField().getDynaDocs().getIsAAO())
                         && d.getDocs() != null)
                 .findFirst()
                 .ifPresent(d -> response.setAlfrescoId(d.getDocs().getAlfresco_id()));
 
-            return response;
-        });
+        return response;
     }
 
 }

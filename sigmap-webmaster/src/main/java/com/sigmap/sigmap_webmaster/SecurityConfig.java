@@ -69,6 +69,7 @@ public class SecurityConfig {
                         "/api/soumissionnaire",
                         "/web/api/**")
                 .permitAll()
+                .requestMatchers("/api/espace-societe/**").authenticated()
                 .anyRequest()
                 .permitAll())
         .sessionManagement(

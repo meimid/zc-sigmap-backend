@@ -1,5 +1,6 @@
 package com.sigmap.common.dac;
 
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.dac_docs.DacDocs;
 import java.util.List;
 import java.util.Optional;
@@ -109,5 +110,31 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
          "ORDER BY d.updatedAt DESC")
   Page<Dac> findPublishedDacsForWebsite(Pageable pageable);
+
+  /**
+   * Find published DACs for a specific user based on their associated societies.
+   * Returns only DACs where shortListing=true or etapeDac='2', and only the latest version.
+   * 
+   * @param userId The authenticated user ID
+   * @param pageable Pagination information
+   * @return Page of published DACs for the user
+   */
+  @Query("""
+      SELECT d FROM Dac d
+      WHERE d.status = 'PUBLIE'
+      AND d.isDeleted = false
+      AND (d.shortListing = true OR d.etapeDac = '2')
+      AND d.dacVer = (
+          SELECT MAX(sd.id.dac.dacVer)
+          FROM SocieteDac sd
+          WHERE sd.id.dac.dacId = d.dacId
+          AND sd.id.societe.id IN (
+              SELECT us.societeId FROM UserSociete us 
+              WHERE us.userId = :userId AND us.isDeleted = false
+          )
+      )
+      ORDER BY d.updatedAt DESC
+      """)
+  Page<Dac> findPublishedDacsForUser(@Param("userId") String userId, Pageable pageable);
 
 }

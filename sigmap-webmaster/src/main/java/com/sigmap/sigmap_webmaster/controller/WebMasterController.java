@@ -9,10 +9,8 @@ import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.activite.mapper.ActiviteMapper;
-import com.sigmap.common.activite.response.ActiviteResponseDto;
 import com.sigmap.common.activite.response.ActiviteResponseDtoSoft;
 import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
@@ -24,36 +22,26 @@ import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
-import com.sigmap.common.model_agpm.ModelAgpmRepository;
-import com.sigmap.common.model_paa.ModelPaaRepository;
-import com.sigmap.common.model_ppm.ModelPpmRepository;
 import com.sigmap.common.paas.Paa;
-import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.response.PaaDetailsWebsite;
 import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
-import com.sigmap.common.realisations.Realisation;
-import com.sigmap.common.realisations.response.RealisationPaaWebSite;
-import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
-import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponseDtoSoft;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
-import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.sigmap_webmaster.dto.TypeMarcheStatProjection;
@@ -265,7 +253,7 @@ public class WebMasterController {
 
     @GetMapping("/dac")
     public ResponseEntity<Page<DacWebsiteResponse>> findPublishedDacsForWebsite(
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<DacWebsiteResponse> response = dacService.findPublishedDacsForWebsite(pageable);
         return ResponseEntity.ok(response);
     }
