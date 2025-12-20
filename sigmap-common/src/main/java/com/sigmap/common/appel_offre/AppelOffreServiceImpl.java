@@ -3,8 +3,11 @@ package com.sigmap.common.appel_offre;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
 import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
+import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
 import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
+import com.sigmap.common.appel_offre.response.AppelOffreResponseById;
+import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.Ppm;
@@ -30,6 +33,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static com.sigmap.common.config.ModePassationEtape.DEUX_ETAPES;
+import static com.sigmap.common.config.ModePassationEtape.ETAPE_UNIQUE;
+
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -40,6 +46,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final RealisationRepository realisationRepository;
     private final UserAcRepository userAcRepository;
     private final AcService acService;
+    private final DacRepository dacRepository;
 
     private static int lastYear = java.time.Year.now().getValue();
     private static int counter = 0;
@@ -63,16 +70,22 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     }
 
     @Override
-    public AppelOffre findById(Integer id) {
+    public AppelOffreResponseById findById(Integer id) {
+
         log.debug("Fetching AppelOffre with Id: {} ", id);
         if (id == null){
             throw new IllegalArgumentException("you must have Id");
         }
 
-        AppelOffre appelOffre = appelOffreRepository.findById(id)
+        AppelOffre appelOffre = appelOffreRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new AppelOffreNotFound(id));
 
-        return appelOffre;
+        // Map the AppelOffre to AppelOffreResponseById
+        AppelOffreResponseById response = AppelOffreMapper.INSTANCE.mapFindById(appelOffre);
+
+        response.setCouldCreateDac(couldCreateDac (appelOffre, id));
+
+        return response;
     }
 
     @Override
@@ -181,5 +194,29 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         }
 
         return currentYear + "/" + counter;
+    }
+
+    private Boolean couldCreateDac (AppelOffre appelOffre, Integer id){
+
+        boolean create;
+        if (appelOffre == null){
+            throw new RuntimeException("apple offre could not be null");
+        }
+
+        int nbrDac = dacRepository.getDacCreatedNumberForAppelOffre(id);
+
+        if ( appelOffre.getRealisation().getModePassation().getEtapes().equals(ETAPE_UNIQUE) && nbrDac < 1){
+            create = true;
+        }
+        else if (appelOffre.getRealisation().getModePassation().getEtapes().equals(ETAPE_UNIQUE) && nbrDac >= 1){
+            create = false;
+        }
+        else if (appelOffre.getRealisation().getModePassation().getEtapes().equals(DEUX_ETAPES) && nbrDac < 2){
+            create = true;
+        }
+        else create =false;
+
+        return create;
+
     }
 }
