@@ -17,17 +17,18 @@ public interface DacMapper {
 
     DacMapper INSTANCE = Mappers.getMapper(DacMapper.class);
 
-    @Mapping(target = "ppm", source = "ppm")
-    @Mapping(target = "typeMarche", source = "typeMarche")
-    @Mapping(target = "modePassation", source = "modePassation")
-    @Mapping(target = "realisation", source = "realisation")
+    @Mapping(target = "ppm", source = "appelOffre.ppm")
+    @Mapping(target = "typeMarche", source = "appelOffre.realisation.typeMarcher")
+    @Mapping(target = "modePassation", source = "appelOffre.realisation.modePassation")
+    @Mapping(target = "realisation", source = "appelOffre.realisation")
     @Mapping(target = "reference", source = "reference")
-
+    @Mapping(target = "aoId", source = "appelOffre.id")
     @Mapping(target = "dateLimiteSoumission", source = "dateLimiteSoumission")
     @Mapping(target = "dateLimiteRecptionDemande", source = "dateLimiteRecptionDemande")
     @Mapping(target = "payant", source = "payant")
     @Mapping(target = "dynaDocsModel", source = "dynaDocsModel")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
+    @Mapping(target = "etapeDac", source = "etapeDac")
     @Mapping(target = "processInstanceId", source = "processInstanceId")
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -40,21 +41,11 @@ public interface DacMapper {
 
 
 
-    @Mapping(target = "ac", source = "ppm.ac")
+    @Mapping(target = "ac", source = "appelOffre.ppm.ac")
     @Mapping(target = "reference", source = "reference")
-    @Mapping(target = "ppmId", source = "ppm.id")
+    @Mapping(target = "ppmId", source = "appelOffre.ppm.id")
 
     DacResponseReunion mapToDacResponseReunion(Dac source);
-
-    @AfterMapping
-    default void debugMapping(@MappingTarget DacResponseReunion target, Dac source) {
-        System.out.println("=== DEBUG MAPPING ===");
-        System.out.println("Source Dac ID: " + (source != null ? source.getDacId() : "null"));
-        System.out.println("Source PPM: " + (source != null ? source.getPpm() : "null"));
-        System.out.println("Source AC: " + (source != null && source.getPpm() != null ? source.getPpm().getAc() : "null"));
-        System.out.println("Target AC: " + (target != null ? target.getAc() : "null"));
-        System.out.println("=====================");
-    }
 }
 
 

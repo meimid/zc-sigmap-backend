@@ -1,0 +1,42 @@
+-- liquibase formatted sql
+
+-- changeset sigmap:1749671959098-1
+ALTER TABLE dac ADD COLUMN IF NOT EXISTS responsable_dac_id VARCHAR(255) NULL;
+
+ALTER TABLE dac ADD COLUMN IF NOT EXISTS conditions_participation LONGTEXT NULL;
+
+ALTER TABLE dac ADD COLUMN IF NOT EXISTS etape_dac VARCHAR(50) NULL;
+
+ALTER TABLE dac ADD COLUMN IF NOT EXISTS appel_offre_id INT NULL;
+
+-- changeset sigmap:1749671959098-2
+ALTER TABLE dac ADD CONSTRAINT fk_dac_appel_offre 
+    FOREIGN KEY (appel_offre_id) 
+    REFERENCES appel_offre(appel_offre_id)
+    ON DELETE SET NULL
+    ON UPDATE NO ACTION;
+
+-- changeset sigmap:1749671959098-3
+CREATE INDEX IF NOT EXISTS idx_dac_appel_offre_id ON dac(appel_offre_id);
+CREATE INDEX IF NOT EXISTS idx_dac_responsable_id ON dac(responsable_dac_id);
+
+-- changeset sigmap:1749671959098-4
+ALTER TABLE dac DROP FOREIGN KEY IF EXISTS FK_DAC_PPM;
+ALTER TABLE dac DROP FOREIGN KEY IF EXISTS FK_DAC_REF_PARAM;
+ALTER TABLE dac DROP FOREIGN KEY IF EXISTS FK_DAC_REALISATION;
+ALTER TABLE dac DROP FOREIGN KEY IF EXISTS FK_DAC_MODE_PASSATION
+-- changeset sigmap:1749671959098-5
+DROP INDEX IF EXISTS FK_DAC_PPM ON dac;
+DROP INDEX IF EXISTS FK_DAC_REF_PARAM ON dac;
+
+-- changeset sigmap:1749671959098-6
+ALTER TABLE dac DROP COLUMN IF EXISTS ppm_id;
+ALTER TABLE dac DROP COLUMN IF EXISTS ppm_ver;
+ALTER TABLE dac DROP COLUMN IF EXISTS category_id;
+ALTER TABLE dac DROP COLUMN IF EXISTS mode_passation_id;
+ALTER TABLE dac DROP COLUMN IF EXISTS realisation_id;
+ALTER TABLE dac DROP COLUMN IF EXISTS realisation_ver;
+ALTER TABLE dac DROP COLUMN IF EXISTS parent_dac_id;
+
+ALTER TABLE societe_dac MODIFY justif_paiement_id INT NULL;
+ALTER TABLE societe_dac MODIFY methode_paiement ENUM('EN_LIGNE', 'MANUEL', 'NON_ATTRIBUE') NOT NULL;

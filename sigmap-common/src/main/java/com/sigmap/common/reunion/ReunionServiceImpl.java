@@ -893,9 +893,9 @@ public class ReunionServiceImpl implements ReunionService{
                     List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
                             .filter(rd -> rd.getDac() != null)
                             .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
-                            .filter(rd -> rd.getDac().getPpm() != null)
-                            .filter(rd -> rd.getDac().getPpm().getAc() != null)
-                            .map(rd -> rd.getDac().getPpm())
+                            .filter(rd -> rd.getDac().getAppelOffre().getPpm() != null)
+                            .filter(rd -> rd.getDac().getAppelOffre().getPpm().getAc() != null)
+                            .map(rd -> rd.getDac().getAppelOffre().getPpm())
                             .toList();
 
                     // 2) PPMs coming from ReunionPpm

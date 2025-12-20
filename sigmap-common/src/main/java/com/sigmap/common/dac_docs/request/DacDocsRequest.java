@@ -2,12 +2,16 @@ package com.sigmap.common.dac_docs.request;
 
 
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DacDocsRequest {
     private Integer dacId;
     private Integer dynaFieldsId;

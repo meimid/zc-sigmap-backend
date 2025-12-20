@@ -77,16 +77,23 @@ public interface DacDocsMapper {
 
     Set<DacDocsDetails> detailsToSet(List<DacDocsDetails> source);
 
-    // costum responce
+    // custom response
     @Mapping(target = "dacId", source = "dacId")
     @Mapping(target = "dacVer", source = "dacVer")
+    @Mapping(target = "reference", source = "reference")
     @Mapping(target = "status", source = "status")
-    @Mapping(target = "ppm", source = "ppm")
-    @Mapping(target = "ppm.acId", source = "ppm.ac.id")
-    @Mapping(target = "typeMarche", source = "typeMarche")
-    @Mapping(target = "modePassation", source = "modePassation")
-    @Mapping(target = "realisation", source = "realisation")
+    @Mapping(target = "ppm", source = "appelOffre.ppm")
+    @Mapping(target = "ppm.version", source = "appelOffre.ppm.version")
+    @Mapping(target = "ppm.acId", source = "appelOffre.ppm.ac.id")
+    @Mapping(target = "ppm.nom", source = "appelOffre.ppm.ref")
+    @Mapping(target = "ppm.etapeProcess", source = "appelOffre.ppm.etapeProcess")
+    @Mapping(target = "typeMarche", source = "appelOffre.realisation.typeMarcher")
+    @Mapping(target = "modePassation", source = "appelOffre.realisation.modePassation")
+    @Mapping(target = "realisation", source = "appelOffre.realisation")
     @Mapping(target = "etapeProcess", source = "etapeProcess")
+    @Mapping(target = "etapeDac", source = "etapeDac")
+    @Mapping(target = "conditionsParticipation", source = "conditionsParticipation")
+    @Mapping(target = "responsableDacId", source = "responsableDacId")
     DacResponseDTO toDacResponse(Dac dac);
 
     @Mapping(target = "id", source = "dynaField.dynaDocs.id")

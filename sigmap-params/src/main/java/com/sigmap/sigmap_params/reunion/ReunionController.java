@@ -331,10 +331,10 @@ public class ReunionController {
                         dacResponse.setDacId(dac.getDacId());
                         dacResponse.setDacVer(dac.getDacVer());
                         dacResponse.setStatus(dac.getStatus());
-                        dacResponse.setPpmId(dac.getPpm().getId());
-                        dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getTypeMarche()));
-                        if (dac.getPpm() != null) {
-                            dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getPpm().getAc()));
+                        dacResponse.setPpmId(dac.getAppelOffre().getPpm().getId());
+                        dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getAppelOffre().getRealisation().getTypeMarcher()));
+                        if (dac.getAppelOffre().getPpm() != null) {
+                            dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getAppelOffre().getPpm().getAc()));
                         }
                         if(dac.getReference() != null) {
                             dacResponse.setReference(dac.getReference());

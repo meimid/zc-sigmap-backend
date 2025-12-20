@@ -1,4 +1,4 @@
-package com.sigmap.common.dac.exception;
+package com.sigmap.common.dac.exeption;
 
 import lombok.Getter;
 

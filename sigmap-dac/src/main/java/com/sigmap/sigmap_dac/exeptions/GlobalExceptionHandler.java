@@ -1,10 +1,12 @@
 package com.sigmap.sigmap_dac.exeptions;
 
-import com.sigmap.common.dac.exception.NoActiveAAOException;
+import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.globalExceptions.BadRequest;
+import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
@@ -124,6 +126,13 @@ public class GlobalExceptionHandler {
     ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidDacRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDacRequestException(InvalidDacRequestException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(MaxSizeFileExeption.class)
