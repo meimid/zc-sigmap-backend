@@ -15,7 +15,7 @@ import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.config.RefTypes;
-import com.sigmap.common.dac.DacService;
+import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
@@ -78,10 +78,9 @@ public class WebMasterController {
     private final RefParamService refParamService;
     private final ActiviteService  activiteService;
     private final SocieteService societeService;
-    private final DacService dacService;
     @Value("${file.upload.ac-logo-path}")
     private String acLogoPath;
-    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService,DacService dacService) {
+    public WebMasterController( AcService acService, WebMasterService webMasterService, DocsService docsService, RefParamService refParamService, ActiviteService activiteService, SocieteService societeService) {
 
         this.acService = acService;
         this.webMasterService = webMasterService;
@@ -89,7 +88,6 @@ public class WebMasterController {
         this.refParamService = refParamService;
         this.activiteService = activiteService;
         this.societeService = societeService;
-        this.dacService = dacService;
     }
 
 
@@ -189,6 +187,23 @@ public class WebMasterController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
+
+    @PostMapping("/download/dac")
+    public ResponseEntity<Resource> downloadDocumentDac(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException, DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentDac(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
     @GetMapping("/{acId}/photo/display")
     public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
@@ -254,7 +269,13 @@ public class WebMasterController {
     @GetMapping("/dac")
     public ResponseEntity<Page<DacWebsiteResponse>> findPublishedDacsForWebsite(
             @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<DacWebsiteResponse> response = dacService.findPublishedDacsForWebsite(pageable);
+        Page<DacWebsiteResponse> response = webMasterService.findPublishedDacsForWebsite(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/dac/{dacId}")
+    public ResponseEntity<DacDetailsWebsiteResponse> findPublishedDacByIdForWebsite(@PathVariable Integer dacId) throws DocNotFound {
+        DacDetailsWebsiteResponse response = webMasterService.getDacDetailsById(dacId);
         return ResponseEntity.ok(response);
     }
 

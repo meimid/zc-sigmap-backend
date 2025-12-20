@@ -168,6 +168,17 @@ public class KeycloakAdminService {
         return userDTO;
     }
 
+    public UserDTO getBasicUserById(String userId) {
+        HttpEntity<Void> entity = createHttpEntityWithToken();
+
+        Map<String, Object> userMap = fetchUserData(userId, entity);
+        if (userMap == null || userMap.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé avec l'ID : " + userId);
+        }
+
+        return mapToUserDTO(userMap);
+    }
+
     // In KeycloakAdminService
     public Map<String, UserDTO> fetchUsersInBatch(Set<String> userIds) {
         long startTime = System.nanoTime();

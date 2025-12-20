@@ -30,4 +30,18 @@ public interface ModelDacRepository extends JpaRepository<ModelDac, ModelDacId> 
            """)
     Optional<String> findModelAlfrescoId(@Param("dacId") Integer dacId,
                                          @Param("dacVer") Integer dacVer);
+
+    @Query("""
+       SELECT COUNT(md) > 0
+       FROM ModelDac md
+       JOIN md.doc d
+       JOIN md.dac dac
+       WHERE d.alfresco_id = :alfrescoId
+         AND dac.status = com.sigmap.common.entity.ProcessStatus.PUBLIE
+         AND dac.shortListing = false
+         AND dac.etapeDac = '1'
+         AND d.isDeleted = false
+         AND dac.isDeleted = false
+       """)
+    boolean isDocumentRelatedToDac(@Param("alfrescoId") String alfrescoId);
 }

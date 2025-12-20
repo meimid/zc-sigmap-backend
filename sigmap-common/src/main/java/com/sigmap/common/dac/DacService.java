@@ -83,21 +83,4 @@ public interface DacService {
     DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) 
             throws DacNotFound;
 
-    /**
-     * Find all published DACs for the website.
-     * @param pageable Pagination information
-     * @return Page of DacWebsiteResponse
-     */
-    Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable);
-
-    /**
-     * Find published DACs for a specific user based on their associated societies.
-     * Returns only DACs where shortListing=true or etapeDac='2', and only the latest version.
-     * 
-     * @param userId The authenticated user ID
-     * @param pageable Pagination information
-     * @return Page of published DACs for the user
-     */
-    Page<com.sigmap.common.dac.response.DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable);
-
 }

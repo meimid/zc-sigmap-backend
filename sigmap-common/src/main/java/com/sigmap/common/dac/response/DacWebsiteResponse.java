@@ -12,9 +12,12 @@ import java.util.Calendar;
 @AllArgsConstructor
 @NoArgsConstructor
 public class DacWebsiteResponse {
+    private Integer id;
     private Long nbrJoursRestants;
+    private Long nbrHeuresRestants;
     private String modePassation;
     private String nomAppelOffre;
+    private String nomAc;
     private String descriptionTypeMarche;
     private Calendar dateLimiteSoumission;
     private String alfrescoId;

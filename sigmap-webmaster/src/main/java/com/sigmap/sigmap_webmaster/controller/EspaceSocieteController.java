@@ -1,7 +1,7 @@
 package com.sigmap.sigmap_webmaster.controller;
 
-import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
+import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class EspaceSocieteController {
 
-    private final DacService dacService;
+    private final WebMasterService webMasterService;
 
     /**
      * Get published DACs for the authenticated user based on their associated societies.
@@ -45,7 +45,7 @@ public class EspaceSocieteController {
         String userId = jwt.getSubject();
         log.debug("Fetching DACs for user: {}", userId);
 
-        Page<DacWebsiteResponse> dacs = dacService.findPublishedDacsForUser(userId, pageable);
+        Page<DacWebsiteResponse> dacs = webMasterService.findPublishedDacsForUser(userId, pageable);
 
         return ResponseEntity.ok(dacs);
     }
