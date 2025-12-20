@@ -56,9 +56,6 @@ public class Dac extends BaseEntity {
   @Column(name = "short_listing")
   private boolean shortListing;
 
-  @Column(name = "parent_dac_id")
-  private Integer parentDacId;
-
   @ManyToOne
   @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
   private DynaDocsModel dynaDocsModel;

@@ -95,4 +95,18 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
   @Query("SELECT COUNT(d) FROM Dac d WHERE d.appelOffre.id = :appelOffreId AND d.isDeleted = false AND d.appelOffre.isDeleted = false ")
   Integer getDacCreatedNumberForAppelOffre(@Param("appelOffreId") Integer appelOffreId);
 
+  /**
+   * Find latest version of DACs for a specific Appel d'Offre.
+   * Returns only the latest version of each DAC where appelOffre.id matches.
+   *
+   * @param appelOffreId The Appel d'Offre ID to filter by
+   * @param pageable Pagination information
+   * @return Page of latest DACs for the specified Appel d'Offre
+   */
+  @Query("SELECT d FROM Dac d " +
+         "WHERE d.appelOffre.id = :appelOffreId " +
+         "AND d.isDeleted = false " +
+         "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
+  Page<Dac> findLatestDacsByAppelOffre(@Param("appelOffreId") Integer appelOffreId, Pageable pageable);
+
 }

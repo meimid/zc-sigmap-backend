@@ -9,4 +9,5 @@ public class DacPpmResponseDTO {
     private String ref;
     private String nom;
     private Integer acId;
+    private String etapeProcess;
 }

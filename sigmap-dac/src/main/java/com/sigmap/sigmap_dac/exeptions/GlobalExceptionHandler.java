@@ -127,13 +127,12 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
   }
 
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  @ExceptionHandler(InvalidDacRequestException.class)
-  public ResponseEntity<Map<String, String>> handleInvalidDacRequestException(InvalidDacRequestException ex) {
-    return ResponseEntity
-        .status(HttpStatus.BAD_REQUEST)
-        .body(Collections.singletonMap("error", ex.getMessage()));
-  }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidDacRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDacRequestException(InvalidDacRequestException ex) {
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(MaxSizeFileExeption.class)

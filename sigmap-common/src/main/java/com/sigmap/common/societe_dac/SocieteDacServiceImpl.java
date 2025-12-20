@@ -3,7 +3,6 @@ package com.sigmap.common.societe_dac;
 
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.dac.Dac;
-import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacSpecifications;
 import com.sigmap.common.dac.exeption.DacNotFound;
@@ -14,9 +13,7 @@ import com.sigmap.common.societe.SocieteSpecifications;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacAlreadyExistsException;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacNotFoundException;
-import com.sigmap.common.societe_dac.mappers.SocieteDacMapper;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
-import com.sigmap.common.societe_dac.response.SocieteDacResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,7 +32,7 @@ import java.util.Optional;
 @Slf4j
 public class SocieteDacServiceImpl implements SocieteDacService {
 
-    private final SociteDacRepository societeDacRepository;
+    private final SocieteDacRepository societeDacRepository;
     private final DacRepository dacRepository;
     private final SocieteRepository societeRepository;
     private final DocumentCommuneService documentCommuneService;

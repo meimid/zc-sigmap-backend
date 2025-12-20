@@ -106,5 +106,5 @@ public interface SocieteService {
     boolean isCurrentlyBlackListed(Integer societeId);
 
     List<Societe> findAllValidee(Specification<Societe> specification);
-    Page<Societe> findAllValideNotBlackListed(Specification<Societe> specification,Pageable pageable);
+    List<Societe> findAllValideNotBlackListed(Specification<Societe> specification);
 }

@@ -9,6 +9,7 @@ import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
@@ -45,6 +46,9 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacID;
+import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
@@ -111,9 +115,7 @@ public class DacServiceImpl implements DacService {
     private final DacPrixRepository dacPrixRepository;
     private final DynaDocsModelRepository dynaDocsModelRepository;
     private final AppelOffreRepository appelOffreRepository;
-    private final MonnaieRepository monnaieRepository;
-    private final DacShortlistRepository dacShortlistRepository;
-    private final SocieteRepository societeRepository;
+    private final SocieteDacRepository societeDacRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -169,7 +171,7 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + pair[0] + ", Version: " + pair[1])))
-                .sorted(java.util.Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
+                .sorted(Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
                 .toList();
 
         List<String> generatedFilePaths = new ArrayList<>();
@@ -1053,7 +1055,6 @@ public class DacServiceImpl implements DacService {
         dac.setDacVer(1);
         dac.setReference(generateDacRef(sequenceNumber, nom_ac));
         dac.setStatus(ProcessStatus.BROUILLON);
-        dac.setParentDacId(request.getParentDacId());
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
         Dac savedCdac = dacRepository.save(dac);
@@ -1130,6 +1131,17 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
+    public Page<Dac> findAllLatestWithQuery(DacQuery query, Pageable pageable) {
+        // For now, only support appelOffreId filter
+        if (query.getAppelOffreId() != null) {
+            return dacRepository.findLatestDacsByAppelOffre(query.getAppelOffreId(), pageable);
+        }
+        
+        // If no appelOffreId, return all latest DACs
+        return dacRepository.findLatestPerDac(pageable);
+    }
+
+    @Override
     public Optional<Dac> findOne(Specification<Dac> specification) {
         return dacRepository.findOne(specification);
     }
@@ -1188,8 +1200,8 @@ public class DacServiceImpl implements DacService {
         boolean noSnapshot = dacDocsSnapshot.isEmpty();
 
         // Distinct (dynaDocsId, dynaDocsVer) keys preserving relative order by dynaDocOrder when resolvable
-        java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
+        LinkedHashMap<String, int[]> docPairs = new LinkedHashMap<>();
+        Map<String, Integer> orderByKey = new HashMap<>();
         if (noSnapshot) {
             // New DAC without snapshot: return latest docs for its typeMarche, modePassation and modelId (do not persist)
             Integer typeMarcheIdForDac = dac.getAppelOffre().getRealisation().getTypeMarcher().getId();
@@ -1227,7 +1239,22 @@ public class DacServiceImpl implements DacService {
         }
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
-
+        if (dac.isShortListing()) {
+            List<SocieteDac> shortlists = societeDacRepository.findLatestByDacId(dacId);
+            if (!shortlists.isEmpty()) {
+                List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
+                        .map(sl -> {
+                            Societe s = sl.getId().getSociete();
+                            return new DacWithAoReferenceResponse.ShortlistMemberData(
+                                    s.getId(),
+                                    s.getNom(),
+                                    s.getNif()
+                            );
+                        })
+                        .collect(Collectors.toList());
+                dacResponse.setDacShortlist(members);
+            }
+        }
         List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dacId, dacVer);
         if (dacPrixList != null && !dacPrixList.isEmpty()) {
             List<DacPrixResponce> dacPrixResponces = mapDacPrixToDacPrixResponceList(dacPrixList);
@@ -1241,8 +1268,8 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElse(null))
-                .filter(java.util.Objects::nonNull)
-                .sorted(java.util.Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
                 .map(dynaDocs -> {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
@@ -1296,7 +1323,6 @@ public class DacServiceImpl implements DacService {
         newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
         newDac.setPayant(base.isPayant());
         newDac.setShortListing(base.isShortListing());
-        newDac.setParentDacId(base.getParentDacId());
         newDac.setDynaDocsModel(base.getDynaDocsModel());
         newDac.setResponsableDacId(base.getResponsableDacId());
         newDac.setConditionsParticipation(base.getConditionsParticipation());
@@ -1340,15 +1366,18 @@ public class DacServiceImpl implements DacService {
             dacPrixRepository.save(copy);
         }
         // Clone DacShortlist if shortListing is true
-       if (Boolean.TRUE.equals(newDac.isShortListing())) {
-             List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(base.getDacId(), base.getDacVer());
-             for (DacShortlist source : existingShortlist) {
-                 DacShortlist copy = new DacShortlist();
-                 copy.setDacId(newDac.getDacId());
-                 copy.setDacVer(nextVer);
-                 copy.setDac(newDac);
-                 copy.setSociete(source.getSociete());
-                 dacShortlistRepository.save(copy);
+       if (newDac.isShortListing()) {
+             List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(base.getDacId(), base.getDacVer());
+             for (SocieteDac source : existingShortlist) {
+                 SocieteDacID societeDacID = new  SocieteDacID();
+                 societeDacID.setDac(newDac);
+                 societeDacID.setSociete(source.getId().getSociete());
+                 SocieteDac copy = new SocieteDac();
+                 copy.setId(societeDacID);
+                 copy.setMethodePaiement(source.getMethodePaiement());
+                 copy.setStatusPaiement(source.isStatusPaiement());
+                 copy.setJustifPaiementId(source.getJustifPaiementId());
+                 societeDacRepository.save(copy);
              }
        }
 
@@ -1619,7 +1648,7 @@ public class DacServiceImpl implements DacService {
                         if (realisation.getFinancements() == null || realisation.getFinancements().isEmpty()) yield null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
-                        Set<String> seen = new java.util.LinkedHashSet<>();
+                        Set<String> seen = new LinkedHashSet<>();
                         for (Financement fin : realisation.getFinancements()) {
                             // Skip soft-deleted financements
                             if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
@@ -1812,7 +1841,7 @@ public class DacServiceImpl implements DacService {
 
     @Override
     @Transactional
-    public List<Dac> createFromAppelOffre(CreateDacFromAoRequest request) 
+    public Dac createFromAppelOffre(CreateDacFromAoRequest request) 
             throws AppelOffreNotFound, InvalidDacRequestException {
         log.info("Creating DAC(s) from Appel d'Offre with ID: {}", request.getAppelOffreId());
         
@@ -1826,12 +1855,12 @@ public class DacServiceImpl implements DacService {
         // 3. Get PPM and Realisation from AO
         Ppm ppm = appelOffre.getPpm();
         if (ppm == null) {
-            throw new InvalidDacRequestException("Appel d'Offre must have an associated PPM");
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à un PPM");
         }
         
         Realisation realisation = appelOffre.getRealisation();
         if (realisation == null) {
-            throw new InvalidDacRequestException("Appel d'Offre must have an associated Realisation");
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à une Réalisation.");
         }
         
         // Get ModeDePassationSelection from Realisation to check etapes
@@ -1854,7 +1883,7 @@ public class DacServiceImpl implements DacService {
         if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
             if (!existingDacs.isEmpty()) {
                 throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Mode de passation is ETAPE_UNIQUE and a DAC already exists for this Appel d'Offre");
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation est ÉTAPE_UNIQUE et un DAC existe déjà pour cet Appel d'Offres.");
             }
             numberOfDacsToCreate = 1;
             etapeForDac = "1";
@@ -1874,43 +1903,30 @@ public class DacServiceImpl implements DacService {
                 log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
             } else {
                 throw new InvalidDacRequestException(
-                        "Cannot create additional DAC. Maximum 2 DACs allowed for DEUX_ETAPES mode and they already exist");
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation DEUX_ETAPES autorise un maximum de 2 DAC et ils existent déjà.");
             }
         } else {
             throw new InvalidDacRequestException(
-                    "Invalid Mode de Passation Etape: " + modePassation.getEtapes());
+                    "Mode de Passation Etape invalide: " + modePassation.getEtapes());
         }
-        
+
         List<Dac> createdDacs = new ArrayList<>();
-        Integer parentDacId = null;
-        
-        // For DEUX_ETAPES with existing etape 1, set parent reference
-        if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES 
-                && "2".equals(etapeForDac)) {
-            parentDacId = existingDacs.stream()
-                    .filter(d -> "1".equals(d.getEtapeDac()))
-                    .findFirst()
-                    .map(Dac::getDacId)
-                    .orElse(null);
-        }
-        
+
         // 5. Create DAC(s)
+        Dac dac = null;
+        Dac savedDac = null;
         for (int i = 0; i < numberOfDacsToCreate; i++) {
-            Dac dac = new Dac();
-            
+            dac = new Dac();
+
             // Generate new DAC ID and set version
             Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
             dac.setDacId(newDacId);
             dac.setDacVer(1);
             dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
-            // Set parent DAC reference if creating etape 2 in DEUX_ETAPES mode
-            if (parentDacId != null) {
-                dac.setParentDacId(parentDacId);
-            }
-            
+
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);
-            
+
             // Configure DAC defaults
             dac.setEtapeDac(etapeForDac);
             dac.setStatus(ProcessStatus.BROUILLON);
@@ -1920,28 +1936,27 @@ public class DacServiceImpl implements DacService {
             dac.setShortListing(isRestraintMode || isSecondStepDac);
 
             // Set process-related fields
-            
+
             // Set dynamic docs model if provided
             if (request.getDynaDocsModelId() != null) {
                 DynaDocsModel dynaDocsModel = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
                         .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
                 dac.setDynaDocsModel(dynaDocsModel);
             }
-            
+
             // Save DAC
-            Dac savedDac = dacRepository.save(dac);
-            
+            savedDac = dacRepository.save(dac);
+
             createdDacs.add(savedDac);
-            
             log.info("Created DAC with ID: {}, Version: {}", savedDac.getDacId(), savedDac.getDacVer());
         }
-        
-        return createdDacs;
+
+        return savedDac;
     }
     
     private void validateDacFromAoRequest(CreateDacFromAoRequest request) {
         if (request.getAppelOffreId() == null) {
-            throw new InvalidDacRequestException("Validation failed: Appel d'Offre ID is required");
+            throw new InvalidDacRequestException("Échec de la validation : l'ID de l'Appel d'Offres est requis.");
         }
     }
     
@@ -1952,7 +1967,7 @@ public class DacServiceImpl implements DacService {
         
         // Load DAC
         Dac dac = dacRepository.findById(new DacId(dacId, dacVer))
-                .orElseThrow(() -> new DacNotFound("DAC not found with ID: {} and  Version: {}" ,dacId, dacVer));
+                .orElseThrow(() -> new DacNotFound("DAC non trouvé avec l'ID : {} et la Version : {}." ,dacId, dacVer));
         
         // Build response
         DacWithAoReferenceResponse response = new DacWithAoReferenceResponse();
@@ -1978,15 +1993,13 @@ public class DacServiceImpl implements DacService {
         response.setConditionsParticipation(dac.getConditionsParticipation());
         response.setEtapeDac(dac.getEtapeDac());
         response.setShortListing(dac.isShortListing());
-        response.setParentDacId(dac.getParentDacId());
-        
         // Set shortlist members if enabled
         if (Boolean.TRUE.equals(dac.isShortListing())) {
-            List<DacShortlist> shortlists = dacShortlistRepository.findByDacIdAndDacVer(dacId, dacVer);
+            List<SocieteDac> shortlists = societeDacRepository.findByDacIdAndDacVer(dacId, dacVer);
             if (!shortlists.isEmpty()) {
                 List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
                         .map(sl -> {
-                            Societe s = sl.getSociete();
+                            Societe s = sl.getId().getSociete();
                             return new DacWithAoReferenceResponse.ShortlistMemberData(
                                     s.getId(),
                                     s.getNom(),

@@ -80,6 +80,18 @@ public class DacController {
     return ResponseEntity.ok(dacResponse);
   }
 
+  @GetMapping("/appel-offre/{appelOffreId}/latest")
+  public ResponseEntity<Page<DacResponce>> getDacsByAppelOffre(
+          @PathVariable Integer appelOffreId,
+          Pageable pageable) {
+    log.debug("REST request to get latest DACs for Appel d'Offre ID: {}", appelOffreId);
+    DacQuery query = new DacQuery();
+    query.setAppelOffreId(appelOffreId);
+    Page<Dac> dac = dacService.findAllLatestWithQuery(query, pageable);
+    Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
   @GetMapping("/{dacId}/{dacVer}")
   public ResponseEntity<Optional<DacResponce>> findById(@PathVariable Integer dacId,
                                                         @PathVariable Integer dacVer) {
@@ -369,25 +381,12 @@ public class DacController {
 
   @PostMapping("/create-from-ao")
   @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
-  public ResponseEntity<?> createDacFromAo(@Valid @RequestBody CreateDacFromAoRequest request) {
-    try {
+  public ResponseEntity<DacResponce> createDacFromAo(@Valid @RequestBody CreateDacFromAoRequest request) {
       log.debug("REST request to create DAC(s) from AO with ID: {}", request.getAppelOffreId());
-      List<Dac> createdDacs = dacService.createFromAppelOffre(request);
-      List<DacResponce> response = createdDacs.stream()
-              .map(DacMapper.INSTANCE::map)
-              .toList();
+      Dac createdDac = dacService.createFromAppelOffre(request);
+      DacResponce response = DacMapper.INSTANCE.map(createdDac);
+
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    } catch (InvalidDacRequestException e) {
-      log.error("Validation error while creating DAC from AO: {}", e.getMessage());
-      return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-    } catch (AppelOffreNotFound e) {
-      log.error("AppelOffre not found: {}", e.getMessage());
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-    } catch (Exception e) {
-      log.error("Error creating DAC from AO: {}", e.getMessage(), e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .body(Map.of("error", "An error occurred while creating DAC"));
-    }
   }
 
   @GetMapping("/{dacId}/{dacVer}/with-ao-reference")

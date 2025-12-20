@@ -11,7 +11,6 @@ import com.sigmap.common.dac_docs.request.DacDocsRequest;
 import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
@@ -21,20 +20,17 @@ import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.DacPrixService;
-import com.sigmap.common.dac_prix.exceptions.DacPrixAlreadyExist;
-import com.sigmap.common.dac_prix.request.DacPrixRequest;
 import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
-import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
-import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.entity.MethodePaiement;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
@@ -44,10 +40,11 @@ import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.dac.DacShortlist;
-import com.sigmap.common.dac.DacShortlistRepository;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacID;
+import com.sigmap.common.societe_dac.SocieteDacRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +54,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
@@ -94,7 +90,7 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Autowired
     private MonnaieRepository monnaieRepository;
     @Autowired
-    private DacShortlistRepository dacShortlistRepository;
+    private SocieteDacRepository societeDacRepository;
     @Autowired
     private SocieteRepository societeRepository;
     @Override
@@ -345,12 +341,12 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     @Override
     @Transactional
-    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request) {
+    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) throws MonnaieNotFound {
         if (request == null || request.getDacDocsRequests() == null) {
             return new ArrayList<>();
         }
 
-        validateDacWithDacDocsRequest(request);
+        validateDacWithDacDocsRequest(request, lang);
 
         Integer dacId = null;
         if (!request.getDacDocsRequests().isEmpty()) {
@@ -388,20 +384,23 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setDateLimiteRecptionDemande(dac.getDateLimiteRecptionDemande());
              newDac.setPayant(dac.isPayant());
              newDac.setShortListing(dac.isShortListing());
-             newDac.setParentDacId(dac.getParentDacId());
              newDac.setDynaDocsModel(dac.getDynaDocsModel());
              newDac.setProcessInstanceId(dac.getProcessInstanceId());
              newDac = dacRepository.save(newDac);
              
-             if (Boolean.TRUE.equals(dac.isShortListing())) {
-                 List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
-                 for (DacShortlist source : existingShortlist) {
+             if (dac.isShortListing()) {
+                 List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+                 for (SocieteDac source : existingShortlist) {
                      if (!Boolean.TRUE.equals(source.getIsDeleted())) {
-                         DacShortlist copy = new DacShortlist();
-                         copy.setDacId(newDac.getDacId());
-                         copy.setDacVer(newDac.getDacVer());
-                         copy.setSociete(source.getSociete());
-                         dacShortlistRepository.save(copy);
+                         SocieteDacID societeDacID = new  SocieteDacID();
+                         societeDacID.setDac(newDac);
+                         societeDacID.setSociete(source.getId().getSociete());
+                         SocieteDac copy = new SocieteDac();
+                         copy.setId(societeDacID);
+                         copy.setMethodePaiement(source.getMethodePaiement());
+                         copy.setStatusPaiement(source.isStatusPaiement());
+                         copy.setJustifPaiementId(source.getJustifPaiementId());
+                         societeDacRepository.save(copy);
                      }
                  }
              }
@@ -464,34 +463,40 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
-        if (request.getEtapeDac() != null) targetDac.setEtapeDac(request.getEtapeDac());
-        if (request.getShortListing() != null) targetDac.setShortListing(request.getShortListing());
 
         targetDac = dacRepository.save(targetDac);
 
         if (Boolean.TRUE.equals(targetDac.isPayant())) {
-            if (request.getMontantPayant() != null) {
-                Integer monnaieId = 1;
-                Optional<DacPrix> existingPrix = dacPrixRepository.findIncludeDeleted(targetDac.getDacId(), targetDac.getDacVer(), monnaieId);
-                DacPrix dacPrix;
-                if (existingPrix.isPresent()) {
-                    dacPrix = existingPrix.get();
-                    dacPrix.setPrix(request.getMontantPayant());
-                    if (Boolean.TRUE.equals(dacPrix.getIsDeleted())) {
-                        dacPrix.setIsDeleted(false);
-                        dacPrix.setDeletedAt(null);
-                        dacPrix.setDeletedBy(null);
-                    }
-                } else {
-                    dacPrix = new DacPrix();
-                    DacPrixId pid = new DacPrixId();
-                    pid.setDac(targetDac);
-                    pid.setMonnaie(monnaieRepository.findById(monnaieId).orElseThrow(() -> new RuntimeException("Monnaie 1 not found"))); 
-                    dacPrix.setId(pid);
-                    dacPrix.setPrix(request.getMontantPayant());
-                    dacPrix.setIsDeleted(false);
+            if (request.getDacPrixRequests() != null && !request.getDacPrixRequests().isEmpty()) {
+
+                List<DacPrixRequestForDac> prixRequests = request.getDacPrixRequests();
+                
+                 // 1-1Fetch existing DacPrix in DB
+                List<DacPrix> existingPrixList = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+
+                //1-2 Determine which Monnaies are requested
+                Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                        .map(DacPrixRequestForDac::getMonnaieId)
+                        .collect(Collectors.toSet());
+
+                // 1-3 Delete DacPrix not present in request but present in DB
+                List<DacPrix> toDelete = existingPrixList.stream()
+                        .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+                 if (!toDelete.isEmpty() && targetDac.getStatus() != ProcessStatus.BROUILLON) {
+                    dacPrixRepository.softDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
                 }
-                dacPrixRepository.save(dacPrix);
+
+                if (!toDelete.isEmpty() && targetDac.getStatus() == ProcessStatus.BROUILLON) {
+                    dacPrixService.defenitiveDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                for (DacPrixRequestForDac prixRequest : prixRequests) {
+                    savePrixDac(prixRequest,targetDac.getDacId(),targetDac.getDacVer());
+                    log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),targetDac.getDacId(),targetDac.getDacVer());
+                }
             }
         } else {
              List<DacPrix> existing = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
@@ -500,45 +505,47 @@ public class DacDocsServiceImpl implements DacDocsService{
              }
         }
 
-        if (Boolean.TRUE.equals(targetDac.isShortListing())) {
+        if (targetDac.isShortListing()) {
             if (request.getShortlistMembers() != null) {
-                List<DacShortlist> existingList = dacShortlistRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
-                Map<Integer, DacShortlist> existingMap = existingList.stream()
-                        .collect(Collectors.toMap(s -> s.getSociete().getId(), s -> s));
+                List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+                Map<Integer, SocieteDac> existingMap = existingList.stream()
+                        .collect(Collectors.toMap(s -> s.getId().getSociete().getId(), s -> s));
 
                 Set<Integer> requestedIds = new HashSet<>(request.getShortlistMembers());
 
                 for (Integer sid : request.getShortlistMembers()) {
                     if (existingMap.containsKey(sid)) {
-                        DacShortlist existing = existingMap.get(sid);
+                        SocieteDac existing = existingMap.get(sid);
                         if (Boolean.TRUE.equals(existing.getIsDeleted())) {
                             existing.setIsDeleted(false);
                             existing.setDeletedAt(null);
                             existing.setDeletedBy(null);
-                            dacShortlistRepository.save(existing);
+                            societeDacRepository.save(existing);
                         }
                     } else {
                         Societe dateSoc = societeRepository.findById(sid)
                                 .orElseThrow(() -> new InvalidDacRequestException("Societe not found: " + sid));
-                        DacShortlist ds = new DacShortlist();
-                        ds.setDacId(targetDac.getDacId());
-                        ds.setDacVer(targetDac.getDacVer());
-                        ds.setSociete(dateSoc);
-                        ds.setIsDeleted(false);
-                        dacShortlistRepository.save(ds);
+                        SocieteDacID sdID = new SocieteDacID();
+                        sdID.setDac(targetDac);
+                        sdID.setSociete(dateSoc);
+                        SocieteDac sd = new SocieteDac();
+                        sd.setId(sdID);
+                        sd.setMethodePaiement(MethodePaiement.NON_ATTRIBUE);
+                        sd.setIsDeleted(false);
+                        societeDacRepository.save(sd);
                     }
                 }
-                List<DacShortlist> toDelete = existingList.stream()
-                        .filter(s -> !requestedIds.contains(s.getSociete().getId()))
+                List<SocieteDac> toDelete = existingList.stream()
+                        .filter(s -> !requestedIds.contains(s.getId().getSociete().getId()))
                         .collect(Collectors.toList());
                 if (!toDelete.isEmpty()) {
-                    dacShortlistRepository.softDelete(toDelete);
+                    societeDacRepository.softDelete(toDelete);
                 }
             }
         } else {
-             List<DacShortlist> existingList = dacShortlistRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+             List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
              if (!existingList.isEmpty()) {
-                 dacShortlistRepository.softDelete(existingList);
+                 societeDacRepository.softDelete(existingList);
              }
         }
 
@@ -550,48 +557,130 @@ public class DacDocsServiceImpl implements DacDocsService{
         return results;
     }
 
-    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request) {
-        List<String> errors = new ArrayList<>();
+    /*private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
 
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
         if (request.getDateLimiteSoumission() == null) {
-            errors.add("Date limite de soumission is required");
+            errorsFR.append("Date limite de soumission est obligatoire");
+            errorsENG.append("Date limite de soumission is required");
         }
 
         if (request.getDateLimiteRecptionDemande() == null) {
-            errors.add("Date limite de réception des demandes is required");
+            errorsFR.append("Date limite de réception des demandes is required");
+            errorsENG.append("Date limite de réception des demandes is required");
         }
 
         if (request.getPayant() == null) {
-            errors.add("Payant field is required");
+            errorsFR.append("Payant field is required");
+            errorsENG.append("Payant field is required");
         }
 
         if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
-            errors.add("Responsable DAC ID is required");
+            errorsFR.append("Responsable DAC ID is required");
+            errorsENG.append("Responsable DAC ID is required");
         }
 
         Calendar now = Calendar.getInstance();
         if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errors.add("Date limite de soumission must be in the future");
+            errorsFR.append("Date limite de soumission must be in the future");
+            errorsENG.append("Date limite de soumission must be in the future");
         }
 
         if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errors.add("Date limite de réception des demandes must be in the future");
+            errorsFR.append("Date limite de réception des demandes must be in the future");
+            errorsENG.append("Date limite de réception des demandes must be in the future");
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {
             if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
-                errors.add("Montant payant is required and must be greater than zero when payant is true");
+                errorsFR.append("Montant payant is required and must be greater than zero when payant is true");
+                errorsENG.append("Montant payant is required and must be greater than zero when payant is true");
             }
         }
 
         if (Boolean.TRUE.equals(request.getShortListing())) {
             if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
-                errors.add("Shortlist members are required when shortListing is true");
+                errorsFR.append("Shortlist members are required when shortListing is true");
+                errorsENG.append("Shortlist members are required when shortListing is true");
             }
         }
 
-        if (!errors.isEmpty()) {
-            throw new InvalidDacRequestException("Validation failed: " + String.join(", ", errors));
+        if ( lang.equals("fr") && !errorsFR.isEmpty() ) {
+            throw new InvalidDacRequestException(errorsFR.toString());
+        }
+        else if (lang.equals("en") && !errorsENG.isEmpty()) {
+            throw new InvalidDacRequestException(errorsENG.toString());
+        }
+    }*/
+
+
+
+    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
+
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
+        if (request.getDateLimiteSoumission() == null) {
+            errorsFR.append("La date limite de soumission est obligatoire");
+            errorsENG.append("Submission deadline is required");
+        }
+
+        if (request.getDateLimiteRecptionDemande() == null) {
+            errorsFR.append("La date limite de réception des demandes est obligatoire");
+            errorsENG.append("Deadline for receipt of requests is required");
+        }
+
+        if (request.getPayant() == null) {
+            errorsFR.append("le champ payant est obligatoire, ");
+            errorsENG.append("Payant field is required");
+        }
+
+        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
+            errorsFR.append("Le responsable du DAC est obligatoire");
+            errorsENG.append("DAC responsible is required");
+        }
+
+        Calendar now = Calendar.getInstance();
+        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
+            errorsFR.append("La date limite de soumission doit être dans le futur");
+            errorsENG.append("Submission deadline must be in the future");;
+        }
+
+        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
+            errorsFR.append("La date limite de réception des demandes doit être dans le futur");
+            errorsENG.append("Deadline for receipt of requests must be in the future");
+        }
+
+        if (Boolean.TRUE.equals(request.getPayant())) {
+            if (request.getDacPrixRequests() == null || request.getDacPrixRequests().isEmpty()) {
+                errorsFR.append("Le prix du dac est obligatoire");
+                errorsENG.append("The dac price is required");
+            }
+            if(request.getDacPrixRequests() != null){
+                for (DacPrixRequestForDac req : request.getDacPrixRequests()){
+                    if (req.getPrix() == null || req.getPrix().compareTo(BigDecimal.ZERO) <= 0) {
+                        errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
+                        errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+                    }
+                }
+            }
+
+        }
+
+
+        if (!errorsFR.isEmpty() || !errorsENG.isEmpty() ){
+            if ( lang.getLanguage().equals("fr") ) {
+                throw new InvalidDacRequestException(errorsFR.toString());
+            }
+            if (lang.getLanguage().equals("en") ) {
+                throw new InvalidDacRequestException(errorsENG.toString());
+            }
         }
     }
 
@@ -897,19 +986,22 @@ public class DacDocsServiceImpl implements DacDocsService{
         newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
         newDac.setPayant(existingDac.isPayant());
         newDac.setShortListing(existingDac.isShortListing());
-        newDac.setParentDacId(existingDac.getParentDacId());
         newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
         newDac = dacRepository.save(newDac);
 
         // Clone DacShortlist if shortListing is true
-        if (Boolean.TRUE.equals(newDac.isShortListing())) {
-             List<DacShortlist> existingShortlist = dacShortlistRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
-             for (DacShortlist source : existingShortlist) {
-                 DacShortlist copy = new DacShortlist();
-                 copy.setDacId(newDac.getDacId());
-                 copy.setDacVer(newDac.getDacVer());
-                 copy.setSociete(source.getSociete());
-                 dacShortlistRepository.save(copy);
+        if (newDac.isShortListing()) {
+             List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
+             for (SocieteDac source : existingShortlist) {
+                 SocieteDacID sdId = new SocieteDacID();
+                 sdId.setDac(newDac);
+                 sdId.setSociete(source.getId().getSociete());
+                 SocieteDac sd = new SocieteDac();
+                 sd.setId(sdId);
+                 sd.setJustifPaiementId(source.getJustifPaiementId());
+                 sd.setStatusPaiement(source.isStatusPaiement());
+                 sd.setMethodePaiement(source.getMethodePaiement());
+                 societeDacRepository.save(sd);
              }
         }
 
@@ -1234,7 +1326,6 @@ public class DacDocsServiceImpl implements DacDocsService{
                 newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
                 newDac.setPayant(existingDac.isPayant());
                 newDac.setShortListing(existingDac.isShortListing());
-                newDac.setParentDacId(existingDac.getParentDacId());
                 newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
@@ -1688,22 +1779,41 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getPayant() != null && !Objects.equals(dac.isPayant(), request.getPayant())) return true;
         if (request.getResponsableDacId() != null && !Objects.equals(dac.getResponsableDacId(), request.getResponsableDacId())) return true;
         if (request.getConditionsParticipation() != null && !Objects.equals(dac.getConditionsParticipation(), request.getConditionsParticipation())) return true;
-        if (request.getEtapeDac() != null && !Objects.equals(dac.getEtapeDac(), request.getEtapeDac())) return true;
-        if (request.getShortListing() != null && !Objects.equals(dac.isShortListing(), request.getShortListing())) return true;
 
         // 2. Check Payment Amount (only if payant is true and amount provided)
-        if (Boolean.TRUE.equals(request.getPayant()) && request.getMontantPayant() != null) {
-            Optional<DacPrix> prix = dacPrixRepository.findIncludeDeleted(dac.getDacId(), dac.getDacVer(), 1);
-            if (prix.isEmpty()) return true; // changed from none to some
-            if (prix.get().getPrix().compareTo(request.getMontantPayant()) != 0) return true;
+        if (Boolean.TRUE.equals(request.getPayant()) && request.getDacPrixRequests() != null) {
+            List<DacPrix> existingPrixList = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+            
+            // Map existing prices by Monnaie ID
+            Map<Integer, BigDecimal> existingMap = existingPrixList.stream()
+                     .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted())) // Compare against active
+                     .collect(Collectors.toMap(p -> p.getId().getMonnaie().getId(), DacPrix::getPrix));
+            
+            // Map requested prices by Monnaie ID
+            Map<Integer, BigDecimal> requestedMap = request.getDacPrixRequests().stream()
+                    .collect(Collectors.toMap(DacPrixRequestForDac::getMonnaieId, DacPrixRequestForDac::getPrix));
+            
+            // Compare key sets (Monnaie IDs)
+            if (!existingMap.keySet().equals(requestedMap.keySet())) {
+                 return true;
+            }
+            
+            // Compare values (Prices)
+            for (Integer monnaieId : requestedMap.keySet()) {
+                BigDecimal reqPrice = requestedMap.get(monnaieId);
+                BigDecimal existPrice = existingMap.get(monnaieId);
+                if (reqPrice.compareTo(existPrice) != 0) { // check equality of values
+                    return true;
+                }
+            }
         }
 
         // 3. Check Shortlist (only if shortlisting is true and list provided)
-        if (Boolean.TRUE.equals(request.getShortListing()) && request.getShortlistMembers() != null) {
-            List<DacShortlist> existing = dacShortlistRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+        if (request.getShortlistMembers() != null) {
+            List<SocieteDac> existing = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
             Set<Integer> existingIds = existing.stream()
                     .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted())) // compare against active ones
-                    .map(s -> s.getSociete().getId()).collect(Collectors.toSet());
+                    .map(s -> s.getId().getSociete().getId()).collect(Collectors.toSet());
             Set<Integer> newIds = new HashSet<>(request.getShortlistMembers());
             if (!existingIds.equals(newIds)) return true;
         }
