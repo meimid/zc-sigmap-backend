@@ -76,4 +76,9 @@ public class ModelDacServiceImpl implements ModelDacService {
     public void removeModel(Integer dacId, Integer dacVer) {
         modelDacRepository.deleteByDacIdAndDacVer(dacId, dacVer);
     }
+
+    @Override
+    public boolean isDocumentRelatedToDac(String alfrescoId) {
+        return modelDacRepository.isDocumentRelatedToDac(alfrescoId);
+    }
 }

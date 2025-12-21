@@ -5,6 +5,8 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
+import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.paas.Paa;
@@ -44,4 +46,14 @@ public interface WebMasterService {
     Page<PaaWebsiteResponse> findPaaAllForWebsite(Specification<Paa> spec, Pageable pageable);
     Page<AgpmWebsiteResponse> findAgpmAllForWebsite(Specification <Agpm> spec, Pageable pageable);
     List<TypeMarcheStatProjection> getTypeMarcheStats();
+
+    boolean isDocumentRelatedToDac(String alfrescoId);
+
+    byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound;
+
+    Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable);
+
+    Page<DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable);
+
+    DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound;
 }

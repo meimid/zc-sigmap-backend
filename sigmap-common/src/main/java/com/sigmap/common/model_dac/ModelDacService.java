@@ -12,4 +12,6 @@ public interface ModelDacService {
     Optional<ModelDac> getModel(Integer dacId, Integer dacVer);
 
     void removeModel(Integer dacId, Integer dacVer);
+
+    boolean isDocumentRelatedToDac(String alfrescoId);
 }
