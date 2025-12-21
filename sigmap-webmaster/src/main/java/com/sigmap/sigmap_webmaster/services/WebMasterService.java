@@ -48,12 +48,16 @@ public interface WebMasterService {
     List<TypeMarcheStatProjection> getTypeMarcheStats();
 
     boolean isDocumentRelatedToDac(String alfrescoId);
+    boolean isDocumentRelatedToDacShortlist(String alfrescoId, String userId);
 
     byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound;
+    byte[] downloadDocumentDacShortlist(String alfrescoId, String userId) throws IOException, DocNotFound;
 
     Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable);
 
     Page<DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable);
 
     DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound;
+
+    DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound;
 }

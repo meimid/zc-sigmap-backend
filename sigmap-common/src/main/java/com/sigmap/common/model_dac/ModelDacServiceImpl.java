@@ -81,4 +81,9 @@ public class ModelDacServiceImpl implements ModelDacService {
     public boolean isDocumentRelatedToDac(String alfrescoId) {
         return modelDacRepository.isDocumentRelatedToDac(alfrescoId);
     }
+
+    @Override
+    public boolean isDocumentRelatedToDacShortlistForUser(String alfrescoId, String userId) {
+        return modelDacRepository.isDocumentRelatedToDacShortlistForUser(alfrescoId, userId);
+    }
 }
