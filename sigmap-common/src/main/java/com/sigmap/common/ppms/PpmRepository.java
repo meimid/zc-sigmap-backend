@@ -37,5 +37,9 @@ public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
      */
     @Query("SELECT p FROM Ppm p WHERE p.id = :ppmId")
     Page<Ppm> findAllById(Integer ppmId, Pageable pageable);
+
+    @Query("SELECT p FROM Ppm p WHERE p.id = :id AND p.version = :ver AND p.isDeleted = false")
+    Optional<Ppm> finPpmByIdAndVersion(@Param("id") Integer id,@Param("ver") Integer ver );
+
 }
 

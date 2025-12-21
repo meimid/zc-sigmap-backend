@@ -44,4 +44,26 @@ public interface ModelDacRepository extends JpaRepository<ModelDac, ModelDacId> 
          AND dac.isDeleted = false
        """)
     boolean isDocumentRelatedToDac(@Param("alfrescoId") String alfrescoId);
+
+     @Query("""
+        SELECT COUNT(md) > 0
+        FROM ModelDac md
+        JOIN md.doc d
+        JOIN md.dac dac
+        WHERE d.alfresco_id = :alfrescoId
+          AND dac.status = com.sigmap.common.entity.ProcessStatus.PUBLIE
+          AND (dac.shortListing = true OR dac.etapeDac = '2')
+          AND d.isDeleted = false
+          AND dac.isDeleted = false
+          AND EXISTS (
+              SELECT sd FROM SocieteDac sd
+              WHERE sd.id.dac.dacId = dac.dacId
+                AND sd.id.dac.dacVer = dac.dacVer
+                AND sd.id.societe.id IN (
+                    SELECT us.societeId FROM UserSociete us
+                    WHERE us.userId = :userId AND us.isDeleted = false
+                )
+          )
+        """)
+     boolean isDocumentRelatedToDacShortlistForUser(@Param("alfrescoId") String alfrescoId, @Param("userId") String userId);
 }

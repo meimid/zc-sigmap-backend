@@ -385,9 +385,28 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     @Override
+    public boolean isDocumentRelatedToDacShortlist(String alfrescoId, String userId) {
+        return modelDacService.isDocumentRelatedToDacShortlistForUser(alfrescoId, userId);
+    }
+
+    @Override
     public byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound {
         if (!isDocumentRelatedToDac(alfrescoId)) {
             throw new DocNotFound("Document not associated with latest published entity", null);
+        }
+
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile() != null) {
+            return dummyContent.getFile();
+        } else {
+            throw new IOException("Error while downloading document.");
+        }
+    }
+
+    @Override
+    public byte[] downloadDocumentDacShortlist(String alfrescoId, String userId) throws IOException, DocNotFound {
+        if (!isDocumentRelatedToDacShortlist(alfrescoId, userId)) {
+            throw new DocNotFound("Document not associated with latest published entity or access denied", null);
         }
 
         DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
@@ -471,6 +490,18 @@ public class WebMasterServiceImpl implements WebMasterService {
         Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
                 .orElseThrow(() -> new DocNotFound("Published DAC not found for ID: " + dacId, null));
 
+        return mapToDetailsResponse(dac);
+    }
+
+    @Override
+    public DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound {
+        Dac dac = dacRepository.findPublishedDacByIdForUser(dacId, userId)
+                .orElseThrow(() -> new DocNotFound("Published DAC not found or not accessible for ID: " + dacId, null));
+
+        return mapToDetailsResponse(dac);
+    }
+
+    private DacDetailsWebsiteResponse mapToDetailsResponse(Dac dac) {
         DacDetailsWebsiteResponse response = new DacDetailsWebsiteResponse();
 
         // 1. Time remaining
