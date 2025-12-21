@@ -454,14 +454,12 @@ public class WebMasterServiceImpl implements WebMasterService {
         // 5. DateLimiteSoumission
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
-        // 6. Alfresco ID of isAAO=true doc
-        List<DacDocs> docs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
-        docs.stream()
-                .filter(d -> d.getDynaField() != null && d.getDynaField().getDynaDocs() != null
-                        && Boolean.TRUE.equals(d.getDynaField().getDynaDocs().getIsAAO())
-                        && d.getDocs() != null)
-                .findFirst()
-                .ifPresent(d -> response.setAlfrescoId(d.getDocs().getAlfresco_id()));
+        // 6. Alfresco ID from ModelDac
+        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
+            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+            }
+        });
         // 7. NomAC
         if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) {
             response.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
@@ -517,14 +515,12 @@ public class WebMasterServiceImpl implements WebMasterService {
         // 5. dateLimiteSoumission
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
-        // 6. Alfresco ID of isAAO=true doc
-        List<DacDocs> docs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
-        docs.stream()
-                .filter(d -> d.getDynaField() != null && d.getDynaField().getDynaDocs() != null
-                        && Boolean.TRUE.equals(d.getDynaField().getDynaDocs().getIsAAO())
-                        && d.getDocs() != null)
-                .findFirst()
-                .ifPresent(d -> response.setAlfrescoId(d.getDocs().getAlfresco_id()));
+        // 6. Alfresco ID from ModelDac
+        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
+            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+            }
+        });
 
         // 7. AppelOffre details
         if (dac.getAppelOffre() != null) {
