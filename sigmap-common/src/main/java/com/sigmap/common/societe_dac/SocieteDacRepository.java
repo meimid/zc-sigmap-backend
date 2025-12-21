@@ -2,6 +2,8 @@ package com.sigmap.common.societe_dac;
 
 import com.sigmap.common.repository.SoftDeleteRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -51,4 +53,9 @@ public interface SocieteDacRepository extends JpaRepository<SocieteDac, SocieteD
       )
 """)
     List<SocieteDac> findLatestByDacId(Integer dacId);
+
+    @Query("SELECT sd FROM SocieteDac sd  WHERE sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.MANUEL AND sd.justifPaiementId  is not null AND sd.statusPaiement is null and sd.isDeleted = false")
+    Page<SocieteDac> findAllForAdmin (Pageable pageable);
+
+
 }

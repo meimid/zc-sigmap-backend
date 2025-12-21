@@ -2,12 +2,16 @@ package com.sigmap.sigmap_webmaster.controller;
 
 import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacService;
+import com.sigmap.common.societe_dac.response.SocieteDacResponse;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -22,6 +26,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -30,12 +38,13 @@ import java.io.IOException;
  */
 @RestController
 @RequestMapping("/api/espace-societe")
-@RequiredArgsConstructor
+@AllArgsConstructor
 @Slf4j
 public class EspaceSocieteController {
 
     private final WebMasterService webMasterService;
     private final DocsService docsService;
+    private final SocieteDacService societeDacService;
 
     /**
      * Get published DACs for the authenticated user based on their associated societies.
@@ -111,4 +120,23 @@ public class EspaceSocieteController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
+
+
+    @PostMapping("/uploadJustifPayment/{dacId}")
+    public ResponseEntity<Void> uploadJustifPayment (@PathVariable Integer dacId, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal Jwt jwt) throws IOException {
+        log.debug("REST request to get published DACs for authenticated user in Espace Societe");
+
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        log.debug("Fetching DACs for user: {}", userId);
+
+        SocieteDac societeDac =societeDacService.updateForShortListing(dacId, file, userId);
+
+        return ResponseEntity.ok().build();
+    }
+
 }
