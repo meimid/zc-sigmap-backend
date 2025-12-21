@@ -94,6 +94,7 @@ public interface DacDocsMapper {
     @Mapping(target = "etapeDac", source = "etapeDac")
     @Mapping(target = "conditionsParticipation", source = "conditionsParticipation")
     @Mapping(target = "responsableDacId", source = "responsableDacId")
+    @Mapping(target = "shortListing", source = "shortListing")
     DacResponseDTO toDacResponse(Dac dac);
 
     @Mapping(target = "id", source = "dynaField.dynaDocs.id")

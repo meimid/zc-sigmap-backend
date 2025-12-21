@@ -18,6 +18,7 @@ public class DacResponseDTO {
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;
     private List<DacPrixResponce> dacPrix;
+    private boolean shortListing;
     private List<DacWithAoReferenceResponse.ShortlistMemberData>  dacShortlist;
     private ProcessStatus status;
     private DacPpmResponseDTO ppm;
