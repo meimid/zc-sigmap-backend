@@ -2,18 +2,24 @@ package com.sigmap.common.appel_offre;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
 import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
 import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
 import com.sigmap.common.appel_offre.response.AppelOffreResponseById;
 import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
@@ -32,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static com.sigmap.common.config.ModePassationEtape.DEUX_ETAPES;
 import static com.sigmap.common.config.ModePassationEtape.ETAPE_UNIQUE;
@@ -47,7 +54,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final UserAcRepository userAcRepository;
     private final AcService acService;
     private final DacRepository dacRepository;
-
+    private final PpmService ppmService;
     private static int lastYear = java.time.Year.now().getValue();
     private static int counter = 0;
 
@@ -70,7 +77,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     }
 
     @Override
-    public AppelOffreResponseById findById(Integer id) {
+    public AppelOffreResponseById findById(Integer id) throws PpmNotFound, AcNotFound {
 
         log.debug("Fetching AppelOffre with Id: {} ", id);
         if (id == null){
@@ -80,9 +87,51 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         AppelOffre appelOffre = appelOffreRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new AppelOffreNotFound(id));
 
-        // Map the AppelOffre to AppelOffreResponseById
-        AppelOffreResponseById response = AppelOffreMapper.INSTANCE.mapFindById(appelOffre);
+        // Récupérer le PPM avec la dernière version
+        Optional<Ppm> ppmOptional = ppmRepository.finPpmByIdAndVersion(appelOffre.getPpm().getId(),appelOffre.getPpm().getVersion());
+        if (ppmOptional.isEmpty()) {
+            AppelOffreResponseById appelOffreResponseById = new AppelOffreResponseById();
+            appelOffreResponseById.getPpm().setStatus("PPM non trouvé pour l'ID: " + appelOffre.getPpm().getId());
+            return appelOffreResponseById;
+        }
 
+        Ppm ppm = ppmOptional.get();
+
+        // Préparer l'objet de réponse
+        AppelOffreResponseById response = new AppelOffreResponseById();
+
+        // Mapper le PPM vers PpmResponseDto
+        if (ppm.getDocs() != null) {
+            List<Docs> nonDeletedDocs = ppm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            ppm.setDocs(nonDeletedDocs);
+        }
+
+        if (ppm.getRealisations() != null) {
+            ppm.getRealisations().forEach(real -> {
+                if (real.getFinancements() != null) {
+                    real.setFinancements(
+                            real.getFinancements().stream()
+                                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                                    .collect(Collectors.toList())
+                    );
+                }
+            });
+        }
+
+        PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
+        response.setPpm(ppmResponse);
+
+        response.setId(appelOffre.getId());
+        response.setReference(appelOffre.getReference());
+        response.setNom(appelOffre.getNom());
+        response.setDescription(appelOffre.getDescription());
+        response.setEtape(appelOffre.getEtape());
+        response.setModePassation(appelOffre.getRealisation().getModePassation().getType());
+        response.setLotSepares(appelOffre.getLotSepares());
+
+        response.setStatusAppelOffre(appelOffre.getStatusAppelOffre());
         response.setCouldCreateDac(couldCreateDac (appelOffre, id));
 
         return response;
