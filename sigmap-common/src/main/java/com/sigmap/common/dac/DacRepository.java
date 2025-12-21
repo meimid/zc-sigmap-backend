@@ -150,6 +150,23 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
       """)
   Page<Dac> findPublishedDacsForUser(@Param("userId") String userId, Pageable pageable);
 
+  @Query("SELECT d FROM Dac d " +
+         "WHERE d.dacId = :dacId " +
+         "AND d.status = 'PUBLIE' " +
+         "AND d.isDeleted = false " +
+         "AND (d.shortListing = true OR d.etapeDac = '2') " +
+         "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
+         "AND EXISTS ( " +
+         "    SELECT sd FROM SocieteDac sd " +
+         "    WHERE sd.id.dac.dacId = d.dacId " +
+         "    AND sd.id.dac.dacVer = d.dacVer " +
+         "    AND sd.id.societe.id IN ( " +
+         "        SELECT us.societeId FROM UserSociete us " +
+         "        WHERE us.userId = :userId AND us.isDeleted = false " +
+         "    ) " +
+         ")")
+  Optional<Dac> findPublishedDacByIdForUser(@Param("dacId") Integer dacId, @Param("userId") String userId);
+
   /**
    * Find a specific published DAC by its ID for the website.
    * Ensures it's the latest version, status is PUBLIE, shortListing is false,

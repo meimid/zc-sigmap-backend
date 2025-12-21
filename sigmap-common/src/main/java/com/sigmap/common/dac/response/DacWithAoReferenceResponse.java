@@ -113,7 +113,7 @@ public class DacWithAoReferenceResponse {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class ShortlistMemberData {
-        private Integer societeId;
+        private Integer id;
         private String nom;
         private String nif;
     }

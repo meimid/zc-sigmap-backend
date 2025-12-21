@@ -14,4 +14,5 @@ public interface ModelDacService {
     void removeModel(Integer dacId, Integer dacVer);
 
     boolean isDocumentRelatedToDac(String alfrescoId);
+    boolean isDocumentRelatedToDacShortlistForUser(String alfrescoId, String userId);
 }
