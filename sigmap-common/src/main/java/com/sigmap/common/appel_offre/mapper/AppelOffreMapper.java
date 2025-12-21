@@ -24,7 +24,7 @@ public interface AppelOffreMapper {
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
     AppelOffreResponse map(AppelOffre source);
 
-    @Mapping(target = "ppm", source = "ppm")
+   /* @Mapping(target = "ppm", source = "ppm")
     @Mapping(target = "realisation", source = "realisation")
     @Mapping(target = "realisation.monnaie", source = "realisation.monnaie")
     @Mapping(target = "ppm.realisations", ignore = true)
@@ -36,6 +36,6 @@ public interface AppelOffreMapper {
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.isDeleted", source = "isDeleted")
-    AppelOffreResponseById mapFindById (AppelOffre source);
+    AppelOffreResponseById mapFindById (AppelOffre source);*/
 
 }

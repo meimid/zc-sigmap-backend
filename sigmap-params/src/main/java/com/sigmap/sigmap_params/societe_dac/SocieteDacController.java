@@ -1,5 +1,10 @@
 package com.sigmap.sigmap_params.societe_dac;
 
+import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsService;
+import com.sigmap.common.docs.Request.AlfrescoIdRequest;
+import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacService;
@@ -8,17 +13,23 @@ import com.sigmap.common.societe_dac.mappers.SocieteDacMapper;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
 import com.sigmap.common.societe_dac.response.SocieteDacQuerry;
 import com.sigmap.common.societe_dac.response.SocieteDacResponse;
+import com.sigmap.common.societe_dac.response.SocieteDacResponsePayment;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import javax.print.Doc;
 import java.io.IOException;
 
 /**
@@ -32,6 +43,7 @@ import java.io.IOException;
 public class SocieteDacController {
 
     private final SocieteDacService societeDacService;
+    private final DocsService docsService;
 
     @PostMapping(consumes = {"multipart/form-data"})
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
@@ -132,5 +144,37 @@ public class SocieteDacController {
         SocieteDac updatedSocieteDac = societeDacService.rejectePaiement(dacId, dacVersion, societeId);
         SocieteDacResponse response = SocieteDacMapper.INSTANCE.map(updatedSocieteDac);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/forAdmin")
+    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
+    @Operation(summary = "Récupérer toutes les sociétés DAC pour l'administrateur avec pagination")
+    public ResponseEntity<Page<SocieteDacResponsePayment>> getAllForAdmin ( Pageable pageable) {
+
+        log.debug("Récupération des sociétés DAC  ... ");
+
+        Page<SocieteDac> societeDacPage =  societeDacService.findAllForAdmin(pageable);
+
+        Page<SocieteDacResponsePayment> responses = societeDacPage.map(SocieteDacMapper.INSTANCE::mapToResponcePayement);
+        return ResponseEntity.ok(responses);
+    }
+
+    @PostMapping("/download/JustifPayement/{justifPayment}")
+    public ResponseEntity<Resource> downloadDocumentJustif(@PathVariable Integer justifPayment) throws IOException, DocNotFound {
+        Docs document = docsService.findById(justifPayment);
+        if (document==null){
+           throw  new DocsNotFoundException("document is not found for id "+ justifPayment);
+        }
+        byte[] fileContent = societeDacService.downloadPaymentJustif(document.getAlfresco_id());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(document.getContentType()))
+                .body(resource);
     }
 }

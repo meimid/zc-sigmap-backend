@@ -3,6 +3,7 @@ package com.sigmap.common.societe_dac.mappers;
 import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
 import com.sigmap.common.societe_dac.response.SocieteDacResponse;
+import com.sigmap.common.societe_dac.response.SocieteDacResponsePayment;
 import org.mapstruct.*;
 import org.mapstruct.factory.Mappers;
 
@@ -25,5 +26,11 @@ public interface SocieteDacMapper {
     @Mapping(target = "societeId", source = "id.societe.id")
     SocieteDacResponse map(SocieteDac entity);
 
+
+    @Mapping(target = "societe", source = "id.societe")
+    @Mapping(target = "methodePaiement", source = "methodePaiement")
+    @Mapping(target = "statusPaiement", source = "statusPaiement")
+    @Mapping(target = "justifPaiementId", source = "justifPaiementId")
+    SocieteDacResponsePayment mapToResponcePayement(SocieteDac entity);
 
 }

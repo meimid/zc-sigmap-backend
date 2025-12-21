@@ -170,4 +170,24 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false)")
   Optional<Dac> findPublishedDacByIdForWebsite(@Param("dacId") Integer dacId);
 
+  @Query("""
+      SELECT d FROM Dac d
+      WHERE d.status = 'PUBLIE'
+      AND d.isDeleted = false
+      AND (d.shortListing = true OR d.etapeDac = '2')
+      AND d.dacId = :dacId
+      AND d.dacVer = (
+          SELECT MAX(sd.id.dac.dacVer)
+          FROM SocieteDac sd
+          WHERE sd.id.dac.dacId = :dacId
+          AND sd.id.societe.id IN (
+              SELECT us.societeId FROM UserSociete us 
+              WHERE us.userId = :userId AND us.isDeleted = false
+          )
+      )
+      ORDER BY d.updatedAt DESC
+      """)
+  Optional<Dac> findPublishedDacForUser(@Param("dacId") Integer dacId, @Param("userId") String userId);
+
+
 }

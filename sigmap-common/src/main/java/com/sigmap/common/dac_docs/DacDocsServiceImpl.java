@@ -398,7 +398,7 @@ public class DacDocsServiceImpl implements DacDocsService{
                          SocieteDac copy = new SocieteDac();
                          copy.setId(societeDacID);
                          copy.setMethodePaiement(source.getMethodePaiement());
-                         copy.setStatusPaiement(source.isStatusPaiement());
+                         copy.setStatusPaiement(source.getStatusPaiement());
                          copy.setJustifPaiementId(source.getJustifPaiementId());
                          societeDacRepository.save(copy);
                      }
@@ -999,7 +999,7 @@ public class DacDocsServiceImpl implements DacDocsService{
                  SocieteDac sd = new SocieteDac();
                  sd.setId(sdId);
                  sd.setJustifPaiementId(source.getJustifPaiementId());
-                 sd.setStatusPaiement(source.isStatusPaiement());
+                 sd.setStatusPaiement(source.getStatusPaiement());
                  sd.setMethodePaiement(source.getMethodePaiement());
                  societeDacRepository.save(sd);
              }

@@ -1,11 +1,16 @@
 package com.sigmap.common.societe_dac;
 
 
+import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
+import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacSpecifications;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.MethodePaiement;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
@@ -14,13 +19,20 @@ import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacAlreadyExistsException;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacNotFoundException;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
+import com.sigmap.common.societe_dac.request.SocieteDacRequestForWebsite;
+import com.sigmap.common.user_societe.UserSociete;
+import com.sigmap.common.user_societe.UserSocieteService;
+import com.sigmap.common.user_societe.exception.UserSocieteNotFound;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Calendar;
@@ -36,6 +48,8 @@ public class SocieteDacServiceImpl implements SocieteDacService {
     private final DacRepository dacRepository;
     private final SocieteRepository societeRepository;
     private final DocumentCommuneService documentCommuneService;
+    private final UserSocieteService userSocieteService;
+    private final AlfrescoService alfrescoService;
 
 
     @Override
@@ -148,6 +162,59 @@ public class SocieteDacServiceImpl implements SocieteDacService {
 
     @Override
     @Transactional
+    public SocieteDac updateForShortListing(Integer dacId, MultipartFile file, String userConnecteId) throws IOException {
+        log.debug("Modification de SocieteDac avec pour la short listing avec DacId: {}", dacId);
+
+        // verifier l'existence des field de request
+        if(dacId == null ) {
+            throw new IllegalArgumentException("Le champs dacId et obligatoire");
+        }
+
+        // get the last version of published DAC from DB with given Id
+
+        Optional<Dac> dacWithLastVer = dacRepository.findPublishedDacForUser(dacId, userConnecteId);
+        // verification de l'existace du SocieteDac
+        if(dacWithLastVer.isEmpty()) {
+            throw new DacNotFound(dacId);
+        }
+
+        //get socite by user connected Id
+        UserSociete userSocite = userSocieteService.findByUserId(userConnecteId);
+
+        if(userSocite==null){
+            throw new UserSocieteNotFound(userConnecteId);
+        }
+
+        Dac existingDac = dacWithLastVer.get();
+
+        Optional<SocieteDac> existingSocieteDac = societeDacRepository.findById(existingDac.getDacId(), existingDac.getDacVer(), userSocite.getSocieteId());
+
+        if(existingSocieteDac.isEmpty()) {
+            throw new SocieteDacNotFoundException(existingDac.getDacId(), userSocite.getSocieteId());
+        }
+
+        // update SocieteDac
+        SocieteDac societeDac = existingSocieteDac.get();
+
+        Integer IdJustifPaiement = null;
+        try {
+            if (societeDac.getMethodePaiement() == MethodePaiement.NON_ATTRIBUE ) {
+                societeDac.setMethodePaiement(MethodePaiement.MANUEL);
+                IdJustifPaiement =  documentCommuneService.processAndSaveDocumentsForPaymentDac(file, existingDac.getDacId(), existingDac.getDacVer());
+            }
+        }
+        catch (IOException e) {
+            throw new IOException("An error occurred while processing the file: " + e.getMessage());
+        }
+
+        societeDac.setJustifPaiementId(IdJustifPaiement);
+        societeDac.setStatusPaiement(null);
+        return societeDacRepository.save(societeDac);
+
+    }
+
+    @Override
+    @Transactional
     public void delete(Integer dacId, Integer dacVersion, Integer societeId) {
         log.debug("Suppression de SocieteDac avec DacId: {}, DacVersion: {}, Societeid: {}", dacId, dacVersion, societeId);
 
@@ -208,4 +275,29 @@ public class SocieteDacServiceImpl implements SocieteDacService {
     }
 
 
+    @Override
+    public Page<SocieteDac> findAllForAdmin( Pageable pageable) {
+
+        Page<SocieteDac> societeDac = societeDacRepository.findAllForAdmin( pageable);
+
+        return societeDac;
+    }
+
+
+    @Override
+    public byte[] downloadPaymentJustif(String alfrescoId) throws IOException {
+
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile()!=null) {
+            return dummyContent.getFile();
+        }
+        else {
+            throw new IOException("Error while downloading document.");
+        }
+
+    }
+
+    public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
+        return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
+    }
 }
