@@ -60,4 +60,8 @@ public interface WebMasterService {
     DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound;
 
     DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound;
+
+    byte[] generateDacMergedPdf(Integer dacId, String userId) throws IOException, DocNotFound;
+
+    byte[] generateDacMergedPdfFree(Integer dacId, String userId) throws IOException, DocNotFound;
 }
