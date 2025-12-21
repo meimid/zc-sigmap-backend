@@ -542,6 +542,11 @@ public class DacFlowableService {
 
                         if (!matches) continue;
 
+                        if (!applyCpmpUiFilter(gw, gf, vars)) {
+                            log.info(" → RESULT: Flow '{}' hidden by CPMP UI rules", gf.getId());
+                            continue;
+                        }
+
                         log.info(" → RESULT: Flow '{}' is VISIBLE ✓", gf.getId());
 
                     /* =============================================================
@@ -592,6 +597,52 @@ public class DacFlowableService {
         }
 
         return result;
+    }
+
+    private boolean applyCpmpUiFilter(
+            ExclusiveGateway gw,
+            SequenceFlow flow,
+            Map<String, Object> vars
+    ) {
+
+        //  Ne concerne QUE le gateway CPMP
+        if (!"ExclusiveGateway_1qgo4yf".equals(gw.getId())) {
+            return true;
+        }
+
+        String action = getActionLabelFromXml(flow);
+        Boolean isRestraint = (Boolean) vars.get("isRestraint");
+        Integer etapeDac = (Integer) vars.get("etapeDac");
+
+        // Sécurité
+        if (action == null) return false;
+
+        //  Reject → toujours visible
+        if ("Reject".equalsIgnoreCase(action)) {
+            return true;
+        }
+
+        //  Validate → restreint
+        if ("Validate".equalsIgnoreCase(action) && Boolean.TRUE.equals(isRestraint)) {
+            return true;
+        }
+
+        //  Validate → publication
+        if ("Validate".equalsIgnoreCase(action)
+                && Boolean.FALSE.equals(isRestraint)
+                && Integer.valueOf(1).equals(etapeDac)) {
+            return true;
+        }
+
+        //  Transmettre → DAO
+        if ("Transmettre".equalsIgnoreCase(action)
+                && Boolean.FALSE.equals(isRestraint)
+                && Integer.valueOf(2).equals(etapeDac)) {
+            return true;
+        }
+
+        //  Tout le reste est masqué
+        return false;
     }
 
 

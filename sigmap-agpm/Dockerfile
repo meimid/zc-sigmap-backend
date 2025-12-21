@@ -1,6 +1,8 @@
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
-RUN apk update && apk add maven curl
+RUN apt-get update && \
+    apt-get install -y maven curl && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -20,10 +22,10 @@ COPY pom.xml .
 
 RUN mvn clean package -B -DskipTests
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-COPY --from=builder /app/sigmap-agpm/target/sigmap-agpm*.jar /app.jar
+COPY --from=builder /app/sigmap-auth/target/sigmap-auth*.jar /app.jar
 
 ENTRYPOINT ["java","-jar","/app.jar"]

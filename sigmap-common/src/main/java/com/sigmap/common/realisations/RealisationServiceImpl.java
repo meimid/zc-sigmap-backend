@@ -622,19 +622,27 @@ public class RealisationServiceImpl implements RealisationService {
     public Realisation updateWithVersioning(Integer realisationId,
                                             Integer realisationVer,
                                             RealisationBaseRequestDto request) throws RealisationNotFoundException {
-        CompositeId compositeId = new CompositeId(realisationId, realisationVer);
+
+        // --------------------------------------------------------------------
+        //  always anchor on the latest version in DB
+        // --------------------------------------------------------------------
+        Integer maxVersionInDb = repository.findMaxVersionById(realisationId);
+        int effectiveCurrentVersion = (maxVersionInDb != null) ? maxVersionInDb : realisationVer;
+
+        CompositeId compositeId = new CompositeId(realisationId, effectiveCurrentVersion);
         Realisation existing = repository.findById(compositeId)
                 .orElseThrow(() -> new RealisationNotFoundException(
-                        "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.",
-                        realisationId, realisationVer));
+                        "Realisation with ID " + realisationId + " and version " + effectiveCurrentVersion + " was not found in the database.",
+                        realisationId, effectiveCurrentVersion));
 
         if (Boolean.TRUE.equals(existing.getIsDeleted())) {
             throw new RealisationNotFoundException(
-                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,
-                    realisationId, realisationVer);
+                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + effectiveCurrentVersion,
+                    realisationId, effectiveCurrentVersion);
         }
 
-        log.info("Updating Realisation ID: {}, Current Version: {}", realisationId, realisationVer);
+        log.info("Updating Realisation ID: {}, Requested Version: {}, Effective Current Version: {}",
+                realisationId, realisationVer, effectiveCurrentVersion);
         log.info("Request data: {}", request);
 
         Realisation probe = new Realisation();
@@ -724,7 +732,7 @@ public class RealisationServiceImpl implements RealisationService {
                 fieldChanges, lotChangesDetected, documentsChanged, financementChangesDetected, hasChanges);
 
         if (!hasChanges) {
-            log.info("No changes detected, returning existing version {}", realisationVer);
+            log.info("No changes detected, returning existing version {}", existing.getVersion());
             Realisation resp = new Realisation();
             BeanUtils.copyProperties(existing, resp);
             if (existing.getDocs() != null) {
@@ -736,10 +744,15 @@ public class RealisationServiceImpl implements RealisationService {
             return resp;
         }
 
-        log.info("Creating new Realisation version: {}", realisationVer + 1);
+        // --------------------------------------------------------------------
+        //  new version must be based on effectiveCurrentVersion
+        // --------------------------------------------------------------------
+        int newVersion = effectiveCurrentVersion + 1;
+        log.info("Creating new Realisation version: {}", newVersion);
+
         Realisation created = new Realisation();
         created.setId(realisationId);
-        created.setVersion(realisationVer + 1);
+        created.setVersion(newVersion);
 
         created.setRealisationEnvisagees(probe.getRealisationEnvisagees());
         created.setBeneficiaire(probe.getBeneficiaire());
@@ -786,11 +799,17 @@ public class RealisationServiceImpl implements RealisationService {
                 if (lr.getId() == null) {
                     // brand-new lot
                     Lot nl = new Lot();
-                    Integer newLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
+
+                    // ----------------------------------------------------------------
+                    // sequence returns a unique next id
+                    // ----------------------------------------------------------------
+                    Integer newLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
                     nl.setId(newLotId);
                     nl.setVersion(1);
+
                     nl.setDescription(newDesc != null ? newDesc : "");
-                    if (reqBudget != null) nl.setBudget(reqBudget); // <<< persist budget
+                    if (reqBudget != null) nl.setBudget(reqBudget);
+
                     nl = lotRepository.save(nl);
                     newLots.add(nl);
                     log.info("Created new Lot id={}, v=1, budget={}", nl.getId(), nl.getBudget());
@@ -818,7 +837,7 @@ public class RealisationServiceImpl implements RealisationService {
                         nl.setId(base.getId());
                         nl.setVersion(base.getVersion() + 1);
                         nl.setDescription(descChanged ? newDesc : base.getDescription());
-                        nl.setBudget(budgetChanged ? reqBudget : base.getBudget()); // keep budget when DTO not providing one
+                        nl.setBudget(budgetChanged ? reqBudget : base.getBudget());
                         nl = lotRepository.save(nl);
                         newLots.add(nl);
                         log.info("Created new Lot version id={}, v={}, budget={}", nl.getId(), nl.getVersion(), nl.getBudget());
@@ -898,6 +917,7 @@ public class RealisationServiceImpl implements RealisationService {
         }
         return resp;
     }
+
 
     private boolean hasLotChangesForPaa(Realisation existingReal, List<LotResponse> incomingDtos) {
         // Current active lots
