@@ -3,6 +3,7 @@ package com.sigmap.common.societe_dac;
 
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
+import com.sigmap.common.societe_dac.request.SocieteDacRequestForCreate;
 import com.sigmap.common.societe_dac.request.SocieteDacRequestForWebsite;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +19,7 @@ public interface SocieteDacService {
 
     SocieteDac findById(Integer dacId, Integer dacVersion, Integer societeId);
 
-    SocieteDac create(SocieteDacRequest request) throws SocieteNotFound, IOException;
+    SocieteDac create(SocieteDacRequestForCreate request, String userConnecteId) throws SocieteNotFound, IOException;
 
     SocieteDac update( SocieteDacRequest request);
     public SocieteDac updateForShortListing(Integer dacId, MultipartFile file, String userConnecteId)throws IOException;

@@ -1,5 +1,6 @@
 package com.sigmap.common.appel_offre.response;
 
+import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.response.RealisationResponse;
@@ -18,12 +19,11 @@ import lombok.Setter;
 public class AppelOffreResponseById {
     private Integer id;
     private PpmResponseDto ppm;
-    private RealisationResponseForAO realisation;
     private String reference;
     private String nom;
     private String description;
     private String etape;
-    private String modePassation;
+    private ModePassationType modePassation;
     private Boolean lotSepares;
     private StatusAppelOffre statusAppelOffre;
     boolean couldCreateDac;

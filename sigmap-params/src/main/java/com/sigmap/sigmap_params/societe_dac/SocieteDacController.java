@@ -11,6 +11,7 @@ import com.sigmap.common.societe_dac.SocieteDacService;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacNotFoundException;
 import com.sigmap.common.societe_dac.mappers.SocieteDacMapper;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
+import com.sigmap.common.societe_dac.request.SocieteDacRequestForCreate;
 import com.sigmap.common.societe_dac.response.SocieteDacQuerry;
 import com.sigmap.common.societe_dac.response.SocieteDacResponse;
 import com.sigmap.common.societe_dac.response.SocieteDacResponsePayment;
@@ -24,9 +25,12 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import javax.print.Doc;
@@ -45,15 +49,7 @@ public class SocieteDacController {
     private final SocieteDacService societeDacService;
     private final DocsService docsService;
 
-    @PostMapping(consumes = {"multipart/form-data"})
-    @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
-    @Operation(summary = "Créer une nouvelle société DAC")
-    public ResponseEntity<SocieteDacResponse> createSocieteDac(@Valid @ModelAttribute SocieteDacRequest request) throws SocieteNotFound, IOException {
-        log.info("Création d'une nouvelle société DAC: {}", request);
-        SocieteDac createdSocieteDac = societeDacService.create(request);
-        SocieteDacResponse response = SocieteDacMapper.INSTANCE.map(createdSocieteDac);
-        return ResponseEntity.ok(response);
-    }
+
 
     /*@PutMapping
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")

@@ -16,9 +16,12 @@ import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
 import com.sigmap.common.societe.SocieteSpecifications;
 import com.sigmap.common.societe.exception.SocieteNotFound;
+import com.sigmap.common.societe_blak_list.SocieteBlackList;
+import com.sigmap.common.societe_blak_list.SocieteBlackListRepository;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacAlreadyExistsException;
 import com.sigmap.common.societe_dac.exceptions.SocieteDacNotFoundException;
 import com.sigmap.common.societe_dac.request.SocieteDacRequest;
+import com.sigmap.common.societe_dac.request.SocieteDacRequestForCreate;
 import com.sigmap.common.societe_dac.request.SocieteDacRequestForWebsite;
 import com.sigmap.common.user_societe.UserSociete;
 import com.sigmap.common.user_societe.UserSocieteService;
@@ -50,6 +53,7 @@ public class SocieteDacServiceImpl implements SocieteDacService {
     private final DocumentCommuneService documentCommuneService;
     private final UserSocieteService userSocieteService;
     private final AlfrescoService alfrescoService;
+    private final SocieteBlackListRepository societeBlackListRepository;
 
 
     @Override
@@ -81,10 +85,10 @@ public class SocieteDacServiceImpl implements SocieteDacService {
 
     @Override
     @Transactional
-    public SocieteDac create(SocieteDacRequest request) throws SocieteNotFound, IOException {
+    public SocieteDac create(SocieteDacRequestForCreate request, String userConnecteId) throws SocieteNotFound, IOException {
         // verifier l'existence des field de request
-        if(request.getDacId() == null || request.getDacVer() == null || request.getSocieteId() == null) {
-            throw new IllegalArgumentException("Les champs dacId, dacVer, societeId sont obligatoires");
+        if(request.getDacId() == null || userConnecteId == null) {
+            throw new IllegalArgumentException("Les champs dacId et userConnecteId sont obligatoires");
         }
 
         //verifier le mode de paiyement
@@ -92,37 +96,51 @@ public class SocieteDacServiceImpl implements SocieteDacService {
             throw new IllegalArgumentException("Le champs methodePaiement est obligatoire");
         }
 
+        // get the last version of published DAC from DB with given Id
+        // dac is not shortlisted + etapedc == 1 + publiee + not deleted
 
-        // verifier l'existence du SocieteDac
-        Optional<SocieteDac> existingSocieteDac = societeDacRepository.findById(request.getDacId(), request.getDacVer(), request.getSocieteId());
-        if(existingSocieteDac.isPresent()) {
-            throw new SocieteDacAlreadyExistsException(request.getDacId(), request.getDacVer(), request.getSocieteId());
+        Optional<Dac> dacWithLastVer = dacRepository.findPublishedDacForUserNotShortListed(request.getDacId(), userConnecteId);
+        // verification de l'existace du SocieteDac
+        if(dacWithLastVer.isEmpty()) {
+            throw new DacNotFound(request.getDacId());
+        }
+        Dac existingDac = dacWithLastVer.get();
+
+        log.info("......................... {}",userConnecteId);
+
+        //get socite by user connected Id
+        UserSociete userSocite = userSocieteService.findByUserId(userConnecteId);
+
+        log.info("1111111111111111111111");
+        if(userSocite==null){
+            throw new UserSocieteNotFound(userConnecteId);
         }
 
-        // verifier l'existence du Dac
-        Specification<Dac> specificationForDac = DacSpecifications.id(request.getDacId(),request.getDacVer())
-                .and(DacSpecifications.searchByDeleted(false));
+        //societe is not bleck listed
+        Societe societe = userSocite.getSociete();
 
-        Dac dac = dacRepository .findOne(specificationForDac)
-                .orElseThrow(() -> new DacNotFound("", request.getDacId(), request.getDacVer()));
+        if (societe ==null){
+            throw new SocieteNotFound(null);
+        }
 
-        // Vérification de l'existence de la societe
-        Specification<Societe> specificationForSocite = SocieteSpecifications.id(request.getSocieteId())
-                .and(SocieteSpecifications.deleted(false));
-        Societe societe = societeRepository.findOne(specificationForSocite)
-                .orElseThrow(() -> new SocieteNotFound("", List.of(request.getSocieteId())));
+
+        Optional<SocieteBlackList> societeBlackList = societeBlackListRepository.testForBlackListed(societe.getId());
+
+        if (societeBlackList.isPresent()) {
+            throw new RuntimeException("Société déja black-listée ");
+        }
 
         Integer IdJustifPaiement = null;
         try {
             if (request.getMethodePaiement() == MethodePaiement.MANUEL ) {
-                IdJustifPaiement =  documentCommuneService.processAndSaveDocumentsForPaymentDac(request.getJustifPaiementFile(), request.getDacId(), request.getDacVer());
+                IdJustifPaiement =  documentCommuneService.processAndSaveDocumentsForPaymentDac(request.getJustifPaiementFile(), existingDac.getDacId(), existingDac.getDacVer());
             }
         }
         catch (IOException e) {
             throw new IOException("An error occurred while processing the file: " + e.getMessage());
         }
         // initialise id
-        SocieteDacID societeDacId = new SocieteDacID(dac, societe);
+        SocieteDacID societeDacId = new SocieteDacID(existingDac, userSocite.getSociete());
 
         SocieteDac societeDac = new SocieteDac();
         societeDac.setId(societeDacId);
