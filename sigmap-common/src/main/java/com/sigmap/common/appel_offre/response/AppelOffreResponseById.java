@@ -12,6 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 @AllArgsConstructor
@@ -19,6 +21,7 @@ import lombok.Setter;
 public class AppelOffreResponseById {
     private Integer id;
     private PpmResponseDto ppm;
+    private RealisationResponseDTO realisation;
     private String reference;
     private String nom;
     private String description;
