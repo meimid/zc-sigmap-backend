@@ -476,6 +476,125 @@ public class MailService {
         }
     }
 
+    private String dacShortlistInvitationEmailContext(
+            String acName,
+            String aoObjet,
+            String aoReference,
+            String dateLimiteSoumission
+    ) throws IOException {
+
+        InputStream logo = getClass().getClassLoader().getResourceAsStream("logo-dark.png");
+        byte[] sourceLogo = (logo != null) ? IOUtils.toByteArray(logo) : new byte[0];
+        String encodedStringLogo = Base64.getEncoder().encodeToString(sourceLogo);
+        encodedStringLogo = "data:image/png;base64,".concat(encodedStringLogo);
+
+        Context context = new Context();
+        context.setVariable("acName", acName);
+        context.setVariable("aoObjet", aoObjet);
+        context.setVariable("aoReference", aoReference);
+        context.setVariable("dateLimiteSoumission", dateLimiteSoumission);
+        context.setVariable("logo", encodedStringLogo);
+        context.setVariable("from", fromEmail);
+
+        return templateEngine.process("email/dacShortlistInvitationEmail", context);
+    }
+
+
+
+    public void sendDacShortlistInvitationEmail(
+            String toEmail,
+            String acName,
+            String aoObjet,
+            String aoReference,
+            String dateLimiteSoumission,
+            String adminId,
+            TypeEmail typeEmail
+    ) throws MessagingException {
+
+        if (toEmail == null || toEmail.isBlank()) {
+            log.warn("❌ DAC shortlist email: destinataire NULL → email non envoyé");
+            try {
+                emailService.saveEmailTrace(
+                        adminId != null ? adminId : "SYSTEM",
+                        typeEmail != null ? typeEmail : TypeEmail.VALIDATION_PPM,
+                        "[DESTINATAIRE NULL] DAC Shortlist",
+                        "",
+                        "",
+                        false,
+                        LocalDateTime.now()
+                );
+            } catch (Exception ex) {
+                log.error("❌ Impossible d'enregistrer EmailTrace (dest null)", ex);
+            }
+            return;
+        }
+
+        acName = (acName != null && !acName.isBlank()) ? acName : "L'AC";
+        aoObjet = (aoObjet != null && !aoObjet.isBlank()) ? aoObjet : "Objet AO";
+        aoReference = (aoReference != null && !aoReference.isBlank()) ? aoReference : "Référence AO";
+        dateLimiteSoumission = (dateLimiteSoumission != null && !dateLimiteSoumission.isBlank())
+                ? dateLimiteSoumission
+                : "N/A";
+
+        String subject = "SIGMAP – Invitation à soumissionner – " + aoReference;
+
+        String content;
+        try {
+            content = dacShortlistInvitationEmailContext(
+                    acName,
+                    aoObjet,
+                    aoReference,
+                    dateLimiteSoumission
+            );
+        } catch (Exception e) {
+            log.error("⚠ DAC shortlist email: génération HTML échouée → fallback", e);
+
+            content =
+                    "<p>Mesdames, Messieurs,</p>" +
+                            "<p><b>" + acName + "</b> vous informe que vous avez été initialement sélectionné pour remettre votre offre/Proposition pour " +
+                            "<b>" + aoObjet + "</b>, Référence <b>" + aoReference + "</b>, selon les dispositions définies dans le dossier d'appel à concurrence " +
+                            "avec, comme date limite de soumission le <b>" + dateLimiteSoumission + "</b>.</p>";
+        }
+
+        boolean success = false;
+
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setFrom(fromEmail != null ? fromEmail : "no-reply@sigmap.tn");
+            helper.setText(content, true);
+
+            javaMailSender.send(mimeMessage);
+            success = true;
+
+            log.info("✔ DAC shortlist invitation email sent to {}", toEmail);
+
+        } catch (Exception e) {
+            success = false;
+            log.error("❌ Failed to send DAC shortlist invitation email to {}", toEmail, e);
+            throw new MessagingException("Failed to send DAC shortlist invitation email", e);
+
+        } finally {
+            try {
+                emailService.saveEmailTrace(
+                        adminId != null ? adminId : "SYSTEM",
+                        typeEmail != null ? typeEmail : TypeEmail.VALIDATION_PPM,
+                        subject,
+                        content,
+                        toEmail,
+                        success,
+                        LocalDateTime.now()
+                );
+            } catch (Exception e) {
+                log.error("❌ Impossible de sauvegarder EmailTrace (DAC shortlist)", e);
+            }
+        }
+    }
+
+
 
 
 
