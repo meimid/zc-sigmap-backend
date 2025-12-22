@@ -57,11 +57,15 @@ public interface WebMasterService {
 
     Page<DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable);
 
-    DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound;
+    DacDetailsWebsiteResponse getDacDetailsById(Integer dacId, String userId) throws DocNotFound;
 
     DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound;
 
     byte[] generateDacMergedPdf(Integer dacId, String userId) throws IOException, DocNotFound;
 
     byte[] generateDacMergedPdfFree(Integer dacId, String userId) throws IOException, DocNotFound;
+
+    byte[] generatePublicDacPdf(Integer dacId, String userId) throws IOException, DocNotFound;
+
+    byte[] generatePublicDacPdfFree(Integer dacId, String userId) throws IOException, DocNotFound;
 }

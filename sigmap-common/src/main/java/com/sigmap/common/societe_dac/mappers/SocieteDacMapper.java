@@ -28,6 +28,8 @@ public interface SocieteDacMapper {
 
 
     @Mapping(target = "societe", source = "id.societe")
+    @Mapping(target = "dacId", source = "id.dac.dacId")
+    @Mapping(target = "dacVer", source = "id.dac.dacVer")
     @Mapping(target = "methodePaiement", source = "methodePaiement")
     @Mapping(target = "statusPaiement", source = "statusPaiement")
     @Mapping(target = "justifPaiementId", source = "justifPaiementId")

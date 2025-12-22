@@ -524,11 +524,20 @@ public class WebMasterServiceImpl implements WebMasterService {
         return response;
     }
     @Override
-    public DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound {
+    public DacDetailsWebsiteResponse getDacDetailsById(Integer dacId, String userId) throws DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
                 .orElseThrow(() -> new DocNotFound("Published DAC not found for ID: " + dacId, null));
 
-        return mapToDetailsResponse(dac);
+        DacDetailsWebsiteResponse details = mapToDetailsResponse(dac);
+        
+        // Populate payment fields if user is authenticated
+        if (userId != null && dac.isPayant()) {
+            details.setId(dac.getDacId());
+            details.setIsPaymentValid(societeDacRepository.hasConfirmedPayment(dac.getDacId(), dac.getDacVer(), userId));
+            details.setHasPayed(societeDacRepository.hasUserPayed(dac.getDacId(), dac.getDacVer(), userId));
+        }
+        
+        return details;
     }
 
     @Override
@@ -720,6 +729,96 @@ public class WebMasterServiceImpl implements WebMasterService {
                 .orElseThrow(() -> new DocNotFound("Published DAC not found or not accessible for ID: " + dacId, null));
 
         // For free DACs, no payment check required
+        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+
+        RestTemplate restTemplate = new RestTemplate();
+        List<InputStream> pdfStreams = new ArrayList<>();
+        try {
+            for (String docxPath : generatedFiles) {
+                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
+                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                body.add("files", docxResource);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+                ResponseEntity<byte[]> response = restTemplate.exchange(
+                        convertUrl + "/forms/libreoffice/convert",
+                        HttpMethod.POST,
+                        requestEntity,
+                        byte[].class
+                );
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
+                } else {
+                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
+                }
+            }
+
+            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
+            return mergedOut.toByteArray();
+        } finally {
+            for (java.io.InputStream is : pdfStreams) {
+                try {
+                    is.close();
+                } catch (Exception ignore) {
+                }
+            }
+        }
+    }
+
+    @Override
+    public byte[] generatePublicDacPdf(Integer dacId, String userId) throws IOException, DocNotFound {
+        Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
+                .orElseThrow(() -> new DocNotFound("Published public DAC not found for ID: " + dacId, null));
+
+        // For paid public DACs, check payment status
+        if (dac.isPayant() && !Boolean.TRUE.equals(societeDacRepository.hasConfirmedPayment(dacId, dac.getDacVer(), userId))) {
+            throw new DocNotFound("Payment not confirmed for public DAC ID: " + dacId, null);
+        }
+
+        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+
+        RestTemplate restTemplate = new RestTemplate();
+        List<InputStream> pdfStreams = new ArrayList<>();
+        try {
+            for (String docxPath : generatedFiles) {
+                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
+                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                body.add("files", docxResource);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+                ResponseEntity<byte[]> response = restTemplate.exchange(
+                        convertUrl + "/forms/libreoffice/convert",
+                        HttpMethod.POST,
+                        requestEntity,
+                        byte[].class
+                );
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
+                } else {
+                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
+                }
+            }
+
+            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
+            return mergedOut.toByteArray();
+        } finally {
+            for (java.io.InputStream is : pdfStreams) {
+                try {
+                    is.close();
+                } catch (Exception ignore) {
+                }
+            }
+        }
+    }
+
+    @Override
+    public byte[] generatePublicDacPdfFree(Integer dacId, String userId) throws IOException, DocNotFound {
+        Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
+                .orElseThrow(() -> new DocNotFound("Published public DAC not found for ID: " + dacId, null));
+
+        // For free public DACs, no payment check required
         List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
 
         RestTemplate restTemplate = new RestTemplate();

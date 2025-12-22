@@ -7,6 +7,8 @@ import lombok.Data;
 public class SocieteDacResponsePayment {
 
     private SocieteResponseForPaymentDTO societe;
+    private Integer dacId;
+    private Integer dacVer;
     private MethodePaiement methodePaiement;
     private Boolean statusPaiement;
     private Integer justifPaiementId;
