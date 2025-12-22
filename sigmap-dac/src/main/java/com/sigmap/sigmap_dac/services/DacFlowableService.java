@@ -1863,11 +1863,11 @@ log.info("[DAC] DacDocsRequest: {}", updates);
                 dto.setCommissionRequired(props.get("commissionRequired"));
                 dto.setMeetingRequired(props.get("meetingRequired"));
 
-                // comId var
-                Integer comIdVar = (Integer) vars.get("comId");
-                if (comIdVar != null) dto.setComId(comIdVar);
-
-                taskList.add(dto);
+                Boolean meetingRequired = props.get("meetingRequired");
+                if (meetingRequired != null && meetingRequired) {
+                    dto.setMeetingRequired(true);
+                    taskList.add(dto);
+                }
             }
         }
 

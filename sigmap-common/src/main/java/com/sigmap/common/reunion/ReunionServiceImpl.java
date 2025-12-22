@@ -760,7 +760,7 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
-   @Scheduled(cron = "* * 1 * * ?")
+   @Scheduled(cron = "0 0 1 * * ?")
    @Transactional
     public void updateReunionStatusToEnRetard() {
         Calendar now = Calendar.getInstance();

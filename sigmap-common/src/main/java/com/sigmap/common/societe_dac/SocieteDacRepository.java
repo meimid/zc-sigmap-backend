@@ -57,5 +57,33 @@ public interface SocieteDacRepository extends JpaRepository<SocieteDac, SocieteD
     @Query("SELECT sd FROM SocieteDac sd  WHERE sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.MANUEL AND sd.justifPaiementId  is not null AND sd.statusPaiement is null and sd.isDeleted = false")
     Page<SocieteDac> findAllForAdmin (Pageable pageable);
 
+    @Query("""
+        SELECT COUNT(sd) > 0
+        FROM SocieteDac sd
+        WHERE sd.id.dac.dacId = :dacId
+          AND sd.id.dac.dacVer = :dacVer
+          AND (sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.MANUEL OR sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.EN_LIGNE)
+          AND sd.justifPaiementId IS NOT NULL
+          AND sd.isDeleted = false
+          AND sd.id.societe.id IN (
+              SELECT us.societeId FROM UserSociete us
+              WHERE us.userId = :userId AND us.isDeleted = false
+          )
+    """)
+    boolean hasUserPayed(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("userId") String userId);
 
+    @Query("""
+        SELECT sd.statusPaiement
+        FROM SocieteDac sd
+        WHERE sd.id.dac.dacId = :dacId
+          AND sd.id.dac.dacVer = :dacVer
+          AND (sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.MANUEL OR sd.methodePaiement = com.sigmap.common.entity.MethodePaiement.EN_LIGNE)
+          AND sd.justifPaiementId IS NOT NULL
+          AND sd.isDeleted = false
+          AND sd.id.societe.id IN (
+              SELECT us.societeId FROM UserSociete us
+              WHERE us.userId = :userId AND us.isDeleted = false
+          )
+    """)
+    Boolean hasConfirmedPayment(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("userId") String userId);
 }

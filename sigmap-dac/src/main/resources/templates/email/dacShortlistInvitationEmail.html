@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <title>SIGMAP – Invitation à soumissionner</title>
+</head>
+
+<body style="margin:0; padding:0; font-family: Arial, Helvetica, sans-serif;
+             font-size:15px; color:#2F3044; line-height:1.5; background-color:#D5D9E2;">
+
+<table align="center" cellpadding="0" cellspacing="0"
+       style="max-width:800px; width:100%; background-color:#ffffff;
+              margin:40px auto; padding:45px 0 34px 0;">
+
+    <tr>
+        <td style="padding:0 15px;">
+
+            <table width="100%" cellpadding="0" cellspacing="0">
+
+                <tr>
+                    <td style="padding-bottom:10px;">
+                        <p style="margin:0 0 10px 0;">Mesdames, Messieurs,</p>
+
+                        <p style="margin:0;">
+                            <strong th:text="${acName}">L'AC</strong>
+                            vous informe que vous avez été initialement sélectionné pour remettre votre offre/Proposition pour
+                            <strong th:text="${aoObjet}">Objet AO</strong>,
+                            Référence <strong th:text="${aoReference}">Référence AO</strong>,
+                            selon les dispositions définies dans le dossier d'appel à concurrence
+                            avec, comme date limite de soumission le
+                            <strong th:text="${dateLimiteSoumission}">Date limite Soumission</strong>.
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center"
+                        style="font-size:13px; padding:10px 10px; color:#A1A5B7;">
+                        <p style="color:#181C32; font-size:16px; font-weight:600; margin-bottom:9px;">
+                            Problèmes ?
+                        </p>
+                        <p style="margin-bottom:4px;">
+                            Contactez
+                            <a th:href="'mailto:' + ${from}"
+                               style="font-weight:600;"
+                               th:text="${from}">email</a>.
+                        </p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center"
+                        style="font-size:13px; padding:0 15px; color:#A1A5B7;">
+                        <p>Envoyé depuis SIGMAP.</p>
+                        <p>&copy; SIGMAP team.</p>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td align="center" style="padding:20px 15px;">
+                        <img th:src="${logo}" alt="Logo SIGMAP"
+                             style="height:75px; display:block; margin:0 auto;"/>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
