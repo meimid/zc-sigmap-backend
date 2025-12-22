@@ -178,7 +178,8 @@ FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
       AND r.dac_ver = d.dac_ver
-    INNER JOIN ppm p on d.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver
+      INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver 
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 WHERE r.reunion_id =  $P{reunion}]]>
