@@ -581,7 +581,7 @@ public class MailService {
             try {
                 emailService.saveEmailTrace(
                         adminId != null ? adminId : "SYSTEM",
-                        typeEmail != null ? typeEmail : TypeEmail.VALIDATION_PPM,
+                        typeEmail != null ? typeEmail : TypeEmail.DAC_SHORTLIST_INVITATION,
                         subject,
                         content,
                         toEmail,
