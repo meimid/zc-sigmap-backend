@@ -19,6 +19,7 @@ public interface DacDynaFormRepository
         JpaSpecificationExecutor<DacDynaForm> {
 
     Page<DacDynaForm> findByDacIdAndDacVer(Integer dacId, Integer dacVer, Pageable pageable);
+    List<DacDynaForm> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
 
     @Query("""
            SELECT d FROM DacDynaForm d
