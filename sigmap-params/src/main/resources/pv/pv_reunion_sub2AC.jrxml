@@ -65,7 +65,7 @@ INNER JOIN dac d
        ON r.dac_id = d.dac_id
       AND r.dac_ver = d.dac_ver
     INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
-    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
@@ -170,7 +170,7 @@ INNER JOIN dac d
        ON r.dac_id = d.dac_id
       AND r.dac_ver = d.dac_ver
      INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
-    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver 
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver 
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
