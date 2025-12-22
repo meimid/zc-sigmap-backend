@@ -19,10 +19,10 @@
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Rejeté'
-        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'CI' THEN 'Complément d''information'
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
-        else  'Avis' 
+         WHEN 'FALSE' THEN 'Rejeté'
+        else  'Avis'
         end as decision,
     p.ref,
     p.nom,
@@ -37,7 +37,7 @@ INNER JOIN ppm p
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
-WHERE r.reunion_id =  $P{reunion} 
+WHERE r.reunion_id =  $P{reunion}
 and m.com_id =  $P{com}  and r.decision is not null
 union
 SELECT distinct
@@ -49,10 +49,10 @@ SELECT distinct
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Rejeté'
-        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'CI' THEN 'Complément d''information'
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
-        else  'Avis' 
+         WHEN 'FALSE' THEN 'Rejeté'
+        else  'Avis'
         end as decision,
     p.ref,
     p.nom,
@@ -64,11 +64,12 @@ FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
       AND r.dac_ver = d.dac_ver
-    INNER JOIN ppm p on d.ppm_id=p.ppm_id and d.ppm_ver=p.ppm_ver
+     INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
-WHERE r.reunion_id =  $P{reunion}  
+WHERE r.reunion_id =  $P{reunion}
 and m.com_id =  $P{com} and r.decision is not null]]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
