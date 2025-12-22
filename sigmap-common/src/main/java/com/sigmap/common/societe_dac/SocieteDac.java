@@ -27,5 +27,5 @@ public class SocieteDac extends BaseEntity {
     private Integer justifPaiementId;
 
     @Column(name = "status_paiement")
-    private boolean statusPaiement;
+    private Boolean statusPaiement;
 }

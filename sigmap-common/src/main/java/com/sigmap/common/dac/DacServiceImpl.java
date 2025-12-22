@@ -1384,7 +1384,7 @@ public class DacServiceImpl implements DacService {
                  SocieteDac copy = new SocieteDac();
                  copy.setId(societeDacID);
                  copy.setMethodePaiement(source.getMethodePaiement());
-                 copy.setStatusPaiement(source.isStatusPaiement());
+                 copy.setStatusPaiement(source.getStatusPaiement());
                  copy.setJustifPaiementId(source.getJustifPaiementId());
                  societeDacRepository.save(copy);
              }
