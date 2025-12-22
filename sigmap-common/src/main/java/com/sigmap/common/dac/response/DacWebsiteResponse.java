@@ -21,4 +21,5 @@ public class DacWebsiteResponse {
     private String descriptionTypeMarche;
     private Calendar dateLimiteSoumission;
     private String alfrescoId;
+    private Boolean hasPayed;
 }

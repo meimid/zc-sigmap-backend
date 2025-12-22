@@ -16,7 +16,6 @@ import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.sigmap_webmaster.services.WebMasterService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -26,16 +25,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
 
 /**
  * Controller for Espace Societe related operations.
@@ -47,8 +43,8 @@ import java.io.IOException;
 public class EspaceSocieteController {
 
     private final WebMasterService webMasterService;
-    private final SocieteDacService societeDacService;
     private final DocsService docsService;
+    private final SocieteDacService societeDacService;
 
     /**
      * Get published DACs for the authenticated user based on their associated societies.
@@ -72,6 +68,30 @@ public class EspaceSocieteController {
         Page<DacWebsiteResponse> dacs = webMasterService.findPublishedDacsForUser(userId, pageable);
 
         return ResponseEntity.ok(dacs);
+    }
+
+    @PostMapping("/download/dac")
+    public ResponseEntity<Resource> downloadDocumentDacShortlist(@RequestBody AlfrescoIdRequest alfrescoId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+
+        byte[] fileContent = webMasterService.downloadDocumentDacShortlist(alfrescoId.getId(), userId);
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
     }
 
 
@@ -120,30 +140,6 @@ public class EspaceSocieteController {
 
     }
 
-    @PostMapping("/download/dac")
-    public ResponseEntity<Resource> downloadDocumentDacShortlist(@RequestBody AlfrescoIdRequest alfrescoId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
-        if (jwt == null) {
-            log.warn("Missing JWT authentication principal");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        String userId = jwt.getSubject();
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-
-        byte[] fileContent = webMasterService.downloadDocumentDacShortlist(alfrescoId.getId(), userId);
-        ByteArrayResource resource = new ByteArrayResource(fileContent);
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
-        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
-        headers.add("Pragma", "no-cache");
-        headers.add("Expires", "0");
-        return ResponseEntity.ok().headers(headers)
-                .contentLength(fileContent.length)
-                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
-                .body(resource);
-    }
-
     @PostMapping(value="/createSociteDac",consumes = {"multipart/form-data"})
     @Operation(summary = "Créer une nouvelle société DAC")
     public ResponseEntity<Void> createSocieteDac(@ModelAttribute SocieteDacRequestForCreate request, @AuthenticationPrincipal Jwt jwt) throws SocieteNotFound, IOException {
@@ -160,5 +156,76 @@ public class EspaceSocieteController {
         SocieteDac createdSocieteDac = societeDacService.create(request,userId);
         SocieteDacResponse response = SocieteDacMapper.INSTANCE.map(createdSocieteDac);
         return ResponseEntity.ok().build();
+    }
+    @GetMapping("/generate-dac-pdf/{dacId}")
+    public ResponseEntity<byte[]> generateDacMergedPdf(@PathVariable Integer dacId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        byte[] pdfContent = webMasterService.generateDacMergedPdf(dacId, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "dac-" + dacId + ".pdf");
+        headers.setContentLength(pdfContent.length);
+
+        return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/generate-dac-pdf-free/{dacId}")
+    public ResponseEntity<byte[]> generateDacMergedPdfFree(@PathVariable Integer dacId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        byte[] pdfContent = webMasterService.generateDacMergedPdfFree(dacId, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "dac-" + dacId + "-free.pdf");
+        headers.setContentLength(pdfContent.length);
+
+        return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/generate-public-dac-pdf/{dacId}")
+    public ResponseEntity<byte[]> generatePublicDacPdf(@PathVariable Integer dacId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        byte[] pdfContent = webMasterService.generatePublicDacPdf(dacId, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "public-dac-" + dacId + ".pdf");
+        headers.setContentLength(pdfContent.length);
+
+        return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+    }
+
+    @GetMapping("/generate-public-dac-pdf-free/{dacId}")
+    public ResponseEntity<byte[]> generatePublicDacPdfFree(@PathVariable Integer dacId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
+        if (jwt == null) {
+            log.warn("Missing JWT authentication principal");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String userId = jwt.getSubject();
+        byte[] pdfContent = webMasterService.generatePublicDacPdfFree(dacId, userId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "public-dac-" + dacId + "-free.pdf");
+        headers.setContentLength(pdfContent.length);
+
+        return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
     }
 }

@@ -18,7 +18,10 @@ public class DacDetailsWebsiteResponse {
     private String nomAc;
     private String descriptionTypeMarche;
     private Calendar dateLimiteSoumission;
+    private Integer id;
+    private Boolean isPaymentValid;
     private String alfrescoId;
+    private Boolean hasPayed;
     
     // AppelOffre details
     private String referenceAo;
