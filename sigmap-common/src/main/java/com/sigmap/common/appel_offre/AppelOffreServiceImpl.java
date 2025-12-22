@@ -23,6 +23,8 @@ import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
@@ -108,21 +110,19 @@ public class AppelOffreServiceImpl implements AppelOffreService {
             ppm.setDocs(nonDeletedDocs);
         }
 
-        if (ppm.getRealisations() != null) {
-            ppm.getRealisations().forEach(real -> {
-                if (real.getFinancements() != null) {
-                    real.setFinancements(
-                            real.getFinancements().stream()
-                                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                                    .collect(Collectors.toList())
-                    );
-                }
-            });
-        }
+        Optional<Realisation> realisationOptional = realisationRepository.findRealisationByIdAndVersion(appelOffre.getRealisation().getId(), appelOffre.getRealisation().getVersion());
 
-        PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapToDto(ppm);
+        Realisation realisation = realisationOptional.get();
+
+        realisation.getFinancements().stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .collect(Collectors.toList());
+
+
+
+        PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapTAo(ppm);
         response.setPpm(ppmResponse);
-
+        RealisationResponseDTO realisationResponseDTO = RealisationMapper.INSTANCE.mapForAo(realisation);
         response.setId(appelOffre.getId());
         response.setReference(appelOffre.getReference());
         response.setNom(appelOffre.getNom());
@@ -130,7 +130,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         response.setEtape(appelOffre.getEtape());
         response.setModePassation(appelOffre.getRealisation().getModePassation().getType());
         response.setLotSepares(appelOffre.getLotSepares());
-
+        response.setRealisation(realisationResponseDTO);
         response.setStatusAppelOffre(appelOffre.getStatusAppelOffre());
         response.setCouldCreateDac(couldCreateDac (appelOffre, id));
 
@@ -207,7 +207,8 @@ public class AppelOffreServiceImpl implements AppelOffreService {
                 .and(PpmSpecifications.isNotDeleted())
                 .and(PpmSpecifications.ppmAc(acIds))
                 .and(PpmSpecifications.hasRealisations())
-                .and(PpmSpecifications.isLatestPublishedVersion());
+                .and(PpmSpecifications.isLatestVersion())
+                .and(PpmSpecifications.isPublished());
 
         List<Ppm> foundPpms = ppmRepository.findAll(specification);
         return foundPpms;
