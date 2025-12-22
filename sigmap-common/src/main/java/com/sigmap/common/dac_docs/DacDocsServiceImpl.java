@@ -4,12 +4,13 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacId;
 import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocDetailsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
-import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsService;
@@ -19,20 +20,17 @@ import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixId;
 import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.dac_prix.DacPrixService;
-import com.sigmap.common.dac_prix.exceptions.DacPrixAlreadyExist;
-import com.sigmap.common.dac_prix.request.DacPrixRequest;
 import com.sigmap.common.dac_prix.request.DacPrixRequestForDac;
 import com.sigmap.common.dyna_docs.DynaDocs;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
-import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetails;
 import com.sigmap.common.dyna_fields_details.DynaFieldsDetailsRepository;
-import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
+import com.sigmap.common.entity.MethodePaiement;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
@@ -42,6 +40,11 @@ import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacID;
+import com.sigmap.common.societe_dac.SocieteDacRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +54,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.*;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
@@ -87,6 +89,10 @@ public class DacDocsServiceImpl implements DacDocsService{
     private DacPrixService dacPrixService;
     @Autowired
     private MonnaieRepository monnaieRepository;
+    @Autowired
+    private SocieteDacRepository societeDacRepository;
+    @Autowired
+    private SocieteRepository societeRepository;
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
@@ -332,6 +338,351 @@ public class DacDocsServiceImpl implements DacDocsService{
         log.info("Saved DacPrix: {}", dacPrix);
     }
 
+
+    @Override
+    @Transactional
+    public List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) throws MonnaieNotFound {
+        if (request == null || request.getDacDocsRequests() == null) {
+            return new ArrayList<>();
+        }
+
+        validateDacWithDacDocsRequest(request, lang);
+
+        Integer dacId = null;
+        if (!request.getDacDocsRequests().isEmpty()) {
+            dacId = request.getDacDocsRequests().get(0).getDacId();
+        } else {
+             return new ArrayList<>();
+        }
+        
+        Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (dac == null) {
+            throw new RuntimeException("Dac not found for ID: " + dacId);
+        }
+
+        boolean isModified = isDacModified(dac, request);
+        log.info("createDacWithDacDocsBatch: isModified={}, Status={}", isModified, dac.getStatus());
+
+        if (!isModified) {
+            return dacDocsRepository.findDacByID(dac.getDacId(), dac.getDacVer());
+        }
+
+        Dac targetDac = dac;
+        if (dac.getStatus() != ProcessStatus.BROUILLON) {
+             int nextVer = dac.getDacVer() + 1;
+             Dac newDac = new Dac();
+             newDac.setDacId(dac.getDacId());
+             newDac.setDacVer(nextVer);
+             newDac.setAppelOffre(dac.getAppelOffre());
+             newDac.setResponsableDacId(dac.getResponsableDacId());
+             newDac.setConditionsParticipation(dac.getConditionsParticipation());
+             newDac.setEtapeDac(dac.getEtapeDac());
+             newDac.setEtapeProcess(dac.getEtapeProcess());
+             newDac.setStatus(dac.getStatus());
+             newDac.setReference(dac.getReference());
+             newDac.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+             newDac.setDateLimiteRecptionDemande(dac.getDateLimiteRecptionDemande());
+             newDac.setPayant(dac.isPayant());
+             newDac.setShortListing(dac.isShortListing());
+             newDac.setDynaDocsModel(dac.getDynaDocsModel());
+             newDac.setProcessInstanceId(dac.getProcessInstanceId());
+             newDac = dacRepository.save(newDac);
+             
+             if (dac.isShortListing()) {
+                 List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+                 for (SocieteDac source : existingShortlist) {
+                     if (!Boolean.TRUE.equals(source.getIsDeleted())) {
+                         SocieteDacID societeDacID = new  SocieteDacID();
+                         societeDacID.setDac(newDac);
+                         societeDacID.setSociete(source.getId().getSociete());
+                         SocieteDac copy = new SocieteDac();
+                         copy.setId(societeDacID);
+                         copy.setMethodePaiement(source.getMethodePaiement());
+                         copy.setStatusPaiement(source.getStatusPaiement());
+                         copy.setJustifPaiementId(source.getJustifPaiementId());
+                         societeDacRepository.save(copy);
+                     }
+                 }
+             }
+             
+              List<DacPrix> existingPrix = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+              for (DacPrix p : existingPrix) {
+                  DacPrix copy = new DacPrix();
+                  DacPrixId pid = new DacPrixId();
+                  pid.setDac(newDac);
+                  pid.setMonnaie(p.getId().getMonnaie());
+                  copy.setId(pid);
+                  copy.setPrix(p.getPrix());
+                  dacPrixRepository.save(copy);
+              }
+
+             List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+             for (DacDocs prior : priorDocs) {
+                DacDocs clone = new DacDocs();
+                DacDocsId id = new DacDocsId();
+                id.setDacId(newDac.getDacId());
+                id.setDacVer(newDac.getDacVer());
+                id.setDynaDocsId(prior.getId().getDynaDocsId());
+                id.setDynaDocsVer(prior.getId().getDynaDocsVer());
+                id.setDynaFieldsId(prior.getId().getDynaFieldsId());
+                clone.setId(id);
+                clone.setDac(newDac);
+                clone.setDynaField(prior.getDynaField());
+                clone.setSourceId(prior.getSourceId());
+                clone.setFieldValue(prior.getFieldValue());
+                clone = dacDocsRepository.save(clone);
+
+                // Clone DacDocsDetails
+                Set<DacDocsDetails> priorDetails = prior.getDacDocsDetails();
+                if (priorDetails != null && !priorDetails.isEmpty()) {
+                    Set<DacDocsDetails> newDetails = new HashSet<>();
+                    for (DacDocsDetails detail : priorDetails) {
+                        DacDocsDetails  newDetail = new DacDocsDetails();
+                        newDetail.setDynaFieldsDetailsId(detail.getDynaFieldsDetailsId());
+                        newDetail.setRowId(detail.getRowId());
+                        newDetail.setDacId(newDac.getDacId());
+                        newDetail.setDacVer(newDac.getDacVer());
+                        newDetail.setDynaDocsId(detail.getDynaDocsId());
+                        newDetail.setDynaDocsVer(detail.getDynaDocsVer());
+                        newDetail.setDynaFieldsId(detail.getDynaFieldsId());
+                        newDetail.setSourceId(detail.getSourceId());
+                        newDetail.setFieldValue(detail.getFieldValue());
+                        // newDetail.setDac(clone); // Removed to avoid HHH000502 (immutable property)
+                        newDetail = dacDocsDetailsRepository.save(newDetail);
+                        newDetails.add(newDetail);
+                    }
+                    clone.setDacDocsDetails(newDetails);
+                }
+             }
+
+             targetDac = newDac;
+        }
+
+        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
+        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
+        if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
+        if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
+        if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
+
+        targetDac = dacRepository.save(targetDac);
+
+        if (Boolean.TRUE.equals(targetDac.isPayant())) {
+            if (request.getDacPrixRequests() != null && !request.getDacPrixRequests().isEmpty()) {
+
+                List<DacPrixRequestForDac> prixRequests = request.getDacPrixRequests();
+                
+                 // 1-1Fetch existing DacPrix in DB
+                List<DacPrix> existingPrixList = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+
+                //1-2 Determine which Monnaies are requested
+                Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                        .map(DacPrixRequestForDac::getMonnaieId)
+                        .collect(Collectors.toSet());
+
+                // 1-3 Delete DacPrix not present in request but present in DB
+                List<DacPrix> toDelete = existingPrixList.stream()
+                        .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+                 if (!toDelete.isEmpty() && targetDac.getStatus() != ProcessStatus.BROUILLON) {
+                    dacPrixRepository.softDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                if (!toDelete.isEmpty() && targetDac.getStatus() == ProcessStatus.BROUILLON) {
+                    dacPrixService.defenitiveDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                for (DacPrixRequestForDac prixRequest : prixRequests) {
+                    savePrixDac(prixRequest,targetDac.getDacId(),targetDac.getDacVer());
+                    log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),targetDac.getDacId(),targetDac.getDacVer());
+                }
+            }
+        } else {
+             List<DacPrix> existing = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+             if (existing != null && !existing.isEmpty()) {
+                 dacPrixRepository.softDelete(existing);
+             }
+        }
+
+        if (targetDac.isShortListing()) {
+            if (request.getShortlistMembers() != null) {
+                List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+                Map<Integer, SocieteDac> existingMap = existingList.stream()
+                        .collect(Collectors.toMap(s -> s.getId().getSociete().getId(), s -> s));
+
+                Set<Integer> requestedIds = new HashSet<>(request.getShortlistMembers());
+
+                for (Integer sid : request.getShortlistMembers()) {
+                    if (existingMap.containsKey(sid)) {
+                        SocieteDac existing = existingMap.get(sid);
+                        if (Boolean.TRUE.equals(existing.getIsDeleted())) {
+                            existing.setIsDeleted(false);
+                            existing.setDeletedAt(null);
+                            existing.setDeletedBy(null);
+                            societeDacRepository.save(existing);
+                        }
+                    } else {
+                        Societe dateSoc = societeRepository.findById(sid)
+                                .orElseThrow(() -> new InvalidDacRequestException("Societe not found: " + sid));
+                        SocieteDacID sdID = new SocieteDacID();
+                        sdID.setDac(targetDac);
+                        sdID.setSociete(dateSoc);
+                        SocieteDac sd = new SocieteDac();
+                        sd.setId(sdID);
+                        sd.setMethodePaiement(MethodePaiement.NON_ATTRIBUE);
+                        sd.setIsDeleted(false);
+                        societeDacRepository.save(sd);
+                    }
+                }
+                List<SocieteDac> toDelete = existingList.stream()
+                        .filter(s -> !requestedIds.contains(s.getId().getSociete().getId()))
+                        .collect(Collectors.toList());
+                if (!toDelete.isEmpty()) {
+                    societeDacRepository.softDelete(toDelete);
+                }
+            }
+        } else {
+             List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+             if (!existingList.isEmpty()) {
+                 societeDacRepository.softDelete(existingList);
+             }
+        }
+
+        List<DacDocs> results = new ArrayList<>();
+        for (DacDocsRequest req : request.getDacDocsRequests()) {
+            req.setDacId(targetDac.getDacId());
+            results.add(createDacDocs(req));
+        }
+        return results;
+    }
+
+    /*private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
+
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
+        if (request.getDateLimiteSoumission() == null) {
+            errorsFR.append("Date limite de soumission est obligatoire");
+            errorsENG.append("Date limite de soumission is required");
+        }
+
+        if (request.getDateLimiteRecptionDemande() == null) {
+            errorsFR.append("Date limite de réception des demandes is required");
+            errorsENG.append("Date limite de réception des demandes is required");
+        }
+
+        if (request.getPayant() == null) {
+            errorsFR.append("Payant field is required");
+            errorsENG.append("Payant field is required");
+        }
+
+        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
+            errorsFR.append("Responsable DAC ID is required");
+            errorsENG.append("Responsable DAC ID is required");
+        }
+
+        Calendar now = Calendar.getInstance();
+        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
+            errorsFR.append("Date limite de soumission must be in the future");
+            errorsENG.append("Date limite de soumission must be in the future");
+        }
+
+        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
+            errorsFR.append("Date limite de réception des demandes must be in the future");
+            errorsENG.append("Date limite de réception des demandes must be in the future");
+        }
+
+        if (Boolean.TRUE.equals(request.getPayant())) {
+            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
+                errorsFR.append("Montant payant is required and must be greater than zero when payant is true");
+                errorsENG.append("Montant payant is required and must be greater than zero when payant is true");
+            }
+        }
+
+        if (Boolean.TRUE.equals(request.getShortListing())) {
+            if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
+                errorsFR.append("Shortlist members are required when shortListing is true");
+                errorsENG.append("Shortlist members are required when shortListing is true");
+            }
+        }
+
+        if ( lang.equals("fr") && !errorsFR.isEmpty() ) {
+            throw new InvalidDacRequestException(errorsFR.toString());
+        }
+        else if (lang.equals("en") && !errorsENG.isEmpty()) {
+            throw new InvalidDacRequestException(errorsENG.toString());
+        }
+    }*/
+
+
+
+    private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
+        StringBuilder errorsFR = new StringBuilder();
+        StringBuilder errorsENG = new StringBuilder();
+
+        if (lang == null) {
+            lang = Locale.forLanguageTag("fr");
+        }
+        if (request.getDateLimiteSoumission() == null) {
+            errorsFR.append("La date limite de soumission est obligatoire");
+            errorsENG.append("Submission deadline is required");
+        }
+
+        if (request.getDateLimiteRecptionDemande() == null) {
+            errorsFR.append("La date limite de réception des demandes est obligatoire");
+            errorsENG.append("Deadline for receipt of requests is required");
+        }
+
+        if (request.getPayant() == null) {
+            errorsFR.append("le champ payant est obligatoire, ");
+            errorsENG.append("Payant field is required");
+        }
+
+        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
+            errorsFR.append("Le responsable du DAC est obligatoire");
+            errorsENG.append("DAC responsible is required");
+        }
+
+        Calendar now = Calendar.getInstance();
+        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
+            errorsFR.append("La date limite de soumission doit être dans le futur");
+            errorsENG.append("Submission deadline must be in the future");;
+        }
+
+        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
+            errorsFR.append("La date limite de réception des demandes doit être dans le futur");
+            errorsENG.append("Deadline for receipt of requests must be in the future");
+        }
+
+        if (Boolean.TRUE.equals(request.getPayant())) {
+            if (request.getDacPrixRequests() == null || request.getDacPrixRequests().isEmpty()) {
+                errorsFR.append("Le prix du dac est obligatoire");
+                errorsENG.append("The dac price is required");
+            }
+            if(request.getDacPrixRequests() != null){
+                for (DacPrixRequestForDac req : request.getDacPrixRequests()){
+                    if (req.getPrix() == null || req.getPrix().compareTo(BigDecimal.ZERO) <= 0) {
+                        errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
+                        errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+                    }
+                }
+            }
+
+        }
+
+
+        if (!errorsFR.isEmpty() || !errorsENG.isEmpty() ){
+            if ( lang.getLanguage().equals("fr") ) {
+                throw new InvalidDacRequestException(errorsFR.toString());
+            }
+            if (lang.getLanguage().equals("en") ) {
+                throw new InvalidDacRequestException(errorsENG.toString());
+            }
+        }
+    }
 
     @Override
     @Transactional
@@ -624,18 +975,35 @@ public class DacDocsServiceImpl implements DacDocsService{
         Dac newDac = new Dac();
         newDac.setDacId(existingDac.getDacId());
         newDac.setDacVer(nextVer);
-        newDac.setPpm(existingDac.getPpm());
-        newDac.setRealisation(existingDac.getRealisation());
-        newDac.setTypeMarche(existingDac.getTypeMarche());
+        newDac.setAppelOffre(existingDac.getAppelOffre());
+        newDac.setResponsableDacId(existingDac.getResponsableDacId());
+        newDac.setConditionsParticipation(existingDac.getConditionsParticipation());
+        newDac.setEtapeDac(existingDac.getEtapeDac());
+        newDac.setEtapeProcess(existingDac.getEtapeProcess());
         newDac.setStatus(existingDac.getStatus());
         newDac.setReference(existingDac.getReference());
         newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
         newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
         newDac.setPayant(existingDac.isPayant());
         newDac.setShortListing(existingDac.isShortListing());
-        newDac.setParentDacId(existingDac.getParentDacId());
         newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
         newDac = dacRepository.save(newDac);
+
+        // Clone DacShortlist if shortListing is true
+        if (newDac.isShortListing()) {
+             List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
+             for (SocieteDac source : existingShortlist) {
+                 SocieteDacID sdId = new SocieteDacID();
+                 sdId.setDac(newDac);
+                 sdId.setSociete(source.getId().getSociete());
+                 SocieteDac sd = new SocieteDac();
+                 sd.setId(sdId);
+                 sd.setJustifPaiementId(source.getJustifPaiementId());
+                 sd.setStatusPaiement(source.getStatusPaiement());
+                 sd.setMethodePaiement(source.getMethodePaiement());
+                 societeDacRepository.save(sd);
+             }
+        }
 
         // 3- Clone previous dac_docs snapshot to the new version
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(existingDac.getDacId(), existingDac.getDacVer());
@@ -786,46 +1154,46 @@ public class DacDocsServiceImpl implements DacDocsService{
         DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
             case "ppm": {
-                if (dac.getPpm() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null) return null;
                 switch (sourceField) {
-                    case "nom": return dac.getPpm().getNom();
+                    case "nom": return dac.getAppelOffre().getPpm().getNom();
                     case "created_at":
-                        if (dac.getPpm().getUpdatedAt() != null) {
-                            return sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
+                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
                         }
                         return null;
                     default: return null;
                 }
             }
             case "ac": {
-                if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null || dac.getAppelOffre().getPpm().getAc() == null) return null;
                 switch (sourceField) {
-                    case "nom": return dac.getPpm().getAc().getNom();
-                    case "email": return dac.getPpm().getAc().getEmail();
+                    case "nom": return dac.getAppelOffre().getPpm().getAc().getNom();
+                    case "email": return dac.getAppelOffre().getPpm().getAc().getEmail();
                     case "adresse":
-                        if (dac.getPpm().getAc().getAdresse() != null) {
-                            return (dac.getPpm().getAc().getAdresse().getAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
-                                    dac.getPpm().getAc().getAdresse().getVille());
+                        if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
+                            return (dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getVille());
                         }
                         return null;
                     default: return null;
                 }
             }
             case "realisation": {
-                if (dac.getRealisation() == null) return null;
+                if (dac.getAppelOffre().getRealisation() == null) return null;
                 switch (sourceField) {
                     case "realisationEnvisagees", "realisation_envisagees":
-                        return dac.getRealisation().getRealisationEnvisagees();
+                        return dac.getAppelOffre().getRealisation().getRealisationEnvisagees();
                     case "beneficiaire":
-                        return dac.getRealisation().getBeneficiaire();
+                        return dac.getAppelOffre().getRealisation().getBeneficiaire();
                     case "sourceFinancement", "source_financement": {
-                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) return null;
+                        if (dac.getAppelOffre().getRealisation().getFinancements() == null || dac.getAppelOffre().getRealisation().getFinancements().isEmpty()) return null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
-                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                        for (Financement fin : dac.getAppelOffre().getRealisation().getFinancements()) {
                             if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
                             String label = getRefParamLabel(fin.getSourceFinancement());
                             if (label == null) continue;
@@ -838,17 +1206,17 @@ public class DacDocsServiceImpl implements DacDocsService{
                         return sb.isEmpty() ? null : sb.toString();
                     }
                     case "typeMarcher", "type_marcher":
-                        return dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
+                        return dac.getAppelOffre().getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getTypeMarcher()) : null;
                     case "modeSelection", "mode_selection":
-                        return dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
+                        return dac.getAppelOffre().getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getModeSelection()) : null;
                     case "modePassation", "mode_passation":
-                        return dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                        return dac.getAppelOffre().getRealisation().getModePassation() != null ? dac.getAppelOffre().getRealisation().getModePassation().getLibelle() : null;
                     case "nomLot", "nom_lot": {
-                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) return null;
+                        if (dac.getAppelOffre().getRealisation().getLots() == null || dac.getAppelOffre().getRealisation().getLots().isEmpty()) return null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
-                        for (Lot lot : dac.getRealisation().getLots()) {
+                        for (Lot lot : dac.getAppelOffre().getRealisation().getLots()) {
                             if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
                             String name = lot.getDescription();
                             if (name == null) continue;
@@ -861,15 +1229,15 @@ public class DacDocsServiceImpl implements DacDocsService{
                         return sb.isEmpty() ? null : sb.toString();
                     }
                     case "budgetEstime", "budget_estime":
-                        return toString(dac.getRealisation().getBudgetEstime());
+                        return toString(dac.getAppelOffre().getRealisation().getBudgetEstime());
                     case "date_prev_lps":
-                        return dac.getRealisation().getDatePrevLps() != null ? dac.getRealisation().getDatePrevLps().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevLps() != null ? dac.getAppelOffre().getRealisation().getDatePrevLps().format(localDateFormatter) : null;
                     case "date_prev_ac":
-                        return dac.getRealisation().getDatePrevAc() != null ? dac.getRealisation().getDatePrevAc().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevAc() != null ? dac.getAppelOffre().getRealisation().getDatePrevAc().format(localDateFormatter) : null;
                     case "date_prev_dp":
-                        return dac.getRealisation().getDatePrevDp() != null ? dac.getRealisation().getDatePrevDp().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevDp() != null ? dac.getAppelOffre().getRealisation().getDatePrevDp().format(localDateFormatter) : null;
                     case "date_prev_ap":
-                        return dac.getRealisation().getDatePrevAp() != null ? dac.getRealisation().getDatePrevAp().format(localDateFormatter) : null;
+                        return dac.getAppelOffre().getRealisation().getDatePrevAp() != null ? dac.getAppelOffre().getRealisation().getDatePrevAp().format(localDateFormatter) : null;
                     default:
                         return null;
                 }
@@ -947,18 +1315,18 @@ public class DacDocsServiceImpl implements DacDocsService{
                 Dac newDac = new Dac();
                 newDac.setDacId(existingDac.getDacId());
                 newDac.setDacVer(nextVer);
-                newDac.setPpm(existingDac.getPpm());
-                newDac.setRealisation(existingDac.getRealisation());
-                newDac.setTypeMarche(existingDac.getTypeMarche());
+                newDac.setAppelOffre(existingDac.getAppelOffre());
+                newDac.setResponsableDacId(existingDac.getResponsableDacId());
+                newDac.setConditionsParticipation(existingDac.getConditionsParticipation());
+                newDac.setEtapeDac(existingDac.getEtapeDac());
+                newDac.setEtapeProcess(existingDac.getEtapeProcess());
                 newDac.setStatus(existingDac.getStatus());
                 newDac.setReference(existingDac.getReference());
                 newDac.setDateLimiteSoumission(existingDac.getDateLimiteSoumission());
                 newDac.setDateLimiteRecptionDemande(existingDac.getDateLimiteRecptionDemande());
                 newDac.setPayant(existingDac.isPayant());
                 newDac.setShortListing(existingDac.isShortListing());
-                newDac.setParentDacId(existingDac.getParentDacId());
                 newDac.setProcessInstanceId(existingDac.getProcessInstanceId());
-                newDac.setModePassation(existingDac.getModePassation());
                 newDac.setDynaDocsModel(existingDac.getDynaDocsModel());
                 newDac = dacRepository.save(newDac);
 
@@ -1116,6 +1484,7 @@ public class DacDocsServiceImpl implements DacDocsService{
                                         }
                                     }
                                 }
+                            
                             }
                             
                             // Verify savedRow version before creating details
@@ -1220,9 +1589,21 @@ public class DacDocsServiceImpl implements DacDocsService{
             DacDocs existing = existingDacDoc.get();
             
             // Compare fieldValue
-            if (!Objects.equals(existing.getFieldValue(), req.getFieldValue())) {
+            // Compare fieldValue with normalization (null == empty)
+            String existingVal = existing.getFieldValue() != null ? existing.getFieldValue() : "";
+            String reqVal = req.getFieldValue() != null ? req.getFieldValue() : "";
+            if (!existingVal.equals(reqVal)) {
                 log.info("Change detected in fieldValue for field {}: old='{}', new='{}'", 
-                        req.getDynaFieldsId(), existing.getFieldValue(), req.getFieldValue());
+                        req.getDynaFieldsId(), existingVal, reqVal);
+                return true;
+            }
+            
+            // Compare sourceId with normalization
+            String existingSrc = existing.getSourceId() != null ? existing.getSourceId() : "";
+            String reqSrc = req.getSourceId() != null ? req.getSourceId() : "";
+            if (!existingSrc.equals(reqSrc)) {
+                log.info("Change detected in sourceId for field {}: old='{}', new='{}'", 
+                        req.getDynaFieldsId(), existingSrc, reqSrc);
                 return true;
             }
 
@@ -1388,5 +1769,67 @@ public class DacDocsServiceImpl implements DacDocsService{
         }
         log.info("No changes detected for DAC {} version {}", existingDac.getDacId(), existingDac.getDacVer());
         return false;
+    }
+
+     boolean isDacModified(Dac dac, DacWithDacDocsRequest request) {
+        // 1. Check basic attributes
+        if (request.getDateLimiteSoumission() != null && isDateDifferent(dac.getDateLimiteSoumission(), request.getDateLimiteSoumission())) return true;
+        if (request.getDateLimiteRecptionDemande() != null && isDateDifferent(dac.getDateLimiteRecptionDemande(), request.getDateLimiteRecptionDemande())) return true;
+        
+        if (request.getPayant() != null && !Objects.equals(dac.isPayant(), request.getPayant())) return true;
+        if (request.getResponsableDacId() != null && !Objects.equals(dac.getResponsableDacId(), request.getResponsableDacId())) return true;
+        if (request.getConditionsParticipation() != null && !Objects.equals(dac.getConditionsParticipation(), request.getConditionsParticipation())) return true;
+
+        // 2. Check Payment Amount (only if payant is true and amount provided)
+        if (Boolean.TRUE.equals(request.getPayant()) && request.getDacPrixRequests() != null) {
+            List<DacPrix> existingPrixList = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+            
+            // Map existing prices by Monnaie ID
+            Map<Integer, BigDecimal> existingMap = existingPrixList.stream()
+                     .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted())) // Compare against active
+                     .collect(Collectors.toMap(p -> p.getId().getMonnaie().getId(), DacPrix::getPrix));
+            
+            // Map requested prices by Monnaie ID
+            Map<Integer, BigDecimal> requestedMap = request.getDacPrixRequests().stream()
+                    .collect(Collectors.toMap(DacPrixRequestForDac::getMonnaieId, DacPrixRequestForDac::getPrix));
+            
+            // Compare key sets (Monnaie IDs)
+            if (!existingMap.keySet().equals(requestedMap.keySet())) {
+                 return true;
+            }
+            
+            // Compare values (Prices)
+            for (Integer monnaieId : requestedMap.keySet()) {
+                BigDecimal reqPrice = requestedMap.get(monnaieId);
+                BigDecimal existPrice = existingMap.get(monnaieId);
+                if (reqPrice.compareTo(existPrice) != 0) { // check equality of values
+                    return true;
+                }
+            }
+        }
+
+        // 3. Check Shortlist (only if shortlisting is true and list provided)
+        if (request.getShortlistMembers() != null) {
+            List<SocieteDac> existing = societeDacRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            Set<Integer> existingIds = existing.stream()
+                    .filter(s -> !Boolean.TRUE.equals(s.getIsDeleted())) // compare against active ones
+                    .map(s -> s.getId().getSociete().getId()).collect(Collectors.toSet());
+            Set<Integer> newIds = new HashSet<>(request.getShortlistMembers());
+            if (!existingIds.equals(newIds)) return true;
+        }
+
+        // 4. Check Docs
+        if (request.getDacDocsRequests() != null) {
+            if (detectChanges(dac, request.getDacDocsRequests())) return true;
+        }
+
+        return false;
+    }
+
+    private boolean isDateDifferent(Calendar d1, Calendar d2) {
+        if (d1 == null && d2 == null) return false;
+        if (d1 == null || d2 == null) return true;
+        // Check if difference is greater than or equal to 1 second (ignoring millisecond precision issues)
+        return Math.abs(d1.getTimeInMillis() - d2.getTimeInMillis()) >= 1000;
     }
 }

@@ -5,9 +5,11 @@ import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComHasAssociatedAc;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.request.ComRequest;
+import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.user_com.UserCom;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -111,5 +113,14 @@ public interface ComService {
     List<Com> getAllSpecialCommissions();
     Com findCNCMPP() throws CNCMPPNotFound;
 
+    /**
+     * Get list of CPMP commission members for a given AC.
+     *
+     * @param acId The AC (Autorité Contractante) ID
+     * @return List of CPMP commission members/participants
+     * @throws AcNotFound if AC doesn't exist
+     */
+    List<UserComSoftResponse> getCpmpMembersByAc(Integer acId)
+            throws AcNotFound;
 
 }

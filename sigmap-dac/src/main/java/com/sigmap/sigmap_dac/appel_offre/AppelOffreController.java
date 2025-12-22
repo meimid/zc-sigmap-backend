@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_dac.appel_offre;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.appel_offre.AppelOffreService;
 import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
@@ -7,7 +8,9 @@ import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
 import com.sigmap.common.appel_offre.response.AppelOffreQuerry;
 import com.sigmap.common.appel_offre.response.AppelOffreResponse;
+import com.sigmap.common.appel_offre.response.AppelOffreResponseById;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.response.PpmResponseSoftDtoWithMetaData;
 import com.sigmap.common.realisations.Realisation;
@@ -44,10 +47,9 @@ public class AppelOffreController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AppelOffreResponse> getAppelOffreById(@PathVariable Integer id) {
-        AppelOffre appelOffre = appelOffreService.findById(id);
-        AppelOffreResponse response = AppelOffreMapper.INSTANCE.map(appelOffre);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<AppelOffreResponseById> getAppelOffreById(@PathVariable Integer id) throws PpmNotFound, AcNotFound {
+        AppelOffreResponseById appelOffre = appelOffreService.findById(id);
+        return ResponseEntity.status(HttpStatus.CREATED).body(appelOffre);
 
     }
 

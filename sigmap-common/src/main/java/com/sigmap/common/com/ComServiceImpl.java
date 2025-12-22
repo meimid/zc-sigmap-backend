@@ -16,10 +16,14 @@ import com.sigmap.common.com.exception.*;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.request.ComRequest;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.ActiveStatus;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -37,6 +41,7 @@ import com.sigmap.common.user_com.UserCom;
 import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
 import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
@@ -73,9 +78,10 @@ public class ComServiceImpl implements ComService {
   private final DocumentCommuneService documentCommuneService;
   private final DocsRepository docsRepository;
   private final UserCommissionHistoriqueService userCommissionHistoriqueService;
+  private final DacRepository dacRepository;
 
   public ComServiceImpl(
-          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService) {
+          ComRepository repository, RefParamService refParamService, AcRepository acRepository, AdressService adressService, @Lazy AcService acService, DocumentCommuneService documentCommuneService, DocsRepository docsRepository, UserCommissionHistoriqueService userCommissionHistoriqueService, DacRepository dacRepository) {
     this.repository = repository;
     this.refParamService = refParamService;
     this.acRepository = acRepository;
@@ -84,6 +90,7 @@ public class ComServiceImpl implements ComService {
       this.documentCommuneService = documentCommuneService;
       this.docsRepository = docsRepository;
       this.userCommissionHistoriqueService = userCommissionHistoriqueService;
+      this.dacRepository = dacRepository;
   }
 
   @Override
@@ -656,4 +663,53 @@ public class ComServiceImpl implements ComService {
     throw new CNCMPPNotFound("");
   }
 
+    @Override
+    public List<UserComSoftResponse> getCpmpMembersByAc(Integer dacId) throws AcNotFound, DacNotFound {
+        Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (dac==null) {
+            throw new DacNotFound("Dac not found with id {}", dacId, null);
+        }
+        var acId = dac.getAppelOffre().getPpm().getAc().getId();
+        Ac ac = acService.findById(acId);
+        Specification<Com> specCom =
+                ComSpecifications.deleted(false)
+                        .and(ComSpecifications.comByAc(acId))
+                        .and(ComSpecifications.cpmp());
+
+        Com cpmpCom = findOne(specCom)
+                .orElseThrow(() ->
+                        new AcNotFound("Com not found for ac :", List.of(acId))
+                );
+
+        List<UserCom> users =
+                userComRepository.findAllByComIdAndIsDeletedFalse(cpmpCom.getId());
+
+        if (users.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<String> userIds = users.stream()
+                .map(UserCom::getUserId)
+                .collect(Collectors.toSet());
+
+        Map<String, UserDTO> kcUsers =
+                keycloakAdminService.fetchUsersInBatch(userIds);
+
+        return users.stream()
+                .map(userCom -> {
+                    UserDTO userDTO = kcUsers.get(userCom.getUserId());
+
+                    if (userDTO == null) {
+                        return null; // user not found in KC
+                    }
+
+                    return new UserComSoftResponse(
+                            userCom.getUserId(),
+                            userDTO.getLastName(),
+                            userDTO.getFirstName()
+                    );
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
 }

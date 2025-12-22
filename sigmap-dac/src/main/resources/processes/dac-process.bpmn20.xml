@@ -101,13 +101,12 @@
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[${cpmp_valide == false}]]></conditionExpression>
     </sequenceFlow>
 
-    <!-- FIXED: No stray CDATA -->
     <sequenceFlow id="Flow_1y9t64n" sourceRef="ExclusiveGateway_1qgo4yf" targetRef="Task_0x68o40">
       <extensionElements>
         <flowable:property name="actionLabel" value="Validate"/>
       </extensionElements>
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[
-        ${cpmp_valide == true && isRestraint == true && parentDacId == null}
+        ${cpmp_valide == true && isRestraint == true}
       ]]></conditionExpression>
     </sequenceFlow>
 
@@ -116,7 +115,7 @@
         <flowable:property name="actionLabel" value="Validate"/>
       </extensionElements>
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[
-        ${cpmp_valide == true && shortListing == false}
+        ${cpmp_valide == true && isRestraint == false && etapeDac == 1}
       ]]></conditionExpression>
     </sequenceFlow>
 
@@ -125,7 +124,7 @@
         <flowable:property name="actionLabel" value="Transmettre"/>
       </extensionElements>
       <conditionExpression xsi:type="tFormalExpression"><![CDATA[
-        ${cpmp_valide == true && shortListing == true && parentDacId != null}
+        ${cpmp_valide == true && isRestraint == false && etapeDac == 2}
       ]]></conditionExpression>
     </sequenceFlow>
 

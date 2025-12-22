@@ -73,6 +73,24 @@ public interface PpmMapper {
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     PpmResponseDto mapToDto(Ppm source);
 
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "version", source = "version")
+    @Mapping(target = "ref", source = "ref")
+    @Mapping(target = "nom", source = "nom")
+    @Mapping(target = "annee", source = "annee")
+    @Mapping(target = "ac", source = "ac")
+    @Mapping(target = "budgetEstime", source = "budgetEstime")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "docs", source = "docs")
+    @Mapping(target = "modelAlfrescoId", source = "modelAlfrescoId")
+    @Mapping(target = "remarque", source = "remarque")
+    @Mapping(target = "processInstanceId", source = "processInstanceId")
+    @Mapping(target = "metadata.createdAt", source = "createdAt")
+    @Mapping(target = "metadata.createdBy", source = "createdBy")
+    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    PpmResponseDto mapTAo(Ppm source);
+
     @Mapping(target = "etapeProcess", source = "etapeProcess")
     PpmResponseSoftDto toDto(Ppm ppm);
     @Mapping(target = "actualise", source = "actualise")

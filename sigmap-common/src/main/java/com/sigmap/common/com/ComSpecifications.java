@@ -157,4 +157,9 @@ public class ComSpecifications {
     return (root, query, criteriaBuilder) ->
             criteriaBuilder.equal(root.get("comType").get("code"), "CPMP");
   }
+
+  public static Specification<Com> comByAc(Integer acId) {
+      return (root, query, criteriaBuilder)
+              -> criteriaBuilder.equal(root.get("tutel").get("id"), acId);
+  }
 }

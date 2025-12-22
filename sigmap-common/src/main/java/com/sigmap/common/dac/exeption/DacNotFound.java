@@ -11,4 +11,8 @@ public class DacNotFound extends RuntimeException {
         this.dacId = dacId;
         this.dacVersion = dacVersion;
     }
+
+    public DacNotFound(Integer dacId) {
+        this.dacId = dacId;
+    }
 }

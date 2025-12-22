@@ -9,49 +9,39 @@ import com.sigmap.common.ac.response.LogoResponse;
 import com.sigmap.common.activite.Activite;
 import com.sigmap.common.activite.ActiviteService;
 import com.sigmap.common.activite.mapper.ActiviteMapper;
-import com.sigmap.common.activite.response.ActiviteResponseDto;
 import com.sigmap.common.activite.response.ActiviteResponseDtoSoft;
 import com.sigmap.common.agpm.Agpm;
-import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.request.AgpmQuery;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
 import com.sigmap.common.config.RefTypes;
+import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
-import com.sigmap.common.model_agpm.ModelAgpmRepository;
-import com.sigmap.common.model_paa.ModelPaaRepository;
-import com.sigmap.common.model_ppm.ModelPpmRepository;
 import com.sigmap.common.paas.Paa;
-import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.paas.request.PaaQuery;
 import com.sigmap.common.paas.response.PaaDetailsWebsite;
 import com.sigmap.common.paas.response.PaaWebsiteResponse;
 import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.request.PpmQuery;
 import com.sigmap.common.ppms.response.PpmDetailsWebsite;
 import com.sigmap.common.ppms.response.PpmWebsiteResponse;
-import com.sigmap.common.realisations.Realisation;
-import com.sigmap.common.realisations.response.RealisationPaaWebSite;
-import com.sigmap.common.realisations.response.RealisationPpmWebsite;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamService;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
-import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import com.sigmap.common.ref_params.response.RefParamResponseDtoSoft;
 import com.sigmap.common.ref_types.exceptions.RefTypeNotFound;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
-import com.sigmap.common.societe.request.SocieteGlobalRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.sigmap_webmaster.dto.TypeMarcheStatProjection;
@@ -63,7 +53,9 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -195,6 +187,23 @@ public class WebMasterController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
+
+    @PostMapping("/download/dac")
+    public ResponseEntity<Resource> downloadDocumentDac(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException, DocNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[] fileContent = webMasterService.downloadDocumentDac(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
     @GetMapping("/{acId}/photo/display")
     public ResponseEntity<LogoResponse> displayAcPhoto(@PathVariable Integer acId) throws AcNotFound {
         LogoResponse response = acService.getAcPhoto(acId, acLogoPath);
@@ -255,6 +264,19 @@ public class WebMasterController {
     @GetMapping("/stats/type-marche")
     public ResponseEntity<List<TypeMarcheStatProjection>> getTypeMarcheStats() {
         return ResponseEntity.ok(webMasterService.getTypeMarcheStats());
+    }
+
+    @GetMapping("/dac")
+    public ResponseEntity<Page<DacWebsiteResponse>> findPublishedDacsForWebsite(
+            @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<DacWebsiteResponse> response = webMasterService.findPublishedDacsForWebsite(pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/dac/{dacId}")
+    public ResponseEntity<DacDetailsWebsiteResponse> findPublishedDacByIdForWebsite(@PathVariable Integer dacId) throws DocNotFound {
+        DacDetailsWebsiteResponse response = webMasterService.getDacDetailsById(dacId);
+        return ResponseEntity.ok(response);
     }
 
 }

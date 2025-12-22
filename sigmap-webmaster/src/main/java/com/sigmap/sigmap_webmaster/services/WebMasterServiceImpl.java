@@ -2,16 +2,34 @@ package com.sigmap.sigmap_webmaster.services;
 
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.agpm.response.AgpmWebsiteResponse;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.dac.DacService;
+import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
+import com.sigmap.common.dac_docs.DacDocs;
+import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_prix.DacPrix;
+import com.sigmap.common.dac_prix.DacPrixRepository;
 import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
+import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.financement.Financement;
+import com.sigmap.common.keycloakAdmin.dto.UserDTO;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.lots.Lot;
 import com.sigmap.common.model_agpm.ModelAgpm;
 import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.model_dac.ModelDac;
+import com.sigmap.common.model_dac.ModelDacService;
 import com.sigmap.common.model_paa.ModelPaa;
 import com.sigmap.common.model_paa.ModelPaaService;
 import com.sigmap.common.model_ppm.ModelPpm;
@@ -59,9 +77,13 @@ public class WebMasterServiceImpl implements WebMasterService {
     private final PaaService paaService;
     private final AgpmService agpmService;
     private final WebMasterStatsRepository webMasterStatsRepository;
+    private final ModelDacService modelDacService;
+    private final DacRepository dacRepository;
+    private final DacDocsRepository dacDocsRepository;
+    private final DacPrixRepository dacPrixRepository;
+    private final KeycloakAdminService keycloakAdminService;
 
-
-    public WebMasterServiceImpl(ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterStatsRepository webMasterStatsRepository) {
+    public WebMasterServiceImpl(ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterStatsRepository webMasterStatsRepository, ModelDacService modelDacService, DacRepository dacRepository, DacDocsRepository dacDocsRepository, DacPrixRepository dacPrixRepository, KeycloakAdminService keycloakAdminService) {
 
         this.modelPpmService = modelPpmService;
         this.modelPaaService = modelPaaService;
@@ -71,6 +93,11 @@ public class WebMasterServiceImpl implements WebMasterService {
         this.paaService = paaService;
         this.agpmService = agpmService;
         this.webMasterStatsRepository = webMasterStatsRepository;
+        this.modelDacService = modelDacService;
+        this.dacRepository = dacRepository;
+        this.dacDocsRepository = dacDocsRepository;
+        this.dacPrixRepository = dacPrixRepository;
+        this.keycloakAdminService = keycloakAdminService;
     }
 
     @Override
@@ -352,7 +379,246 @@ public class WebMasterServiceImpl implements WebMasterService {
         return webMasterStatsRepository.countRealisationsByTypeMarche();
     }
 
+    @Override
+    public boolean isDocumentRelatedToDac(String alfrescoId) {
+        return modelDacService.isDocumentRelatedToDac(alfrescoId);
+    }
 
+    @Override
+    public boolean isDocumentRelatedToDacShortlist(String alfrescoId, String userId) {
+        return modelDacService.isDocumentRelatedToDacShortlistForUser(alfrescoId, userId);
+    }
 
+    @Override
+    public byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound {
+        if (!isDocumentRelatedToDac(alfrescoId)) {
+            throw new DocNotFound("Document not associated with latest published entity", null);
+        }
 
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile() != null) {
+            return dummyContent.getFile();
+        } else {
+            throw new IOException("Error while downloading document.");
+        }
+    }
+
+    @Override
+    public byte[] downloadDocumentDacShortlist(String alfrescoId, String userId) throws IOException, DocNotFound {
+        if (!isDocumentRelatedToDacShortlist(alfrescoId, userId)) {
+            throw new DocNotFound("Document not associated with latest published entity or access denied", null);
+        }
+
+        DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile() != null) {
+            return dummyContent.getFile();
+        } else {
+            throw new IOException("Error while downloading document.");
+        }
+    }
+
+    @Override
+    public Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable) {
+        Page<Dac> dacPage = dacRepository.findPublishedDacsForWebsite(pageable);
+        return dacPage.map(this::mapToWebsiteResponse);
+    }
+
+    @Override
+    public Page<DacWebsiteResponse> findPublishedDacsForUser(String userId, Pageable pageable) {
+        Page<Dac> dacs = dacRepository.findPublishedDacsForUser(userId, pageable);
+        return dacs.map(this::mapToWebsiteResponse);
+    }
+
+    private DacWebsiteResponse mapToWebsiteResponse(Dac dac) {
+        DacWebsiteResponse response = new DacWebsiteResponse();
+        if (dac.getDacId() != null) {
+            response.setId(dac.getDacId());
+        }
+        // 1. Time remaining
+        if (dac.getDateLimiteSoumission() != null) {
+            ZonedDateTime deadline = dac.getDateLimiteSoumission().toInstant()
+                    .atZone(ZoneId.systemDefault());
+            ZonedDateTime now = ZonedDateTime.now();
+
+            if (deadline.isAfter(now)) {
+                java.time.Duration duration = java.time.Duration.between(now, deadline);
+                long days = duration.toDays();
+                long hoursOfLastDay = duration.minusDays(days).toHours();
+
+                response.setNbrJoursRestants(days);
+                response.setNbrHeuresRestants(hoursOfLastDay);
+            } else {
+                response.setNbrJoursRestants(0L);
+                response.setNbrHeuresRestants(0L);
+            }
+        }
+
+        // 2. ModePassation libelle
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getModePassation() != null) {
+            response.setModePassation(dac.getAppelOffre().getRealisation().getModePassation().getLibelle());
+        }
+
+        // 3. Nom of AppelOffre
+        if (dac.getAppelOffre() != null) {
+            response.setNomAppelOffre(dac.getAppelOffre().getNom());
+        }
+
+        // 4. TypeMarche description
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getTypeMarcher() != null) {
+            response.setDescriptionTypeMarche(dac.getAppelOffre().getRealisation().getTypeMarcher().getDescription());
+        }
+
+        // 5. DateLimiteSoumission
+        response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+
+        // 6. Alfresco ID from ModelDac
+        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
+            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+            }
+        });
+        // 7. NomAC
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) {
+            response.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
+        }
+        return response;
+    }
+    @Override
+    public DacDetailsWebsiteResponse getDacDetailsById(Integer dacId) throws DocNotFound {
+        Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
+                .orElseThrow(() -> new DocNotFound("Published DAC not found for ID: " + dacId, null));
+
+        return mapToDetailsResponse(dac);
+    }
+
+    @Override
+    public DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound {
+        Dac dac = dacRepository.findPublishedDacByIdForUser(dacId, userId)
+                .orElseThrow(() -> new DocNotFound("Published DAC not found or not accessible for ID: " + dacId, null));
+
+        return mapToDetailsResponse(dac);
+    }
+
+    private DacDetailsWebsiteResponse mapToDetailsResponse(Dac dac) {
+        DacDetailsWebsiteResponse response = new DacDetailsWebsiteResponse();
+
+        // 1. Time remaining
+        if (dac.getDateLimiteSoumission() != null) {
+            ZonedDateTime deadline = dac.getDateLimiteSoumission().toInstant()
+                    .atZone(ZoneId.systemDefault());
+            ZonedDateTime now = ZonedDateTime.now();
+
+            if (deadline.isAfter(now)) {
+                java.time.Duration duration = java.time.Duration.between(now, deadline);
+                long days = duration.toDays();
+                long hoursOfLastDay = duration.minusDays(days).toHours();
+
+                response.setNbrJoursRestants(days);
+                response.setNbrHeuresRestants(hoursOfLastDay);
+            } else {
+                response.setNbrJoursRestants(0L);
+                response.setNbrHeuresRestants(0L);
+            }
+        }
+
+        // 2. ModePassation
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getModePassation() != null) {
+            response.setModePassationLibelle(dac.getAppelOffre().getRealisation().getModePassation().getLibelle());
+            if (dac.getAppelOffre().getRealisation().getModePassation().getType() != null) {
+                response.setModePassationType(dac.getAppelOffre().getRealisation().getModePassation().getType().name());
+            }
+        }
+
+        // 3. nomAc
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) {
+            response.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
+        }
+
+        // 4. descriptionTypeMarche
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null
+                && dac.getAppelOffre().getRealisation().getTypeMarcher() != null) {
+            response.setDescriptionTypeMarche(dac.getAppelOffre().getRealisation().getTypeMarcher().getDescription());
+        }
+
+        // 5. dateLimiteSoumission
+        response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+
+        // 6. Alfresco ID from ModelDac
+        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
+            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+            }
+        });
+
+        // 7. AppelOffre details
+        if (dac.getAppelOffre() != null) {
+            response.setReferenceAo(dac.getAppelOffre().getReference());
+            response.setNomAppelOffre(dac.getAppelOffre().getNom());
+            response.setDescriptionAo(dac.getAppelOffre().getDescription());
+            response.setLotSepares(dac.getAppelOffre().getLotSepares());
+
+            // 8. Financements
+            if (dac.getAppelOffre().getRealisation() != null && dac.getAppelOffre().getRealisation().getFinancements() != null) {
+                String financementsStr = dac.getAppelOffre().getRealisation().getFinancements().stream()
+                        .filter(f -> f.getSourceFinancement() != null)
+                        .map(f -> f.getSourceFinancement().getDescription())
+                        .collect(Collectors.joining(", "));
+                response.setFinancements(financementsStr);
+                
+                // 9. Lots
+                if (dac.getAppelOffre().getRealisation().getLots() != null) {
+                    List<String> lotDescriptions = dac.getAppelOffre().getRealisation().getLots().stream()
+                            .map(Lot::getDescription)
+                            .collect(Collectors.toList());
+                    response.setLots(lotDescriptions);
+                }
+            }
+        }
+
+        // 10. DAC details
+        response.setReferenceDac(dac.getReference());
+        response.setDatePublicationDac(dac.getUpdatedAt()); // Using updatedAt for release date as per request
+        response.setPayant(dac.isPayant() ? "Oui" : "Non");
+        response.setConditionsParticipation(dac.getConditionsParticipation());
+
+        // 11. DacPrix
+        if (dac.isPayant()) {
+            List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
+            List<DacDetailsWebsiteResponse.DacPrixWebsiteResponse> dacPrixResponses = dacPrixList.stream()
+                    .map(dp -> {
+                        DacDetailsWebsiteResponse.DacPrixWebsiteResponse dpRes = new DacDetailsWebsiteResponse.DacPrixWebsiteResponse();
+                        if (dp.getId() != null && dp.getId().getMonnaie() != null) {
+                            dpRes.setMonnaieDescription(dp.getId().getMonnaie().getDescription());
+                        }
+                        if (dp.getPrix() != null) {
+                            dpRes.setPrix(dp.getPrix().stripTrailingZeros().toPlainString());
+                        }
+                        return dpRes;
+                    }).collect(Collectors.toList());
+            response.setDacPrix(dacPrixResponses);
+        }
+
+        // 12. Responsable DAC from Keycloak
+        if (dac.getResponsableDacId() != null) {
+            try {
+                UserDTO keycloakUser = keycloakAdminService.getBasicUserById(dac.getResponsableDacId());
+                if (keycloakUser != null) {
+                    DacDetailsWebsiteResponse.ResponsableDacResponse respRes = new DacDetailsWebsiteResponse.ResponsableDacResponse();
+                    respRes.setFirstName(keycloakUser.getFirstName());
+                    respRes.setLastName(keycloakUser.getLastName());
+                    respRes.setEmail(keycloakUser.getEmail());
+                    respRes.setTel(keycloakUser.getMobile() != null ? keycloakUser.getMobile() : keycloakUser.getFixe());
+                    respRes.setAdresse(keycloakUser.getAddress());
+                    response.setResponsableDac(respRes);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch responsable DAC user from Keycloak ID: {}. Error: {}", dac.getResponsableDacId(), e.getMessage());
+            }
+        }
+
+        return response;
+    }
 }
