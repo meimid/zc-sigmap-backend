@@ -38,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -211,7 +212,14 @@ public class AppelOffreServiceImpl implements AppelOffreService {
                 .and(PpmSpecifications.isPublished());
 
         List<Ppm> foundPpms = ppmRepository.findAll(specification);
-        return foundPpms;
+
+        if (foundPpms.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Ppm> PpmsWithFreeRealisation = ppmRepository.findPpmsWithFreeRealisation(foundPpms);
+
+        return PpmsWithFreeRealisation;
     }
 
     @Override
