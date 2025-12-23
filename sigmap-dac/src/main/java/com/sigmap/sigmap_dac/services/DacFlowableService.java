@@ -38,6 +38,12 @@ import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.dac_dyna_form.DacDynaForm;
+import com.sigmap.common.dac_dyna_form.DacDynaFormRepository;
+import com.sigmap.common.dac_dyna_form.mappers.DacDynaFormMapper;
+import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
+import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.sigmap_dac.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
@@ -98,6 +104,10 @@ public class DacFlowableService {
     @Autowired private HistoryService historyService;
     @Autowired private DacRepository dacRepository;
     @Autowired private DacService dacService;
+    @Autowired private DacDynaFormRepository dacDynaFormRepository;
+    @Autowired private DynaFormRepository dynaFormRepository;
+    @Autowired private DacDynaFormMapper dacDynaFormMapper;
+    @Autowired private DynaFormMapper dynaFormMapper;
     @Autowired private DacDocsService dacDocsService;
     @Autowired private CurrentUserService currentUserService;
     @Autowired private KeycloakAdminService keycloakAdminService;
@@ -1654,6 +1664,34 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         resp.setDacDocs(dacDocs);
+        // Populating dynaForms in DacResponseDTO
+        if (dacDocs != null) {
+            dacDocs.setAoId(dac.getAppelOffre().getId());
+            List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
+                dacDocs.setDynaForms(dacDynaForms.stream()
+                        .map(dacDynaFormMapper::toResponse)
+                        .collect(Collectors.toList()));
+            } else {
+                dacDocs.setDynaForms(new ArrayList<>());
+            }
+
+            // Populating submissionPieces in DacResponseDTO
+            List<Object[]> distinctForms = dacDynaFormRepository.findDistinctFormsByDac(dac.getDacId(), dac.getDacVer());
+            if (distinctForms != null && !distinctForms.isEmpty()) {
+                List<DynaFormResponse> submissionPieces = distinctForms.stream()
+                        .map(arr -> dynaFormRepository.findById(new com.sigmap.common.entity.CompositeId(
+                                (Integer) arr[0], (Integer) arr[1]
+                        )).orElse(null))
+                        .filter(Objects::nonNull)
+                        .filter(f -> f.getIsDeleted() == null || !f.getIsDeleted())
+                        .map(dynaFormMapper::toResponse)
+                        .collect(Collectors.toList());
+                dacDocs.setSubmissionPieces(submissionPieces);
+            } else {
+                dacDocs.setSubmissionPieces(new ArrayList<>());
+            }
+        }
 
         // Attached DacPrix
         List<DacPrix> prixDac = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());

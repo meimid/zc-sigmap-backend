@@ -2,7 +2,9 @@ package com.sigmap.common.dac_docs.response.customResponceDTO;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dac_prix.response.DacPrixResponce;
+import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.entity.ProcessStatus;
 import lombok.Data;
 
@@ -13,11 +15,14 @@ import java.util.List;
 public class DacResponseDTO {
     private Integer dacId;
     private Integer dacVer;
+    private Integer aoId;
     private String reference;
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;
     private List<DacPrixResponce> dacPrix;
+    private List<DacDynaFormResponse> dynaForms;
+    private List<DynaFormResponse> submissionPieces;
     private boolean shortListing;
     private List<DacWithAoReferenceResponse.ShortlistMemberData>  dacShortlist;
     private ProcessStatus status;
