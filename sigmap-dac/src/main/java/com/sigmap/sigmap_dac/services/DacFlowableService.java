@@ -27,6 +27,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.dyna_form_fields.response.DynaFormFieldResponse;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -1684,14 +1685,18 @@ log.info("[DAC] DacDocsRequest: {}", updates);
                 for (Map.Entry<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> entry : grouped.entrySet()) {
                     dynaFormRepository.findById(entry.getKey()).ifPresent(f -> {
                         DynaFormResponse fResp = dynaFormMapper.toResponse(f);
-                        Set<Integer> displayedFields = entry.getValue().stream()
-                                .filter(df -> df.getDisplay() != null && df.getDisplay())
-                                .map(DacDynaForm::getDynaFormFieldsId)
-                                .collect(Collectors.toSet());
+                        Map<Integer, DacDynaForm> fieldMap = entry.getValue().stream()
+                                .collect(Collectors.toMap(DacDynaForm::getDynaFormFieldsId, df -> df, (a, b) -> a));
 
-                        fResp.setFields(fResp.getFields().stream()
-                                .filter(field -> displayedFields.contains(field.getDynaFormFieldsId()))
-                                .collect(Collectors.toList()));
+                        // Populate display attribute for each field
+                        for (DynaFormFieldResponse fieldResp : fResp.getFields()) {
+                            DacDynaForm ddf = fieldMap.get(fieldResp.getDynaFormFieldsId());
+                            if (ddf != null && Objects.equals(ddf.getDisplay(), true)) {
+                                fieldResp.setDisplay(true);
+                            } else {
+                                fieldResp.setDisplay(false);
+                            }
+                        }
 
                         dynaFormsList.add(fResp);
                     });

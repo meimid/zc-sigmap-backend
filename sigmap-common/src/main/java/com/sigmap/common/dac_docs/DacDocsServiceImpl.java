@@ -56,6 +56,8 @@ import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateReques
 import com.sigmap.common.dac_doc_soumission.DacDocSoumissionId;
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionRepository;
+import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +110,10 @@ public class DacDocsServiceImpl implements DacDocsService{
     private DacDynaFormRepository dacDynaFormRepository;
     @Autowired
     private DacDocSoumissionRepository dacDocSoumissionRepository;
+    @Autowired
+    private DynaFormRepository dynaFormRepository;
+    @Autowired
+    private DynaFormFieldRepository dynaFormFieldRepository;
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
@@ -605,8 +611,19 @@ public class DacDocsServiceImpl implements DacDocsService{
             
             for (DacDynaFormRequest req : request.getDacDynaFormRequest()) {
                 if (req.getDynaFormFieldsId() != null) {
+                    Integer latestFormVer = dynaFormRepository.findMaxVersionById(req.getDynaFormId());
+                    if (latestFormVer == null) {
+                         throw new InvalidDacRequestException("DynaForm not found for ID: " + req.getDynaFormId());
+                    }
+
                     for (Integer fieldId : req.getDynaFormFieldsId()) {
-                        String key = req.getDynaFormId() + "-" + req.getDynaFormVer() + "-" + fieldId;
+                        // Validate field exists in latest version
+                        boolean fieldExists = dynaFormFieldRepository.existsById(new com.sigmap.common.dyna_form_fields.DynaFormFieldId(req.getDynaFormId(), latestFormVer, fieldId));
+                        if (!fieldExists) {
+                            throw new InvalidDacRequestException("Field ID " + fieldId + " does not exist in DynaForm " + req.getDynaFormId() + " version " + latestFormVer);
+                        }
+
+                        String key = req.getDynaFormId() + "-" + latestFormVer + "-" + fieldId;
                         processedKeys.add(key);
                         
                         if (existingMap.containsKey(key)) {
@@ -777,46 +794,46 @@ public class DacDocsServiceImpl implements DacDocsService{
             lang = Locale.forLanguageTag("fr");
         }
         if (request.getDateLimiteSoumission() == null) {
-            errorsFR.append("La date limite de soumission est obligatoire");
-            errorsENG.append("Submission deadline is required");
+            errorsFR.append("La date limite de soumission est obligatoire, ");
+            errorsENG.append("Submission deadline is required, ");
         }
 
         if (request.getDateLimiteRecptionDemande() == null) {
-            errorsFR.append("La date limite de réception des demandes est obligatoire");
-            errorsENG.append("Deadline for receipt of requests is required");
+            errorsFR.append("La date limite de réception des demandes est obligatoire, ");
+            errorsENG.append("Deadline for receipt of requests is required, ");
         }
 
         if (request.getPayant() == null) {
             errorsFR.append("le champ payant est obligatoire, ");
-            errorsENG.append("Payant field is required");
+            errorsENG.append("Payant field is required, ");
         }
 
         if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
-            errorsFR.append("Le responsable du DAC est obligatoire");
-            errorsENG.append("DAC responsible is required");
+            errorsFR.append("Le responsable du DAC est obligatoire, ");
+            errorsENG.append("DAC responsible is required, ");
         }
 
         Calendar now = Calendar.getInstance();
         if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errorsFR.append("La date limite de soumission doit être dans le futur");
-            errorsENG.append("Submission deadline must be in the future");;
+            errorsFR.append("La date limite de soumission doit être dans le futur, ");
+            errorsENG.append("Submission deadline must be in the future, ");;
         }
 
         if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errorsFR.append("La date limite de réception des demandes doit être dans le futur");
-            errorsENG.append("Deadline for receipt of requests must be in the future");
+            errorsFR.append("La date limite de réception des demandes doit être dans le futur, ");
+            errorsENG.append("Deadline for receipt of requests must be in the future, ");
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {
             if (request.getDacPrixRequests() == null || request.getDacPrixRequests().isEmpty()) {
-                errorsFR.append("Le prix du dac est obligatoire");
-                errorsENG.append("The dac price is required");
+                errorsFR.append("Le prix du dac est obligatoire, ");
+                errorsENG.append("The dac price is required, ");
             }
             if(request.getDacPrixRequests() != null){
                 for (DacPrixRequestForDac req : request.getDacPrixRequests()){
                     if (req.getPrix() == null || req.getPrix().compareTo(BigDecimal.ZERO) <= 0) {
-                        errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai");
-                        errorsENG.append("The paying amount is required and must be greater than zero when paying is true");
+                        errorsFR.append("Le montant payant est obligatoire et doit être supérieur à zéro lorsque payant est vrai, ");
+                        errorsENG.append("The paying amount is required and must be greater than zero when paying is true, ");
                     }
                 }
             }

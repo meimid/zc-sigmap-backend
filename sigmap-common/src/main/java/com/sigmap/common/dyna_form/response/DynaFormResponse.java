@@ -16,6 +16,7 @@ public class DynaFormResponse {
     private Integer version;
     private String name;
     private Integer order;
+    private Boolean display;
     private TypeDossierResponse typeDossier;
     private ActiveStatus status;
     private FormType formType;

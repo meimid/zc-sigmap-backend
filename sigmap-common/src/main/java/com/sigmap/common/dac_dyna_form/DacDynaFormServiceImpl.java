@@ -106,7 +106,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
         for (DacDynaForm record : records) {
             boolean shouldDisplay = displayedFieldIds != null &&
                     displayedFieldIds.contains(record.getDynaFormFieldsId());
-            record.setDisplay(shouldDisplay);
+            record.setDisplay(shouldDisplay ? Boolean.TRUE : Boolean.FALSE);
             repo.save(record);
         }
     }

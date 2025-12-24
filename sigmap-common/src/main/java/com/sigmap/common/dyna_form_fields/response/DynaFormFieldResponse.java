@@ -17,4 +17,5 @@ public class DynaFormFieldResponse {
     private Boolean isFormula;
     private String formula;
     private ActiveStatus status;
+    private Boolean display;
 }
