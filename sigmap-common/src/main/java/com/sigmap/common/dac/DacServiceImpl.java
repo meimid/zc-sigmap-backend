@@ -1878,7 +1878,8 @@ public class DacServiceImpl implements DacService {
         if (modePassation == null) {
             throw new InvalidDacRequestException("Realisation must have a Mode de Passation");
         }
-        
+        validateActiveAAOExists(realisation.getTypeMarcher().getId(), modePassation.getId());
+
         // 4. Check existing DACs for this AO to determine what can be created
         List<Dac> existingDacs = dacRepository.findAll().stream()
                 .filter(d -> d.getAppelOffre() != null 
@@ -1955,9 +1956,51 @@ public class DacServiceImpl implements DacService {
 
             // Save DAC
             savedDac = dacRepository.save(dac);
+            Integer typeMarcheId = realisation.getTypeMarcher().getId();
+            Integer modePassationId = realisation.getModePassation() != null ? realisation.getModePassation().getId() : null;
+            List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheId, modePassationId, dac.getDynaDocsModel().getDynaDocsModelId());
+            for (DynaDocs dd : latestDocsFiltred) {
+                List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
+                if (fields.isEmpty()) {
+                    // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
+                    Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                    DynaFields placeholder = new DynaFields();
+                    placeholder.setDynaFieldsId(maxId + 1);
+                    placeholder.setDynaDocsId(dd.getId());
+                    placeholder.setDynaDocsVer(dd.getVersion());
+                    placeholder.setName("__DEFAULT__");
+                    placeholder.setRef("__DEFAULT__");
+                    placeholder.setLabel("__DEFAULT__");
+                    placeholder.setType(DynaFieldType.SYSTEM);
+                    placeholder.setSource(null);
+                    placeholder.setSourceField(null);
+                    placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                    placeholder.setStatus(ActiveStatus.ACTIF);
+                    placeholder = dynaFieldsRepository.save(placeholder);
+                    fields = List.of(placeholder);
+                }
+                for (DynaFields f : fields) {
+                    DacDocsId id = new DacDocsId();
+                    id.setDacId(savedDac.getDacId());
+                    id.setDacVer(savedDac.getDacVer());
+                    id.setDynaDocsId(dd.getId());
+                    id.setDynaDocsVer(dd.getVersion());
+                    id.setDynaFieldsId(f.getDynaFieldsId());
 
+                    // Avoid duplicates if any pre-existing rows
+                    Optional<DacDocs> exists = dacDocsRepository.findDacDocsBYPKs(id.getDacId(), id.getDacVer(), id.getDynaDocsId(), id.getDynaDocsVer(), id.getDynaFieldsId());
+                    if (exists.isPresent()) continue;
+
+                    DacDocs row = new DacDocs();
+                    row.setId(id);
+                    row.setDac(savedDac);
+                    row.setDynaField(f);
+                    row.setSourceId("");
+                    row.setFieldValue(null);
+                        dacDocsRepository.save(row);
+                }
+            }
             createdDacs.add(savedDac);
-            log.info("Created DAC with ID: {}, Version: {}", savedDac.getDacId(), savedDac.getDacVer());
         }
 
         return savedDac;

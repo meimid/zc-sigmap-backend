@@ -92,8 +92,21 @@ public interface DynaDocsRepository
   /**
    * Check if there exists an active AAO DynaDocs for the given typeMarche and modePassation
    */
-  @Query("SELECT COUNT(d) FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.isAAO = true AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId")
-  Integer existsActiveAAOByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
+  @Query("""
+    SELECT COUNT(d) FROM DynaDocs d
+    WHERE d.status = 'ACTIF'
+      AND d.isAAO = true
+      AND d.typeMarche.id = :typeMarcheId
+      AND d.modePassation.id = :modePassationId
+      AND d.version = (
+          SELECT MAX(d2.version)
+          FROM DynaDocs d2
+          WHERE d2.status = 'ACTIF'
+            AND d2.isAAO = true
+            AND d2.typeMarche.id = :typeMarcheId
+            AND d2.modePassation.id = :modePassationId
+      )
+    """)  Integer existsActiveAAOByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
 
   /**
    * Check if there exists an active AAO DynaDocs for the given typeMarche (when modePassation is null)
