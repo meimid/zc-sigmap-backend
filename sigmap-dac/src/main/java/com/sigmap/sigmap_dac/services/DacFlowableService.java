@@ -44,6 +44,11 @@ import com.sigmap.common.dac_dyna_form.mappers.DacDynaFormMapper;
 import com.sigmap.common.dyna_form.DynaFormRepository;
 import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
+import com.sigmap.common.dac_doc_soumission.mapper.DacDocSoumissionMapper;
+import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
+import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import com.sigmap.sigmap_dac.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
@@ -115,6 +120,9 @@ public class DacFlowableService {
     @Autowired private ComServiceImpl comServiceImpl;
     @Autowired private AcServiceImpl acServiceImpl;
     @Autowired private EntityManager entityManager;
+    @Autowired private DacDocSoumissionRepository dacDocSoumissionRepository;
+    @Autowired private DacDocSoumissionMapper dacDocSoumissionMapper;
+    @Autowired private DynaFormFieldRepository dynaFormFieldRepository;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -1664,34 +1672,41 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         resp.setDacDocs(dacDocs);
-        // Populating dynaForms in DacResponseDTO
         if (dacDocs != null) {
             dacDocs.setAoId(dac.getAppelOffre().getId());
             dacDocs.setAoReference(dac.getAppelOffre().getReference());
             List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
             if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
-                dacDocs.setDynaForms(dacDynaForms.stream()
-                        .map(dacDynaFormMapper::toResponse)
-                        .collect(Collectors.toList()));
+                Map<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> grouped = dacDynaForms.stream()
+                        .collect(Collectors.groupingBy(df -> new com.sigmap.common.entity.CompositeId(df.getDynaFormId(), df.getDynaFormVer())));
+
+                List<DynaFormResponse> dynaFormsList = new ArrayList<>();
+                for (Map.Entry<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> entry : grouped.entrySet()) {
+                    dynaFormRepository.findById(entry.getKey()).ifPresent(f -> {
+                        DynaFormResponse fResp = dynaFormMapper.toResponse(f);
+                        Set<Integer> displayedFields = entry.getValue().stream()
+                                .filter(df -> df.getDisplay() != null && df.getDisplay())
+                                .map(DacDynaForm::getDynaFormFieldsId)
+                                .collect(Collectors.toSet());
+
+                        fResp.setFields(fResp.getFields().stream()
+                                .filter(field -> displayedFields.contains(field.getDynaFormFieldsId()))
+                                .collect(Collectors.toList()));
+
+                        dynaFormsList.add(fResp);
+                    });
+                }
+                dacDocs.setDynaForms(dynaFormsList);
             } else {
                 dacDocs.setDynaForms(new ArrayList<>());
             }
 
             // Populating submissionPieces in DacResponseDTO
-            List<Object[]> distinctForms = dacDynaFormRepository.findDistinctFormsByDac(dac.getDacId(), dac.getDacVer());
-            if (distinctForms != null && !distinctForms.isEmpty()) {
-                List<DynaFormResponse> submissionPieces = distinctForms.stream()
-                        .map(arr -> dynaFormRepository.findById(new com.sigmap.common.entity.CompositeId(
-                                (Integer) arr[0], (Integer) arr[1]
-                        )).orElse(null))
-                        .filter(Objects::nonNull)
-                        .filter(f -> f.getIsDeleted() == null || !f.getIsDeleted())
-                        .map(dynaFormMapper::toResponse)
-                        .collect(Collectors.toList());
-                dacDocs.setSubmissionPieces(submissionPieces);
-            } else {
-                dacDocs.setSubmissionPieces(new ArrayList<>());
-            }
+            List<DacDocSoumission> dacDocSoumissions = dacDocSoumissionRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            List<DacDocSoumissionResponse> submissionPieces = dacDocSoumissions.stream()
+                    .map(dacDocSoumissionMapper::map)
+                    .collect(Collectors.toList());
+            dacDocs.setSubmissionPieces(submissionPieces);
         }
 
         // Attached DacPrix
