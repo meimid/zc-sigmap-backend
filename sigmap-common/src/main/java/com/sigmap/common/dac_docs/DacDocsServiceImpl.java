@@ -612,18 +612,20 @@ public class DacDocsServiceImpl implements DacDocsService{
             for (DacDynaFormRequest req : request.getDacDynaFormRequest()) {
                 if (req.getDynaFormFieldsId() != null) {
                     Integer latestFormVer = dynaFormRepository.findMaxVersionById(req.getDynaFormId());
-                    if (latestFormVer == null) {
+                    Integer verToUse = (req.getDynaFormVer() != null) ? req.getDynaFormVer() : latestFormVer;
+                    
+                    if (verToUse == null) {
                          throw new InvalidDacRequestException("DynaForm not found for ID: " + req.getDynaFormId());
                     }
 
                     for (Integer fieldId : req.getDynaFormFieldsId()) {
-                        // Validate field exists in latest version
-                        boolean fieldExists = dynaFormFieldRepository.existsById(new com.sigmap.common.dyna_form_fields.DynaFormFieldId(req.getDynaFormId(), latestFormVer, fieldId));
+                        // Validate field exists in the resolved version
+                        boolean fieldExists = dynaFormFieldRepository.existsById(new com.sigmap.common.dyna_form_fields.DynaFormFieldId(req.getDynaFormId(), verToUse, fieldId));
                         if (!fieldExists) {
-                            throw new InvalidDacRequestException("Field ID " + fieldId + " does not exist in DynaForm " + req.getDynaFormId() + " version " + latestFormVer);
+                            throw new InvalidDacRequestException("Field ID " + fieldId + " does not exist in DynaForm " + req.getDynaFormId() + " version " + verToUse);
                         }
 
-                        String key = req.getDynaFormId() + "-" + latestFormVer + "-" + fieldId;
+                        String key = req.getDynaFormId() + "-" + verToUse + "-" + fieldId;
                         processedKeys.add(key);
                         
                         if (existingMap.containsKey(key)) {
@@ -639,11 +641,16 @@ public class DacDocsServiceImpl implements DacDocsService{
                                 dacDynaFormRepository.save(existing);
                             }
                         } else {
+                            // Check if it exists as deleted but NOT in the existingMap (which might only be active ones if findByDacIdAndDacVer filters)
+                            // Wait, existingMap is built from existingForms which is findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer())
+                            // Does findByDacIdAndDacVer return deleted ones? 
+                            // Let's assume it does because it's a Repository method and soft delete usually requires explicit filter or @Where
+                            
                             DacDynaForm newForm = new DacDynaForm();
                             newForm.setDacId(targetDac.getDacId());
                             newForm.setDacVer(targetDac.getDacVer());
                             newForm.setDynaFormId(req.getDynaFormId());
-                            newForm.setDynaFormVer(req.getDynaFormVer());
+                            newForm.setDynaFormVer(verToUse);
                             newForm.setDynaFormFieldsId(fieldId);
                             newForm.setDisplay(req.getDisplay());
                             newForm.setIsDeleted(false);
@@ -665,7 +672,8 @@ public class DacDocsServiceImpl implements DacDocsService{
                      f.setDeletedAt(Calendar.getInstance());
                      if (Authentication.getCurrentUserId().isPresent()){
                          f.setDeletedBy(Authentication.getCurrentUserId().get());
-                     }else {f.setDeletedBy("system");
+                     } else {
+                         f.setDeletedBy("system");
                      }
                      dacDynaFormRepository.save(f);
                  }
@@ -2003,8 +2011,12 @@ public class DacDocsServiceImpl implements DacDocsService{
         Set<String> requestSet = new HashSet<>();
         for (DacDynaFormRequest req : requests) {
             if (req.getDynaFormFieldsId() != null) {
+                Integer latestFormVer = dynaFormRepository.findMaxVersionById(req.getDynaFormId());
+                Integer verToUse = (req.getDynaFormVer() != null) ? req.getDynaFormVer() : latestFormVer;
+                if (verToUse == null) continue;
+
                 for (Integer fieldId : req.getDynaFormFieldsId()) {
-                    requestSet.add(req.getDynaFormId() + "-" + req.getDynaFormVer() + "-" + fieldId + "-" + req.getDisplay());
+                    requestSet.add(req.getDynaFormId() + "-" + verToUse + "-" + fieldId + "-" + req.getDisplay());
                 }
             }
         }

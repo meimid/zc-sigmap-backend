@@ -1676,7 +1676,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         if (dacDocs != null) {
             dacDocs.setAoId(dac.getAppelOffre().getId());
             dacDocs.setAoReference(dac.getAppelOffre().getReference());
-            List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer())
+                    .stream()
+                    .filter(df -> !Boolean.TRUE.equals(df.getIsDeleted()))
+                    .collect(Collectors.toList());
             if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
                 Map<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> grouped = dacDynaForms.stream()
                         .collect(Collectors.groupingBy(df -> new com.sigmap.common.entity.CompositeId(df.getDynaFormId(), df.getDynaFormVer())));
@@ -1714,10 +1717,6 @@ log.info("[DAC] DacDocsRequest: {}", updates);
             dacDocs.setSubmissionPieces(submissionPieces);
         }
 
-        // Attached DacPrix
-        List<DacPrix> prixDac = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
-        List<DacPrixResponce> responces = prixDac.stream().map(DacPrixMapper.INSTANCE::map).toList();
-        resp.setDacPrix(responces);
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {

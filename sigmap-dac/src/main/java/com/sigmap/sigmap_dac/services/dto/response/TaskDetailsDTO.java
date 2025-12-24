@@ -26,8 +26,6 @@ public class TaskDetailsDTO {
     private Map<String, Object> traceability;
     
     private DacResponseDTO dacDocs;
-    // prix dac information
-    private List<DacPrixResponce> dacPrix;;
 
     // Status information
     private String status;
