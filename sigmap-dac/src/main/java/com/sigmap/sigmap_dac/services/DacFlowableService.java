@@ -1667,6 +1667,7 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         // Populating dynaForms in DacResponseDTO
         if (dacDocs != null) {
             dacDocs.setAoId(dac.getAppelOffre().getId());
+            dacDocs.setAoReference(dac.getAppelOffre().getReference());
             List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
             if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
                 dacDocs.setDynaForms(dacDynaForms.stream()
