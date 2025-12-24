@@ -35,25 +35,15 @@ public class DacDynaFormSpecifications {
     }
 
     /**
-     * Filter DynaForms unattached to a given DAC (excluding soft-deleted ones).
+     * Filter the latest version of each DynaForms unattached to a given DAC (excluding soft-deleted ones).
      * A DynaForm is considered unattached if:
      *  - It belongs to the given TypeDossier.
      *  - It is not soft-deleted.
      *  - It does not have a non-deleted record in dac_dyna_form for the DAC.
      */
-    public static Specification<DynaForm> unattachedToDac(Integer dacId, Integer dacVer, Integer typeDossierId ) {
+    public static Specification<DynaForm> unattachedToDac(Integer dacId, Integer dacVer, Integer type) {
         return (root, query, cb) -> {
-            if (typeDossierId == null ) {
-                return cb.conjunction();
-            }
-
-
-
-            var typePredicate = cb.equal(
-                    root.get("typeDossier").get("id"),
-                    typeDossierId
-            );
-
+            var typePredicate = cb.equal(root.get("typeDossier").get("id"), type);
             var notDeleted = cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted")));
 
             var subquery = query.subquery(Long.class);
@@ -69,7 +59,18 @@ public class DacDynaFormSpecifications {
 
             var notExists = cb.not(cb.exists(subquery));
 
-            return cb.and(typePredicate, notDeleted, notExists);
+            var latestVerSq = query.subquery(Integer.class);
+            var df2 = latestVerSq.from(DynaForm.class);
+            latestVerSq.select(cb.max(df2.get("version")))
+                    .where(
+                            cb.equal(df2.get("id"), root.get("id")),
+                            cb.equal(df2.get("typeDossier").get("id"), type),
+                            cb.or(cb.isNull(df2.get("isDeleted")), cb.isFalse(df2.get("isDeleted")))
+                    );
+
+            var isLatestVersion = cb.equal(root.get("version"), latestVerSq);
+
+            return cb.and(typePredicate, notDeleted, notExists, isLatestVersion);
         };
     }
 
