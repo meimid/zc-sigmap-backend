@@ -11,6 +11,7 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import jakarta.mail.MessagingException;
 import org.springframework.data.domain.Page;
@@ -35,8 +36,11 @@ public interface ReunionService {
     Reunion create(ReunionRequest request) throws ComNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     Reunion updateBrillon(Integer id, ReunionRequest request,ReunionStatus status) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound;
     Reunion updatePlanifierOrNot(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound;
+
+    ReunionResponse updatePlanifierOrNotMapped(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound;
     Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
 
+    ReunionResponse updateAnnulerMapped( Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException;
     void delete(Integer id) throws ReunionNotFound;
 
     void sendReunionInvitations(Integer id) throws MessagingException, IOException;
