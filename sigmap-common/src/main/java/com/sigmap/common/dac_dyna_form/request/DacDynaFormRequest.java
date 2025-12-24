@@ -7,7 +7,6 @@ import java.util.List;
 @Data
 public class DacDynaFormRequest {
     private Integer dacId;
-    private Integer dacVer;
     private Integer dynaFormId;
     private Integer dynaFormVer;
     private List<Integer> dynaFormFieldsId;

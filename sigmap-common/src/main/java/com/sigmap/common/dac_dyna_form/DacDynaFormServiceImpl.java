@@ -91,13 +91,13 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Transactional
     @Override
-    public void updateFieldDisplayForDac(Integer dacId, Integer dacVer,
+    public void updateFieldDisplayForDac(Integer dacId,
                                          Integer dynaFormId, Integer dynaFormVer,
                                          List<Integer> displayedFieldIds) {
-        List<DacDynaForm> records = repo.findByDacAndForm(dacId, dacVer, dynaFormId, dynaFormVer)
+        List<DacDynaForm> records = repo.findByLatestDacVerAndForm(dacId, dynaFormId, dynaFormVer)
                 .stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
-                .collect(Collectors.toList());
+                .toList();
 
         if (records.isEmpty()) {
             throw new DacDynaFormNotFoundException("No active DAC–Form records found to update display settings.");
@@ -201,5 +201,10 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
         return new PageImpl<>(filtered, pageable, filtered.size());
+    }
+
+    @Override
+    public Integer findLatestDacVer(Integer dacId) {
+        return dacRepo.findMaxVersionById(dacId);
     }
 }
