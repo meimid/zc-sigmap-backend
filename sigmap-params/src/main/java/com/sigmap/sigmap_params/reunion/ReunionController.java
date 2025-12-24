@@ -51,8 +51,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.sigmap.common.reunion.ReunionServiceImpl.mapReunionDacs;
+import static com.sigmap.common.reunion.ReunionServiceImpl.mapReunionPpms;
 
 @RestController
 @RequestMapping("/api/reunions")
@@ -139,26 +143,14 @@ public class ReunionController {
     @PutMapping("/{id}/planifier_or_not")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> updatePlanifierOrNot(@PathVariable Integer id, @RequestBody ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound {
-        Reunion updatedReunion = reunionService.updatePlanifierOrNot(id, request);
-        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
-        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
-        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
-        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
-        response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
-        response.setParticipants(responseDtos);
+        ReunionResponse response = reunionService.updatePlanifierOrNotMapped(id, request);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}/annuler")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-PLANIFICATEUR','CNCMP-SPE-PLANIFICATEUR','CPMP-PLANIFICATEUR')")
     public ResponseEntity<ReunionResponse> updateAnnuler(@PathVariable Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
-        Reunion updatedReunion = reunionService.updateAnnule(id);
-        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
-        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
-        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
-        response.setParticipants(responseDtos);
-        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
-        response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
+        ReunionResponse response = reunionService.updateAnnulerMapped(id);
         return ResponseEntity.ok(response);
     }
 
@@ -320,42 +312,7 @@ public class ReunionController {
 
         return ResponseEntity.ok(response);
     }
-    private List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
-        if (reunionDacs == null) return List.of();
 
-        return reunionDacs.stream()
-                .map(rd -> {
-                    var dac = rd.getDac();
-                    var dacResponse = new DacResponseReunion();
-                    if (dac != null) {
-                        dacResponse.setDacId(dac.getDacId());
-                        dacResponse.setDacVer(dac.getDacVer());
-                        dacResponse.setStatus(dac.getStatus());
-                        dacResponse.setPpmId(dac.getAppelOffre().getPpm().getId());
-                        dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getAppelOffre().getRealisation().getTypeMarcher()));
-                        if (dac.getAppelOffre().getPpm() != null) {
-                            dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getAppelOffre().getPpm().getAc()));
-                        }
-                        if(dac.getReference() != null) {
-                            dacResponse.setReference(dac.getReference());
-                        }
-                    }
-
-                    var rdResponse = new ReunionDacResponse();
-                    rdResponse.setDac(dacResponse);
-                    rdResponse.setProcessInstanceId(rd.getProcessInstanceId());
-                    rdResponse.setTaskId(rd.getTaskId());
-                    rdResponse.setDecision(rd.getDecision());
-                    rdResponse.setObservation(rd.getObservation());
-
-                    if (rd.getReunionDacDocs() != null) {
-                        rdResponse.setDocs(mapDacDocs(rd.getReunionDacDocs()));
-                    }
-
-                    return rdResponse;
-                })
-                .toList();
-    }
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @GetMapping("/{reunionId}/extraits")
     public ResponseEntity<Page<ProcessVerbalReunionExtraitRespons>> getExtraitsByReunion(
@@ -368,65 +325,6 @@ public class ReunionController {
     }
 
 
-  /*  @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    @GetMapping("/{acId}/{ppmId}/{ppmVersion}")
-    public ResponseEntity<List<ProcessVerbalReunionExtraitRespons>> findAllExtraitsByAcIdAndPpmIdAndPpmVersion(
-            @PathVariable Integer acId,
-            @PathVariable Integer ppmId,
-            @PathVariable Integer ppmVersion
-    ) {
-
-        List<ProcessVerbalReunionExtrait> list =
-                reunionService.findAllExtraitsByAcIdAndPpmIdAndPpmVersion(acId,ppmId, ppmVersion);
-        return ResponseEntity.ok(list.stream().map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto).collect(Collectors.toList()));
-    }*/
-
-    private List<ReunionPpmResponse> mapReunionPpms(List<com.sigmap.common.reunionPpm.ReunionPpm> reunionPpms) {
-        if (reunionPpms == null) return List.of();
-
-        return reunionPpms.stream()
-                .map(rp -> {
-                    var ppm = rp.getPpm();
-                    var ppmResponse = new com.sigmap.common.ppms.response.PpmIdVerNomResponseSoftDto();
-                    if (ppm != null) {
-                        ppmResponse.setId(ppm.getId());
-                        ppmResponse.setVersion(ppm.getVersion());
-                        ppmResponse.setRef(ppm.getRef());
-                        ppmResponse.setNom(ppm.getNom());
-                        if (ppm.getAc() != null) {
-                            ppmResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(ppm.getAc()));
-                        }
-                    }
-
-                    var rpResponse = new com.sigmap.common.reunionPpm.response.ReunionPpmResponse();
-                    rpResponse.setPpm(ppmResponse);
-                    rpResponse.setProcessInstanceId(rp.getProcessInstanceId());
-                    rpResponse.setTaskId(rp.getTaskId());
-                    rpResponse.setDecision(rp.getDecision());
-                    rpResponse.setObservation(rp.getObservation());
-
-                    if (rp.getReunionPpmDocs() != null) {
-                        rpResponse.setDocs(mapPpmDocs(rp.getReunionPpmDocs()));
-                    }
-
-                    return rpResponse;
-                })
-                .toList();
-    }
-    private List<DocsResponseDTO> mapDacDocs(List<ReunionDacDoc> reunionDacDocs) {
-        if (reunionDacDocs == null) return null;
-        return reunionDacDocs.stream()
-                .map(ReunionDacDoc::getDocs).filter(doc->!doc.getIsDeleted()) // get the Docs entity
-                .map(DocMapper.INSTANCE::mapToDto) // map to DTO using DocsMapper
-                .collect(Collectors.toList());
-    }
-    private List<DocsResponseDTO> mapPpmDocs(List<ReunionPpmDoc> reunionPpmDocs) {
-        if (reunionPpmDocs == null) return null;
-        return reunionPpmDocs.stream()
-                .map(ReunionPpmDoc::getDocs).filter(doc->!doc.getIsDeleted()) // get the Docs entity
-                .map(DocMapper.INSTANCE::mapToDto) // map to DTO using DocsMapper
-                .collect(Collectors.toList());
-    }
 
     private DocsResponseDTO mapPvmDocs(List<ProcessVerbalReunionDoc> pvDocs) {
         if (pvDocs == null) return null;
@@ -473,12 +371,6 @@ public class ReunionController {
 
     }
 
- /*   @GetMapping("/list/ppm/{ppmId}")
-    @PreAuthorize("hasAnyRole( 'SUPER_ADMIN')")
-    public ResponseEntity<List<ReunionResponseDto>> findAllByPpmIdList(@PathVariable Integer ppmId) throws PpmNotFound, AcNotFound {
-        List<Reunion> reunionList = reunionService.findByPpmIdList(ppmId);
-        return ResponseEntity.ok(reunionList.stream().map(ReunionMapper.INSTANCE::mapToDto).collect(Collectors.toList()));
-    }*/
 
     @GetMapping("/history/{reunionId}/ppm/{ppmId}")
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) {
