@@ -23,7 +23,6 @@ public interface DacDynaFormMapper {
      * No auto-generated fields — IDs are fully provided in the request.
      */
     @Mapping(target = "dacId", source = "dacId")
-    @Mapping(target = "dacVer", source = "dacVer")
     @Mapping(target = "dynaFormId", source = "dynaFormId")
     @Mapping(target = "dynaFormVer", source = "dynaFormVer")
     @Mapping(target = "dynaFormFieldsId", ignore = true)

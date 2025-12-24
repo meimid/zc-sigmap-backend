@@ -16,6 +16,7 @@ public class DacResponseDTO {
     private Integer dacId;
     private Integer dacVer;
     private Integer aoId;
+    private String aoReference;
     private String reference;
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;

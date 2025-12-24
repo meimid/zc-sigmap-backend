@@ -21,7 +21,6 @@ public interface DacDynaFormService {
      * The field IDs in the list will have display=true, others false.
      */
     void updateFieldDisplayForDac(Integer dacId,
-                                  Integer dacVer,
                                   Integer dynaFormId,
                                   Integer dynaFormVer,
                                   List<Integer> displayedFieldIds);
@@ -64,4 +63,6 @@ public interface DacDynaFormService {
      *  Detach (delete) a specific DAC–Form–Field assignment.
      */
     void delete(DacDynaFormId id);
+
+    Integer findLatestDacVer(Integer dacId);
 }

@@ -38,7 +38,6 @@ public class DacDynaFormController {
             @RequestBody DacDynaFormRequest request) {
         service.updateFieldDisplayForDac(
                 request.getDacId(),
-                request.getDacVer(),
                 request.getDynaFormId(),
                 request.getDynaFormVer(),
                 request.getDynaFormFieldsId()
@@ -53,8 +52,9 @@ public class DacDynaFormController {
     public ResponseEntity<Page<DynaFormResponse>> getAttachedForms(
             @RequestBody DacDynaFormRequest request,
             Pageable pageable) {
+        Integer dacLatestVersion = service.findLatestDacVer(request.getDacId());
         Page<DynaFormResponse> page =
-                service.findDistinctFormsByDac(request.getDacId(), request.getDacVer(), pageable);
+                service.findDistinctFormsByDac(request.getDacId(), dacLatestVersion, pageable);
         return ResponseEntity.ok(page);
     }
 
@@ -66,8 +66,9 @@ public class DacDynaFormController {
             @RequestBody DacDynaFormRequest request,
             @RequestParam(required = false) Integer typeDossierId,
             Pageable pageable) {
+        Integer dacLatestVersion = service.findLatestDacVer(request.getDacId());
         List<DynaFormResponse> page =
-                service.findUnattachedFormsByTypeDossier(request.getDacId(), request.getDacVer(), typeDossierId, pageable);
+                service.findUnattachedFormsByTypeDossier(request.getDacId(), dacLatestVersion, typeDossierId, pageable);
         return ResponseEntity.ok(page);
     }
 
@@ -78,16 +79,18 @@ public class DacDynaFormController {
     public ResponseEntity<Page<DacDynaFormResponse>> findAllByDac(
             @RequestBody DacDynaFormRequest request,
             Pageable pageable) {
+        Integer dacLatestVersion = service.findLatestDacVer(request.getDacId());
         Page<DacDynaFormResponse> page =
-                service.findByDac(request.getDacId(), request.getDacVer(), pageable);
+                service.findByDac(request.getDacId(), dacLatestVersion, pageable);
         return ResponseEntity.ok(page);
     }
 
     @PostMapping("/fields")
     public ResponseEntity<List<DacDynaFormResponse>> getDacDynaFormFields(
             @RequestBody DacDynaFormRequest request) {
+        Integer dacLatestVersion = service.findLatestDacVer(request.getDacId());
         List<DacDynaFormResponse> page =
-                service.getDacDynaFormFields(request.getDacId(), request.getDacVer(), request.getDynaFormId(), request.getDynaFormVer());
+                service.getDacDynaFormFields(request.getDacId(), dacLatestVersion, request.getDynaFormId(), request.getDynaFormVer());
         return ResponseEntity.ok(page);
     }
 

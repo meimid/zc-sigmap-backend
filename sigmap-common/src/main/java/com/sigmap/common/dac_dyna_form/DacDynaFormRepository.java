@@ -39,6 +39,22 @@ public interface DacDynaFormRepository
                                        @Param("formVer") Integer formVer);
 
     @Query("""
+    SELECT d FROM DacDynaForm d
+    WHERE d.dacId = :dacId
+      AND d.dynaFormId = :formId
+      AND d.dynaFormVer = :formVer
+      AND d.dacVer = (
+          SELECT MAX(d2.dacVer)
+          FROM DacDynaForm d2
+          WHERE d2.dacId = :dacId
+      )
+    """)
+    List<DacDynaForm> findByLatestDacVerAndForm(
+            @Param("dacId") Integer dacId,
+            @Param("formId") Integer formId,
+            @Param("formVer") Integer formVer);
+
+    @Query("""
     SELECT DISTINCT d.dynaFormId, d.dynaFormVer
     FROM DacDynaForm d
     WHERE d.dacId = :dacId AND d.dacVer = :dacVer AND d.isDeleted = false
