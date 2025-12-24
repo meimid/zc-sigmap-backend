@@ -40,10 +40,10 @@ public class DocSoumissionSpecifications {
     /** typeDossier. */
 
 
-    public static Specification<DocSoumission> typeDossier(String typeDossier) {
+    public static Specification<DocSoumission> typeDossierId(String typeDossierId) {
         return (root, query, criteriaBuilder) -> {
 
-            if (typeDossier == null || typeDossier.isBlank()) {
+            if (typeDossierId == null || typeDossierId.isBlank()) {
                 return criteriaBuilder.conjunction();
             }
 
@@ -51,8 +51,9 @@ public class DocSoumissionSpecifications {
                     root.join("typeDossier", JoinType.INNER);
 
             return criteriaBuilder.equal(
-                    criteriaBuilder.upper(join.get("code")),
-                    typeDossier.toUpperCase()
+                    join.get("id"),
+                    typeDossierId
+
             );
         };
     }
