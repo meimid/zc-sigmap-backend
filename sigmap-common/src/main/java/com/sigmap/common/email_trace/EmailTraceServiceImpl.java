@@ -29,7 +29,7 @@ public class EmailTraceServiceImpl implements EmailTraceService {
             emailTrace.setContenu(contenu);
             emailTrace.setDestinataire(destinataire);
             emailTrace.setSuccessSend(successSend);
-            emailTrace.setDate_send(dateSend);
+            emailTrace.setDateSend(dateSend);
 
             // Set audit fields
             emailTrace.setCreatedAt(Calendar.getInstance());
@@ -56,7 +56,7 @@ public class EmailTraceServiceImpl implements EmailTraceService {
             emailTrace.setContenu(contenu);
             emailTrace.setDestinataire(destinataire);
             emailTrace.setSuccessSend(successSend);
-            emailTrace.setDate_send(dateSend);
+            emailTrace.setDateSend(dateSend);
 
             // Set audit fields
             emailTrace.setUpdatedAt(Calendar.getInstance());
