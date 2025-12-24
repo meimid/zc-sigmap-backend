@@ -16,7 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 public class DocSoumissionQuery {
     private String search;
     private String nom;
-    private String typeDossier;
+    private String typeDossierId;
     /**
      * Creates a {@link Specification} from the properties of the current object.
      * <p>
@@ -42,8 +42,8 @@ public class DocSoumissionQuery {
         if (nom != null && !nom.isBlank()) {
             spec = spec.and(DocSoumissionSpecifications.nom(nom));
         }
-        if (typeDossier != null) {
-            spec = spec.and(DocSoumissionSpecifications.typeDossier(typeDossier));
+        if (typeDossierId != null) {
+            spec = spec.and(DocSoumissionSpecifications.typeDossierId(typeDossierId));
         }
 
         return spec;
