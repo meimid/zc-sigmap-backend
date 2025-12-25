@@ -3,12 +3,14 @@ package com.sigmap.common.dac_docs;
 import com.sigmap.common.dac.request.DacRequest;
 import com.sigmap.common.dac_docs.request.DacDoccsAndDacRequest;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import org.springframework.web.multipart.MultipartFile;
@@ -17,6 +19,7 @@ public interface DacDocsService {
     DacDocs createDacDocs(DacDocsRequest request);
     DacDocs updateDacDocs(DacDocsRequest request);
     List<DacDocs> createDacDocsBatch(List<DacDocsRequest> requests);
+    List<DacDocs> createDacWithDacDocsBatch(DacWithDacDocsRequest request, Locale lang) throws MonnaieNotFound;
 
     List<DacDocs> findOneById(Integer dacId, Integer dacVer);
     Optional<DacDocs> findById(Integer dacId, Integer dacVer, Integer dynaDocsId, Integer dynaDocsVer, Integer dynaFieldsId);

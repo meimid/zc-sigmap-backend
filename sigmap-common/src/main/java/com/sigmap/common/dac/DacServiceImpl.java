@@ -2,13 +2,14 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
-import com.sigmap.common.dac.exception.NoActiveAAOException;
-import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionService;
+import com.sigmap.common.config.ModePassationType;
+import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.exeption.DacWithRealisation;
 import com.sigmap.common.dac.request.CreateDacRequest;
+import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
@@ -45,27 +46,35 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.societe_dac.SocieteDac;
+import com.sigmap.common.societe_dac.SocieteDacID;
+import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
-import jakarta.transaction.Transactional;
+import jakarta.persistence.criteria.Root;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.xmlbeans.XmlCursor;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTBookmark;
-import org.openxmlformats.schemas.wordprocessingml.x2006.main.CTP;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import com.sigmap.common.dac_docs_details.DacDocsDetails;
 import com.sigmap.common.dac_docs_details.DacDocsDetailsRepository;
@@ -74,6 +83,23 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.appel_offre.AppelOffre;
+import com.sigmap.common.appel_offre.AppelOffreRepository;
+import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
+import com.sigmap.common.dac.request.CreateDacFromAoRequest;
+import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac.response.ParticipantResponse;
+import com.sigmap.common.dac_prix.DacPrixId;
+import com.sigmap.common.config.ModePassationEtape;
+import com.sigmap.common.monnaie.Monnaie;
+import com.sigmap.common.monnaie.MonnaieRepository;
+import com.sigmap.common.dac.response.DacWebsiteResponse;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Subquery;
+import com.sigmap.common.societe.Societe;
+import com.sigmap.common.societe.SocieteRepository;
 
 @Slf4j
 @Service
@@ -97,6 +123,8 @@ public class DacServiceImpl implements DacService {
     private final ModeDePassationSelectionRepository modeDePassationSelectionRepository;
     private final DacPrixRepository dacPrixRepository;
     private final DynaDocsModelRepository dynaDocsModelRepository;
+    private final AppelOffreRepository appelOffreRepository;
+    private final SocieteDacRepository societeDacRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -112,11 +140,11 @@ public class DacServiceImpl implements DacService {
         log.debug("Retrieved Dac: {}", dac);
 
         // Check if Dac has a Ppm
-        if (dac.getPpm() == null) {
+        if (dac.getAppelOffre().getPpm() == null) {
             log.error("Dac must have a Ppm");
             throw new IllegalArgumentException("Dac must have a Ppm");
         }
-        log.debug("Dac Ppm: {}", dac.getPpm());
+        log.debug("Dac Ppm: {}", dac.getAppelOffre().getPpm());
 
         // Step 2: Determine the exact snapshot of DynaDocs (id + version) used for this DAC version from dac_docs
         List<DacDocs> dacDocsSnapshot = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVersion);
@@ -152,7 +180,7 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElseThrow(() -> new IllegalArgumentException("DynaDocs not found for ID: " + pair[0] + ", Version: " + pair[1])))
-                .sorted(java.util.Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
+                .sorted(Comparator.comparing(dd -> docKeyToOrder.get(dd.getId() + ":" + dd.getVersion())))
                 .toList();
 
         List<String> generatedFilePaths = new ArrayList<>();
@@ -234,7 +262,7 @@ public class DacServiceImpl implements DacService {
         DacId dacIdObj = new DacId(dacId, dacVersion);
         Dac dac = dacRepository.findById(dacIdObj)
                 .orElseThrow(() -> new IllegalArgumentException("Dac not found for ID: " + dacId + ", Version: " + dacVersion));
-        if (dac.getPpm() == null) {
+        if (dac.getAppelOffre().getPpm() == null) {
             log.error("Dac must have a Ppm");
             throw new IllegalArgumentException("Dac must have a Ppm");
         }
@@ -967,7 +995,6 @@ public class DacServiceImpl implements DacService {
 
 
     @Override
-    @Transactional(rollbackOn = Throwable.class)
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException {
         if ( request.getPpmId() == null || request.getPpmVer() == null || request.getRealisationId() == null || request.getRealisationVer() == null) {
             throw new IllegalArgumentException("All fields (ppmId, ppmVer, realisationId, realisationVer) are required");
@@ -1036,12 +1063,7 @@ public class DacServiceImpl implements DacService {
         dac.setDacId(sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ));
         dac.setDacVer(1);
         dac.setReference(generateDacRef(sequenceNumber, nom_ac));
-        dac.setPpm(ppm);
-        dac.setRealisation(realisation);
-        dac.setTypeMarche(typeMarche);
-        dac.setModePassation( modePassation);
         dac.setStatus(ProcessStatus.BROUILLON);
-        dac.setParentDacId(request.getParentDacId());
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
         Dac savedCdac = dacRepository.save(dac);
@@ -1118,6 +1140,17 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
+    public Page<Dac> findAllLatestWithQuery(DacQuery query, Pageable pageable) {
+        // For now, only support appelOffreId filter
+        if (query.getAppelOffreId() != null) {
+            return dacRepository.findLatestDacsByAppelOffre(query.getAppelOffreId(), pageable);
+        }
+        
+        // If no appelOffreId, return all latest DACs
+        return dacRepository.findLatestPerDac(pageable);
+    }
+
+    @Override
     public Optional<Dac> findOne(Specification<Dac> specification) {
         return dacRepository.findOne(specification);
     }
@@ -1176,12 +1209,12 @@ public class DacServiceImpl implements DacService {
         boolean noSnapshot = dacDocsSnapshot.isEmpty();
 
         // Distinct (dynaDocsId, dynaDocsVer) keys preserving relative order by dynaDocOrder when resolvable
-        java.util.LinkedHashMap<String, int[]> docPairs = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Integer> orderByKey = new java.util.HashMap<>();
+        LinkedHashMap<String, int[]> docPairs = new LinkedHashMap<>();
+        Map<String, Integer> orderByKey = new HashMap<>();
         if (noSnapshot) {
             // New DAC without snapshot: return latest docs for its typeMarche, modePassation and modelId (do not persist)
-            Integer typeMarcheIdForDac = dac.getTypeMarche().getId();
-            Integer modePassationIdForDac = dac.getModePassation() != null ? dac.getModePassation().getId() : null;
+            Integer typeMarcheIdForDac = dac.getAppelOffre().getRealisation().getTypeMarcher().getId();
+            Integer modePassationIdForDac = dac.getAppelOffre().getRealisation().getModePassation() != null ? dac.getAppelOffre().getRealisation().getModePassation().getId() : null;
             Integer modelId = dac.getDynaDocsModel().getDynaDocsModelId() != null ? dac.getDynaDocsModel().getDynaDocsModelId() : null;
             if(typeMarcheIdForDac == null || modePassationIdForDac == null || modelId == null) {
                 throw new RuntimeException("return latest docs for its typeMarche, modePassation and modelId");
@@ -1215,7 +1248,22 @@ public class DacServiceImpl implements DacService {
         }
 
         DacResponseDTO dacResponse = dacDocsMapper.toDacResponse(dac);
-
+        if (dac.isShortListing()) {
+            List<SocieteDac> shortlists = societeDacRepository.findLatestByDacId(dacId);
+            if (!shortlists.isEmpty()) {
+                List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
+                        .map(sl -> {
+                            Societe s = sl.getId().getSociete();
+                            return new DacWithAoReferenceResponse.ShortlistMemberData(
+                                    s.getId(),
+                                    s.getNom(),
+                                    s.getNif()
+                            );
+                        })
+                        .collect(Collectors.toList());
+                dacResponse.setDacShortlist(members);
+            }
+        }
         List<DacPrix> dacPrixList = dacPrixRepository.findByDac(dacId, dacVer);
         if (dacPrixList != null && !dacPrixList.isEmpty()) {
             List<DacPrixResponce> dacPrixResponces = mapDacPrixToDacPrixResponceList(dacPrixList);
@@ -1229,8 +1277,8 @@ public class DacServiceImpl implements DacService {
                 .map(pair -> dynaDocsRepository
                         .findByIdDynaDocsIdAndDynaDocsVer(pair[0], pair[1])
                         .orElse(null))
-                .filter(java.util.Objects::nonNull)
-                .sorted(java.util.Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(dd -> orderByKey.get(dd.getId() + ":" + dd.getVersion())))
                 .map(dynaDocs -> {
                     DynaDocsResponseDTO dynaDocsDTO = dynaDocsMapper.toDynaDocsResponse(dynaDocs);
                     List<DynaFields> dynaFieldsList = dynaFieldsRepository.findByDynaDocsIdAndVer(dynaDocs.getId(), dynaDocs.getVersion());
@@ -1278,15 +1326,19 @@ public class DacServiceImpl implements DacService {
         Dac newDac = new Dac();
         newDac.setDacId(base.getDacId());
         newDac.setDacVer(nextVer);
-        newDac.setPpm(base.getPpm());
-        newDac.setRealisation(base.getRealisation());
-        newDac.setTypeMarche(base.getTypeMarche());
+        // Use AppelOffre for navigation instead of direct PPM/Realisation
+        newDac.setAppelOffre(base.getAppelOffre());
         newDac.setDateLimiteSoumission(base.getDateLimiteSoumission());
         newDac.setDateLimiteRecptionDemande(base.getDateLimiteRecptionDemande());
         newDac.setPayant(base.isPayant());
         newDac.setShortListing(base.isShortListing());
-        newDac.setParentDacId(base.getParentDacId());
         newDac.setDynaDocsModel(base.getDynaDocsModel());
+        newDac.setResponsableDacId(base.getResponsableDacId());
+        newDac.setConditionsParticipation(base.getConditionsParticipation());
+        newDac.setEtapeDac(base.getEtapeDac());
+        newDac.setStatus(base.getStatus());
+        newDac.setReference(base.getReference());
+        newDac.setProcessInstanceId(base.getProcessInstanceId());
         // Add other fields as needed...
         return newDac;
     }
@@ -1300,42 +1352,55 @@ public class DacServiceImpl implements DacService {
 
         // Compute next version
         Dac latest = dacRepository.findDacWithLatestVersionByDacId(dacId);
+
+        int dacIdInut = dacId;
+
+        int dacVerInput = dacVer;
+
         int nextVer = latest.getDacVer() + 1;
-
-        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
-        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacId, dacVer);
-        for (DacPrix dacPrix : prixDac) {
-            dacPrix.getId().getDac().setDacVer(nextVer);
-            dacPrixRepository.save(dacPrix);
-        }
-
         // Create new DAC version using mapper
         Dac newDac = cloneWithNewVersion(base, nextVer);
 
-        // Set modePassation from base DAC, or from realisation if base doesn't have it
-        if (base.getModePassation() != null) {
-            newDac.setModePassation(base.getModePassation());
-        } else if (base.getRealisation() != null && base.getRealisation().getModePassation() != null) {
-            newDac.setModePassation(base.getRealisation().getModePassation());
-        }
-
-        newDac.setStatus(base.getStatus());
-        newDac.setReference(base.getReference());
-        newDac.setProcessInstanceId(base.getProcessInstanceId());
         newDac = dacRepository.save(newDac);
 
+        // update dac version for prixDac with nextVer for all dacPrix by dacId and dacVer
+        List<DacPrix> prixDac = dacPrixRepository.findByDac(dacIdInut, dacVerInput);
+        for (DacPrix dacPrix : prixDac) {
+            DacPrixId newId = new DacPrixId();
+            newId.setDac(newDac);
+            newId.setMonnaie(dacPrix.getId().getMonnaie());
+            DacPrix copy = new DacPrix();
+            copy.setId(newId);
+            copy.setPrix(dacPrix.getPrix());
+            dacPrixRepository.save(copy);
+        }
+        // Clone DacShortlist if shortListing is true
+       if (newDac.isShortListing()) {
+             List<SocieteDac> existingShortlist = societeDacRepository.findByDacIdAndDacVer(base.getDacId(), base.getDacVer());
+             for (SocieteDac source : existingShortlist) {
+                 SocieteDacID societeDacID = new  SocieteDacID();
+                 societeDacID.setDac(newDac);
+                 societeDacID.setSociete(source.getId().getSociete());
+                 SocieteDac copy = new SocieteDac();
+                 copy.setId(societeDacID);
+                 copy.setMethodePaiement(source.getMethodePaiement());
+                 copy.setStatusPaiement(source.getStatusPaiement());
+                 copy.setJustifPaiementId(source.getJustifPaiementId());
+                 societeDacRepository.save(copy);
+             }
+       }
+
         // Load latest active DynaDocs for DAC with typeMarche, modePassation and modelId
-        Integer typeMarcheIdForNew = newDac.getTypeMarche().getId();
-        Integer modePassationIdForNew = newDac.getModePassation() != null ? newDac.getModePassation().getId() : null;
+        Integer typeMarcheIdForNew = newDac.getAppelOffre().getRealisation().getTypeMarcher().getId();
+        Integer modePassationIdForNew = newDac.getAppelOffre().getRealisation().getModePassation() != null ? newDac.getAppelOffre().getRealisation().getModePassation().getId() : null;
         Integer modelIdForNew = newDac.getDynaDocsModel().getDynaDocsModelId();
         if(typeMarcheIdForNew==null || modePassationIdForNew==null || modelIdForNew==null){
             throw new RuntimeException("could not load latest active DynaDocs for DAC with typeMarche, modePassation and modelId ");
         }
-        //List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
+//        List<DynaDocs> latestDocs = dynaDocsRepository.findAllLastVersionByTypeMarcheIdAndModePassationId(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
 
         // get all dyna docs with last version
         List<DynaDocs> latestDocs =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheIdForNew, modePassationIdForNew,modelIdForNew);
-
         // Index prior values by dynaFieldsId for quick mapping
         List<DacDocs> priorDocs = dacDocsRepository.findByDacIdAndDacVer(dacId, dacVer);
         Map<Integer, DacDocs> priorByFieldId = priorDocs.stream()
@@ -1483,6 +1548,7 @@ public class DacServiceImpl implements DacService {
                                 copy.setDac(row);
                                 dacDocsDetailsRepository.save(copy);
                             }
+                            log.info("7777777777777777777777");
                         }
                     } else {
                         // No prior rows: do nothing (empty snapshot). Rows will be created when user inputs data.
@@ -1552,12 +1618,12 @@ public class DacServiceImpl implements DacService {
         DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
             case "ppm": {
-                if (dac.getPpm() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null) return null;
                 return switch (sourceField) {
-                    case "nom" -> dac.getPpm().getNom();
+                    case "nom" -> dac.getAppelOffre().getPpm().getNom();
                     case "created_at" -> {
-                        if (dac.getPpm().getUpdatedAt() != null) {
-                            yield sdf.format(new Date(dac.getPpm().getCreatedAt().getTimeInMillis()));
+                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
+                            yield sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
                         }
                         yield null;
                     }
@@ -1565,16 +1631,16 @@ public class DacServiceImpl implements DacService {
                 };
             }
             case "ac": {
-                if (dac.getPpm() == null || dac.getPpm().getAc() == null) return null;
+                if (dac.getAppelOffre().getPpm() == null || dac.getAppelOffre().getPpm().getAc() == null) return null;
                 return switch (sourceField) {
-                    case "nom" -> dac.getPpm().getAc().getNom();
-                    case "email" ->dac.getPpm().getAc().getEmail();
+                    case "nom" -> dac.getAppelOffre().getPpm().getAc().getNom();
+                    case "email" ->dac.getAppelOffre().getPpm().getAc().getEmail();
                     case "adresse" -> {
-                        if (dac.getPpm().getAc().getAdresse() != null) {
-                            yield dac.getPpm().getAc().getAdresse().getAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCompAdresse() + " " +
-                                    dac.getPpm().getAc().getAdresse().getCodePostal() + " " +
-                                    dac.getPpm().getAc().getAdresse().getVille();
+                        if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
+                            yield dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCompAdresse() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCodePostal() + " " +
+                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getVille();
                             }
                         yield null;
                     }
@@ -1582,16 +1648,17 @@ public class DacServiceImpl implements DacService {
                 };
             }
             case "realisation": {
-                if (dac.getRealisation() == null) return null;
+                if (dac.getAppelOffre() == null || dac.getAppelOffre().getRealisation() == null) return null;
+                Realisation realisation = dac.getAppelOffre().getRealisation();
                 return switch (sourceField) {
-                    case "realisationEnvisagees", "realisation_envisagees" -> dac.getRealisation().getRealisationEnvisagees();
-                    case "beneficiaire" -> dac.getRealisation().getBeneficiaire();
+                    case "realisationEnvisagees", "realisation_envisagees" -> realisation.getRealisationEnvisagees();
+                    case "beneficiaire" -> realisation.getBeneficiaire();
                     case "sourceFinancement", "source_financement" -> {
-                        if (dac.getRealisation().getFinancements() == null || dac.getRealisation().getFinancements().isEmpty()) yield null;
+                        if (realisation.getFinancements() == null || realisation.getFinancements().isEmpty()) yield null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
-                        Set<String> seen = new java.util.LinkedHashSet<>();
-                        for (Financement fin : dac.getRealisation().getFinancements()) {
+                        Set<String> seen = new LinkedHashSet<>();
+                        for (Financement fin : realisation.getFinancements()) {
                             // Skip soft-deleted financements
                             if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
                             String label = getRefParamLabel(fin.getSourceFinancement());
@@ -1605,15 +1672,15 @@ public class DacServiceImpl implements DacService {
                         yield sb.isEmpty() ? null : sb.toString();
                     }
 
-                    case "typeMarcher", "type_marcher" -> dac.getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getRealisation().getTypeMarcher()) : null;
-                    case "modeSelection", "mode_selection" -> dac.getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getRealisation().getModeSelection()) : null;
-                    case "modePassation", "mode_passation" -> dac.getRealisation().getModePassation() != null ? dac.getRealisation().getModePassation().getLibelle() : null;
+                    case "typeMarcher", "type_marcher" -> realisation.getTypeMarcher() != null ? getRefParamLabel(realisation.getTypeMarcher()) : null;
+                    case "modeSelection", "mode_selection" -> realisation.getModeSelection() != null ? getRefParamLabel(realisation.getModeSelection()) : null;
+                    case "modePassation", "mode_passation" -> realisation.getModePassation() != null ? realisation.getModePassation().getLibelle() : null;
                     case "nomLot", "nom_lot" -> {
-                        if (dac.getRealisation().getLots() == null || dac.getRealisation().getLots().isEmpty()) yield null;
+                        if (realisation.getLots() == null || realisation.getLots().isEmpty()) yield null;
                         StringBuilder sb = new StringBuilder();
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
-                        for (Lot lot : dac.getRealisation().getLots()) {
+                        for (Lot lot : realisation.getLots()) {
                             if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
                             String name = lot.getDescription();
                             if (name == null) continue;
@@ -1625,32 +1692,32 @@ public class DacServiceImpl implements DacService {
                         }
                         yield sb.isEmpty() ? null : sb.toString();
                     }
-                    case "budgetEstime", "budget_estime" -> toString(dac.getRealisation().getBudgetEstime());
+                    case "budgetEstime", "budget_estime" -> toString(realisation.getBudgetEstime());
                    // case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
                     //case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
                     // case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
                     //case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
                     case "date_prev_lps" -> {
-                        if (dac.getRealisation().getDatePrevLps() != null) {
-                            yield dac.getRealisation().getDatePrevLps().format(localDateFormatter);
+                        if (realisation.getDatePrevLps() != null) {
+                            yield realisation.getDatePrevLps().format(localDateFormatter);
                         }
                         yield null;
                     }
                     case "date_prev_ac" -> {
-                        if (dac.getRealisation().getDatePrevAc() != null) {
-                            yield dac.getRealisation().getDatePrevAc().format(localDateFormatter);
+                        if (realisation.getDatePrevAc() != null) {
+                            yield realisation.getDatePrevAc().format(localDateFormatter);
                         }
                         yield null;
                     }
                     case "date_prev_dp" -> {
-                        if (dac.getRealisation().getDatePrevDp() != null) {
-                            yield dac.getRealisation().getDatePrevDp().format(localDateFormatter);
+                        if (realisation.getDatePrevDp() != null) {
+                            yield realisation.getDatePrevDp().format(localDateFormatter);
                         }
                         yield null;
                     }
                     case "date_prev_ap" -> {
-                        if (dac.getRealisation().getDatePrevAp() != null) {
-                            yield dac.getRealisation().getDatePrevAp().format(localDateFormatter);
+                        if (realisation.getDatePrevAp() != null) {
+                            yield realisation.getDatePrevAp().format(localDateFormatter);
                         }
                         yield null;
                     }
@@ -1780,4 +1847,324 @@ public class DacServiceImpl implements DacService {
         log.debug("Fetching published DACs for realisation ID: {} and version: {}", realisationId, realisationVer);
         return dacRepository.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
     }
+
+    @Override
+    @Transactional
+    public Dac createFromAppelOffre(CreateDacFromAoRequest request) 
+            throws AppelOffreNotFound, InvalidDacRequestException {
+        log.info("Creating DAC(s) from Appel d'Offre with ID: {}", request.getAppelOffreId());
+        
+        // 1. Validate request
+        validateDacFromAoRequest(request);
+        
+        // 2. Load AppelOffre and validate it exists
+        AppelOffre appelOffre = appelOffreRepository.findById(request.getAppelOffreId())
+                .orElseThrow(() -> new AppelOffreNotFound(request.getAppelOffreId()));
+        
+        // 3. Get PPM and Realisation from AO
+        Ppm ppm = appelOffre.getPpm();
+        if (ppm == null) {
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à un PPM");
+        }
+        
+        Realisation realisation = appelOffre.getRealisation();
+        if (realisation == null) {
+            throw new InvalidDacRequestException("Tout Appel d'Offres doit obligatoirement être associé à une Réalisation.");
+        }
+        
+        // Get ModeDePassationSelection from Realisation to check etapes
+        ModeDePassationSelection modePassation = realisation.getModePassation();
+        log.info("mode passation: "+modePassation);
+        if (modePassation == null) {
+            throw new InvalidDacRequestException("Realisation must have a Mode de Passation");
+        }
+        validateActiveAAOExists(realisation.getTypeMarcher().getId(), modePassation.getId());
+
+        // 4. Check existing DACs for this AO to determine what can be created
+        List<Dac> existingDacs = dacRepository.findAll().stream()
+                .filter(d -> d.getAppelOffre() != null 
+                        && d.getAppelOffre().getId().equals(appelOffre.getId()))
+                .collect(Collectors.toList());
+        
+        // Determine number of DACs to create based on ModePassationEtape
+        int numberOfDacsToCreate;
+        String etapeForDac;
+
+        if (modePassation.getEtapes() == ModePassationEtape.ETAPE_UNIQUE) {
+            if (!existingDacs.isEmpty()) {
+                throw new InvalidDacRequestException(
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation est ÉTAPE_UNIQUE et un DAC existe déjà pour cet Appel d'Offres.");
+            }
+            numberOfDacsToCreate = 1;
+            etapeForDac = "1";
+            log.info("Creating DAC for ETAPE_UNIQUE mode");
+
+        } else if (modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES) {
+            boolean etape1Exists = existingDacs.stream().anyMatch(d -> "1".equals(d.getEtapeDac()));
+            boolean etape2Exists = existingDacs.stream().anyMatch(d -> "2".equals(d.getEtapeDac()));
+
+            if (!etape1Exists) {
+                numberOfDacsToCreate = 1;
+                etapeForDac = "1";
+                log.info("Creating first DAC (etape 1) for DEUX_ETAPES mode");
+            } else if (!etape2Exists) {
+                numberOfDacsToCreate = 1;
+                etapeForDac = "2";
+                log.info("Creating second DAC (etape 2) for DEUX_ETAPES mode");
+            } else {
+                throw new InvalidDacRequestException(
+                        "Impossible de créer un DAC supplémentaire. Le mode de passation DEUX_ETAPES autorise un maximum de 2 DAC et ils existent déjà.");
+            }
+        } else {
+            throw new InvalidDacRequestException(
+                    "Mode de Passation Etape invalide: " + modePassation.getEtapes());
+        }
+
+        List<Dac> createdDacs = new ArrayList<>();
+
+        // 5. Create DAC(s)
+        Dac dac = null;
+        Dac savedDac = null;
+        for (int i = 0; i < numberOfDacsToCreate; i++) {
+            dac = new Dac();
+
+            // Generate new DAC ID and set version
+            Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
+            dac.setDacId(newDacId);
+            dac.setDacVer(1);
+            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
+
+            // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
+            dac.setAppelOffre(appelOffre);
+
+            // Configure DAC defaults
+            dac.setEtapeDac(etapeForDac);
+            dac.setStatus(ProcessStatus.BROUILLON);
+            dac.setPayant(false);
+            boolean isRestraintMode = modePassation.isRestraint();
+            boolean isSecondStepDac = modePassation.getEtapes() == ModePassationEtape.DEUX_ETAPES && "2".equals(etapeForDac);
+            dac.setShortListing(isRestraintMode || isSecondStepDac);
+
+            // Set process-related fields
+
+            // Set dynamic docs model if provided
+            if (request.getDynaDocsModelId() != null) {
+                DynaDocsModel dynaDocsModel = dynaDocsModelRepository.findById(request.getDynaDocsModelId())
+                        .orElseThrow(() -> new DynaDocsModelNotFoundExeption(request.getDynaDocsModelId()));
+                dac.setDynaDocsModel(dynaDocsModel);
+            }
+
+            // Save DAC
+            savedDac = dacRepository.save(dac);
+            Integer typeMarcheId = realisation.getTypeMarcher().getId();
+            Integer modePassationId = realisation.getModePassation() != null ? realisation.getModePassation().getId() : null;
+            List<DynaDocs> latestDocsFiltred =  getAllDynaDocsWithTypeMarchRealisationModelIds(typeMarcheId, modePassationId, dac.getDynaDocsModel().getDynaDocsModelId());
+            for (DynaDocs dd : latestDocsFiltred) {
+                List<DynaFields> fields = dynaFieldsRepository.findByDynaDocsIdAndDynaDocsVer(dd.getId(), dd.getVersion());
+                if (fields.isEmpty()) {
+                    // Create a placeholder DEFAULT field so dac_docs rows can be created without null dyna_field_id
+                    Integer maxId = dynaFieldsRepository.findMaxFieldIdForDoc(dd.getId(), dd.getVersion());
+                    DynaFields placeholder = new DynaFields();
+                    placeholder.setDynaFieldsId(maxId + 1);
+                    placeholder.setDynaDocsId(dd.getId());
+                    placeholder.setDynaDocsVer(dd.getVersion());
+                    placeholder.setName("__DEFAULT__");
+                    placeholder.setRef("__DEFAULT__");
+                    placeholder.setLabel("__DEFAULT__");
+                    placeholder.setType(DynaFieldType.SYSTEM);
+                    placeholder.setSource(null);
+                    placeholder.setSourceField(null);
+                    placeholder.setDynaFieldsOrder(Integer.MAX_VALUE);
+                    placeholder.setStatus(ActiveStatus.ACTIF);
+                    placeholder = dynaFieldsRepository.save(placeholder);
+                    fields = List.of(placeholder);
+                }
+                for (DynaFields f : fields) {
+                    DacDocsId id = new DacDocsId();
+                    id.setDacId(savedDac.getDacId());
+                    id.setDacVer(savedDac.getDacVer());
+                    id.setDynaDocsId(dd.getId());
+                    id.setDynaDocsVer(dd.getVersion());
+                    id.setDynaFieldsId(f.getDynaFieldsId());
+
+                    // Avoid duplicates if any pre-existing rows
+                    Optional<DacDocs> exists = dacDocsRepository.findDacDocsBYPKs(id.getDacId(), id.getDacVer(), id.getDynaDocsId(), id.getDynaDocsVer(), id.getDynaFieldsId());
+                    if (exists.isPresent()) continue;
+
+                    DacDocs row = new DacDocs();
+                    row.setId(id);
+                    row.setDac(savedDac);
+                    row.setDynaField(f);
+                    row.setSourceId("");
+                    row.setFieldValue(null);
+                        dacDocsRepository.save(row);
+                }
+            }
+            createdDacs.add(savedDac);
+        }
+
+        return savedDac;
+    }
+    
+    private void validateDacFromAoRequest(CreateDacFromAoRequest request) {
+        if (request.getAppelOffreId() == null) {
+            throw new InvalidDacRequestException("Échec de la validation : l'ID de l'Appel d'Offres est requis.");
+        }
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public DacWithAoReferenceResponse getDacWithAoReference(Integer dacId, Integer dacVer) throws DacNotFound {
+        log.debug("Getting DAC with AO reference for ID: {}, Version: {}", dacId, dacVer);
+        
+        // Load DAC
+        Dac dac = dacRepository.findById(new DacId(dacId, dacVer))
+                .orElseThrow(() -> new DacNotFound("DAC non trouvé avec l'ID : {} et la Version : {}." ,dacId, dacVer));
+        
+        // Build response
+        DacWithAoReferenceResponse response = new DacWithAoReferenceResponse();
+        
+        // Set DAC fields
+        response.setDacId(dac.getDacId());
+        response.setDacVer(dac.getDacVer());
+        response.setReference(dac.getReference());
+        response.setStatus(dac.getStatus() != null ? dac.getStatus().name() : null);
+        response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
+        response.setDateLimiteRecptionDemande(dac.getDateLimiteRecptionDemande());
+        response.setPayant(dac.isPayant());
+        
+        // Get montant from DacPrix if exists
+        // Note: DacPrixId uses Dac object, need to query differently
+        Optional<DacPrix> dacPrixOpt = dacPrixRepository.findAll().stream()
+                .filter(dp -> dp.getId().getDac().getDacId().equals(dacId) 
+                        && dp.getId().getDac().getDacVer().equals(dacVer))
+                .findFirst();
+        dacPrixOpt.ifPresent(prix -> response.setMontantPayant(prix.getPrix()));
+        
+        response.setResponsableDacId(dac.getResponsableDacId());
+        response.setConditionsParticipation(dac.getConditionsParticipation());
+        response.setEtapeDac(dac.getEtapeDac());
+        response.setShortListing(dac.isShortListing());
+        // Set shortlist members if enabled
+        if (Boolean.TRUE.equals(dac.isShortListing())) {
+            List<SocieteDac> shortlists = societeDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+            if (!shortlists.isEmpty()) {
+                List<DacWithAoReferenceResponse.ShortlistMemberData> members = shortlists.stream()
+                        .map(sl -> {
+                            Societe s = sl.getId().getSociete();
+                            return new DacWithAoReferenceResponse.ShortlistMemberData(
+                                    s.getId(),
+                                    s.getNom(),
+                                    s.getNif()
+                            );
+                        })
+                        .collect(Collectors.toList());
+                response.setShortlistMembers(members);
+            }
+        }
+        
+        // Set AO reference data
+        if (dac.getAppelOffre() != null) {
+            AppelOffre ao = dac.getAppelOffre();
+            DacWithAoReferenceResponse.AoReferenceData aoData = new DacWithAoReferenceResponse.AoReferenceData();
+            aoData.setAoId(ao.getId());
+            aoData.setAoReference(ao.getReference());
+            aoData.setAoNom(ao.getNom());
+            aoData.setAoDescription(ao.getDescription());
+            aoData.setEtape(ao.getEtape());
+            aoData.setLotSepares(ao.getLotSepares());
+            response.setAoReference(aoData);
+        }
+        
+        // Set PPM reference data (accessed through AppelOffre)
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null) {
+            Ppm ppm = dac.getAppelOffre().getPpm();
+            DacWithAoReferenceResponse.PpmReferenceData ppmData = new DacWithAoReferenceResponse.PpmReferenceData();
+            ppmData.setPpmId(ppm.getId());
+            ppmData.setPpmVer(ppm.getVersion());
+            ppmData.setPpmRef(ppm.getRef());
+            ppmData.setPpmNom(ppm.getNom());
+            ppmData.setAnnee(ppm.getAnnee());
+            
+            if (ppm.getAc() != null) {
+                ppmData.setAcNom(ppm.getAc().getNom());
+                ppmData.setAcId(ppm.getAc().getId());
+            }
+            
+            // Set publication date from created date (convert Calendar to LocalDate)
+            if (ppm.getCreatedAt() != null) {
+                ppmData.setDatePublication(ppm.getCreatedAt().toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDate());
+            }
+            
+            response.setPpmReference(ppmData);
+        }
+        
+        // Set Realisation reference data (accessed through AppelOffre)
+        if (dac.getAppelOffre() != null && dac.getAppelOffre().getRealisation() != null) {
+            Realisation realisation = dac.getAppelOffre().getRealisation();
+            DacWithAoReferenceResponse.RealisationReferenceData realisationData = 
+                    new DacWithAoReferenceResponse.RealisationReferenceData();
+            
+            realisationData.setRealisationId(realisation.getId());
+            realisationData.setRealisationVer(realisation.getVersion());
+            realisationData.setRealisationEnvisagees(realisation.getRealisationEnvisagees());
+
+            if (realisation.getTypeMarcher() != null) {
+                realisationData.setTypeMarcher(realisation.getTypeMarcher().getCode());
+                realisationData.setTypeMarcherLibelle(realisation.getTypeMarcher().getDescription());
+            }
+
+            // Mode de passation
+            if (realisation.getModePassation() != null) {
+                realisationData.setModePassation(realisation.getModePassation().getLibelle());
+                realisationData.setModePassationLibelle(realisation.getModePassation().getLibelle());
+                realisationData.setIsInternational(
+                        realisation.getModePassation().getType() == ModePassationType.INTERNATIONAL
+                );}
+            
+            // Financing sources
+            if (realisation.getFinancements() != null && !realisation.getFinancements().isEmpty()) {
+                List<DacWithAoReferenceResponse.FinancementData> financementList = new ArrayList<>();
+                for (Financement fin : realisation.getFinancements()) {
+                    DacWithAoReferenceResponse.FinancementData finData = 
+                            new DacWithAoReferenceResponse.FinancementData();
+                    finData.setBudgetEstimer(fin.getBudgetEstimer());
+                    finData.setTauxApplicable(fin.getTauxApplicable());
+                    
+                    if (fin.getSourceFinancement() != null) {
+                        finData.setSourceFinancement(fin.getSourceFinancement().getCode());
+                    }
+                    
+                    if (fin.getMonnaie() != null) {
+                        finData.setMonnaie(fin.getMonnaie().getCode());
+                    }
+                    
+                    financementList.add(finData);
+                }
+                realisationData.setSourcesFinancement(financementList);
+            }
+            
+            // Lots
+            if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
+                List<DacWithAoReferenceResponse.LotData> lotList = new ArrayList<>();
+                for (Lot lot : realisation.getLots()) {
+                    DacWithAoReferenceResponse.LotData lotData = new DacWithAoReferenceResponse.LotData();
+                    lotData.setLotId(lot.getId());
+                    lotData.setLotVer(lot.getVersion());
+                    lotData.setDescription(lot.getDescription());
+                    lotData.setBudget(lot.getBudget());
+                    lotList.add(lotData);
+                }
+                realisationData.setLots(lotList);
+            }
+            
+            response.setRealisationReference(realisationData);
+        }
+        
+        return response;
+    }
+
 }
+

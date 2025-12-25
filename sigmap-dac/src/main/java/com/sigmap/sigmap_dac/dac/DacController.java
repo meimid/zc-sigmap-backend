@@ -1,18 +1,25 @@
 package com.sigmap.sigmap_dac.dac;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
+import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
+import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
+import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
+import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
+import com.sigmap.common.user_com.response.UserComSoftResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -69,6 +76,18 @@ public class DacController {
     log.debug("API for get All dac .... ");
     // Return only latest version per DAC id
     Page<Dac> dac = dacService.findAllLatest(pageable);
+    Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
+    return ResponseEntity.ok(dacResponse);
+  }
+
+  @GetMapping("/appel-offre/{appelOffreId}/latest")
+  public ResponseEntity<Page<DacResponce>> getDacsByAppelOffre(
+          @PathVariable Integer appelOffreId,
+          Pageable pageable) {
+    log.debug("REST request to get latest DACs for Appel d'Offre ID: {}", appelOffreId);
+    DacQuery query = new DacQuery();
+    query.setAppelOffreId(appelOffreId);
+    Page<Dac> dac = dacService.findAllLatestWithQuery(query, pageable);
     Page<DacResponce> dacResponse = dac.map(DacMapper.INSTANCE::map);
     return ResponseEntity.ok(dacResponse);
   }
@@ -358,5 +377,30 @@ public class DacController {
     List<Dac> dacs = dacService.findPublishedDacsByRealisationIdAndVersion(realisationId, realisationVer);
     List<DacResponce> dacResponse = dacs.stream().map(DacMapper.INSTANCE::map).toList();
     return ResponseEntity.ok(dacResponse);
+  }
+
+  @PostMapping("/create-from-ao")
+  @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
+  public ResponseEntity<DacResponce> createDacFromAo(@Valid @RequestBody CreateDacFromAoRequest request) {
+      log.debug("REST request to create DAC(s) from AO with ID: {}", request.getAppelOffreId());
+      Dac createdDac = dacService.createFromAppelOffre(request);
+      DacResponce response = DacMapper.INSTANCE.map(createdDac);
+
+      return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  }
+
+  @GetMapping("/{dacId}/{dacVer}/with-ao-reference")
+  public ResponseEntity<?> getDacWithAoReference(
+          @PathVariable Integer dacId,
+          @PathVariable Integer dacVer) {
+    try {
+      log.debug("REST request to get DAC with AO reference for ID: {}, Version: {}", dacId, dacVer);
+      DacWithAoReferenceResponse response = dacService.getDacWithAoReference(dacId, dacVer);
+      return ResponseEntity.ok(response);
+    } catch (Exception e) {
+      log.error("Error getting DAC with AO reference: {}", e.getMessage());
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body(Map.of("error", "DAC not found"));
+    }
   }
 }

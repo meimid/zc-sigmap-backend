@@ -12,7 +12,6 @@ import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
 import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
-import com.sigmap.common.entity.TypeDossier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -92,13 +91,13 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Transactional
     @Override
-    public void updateFieldDisplayForDac(Integer dacId, Integer dacVer,
+    public void updateFieldDisplayForDac(Integer dacId,
                                          Integer dynaFormId, Integer dynaFormVer,
                                          List<Integer> displayedFieldIds) {
-        List<DacDynaForm> records = repo.findByDacAndForm(dacId, dacVer, dynaFormId, dynaFormVer)
+        List<DacDynaForm> records = repo.findByLatestDacVerAndForm(dacId, dynaFormId, dynaFormVer)
                 .stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
-                .collect(Collectors.toList());
+                .toList();
 
         if (records.isEmpty()) {
             throw new DacDynaFormNotFoundException("No active DAC–Form records found to update display settings.");
@@ -107,7 +106,7 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
         for (DacDynaForm record : records) {
             boolean shouldDisplay = displayedFieldIds != null &&
                     displayedFieldIds.contains(record.getDynaFormFieldsId());
-            record.setDisplay(shouldDisplay);
+            record.setDisplay(shouldDisplay ? Boolean.TRUE : Boolean.FALSE);
             repo.save(record);
         }
     }
@@ -142,10 +141,10 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     @Override
     public List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                                    Integer dacVer,
-                                                                   TypeDossier type,
+                                                                   Integer typeDossierId,
                                                                    Pageable pageable) {
         List<DynaForm> unattachedForms = formRepo.findAll(
-                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, type)
+                DacDynaFormSpecifications.unattachedToDac(dacId, dacVer, typeDossierId)
         );
 
         List<DynaFormResponse> responses = unattachedForms
@@ -195,12 +194,17 @@ public class DacDynaFormServiceImpl implements DacDynaFormService {
     // ------------------------------------------------------------
     @Override
     @Transactional(readOnly = true)
-    public Page<DacDynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable) {
-        Page<DacDynaForm> page = repo.findByTypeDossier(type, pageable);
+    public Page<DacDynaFormResponse> findByTypeDossier(Integer typeDossierId, Pageable pageable) {
+        Page<DacDynaForm> page = repo.findByTypeDossier(typeDossierId, pageable);
         List<DacDynaFormResponse> filtered = page.stream()
                 .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
         return new PageImpl<>(filtered, pageable, filtered.size());
+    }
+
+    @Override
+    public Integer findLatestDacVer(Integer dacId) {
+        return dacRepo.findMaxVersionById(dacId);
     }
 }

@@ -17,4 +17,11 @@ public class SocieteDacNotFoundException extends RuntimeException {
 
 
     }
+
+    public SocieteDacNotFoundException(Integer dacId, Integer societeId) {
+        this.dacId = dacId;
+        this.societeId = societeId;
+
+
+    }
 }

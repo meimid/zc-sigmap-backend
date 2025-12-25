@@ -15,6 +15,7 @@ import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
 import com.sigmap.common.doc_soumission.request.DocSoumissionQuery;
 import com.sigmap.common.doc_soumission.response.DocSoumissionResponse;
+import com.sigmap.common.type_dossier.mapper.TypeDossierMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -100,7 +101,7 @@ public class DacDocSoumissionController {
                 .map(doc -> DacDocSoumissionWithOutDacId.builder()
                         .id(doc.getId())
                         .nom(doc.getNom())
-                        .typeDossier(doc.getTypeDossier())
+                        .typeDossier(TypeDossierMapper.INSTANCE.map(doc.getTypeDossier()))
                         .dateValidate(dateMap.get(doc.getId()))
                         .build())
                 .collect(Collectors.toList());

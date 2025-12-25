@@ -2,6 +2,7 @@ package com.sigmap.common.realisations;
 
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.StatusAppelOffre;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import com.sigmap.common.repository.SoftDeleteRepository;
@@ -31,13 +32,6 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
     @Query("SELECT MAX(r.version) FROM Realisation r WHERE r.id = :id AND r.isDeleted = false")
     Integer findMaxVersionById(@Param("id") Integer id);
 
-    @Query("SELECT r FROM Realisation r JOIN r.ppms ppm " +
-            "WHERE ppm.id = :ppmId AND ppm.version = :ppmVer " +
-            "AND NOT EXISTS (SELECT 1 FROM Dac d WHERE d.realisation.id = r.id AND d.realisation.version = r.version)")
-    Page<Realisation> findRealisationsWithoutDacByPpm(@Param("ppmId") Integer ppmId,
-                                                      @Param("ppmVer") Integer ppmVer,
-                                                      Pageable pageable);
-
     @Query("SELECT r FROM Realisation r " +
             "WHERE EXISTS (SELECT 1 FROM Realisation r2 JOIN r2.ppms ppm " +
             "WHERE ppm.id = :ppmId AND ppm.version = :ppmVersion " +
@@ -66,6 +60,9 @@ public interface RealisationRepository extends JpaRepository<Realisation, Compos
     List<Realisation> findRealisationsNotLinkedToAppelOffreWithStatus( @Param("ppmId") Integer ppmId,
                                                                        @Param("ppmVer") Integer ppmVer,
                                                                        @Param("statuses") List<StatusAppelOffre> statuses );
+
+    @Query("SELECT r FROM Realisation r WHERE r.id = :id AND r.version = :ver AND r.isDeleted = false")
+    Optional<Realisation> findRealisationByIdAndVersion(@Param("id") Integer id, @Param("ver") Integer ver );
 }
 
 //public interface RealisationRepository extends JpaRepository<Realisation, RealisationId>,

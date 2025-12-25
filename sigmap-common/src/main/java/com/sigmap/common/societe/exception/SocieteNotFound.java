@@ -12,4 +12,8 @@ public class SocieteNotFound extends RuntimeException {
         this.id = id;
     }
 
+    public SocieteNotFound(List<Integer> id) {
+        this.id = id;
+    }
+
 }

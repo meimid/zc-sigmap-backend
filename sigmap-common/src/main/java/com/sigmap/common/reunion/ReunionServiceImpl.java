@@ -7,9 +7,12 @@ import com.sigmap.common.Participant.ParticipantService;
 import com.sigmap.common.Participant.exception.EmailAlreadyReservedForAotherUser;
 import com.sigmap.common.Participant.exception.MultiplePresidentsNotAllowedException;
 import com.sigmap.common.Participant.exception.PresidentFonctionRequiredException;
+import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.request.ParticipantRequest;
+import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
@@ -19,6 +22,7 @@ import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
+import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
@@ -41,21 +45,25 @@ import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunio
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
+import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.ExtraitResponse;
 import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.ReunionDacId;
 import com.sigmap.common.reunionDac.ReunionDacRepository;
 import com.sigmap.common.reunionDac.request.ReunionDacRequest;
+import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
+import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.security.Authentication;
@@ -69,9 +77,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -245,6 +256,9 @@ public class ReunionServiceImpl implements ReunionService{
         if(request.getNote() != null) {
             throw new NoteNotAllowedException("");
         }
+        if(id== null) {
+            throw new RuntimeException("id must be not null");
+        }
         Reunion reunionToUpdate=findById(id);
 
         Calendar nowCal = Calendar.getInstance();
@@ -322,9 +336,113 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
+
+    @Override
+    public ReunionResponse updatePlanifierOrNotMapped(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException, DocNotFound {
+        Reunion updatedReunion = updatePlanifierOrNot(id, request);
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos= ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
+        response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
+        response.setParticipants(responseDtos);
+        return response;
+    }
+
+    public static  List<ReunionDacResponse> mapReunionDacs(List<com.sigmap.common.reunionDac.ReunionDac> reunionDacs) {
+        if (reunionDacs == null) return List.of();
+
+        return reunionDacs.stream()
+                .map(rd -> {
+                    var dac = rd.getDac();
+                    var dacResponse = new DacResponseReunion();
+                    if (dac != null) {
+                        dacResponse.setDacId(dac.getDacId());
+                        dacResponse.setDacVer(dac.getDacVer());
+                        dacResponse.setStatus(dac.getStatus());
+                        dacResponse.setPpmId(dac.getAppelOffre().getPpm().getId());
+                        dacResponse.setTypeMarche(RefParamMapper.INSTANCE.mapToDto(dac.getAppelOffre().getRealisation().getTypeMarcher()));
+                        if (dac.getAppelOffre().getPpm() != null) {
+                            dacResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(dac.getAppelOffre().getPpm().getAc()));
+                        }
+                        if(dac.getReference() != null) {
+                            dacResponse.setReference(dac.getReference());
+                        }
+                    }
+
+                    var rdResponse = new ReunionDacResponse();
+                    rdResponse.setDac(dacResponse);
+                    rdResponse.setProcessInstanceId(rd.getProcessInstanceId());
+                    rdResponse.setTaskId(rd.getTaskId());
+                    rdResponse.setDecision(rd.getDecision());
+                    rdResponse.setObservation(rd.getObservation());
+
+                    if (rd.getReunionDacDocs() != null) {
+                        rdResponse.setDocs(mapDacDocs(rd.getReunionDacDocs()));
+                    }
+
+                    return rdResponse;
+                })
+                .toList();
+    }
+
+
+    public static List<ReunionPpmResponse> mapReunionPpms(List<com.sigmap.common.reunionPpm.ReunionPpm> reunionPpms) {
+        if (reunionPpms == null) return List.of();
+
+        return reunionPpms.stream()
+                .map(rp -> {
+                    var ppm = rp.getPpm();
+                    var ppmResponse = new com.sigmap.common.ppms.response.PpmIdVerNomResponseSoftDto();
+                    if (ppm != null) {
+                        ppmResponse.setId(ppm.getId());
+                        ppmResponse.setVersion(ppm.getVersion());
+                        ppmResponse.setRef(ppm.getRef());
+                        ppmResponse.setNom(ppm.getNom());
+                        if (ppm.getAc() != null) {
+                            ppmResponse.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(ppm.getAc()));
+                        }
+                    }
+
+                    var rpResponse = new com.sigmap.common.reunionPpm.response.ReunionPpmResponse();
+                    rpResponse.setPpm(ppmResponse);
+                    rpResponse.setProcessInstanceId(rp.getProcessInstanceId());
+                    rpResponse.setTaskId(rp.getTaskId());
+                    rpResponse.setDecision(rp.getDecision());
+                    rpResponse.setObservation(rp.getObservation());
+
+                    if (rp.getReunionPpmDocs() != null) {
+                        rpResponse.setDocs(mapPpmDocs(rp.getReunionPpmDocs()));
+                    }
+
+                    return rpResponse;
+                })
+                .toList();
+    }
+
+    public static List<DocsResponseDTO> mapDacDocs(List<ReunionDacDoc> reunionDacDocs) {
+        if (reunionDacDocs == null) return null;
+        return reunionDacDocs.stream()
+                .map(ReunionDacDoc::getDocs).filter(doc->!doc.getIsDeleted()) // get the Docs entity
+                .map(DocMapper.INSTANCE::mapToDto) // map to DTO using DocsMapper
+                .collect(Collectors.toList());
+    }
+
+    public static List<DocsResponseDTO> mapPpmDocs(List<ReunionPpmDoc> reunionPpmDocs) {
+        if (reunionPpmDocs == null) return null;
+        return reunionPpmDocs.stream()
+                .map(ReunionPpmDoc::getDocs).filter(doc->!doc.getIsDeleted()) // get the Docs entity
+                .map(DocMapper.INSTANCE::mapToDto) // map to DTO using DocsMapper
+                .collect(Collectors.toList());
+    }
     @Override
     @Transactional
     public Reunion updateAnnule(Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
+
+        if(id== null) {
+            throw new RuntimeException("id must be not null");
+        }
+
         Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
 
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
@@ -338,6 +456,18 @@ public class ReunionServiceImpl implements ReunionService{
        }
         reunionToUpdate.setStatus(ReunionStatus.ANNULER);
         return save(reunionToUpdate);
+    }
+
+    @Override
+    public ReunionResponse updateAnnulerMapped( Integer id) throws ReunionNotFound, PpmNotFound, AcNotFound, MessagingException, IOException {
+        Reunion updatedReunion = updateAnnule(id);
+        List<Participant> participantList=updatedReunion.getParticipants().stream().filter(el->!el.getIsDeleted()).toList();
+        List<ParticipantResponseDto> responseDtos=ParticipantMapper.INSTANCE.toDtos(participantList);
+        ReunionResponse response=ReunionMapper.INSTANCE.map(updatedReunion);
+        response.setParticipants(responseDtos);
+        response.setReunionDacs(mapReunionDacs(updatedReunion.getReunionDacs()));
+        response.setReunionPpms(mapReunionPpms(updatedReunion.getReunionPpms()));
+        return response;
     }
 
     private void createAndSetParticipantsFromUsers(Reunion reunion, ReunionRequest request) {
@@ -760,7 +890,7 @@ public class ReunionServiceImpl implements ReunionService{
         }
     }
 
-   @Scheduled(cron = "* * 1 * * ?")
+   @Scheduled(cron = "0 0 1 * * ?")
    @Transactional
     public void updateReunionStatusToEnRetard() {
         Calendar now = Calendar.getInstance();
@@ -893,9 +1023,9 @@ public class ReunionServiceImpl implements ReunionService{
                     List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
                             .filter(rd -> rd.getDac() != null)
                             .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
-                            .filter(rd -> rd.getDac().getPpm() != null)
-                            .filter(rd -> rd.getDac().getPpm().getAc() != null)
-                            .map(rd -> rd.getDac().getPpm())
+                            .filter(rd -> rd.getDac().getAppelOffre().getPpm() != null)
+                            .filter(rd -> rd.getDac().getAppelOffre().getPpm().getAc() != null)
+                            .map(rd -> rd.getDac().getAppelOffre().getPpm())
                             .toList();
 
                     // 2) PPMs coming from ReunionPpm

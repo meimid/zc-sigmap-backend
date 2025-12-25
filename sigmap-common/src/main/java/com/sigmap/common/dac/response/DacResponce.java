@@ -24,6 +24,7 @@ public class DacResponce {
     private Integer dacId;
     private Integer dacVer;
     private String reference;
+    private Integer aoId;
     private Calendar dateLimiteSoumission;
     private Calendar dateLimiteRecptionDemande;
     private boolean payant;
@@ -37,5 +38,6 @@ public class DacResponce {
     private boolean shortListing;
     private DynaDocsModelResponse dynaDocsModel;
     private String etapeProcess;
+    private String etapeDac;
     private BaseEntityResponse metadata;
 }

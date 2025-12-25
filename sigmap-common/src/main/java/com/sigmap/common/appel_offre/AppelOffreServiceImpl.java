@@ -2,18 +2,29 @@ package com.sigmap.common.appel_offre;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcService;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
+import com.sigmap.common.appel_offre.mapper.AppelOffreMapper;
 import com.sigmap.common.appel_offre.request.AppelOffreEditRequest;
 import com.sigmap.common.appel_offre.request.CreateAppelOffreRequest;
+import com.sigmap.common.appel_offre.response.AppelOffreResponseById;
+import com.sigmap.common.dac.DacRepository;
+import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.StatusAppelOffre;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
+import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.PpmSpecifications;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
+import com.sigmap.common.ppms.mappers.PpmMapper;
+import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
+import com.sigmap.common.realisations.mappers.RealisationMapper;
+import com.sigmap.common.realisations.response.RealisationResponseDTO;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.user_ac.UserAc;
 import com.sigmap.common.user_ac.UserAcRepository;
@@ -27,8 +38,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static com.sigmap.common.config.ModePassationEtape.DEUX_ETAPES;
+import static com.sigmap.common.config.ModePassationEtape.ETAPE_UNIQUE;
 
 @Slf4j
 @Service
@@ -40,7 +56,8 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final RealisationRepository realisationRepository;
     private final UserAcRepository userAcRepository;
     private final AcService acService;
-
+    private final DacRepository dacRepository;
+    private final PpmService ppmService;
     private static int lastYear = java.time.Year.now().getValue();
     private static int counter = 0;
 
@@ -63,16 +80,62 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     }
 
     @Override
-    public AppelOffre findById(Integer id) {
+    public AppelOffreResponseById findById(Integer id) throws PpmNotFound, AcNotFound {
+
         log.debug("Fetching AppelOffre with Id: {} ", id);
         if (id == null){
             throw new IllegalArgumentException("you must have Id");
         }
 
-        AppelOffre appelOffre = appelOffreRepository.findById(id)
+        AppelOffre appelOffre = appelOffreRepository.findByIdWithRelations(id)
                 .orElseThrow(() -> new AppelOffreNotFound(id));
 
-        return appelOffre;
+        // Récupérer le PPM avec la dernière version
+        Optional<Ppm> ppmOptional = ppmRepository.finPpmByIdAndVersion(appelOffre.getPpm().getId(),appelOffre.getPpm().getVersion());
+        if (ppmOptional.isEmpty()) {
+            AppelOffreResponseById appelOffreResponseById = new AppelOffreResponseById();
+            appelOffreResponseById.getPpm().setStatus("PPM non trouvé pour l'ID: " + appelOffre.getPpm().getId());
+            return appelOffreResponseById;
+        }
+
+        Ppm ppm = ppmOptional.get();
+
+        // Préparer l'objet de réponse
+        AppelOffreResponseById response = new AppelOffreResponseById();
+
+        // Mapper le PPM vers PpmResponseDto
+        if (ppm.getDocs() != null) {
+            List<Docs> nonDeletedDocs = ppm.getDocs().stream()
+                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                    .collect(Collectors.toList());
+            ppm.setDocs(nonDeletedDocs);
+        }
+
+        Optional<Realisation> realisationOptional = realisationRepository.findRealisationByIdAndVersion(appelOffre.getRealisation().getId(), appelOffre.getRealisation().getVersion());
+
+        Realisation realisation = realisationOptional.get();
+
+        realisation.getFinancements().stream()
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .collect(Collectors.toList());
+
+
+
+        PpmResponseDto ppmResponse = PpmMapper.INSTANCE.mapTAo(ppm);
+        response.setPpm(ppmResponse);
+        RealisationResponseDTO realisationResponseDTO = RealisationMapper.INSTANCE.mapForAo(realisation);
+        response.setId(appelOffre.getId());
+        response.setReference(appelOffre.getReference());
+        response.setNom(appelOffre.getNom());
+        response.setDescription(appelOffre.getDescription());
+        response.setEtape(appelOffre.getEtape());
+        response.setModePassation(appelOffre.getRealisation().getModePassation().getType());
+        response.setLotSepares(appelOffre.getLotSepares());
+        response.setRealisation(realisationResponseDTO);
+        response.setStatusAppelOffre(appelOffre.getStatusAppelOffre());
+        response.setCouldCreateDac(couldCreateDac (appelOffre, id));
+
+        return response;
     }
 
     @Override
@@ -145,10 +208,18 @@ public class AppelOffreServiceImpl implements AppelOffreService {
                 .and(PpmSpecifications.isNotDeleted())
                 .and(PpmSpecifications.ppmAc(acIds))
                 .and(PpmSpecifications.hasRealisations())
-                .and(PpmSpecifications.isLatestPublishedVersion());
+                .and(PpmSpecifications.isLatestVersion())
+                .and(PpmSpecifications.isPublished());
 
         List<Ppm> foundPpms = ppmRepository.findAll(specification);
-        return foundPpms;
+
+        if (foundPpms.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Ppm> PpmsWithFreeRealisation = ppmRepository.findPpmsWithFreeRealisation(foundPpms);
+
+        return PpmsWithFreeRealisation;
     }
 
     @Override
@@ -181,5 +252,29 @@ public class AppelOffreServiceImpl implements AppelOffreService {
         }
 
         return currentYear + "/" + counter;
+    }
+
+    private Boolean couldCreateDac (AppelOffre appelOffre, Integer id){
+
+        boolean create;
+        if (appelOffre == null){
+            throw new RuntimeException("apple offre could not be null");
+        }
+
+        int nbrDac = dacRepository.getDacCreatedNumberForAppelOffre(id);
+
+        if ( appelOffre.getRealisation().getModePassation().getEtapes().equals(ETAPE_UNIQUE) && nbrDac < 1){
+            create = true;
+        }
+        else if (appelOffre.getRealisation().getModePassation().getEtapes().equals(ETAPE_UNIQUE) && nbrDac >= 1){
+            create = false;
+        }
+        else if (appelOffre.getRealisation().getModePassation().getEtapes().equals(DEUX_ETAPES) && nbrDac < 2){
+            create = true;
+        }
+        else create =false;
+
+        return create;
+
     }
 }

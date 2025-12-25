@@ -77,7 +77,7 @@ public class EmailTraceSpecification {
             if (dateSend == null) {
                 return criteriaBuilder.conjunction();
             }
-            return criteriaBuilder.equal(root.get("date_send"), dateSend);
+            return criteriaBuilder.equal(root.get("dateSend"), dateSend);
         };
     }
 

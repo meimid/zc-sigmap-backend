@@ -5,6 +5,7 @@ import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
+import com.sigmap.common.type_dossier.response.TypeDossierResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -22,7 +23,6 @@ public interface DacDynaFormMapper {
      * No auto-generated fields — IDs are fully provided in the request.
      */
     @Mapping(target = "dacId", source = "dacId")
-    @Mapping(target = "dacVer", source = "dacVer")
     @Mapping(target = "dynaFormId", source = "dynaFormId")
     @Mapping(target = "dynaFormVer", source = "dynaFormVer")
     @Mapping(target = "dynaFormFieldsId", ignore = true)
@@ -60,10 +60,15 @@ public interface DacDynaFormMapper {
 
     default DynaFormResponse toDynaFormResponse(DynaForm form) {
         DynaFormResponse res = new DynaFormResponse();
+        TypeDossierResponse typeDossierResponse = new TypeDossierResponse();
+        typeDossierResponse.setId(form.getTypeDossier().getId());
+        typeDossierResponse.setCode(form.getTypeDossier().getCode());
+        typeDossierResponse.setDescription(form.getTypeDossier().getDescription());
+        typeDossierResponse.setLibelle(form.getTypeDossier().getLibelle());
         res.setId(form.getId());
         res.setVersion(form.getVersion());
         res.setName(form.getName());
-        res.setTypeDossier(form.getTypeDossier());
+        res.setTypeDossier(typeDossierResponse);
         res.setFormType(form.getFormType());
         res.setStatus(form.getStatus());
         res.setOrder(form.getOrder());

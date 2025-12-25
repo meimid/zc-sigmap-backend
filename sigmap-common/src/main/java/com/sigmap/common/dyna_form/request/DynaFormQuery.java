@@ -4,7 +4,6 @@ import com.sigmap.common.dyna_form.DynaForm;
 import com.sigmap.common.dyna_form.DynaFormSpecifications;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.FormType;
-import com.sigmap.common.entity.TypeDossier;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.jpa.domain.Specification;
@@ -14,7 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 public class DynaFormQuery {
 
     private String search;
-    private TypeDossier typeDossier;
+    private String typeDossier;
     private ActiveStatus status;
     private FormType formType;
 

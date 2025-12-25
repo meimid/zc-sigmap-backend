@@ -44,7 +44,7 @@ public interface DynaFormMapper {
         if (req == null) return false;
         boolean nameChanged  = !eq(latest.getName(), req.getName());
         boolean orderChanged = !eq(latest.getOrder(), req.getOrder());
-        boolean typeChanged  = latest.getTypeDossier() != req.getTypeDossier();
+        boolean typeChanged  = latest.getTypeDossier().getId() != req.getTypeDossierId();
         boolean formTypeChanged = latest.getFormType() != req.getFormType();
         boolean statusChanged   = latest.getStatus() != req.getStatus();
         return nameChanged || orderChanged || typeChanged || formTypeChanged || statusChanged;

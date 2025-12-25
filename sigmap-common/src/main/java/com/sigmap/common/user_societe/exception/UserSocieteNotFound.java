@@ -13,4 +13,8 @@ public class UserSocieteNotFound extends RuntimeException {
         this.userId = userId;
         this.societeId = societeId;
     }
+
+    public UserSocieteNotFound(String userId) {
+        this.userId = userId;
+    }
 }
