@@ -2,7 +2,6 @@ package com.sigmap.common.dyna_form;
 
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
-import com.sigmap.common.entity.TypeDossier;
 import com.sigmap.common.repository.CompositeSoftDeleteRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,8 +22,8 @@ public interface DynaFormRepository extends
     @Query("select f from DynaForm f where f.id = :id and f.version = :ver and f.isDeleted = false")
     Optional<DynaForm> findActiveByIdAndVersion(@Param("id") Integer id, @Param("ver") Integer ver);
 
-    @Query("select f from DynaForm f where f.typeDossier = :type and f.isDeleted = false")
-    Page<DynaForm> findByTypeDossier(@Param("type") TypeDossier type, Pageable pageable);
+    @Query("select f from DynaForm f where f.typeDossier.id = :typeDossierId and f.isDeleted = false")
+    Page<DynaForm> findByTypeDossier(@Param("typeDossierId") Integer typeDossierId, Pageable pageable);
 
     @Query("""
        select f from DynaForm f

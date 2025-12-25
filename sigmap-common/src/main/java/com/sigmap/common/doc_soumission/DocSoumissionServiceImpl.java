@@ -1,7 +1,5 @@
 package com.sigmap.common.doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
-import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
@@ -13,6 +11,8 @@ import com.sigmap.common.doc_soumission.exception.NomRequired;
 import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
+import com.sigmap.common.type_dossier.TypeDossier;
+import com.sigmap.common.type_dossier.TypeDossierService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,10 +26,12 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
     private final DocSoumissionRepository repository;
     private final DacDocSoumissionRepository dacDocSoumissionRepository;
     private final DacService dacService;
-    public DocSoumissionServiceImpl(DocSoumissionRepository repository, DacDocSoumissionRepository dacDocSoumissionRepository, DacService dacService) {
+    private final TypeDossierService typeDossierService;
+    public DocSoumissionServiceImpl(DocSoumissionRepository repository, DacDocSoumissionRepository dacDocSoumissionRepository, DacService dacService, TypeDossierService typeDossierService) {
         this.repository = repository;
         this.dacDocSoumissionRepository = dacDocSoumissionRepository;
         this.dacService = dacService;
+        this.typeDossierService = typeDossierService;
     }
     @Override
     public List<DocSoumission> findAllList(Specification<DocSoumission> docSoumission) {
@@ -72,11 +74,14 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
         if(request.getNom() == null ||  request.getNom().isBlank()){
             throw new NomRequired("");
         }
-        if(request.getTypeDossier()==null){
+        if(request.getTypeDossierId()==null){
             throw new TypeDossierRequired("");
         }
 
         DocSoumission docSoumission = DocSoumissionMapper.INSTANCE.mapFromRequest(request);
+        TypeDossier typeDossier=typeDossierService.findById(request.getTypeDossierId());
+        docSoumission.setTypeDossier(typeDossier);
+
         return save(docSoumission);
 
     }
@@ -87,11 +92,12 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
         if(request.getNom() == null ||  request.getNom().isBlank()){
             throw new NomRequired("");
         }
-        if(request.getTypeDossier()==null){
+        if(request.getTypeDossierId()==null){
             throw new TypeDossierRequired("");
         }
         docSoumission.setNom(request.getNom());
-        docSoumission.setTypeDossier(request.getTypeDossier());
+        TypeDossier typeDossier=typeDossierService.findById(request.getTypeDossierId());
+        docSoumission.setTypeDossier(typeDossier);
         return save(docSoumission);
     }
 
@@ -144,9 +150,11 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
         //return repository.findExistingDocSoumissionOfDacDocSoumissionByDacId(dacId);
     }
     @Override
-    public List<DocSoumission> findDocSoumissionByType(TypeDossier typeDossier) {
+    public List<DocSoumission> findDocSoumissionByType(String typeDossierCode) {
         Specification<DocSoumission> spec = Specification
-                .where(DacDocSoumissionSpecifications.hasTypeDossier(typeDossier));
+                .where(DocSoumissionSpecifications.hasTypeDossierCode(typeDossierCode));
+
         return repository.findAll(spec);
     }
+
 }

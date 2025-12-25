@@ -1,7 +1,7 @@
 package com.sigmap.common.entity;
 
-public enum TypeDossier {
+/*public enum TypeDossier {
     ADMINISTRATIVE,
     FINANCIERE,
     TECHNIQUE
-}
+}*/

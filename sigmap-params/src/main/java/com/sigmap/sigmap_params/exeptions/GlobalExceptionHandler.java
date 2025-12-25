@@ -69,6 +69,7 @@ import com.sigmap.common.type_agrement.exception.OrganismeDeDeliveranceAgrements
 import com.sigmap.common.type_agrement.exception.TypeAgrementAlreadyExist;
 import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
+import com.sigmap.common.type_dossier.exception.TypeDossierNotFound;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import com.sigmap.common.user_commission_historique.exception.*;
@@ -1622,6 +1623,20 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TypeDossierNotFound.class)
+    public ResponseEntity<ErrorResponse> TypeDossierNotFoundException() {
+
+        String message = messageSource.getMessage(
+                "typeDossier.notFound",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
 

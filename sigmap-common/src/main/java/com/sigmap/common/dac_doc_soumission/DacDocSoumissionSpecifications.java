@@ -1,7 +1,7 @@
 package com.sigmap.common.dac_doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.doc_soumission.DocSoumission;
+import com.sigmap.common.type_dossier.TypeDossier;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
@@ -15,13 +15,20 @@ public class DacDocSoumissionSpecifications {
             if (search == null || search.isBlank()) {
                 return criteriaBuilder.conjunction();
             }
-            Join<DacDocSoumission, DocSoumission> join = root.join("docSoumission");
+            Join<DacDocSoumission, DocSoumission> docJoin =
+                    root.join("docSoumission", JoinType.LEFT);
+
+            Join<DocSoumission, TypeDossier> typeJoin =
+                    docJoin.join("typeDossier", JoinType.LEFT);
             return criteriaBuilder.or(
                     criteriaBuilder.like(root.get("dacId").as(String.class), "%" + search + "%"),
                     criteriaBuilder.like(root.get("dacVer").as(String.class), "%" + search + "%"),
                     criteriaBuilder.like(root.get("dateValidate").as(String.class), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("nom").as(String.class), "%" + search + "%"),
-                    criteriaBuilder.like(join.get("typeDossier").as(String.class), "%" + search + "%"));
+                    criteriaBuilder.like(criteriaBuilder.lower(docJoin.get("nom")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("code")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("libelle")), "%" + search + "%"),
+                    criteriaBuilder.like(criteriaBuilder.lower(typeJoin.get("description")), "%" + search + "%")
+            );
         };
     }
     /**
@@ -76,23 +83,29 @@ public class DacDocSoumissionSpecifications {
     }
 
     /** filter by docSoumission.typeDossier */
-    public static Specification<DacDocSoumission> typeDossier(String typeDossier) {
+
+    public static Specification<DacDocSoumission> typeDossierCode(String typeDossier) {
         return (root, query, cb) -> {
+
             if (typeDossier == null || typeDossier.isBlank()) {
                 return cb.conjunction();
             }
 
-            // Use LEFT JOIN so it includes docs not linked to DAC
-            Join<DacDocSoumission, DocSoumission> join = root.join("docSoumission", JoinType.LEFT);
+            // LEFT JOIN dac_doc_soumission -> doc_soumission
+            Join<DacDocSoumission, DocSoumission> docJoin =
+                    root.join("docSoumission", JoinType.LEFT);
 
-            try {
-                TypeDossier dossierEnum = TypeDossier.valueOf(typeDossier.trim().toUpperCase());
-                return cb.equal(join.get("typeDossier"), dossierEnum);
-            } catch (IllegalArgumentException e) {
-                return cb.disjunction();
-            }
+            // JOIN doc_soumission -> type_dossier
+            Join<DocSoumission, TypeDossier> typeJoin =
+                    docJoin.join("typeDossier", JoinType.LEFT);
+
+            return cb.equal(
+                    cb.upper(typeJoin.get("code")),
+                    typeDossier.trim().toUpperCase()
+            );
         };
     }
+
 
 
 
@@ -173,9 +186,4 @@ public class DacDocSoumissionSpecifications {
         return (root, query, cb) -> cb.equal(root.get("docSoumissionId"), dacDocSoumissionId);
     }
 
-    //  Filter by type_dossier
-    public static Specification<DocSoumission> hasTypeDossier(TypeDossier typeDossier) {
-        return (root, query, cb) ->
-                cb.equal(root.get("typeDossier"), typeDossier);
-    }
 }

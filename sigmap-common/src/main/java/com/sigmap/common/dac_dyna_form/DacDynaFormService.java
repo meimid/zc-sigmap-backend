@@ -3,7 +3,6 @@ package com.sigmap.common.dac_dyna_form;
 import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
 import com.sigmap.common.dac_dyna_form.response.DacDynaFormResponse;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
-import com.sigmap.common.entity.TypeDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,7 +21,6 @@ public interface DacDynaFormService {
      * The field IDs in the list will have display=true, others false.
      */
     void updateFieldDisplayForDac(Integer dacId,
-                                  Integer dacVer,
                                   Integer dynaFormId,
                                   Integer dynaFormVer,
                                   List<Integer> displayedFieldIds);
@@ -50,7 +48,7 @@ public interface DacDynaFormService {
      *  Filter DAC–Form associations by TypeDossier (Administrative / Financière / Technique).
      * Returns a paginated list.
      */
-    Page<DacDynaFormResponse> findByTypeDossier(TypeDossier type, Pageable pageable);
+    Page<DacDynaFormResponse> findByTypeDossier(Integer typeDossierId, Pageable pageable);
 
     /**
      *  Retrieve forms that are NOT attached to the given DAC,
@@ -58,11 +56,13 @@ public interface DacDynaFormService {
      */
     List<DynaFormResponse> findUnattachedFormsByTypeDossier(Integer dacId,
                                                             Integer dacVer,
-                                                            TypeDossier type,
+                                                            Integer typeDossierId,
                                                             Pageable pageable);
 
     /**
      *  Detach (delete) a specific DAC–Form–Field assignment.
      */
     void delete(DacDynaFormId id);
+
+    Integer findLatestDacVer(Integer dacId);
 }

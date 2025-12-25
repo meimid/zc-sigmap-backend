@@ -44,7 +44,7 @@ public class DacDocSoumissionQuery {
             spec = spec.and(DacDocSoumissionSpecifications.byDocSoumissionId(docSoumissionId));
         }
         if (typeDossier != null) {
-            spec= spec.and(DacDocSoumissionSpecifications.typeDossier(typeDossier));
+            spec= spec.and(DacDocSoumissionSpecifications.typeDossierCode(typeDossier));
         }
         if (docSoumissionNom != null) {
             spec= spec.and(DacDocSoumissionSpecifications.docSoumissionNom(docSoumissionNom));

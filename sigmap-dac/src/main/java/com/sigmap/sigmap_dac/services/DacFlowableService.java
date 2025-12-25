@@ -27,6 +27,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.dyna_form_fields.response.DynaFormFieldResponse;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -38,6 +39,17 @@ import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.dac_dyna_form.DacDynaForm;
+import com.sigmap.common.dac_dyna_form.DacDynaFormRepository;
+import com.sigmap.common.dac_dyna_form.mappers.DacDynaFormMapper;
+import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
+import com.sigmap.common.dyna_form.response.DynaFormResponse;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
+import com.sigmap.common.dac_doc_soumission.mapper.DacDocSoumissionMapper;
+import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
+import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import com.sigmap.sigmap_dac.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
@@ -98,6 +110,10 @@ public class DacFlowableService {
     @Autowired private HistoryService historyService;
     @Autowired private DacRepository dacRepository;
     @Autowired private DacService dacService;
+    @Autowired private DacDynaFormRepository dacDynaFormRepository;
+    @Autowired private DynaFormRepository dynaFormRepository;
+    @Autowired private DacDynaFormMapper dacDynaFormMapper;
+    @Autowired private DynaFormMapper dynaFormMapper;
     @Autowired private DacDocsService dacDocsService;
     @Autowired private CurrentUserService currentUserService;
     @Autowired private KeycloakAdminService keycloakAdminService;
@@ -105,6 +121,9 @@ public class DacFlowableService {
     @Autowired private ComServiceImpl comServiceImpl;
     @Autowired private AcServiceImpl acServiceImpl;
     @Autowired private EntityManager entityManager;
+    @Autowired private DacDocSoumissionRepository dacDocSoumissionRepository;
+    @Autowired private DacDocSoumissionMapper dacDocSoumissionMapper;
+    @Autowired private DynaFormFieldRepository dynaFormFieldRepository;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -1654,11 +1673,50 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         }
 
         resp.setDacDocs(dacDocs);
+        if (dacDocs != null) {
+            dacDocs.setAoId(dac.getAppelOffre().getId());
+            dacDocs.setAoReference(dac.getAppelOffre().getReference());
+            List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer())
+                    .stream()
+                    .filter(df -> !Boolean.TRUE.equals(df.getIsDeleted()))
+                    .collect(Collectors.toList());
+            if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
+                Map<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> grouped = dacDynaForms.stream()
+                        .collect(Collectors.groupingBy(df -> new com.sigmap.common.entity.CompositeId(df.getDynaFormId(), df.getDynaFormVer())));
 
-        // Attached DacPrix
-        List<DacPrix> prixDac = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
-        List<DacPrixResponce> responces = prixDac.stream().map(DacPrixMapper.INSTANCE::map).toList();
-        resp.setDacPrix(responces);
+                List<DynaFormResponse> dynaFormsList = new ArrayList<>();
+                for (Map.Entry<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> entry : grouped.entrySet()) {
+                    dynaFormRepository.findById(entry.getKey()).ifPresent(f -> {
+                        DynaFormResponse fResp = dynaFormMapper.toResponse(f);
+                        Map<Integer, DacDynaForm> fieldMap = entry.getValue().stream()
+                                .collect(Collectors.toMap(DacDynaForm::getDynaFormFieldsId, df -> df, (a, b) -> a));
+
+                        // Populate display attribute for each field
+                        for (DynaFormFieldResponse fieldResp : fResp.getFields()) {
+                            DacDynaForm ddf = fieldMap.get(fieldResp.getDynaFormFieldsId());
+                            if (ddf != null && Objects.equals(ddf.getDisplay(), true)) {
+                                fieldResp.setDisplay(true);
+                            } else {
+                                fieldResp.setDisplay(false);
+                            }
+                        }
+
+                        dynaFormsList.add(fResp);
+                    });
+                }
+                dacDocs.setDynaForms(dynaFormsList);
+            } else {
+                dacDocs.setDynaForms(new ArrayList<>());
+            }
+
+            // Populating submissionPieces in DacResponseDTO
+            List<DacDocSoumission> dacDocSoumissions = dacDocSoumissionRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            List<DacDocSoumissionResponse> submissionPieces = dacDocSoumissions.stream()
+                    .map(dacDocSoumissionMapper::map)
+                    .collect(Collectors.toList());
+            dacDocs.setSubmissionPieces(submissionPieces);
+        }
+
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {

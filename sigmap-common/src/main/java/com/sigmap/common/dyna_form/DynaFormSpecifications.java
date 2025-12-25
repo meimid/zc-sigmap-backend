@@ -2,7 +2,6 @@ package com.sigmap.common.dyna_form;
 
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.FormType;
-import com.sigmap.common.entity.TypeDossier;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -45,8 +44,8 @@ public final class DynaFormSpecifications {
         return (root, q, cb) -> cb.equal(root.get("status"), status);
     }
 
-    public static Specification<DynaForm> typeDossierEq(TypeDossier type) {
-        return (root, q, cb) -> cb.equal(root.get("typeDossier"), type);
+    public static Specification<DynaForm> typeDossierEq(String typeDossierCode) {
+        return (root, q, cb) -> cb.equal(root.get("typeDossier").get("code"), typeDossierCode);
     }
 
     public static Specification<DynaForm> formTypeEq(FormType formType) {

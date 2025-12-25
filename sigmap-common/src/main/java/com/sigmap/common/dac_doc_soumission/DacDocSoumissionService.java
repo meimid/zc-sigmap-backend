@@ -1,6 +1,5 @@
 package com.sigmap.common.dac_doc_soumission;
 
-import com.sigmap.common.config.TypeDossier;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;

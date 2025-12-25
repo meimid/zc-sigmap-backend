@@ -1,6 +1,5 @@
 package com.sigmap.common.doc_soumission.request;
 
-import com.sigmap.common.config.TypeDossier;
 
 import com.sigmap.common.doc_soumission.DocSoumission;
 import com.sigmap.common.doc_soumission.DocSoumissionSpecifications;
@@ -17,7 +16,7 @@ import org.springframework.data.jpa.domain.Specification;
 public class DocSoumissionQuery {
     private String search;
     private String nom;
-    private TypeDossier typeDossier;
+    private String typeDossierId;
     /**
      * Creates a {@link Specification} from the properties of the current object.
      * <p>
@@ -43,8 +42,8 @@ public class DocSoumissionQuery {
         if (nom != null && !nom.isBlank()) {
             spec = spec.and(DocSoumissionSpecifications.nom(nom));
         }
-        if (typeDossier != null) {
-            spec = spec.and(DocSoumissionSpecifications.typeDossier(typeDossier.name()));
+        if (typeDossierId != null) {
+            spec = spec.and(DocSoumissionSpecifications.typeDossierId(typeDossierId));
         }
 
         return spec;

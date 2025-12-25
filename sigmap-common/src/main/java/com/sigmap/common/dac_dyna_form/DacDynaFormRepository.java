@@ -1,7 +1,5 @@
 package com.sigmap.common.dac_dyna_form;
 
-import com.sigmap.common.dyna_form.DynaForm;
-import com.sigmap.common.entity.TypeDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -21,13 +19,14 @@ public interface DacDynaFormRepository
         JpaSpecificationExecutor<DacDynaForm> {
 
     Page<DacDynaForm> findByDacIdAndDacVer(Integer dacId, Integer dacVer, Pageable pageable);
+    List<DacDynaForm> findByDacIdAndDacVer(Integer dacId, Integer dacVer);
 
     @Query("""
            SELECT d FROM DacDynaForm d
            JOIN DynaForm f ON d.dynaFormId = f.id AND d.dynaFormVer = f.version
-           WHERE f.typeDossier = :type
+           WHERE f.typeDossier.id = :typeDossierId
            """)
-    Page<DacDynaForm> findByTypeDossier(TypeDossier type, Pageable pageable);
+    Page<DacDynaForm> findByTypeDossier(@Param("typeDossierId")Integer typeDossierId, Pageable pageable);
 
     @Query("""
     SELECT d FROM DacDynaForm d
@@ -38,6 +37,22 @@ public interface DacDynaFormRepository
                                        @Param("dacVer") Integer dacVer,
                                        @Param("formId") Integer formId,
                                        @Param("formVer") Integer formVer);
+
+    @Query("""
+    SELECT d FROM DacDynaForm d
+    WHERE d.dacId = :dacId
+      AND d.dynaFormId = :formId
+      AND d.dynaFormVer = :formVer
+      AND d.dacVer = (
+          SELECT MAX(d2.dacVer)
+          FROM DacDynaForm d2
+          WHERE d2.dacId = :dacId
+      )
+    """)
+    List<DacDynaForm> findByLatestDacVerAndForm(
+            @Param("dacId") Integer dacId,
+            @Param("formId") Integer formId,
+            @Param("formVer") Integer formVer);
 
     @Query("""
     SELECT DISTINCT d.dynaFormId, d.dynaFormVer
