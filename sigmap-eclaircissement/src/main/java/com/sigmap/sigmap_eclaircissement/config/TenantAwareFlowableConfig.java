@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_eclaircissement.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 
 import org.flowable.engine.ProcessEngine;
@@ -38,6 +39,7 @@ import java.util.Scanner;
  * @see org.springframework.context.annotation.Configuration
  */
 @Configuration
+@Slf4j
 public class TenantAwareFlowableConfig {
 
     /** Tenant ID injected from application.yml . */
@@ -100,9 +102,9 @@ public class TenantAwareFlowableConfig {
                         .name("ECLAIRCISSEMENT Process Deployment")
                         .addInputStream(fileName, resource.getInputStream())
                         .deploy();
-                System.out.println("Deployed: " + fileName);
+                log.info("Deployed: {}" , fileName);
             } else {
-                System.out.println("Skipped (no changes): " + fileName);
+                log.info("Skipped (no changes): {}" , fileName);
             }
         }
 

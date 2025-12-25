@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_eclaircissement.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
@@ -33,6 +34,7 @@ import org.springframework.context.annotation.Primary;
  * @see org.springframework.context.annotation.Configuration
  */
 @Configuration
+@Slf4j
 public class FlowableInitializer {
 
     /**
@@ -83,7 +85,7 @@ public class FlowableInitializer {
                 .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
         ProcessEngine processEngine = cfg.buildProcessEngine();
-        System.out.println("Flowable Process Engine initialized: " + processEngine.getName());
+        log.info("Flowable Process Engine initialized: {}" , processEngine.getName());
 
         return processEngine;
     }
