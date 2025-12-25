@@ -7,11 +7,11 @@ import java.util.Optional;
 
 public interface ModelDacService {
 
-    ModelDac setModel(Integer dacId, Integer dacVer, Integer docId) throws DacNotFound, DocNotFound;
+    ModelDac setModel(Integer dacId, Integer dacVer, Integer docId ,Boolean isAao) throws DacNotFound, DocNotFound;
 
-    Optional<ModelDac> getModel(Integer dacId, Integer dacVer);
+    Optional<ModelDac> getModel(Integer dacId, Integer dacVer,Boolean isAao) throws DacNotFound, DocNotFound;
 
-    void removeModel(Integer dacId, Integer dacVer);
+    void removeModel(Integer dacId, Integer dacVer,Boolean isAao);
 
     boolean isDocumentRelatedToDac(String alfrescoId);
     boolean isDocumentRelatedToDacShortlistForUser(String alfrescoId, String userId);

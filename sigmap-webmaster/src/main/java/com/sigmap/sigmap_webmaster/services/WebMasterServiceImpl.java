@@ -511,11 +511,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
         // 6. Alfresco ID from ModelDac
-        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
-            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
-                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
-            }
-        });
+        try {
+            modelDacService.getModel(dac.getDacId(), dac.getDacVer(),true).ifPresent(modelDac -> {
+                if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                    response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+                }
+            });
+        } catch (DocNotFound e) {
+            throw new RuntimeException(e);
+        }
         // 7. NomAC
         if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) {
             response.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
@@ -602,11 +606,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
         // 6. Alfresco ID from ModelDac
-        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
-            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
-                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
-            }
-        });
+        try {
+            modelDacService.getModel(dac.getDacId(), dac.getDacVer(),true).ifPresent(modelDac -> {
+                if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                    response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+                }
+            });
+        } catch (DocNotFound e) {
+            throw new RuntimeException(e);
+        }
 
         // 7. AppelOffre details
         if (dac.getAppelOffre() != null) {
