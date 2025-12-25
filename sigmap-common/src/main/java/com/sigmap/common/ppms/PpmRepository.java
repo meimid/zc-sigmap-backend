@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
@@ -40,6 +41,19 @@ public interface PpmRepository extends JpaRepository<Ppm, CompositeId>,
 
     @Query("SELECT p FROM Ppm p WHERE p.id = :id AND p.version = :ver AND p.isDeleted = false")
     Optional<Ppm> finPpmByIdAndVersion(@Param("id") Integer id,@Param("ver") Integer ver );
+
+    @Query("""
+    SELECT DISTINCT p
+    FROM Ppm p
+    JOIN p.realisations r
+    WHERE p IN :ppms
+    AND NOT EXISTS (
+          SELECT ao.id
+          FROM AppelOffre ao
+          WHERE ao.realisation.id = r.id
+          AND ao.realisation.version = r.version
+          AND ao.isDeleted = false ) """)
+    List<Ppm> findPpmsWithFreeRealisation(@Param("ppms") List<Ppm> ppms);
 
 }
 
