@@ -1,23 +1,19 @@
 package com.sigmap.sigmap_dac.dac;
 
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
-import com.sigmap.common.ac.exception.AcNotFound;
-import com.sigmap.common.appel_offre.exception.AppelOffreNotFound;
+import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacServiceImpl;
-import com.sigmap.common.dac.exeption.InvalidDacRequestException;
 import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.request.*;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac.response.DacWithAoReferenceResponse;
-import com.sigmap.common.dac.response.ParticipantResponse;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.realisations.exceptions.RealisationNotFoundException;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
-import com.sigmap.common.user_com.response.UserComSoftResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,12 +31,10 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.util.*;
-
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -51,8 +45,8 @@ import lombok.extern.slf4j.Slf4j;
 public class DacController {
 
   private final DacService dacService;
-  private final DacDocsService dacDocsService;
   private final DynaDocsRepository dynaDocsRepository;
+    private final DacRepository dacRepository;
 
   @Value("${templateDac.dac.inputDocPath}")
   private String basePath;
@@ -63,11 +57,10 @@ public class DacController {
   @Value("${documents.convertUrl}")
   private String convertUrl;
 
-  public DacController(DacService dacService, DacDocsService dacDocsService, DynaDocsRepository dynaDocsRepository) {
+  public DacController(DacService dacService, DynaDocsRepository dynaDocsRepository, DacRepository dacRepository) {
     this.dacService = dacService;
-    this.dacDocsService = dacDocsService;
     this.dynaDocsRepository = dynaDocsRepository;
-
+      this.dacRepository = dacRepository;
   }
 
 
@@ -277,11 +270,10 @@ public class DacController {
   @GetMapping("/get-dac-pdf/{dacId}/{dacVer}")
   public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId,Integer dacVer) {
     try {
-      Optional<Dac> dacOpt = dacService.findById(dacId, dacVer);
-      if (dacOpt.isEmpty()) {
+      Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+      if (dac==null) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
       }
-      Dac dac = dacOpt.get();
 
       List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
 

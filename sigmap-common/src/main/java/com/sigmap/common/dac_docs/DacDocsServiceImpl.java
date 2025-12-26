@@ -50,13 +50,9 @@ import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.dac_dyna_form.DacDynaForm;
 import com.sigmap.common.dac_dyna_form.DacDynaFormRepository;
 import com.sigmap.common.dac_dyna_form.request.DacDynaFormRequest;
-import com.sigmap.common.dac_dyna_form.DacDynaFormId;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
-import com.sigmap.common.dac_doc_soumission.DacDocSoumissionId;
-import com.sigmap.common.doc_soumission.DocSoumission;
-import com.sigmap.common.doc_soumission.DocSoumissionRepository;
 import com.sigmap.common.dyna_form.DynaFormRepository;
 import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import jakarta.transaction.Transactional;
@@ -64,13 +60,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
-
 import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
@@ -341,15 +336,21 @@ public class DacDocsServiceImpl implements DacDocsService{
         Monnaie monnaie = monnaieRepository.findById(request.getMonnaieId())
                 .orElseThrow(() -> new MonnaieNotFound("", List.of(request.getMonnaieId())));
 
-        // Find existing OR create new
-        Optional<DacPrix> existingDacPrix = dacPrixRepository.findById(dacId, dacVer, request.getMonnaieId());
+        // Find existing OR create new (including soft-deleted)
+        Optional<DacPrix> existingDacPrix = dacPrixRepository.findIncludeDeleted(dacId, dacVer, request.getMonnaieId());
 
-        log.info("existingDacPrix............. : {}", existingDacPrix);
+        log.info("existingDacPrix (including soft-deleted): {}", existingDacPrix);
 
         DacPrix dacPrix;
         if (existingDacPrix.isPresent()) {
-            // UPDATE EXISTING - Just change the prix!
+            // RESTORE IF DELETED & UPDATE EXISTING
             dacPrix = existingDacPrix.get();
+            if (Boolean.TRUE.equals(dacPrix.getIsDeleted())) {
+                log.info("Restoring soft-deleted DacPrix for {}/{}/{}", dacId, dacVer, request.getMonnaieId());
+                dacPrix.setIsDeleted(false);
+                dacPrix.setDeletedAt(null);
+                dacPrix.setDeletedBy(null);
+            }
             dacPrix.setPrix(request.getPrix());
             log.debug("Updated existing DacPrix for {}/{}/{}", dacId, dacVer, request.getMonnaieId());
         } else {
@@ -733,6 +734,7 @@ public class DacDocsServiceImpl implements DacDocsService{
             req.setDacId(targetDac.getDacId());
             results.add(createDacDocs(req));
         }
+        syncSystemFields(targetDac);
         return results;
     }
 
@@ -1023,7 +1025,7 @@ public class DacDocsServiceImpl implements DacDocsService{
 
             result.add(entity);
         }
-
+        syncSystemFields(existDac);
         return result;
     }
 
@@ -1322,6 +1324,23 @@ public class DacDocsServiceImpl implements DacDocsService{
         return responseList;
     }
 
+    private void syncSystemFields(Dac dac) {
+        log.info("Syncing system fields for DAC {}/{}", dac.getDacId(), dac.getDacVer());
+        List<DacDocs> dacDocs = dacDocsRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+        for (DacDocs doc : dacDocs) {
+            if (doc.getDynaField() != null && doc.getDynaField().getType() == DynaFieldType.SYSTEM) {
+                String newVal = resolveSystemFieldValue(doc.getDynaField(), dac);
+                if (!Objects.equals(doc.getFieldValue(), newVal)) {
+                    log.info("Updating system field {}.{} from '{}' to '{}'", 
+                            doc.getDynaField().getSource(), doc.getDynaField().getSourceField(),
+                            doc.getFieldValue(), newVal);
+                    doc.setFieldValue(newVal);
+                    dacDocsRepository.save(doc);
+                }
+            }
+        }
+    }
+
     // Helpers to compute SYSTEM field values like logic in DacServiceImpl
     private String resolveSystemFieldValue(DynaFields field, Dac dac) {
         String source = field.getSource();
@@ -1353,6 +1372,18 @@ public class DacDocsServiceImpl implements DacDocsService{
                         return dac.getDateLimiteRecptionDemande() != null ? sdf.format(dac.getDateLimiteRecptionDemande().getTime()) : null;
                     case "payant":
                         return dac.isPayant() ? "Oui" : "Non"; // dac payant
+                    case "montant": {
+                        if (!dac.isPayant()) {
+                            return "gratuit";
+                        }
+                        return dacPrixRepository
+                                .findByDac(dac.getDacId(), dac.getDacVer())
+                                .stream()
+                                .map(dp -> dp.getPrix()
+                                        .setScale(2, RoundingMode.HALF_UP)
+                                        + " " + dp.getId().getMonnaie().getDescription())
+                                .collect(Collectors.joining(", "));
+                    }
                     case "firstNameLasteNameResponableDac":
                         return dac.getResponsableDacId() != null ? keycloakAdminService.getUserById(dac.getResponsableDacId()).getFirstName().concat(" ").concat(keycloakAdminService.getUserById(dac.getResponsableDacId()).getLastName())  : null; // nom et prenom responsable
                     case "telResponableDac":
@@ -1372,7 +1403,7 @@ public class DacDocsServiceImpl implements DacDocsService{
                 if (dac.getAppelOffre().getPpm() == null) return null;
                 switch (sourceField) {
                     case "ref": return dac.getAppelOffre().getPpm().getRef(); // replace nom par ref
-                    case "datePublication": // replace created_at par date publication
+                    case "created_at": // replace created_at par date publication
                         if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
                             return sdf.format(new Date(dac.getAppelOffre().getPpm().getUpdatedAt().getTimeInMillis()));
                         }
