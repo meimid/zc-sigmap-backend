@@ -267,8 +267,8 @@ public class DacController {
     }
   }
 
-  @GetMapping("/get-dac-pdf/{dacId}/{dacVer}")
-  public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId,Integer dacVer) {
+  @GetMapping("/get-dac-pdf/{dacId}")
+  public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId) {
     try {
       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
       if (dac==null) {
