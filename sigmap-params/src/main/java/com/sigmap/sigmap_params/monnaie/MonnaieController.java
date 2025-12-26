@@ -43,8 +43,6 @@ public class MonnaieController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<Monnaie> create(@RequestBody MonnaieRequest request)  {
-
-    System.out.println("Ref Type Request " + request);
     Monnaie Monnaie = MonnaieService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(Monnaie);
   }

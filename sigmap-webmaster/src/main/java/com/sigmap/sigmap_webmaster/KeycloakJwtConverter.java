@@ -2,13 +2,13 @@ package com.sigmap.sigmap_webmaster;
 
 import java.util.*;
 import java.util.stream.Stream;
+
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-
 
 /** Converts a JWT into a Spring Security authentication token. */
 public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {

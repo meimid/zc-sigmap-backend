@@ -671,38 +671,23 @@ public class ComServiceImpl implements ComService {
         }
         var acId = dac.getAppelOffre().getPpm().getAc().getId();
         Ac ac = acService.findById(acId);
-        Specification<Com> specCom =
-                ComSpecifications.deleted(false)
-                        .and(ComSpecifications.comByAc(acId))
-                        .and(ComSpecifications.cpmp());
-
-        Com cpmpCom = findOne(specCom)
-                .orElseThrow(() ->
-                        new AcNotFound("Com not found for ac :", List.of(acId))
-                );
-
+        Com cpmpCom = ac.getCom();
         List<UserCom> users =
                 userComRepository.findAllByComIdAndIsDeletedFalse(cpmpCom.getId());
-
         if (users.isEmpty()) {
             return Collections.emptyList();
         }
-
         Set<String> userIds = users.stream()
                 .map(UserCom::getUserId)
                 .collect(Collectors.toSet());
-
         Map<String, UserDTO> kcUsers =
                 keycloakAdminService.fetchUsersInBatch(userIds);
-
         return users.stream()
                 .map(userCom -> {
                     UserDTO userDTO = kcUsers.get(userCom.getUserId());
-
                     if (userDTO == null) {
-                        return null; // user not found in KC
+                        return null;
                     }
-
                     return new UserComSoftResponse(
                             userCom.getUserId(),
                             userDTO.getLastName(),
