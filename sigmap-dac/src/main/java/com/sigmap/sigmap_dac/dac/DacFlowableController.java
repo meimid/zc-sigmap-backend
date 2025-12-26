@@ -209,10 +209,15 @@ public class DacFlowableController {
     public ResponseEntity<TaskDTO> validateTaskWithModelDac(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile
+            @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile,
+            @RequestPart(value = "dacFile", required = false) MultipartFile dacFile
     ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound, MonnaieNotFound {
 
         if (modelDacFile == null || modelDacFile.isEmpty()) {
+            throw new DacModelShouldExiste("Le fichier Model AAO DAC est requis.");
+        }
+
+        if (dacFile == null || dacFile.isEmpty()) {
             throw new DacModelShouldExiste("Le fichier Model DAC est requis.");
         }
 
@@ -233,7 +238,12 @@ public class DacFlowableController {
                 modelDacFile, dacId, dacVer, rootPath
         );
 
-        modelDacService.setModel(dacId, dacVer, docId);
+        Integer dacDocId = documentCommuneService.processAndSaveDocumentsForModelDac(
+                dacFile, dacId, dacVer, rootPath
+        );
+
+        modelDacService.setModel(dacId, dacVer, docId,true);
+        modelDacService.setModel(dacId, dacVer, dacDocId,false);
 
         request.setFromMeeting(false);
         TaskDTO response = dacFlowableService.validateTask(taskId, request);
