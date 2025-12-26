@@ -190,11 +190,11 @@ public class WebMasterController {
                 .body(resource);
     }
 
-    @PostMapping("/download/dac")
+    @PostMapping("/download/aao")
     public ResponseEntity<Resource> downloadDocumentDac(@RequestBody AlfrescoIdRequest alfrescoId) throws IOException, DocNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[] fileContent = webMasterService.downloadDocumentDac(alfrescoId.getId());
+        byte[] fileContent = webMasterService.downloadDocumentAao(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");

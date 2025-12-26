@@ -50,8 +50,8 @@ public interface WebMasterService {
     boolean isDocumentRelatedToDac(String alfrescoId);
     boolean isDocumentRelatedToDacShortlist(String alfrescoId, String userId);
 
-    byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound;
-    byte[] downloadDocumentDacShortlist(String alfrescoId, String userId) throws IOException, DocNotFound;
+    byte[] downloadDocumentAao(String alfrescoId) throws IOException, DocNotFound;
+    byte[] downloadDocumentAaoShortlist(String alfrescoId, String userId) throws IOException, DocNotFound;
 
     Page<DacWebsiteResponse> findPublishedDacsForWebsite(Pageable pageable);
 
@@ -61,11 +61,11 @@ public interface WebMasterService {
 
     DacDetailsWebsiteResponse findMyPublishedDacById(Integer dacId, String userId) throws DocNotFound;
 
-    byte[] generateDacMergedPdf(Integer dacId, String userId) throws IOException, DocNotFound;
+    byte[] downloadPayedDacShortlist(Integer dacId, String userId) throws IOException, DocNotFound;
 
-    byte[] generateDacMergedPdfFree(Integer dacId, String userId) throws IOException, DocNotFound;
+    byte[] downloadFreeDacShortlist(Integer dacId, String userId) throws IOException, DocNotFound;
 
-    byte[] generatePublicDacPdf(Integer dacId, String userId) throws IOException, DocNotFound;
+    byte[] downloadPaidPublicDac(Integer dacId, String userId) throws IOException, DocNotFound;
 
-    byte[] generatePublicDacPdfFree(Integer dacId, String userId) throws IOException, DocNotFound;
+    byte[] downloadFreePublicDac(Integer dacId, String userId) throws IOException, DocNotFound;
 }

@@ -70,7 +70,7 @@ public class EspaceSocieteController {
         return ResponseEntity.ok(dacs);
     }
 
-    @PostMapping("/download/dac")
+    @PostMapping("/download/aao")
     public ResponseEntity<Resource> downloadDocumentDacShortlist(@RequestBody AlfrescoIdRequest alfrescoId, @AuthenticationPrincipal Jwt jwt) throws IOException, DocNotFound {
         if (jwt == null) {
             log.warn("Missing JWT authentication principal");
@@ -81,7 +81,7 @@ public class EspaceSocieteController {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
 
-        byte[] fileContent = webMasterService.downloadDocumentDacShortlist(alfrescoId.getId(), userId);
+        byte[] fileContent = webMasterService.downloadDocumentAaoShortlist(alfrescoId.getId(), userId);
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -165,7 +165,7 @@ public class EspaceSocieteController {
         }
 
         String userId = jwt.getSubject();
-        byte[] pdfContent = webMasterService.generateDacMergedPdf(dacId, userId);
+        byte[] pdfContent = webMasterService.downloadPayedDacShortlist(dacId, userId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -183,7 +183,7 @@ public class EspaceSocieteController {
         }
 
         String userId = jwt.getSubject();
-        byte[] pdfContent = webMasterService.generateDacMergedPdfFree(dacId, userId);
+        byte[] pdfContent = webMasterService.downloadFreeDacShortlist(dacId, userId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -201,7 +201,7 @@ public class EspaceSocieteController {
         }
 
         String userId = jwt.getSubject();
-        byte[] pdfContent = webMasterService.generatePublicDacPdf(dacId, userId);
+        byte[] pdfContent = webMasterService.downloadPaidPublicDac(dacId, userId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -219,7 +219,7 @@ public class EspaceSocieteController {
         }
 
         String userId = jwt.getSubject();
-        byte[] pdfContent = webMasterService.generatePublicDacPdfFree(dacId, userId);
+        byte[] pdfContent = webMasterService.downloadFreePublicDac(dacId, userId);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
