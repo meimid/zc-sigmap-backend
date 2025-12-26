@@ -35,6 +35,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.financement.Financement;
+import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
@@ -114,6 +115,9 @@ public class DacDocsServiceImpl implements DacDocsService{
     private DynaFormRepository dynaFormRepository;
     @Autowired
     private DynaFormFieldRepository dynaFormFieldRepository;
+    @Autowired
+    private KeycloakAdminService keycloakAdminService;
+
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
@@ -1326,15 +1330,51 @@ public class DacDocsServiceImpl implements DacDocsService{
             return null;
         }
         SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
+        SimpleDateFormat sdtf = new SimpleDateFormat("MM/dd/yyyy HH:mm");
         DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
         switch (source) {
+
+            case "ao": { // new source ao
+                if (dac.getAppelOffre() == null) return null;
+                switch (sourceField) {
+                    case "ref": return dac.getAppelOffre().getReference(); // ref ao
+                    case "nom": return dac.getAppelOffre().getNom(); // ref nom
+                    case "description": return dac.getAppelOffre().getDescription(); // ref description
+                    default: return null;
+                }
+            }
+            case "dac": { // new source dac
+                if (dac == null) return null;
+                switch (sourceField) {
+                    case "ref": return dac.getReference(); // ref dac
+                    case "dateLimiteSoumission": //date limite de soumission
+                        return dac.getDateLimiteSoumission() != null ? sdf.format(dac.getDateLimiteSoumission().getTime()) : null;
+                    case "dateLimiteReceptionDemande":  //date limite reception des demandes
+                        return dac.getDateLimiteRecptionDemande() != null ? sdf.format(dac.getDateLimiteRecptionDemande().getTime()) : null;
+                    case "payant":
+                        return dac.isPayant() ? "Oui" : "Non"; // dac payant
+                    case "firstNameLasteNameResponableDac":
+                        return dac.getResponsableDacId() != null ? keycloakAdminService.getUserById(dac.getResponsableDacId()).getFirstName().concat(" ").concat(keycloakAdminService.getUserById(dac.getResponsableDacId()).getLastName())  : null; // nom et prenom responsable
+                    case "telResponableDac":
+                        return dac.getResponsableDacId() != null ? keycloakAdminService.getUserById(dac.getResponsableDacId()).getMobile() : null; // tel responsable
+                    case "adresseResponableDac":
+                        return dac.getResponsableDacId() != null ? keycloakAdminService.getUserById(dac.getResponsableDacId()).getAddress() : null; // adresse responsable
+                    case "emailResponableDac":
+                        return dac.getResponsableDacId() != null ? keycloakAdminService.getUserById(dac.getResponsableDacId()).getEmail() : null; // email responsable
+                    case "conditionParticipation":
+                        return dac.getConditionsParticipation() != null ? dac.getConditionsParticipation() : null; // condition de particiation responsable
+
+                    default: return null;
+                }
+            }
+
             case "ppm": {
                 if (dac.getAppelOffre().getPpm() == null) return null;
                 switch (sourceField) {
-                    case "nom": return dac.getAppelOffre().getPpm().getNom();
-                    case "created_at":
+                    case "ref": return dac.getAppelOffre().getPpm().getRef(); // replace nom par ref
+                    case "datePublication": // replace created_at par date publication
                         if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
-                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
+                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getUpdatedAt().getTimeInMillis()));
                         }
                         return null;
                     default: return null;
@@ -1345,6 +1385,10 @@ public class DacDocsServiceImpl implements DacDocsService{
                 switch (sourceField) {
                     case "nom": return dac.getAppelOffre().getPpm().getAc().getNom();
                     case "email": return dac.getAppelOffre().getPpm().getAc().getEmail();
+                    case "tel1": return
+                            dac.getAppelOffre().getPpm().getAc().getAdresse() != null && dac.getAppelOffre().getPpm().getAc().getAdresse().getTel1() != null ? dac.getAppelOffre().getPpm().getAc().getAdresse().getTel1() : null; // new add tel1
+                    case "tel2": return
+                            dac.getAppelOffre().getPpm().getAc().getAdresse() != null && dac.getAppelOffre().getPpm().getAc().getAdresse().getTel2() != null ? dac.getAppelOffre().getPpm().getAc().getAdresse().getTel2() : null; // new add tel2
                     case "adresse":
                         if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
                             return (dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
@@ -1382,10 +1426,12 @@ public class DacDocsServiceImpl implements DacDocsService{
                     }
                     case "typeMarcher", "type_marcher":
                         return dac.getAppelOffre().getRealisation().getTypeMarcher() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getTypeMarcher()) : null;
-                    case "modeSelection", "mode_selection":
-                        return dac.getAppelOffre().getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getModeSelection()) : null;
+                    /*case "modeSelection", "mode_selection":
+                        return dac.getAppelOffre().getRealisation().getModeSelection() != null ? getRefParamLabel(dac.getAppelOffre().getRealisation().getModeSelection()) : null;*/
                     case "modePassation", "mode_passation":
                         return dac.getAppelOffre().getRealisation().getModePassation() != null ? dac.getAppelOffre().getRealisation().getModePassation().getLibelle() : null;
+
+                        //delete mode de selection return mode de passation
                     case "nomLot", "nom_lot": {
                         if (dac.getAppelOffre().getRealisation().getLots() == null || dac.getAppelOffre().getRealisation().getLots().isEmpty()) return null;
                         StringBuilder sb = new StringBuilder();
