@@ -738,68 +738,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         return results;
     }
 
-    /*private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
-        StringBuilder errorsFR = new StringBuilder();
-        StringBuilder errorsENG = new StringBuilder();
-
-        if (lang == null) {
-            lang = Locale.forLanguageTag("fr");
-        }
-        if (request.getDateLimiteSoumission() == null) {
-            errorsFR.append("Date limite de soumission est obligatoire");
-            errorsENG.append("Date limite de soumission is required");
-        }
-
-        if (request.getDateLimiteRecptionDemande() == null) {
-            errorsFR.append("Date limite de réception des demandes is required");
-            errorsENG.append("Date limite de réception des demandes is required");
-        }
-
-        if (request.getPayant() == null) {
-            errorsFR.append("Payant field is required");
-            errorsENG.append("Payant field is required");
-        }
-
-        if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
-            errorsFR.append("Responsable DAC ID is required");
-            errorsENG.append("Responsable DAC ID is required");
-        }
-
-        Calendar now = Calendar.getInstance();
-        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errorsFR.append("Date limite de soumission must be in the future");
-            errorsENG.append("Date limite de soumission must be in the future");
-        }
-
-        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errorsFR.append("Date limite de réception des demandes must be in the future");
-            errorsENG.append("Date limite de réception des demandes must be in the future");
-        }
-
-        if (Boolean.TRUE.equals(request.getPayant())) {
-            if (request.getMontantPayant() == null || request.getMontantPayant().compareTo(BigDecimal.ZERO) <= 0) {
-                errorsFR.append("Montant payant is required and must be greater than zero when payant is true");
-                errorsENG.append("Montant payant is required and must be greater than zero when payant is true");
-            }
-        }
-
-        if (Boolean.TRUE.equals(request.getShortListing())) {
-            if (request.getShortlistMembers() == null || request.getShortlistMembers().isEmpty()) {
-                errorsFR.append("Shortlist members are required when shortListing is true");
-                errorsENG.append("Shortlist members are required when shortListing is true");
-            }
-        }
-
-        if ( lang.equals("fr") && !errorsFR.isEmpty() ) {
-            throw new InvalidDacRequestException(errorsFR.toString());
-        }
-        else if (lang.equals("en") && !errorsENG.isEmpty()) {
-            throw new InvalidDacRequestException(errorsENG.toString());
-        }
-    }*/
-
-
-
     private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
         StringBuilder errorsFR = new StringBuilder();
         StringBuilder errorsENG = new StringBuilder();
@@ -1342,7 +1280,8 @@ public class DacDocsServiceImpl implements DacDocsService{
     }
 
     // Helpers to compute SYSTEM field values like logic in DacServiceImpl
-    private String resolveSystemFieldValue(DynaFields field, Dac dac) {
+    @Override
+    public String resolveSystemFieldValue(DynaFields field, Dac dac) {
         String source = field.getSource();
         String sourceField = field.getSourceField();
         if (source == null || sourceField == null || dac == null) {
@@ -1398,12 +1337,11 @@ public class DacDocsServiceImpl implements DacDocsService{
                     default: return null;
                 }
             }
-
             case "ppm": {
                 if (dac.getAppelOffre().getPpm() == null) return null;
                 switch (sourceField) {
                     case "ref": return dac.getAppelOffre().getPpm().getRef(); // replace nom par ref
-                    case "created_at": // replace created_at par date publication
+                    case "datePublication": // replace created_at par date publication
                         if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
                             return sdf.format(new Date(dac.getAppelOffre().getPpm().getUpdatedAt().getTimeInMillis()));
                         }

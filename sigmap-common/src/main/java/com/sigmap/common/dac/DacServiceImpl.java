@@ -13,6 +13,7 @@ import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
@@ -66,6 +67,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
@@ -125,6 +127,7 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsModelRepository dynaDocsModelRepository;
     private final AppelOffreRepository appelOffreRepository;
     private final SocieteDacRepository societeDacRepository;
+    private final DacDocsService dacDocsService;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -1290,7 +1293,7 @@ public class DacServiceImpl implements DacService {
 
                                 if (!noSnapshot && field.getType() == DynaFieldType.SYSTEM) {
                                     // Resolve and upsert into dac_docs.field_value for this exact snapshot version only when snapshot exists
-                                    String resolved = resolveSystemFieldValue(field, dac);
+                                    String resolved = dacDocsService.resolveSystemFieldValue(field, dac);
                                     upsertSystemFieldValue(dac, dynaDocs, field, resolved);
                                 }
 
@@ -1459,7 +1462,7 @@ public class DacServiceImpl implements DacService {
                         log.info("priooooor {}", value);
                         sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
                     } else if (f.getType() == DynaFieldType.SYSTEM) {
-                        value = resolveSystemFieldValue(f, newDac);
+                        value = dacDocsService.resolveSystemFieldValue(f, newDac);
                     }
                 }
 
@@ -1608,127 +1611,6 @@ public class DacServiceImpl implements DacService {
         }
     }
 
-    private String resolveSystemFieldValue(DynaFields field, Dac dac) {
-        String source = field.getSource();
-        String sourceField = field.getSourceField();
-        if (source == null || sourceField == null) {
-            return null;
-        }
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-        switch (source) {
-            case "ppm": {
-                if (dac.getAppelOffre().getPpm() == null) return null;
-                return switch (sourceField) {
-                    case "nom" -> dac.getAppelOffre().getPpm().getNom();
-                    case "created_at" -> {
-                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
-                            yield sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
-                        }
-                        yield null;
-                    }
-                    default -> null;
-                };
-            }
-            case "ac": {
-                if (dac.getAppelOffre().getPpm() == null || dac.getAppelOffre().getPpm().getAc() == null) return null;
-                return switch (sourceField) {
-                    case "nom" -> dac.getAppelOffre().getPpm().getAc().getNom();
-                    case "email" ->dac.getAppelOffre().getPpm().getAc().getEmail();
-                    case "adresse" -> {
-                        if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
-                            yield dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCompAdresse() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCodePostal() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getVille();
-                            }
-                        yield null;
-                    }
-                    default -> null;
-                };
-            }
-            case "realisation": {
-                if (dac.getAppelOffre() == null || dac.getAppelOffre().getRealisation() == null) return null;
-                Realisation realisation = dac.getAppelOffre().getRealisation();
-                return switch (sourceField) {
-                    case "realisationEnvisagees", "realisation_envisagees" -> realisation.getRealisationEnvisagees();
-                    case "beneficiaire" -> realisation.getBeneficiaire();
-                    case "sourceFinancement", "source_financement" -> {
-                        if (realisation.getFinancements() == null || realisation.getFinancements().isEmpty()) yield null;
-                        StringBuilder sb = new StringBuilder();
-                        int i = 1;
-                        Set<String> seen = new LinkedHashSet<>();
-                        for (Financement fin : realisation.getFinancements()) {
-                            // Skip soft-deleted financements
-                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
-                            String label = getRefParamLabel(fin.getSourceFinancement());
-                            if (label == null) continue;
-                            String trimmed = label.trim();
-                            if (trimmed.isEmpty()) continue;
-                            if (!seen.add(trimmed)) continue; // skip duplicates
-                            if (sb.length() > 0) sb.append("\n");
-                            sb.append(i++).append("- ").append(trimmed);
-                        }
-                        yield sb.isEmpty() ? null : sb.toString();
-                    }
-
-                    case "typeMarcher", "type_marcher" -> realisation.getTypeMarcher() != null ? getRefParamLabel(realisation.getTypeMarcher()) : null;
-                    case "modeSelection", "mode_selection" -> realisation.getModeSelection() != null ? getRefParamLabel(realisation.getModeSelection()) : null;
-                    case "modePassation", "mode_passation" -> realisation.getModePassation() != null ? realisation.getModePassation().getLibelle() : null;
-                    case "nomLot", "nom_lot" -> {
-                        if (realisation.getLots() == null || realisation.getLots().isEmpty()) yield null;
-                        StringBuilder sb = new StringBuilder();
-                        int i = 1;
-                        Set<String> seen = new LinkedHashSet<>();
-                        for (Lot lot : realisation.getLots()) {
-                            if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
-                            String name = lot.getDescription();
-                            if (name == null) continue;
-                            String trimmed = name.trim();
-                            if (trimmed.isEmpty()) continue;
-                            if (!seen.add(trimmed)) continue;
-                            if (!sb.isEmpty()) sb.append("\n");
-                            sb.append(i++).append("- ").append(trimmed);
-                        }
-                        yield sb.isEmpty() ? null : sb.toString();
-                    }
-                    case "budgetEstime", "budget_estime" -> toString(realisation.getBudgetEstime());
-                   // case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
-                    //case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
-                    // case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
-                    //case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
-                    case "date_prev_lps" -> {
-                        if (realisation.getDatePrevLps() != null) {
-                            yield realisation.getDatePrevLps().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_ac" -> {
-                        if (realisation.getDatePrevAc() != null) {
-                            yield realisation.getDatePrevAc().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_dp" -> {
-                        if (realisation.getDatePrevDp() != null) {
-                            yield realisation.getDatePrevDp().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_ap" -> {
-                        if (realisation.getDatePrevAp() != null) {
-                            yield realisation.getDatePrevAp().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-
-                    default -> null;
-                };
-            }
-            default:
-                return null;
-        }
-    }
 
     @Override
     @Transactional
