@@ -636,55 +636,56 @@ public class DacServiceImpl implements DacService {
      * @param paragraph    Le paragraphe à traiter
      * @param replacements La map des remplacements (Nom du marqueur -> Valeur)
      */
-    private void replacePatternsInParagraph(XWPFParagraph paragraph, Map<String, String> replacements) {
-        // 1. Consolider les runs pour éviter les marqueurs coupés
+    private void replacePatternsInParagraph(XWPFParagraph paragraph,
+                                            Map<String, String> replacements) {
+
         consolidateRuns(paragraph);
 
-        // Obtenir la liste des runs (segments de texte) du paragraphe
         List<XWPFRun> runs = paragraph.getRuns();
+        if (runs == null || runs.isEmpty()) return;
 
-        // Si le paragraphe est vide, on arrête
-        if (runs == null || runs.isEmpty()) {
-            return;
+        // 1. Reconstruction du texte logique
+        StringBuilder fullText = new StringBuilder();
+        for (XWPFRun run : runs) {
+            String txt = run.getText(0);
+            if (txt != null) fullText.append(txt);
         }
 
-        // Parcourir chaque run pour chercher des marqueurs
+        String paragraphText = fullText.toString();
+        if (!paragraphText.contains("**")) return;
+
+        // 2. Remplacement global
+        for (Map.Entry<String, String> entry : replacements.entrySet()) {
+            if (entry.getKey().contains(":")) continue;
+
+            String pattern = "**" + entry.getKey() + "**";
+            String value = entry.getValue() != null ? entry.getValue() : "";
+            paragraphText = paragraphText.replace(pattern, value);
+        }
+
+        // CORRECTION CRITIQUE : supprimer tout ** résiduel
+        paragraphText = paragraphText.replace("**", "");
+
+        // 3. Réinjection sûre dans les runs
+        int cursor = 0;
         for (XWPFRun run : runs) {
-            String text = run.getText(0); // 0 pour la position actuelle dans le run
+            String oldText = run.getText(0);
+            if (oldText == null) continue;
 
-            // Vérifier si le texte du run contient au moins un début de marqueur "**"
-            if (text != null && text.contains("**")) {
+            int length = Math.min(oldText.length(), paragraphText.length() - cursor);
 
-                // Faire une copie pour les modifications
-                String newText = text;
-                boolean replaced = false;
-
-                // Tester chaque remplacement possible
-                for (Map.Entry<String, String> entry : replacements.entrySet()) {
-                    // Ignorer les clés complexes (table: ou list:) qui sont traitées ailleurs
-                    if (!entry.getKey().contains(":")) {
-                        // Construire le motif exact : **NOM_MARQUEUR**
-                        String pattern = "**" + entry.getKey() + "**";
-
-                        // Si le run contient ce marqueur spécifique
-                        if (newText.contains(pattern)) {
-                            String value = entry.getValue() != null ? entry.getValue() : "";
-                            // Remplacer le marqueur par sa valeur
-                            newText = newText.replace(pattern, value);
-                            replaced = true;
-                            log.debug("Remplacement effectué dans un run : {} -> {}", pattern, value);
-                        }
-                    }
-                }
-
-                // Si un remplacement a eu lieu, mettre à jour le texte du run
-                // Cela préserve le style car on modifie le contenu du run existant
-                if (replaced) {
-                    run.setText(newText, 0);
-                }
+            if (length <= 0) {
+                run.setText("", 0);
+                continue;
             }
+
+            String newText = paragraphText.substring(cursor, cursor + length);
+            run.setText(newText, 0);
+            cursor += length;
         }
     }
+
+
 
     /**
      * Tente de fusionner les runs adjacents qui ont des styles identiques.
