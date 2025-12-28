@@ -1666,6 +1666,7 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
+    @Transactional
     public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath) {
         log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
         validateParams(dacId, dacVersion, basePath, customDirPath);
@@ -1712,7 +1713,33 @@ public class DacServiceImpl implements DacService {
         try (
                 FileInputStream fis = new FileInputStream(templateFile);
                 XWPFDocument document = new XWPFDocument(fis)) {
-            Map<String, String> bookmarks = createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction);
+            Map<String, String> bookmarks = new HashMap<>();
+            
+            // Collect unique DynaDocs identifiers
+            Set<String> processedDocs = new HashSet<>();
+            for (DacDocs dd : dacDocs) {
+                if (dd.getDynaField() != null && dd.getDynaField().getDynaDocs() != null) {
+                    Integer docId = dd.getDynaField().getDynaDocs().getId();
+                    Integer docVer = dd.getDynaField().getDynaDocs().getVersion();
+                    String key = docId + ":" + docVer;
+                    if (processedDocs.add(key)) {
+                         Map<String, String> docBookmarks = createBookmarkMap(dacId, dacVersion, docId, docVer);
+                         for (Map.Entry<String, String> entry : docBookmarks.entrySet()) {
+                             String k = entry.getKey();
+                             String v = entry.getValue();
+                             // If the value is "real" (not a placeholder matching the key), overwrite
+                             // Or if we don't have this key yet, add it (even if it is a placeholder)
+                             if (!v.equals(k) || !bookmarks.containsKey(k)) {
+                                 bookmarks.put(k, v);
+                             }
+                         }
+                    }
+                }
+            }
+            
+            // Apply AAO specific parameters (overriding if necessary)
+            bookmarks.putAll(createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction));
+            
             processTableAndListBookmarks(document, dacId, dacVersion, dynaDocsId, dynaDocsVer);
             replaceBookmarks(document, bookmarks);
             String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, 1);
