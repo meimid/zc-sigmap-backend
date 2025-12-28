@@ -386,6 +386,21 @@ public class DacServiceImpl implements DacService {
                 .forEach(dacDoc -> {
                     String bookmarkName = dacDoc.getDynaField().getName();
                     String fieldValue = dacDoc.getFieldValue();
+
+                    // Sanitize HTML values for specific fields
+                    if (dacDoc.getDynaField() != null) {
+                        String source = dacDoc.getDynaField().getSource();
+                        String sourceField = dacDoc.getDynaField().getSourceField();
+                        
+                        boolean needsSanitization = 
+                            ("dac".equalsIgnoreCase(source) && ("conditionsParticipation".equalsIgnoreCase(sourceField) || "conditionParticipation".equalsIgnoreCase(sourceField))) ||
+                            (("appelOffre".equalsIgnoreCase(source) || "appel_offre".equalsIgnoreCase(source) || "ao".equalsIgnoreCase(source)) && ("description".equalsIgnoreCase(sourceField) || "descriptionAO".equalsIgnoreCase(sourceField)));
+
+                        if (needsSanitization && fieldValue != null) {
+                            fieldValue = stripHtml(fieldValue);
+                        }
+                    }
+
                     if (bookmarkName != null && fieldValue != null) {
                         log.debug("Mapping bookmark: {} -> Value: {}", bookmarkName, fieldValue);
                         bookmarks.put(bookmarkName, fieldValue);
@@ -393,6 +408,37 @@ public class DacServiceImpl implements DacService {
                 });
 
         return bookmarks;
+    }
+
+    private String stripHtml(String html) {
+        if (html == null) return null;
+        
+        // 1. Pre-process block tags to ensure separation
+        // Replace closing tags of block elements or br tags with a newline
+        String text = html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</p>", "\n")
+                .replaceAll("(?i)</div>", "\n")
+                .replaceAll("(?i)</li>", "\n")
+                .replaceAll("(?i)</ul>", "\n")
+                .replaceAll("(?i)</ol>", "\n")
+                .replaceAll("(?i)</tr>", "\n");
+
+        // 2. Unescape HTML entities
+        text = text
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("\u00A0", " "); // Unicode non-breaking space
+            
+        // 3. Remove remaining HTML tags
+        text = text.replaceAll("\\<[^>]*>", "");
+        
+        // 4. Trim and collapse multiple spaces (but keep newlines)
+        return text.replaceAll("[ \\t\\f]+", " ").replaceAll("[\\r\\n]+", "\n").trim();
     }
 
     private void replaceBookmarks(XWPFDocument document, Map<String, String> replacements) {
@@ -616,8 +662,7 @@ public class DacServiceImpl implements DacService {
                 if (pos != -1) {
                     document.removeBodyElement(pos);
                 }
-
-                break;
+                return;
             }
         }
    }
@@ -639,50 +684,146 @@ public class DacServiceImpl implements DacService {
     private void replacePatternsInParagraph(XWPFParagraph paragraph,
                                             Map<String, String> replacements) {
 
-        consolidateRuns(paragraph);
-
+        // 1. Merge split tags to ensure **KEY** is in a single run.
+        // This also handles the "Partial Bold" issue by applying bold if any part was bold.
+        mergeTagRuns(paragraph);
+        
+        // 2. Iterate through runs and perform IN-PLACE replacement.
+        // This avoids the "Redistribution" logic that caused style bleeding and truncation.
         List<XWPFRun> runs = paragraph.getRuns();
         if (runs == null || runs.isEmpty()) return;
 
-        // 1. Reconstruction du texte logique
-        StringBuilder fullText = new StringBuilder();
         for (XWPFRun run : runs) {
-            String txt = run.getText(0);
-            if (txt != null) fullText.append(txt);
-        }
+            String text = run.getText(0);
+            if (text == null || !text.contains("**")) continue;
 
-        String paragraphText = fullText.toString();
-        if (!paragraphText.contains("**")) return;
+            String newText = text;
+            boolean modified = false;
 
-        // 2. Remplacement global
-        for (Map.Entry<String, String> entry : replacements.entrySet()) {
-            if (entry.getKey().contains(":")) continue;
+            for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                String key = entry.getKey();
+                if (key.contains(":")) continue; // Skip complex keys like list: or table:
 
-            String pattern = "**" + entry.getKey() + "**";
-            String value = entry.getValue() != null ? entry.getValue() : "";
-            paragraphText = paragraphText.replace(pattern, value);
-        }
-
-        // CORRECTION CRITIQUE : supprimer tout ** résiduel
-        paragraphText = paragraphText.replace("**", "");
-
-        // 3. Réinjection sûre dans les runs
-        int cursor = 0;
-        for (XWPFRun run : runs) {
-            String oldText = run.getText(0);
-            if (oldText == null) continue;
-
-            int length = Math.min(oldText.length(), paragraphText.length() - cursor);
-
-            if (length <= 0) {
-                run.setText("", 0);
-                continue;
+                String pattern = "**" + key + "**";
+                if (newText.contains(pattern)) {
+                    String value = entry.getValue() != null ? entry.getValue() : "";
+                    newText = newText.replace(pattern, value);
+                    modified = true;
+                }
             }
+            
+            // Apply changes to this specific run only
+            if (modified) {
+                if (newText.contains("\n")) {
+                    String[] lines = newText.split("\n", -1); // Keep empty lines
+                    
+                    // Force alignment to LEFT to prevent justification stretching with soft breaks
+                    paragraph.setAlignment(ParagraphAlignment.LEFT);
 
-            String newText = paragraphText.substring(cursor, cursor + length);
-            run.setText(newText, 0);
-            cursor += length;
+                    run.setText(lines[0], 0);
+                    for (int k = 1; k < lines.length; k++) {
+                        run.addBreak();
+                        run.setText(lines[k]);
+                    }
+                } else {
+                    run.setText(newText, 0);
+                }
+            }
         }
+        
+        // 3. Consolidated cleanup of any residual ** if needed, 
+        // though strictly speaking, we should only remove what we replaced.
+        // If there are leftover **, it means they didn't match any key.
+        // We can optionally leave them or remove them. 
+        // The previous logic removed all **, so we maintain that behavior for consistency.
+        for (XWPFRun run : runs) {
+            String text = run.getText(0);
+            if (text != null && text.contains("**")) {
+                 run.setText(text.replace("**", ""), 0);
+            }
+        }
+    }
+
+    private void mergeTagRuns(XWPFParagraph paragraph) {
+         if (paragraph.getRuns().size() < 2) return;
+         
+         // Helper to get text from runs
+         StringBuilder sb = new StringBuilder();
+         List<XWPFRun> runs = paragraph.getRuns();
+         List<Integer> runOffsets = new ArrayList<>();
+         
+         for(XWPFRun r : runs) {
+             runOffsets.add(sb.length());
+             String t = r.getText(0);
+             sb.append(t != null ? t : "");
+         }
+         String text = sb.toString();
+         
+         int searchIndex = 0;
+         while(true) {
+             int startIdx = text.indexOf("**", searchIndex);
+             if (startIdx == -1) break;
+             int endIdx = text.indexOf("**", startIdx + 2);
+             if (endIdx == -1) break;
+             
+             // Found a tag: text.substring(startIdx, endIdx + 2)
+             int tagEnd = endIdx + 2;
+             
+             // Update search index
+             searchIndex = tagEnd;
+             
+             // Identify runs involved
+             int startRunIdx = -1;
+             int endRunIdx = -1;
+             
+             for(int i=0; i<runOffsets.size(); i++) {
+                 int rStart = runOffsets.get(i);
+                 // Heuristic: check if this run contains the start/end points
+                 String rText = runs.get(i).getText(0);
+                 int rLen = (rText != null) ? rText.length() : 0;
+                 int rEnd = rStart + rLen;
+                 
+                 if (startRunIdx == -1 && startIdx >= rStart && startIdx < rEnd) {
+                     startRunIdx = i;
+                 }
+                 if (endIdx >= rStart && endIdx < rEnd) { 
+                     endRunIdx = i;
+                 }
+             }
+             
+             // If valid span found and spans multiple runs
+             if (startRunIdx != -1 && endRunIdx != -1 && startRunIdx < endRunIdx) {
+                 // Check if any run in between (inclusive) is Bold
+                 boolean isBold = false;
+                 for(int i=startRunIdx; i<=endRunIdx; i++) {
+                     if (runs.get(i).isBold()) {
+                         isBold = true;
+                         break;
+                     }
+                 }
+                 
+                 // Merge into startRunIdx
+                 XWPFRun startRun = runs.get(startRunIdx);
+                 StringBuilder mergedText = new StringBuilder();
+                 
+                 for(int i=startRunIdx; i<=endRunIdx; i++) {
+                      String t = runs.get(i).getText(0);
+                      if (t!=null) mergedText.append(t);
+                 }
+                 
+                 startRun.setText(mergedText.toString(), 0);
+                 if (isBold) startRun.setBold(true);
+                 
+                 // Remove other runs. Iterate backwards to avoid index shift
+                 for(int i=endRunIdx; i>startRunIdx; i--) {
+                     paragraph.removeRun(i);
+                 }
+                 
+                 // Since we modified runs and indices, restart scan to be safe
+                 mergeTagRuns(paragraph); 
+                 return;
+             }
+         }
     }
 
 
