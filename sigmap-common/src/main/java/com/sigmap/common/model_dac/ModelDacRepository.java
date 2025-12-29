@@ -10,8 +10,17 @@ import java.util.Optional;
 
 public interface ModelDacRepository extends JpaRepository<ModelDac, ModelDacId> {
 
-    Optional<ModelDac> findByDacIdAndDacVerAndIsAao(Integer dacId, Integer dacVer, Boolean isAao);
-
+    @Query("""
+        select md
+          from ModelDac md
+         where md.dacId  = :dacId
+           and md.dacVer = :dacVer
+           and md.isAao  = :isAao
+           and md.isDeleted = false
+    """)
+    Optional<ModelDac> findByDacIdAndDacVerAndIsAao(@Param("dacId") Integer dacId,
+                                                          @Param("dacVer") Integer dacVer,
+                                                          @Param("isAao") Boolean isAao);
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("update ModelDac m set m.isDeleted = true, m.deletedAt = current_timestamp, m.deletedBy = ?#{principal?.claims['sub']} where m.dacId  = :dacId and m.dacVer = :dacVer and m.isAao = :isAao")
