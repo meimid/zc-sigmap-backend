@@ -737,6 +737,241 @@ public class DacDocsServiceImpl implements DacDocsService{
         return results;
     }
 
+    @Override
+    @Transactional
+    public List<DacDocs> updateDacWithDacDocsBatch(Integer dacId,DacWithDacDocsRequest request, Locale lang) throws MonnaieNotFound {
+        if (request == null || request.getDacDocsRequests() == null) {
+            return new ArrayList<>();
+        }
+        validateDacWithDacDocsRequest(request, lang);
+        Dac targetDac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+        if (targetDac == null) {
+            throw new RuntimeException("Dac not found for ID: " + dacId);
+        }
+
+        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
+        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
+        if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
+        if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
+        if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
+
+        targetDac = dacRepository.save(targetDac);
+
+        if (Boolean.TRUE.equals(targetDac.isPayant())) {
+            if (request.getDacPrixRequests() != null && !request.getDacPrixRequests().isEmpty()) {
+
+                List<DacPrixRequestForDac> prixRequests = request.getDacPrixRequests();
+                
+                 // 1-1Fetch existing DacPrix in DB
+                List<DacPrix> existingPrixList = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+
+                //1-2 Determine which Monnaies are requested
+                Set<Integer> requestedMonnaieIds = prixRequests.stream()
+                        .map(DacPrixRequestForDac::getMonnaieId)
+                        .collect(Collectors.toSet());
+
+                // 1-3 Delete DacPrix not present in request but present in DB
+                List<DacPrix> toDelete = existingPrixList.stream()
+                        .filter(p -> !requestedMonnaieIds.contains(p.getId().getMonnaie().getId())).toList();
+
+                 if (!toDelete.isEmpty() && targetDac.getStatus() != ProcessStatus.BROUILLON) {
+                    dacPrixRepository.softDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                if (!toDelete.isEmpty() && targetDac.getStatus() == ProcessStatus.BROUILLON) {
+                    dacPrixService.defenitiveDelete(toDelete);
+                    log.info("Deleted {} obsolete DacPrix records for DAC {}/{}", toDelete.size(), targetDac.getDacId(), targetDac.getDacVer());
+                }
+
+                for (DacPrixRequestForDac prixRequest : prixRequests) {
+                    savePrixDac(prixRequest,targetDac.getDacId(),targetDac.getDacVer());
+                    log.info("saved {} DacPrix for DAC {}/{}",prixRequests.size(),targetDac.getDacId(),targetDac.getDacVer());
+                }
+            }
+        } else {
+             List<DacPrix> existing = dacPrixRepository.findByDac(targetDac.getDacId(), targetDac.getDacVer());
+             if (existing != null && !existing.isEmpty()) {
+                 dacPrixRepository.softDelete(existing);
+             }
+        }
+
+        if (targetDac.isShortListing()) {
+            if (request.getShortlistMembers() != null) {
+                List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+                Map<Integer, SocieteDac> existingMap = existingList.stream()
+                        .collect(Collectors.toMap(s -> s.getId().getSociete().getId(), s -> s));
+
+                Set<Integer> requestedIds = new HashSet<>(request.getShortlistMembers());
+
+                for (Integer sid : request.getShortlistMembers()) {
+                    if (existingMap.containsKey(sid)) {
+                        SocieteDac existing = existingMap.get(sid);
+                        if (Boolean.TRUE.equals(existing.getIsDeleted())) {
+                            existing.setIsDeleted(false);
+                            existing.setDeletedAt(null);
+                            existing.setDeletedBy(null);
+                            societeDacRepository.save(existing);
+                        }
+                    } else {
+                        Societe dateSoc = societeRepository.findById(sid)
+                                .orElseThrow(() -> new InvalidDacRequestException("Societe not found: " + sid));
+                        SocieteDacID sdID = new SocieteDacID();
+                        sdID.setDac(targetDac);
+                        sdID.setSociete(dateSoc);
+                        SocieteDac sd = new SocieteDac();
+                        sd.setId(sdID);
+                        sd.setMethodePaiement(MethodePaiement.NON_ATTRIBUE);
+                        sd.setIsDeleted(false);
+                        societeDacRepository.save(sd);
+                    }
+                }
+                List<SocieteDac> toDelete = existingList.stream()
+                        .filter(s -> !requestedIds.contains(s.getId().getSociete().getId()))
+                        .collect(Collectors.toList());
+                if (!toDelete.isEmpty()) {
+                    societeDacRepository.softDelete(toDelete);
+                }
+            }
+        } else {
+             List<SocieteDac> existingList = societeDacRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+             if (!existingList.isEmpty()) {
+                 societeDacRepository.softDelete(existingList);
+             }
+        }
+
+        // Handle DacDynaForm updates
+        if (request.getDacDynaFormRequest() != null) {
+            List<DacDynaForm> existingForms = dacDynaFormRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+            
+            Map<String, DacDynaForm> existingMap = existingForms.stream()
+                .collect(Collectors.toMap(
+                    f -> f.getDynaFormId() + "-" + f.getDynaFormVer() + "-" + f.getDynaFormFieldsId(), 
+                    f -> f
+                ));
+            
+            Set<String> processedKeys = new HashSet<>();
+            
+            for (DacDynaFormRequest req : request.getDacDynaFormRequest()) {
+                if (req.getDynaFormFieldsId() != null) {
+                    Integer latestFormVer = dynaFormRepository.findMaxVersionById(req.getDynaFormId());
+                    Integer verToUse = (req.getDynaFormVer() != null) ? req.getDynaFormVer() : latestFormVer;
+                    
+                    if (verToUse == null) {
+                         throw new InvalidDacRequestException("DynaForm not found for ID: " + req.getDynaFormId());
+                    }
+
+                    for (Integer fieldId : req.getDynaFormFieldsId()) {
+                        // Validate field exists in the resolved version
+                        boolean fieldExists = dynaFormFieldRepository.existsById(new com.sigmap.common.dyna_form_fields.DynaFormFieldId(req.getDynaFormId(), verToUse, fieldId));
+                        if (!fieldExists) {
+                            throw new InvalidDacRequestException("Field ID " + fieldId + " does not exist in DynaForm " + req.getDynaFormId() + " version " + verToUse);
+                        }
+
+                        String key = req.getDynaFormId() + "-" + verToUse + "-" + fieldId;
+                        processedKeys.add(key);
+                        
+                        if (existingMap.containsKey(key)) {
+                            DacDynaForm existing = existingMap.get(key);
+                            boolean wasDeleted = Boolean.TRUE.equals(existing.getIsDeleted());
+                            if (wasDeleted) {
+                                 existing.setIsDeleted(false); 
+                                 existing.setDeletedAt(null);
+                                 existing.setDeletedBy(null);
+                            }
+                            if (!Objects.equals(existing.getDisplay(), req.getDisplay()) || wasDeleted) {
+                                existing.setDisplay(req.getDisplay());
+                                dacDynaFormRepository.save(existing);
+                            }
+                        } else {
+                            DacDynaForm newForm = new DacDynaForm();
+                            newForm.setDacId(targetDac.getDacId());
+                            newForm.setDacVer(targetDac.getDacVer());
+                            newForm.setDynaFormId(req.getDynaFormId());
+                            newForm.setDynaFormVer(verToUse);
+                            newForm.setDynaFormFieldsId(fieldId);
+                            newForm.setDisplay(req.getDisplay());
+                            newForm.setIsDeleted(false);
+                            dacDynaFormRepository.save(newForm);
+                        }
+                    }
+                }
+            }
+            
+            // Soft Delete missing
+            List<DacDynaForm> toDelete = existingForms.stream()
+                .filter(f -> !processedKeys.contains(f.getDynaFormId() + "-" + f.getDynaFormVer() + "-" + f.getDynaFormFieldsId()))
+                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                .collect(Collectors.toList());
+                
+            if (!toDelete.isEmpty()) {
+                 for (DacDynaForm f : toDelete) {
+                     f.setIsDeleted(true);
+                     f.setDeletedAt(Calendar.getInstance());
+                     if (Authentication.getCurrentUserId().isPresent()){
+                         f.setDeletedBy(Authentication.getCurrentUserId().get());
+                     } else {
+                         f.setDeletedBy("system");
+                     }
+                     dacDynaFormRepository.save(f);
+                 }
+            }
+        }
+        
+        // Handle DacDocSoumission updates
+        if (request.getDacDocSoumissionCreateRequests() != null) {
+            List<DacDocSoumission> existing = dacDocSoumissionRepository.findByDacIdAndDacVer(targetDac.getDacId(), targetDac.getDacVer());
+            Set<Integer> reqIds = request.getDacDocSoumissionCreateRequests().stream()
+                 .map(DacDocSoumissionCreateRequest::getDocSoumissionId)
+                 .collect(Collectors.toSet());
+            
+            // Add/Update
+            for (DacDocSoumissionCreateRequest req : request.getDacDocSoumissionCreateRequests()) {
+                 DacDocSoumission existingDoc = existing.stream()
+                         .filter(e -> e.getDocSoumissionId().equals(req.getDocSoumissionId()))
+                         .findFirst().orElse(null);
+                         
+                 if (existingDoc == null) {
+                     // Create
+                     DacDocSoumission newDoc = new DacDocSoumission();
+                     newDoc.setDacId(targetDac.getDacId());
+                     newDoc.setDacVer(targetDac.getDacVer());
+                     newDoc.setDocSoumissionId(req.getDocSoumissionId());
+                     newDoc.setDateValidate(req.getDateValidate());
+                     dacDocSoumissionRepository.save(newDoc);
+                 } else {
+                     // Update if needed
+                     boolean changed = false;
+                     if (!Objects.equals(existingDoc.getDateValidate(), req.getDateValidate())) {
+                         existingDoc.setDateValidate(req.getDateValidate());
+                         changed = true;
+                     }
+                     if (changed) {
+                         dacDocSoumissionRepository.save(existingDoc);
+                     }
+                 }
+            }
+            
+            // Delete missing (HARD DELETE)
+            List<DacDocSoumission> toDelete = existing.stream()
+                .filter(e -> !reqIds.contains(e.getDocSoumissionId()))
+                .collect(Collectors.toList());
+            
+            if (!toDelete.isEmpty()) {
+                dacDocSoumissionRepository.deleteAll(toDelete);
+            }
+        }
+
+        List<DacDocs> results = new ArrayList<>();
+        for (DacDocsRequest req : request.getDacDocsRequests()) {
+            req.setDacId(targetDac.getDacId());
+            // Use updateDacDocsInPlace to ensure correct update without versioning
+            results.add(updateDacDocsInPlace(req));
+        }
+        syncSystemFields(targetDac);
+        return results;
+    }
+
     private void validateDacWithDacDocsRequest(DacWithDacDocsRequest request, Locale lang) {
         StringBuilder errorsFR = new StringBuilder();
         StringBuilder errorsENG = new StringBuilder();
