@@ -908,9 +908,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
             dacDocsService.createDacWithDacDocsBatch(dacWithDocs,null);
 
             // refresh DAC to latest version
-            latestDac = dacService.findById(id, null).orElse(latestDac);
+            latestDac = dacRepository.findDacWithLatestVersionByDacId(id);
             log.info("[DAC] Refreshed DAC after docs batch → version={}", latestDac.getDacVer());
             runtimeService.setVariable(task.getProcessInstanceId(), "version", latestDac.getDacVer());
+
 
             // refresh gateway-driving vars from DAC
             runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
@@ -1801,15 +1802,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         String stepName = (nextTask != null ? nextTask.getName() : "Completed");
 
 
-        if (dacId != null && dacVer != null) {
-            DacId compositeId = new DacId(dacId, dacVer);
-
-            dacRepository.findById(compositeId).ifPresent(dac -> {
-                dac.setEtapeProcess(stepName);
+       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+              dac.setEtapeProcess(stepName);
                 dacRepository.save(dac);
-            });
-        }
-    }
+            };
 
     @Transactional(readOnly = true)
     public TaskListResponseDTO getDacTasksByComId(Integer comId) {

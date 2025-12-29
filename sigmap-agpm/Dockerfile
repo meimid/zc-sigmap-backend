@@ -26,6 +26,6 @@ FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
-COPY --from=builder /app/sigmap-auth/target/sigmap-auth*.jar /app.jar
+COPY --from=builder /app/sigmap-agpm/target/sigmap-agpm*.jar /app.jar
 
 ENTRYPOINT ["java","-jar","/app.jar"]

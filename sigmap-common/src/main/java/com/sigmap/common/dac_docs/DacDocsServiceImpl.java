@@ -402,8 +402,7 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setAppelOffre(dac.getAppelOffre());
              newDac.setResponsableDacId(dac.getResponsableDacId());
              newDac.setConditionsParticipation(dac.getConditionsParticipation());
-             newDac.setEtapeDac(dac.getEtapeDac());
-             newDac.setEtapeProcess(dac.getEtapeProcess());
+            newDac.setEtapeDac(dac.getEtapeDac());
              newDac.setStatus(dac.getStatus());
              newDac.setReference(dac.getReference());
              newDac.setDateLimiteSoumission(dac.getDateLimiteSoumission());
@@ -1227,7 +1226,7 @@ public class DacDocsServiceImpl implements DacDocsService{
             try {
                 if (dacDoc.getDynaField() != null && dacDoc.getDynaField().getType() == DynaFieldType.SYSTEM) {
                     String computed = resolveSystemFieldValue(dacDoc.getDynaField(), dacDoc.getDac());
-                    if (computed != null && (response.getFieldValue() == null || response.getFieldValue().isBlank())) {
+                    if (computed != null) {
                         response.setFieldValue(computed);
                     }
                 }
@@ -1335,9 +1334,9 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (source == null || sourceField == null || dac == null) {
             return null;
         }
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-        SimpleDateFormat sdtf = new SimpleDateFormat("MM/dd/yyyy HH:mm");
-        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat sdtf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         switch (source) {
 
             case "ao": { // new source ao
@@ -1827,10 +1826,10 @@ public class DacDocsServiceImpl implements DacDocsService{
             DacDocs existing = existingDacDoc.get();
             
             // Compare fieldValue
-            // Compare fieldValue with normalization (null == empty)
-            String existingVal = existing.getFieldValue() != null ? existing.getFieldValue() : "";
-            String reqVal = req.getFieldValue() != null ? req.getFieldValue() : "";
-            if (!existingVal.equals(reqVal)) {
+            // Compare fieldValue with normalization (null == empty) AND strip HTML
+            String existingVal = stripHtml(existing.getFieldValue() != null ? existing.getFieldValue() : "");
+            String reqVal = stripHtml(req.getFieldValue() != null ? req.getFieldValue() : "");
+            if (!Objects.equals(existingVal, reqVal)) {
                 log.info("Change detected in fieldValue for field {}: old='{}', new='{}'", 
                         req.getDynaFieldsId(), existingVal, reqVal);
                 return true;
@@ -1958,14 +1957,14 @@ public class DacDocsServiceImpl implements DacDocsService{
                             return true;
                         }
                         
-                        // Compare fieldValue (handle null/empty strings)
-                        String existingValue = existingDetail.getFieldValue() != null ? existingDetail.getFieldValue() : "";
-                        String requestValue = reqDetail.getFieldValue() != null ? reqDetail.getFieldValue() : "";
+                        // Compare fieldValue (handle null/empty strings) and strip HTML
+                        String existingValue = stripHtml(existingDetail.getFieldValue() != null ? existingDetail.getFieldValue() : "");
+                        String requestValue = stripHtml(reqDetail.getFieldValue() != null ? reqDetail.getFieldValue() : "");
                         
                         log.debug("Comparing fieldValue for key '{}': existing='{}', request='{}'", 
                                 key, existingValue, requestValue);
                         
-                        if (!existingValue.equals(requestValue)) {
+                        if (!Objects.equals(existingValue, requestValue)) {
                             log.info("Change detected in details fieldValue for field {}: rowId={}, colId={}, old='{}', new='{}'", 
                                     req.getDynaFieldsId(), reqRowId, reqColId, existingValue, requestValue);
                             return true;

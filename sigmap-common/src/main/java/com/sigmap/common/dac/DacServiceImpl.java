@@ -387,6 +387,18 @@ public class DacServiceImpl implements DacService {
                     String bookmarkName = dacDoc.getDynaField().getName();
                     String fieldValue = dacDoc.getFieldValue();
 
+                    // Resolve SYSTEM field values dynamically (e.g. for updated dates)
+                    if (dacDoc.getDynaField() != null && dacDoc.getDynaField().getType() == DynaFieldType.SYSTEM) {
+                         try {
+                              String computed = dacDocsService.resolveSystemFieldValue(dacDoc.getDynaField(), dacDoc.getDac());
+                              if (computed != null) {
+                                   fieldValue = computed;
+                              }
+                         } catch (Exception e) {
+                              log.error("Error resolving system field value for bookmark {}", bookmarkName, e);
+                         }
+                    }
+
                     // Sanitize HTML values for specific fields
                     if (dacDoc.getDynaField() != null) {
                         String source = dacDoc.getDynaField().getSource();
