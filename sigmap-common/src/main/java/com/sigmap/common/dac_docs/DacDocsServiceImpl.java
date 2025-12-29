@@ -1389,8 +1389,8 @@ public class DacDocsServiceImpl implements DacDocsService{
                 switch (sourceField) {
                     case "ref": return dac.getAppelOffre().getPpm().getRef(); // replace nom par ref
                     case "datePublication": // replace created_at par date publication
-                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
-                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getUpdatedAt().getTimeInMillis()));
+                        if (dac.getAppelOffre().getPpm().getPublishedAt() != null) {
+                            return sdf.format(new Date(dac.getAppelOffre().getPpm().getPublishedAt().getTimeInMillis()));
                         }
                         return null;
                     default: return null;
