@@ -1,5 +1,5 @@
 -- liquibase formatted sql
--- changeset sigmap:17496719590102-1
+-- changeset sigmap:17496719590104-1
 
 ALTER TABLE agpm
     ADD COLUMN published_at DATETIME NULL;

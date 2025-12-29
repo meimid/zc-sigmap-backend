@@ -1,5 +1,5 @@
 -- liquibase formatted sql
--- changeset sigmap:17496719590103-1
+-- changeset sigmap:17496719590105-1
 
 UPDATE agpm
 SET published_at = updated_at
