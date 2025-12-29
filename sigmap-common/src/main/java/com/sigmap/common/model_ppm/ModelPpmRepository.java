@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
 public interface ModelPpmRepository extends JpaRepository<ModelPpm, ModelPpmId> {
-    Optional<ModelPpm> findByPpmIdAndPpmVer(Integer ppmId, Integer ppmVer);
+    Optional<ModelPpm> findByPpmIdAndPpmVerAndIsDeletedFalse(Integer ppmId, Integer ppmVer);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
