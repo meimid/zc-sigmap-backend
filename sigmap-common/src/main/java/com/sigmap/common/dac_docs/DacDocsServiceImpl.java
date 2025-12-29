@@ -1235,6 +1235,23 @@ public class DacDocsServiceImpl implements DacDocsService{
                 log.error("Error resolving system field value {}", ignore.getMessage());
             }
 
+            // Sanitize specific HTML fields
+            if (dacDoc.getDynaField() != null) {
+                String source = dacDoc.getDynaField().getSource();
+                String sourceField = dacDoc.getDynaField().getSourceField();
+                String val = response.getFieldValue();
+                
+                if (val != null && !val.isEmpty()) {
+                    boolean needsSanitization = 
+                        ("dac".equalsIgnoreCase(source) && ("conditionsParticipation".equalsIgnoreCase(sourceField) || "conditionParticipation".equalsIgnoreCase(sourceField))) ||
+                        (("appelOffre".equalsIgnoreCase(source) || "appel_offre".equalsIgnoreCase(source) || "ao".equalsIgnoreCase(source)) && ("description".equalsIgnoreCase(sourceField) || "descriptionAO".equalsIgnoreCase(sourceField)));
+
+                    if (needsSanitization) {
+                        response.setFieldValue(stripHtml(val));
+                    }
+                }
+            }
+
             log.debug("response -------------- {}", response);
 
             String key = dacDoc.getId().getDynaDocsId() + ":" + dacDoc.getId().getDynaDocsVer() + ":" + dacDoc.getId().getDynaFieldsId();
@@ -1260,6 +1277,37 @@ public class DacDocsServiceImpl implements DacDocsService{
             responseList.add(response);
         }
         return responseList;
+    }
+
+    private String stripHtml(String html) {
+        if (html == null) return null;
+        
+        // 1. Pre-process block tags to ensure separation
+        // Replace closing tags of block elements or br tags with a newline
+        String text = html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</p>", "\n")
+                .replaceAll("(?i)</div>", "\n")
+                .replaceAll("(?i)</li>", "\n")
+                .replaceAll("(?i)</ul>", "\n")
+                .replaceAll("(?i)</ol>", "\n")
+                .replaceAll("(?i)</tr>", "\n");
+
+        // 2. Unescape HTML entities
+        text = text
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("\u00A0", " "); // Unicode non-breaking space
+            
+        // 3. Remove remaining HTML tags
+        text = text.replaceAll("\\<[^>]*>", "");
+        
+        // 4. Trim and collapse multiple spaces (but keep newlines)
+        return text.replaceAll("[ \\t\\f]+", " ").replaceAll("[\\r\\n]+", "\n").trim();
     }
 
     private void syncSystemFields(Dac dac) {
