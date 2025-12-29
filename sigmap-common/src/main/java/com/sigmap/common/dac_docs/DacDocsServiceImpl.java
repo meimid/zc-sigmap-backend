@@ -402,6 +402,7 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setAppelOffre(dac.getAppelOffre());
              newDac.setResponsableDacId(dac.getResponsableDacId());
              newDac.setConditionsParticipation(dac.getConditionsParticipation());
+            newDac.setEtapeDac(dac.getEtapeDac());
              newDac.setStatus(dac.getStatus());
              newDac.setReference(dac.getReference());
              newDac.setDateLimiteSoumission(dac.getDateLimiteSoumission());
