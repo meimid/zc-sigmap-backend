@@ -39,7 +39,7 @@ public class ModelPpmServiceImpl implements ModelPpmService {
                         "Aucun DOC trouvé pour l'ID", List.of(docId)));
 
         Optional<ModelPpm> existingOpt = modelPpmRepository
-                .findByPpmIdAndPpmVer(ppmId, ppmVer);
+                .findByPpmIdAndPpmVerAndIsDeletedFalse(ppmId, ppmVer);
 
         if (existingOpt.isPresent()) {
             ModelPpm existing = existingOpt.get();
@@ -63,7 +63,7 @@ public class ModelPpmServiceImpl implements ModelPpmService {
     }
     @Override
     public Optional<ModelPpm> getModel(Integer ppmId, Integer ppmVer) {
-        return modelPpmRepository.findByPpmIdAndPpmVer(ppmId, ppmVer);
+        return modelPpmRepository.findByPpmIdAndPpmVerAndIsDeletedFalse(ppmId, ppmVer);
     }
 
     @Transactional
