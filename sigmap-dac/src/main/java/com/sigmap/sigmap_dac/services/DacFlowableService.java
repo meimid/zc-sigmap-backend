@@ -1801,15 +1801,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         String stepName = (nextTask != null ? nextTask.getName() : "Completed");
 
 
-        if (dacId != null && dacVer != null) {
-            DacId compositeId = new DacId(dacId, dacVer);
-
-            dacRepository.findById(compositeId).ifPresent(dac -> {
-                dac.setEtapeProcess(stepName);
+       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+              dac.setEtapeProcess(stepName);
                 dacRepository.save(dac);
-            });
-        }
-    }
+            };
 
     @Transactional(readOnly = true)
     public TaskListResponseDTO getDacTasksByComId(Integer comId) {
