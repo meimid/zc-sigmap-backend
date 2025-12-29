@@ -47,7 +47,7 @@ public class PaaWebsiteResponse {
             this.year = Integer.valueOf(paa.getAnnee());
         }
 
-        Calendar updatedAt = paa.getUpdatedAt();
+        Calendar updatedAt = paa.getPublishedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());

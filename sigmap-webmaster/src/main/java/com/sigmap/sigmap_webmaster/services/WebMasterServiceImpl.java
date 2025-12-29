@@ -635,7 +635,7 @@ public class WebMasterServiceImpl implements WebMasterService {
 
         // 10. DAC details
         response.setReferenceDac(dac.getReference());
-        response.setDatePublicationDac(dac.getUpdatedAt()); // Using updatedAt for release date as per request
+        response.setDatePublicationDac(dac.getPublishedAt()); // Using updatedAt for release date as per request
         response.setPayant(dac.isPayant() ? "Oui" : "Non");
         response.setConditionsParticipation(dac.getConditionsParticipation());
 

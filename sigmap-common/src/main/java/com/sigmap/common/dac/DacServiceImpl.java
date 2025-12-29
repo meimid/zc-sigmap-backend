@@ -1740,6 +1740,10 @@ public class DacServiceImpl implements DacService {
         dac.setStatus(status);
 
         dac.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            dac.setPublishedAt(Calendar.getInstance());
+        }
         return dacRepository.save(dac);
     }
     private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
