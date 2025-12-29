@@ -1227,7 +1227,7 @@ public class DacDocsServiceImpl implements DacDocsService{
             try {
                 if (dacDoc.getDynaField() != null && dacDoc.getDynaField().getType() == DynaFieldType.SYSTEM) {
                     String computed = resolveSystemFieldValue(dacDoc.getDynaField(), dacDoc.getDac());
-                    if (computed != null && (response.getFieldValue() == null || response.getFieldValue().isBlank())) {
+                    if (computed != null) {
                         response.setFieldValue(computed);
                     }
                 }
@@ -1335,9 +1335,9 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (source == null || sourceField == null || dac == null) {
             return null;
         }
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-        SimpleDateFormat sdtf = new SimpleDateFormat("MM/dd/yyyy HH:mm");
-        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        SimpleDateFormat sdtf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         switch (source) {
 
             case "ao": { // new source ao
