@@ -402,8 +402,7 @@ public class DacDocsServiceImpl implements DacDocsService{
              newDac.setAppelOffre(dac.getAppelOffre());
              newDac.setResponsableDacId(dac.getResponsableDacId());
              newDac.setConditionsParticipation(dac.getConditionsParticipation());
-             newDac.setEtapeDac(dac.getEtapeDac());
-             newDac.setEtapeProcess(dac.getEtapeProcess());
+            newDac.setEtapeDac(dac.getEtapeDac());
              newDac.setStatus(dac.getStatus());
              newDac.setReference(dac.getReference());
              newDac.setDateLimiteSoumission(dac.getDateLimiteSoumission());
@@ -1827,10 +1826,10 @@ public class DacDocsServiceImpl implements DacDocsService{
             DacDocs existing = existingDacDoc.get();
             
             // Compare fieldValue
-            // Compare fieldValue with normalization (null == empty)
-            String existingVal = existing.getFieldValue() != null ? existing.getFieldValue() : "";
-            String reqVal = req.getFieldValue() != null ? req.getFieldValue() : "";
-            if (!existingVal.equals(reqVal)) {
+            // Compare fieldValue with normalization (null == empty) AND strip HTML
+            String existingVal = stripHtml(existing.getFieldValue() != null ? existing.getFieldValue() : "");
+            String reqVal = stripHtml(req.getFieldValue() != null ? req.getFieldValue() : "");
+            if (!Objects.equals(existingVal, reqVal)) {
                 log.info("Change detected in fieldValue for field {}: old='{}', new='{}'", 
                         req.getDynaFieldsId(), existingVal, reqVal);
                 return true;
@@ -1958,14 +1957,14 @@ public class DacDocsServiceImpl implements DacDocsService{
                             return true;
                         }
                         
-                        // Compare fieldValue (handle null/empty strings)
-                        String existingValue = existingDetail.getFieldValue() != null ? existingDetail.getFieldValue() : "";
-                        String requestValue = reqDetail.getFieldValue() != null ? reqDetail.getFieldValue() : "";
+                        // Compare fieldValue (handle null/empty strings) and strip HTML
+                        String existingValue = stripHtml(existingDetail.getFieldValue() != null ? existingDetail.getFieldValue() : "");
+                        String requestValue = stripHtml(reqDetail.getFieldValue() != null ? reqDetail.getFieldValue() : "");
                         
                         log.debug("Comparing fieldValue for key '{}': existing='{}', request='{}'", 
                                 key, existingValue, requestValue);
                         
-                        if (!existingValue.equals(requestValue)) {
+                        if (!Objects.equals(existingValue, requestValue)) {
                             log.info("Change detected in details fieldValue for field {}: rowId={}, colId={}, old='{}', new='{}'", 
                                     req.getDynaFieldsId(), reqRowId, reqColId, existingValue, requestValue);
                             return true;
