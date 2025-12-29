@@ -27,11 +27,14 @@ public class ModelDac extends BaseEntity {
     @Column(name = "dac_ver", nullable = false)
     private Integer dacVer;
 
+    @Column(name = "is_aao", nullable = false)
+    private Boolean isAao;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "doc_id", referencedColumnName = "doc_id", insertable = false, updatable = false)
     private Docs doc;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumns({
             @JoinColumn(name = "dac_id",  referencedColumnName = "dac_id", insertable = false, updatable = false),
             @JoinColumn(name = "dac_ver", referencedColumnName = "dac_ver", insertable = false, updatable = false)

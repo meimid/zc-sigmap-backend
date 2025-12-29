@@ -14,7 +14,6 @@ import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.response.DacDetailsWebsiteResponse;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
-import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_prix.DacPrix;
 import com.sigmap.common.dac_prix.DacPrixRepository;
@@ -22,8 +21,6 @@ import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
-import com.sigmap.common.entity.ProcessStatus;
-import com.sigmap.common.financement.Financement;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.lots.Lot;
@@ -59,22 +56,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.MediaType;
-import org.springframework.http.HttpHeaders;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpStatus;
-
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -95,22 +76,11 @@ public class WebMasterServiceImpl implements WebMasterService {
     private final WebMasterStatsRepository webMasterStatsRepository;
     private final ModelDacService modelDacService;
     private final DacRepository dacRepository;
-    private final DacDocsRepository dacDocsRepository;
     private final DacPrixRepository dacPrixRepository;
     private final KeycloakAdminService keycloakAdminService;
     private final SocieteDacRepository societeDacRepository;
-    private final DacService dacService;
 
-    @Value("${templateDac.dac.inputDocPath}")
-    private String basePath;
-
-    @Value("${templateDac.dac.outputDocPath}")
-    private String customDirPath;
-
-    @Value("${documents.convertUrl}")
-    private String convertUrl;
-
-    public WebMasterServiceImpl(ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterStatsRepository webMasterStatsRepository, ModelDacService modelDacService, DacRepository dacRepository, DacDocsRepository dacDocsRepository, DacPrixRepository dacPrixRepository, KeycloakAdminService keycloakAdminService, SocieteDacRepository societeDacRepository, DacService dacService) {
+    public WebMasterServiceImpl(ModelPpmService modelPpmService, ModelPaaService modelPaaService, ModelAgpmService modelAgpmService, AlfrescoService alfrescoService, PpmService ppmService, PaaService paaService, AgpmService agpmService, WebMasterStatsRepository webMasterStatsRepository, ModelDacService modelDacService, DacRepository dacRepository, DacPrixRepository dacPrixRepository, KeycloakAdminService keycloakAdminService, SocieteDacRepository societeDacRepository) {
 
         this.modelPpmService = modelPpmService;
         this.modelPaaService = modelPaaService;
@@ -122,11 +92,9 @@ public class WebMasterServiceImpl implements WebMasterService {
         this.webMasterStatsRepository = webMasterStatsRepository;
         this.modelDacService = modelDacService;
         this.dacRepository = dacRepository;
-        this.dacDocsRepository = dacDocsRepository;
         this.dacPrixRepository = dacPrixRepository;
         this.keycloakAdminService = keycloakAdminService;
         this.societeDacRepository = societeDacRepository;
-        this.dacService = dacService;
     }
 
     @Override
@@ -199,10 +167,12 @@ public class WebMasterServiceImpl implements WebMasterService {
         }
         return agpmResponse;
     }
+
     @Override
-    public Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
+    public Optional<DocumentResponseDTO> getDocumentInformation(String alfrescoId) {
         return Optional.ofNullable(alfrescoService.getDocumentById(alfrescoId));
     }
+
     @Override
     public byte[] downloadDocumentAgpm(String alfrescoId) throws IOException, DocNotFound {
 
@@ -224,10 +194,9 @@ public class WebMasterServiceImpl implements WebMasterService {
         }
 
         DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
-        if (dummyContent.getFile()!=null) {
+        if (dummyContent.getFile() != null) {
             return dummyContent.getFile();
-        }
-        else {
+        } else {
             throw new IOException("Error while downloading document.");
         }
 
@@ -249,10 +218,9 @@ public class WebMasterServiceImpl implements WebMasterService {
             throw new DocNotFound("Document not associated with latest published entity", null);
         }
         DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
-        if (dummyContent.getFile()!=null) {
+        if (dummyContent.getFile() != null) {
             return dummyContent.getFile();
-        }
-        else {
+        } else {
             throw new IOException("Error while downloading document.");
         }
     }
@@ -277,19 +245,18 @@ public class WebMasterServiceImpl implements WebMasterService {
 
 
         DocumentResponseDTO dummyContent = getDocumentInformation(alfrescoId).orElseThrow(() -> new DocsNotFoundException(""));
-        if (dummyContent.getFile()!=null) {
+        if (dummyContent.getFile() != null) {
             return dummyContent.getFile();
-        }
-        else {
+        } else {
             throw new IOException("Error while downloading document.");
         }
     }
 
     @Override
     public Page<PpmWebsiteResponse> findAllPpmForWebsite(Specification<Ppm> spec, Pageable pageable) {
-        Page<Ppm> ppmPage = ppmService.findAllForWebsite(spec,pageable);
+        Page<Ppm> ppmPage = ppmService.findAllForWebsite(spec, pageable);
         List<PpmWebsiteResponse> responses = new ArrayList<>();
-        for(Ppm ppm : ppmPage.getContent()) {
+        for (Ppm ppm : ppmPage.getContent()) {
             Optional<ModelPpm> modelPpm = modelPpmService.getModel(ppm.getId(), ppm.getVersion());
 
             PpmWebsiteResponse ppmResponse = new PpmWebsiteResponse(ppm);
@@ -316,9 +283,9 @@ public class WebMasterServiceImpl implements WebMasterService {
 
     @Override
     public Page<PaaWebsiteResponse> findPaaAllForWebsite(Specification<Paa> spec, Pageable pageable) {
-        Page<Paa> paaPage=paaService.findAllForWebsite(spec,pageable);
+        Page<Paa> paaPage = paaService.findAllForWebsite(spec, pageable);
         List<PaaWebsiteResponse> responses = new ArrayList<>();
-        for(Paa paa : paaPage.getContent()) {
+        for (Paa paa : paaPage.getContent()) {
             Optional<ModelPaa> modelPaa = modelPaaService.getModel(paa.getId(), paa.getVersion());
             PaaWebsiteResponse paaResponse = new PaaWebsiteResponse(paa);
             List<RealisationPaaWebSite> allRealisationsDto = paa.getRealisations().stream()
@@ -344,9 +311,9 @@ public class WebMasterServiceImpl implements WebMasterService {
 
     @Override
     public Page<AgpmWebsiteResponse> findAgpmAllForWebsite(Specification<Agpm> spec, Pageable pageable) {
-        Page<Agpm> agpmPage=agpmService.findAllForWebsite(spec,pageable);
+        Page<Agpm> agpmPage = agpmService.findAllForWebsite(spec, pageable);
         List<AgpmWebsiteResponse> responses = new ArrayList<>();
-        for(Agpm agpm : agpmPage.getContent()) {
+        for (Agpm agpm : agpmPage.getContent()) {
             Optional<ModelAgpm> modelAgpm = modelAgpmService.getModel(agpm.getId(), agpm.getVersion());
             AgpmWebsiteResponse agpmResponse = new AgpmWebsiteResponse(agpm);
             if (modelAgpm.isPresent()) {
@@ -396,7 +363,7 @@ public class WebMasterServiceImpl implements WebMasterService {
                 && model.get().getDoc() != null
                 && !model.get().getDoc().getIsDeleted()) {
 
-            log.info("Matching agpm: {}" , model.get().getDoc().getAlfresco_id());
+            log.info("Matching agpm: {}", model.get().getDoc().getAlfresco_id());
 
             return alfrescoId.equals(model.get().getDoc().getAlfresco_id());
         }
@@ -419,7 +386,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     @Override
-    public byte[] downloadDocumentDac(String alfrescoId) throws IOException, DocNotFound {
+    public byte[] downloadDocumentAao(String alfrescoId) throws IOException, DocNotFound {
         if (!isDocumentRelatedToDac(alfrescoId)) {
             throw new DocNotFound("Document not associated with latest published entity", null);
         }
@@ -433,7 +400,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     @Override
-    public byte[] downloadDocumentDacShortlist(String alfrescoId, String userId) throws IOException, DocNotFound {
+    public byte[] downloadDocumentAaoShortlist(String alfrescoId, String userId) throws IOException, DocNotFound {
         if (!isDocumentRelatedToDacShortlist(alfrescoId, userId)) {
             throw new DocNotFound("Document not associated with latest published entity or access denied", null);
         }
@@ -511,11 +478,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
         // 6. Alfresco ID from ModelDac
-        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
-            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
-                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
-            }
-        });
+        try {
+            modelDacService.getModel(dac.getDacId(), dac.getDacVer(), true).ifPresent(modelDac -> {
+                if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                    response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+                }
+            });
+        } catch (DocNotFound e) {
+            throw new RuntimeException(e);
+        }
         // 7. NomAC
         if (dac.getAppelOffre() != null && dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null) {
             response.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
@@ -523,20 +494,21 @@ public class WebMasterServiceImpl implements WebMasterService {
 
         return response;
     }
+
     @Override
     public DacDetailsWebsiteResponse getDacDetailsById(Integer dacId, String userId) throws DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
                 .orElseThrow(() -> new DocNotFound("Published DAC not found for ID: " + dacId, null));
 
         DacDetailsWebsiteResponse details = mapToDetailsResponse(dac);
-        
+
         // Populate payment fields if user is authenticated
         if (userId != null && dac.isPayant()) {
             details.setId(dac.getDacId());
             details.setIsPaymentValid(societeDacRepository.hasConfirmedPayment(dac.getDacId(), dac.getDacVer(), userId));
             details.setHasPayed(societeDacRepository.hasUserPayed(dac.getDacId(), dac.getDacVer(), userId));
         }
-        
+
         return details;
     }
 
@@ -602,11 +574,15 @@ public class WebMasterServiceImpl implements WebMasterService {
         response.setDateLimiteSoumission(dac.getDateLimiteSoumission());
 
         // 6. Alfresco ID from ModelDac
-        modelDacService.getModel(dac.getDacId(), dac.getDacVer()).ifPresent(modelDac -> {
-            if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
-                response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
-            }
-        });
+        try {
+            modelDacService.getModel(dac.getDacId(), dac.getDacVer(), true).ifPresent(modelDac -> {
+                if (!Boolean.TRUE.equals(modelDac.getIsDeleted()) && modelDac.getDoc() != null && !Boolean.TRUE.equals(modelDac.getDoc().getIsDeleted())) {
+                    response.setAlfrescoId(modelDac.getDoc().getAlfresco_id());
+                }
+            });
+        } catch (DocNotFound e) {
+            throw new RuntimeException(e);
+        }
 
         // 7. AppelOffre details
         if (dac.getAppelOffre() != null) {
@@ -622,7 +598,7 @@ public class WebMasterServiceImpl implements WebMasterService {
                         .map(f -> f.getSourceFinancement().getDescription())
                         .collect(Collectors.joining(", "));
                 response.setFinancements(financementsStr);
-                
+
                 // 9. Lots
                 if (dac.getAppelOffre().getRealisation().getLots() != null) {
                     List<String> lotDescriptions = dac.getAppelOffre().getRealisation().getLots().stream()
@@ -678,7 +654,7 @@ public class WebMasterServiceImpl implements WebMasterService {
     }
 
     @Override
-    public byte[] generateDacMergedPdf(Integer dacId, String userId) throws IOException, DocNotFound {
+    public byte[] downloadPayedDacShortlist(Integer dacId, String userId) throws IOException, DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForUser(dacId, userId)
                 .orElseThrow(() -> new DocNotFound("Published DAC not found or not accessible for ID: " + dacId, null));
 
@@ -686,173 +662,51 @@ public class WebMasterServiceImpl implements WebMasterService {
             throw new DocNotFound("Payment not confirmed for DAC ID: " + dacId, null);
         }
 
-        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
-
-        RestTemplate restTemplate = new RestTemplate();
-        List<InputStream> pdfStreams = new ArrayList<>();
-        try {
-            for (String docxPath : generatedFiles) {
-                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
-                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                body.add("files", docxResource);
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-                ResponseEntity<byte[]> response = restTemplate.exchange(
-                        convertUrl + "/forms/libreoffice/convert",
-                        HttpMethod.POST,
-                        requestEntity,
-                        byte[].class
-                );
-                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
-                } else {
-                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
-                }
-            }
-
-            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
-            return mergedOut.toByteArray();
-        } finally {
-            for (java.io.InputStream is : pdfStreams) {
-                try {
-                    is.close();
-                } catch (Exception ignore) {
-                }
-            }
-        }
+        return downloadDac(dac);
     }
 
     @Override
-    public byte[] generateDacMergedPdfFree(Integer dacId, String userId) throws IOException, DocNotFound {
+    public byte[] downloadFreeDacShortlist(Integer dacId, String userId) throws IOException, DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForUser(dacId, userId)
                 .orElseThrow(() -> new DocNotFound("Published DAC not found or not accessible for ID: " + dacId, null));
 
-        // For free DACs, no payment check required
-        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
-
-        RestTemplate restTemplate = new RestTemplate();
-        List<InputStream> pdfStreams = new ArrayList<>();
-        try {
-            for (String docxPath : generatedFiles) {
-                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
-                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                body.add("files", docxResource);
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-                ResponseEntity<byte[]> response = restTemplate.exchange(
-                        convertUrl + "/forms/libreoffice/convert",
-                        HttpMethod.POST,
-                        requestEntity,
-                        byte[].class
-                );
-                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
-                } else {
-                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
-                }
-            }
-
-            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
-            return mergedOut.toByteArray();
-        } finally {
-            for (java.io.InputStream is : pdfStreams) {
-                try {
-                    is.close();
-                } catch (Exception ignore) {
-                }
-            }
-        }
+        return downloadDac(dac);
     }
 
     @Override
-    public byte[] generatePublicDacPdf(Integer dacId, String userId) throws IOException, DocNotFound {
+    public byte[] downloadPaidPublicDac(Integer dacId, String userId) throws IOException, DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
                 .orElseThrow(() -> new DocNotFound("Published public DAC not found for ID: " + dacId, null));
 
         // For paid public DACs, check payment status
         if (dac.isPayant() && !Boolean.TRUE.equals(societeDacRepository.hasConfirmedPayment(dacId, dac.getDacVer(), userId))) {
-            throw new DocNotFound("Payment not confirmed for public DAC ID: " + dacId, null);
+            throw new DocNotFound("Payment not confirmed for public DAC ID: " + dac.getDacId(), null);
         }
 
-        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+        return downloadDac(dac);
 
-        RestTemplate restTemplate = new RestTemplate();
-        List<InputStream> pdfStreams = new ArrayList<>();
-        try {
-            for (String docxPath : generatedFiles) {
-                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
-                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                body.add("files", docxResource);
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-                ResponseEntity<byte[]> response = restTemplate.exchange(
-                        convertUrl + "/forms/libreoffice/convert",
-                        HttpMethod.POST,
-                        requestEntity,
-                        byte[].class
-                );
-                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
-                } else {
-                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
-                }
-            }
-
-            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
-            return mergedOut.toByteArray();
-        } finally {
-            for (java.io.InputStream is : pdfStreams) {
-                try {
-                    is.close();
-                } catch (Exception ignore) {
-                }
-            }
-        }
     }
 
     @Override
-    public byte[] generatePublicDacPdfFree(Integer dacId, String userId) throws IOException, DocNotFound {
+    public byte[] downloadFreePublicDac(Integer dacId, String userId) throws IOException, DocNotFound {
         Dac dac = dacRepository.findPublishedDacByIdForWebsite(dacId)
                 .orElseThrow(() -> new DocNotFound("Published public DAC not found for ID: " + dacId, null));
 
         // For free public DACs, no payment check required
-        List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
+        return downloadDac(dac);
+    }
 
-        RestTemplate restTemplate = new RestTemplate();
-        List<InputStream> pdfStreams = new ArrayList<>();
-        try {
-            for (String docxPath : generatedFiles) {
-                FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
-                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-                body.add("files", docxResource);
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-                ResponseEntity<byte[]> response = restTemplate.exchange(
-                        convertUrl + "/forms/libreoffice/convert",
-                        HttpMethod.POST,
-                        requestEntity,
-                        byte[].class
-                );
-                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                    pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
-                } else {
-                    throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
-                }
-            }
+    private byte[] downloadDac(Dac dac) throws DocNotFound, IOException {
+        Optional<ModelDac> modelDac = modelDacService.getModel(dac.getDacId(), dac.getDacVer(), false);
+        if (modelDac.isEmpty()) {
+            throw new DocNotFound("DAC not found or not accessible for ID: " + dac.getDacId(), null);
+        }
 
-            ByteArrayOutputStream mergedOut = com.sigmap.common.dac.DacServiceImpl.merge(pdfStreams);
-            return mergedOut.toByteArray();
-        } finally {
-            for (java.io.InputStream is : pdfStreams) {
-                try {
-                    is.close();
-                } catch (Exception ignore) {
-                }
-            }
+        DocumentResponseDTO dummyContent = getDocumentInformation(modelDac.get().getDoc().getAlfresco_id()).orElseThrow(() -> new DocsNotFoundException(""));
+        if (dummyContent.getFile() != null) {
+            return dummyContent.getFile();
+        } else {
+            throw new IOException("Error while downloading document.");
         }
     }
 }
