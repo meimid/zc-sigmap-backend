@@ -47,7 +47,7 @@ public class AgpmWebsiteResponse {
         }
 
 
-        Calendar updatedAt = agpm.getUpdatedAt();
+        Calendar updatedAt = agpm.getPublishedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());

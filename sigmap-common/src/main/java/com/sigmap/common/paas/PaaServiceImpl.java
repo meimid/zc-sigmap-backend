@@ -354,6 +354,7 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setIsDeleted(paa.getIsDeleted());
         filteredPaa.setDeletedBy(paa.getDeletedBy());
         filteredPaa.setDeletedAt(paa.getDeletedAt());
+        filteredPaa.setPublishedAt(paa.getPublishedAt());
         filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
 //        filteredPaa.setRealisations(paa.getRealisations());
 
@@ -2473,6 +2474,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setStatus(status);
         log.info("status name 2" + paa.getStatus());
         paa.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            paa.setPublishedAt(Calendar.getInstance());
+        }
+
         return repository.save(paa);
     }
 

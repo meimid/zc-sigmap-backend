@@ -1047,6 +1047,10 @@ public class PpmServiceImpl implements PpmService {
 
         log.info("Updating status with ID: " + ppmId + " and version: " + ppmVer + " with status: " + status);
         existingPpm.setStatus(status);
+
+        if (status == ProcessStatus.PUBLIE ) {
+            existingPpm.setPublishedAt(Calendar.getInstance());
+        }
         return repository.save(existingPpm);
 
     }

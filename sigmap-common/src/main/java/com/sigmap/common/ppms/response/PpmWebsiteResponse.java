@@ -53,7 +53,7 @@ public class PpmWebsiteResponse implements Serializable {
             this.year = Integer.valueOf(ppm.getAnnee());
         }
 
-        Calendar updatedAt = ppm.getUpdatedAt();
+        Calendar updatedAt = ppm.getPublishedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());

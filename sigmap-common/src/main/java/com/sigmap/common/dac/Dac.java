@@ -83,5 +83,8 @@ public class Dac extends BaseEntity {
   @Column(name = "etape_dac", length = 50)
   private String etapeDac;
 
+  @Column(name = "published_at")
+  private Calendar publishedAt;
+
 
 }

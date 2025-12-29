@@ -13,6 +13,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 /**
@@ -100,5 +101,7 @@ public class Agpm extends BaseEntity implements DocumentHolder {
     @Column(name = "etape_process", length = 255)
     private String etapeProcess;
 
+    @Column(name = "published_at")
+    private Calendar publishedAt;
 
 }
