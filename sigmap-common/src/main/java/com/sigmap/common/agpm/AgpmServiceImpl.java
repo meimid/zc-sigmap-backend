@@ -26,6 +26,8 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.model_agpm.ModelAgpmRepository;
 import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.paas.PaaSpecifications;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import com.sigmap.common.user_ac.UserAc;
@@ -804,8 +806,12 @@ public class AgpmServiceImpl implements AgpmService {
 
 
         agpm.setStatus(status);
-
         agpm.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            agpm.setPublishedAt(Calendar.getInstance());
+        }
+
         return repository.save(agpm);
     }
 
@@ -839,6 +845,7 @@ public class AgpmServiceImpl implements AgpmService {
         responseAgpm.setActualise(source.getActualise());
         responseAgpm.setNbrActualisation(source.getNbrActualisation());
         responseAgpm.setEtapeProcess(source.getEtapeProcess());
+        responseAgpm.setPublishedAt(source.getPublishedAt());
         responseAgpm.setIsDeleted(source.getIsDeleted());
         responseAgpm.setCreatedAt(source.getCreatedAt());
         responseAgpm.setCreatedBy(source.getCreatedBy());
@@ -982,9 +989,7 @@ public class AgpmServiceImpl implements AgpmService {
     @Override
     public Page<Agpm> findAllForWebsite(Specification<Agpm> spec, Pageable pageable) {
         Specification<Agpm> finalSpec = Specification.where(spec)
-                .and(AgpmSpecifications.isLatestVersion())
-                .and(AgpmSpecifications.isPublished())
-                .and(AgpmSpecifications.isNotDeleted());
+                .and(AgpmSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 
@@ -1070,4 +1075,6 @@ public class AgpmServiceImpl implements AgpmService {
 
         return createFilteredResponseAgpm(saved);
     }
+
+
 }

@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_dac.config;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
@@ -22,6 +23,7 @@ import java.util.Scanner;
  * Scans classpath:{process.definition.location}*.bpmn20.xml, compares file checksums
  * against deployed resources for the same tenant, and deploys only when changed.
  */
+@Slf4j
 @Configuration
 public class TenantAwareFlowableConfig {
 
@@ -76,9 +78,9 @@ public class TenantAwareFlowableConfig {
                         .name("DAC Process Deployment")
                         .addInputStream(fileName, resource.getInputStream())
                         .deploy();
-                System.out.println("[DAC] Deployed: " + fileName);
+                log.info("[DAC] Deployed: {}" , fileName);
             } else {
-                System.out.println("[DAC] Skipped (no changes): " + fileName);
+                log.info("[DAC] Skipped (no changes): {}" , fileName);
             }
         }
 

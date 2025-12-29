@@ -3,6 +3,7 @@ package com.sigmap.common.agpm.response;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,7 +27,7 @@ public class AgpmWebsiteResponse {
     private String publicationDate;
     private Integer year;
     private String logo;
-    private DocsResponseDTO doc;
+    private DocsResponseWebsiteDTO doc;
     private Integer acId;
     private Boolean actualise;
     private Integer nbrActualisation;
@@ -46,7 +47,7 @@ public class AgpmWebsiteResponse {
         }
 
 
-        Calendar updatedAt = agpm.getUpdatedAt();
+        Calendar updatedAt = agpm.getPublishedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());
@@ -62,15 +63,6 @@ public class AgpmWebsiteResponse {
         if (agpm.getNom() != null) {
             codeBuilder.append(agpm.getNom());
         }
-       /* if (agpm.getAc() != null && agpm.getAc().getNom() != null) {
-            if (codeBuilder.length() > 0) codeBuilder.append(" ");
-            codeBuilder.append(agpm.getAc().getNom());
-        }
-        if (this.year != null) { // Use the year we already calculated
-            if (codeBuilder.length() > 0) codeBuilder.append(" ");
-            codeBuilder.append(this.year);
-        }*/
-      //  this.code = codeBuilder.toString();
         if(agpm.getNom()!=null) {
             this.code=agpm.getNom();
 

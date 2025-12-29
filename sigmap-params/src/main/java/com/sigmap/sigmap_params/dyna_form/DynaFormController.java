@@ -5,7 +5,6 @@ import com.sigmap.common.dyna_form.DynaFormService;
 import com.sigmap.common.dyna_form.request.DynaFormQuery;
 import com.sigmap.common.dyna_form.request.DynaFormRequest;
 import com.sigmap.common.dyna_form.response.DynaFormResponse;
-import com.sigmap.common.entity.TypeDossier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -117,10 +116,10 @@ public class DynaFormController {
      */
     @GetMapping("/by-type")
     public ResponseEntity<Page<DynaFormResponse>> findByType(
-            @RequestParam("type") TypeDossier type,
+            @RequestParam("typeDossierId") Integer typeDossierId,
             Pageable pageable
     ) {
-        Page<DynaFormResponse> page = dynaFormService.findByTypeDossier(type, pageable);
+        Page<DynaFormResponse> page = dynaFormService.findByTypeDossier(typeDossierId, pageable);
         return ResponseEntity.ok(page);
     }
 

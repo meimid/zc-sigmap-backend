@@ -2,6 +2,7 @@ package com.sigmap.common.dyna_form;
 
 import com.sigmap.common.dyna_form_fields.DynaFormField;
 import com.sigmap.common.entity.*;
+import com.sigmap.common.type_dossier.TypeDossier;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -38,8 +39,8 @@ public class DynaForm extends BaseEntity {
     @Column(name = "form_type")
     private FormType formType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type_dossier", length = 32, nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "type_dossier_id")
     private TypeDossier typeDossier;
 
     @OneToMany(fetch = FetchType.LAZY, mappedBy = "form", cascade = CascadeType.ALL, orphanRemoval = false)

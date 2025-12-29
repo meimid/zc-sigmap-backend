@@ -15,6 +15,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.request.DacDocsRequest;
+import com.sigmap.common.dac_docs.request.DacWithDacDocsRequest;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacDocResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
@@ -26,16 +27,29 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_fields.response.DynaFieldsDTO;
 import com.sigmap.common.dyna_fields.response.DynaFieldsResponse;
 import com.sigmap.common.dyna_fields_details.response.DynaFieldsDetailsDTO;
+import com.sigmap.common.dyna_form_fields.response.DynaFormFieldResponse;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithComException;
 import com.sigmap.common.security.Authentication;
+import com.sigmap.common.dac_dyna_form.DacDynaForm;
+import com.sigmap.common.dac_dyna_form.DacDynaFormRepository;
+import com.sigmap.common.dac_dyna_form.mappers.DacDynaFormMapper;
+import com.sigmap.common.dyna_form.DynaFormRepository;
+import com.sigmap.common.dyna_form.mappers.DynaFormMapper;
+import com.sigmap.common.dyna_form.response.DynaFormResponse;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
+import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
+import com.sigmap.common.dac_doc_soumission.mapper.DacDocSoumissionMapper;
+import com.sigmap.common.dac_doc_soumission.response.DacDocSoumissionResponse;
+import com.sigmap.common.dyna_form_fields.DynaFormFieldRepository;
 import com.sigmap.sigmap_dac.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_dac.services.dto.response.HistoricTaskDto;
@@ -96,6 +110,10 @@ public class DacFlowableService {
     @Autowired private HistoryService historyService;
     @Autowired private DacRepository dacRepository;
     @Autowired private DacService dacService;
+    @Autowired private DacDynaFormRepository dacDynaFormRepository;
+    @Autowired private DynaFormRepository dynaFormRepository;
+    @Autowired private DacDynaFormMapper dacDynaFormMapper;
+    @Autowired private DynaFormMapper dynaFormMapper;
     @Autowired private DacDocsService dacDocsService;
     @Autowired private CurrentUserService currentUserService;
     @Autowired private KeycloakAdminService keycloakAdminService;
@@ -103,6 +121,9 @@ public class DacFlowableService {
     @Autowired private ComServiceImpl comServiceImpl;
     @Autowired private AcServiceImpl acServiceImpl;
     @Autowired private EntityManager entityManager;
+    @Autowired private DacDocSoumissionRepository dacDocSoumissionRepository;
+    @Autowired private DacDocSoumissionMapper dacDocSoumissionMapper;
+    @Autowired private DynaFormFieldRepository dynaFormFieldRepository;
 
     /* -------------------------------- helpers: auth / roles -------------------------------- */
 
@@ -214,6 +235,7 @@ public class DacFlowableService {
             r.setStatus("ID must not be null");
             return r;
         }
+
         Integer latestVersion = dacService.findLatestVersionById(id);
         Optional<Dac> dacOpt = dacService.findById(id, latestVersion);
         if (dacOpt.isEmpty()) {
@@ -221,6 +243,7 @@ public class DacFlowableService {
             r.setStatus("DAC not found for id " + id);
             return r;
         }
+
         Dac dac = dacOpt.get();
         Integer version = dac.getDacVer();
 
@@ -236,12 +259,14 @@ public class DacFlowableService {
                         .singleResult()
                         .getId()
         );
+
         FlowElement fe = bpmnModel.getMainProcess().getFlowElement(effectiveTaskKey);
         if (!(fe instanceof UserTask initTaskModel)) {
             var r = new ProcessStartResponseDTO();
             r.setStatus("Initial task " + effectiveTaskKey + " not found or not a UserTask");
             return r;
         }
+
         if (!hasCandidateGroupFromModel(initTaskModel, (JwtAuthenticationToken) auth)) {
             var r = new ProcessStartResponseDTO();
             r.setStatus("User does not have the required role to start the process (candidate groups: "
@@ -254,11 +279,33 @@ public class DacFlowableService {
         Map<String, Object> vars = new HashMap<>();
         vars.put("id", id);
         vars.put("version", version);
-        Integer acId = (dac.getPpm() != null && dac.getPpm().getAc() != null) ? dac.getPpm().getAc().getId() : null;
+
+        Integer acId = (dac.getAppelOffre().getPpm() != null && dac.getAppelOffre().getPpm().getAc() != null)
+                ? dac.getAppelOffre().getPpm().getAc().getId()
+                : null;
         if (acId != null) vars.put("acId", acId);
-        vars.put("isRestraint", dac.getModePassation() != null && dac.getModePassation().isRestraint());
-        vars.put("shortListing", dac.isShortListing());
-        vars.put("parentDacId", dac.getParentDacId());
+
+        vars.put("isRestraint",
+                dac.getAppelOffre().getRealisation().getModePassation() != null
+                        && dac.getAppelOffre().getRealisation().getModePassation().isRestraint()
+        );
+
+        Integer etapeDac = 1;
+        String etapeDacStr = dac.getEtapeDac();
+        if (etapeDacStr != null && !etapeDacStr.isBlank()) {
+            try {
+                Integer parsed = Integer.valueOf(etapeDacStr.trim());
+                if (parsed == 1 || parsed == 2) {
+                    etapeDac = parsed;
+                }
+            } catch (NumberFormatException ignored) {
+                // keep default = 1
+            }
+        }
+        vars.put("etapeDac", etapeDac);
+
+        // vars.put("shortListing", dac.isShortListing());
+        // vars.put("parentDacId", dac.getParentDacId());
 
         ProcessInstance pi = runtimeService.startProcessInstanceByKeyAndTenantId(effectiveProcessKey, vars, TENANT_ID);
 
@@ -286,13 +333,14 @@ public class DacFlowableService {
             r.setStatus("User cannot complete initial task. Candidate groups: " + getCandidateGroup(t));
             return r;
         }
+
         String processInstanceId = pi.getProcessInstanceId();
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
 
         taskService.setAssignee(t.getId(), Authentication.getCurrentUserId().orElse(((JwtAuthenticationToken) auth).getName()));
         taskService.complete(t.getId());
-        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
+        updateDacEtapeProcess(processInstanceId, dacId, dacVer);
 
         var resp = new ProcessStartResponseDTO();
         resp.setProcessInstanceId(pi.getId());
@@ -513,6 +561,11 @@ public class DacFlowableService {
 
                         if (!matches) continue;
 
+                        if (!applyCpmpUiFilter(gw, gf, vars)) {
+                            log.info(" → RESULT: Flow '{}' hidden by CPMP UI rules", gf.getId());
+                            continue;
+                        }
+
                         log.info(" → RESULT: Flow '{}' is VISIBLE ✓", gf.getId());
 
                     /* =============================================================
@@ -563,6 +616,52 @@ public class DacFlowableService {
         }
 
         return result;
+    }
+
+    private boolean applyCpmpUiFilter(
+            ExclusiveGateway gw,
+            SequenceFlow flow,
+            Map<String, Object> vars
+    ) {
+
+        //  Ne concerne QUE le gateway CPMP
+        if (!"ExclusiveGateway_1qgo4yf".equals(gw.getId())) {
+            return true;
+        }
+
+        String action = getActionLabelFromXml(flow);
+        Boolean isRestraint = (Boolean) vars.get("isRestraint");
+        Integer etapeDac = (Integer) vars.get("etapeDac");
+
+        // Sécurité
+        if (action == null) return false;
+
+        //  Reject → toujours visible
+        if ("Reject".equalsIgnoreCase(action)) {
+            return true;
+        }
+
+        //  Validate → restreint
+        if ("Validate".equalsIgnoreCase(action) && Boolean.TRUE.equals(isRestraint)) {
+            return true;
+        }
+
+        //  Validate → publication
+        if ("Validate".equalsIgnoreCase(action)
+                && Boolean.FALSE.equals(isRestraint)
+                && Integer.valueOf(1).equals(etapeDac)) {
+            return true;
+        }
+
+        //  Transmettre → DAO
+        if ("Transmettre".equalsIgnoreCase(action)
+                && Boolean.FALSE.equals(isRestraint)
+                && Integer.valueOf(2).equals(etapeDac)) {
+            return true;
+        }
+
+        //  Tout le reste est masqué
+        return false;
     }
 
 
@@ -651,7 +750,7 @@ public class DacFlowableService {
             throws DacNotFound, DocNotFound, AcNotFound,
             MissingComIdException, MissingAcIdException,
             UserNotAssociatedWithAcException, UserNotAssociatedWithComException,
-            ComNotFound, IOException {
+            ComNotFound, IOException, MonnaieNotFound {
 
         List<TaskDTO> responses = new ArrayList<>();
 
@@ -670,13 +769,14 @@ public class DacFlowableService {
 
         return responses;
     }
+
     @Transactional
     public TaskDTO validateTask(String taskId, ValidationRequest request)
             throws DacNotFound, DocNotFound, AcNotFound,
             MissingAcIdException, MissingComIdException,
             UserNotAssociatedWithAcException,
             UserNotAssociatedWithComException,
-            ComNotFound {
+            ComNotFound, MonnaieNotFound {
 
         log.info("[FLOW] ==== Enter validateTask() for taskId={} ====", taskId);
         log.debug("[FLOW] Incoming ValidationRequest: {}", request);
@@ -786,44 +886,59 @@ public class DacFlowableService {
             }
         }
 
-        // --- If editable, update DAC (batch docs → new single version) ---
+        // --- If editable, update DAC (DacWithDacDocsRequest → new single version) ---
         if (Boolean.TRUE.equals(isUpdatable)) {
-            log.info("[DAC] Task marked as updatable; processing DacDocs batch");
-            List<DacDocsRequest> updates = request.getDacDocsRequest();
-            if (updates == null || updates.isEmpty()) {
-                log.error("[DAC] No DacDocsRequest provided for updatable task {}", taskId);
+            log.info("[DAC] Task marked as updatable; processing DacWithDacDocs batch");
+
+            DacWithDacDocsRequest dacWithDocs = request.getDacWithDacDocsRequest();
+            log.info("[DAC] DacWithDacDocsRequest: {}", dacWithDocs);
+            List<DacDocsRequest> updates = (dacWithDocs != null) ? dacWithDocs.getDacDocsRequests() : null;
+log.info("[DAC] DacDocsRequest: {}", updates);
+            if (dacWithDocs == null || updates == null || updates.isEmpty()) {
+
+                log.error("[DAC] No DacWithDacDocsRequest / dacDocsRequests provided for updatable task {}", taskId);
                 TaskDTO error = new TaskDTO();
-                error.setStatus("At least one DacDocsRequest is required when isUpdatable=true");
+                error.setStatus("DacWithDacDocsRequest with at least one dacDocsRequests is required when isUpdatable=true");
                 return error;
             }
 
             for (DacDocsRequest u : updates) u.setDacId(id);
-            log.debug("[DAC] Creating batch of {} DAC docs for DAC {}", updates.size(), id);
-            dacDocsService.createDacDocsBatch(updates);
+
+            log.debug("[DAC] Creating Dac + batch of {} DAC docs for DAC {}", updates.size(), id);
+            dacDocsService.createDacWithDacDocsBatch(dacWithDocs,null);
 
             // refresh DAC to latest version
-            latestDac = dacService.findById(id, null).orElse(latestDac);
+            latestDac = dacRepository.findDacWithLatestVersionByDacId(id);
             log.info("[DAC] Refreshed DAC after docs batch → version={}", latestDac.getDacVer());
             runtimeService.setVariable(task.getProcessInstanceId(), "version", latestDac.getDacVer());
 
+
             // refresh gateway-driving vars from DAC
             runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
-                    latestDac.getModePassation() != null && latestDac.getModePassation().isRestraint());
-            runtimeService.setVariable(task.getProcessInstanceId(), "shortListing", latestDac.isShortListing());
-            runtimeService.setVariable(task.getProcessInstanceId(), "parentDacId", latestDac.getParentDacId());
+                    latestDac.getAppelOffre().getRealisation().getModePassation() != null
+                            && latestDac.getAppelOffre().getRealisation().getModePassation().isRestraint());
 
-            log.info("[DAC] Updated process vars after versioning: version={}, isRestraint={}, shortListing={}, parentDacId={}",
+            Integer etapeDac = 1;
+            String etapeDacStr = latestDac.getEtapeDac();
+            if (etapeDacStr != null && !etapeDacStr.isBlank()) {
+                try {
+                    Integer parsed = Integer.valueOf(etapeDacStr.trim());
+                    if (parsed == 1 || parsed == 2) etapeDac = parsed;
+                } catch (NumberFormatException ignored) {
+                    // keep default
+                }
+            }
+            runtimeService.setVariable(task.getProcessInstanceId(), "etapeDac", etapeDac);
+
+            log.info("[DAC] Updated process vars after versioning: version={}, isRestraint={}, etapeDac={}",
                     latestDac.getDacVer(),
                     runtimeService.getVariable(task.getProcessInstanceId(), "isRestraint"),
-                    runtimeService.getVariable(task.getProcessInstanceId(), "shortListing"),
-                    runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId"));
+                    runtimeService.getVariable(task.getProcessInstanceId(), "etapeDac"));
         }
 
-// --- DAC-specific note: shortListing may exist without parentDacId ---
-        Boolean shortListing = (Boolean) runtimeService.getVariable(task.getProcessInstanceId(), "shortListing");
-        Integer parentDacId  = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "parentDacId");
-        if (Boolean.TRUE.equals(shortListing) && parentDacId == null) {
-            log.warn("[DAC] shortListing=true but parentDacId is null for DAC {} — proceeding without blocking", id);
+        Object etapeObj = runtimeService.getVariable(task.getProcessInstanceId(), "etapeDac");
+        if (etapeObj == null) {
+            log.warn("[DAC] etapeDac is null for DAC {} — proceeding without blocking", id);
         }
 
         if (request.getCncmpDecision() != null) {
@@ -907,8 +1022,8 @@ public class DacFlowableService {
         // --- Dynamic COM wiring (approve path), AC inside DAC via DAC→PPM→AC ---
         if (Boolean.TRUE.equals(request.getValidate())) {
             log.info("[COM] Evaluating dynamic commission wiring for validation path");
-            Integer acIdFromDac = (latestDac.getPpm() != null && latestDac.getPpm().getAc() != null)
-                    ? latestDac.getPpm().getAc().getId() : null;
+            Integer acIdFromDac = (latestDac.getAppelOffre().getPpm() != null && latestDac.getAppelOffre().getPpm().getAc() != null)
+                    ? latestDac.getAppelOffre().getPpm().getAc().getId() : null;
 
             // Case: current = AC validation (no meeting) and next requires meeting → set CPMP for the AC
             if (!Boolean.TRUE.equals(meetingRequired) && Boolean.TRUE.equals(nextMeetingRequired)) {
@@ -961,7 +1076,6 @@ public class DacFlowableService {
                         log.info("[COM] Attached PER comId={} to DAC {} (decision pre-apply)", perId, id);
                     } catch (Exception ignore) {}
                 }
-                // (already set earlier, but keep idempotent)
                 runtimeService.setVariable(pid, "cncmpDecision", dec.name());
 
                 switch (dec) {
@@ -1001,6 +1115,7 @@ public class DacFlowableService {
                 log.warn("[STATUS] Failed to update DAC {} to VALIDEE: {}", id, e.getMessage());
             }
         }
+
         // --- Affectation: commissionRequired=true & not meeting ⇒ request.comId required (choose SCS) ---
         if (Boolean.TRUE.equals(commissionRequired) && !Boolean.TRUE.equals(meetingRequired)) {
             log.info("[COM] Affectation step detected (commissionRequired=true, meetingRequired=false)");
@@ -1268,11 +1383,13 @@ public class DacFlowableService {
         } catch (Exception e) {
             log.warn("[COM] SAFETY#2 failed before completion: {}", e.getMessage());
         }
+
         if (request.getCncmpDecision() != null) {
             String pid = task.getProcessInstanceId();
             runtimeService.setVariable(pid, "cncmpDecision", request.getCncmpDecision().name());
             log.info("[FLOW] ✅ Persisted cncmpDecision={} into process instance {}", request.getCncmpDecision().name(), pid);
         }
+
         // --- FINAL COM SYNC before completing task ---
         try {
             String pid = task.getProcessInstanceId();
@@ -1286,10 +1403,10 @@ public class DacFlowableService {
         } catch (Exception e) {
             log.warn("[COM] Failed final com sync before completion: {}", e.getMessage());
         }
+
         String processInstanceId = task.getProcessInstanceId();
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
-
 
         if (comIdSnapshot != null) {
             runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
@@ -1330,10 +1447,11 @@ public class DacFlowableService {
 
         resp.setStatus("Task validated successfully");
         log.info("[FLOW] ==== validateTask() completed for taskId={} ====", taskId);
+
         // Complete task
         taskService.complete(taskId);
         log.info("[TASK] Task [{}] completed successfully", taskId);
-        updateDacEtapeProcess(processInstanceId,dacId,dacVer);
+        updateDacEtapeProcess(processInstanceId, dacId, dacVer);
         return resp;
     }
 
@@ -1556,11 +1674,50 @@ public class DacFlowableService {
         }
 
         resp.setDacDocs(dacDocs);
+        if (dacDocs != null) {
+            dacDocs.setAoId(dac.getAppelOffre().getId());
+            dacDocs.setAoReference(dac.getAppelOffre().getReference());
+            List<DacDynaForm> dacDynaForms = dacDynaFormRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer())
+                    .stream()
+                    .filter(df -> !Boolean.TRUE.equals(df.getIsDeleted()))
+                    .collect(Collectors.toList());
+            if (dacDynaForms != null && !dacDynaForms.isEmpty()) {
+                Map<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> grouped = dacDynaForms.stream()
+                        .collect(Collectors.groupingBy(df -> new com.sigmap.common.entity.CompositeId(df.getDynaFormId(), df.getDynaFormVer())));
 
-        // Attached DacPrix
-        List<DacPrix> prixDac = dacPrixRepository.findByDac(dac.getDacId(), dac.getDacVer());
-        List<DacPrixResponce> responces = prixDac.stream().map(DacPrixMapper.INSTANCE::map).toList();
-        resp.setDacPrix(responces);
+                List<DynaFormResponse> dynaFormsList = new ArrayList<>();
+                for (Map.Entry<com.sigmap.common.entity.CompositeId, List<DacDynaForm>> entry : grouped.entrySet()) {
+                    dynaFormRepository.findById(entry.getKey()).ifPresent(f -> {
+                        DynaFormResponse fResp = dynaFormMapper.toResponse(f);
+                        Map<Integer, DacDynaForm> fieldMap = entry.getValue().stream()
+                                .collect(Collectors.toMap(DacDynaForm::getDynaFormFieldsId, df -> df, (a, b) -> a));
+
+                        // Populate display attribute for each field
+                        for (DynaFormFieldResponse fieldResp : fResp.getFields()) {
+                            DacDynaForm ddf = fieldMap.get(fieldResp.getDynaFormFieldsId());
+                            if (ddf != null && Objects.equals(ddf.getDisplay(), true)) {
+                                fieldResp.setDisplay(true);
+                            } else {
+                                fieldResp.setDisplay(false);
+                            }
+                        }
+
+                        dynaFormsList.add(fResp);
+                    });
+                }
+                dacDocs.setDynaForms(dynaFormsList);
+            } else {
+                dacDocs.setDynaForms(new ArrayList<>());
+            }
+
+            // Populating submissionPieces in DacResponseDTO
+            List<DacDocSoumission> dacDocSoumissions = dacDocSoumissionRepository.findByDacIdAndDacVer(dac.getDacId(), dac.getDacVer());
+            List<DacDocSoumissionResponse> submissionPieces = dacDocSoumissions.stream()
+                    .map(dacDocSoumissionMapper::map)
+                    .collect(Collectors.toList());
+            dacDocs.setSubmissionPieces(submissionPieces);
+        }
+
 
         String piId = dac.getProcessInstanceId();
         if (piId == null) {
@@ -1645,15 +1802,10 @@ public class DacFlowableService {
         String stepName = (nextTask != null ? nextTask.getName() : "Completed");
 
 
-        if (dacId != null && dacVer != null) {
-            DacId compositeId = new DacId(dacId, dacVer);
-
-            dacRepository.findById(compositeId).ifPresent(dac -> {
-                dac.setEtapeProcess(stepName);
+       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+              dac.setEtapeProcess(stepName);
                 dacRepository.save(dac);
-            });
-        }
-    }
+            };
 
     @Transactional(readOnly = true)
     public TaskListResponseDTO getDacTasksByComId(Integer comId) {
@@ -1737,12 +1889,12 @@ public class DacFlowableService {
                             dto.setId(dacId);
                             dto.setVersion(dacVer);
                             dto.setRef(dac.getReference());
-                            dto.setNom(dac.getPpm().getNom());
+                            dto.setNom(dac.getAppelOffre().getPpm().getNom());
                             dto.setStatus(String.valueOf(dac.getStatus()));
 
 
-                            if (dac.getPpm().getAc() != null) {
-                                dto.setNomAc(dac.getPpm().getAc().getNom());
+                            if (dac.getAppelOffre().getPpm().getAc() != null) {
+                                dto.setNomAc(dac.getAppelOffre().getPpm().getAc().getNom());
                             }
                         }
                     } catch (Exception e) {
@@ -1765,11 +1917,11 @@ public class DacFlowableService {
                 dto.setCommissionRequired(props.get("commissionRequired"));
                 dto.setMeetingRequired(props.get("meetingRequired"));
 
-                // comId var
-                Integer comIdVar = (Integer) vars.get("comId");
-                if (comIdVar != null) dto.setComId(comIdVar);
-
-                taskList.add(dto);
+                Boolean meetingRequired = props.get("meetingRequired");
+                if (meetingRequired != null && meetingRequired) {
+                    dto.setMeetingRequired(true);
+                    taskList.add(dto);
+                }
             }
         }
 

@@ -7,4 +7,5 @@ import lombok.Data;
 public class DacRealisationResponseDTO {
     private Integer id;
     private Integer version;
+    private String realisationEnvisagees;
 }

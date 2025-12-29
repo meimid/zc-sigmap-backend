@@ -29,6 +29,7 @@ import com.sigmap.common.doc_soumission.exception.InvalidTypeDossierException;
 import com.sigmap.common.doc_soumission.exception.NomRequired;
 import com.sigmap.common.doc_soumission.exception.TypeDossierRequired;
 import com.sigmap.common.docs.exeptions.DocDeleted;
+import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
@@ -58,12 +59,17 @@ import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
 import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
+import com.sigmap.common.societe_blak_list.exception.BlackListNotFound;
+import com.sigmap.common.societe_blak_list.exception.DelaiRequired;
+import com.sigmap.common.societe_blak_list.exception.InvalidBlackListDecision;
+import com.sigmap.common.societe_blak_list.exception.SocieteAlreadyBlackListed;
 import com.sigmap.common.societe_contact.exception.SocieteContactAlreadyExist;
 import com.sigmap.common.societe_contact.exception.SocieteContactNotFound;
 import com.sigmap.common.type_agrement.exception.OrganismeDeDeliveranceAgrementsRequired;
 import com.sigmap.common.type_agrement.exception.TypeAgrementAlreadyExist;
 import com.sigmap.common.type_agrement.exception.TypeAgrementNotFound;
 import com.sigmap.common.type_agrement.exception.WrongType;
+import com.sigmap.common.type_dossier.exception.TypeDossierNotFound;
 import com.sigmap.common.user_com.exception.UserComNotFound;
 import com.sigmap.common.user_com.exception.UserResponsibleForCom;
 import com.sigmap.common.user_commission_historique.exception.*;
@@ -1553,6 +1559,84 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(DocNotFound.class)
+    public ResponseEntity<ErrorResponse> handleDocNotFoundException(DocNotFound ex) {
+        String message = messageSource.getMessage("doc.notfound",new Object[] {String.join((CharSequence) ",", ex.getId().stream().map(String::valueOf).collect(Collectors.toList())) } , getLocal());
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
 
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(BlackListNotFound.class)
+    public ResponseEntity<ErrorResponse> handleBlackListNotFound(BlackListNotFound ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.notFound",
+                new Object[]{ex.getId()},
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.NOT_FOUND.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DelaiRequired.class)
+    public ResponseEntity<ErrorResponse> handleDelaiRequired(DelaiRequired ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.delaiRequired",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(InvalidBlackListDecision.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDecision(InvalidBlackListDecision ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.invalidDecision",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(SocieteAlreadyBlackListed.class)
+    public ResponseEntity<ErrorResponse> handleSocieteAlreadyBlackListed(SocieteAlreadyBlackListed ex) {
+
+        String message = messageSource.getMessage(
+                "blacklist.societeAlreadyBlackListed",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.CONFLICT.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(TypeDossierNotFound.class)
+    public ResponseEntity<ErrorResponse> TypeDossierNotFoundException() {
+
+        String message = messageSource.getMessage(
+                "typeDossier.notFound",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 }
 

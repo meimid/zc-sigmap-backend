@@ -1,6 +1,8 @@
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk-jammy AS builder
 
-RUN apk update && apk add maven curl
+RUN apt-get update && \
+    apt-get install -y maven curl && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -20,7 +22,7 @@ COPY pom.xml .
 
 RUN mvn clean package -B -DskipTests
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 

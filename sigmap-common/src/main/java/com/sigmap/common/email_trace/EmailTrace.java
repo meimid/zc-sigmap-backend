@@ -38,6 +38,6 @@ public class EmailTrace extends BaseEntity {
     private boolean successSend ;
 
     @Column(name = "date_send")
-    private LocalDateTime date_send;
+    private LocalDateTime dateSend;
 
 }

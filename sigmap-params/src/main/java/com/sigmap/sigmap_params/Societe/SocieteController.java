@@ -21,10 +21,17 @@ import com.sigmap.common.societe.SocieteService;
 import com.sigmap.common.societe.exception.SocieteNotFound;
 import com.sigmap.common.societe.mappers.SocieteMapper;
 import com.sigmap.common.societe.request.*;
-import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
-import com.sigmap.common.societe.response.SocieteResponse;
-import com.sigmap.common.societe.response.SocieteResponseDtoSoft;
+import com.sigmap.common.societe.response.*;
 
+import com.sigmap.common.societe_blak_list.SocieteBlackList;
+import com.sigmap.common.societe_blak_list.SocieteBlackListService;
+import com.sigmap.common.societe_blak_list.exception.BlackListNotFound;
+import com.sigmap.common.societe_blak_list.exception.InvalidBlackListDecision;
+import com.sigmap.common.societe_blak_list.mappers.SocieteBlackListMapper;
+import com.sigmap.common.societe_blak_list.request.SocieteBlackListQuery;
+import com.sigmap.common.societe_blak_list.request.SocieteBlackListRequest;
+import com.sigmap.common.societe_blak_list.response.SocieteBlackListResponse;
+import com.sigmap.common.societe_blak_list.response.SocieteBlackListResponseDto;
 import com.sigmap.common.societe_contact.Request.ContactAndSocieteContactRequest;
 import com.sigmap.common.societe_contact.Request.SocieteContactQuery;
 import com.sigmap.common.societe_contact.Request.SocieteContactRequest;
@@ -69,15 +76,16 @@ public class SocieteController {
     private final ContactService contactService;
     private final UserSocieteService userSocieteService;
     private final InscriptionOrchestrationService inscriptionOrchestrationService;
+    private final SocieteBlackListService blackListService;
 
-
-    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService, UserSocieteService userSocieteService, InscriptionOrchestrationService inscriptionOrchestrationService) {
+    public SocieteController(SocieteService societeService, SocieteContactService societeContactService, CompteBancaireService compteBancaireService, ContactService contactService, UserSocieteService userSocieteService, InscriptionOrchestrationService inscriptionOrchestrationService, SocieteBlackListService blackListService) {
         this.societeService = societeService;
         this.societeContactService = societeContactService;
         this.compteBancaireService = compteBancaireService;
         this.contactService = contactService;
         this.userSocieteService = userSocieteService;
         this.inscriptionOrchestrationService = inscriptionOrchestrationService;
+        this.blackListService = blackListService;
     }
 
     /**
@@ -128,6 +136,8 @@ public class SocieteController {
     public ResponseEntity<SocieteEnCourResponseDto> findById(@PathVariable Integer id) throws SocieteNotFound {
         Societe param = societeService.findById(id);
         SocieteEnCourResponseDto response = SocieteMapper.INSTANCE.toEnCourResponseDto(param);
+        boolean blacklisted = societeService.isCurrentlyBlackListed(param.getId());
+        response.setBlackListed(blacklisted);
         return ResponseEntity.ok(response);
     }
 
@@ -153,7 +163,8 @@ public class SocieteController {
     public ResponseEntity<SocieteResponse> update(@PathVariable Integer id,@RequestBody SocieteRequest request) throws RefParamNotFound,SocieteNotFound {
         Societe Societe = societeService.update(id,request);
         SocieteResponse response = SocieteMapper.INSTANCE.map(Societe);
-
+        boolean blacklisted = societeService.isCurrentlyBlackListed(id);
+        response.setBlackListed(blacklisted);
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
     /**
@@ -171,6 +182,8 @@ public class SocieteController {
         Societe deleted = societeService.findDeletedById(id)
                 .orElseThrow();
         SocieteResponse response = SocieteMapper.INSTANCE.map(deleted);
+        boolean blacklisted = societeService.isCurrentlyBlackListed(id);
+        response.setBlackListed(blacklisted);
         return ResponseEntity.ok(response);
     }
 
@@ -349,6 +362,7 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
 
     }
 
+
     private Page<SocieteResponseDtoSoft> mapToSocieteResponseDtoSoftPage(Page<Societe> societePage, Pageable pageable) {
         List<SocieteResponseDtoSoft> dtoList = societePage.getContent().stream()
                 .map(this::mapToSocieteResponseDtoSoft)
@@ -367,7 +381,6 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
             dto.setEmail(s.getAddress().getEmail());
         }
 
-        // ✅ Safe responsable extraction
         s.getUsersSociete().stream()
                 .filter(UserSociete::getResponsable)
                 .findFirst()
@@ -376,8 +389,112 @@ public ResponseEntity<SocieteContactResponse> createContact(@PathVariable Intege
                     dto.setResponsablePrenom(responsable.getPrenom());
                     dto.setResponsableEmail(responsable.getEmail());
                 });
+        dto.setBlackListed(societeService.isCurrentlyBlackListed(s.getId()));
+
 
         return dto;
     }
+/**
+ *
+ *
+ *
+ ******************************* this part for Societe black Listed  ***********************************
+ *
+ *
+ *
+ *
+ */
+
+@GetMapping("/blacklist")
+public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBlackListed(
+        SocieteBlackListQuery query,
+        Pageable pageable) {
+    Page<SocieteBlackList> page =
+            blackListService.findAll(query.toSpecification(), pageable);
+
+    Page<SocieteBlackListResponseDto> response =
+            page.map(SocieteBlackListMapper.INSTANCE::toResponseDto);
+
+    return ResponseEntity.ok(response);
+}
+
+    @GetMapping("/{societeId}/blacklist")
+    public ResponseEntity<Page<SocieteBlackListResponseDto>> findAllBySocieteId(
+            @PathVariable Integer societeId,
+            SocieteBlackListQuery query,
+            Pageable pageable) {
+        query.setSocieteId(societeId);
+
+        Page<SocieteBlackList> page =
+                blackListService.findAll(query.toSpecification(), pageable);
+
+        Page<SocieteBlackListResponseDto> response =
+                page.map(SocieteBlackListMapper.INSTANCE::toResponseDto);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{societeId}/blacklist/{id}")
+    public ResponseEntity<SocieteBlackListResponse> findByBlacklistById(
+            @PathVariable Integer societeId,
+            @PathVariable Integer id) throws BlackListNotFound {
+        SocieteBlackList entry = blackListService.findById(id, societeId);
+        return ResponseEntity.ok(SocieteBlackListMapper.INSTANCE.toResponse(entry));
+    }
+    @PostMapping("/blacklist")
+    public ResponseEntity<SocieteBlackListResponse> create(
+            @RequestBody SocieteBlackListRequest request
+    ) throws SocieteNotFound, InvalidBlackListDecision {
+
+        SocieteBlackList entry = blackListService.create(request);
+        return ResponseEntity.ok(SocieteBlackListMapper.INSTANCE.toResponse(entry));
+    }
+    @PutMapping("/blacklist/{id}")
+    public ResponseEntity<SocieteBlackListResponse> update(
+            @PathVariable Integer id,
+            @RequestBody SocieteBlackListRequest request
+    ) throws BlackListNotFound, InvalidBlackListDecision, SocieteNotFound {
+
+        SocieteBlackList updated = blackListService.update(id,  request);
+
+        return ResponseEntity.ok(
+                SocieteBlackListMapper.INSTANCE.toResponse(updated)
+        );
+    }
+    @DeleteMapping("/{societeId}/blacklist/{id}")
+    public ResponseEntity<SocieteBlackListResponse> delete(
+            @PathVariable Integer societeId,
+            @PathVariable Integer id
+    ) throws BlackListNotFound {
+
+        blackListService.delete(id, societeId);
+        SocieteBlackList entry = blackListService.findDeletedById(id, societeId);
+        SocieteBlackListResponse response=SocieteBlackListMapper.INSTANCE.toResponse(entry);
+        return ResponseEntity.ok(response);
+    }
+    @GetMapping("/all-validee-list")
+    public ResponseEntity<List<SocieteDropListDto>> findAllValidee(
+            SocieteQuery query) {
+        List<Societe> list =
+                societeService.findAllValidee(query.toSpecification());
+
+        return ResponseEntity.ok(list.stream().map(SocieteMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList()));
+    }
+
+    @GetMapping("/all-valid-not-black-listed")
+    public ResponseEntity<List<SocieteResponseDto>> findAllValidNotBlackListed(
+            SocieteQuery query) {
+
+        List<Societe> societes =
+                societeService.findAllValideNotBlackListed(query.toSpecification());
+
+        List<SocieteResponseDto> response =
+                societes.stream()
+                        .map(SocieteMapper.INSTANCE::toResponseDto)
+                        .toList();
+
+        return ResponseEntity.ok(response);
+    }
+
 
 }

@@ -19,7 +19,7 @@ import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
 
 @ComponentScan({"com.sigmap.common", "com.sigmap.sigmap_webmaster"})
-@EnableJpaRepositories({"com.sigmap.common"})
+@EnableJpaRepositories({"com.sigmap.common", "com.sigmap.sigmap_webmaster.repositories"})
 @EntityScan({"com.sigmap.common"})
 @SpringBootApplication
 @SecurityScheme(

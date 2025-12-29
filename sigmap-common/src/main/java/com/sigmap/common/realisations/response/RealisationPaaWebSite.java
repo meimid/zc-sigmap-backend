@@ -35,10 +35,8 @@ public class RealisationPaaWebSite {
 
         if(realisation.getModeSelection() != null) {
             this.selectionMode=realisation.getModeSelection().getDescription();
-            System.out.println("----------------------------"+selectionMode);
 
         }
-        System.out.println("----------------------------"+realisation.getModeSelection());
         if (realisation.getTypeMarcher() != null) {
             this.contractType = realisation.getTypeMarcher().getCode();
         }

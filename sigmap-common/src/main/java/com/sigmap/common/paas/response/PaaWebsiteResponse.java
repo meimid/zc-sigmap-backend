@@ -2,6 +2,7 @@ package com.sigmap.common.paas.response;
 
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
+import com.sigmap.common.docs.Response.DocsResponseWebsiteDTO;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.realisations.Realisation;
 import lombok.AllArgsConstructor;
@@ -21,20 +22,18 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class PaaWebsiteResponse {
     private Integer id;
-    private Integer version;
     private String code;
     private String title;
     private String publicationDate;
     private Integer year;
     private Integer nombreActivite;
     private String logo;
-    private DocsResponseDTO doc;
+    private DocsResponseWebsiteDTO doc;
     private Integer acId;
 
     public PaaWebsiteResponse(Paa paa) {
         // --- Direct Mappings ---
         this.id = paa.getId();
-        this.version = paa.getVersion();
 
         // --- Logic from "title" mapping ---
         if (paa.getAc() != null) {
@@ -48,7 +47,7 @@ public class PaaWebsiteResponse {
             this.year = Integer.valueOf(paa.getAnnee());
         }
 
-        Calendar updatedAt = paa.getUpdatedAt();
+        Calendar updatedAt = paa.getPublishedAt();
         if (updatedAt != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
             this.publicationDate = sdf.format(updatedAt.getTime());

@@ -1,6 +1,7 @@
 package com.sigmap.common.reunion;
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
@@ -25,7 +26,8 @@ public class ReunionSpecifications {
             Join<Ppm, Ac> acFromPpmJoin = ppmJoin.join("ac", JoinType.LEFT);
             Join<Reunion, ReunionDac> rdJoin = root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin = rdJoin.join("dac", JoinType.LEFT);
-            Join<Dac, Ppm> dacPpmJoin = dacJoin.join("ppm", JoinType.LEFT);
+            Join<Dac, AppelOffre> appelOffreJoin = dacJoin.join("appelOffre", JoinType.LEFT);
+            Join<AppelOffre, Ppm> dacPpmJoin = appelOffreJoin.join("ppm", JoinType.LEFT);
             Join<Ppm, Ac> acFromDacJoin = dacPpmJoin.join("ac", JoinType.LEFT);
 
             query.distinct(true);
@@ -177,8 +179,10 @@ public class ReunionSpecifications {
                     root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin =
                     reunionDacJoin.join("dac", JoinType.LEFT);
-            Join<Dac, Ppm> ppmJoin =
-                    dacJoin.join("ppm", JoinType.LEFT);
+            Join<Dac, AppelOffre> appelOffreJoin =
+                    dacJoin.join("appelOffre", JoinType.LEFT);
+            Join<AppelOffre, Ppm> ppmJoin =
+                    appelOffreJoin.join("ppm", JoinType.LEFT);
 
             Predicate viaReunionDacPpm =
                     cb.equal(ppmJoin.get("id"), ppmId);
@@ -202,8 +206,10 @@ public class ReunionSpecifications {
                     root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin =
                     reunionDacJoin.join("dac", JoinType.LEFT);
-            Join<Dac, Ppm> ppmJoin =
-                    dacJoin.join("ppm", JoinType.LEFT);
+            Join<Dac, AppelOffre> appelOffreJoin =
+                    dacJoin.join("appelOffre", JoinType.LEFT);
+            Join<AppelOffre, Ppm> ppmJoin =
+                    appelOffreJoin.join("ppm", JoinType.LEFT);
 
             Predicate viaReunionDacPpm =
                     cb.equal(ppmJoin.get("version"), ppmVer);
@@ -224,7 +230,8 @@ public class ReunionSpecifications {
             // via ReunionDac -> Dac -> Ppm -> Ac
             Join<Reunion, ReunionDac> rdJoin = root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin = rdJoin.join("dac", JoinType.LEFT);
-            Join<Dac, Ppm> dacPpmJoin = dacJoin.join("ppm", JoinType.LEFT);
+            Join<Dac, AppelOffre> appelOffreJoin = dacJoin.join("appelOffre", JoinType.LEFT);
+            Join<AppelOffre, Ppm> dacPpmJoin = appelOffreJoin.join("ppm", JoinType.LEFT);
             Join<Ppm, Ac> acJoin2 = dacPpmJoin.join("ac", JoinType.LEFT);
 
 

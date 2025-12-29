@@ -4,6 +4,7 @@ package com.sigmap.common.societe.mappers;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.request.SocieteRequest;
 import com.sigmap.common.societe.request.SocieteRequestInscription;
+import com.sigmap.common.societe.response.SocieteDropListDto;
 import com.sigmap.common.societe.response.SocieteEnCourResponseDto;
 import com.sigmap.common.societe.response.SocieteResponse;
 import com.sigmap.common.societe.response.SocieteResponseDto;
@@ -42,6 +43,8 @@ public interface SocieteMapper {
 
     SocieteResponseDto toResponseDto(Societe source);
     SocieteEnCourResponseDto toEnCourResponseDto(Societe source);
+    @Mapping(target = "pays",source = "address.pays.description")
+    SocieteDropListDto mapToDropListDto(Societe source);
 
 }
 

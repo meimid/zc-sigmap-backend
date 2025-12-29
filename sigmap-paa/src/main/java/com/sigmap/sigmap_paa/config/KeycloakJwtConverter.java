@@ -2,6 +2,8 @@ package com.sigmap.sigmap_paa.config;
 
 import java.util.*;
 import java.util.stream.Stream;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -57,7 +59,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 //   "family_name": "Boussarsar",
 //   "email": "superadmin@email.com"
 // }
-
+@Slf4j
 /** Converts a JWT into a Spring Security authentication token. */
 public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticationToken> {
   private final List<String> clientIds;
@@ -85,7 +87,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
             .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
             .toList();
 
-    System.out.println("Authorities " + authorities);
+    log.info("Authorities  {}" , authorities);
     return authorities;
   }
 
@@ -101,7 +103,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
       return List.of();
     }
 
-    System.out.println("Realm access" + realmAccess);
+    log.info("Realm access {}" , realmAccess);
 
     return (List<String>) realmAccess.get("roles");
   }
@@ -116,7 +118,7 @@ public class KeycloakJwtConverter implements Converter<Jwt, AbstractAuthenticati
     Object claim = jwt.getClaim("resource_access");
     if (!(claim instanceof Map)) return List.of();
     Map<String, Object> resourceAccess = (Map<String, Object>) claim;
-    System.out.println("Resource access >>" + resourceAccess);
+    log.info("Resource access >> {}" , resourceAccess);
 
     Set<String> roles = new LinkedHashSet<>();
     for (String clientId : clientIds) {

@@ -11,6 +11,8 @@ public class ModeDePassationSelectionSpecifications{
         Join<ModeDePassationSelection, RefParam> join = root.join("typeMarchers");
             return criteriaBuilder.or(
                 criteriaBuilder.like(root.get("libelle"), "%" + search + "%"),
+                criteriaBuilder.like(root.get("type"), "%" + search + "%"),
+                criteriaBuilder.like(root.get("etapes"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("description"), "%" + search + "%"),
                 criteriaBuilder.like(join.get("codeColor"), "%" + search + "%"));
             };
@@ -30,6 +32,19 @@ public static Specification<ModeDePassationSelection> libelle(String libelle) {
     };
 }
 
+    /** type. */
+    public static Specification<ModeDePassationSelection> type(String type) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("type"),type.toLowerCase());
+        };
+    }
+
+    /** etapes. */
+    public static Specification<ModeDePassationSelection> etapes(String etapes) {
+        return (root, query, criteriaBuilder) -> {
+            return criteriaBuilder.like(root.get("etapes"),etapes.toLowerCase());
+        };
+    }
 
 
 /** deleted. */

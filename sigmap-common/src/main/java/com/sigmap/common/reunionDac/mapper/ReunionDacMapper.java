@@ -19,7 +19,7 @@ public interface ReunionDacMapper {
     ReunionDacMapper INSTANCE = Mappers.getMapper(ReunionDacMapper.class);
 
     @Mapping(source = "dac", target = "dac")
-    @Mapping(source ="dac.ppm.ac",target = "dac.ac")
+    @Mapping(source ="dac.appelOffre.ppm.ac",target = "dac.ac")
     @Mapping(target = "docs", expression = "java(mapDocs(reunionDac.getReunionDacDocs()))")
     @Mapping(source ="dac.reference",target = "dac.reference")
     ReunionDacResponse toResponse(ReunionDac reunionDac);

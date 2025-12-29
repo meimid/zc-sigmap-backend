@@ -10,6 +10,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.model_dac.ModelDacService;
 import com.sigmap.common.model_dac.exceptions.DacModelShouldExiste;
+import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ppms.exception.MissingAcIdException;
 import com.sigmap.common.ppms.exception.MissingComIdException;
 import com.sigmap.common.ppms.exception.UserNotAssociatedWithAcException;
@@ -111,7 +112,7 @@ public class DacFlowableController {
             @RequestParam("requestsJson") String requestsJson,
             @PathVariable Integer idReu
             )
-            throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+            throws DacNotFound, DocNotFound, AcNotFound, IOException, ComNotFound, MonnaieNotFound {
 
         Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
         if (!present) {
@@ -155,7 +156,7 @@ public class DacFlowableController {
             MissingAcIdException,
             MissingComIdException,
             UserNotAssociatedWithAcException,
-            UserNotAssociatedWithComException {
+            UserNotAssociatedWithComException, MonnaieNotFound {
         log.info("Validating DAC taskId={} with request={}", taskId, request);
         TaskDTO response = dacFlowableService.validateTask(taskId, request);
         return ResponseEntity.ok(response);
@@ -208,10 +209,15 @@ public class DacFlowableController {
     public ResponseEntity<TaskDTO> validateTaskWithModelDac(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile
-    ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound {
+            @RequestPart(value = "modelDacFile", required = false) MultipartFile modelDacFile,
+            @RequestPart(value = "dacFile", required = false) MultipartFile dacFile
+    ) throws IOException, DacNotFound, AcNotFound, DocNotFound, ComNotFound, MonnaieNotFound {
 
         if (modelDacFile == null || modelDacFile.isEmpty()) {
+            throw new DacModelShouldExiste("Le fichier Model AAO DAC est requis.");
+        }
+
+        if (dacFile == null || dacFile.isEmpty()) {
             throw new DacModelShouldExiste("Le fichier Model DAC est requis.");
         }
 
@@ -232,7 +238,12 @@ public class DacFlowableController {
                 modelDacFile, dacId, dacVer, rootPath
         );
 
-        modelDacService.setModel(dacId, dacVer, docId);
+        Integer dacDocId = documentCommuneService.processAndSaveDocumentsForModelDac(
+                dacFile, dacId, dacVer, rootPath
+        );
+
+        modelDacService.setModel(dacId, dacVer, docId,true);
+        modelDacService.setModel(dacId, dacVer, dacDocId,false);
 
         request.setFromMeeting(false);
         TaskDTO response = dacFlowableService.validateTask(taskId, request);

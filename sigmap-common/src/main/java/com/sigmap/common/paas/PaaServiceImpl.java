@@ -354,6 +354,7 @@ public class PaaServiceImpl implements PaaService {
         filteredPaa.setIsDeleted(paa.getIsDeleted());
         filteredPaa.setDeletedBy(paa.getDeletedBy());
         filteredPaa.setDeletedAt(paa.getDeletedAt());
+        filteredPaa.setPublishedAt(paa.getPublishedAt());
         filteredPaa.setProcessInstanceId(paa.getProcessInstanceId());
 //        filteredPaa.setRealisations(paa.getRealisations());
 
@@ -775,85 +776,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
                 }
 
-                // =========================== FINANCEMENTS (UPDATE EXISTING REALISATION) ===========================
-                if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
+                // =========================== FINANCEMENTS ===========================
+                processFinancementsForRealisationPaa(realisation, rReq.getFinancements());
 
-                    // 1) Soft-delete all existing financements
-                    List<Financement> allFins =
-                            (realisation.getFinancements() != null) ? realisation.getFinancements() : new ArrayList<>();
-                    for (Financement f : allFins) {
-                        if (!Boolean.TRUE.equals(f.getIsDeleted())) {
-                            f.setIsDeleted(true);
-                        }
-                    }
-
-                    // 2) Create new financements from request
-                    for (FinancementRequest fr : rReq.getFinancements()) {
-                        if (fr.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for Realisation {}", realisation.getId());
-                            continue;
-                        }
-
-                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-
-                        Financement fin = new Financement();
-                        FinancementId fid = new FinancementId(
-                                realisation.getId(),
-                                realisation.getVersion(),
-                                nextFinId
-                        );
-                        fin.setId(fid);
-                        fin.setRealisation(realisation);
-
-                        Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-
-                        fin.setMonnaie(monnaie);
-                        fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
-
-                        if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                            RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                            fin.setSourceFinancement(src);
-                        } else {
-                            fin.setSourceFinancement(null);
-                        }
-
-                        fin.setBudgetEstimer(fr.getBudgetEstimer());
-                        fin.setIsDeleted(false);
-
-                        allFins.add(fin);
-                    }
-
-                    realisation.setFinancements(allFins);
-                    financementRepository.saveAll(allFins);
-
-                    // 3) Recompute budget from non-deleted financements
-                    BigDecimal rb = allFins.stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .map(f -> {
-                                BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                        ? f.getMonnaie().getTaux()
-                                        : 0.0;
-                                return budget.multiply(BigDecimal.valueOf(taux));
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    realisation.setBudgetEstime(rb);
-
-                } else {
-                    // No financements array -> soft delete all
-                    if (realisation.getFinancements() != null) {
-                        realisation.getFinancements().forEach(f -> {
-                            if (!Boolean.TRUE.equals(f.getIsDeleted())) f.setIsDeleted(true);
-                        });
-                        financementRepository.saveAll(realisation.getFinancements());
-                    } else {
-                        realisation.setFinancements(new ArrayList<>());
-                    }
-                    realisation.setBudgetEstime(BigDecimal.ZERO);
-                }
-                // =========================== END FINANCEMENTS (UPDATE) ===========================
 
                 // ---- Seuil AFTER collections/budget are consistent
                 setSeuilApplicableForRealisation(realisation, requestAcId);
@@ -924,65 +849,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     savedReal.setLots(lots);
                 }
 
-                // =========================== FINANCEMENTS (CREATE NEW REALISATION) ===========================
-                if (rReq.getFinancements() != null && !rReq.getFinancements().isEmpty()) {
-                    List<Financement> fins = new ArrayList<>();
+                // =========================== FINANCEMENTS  ===========================
+                processFinancementsForRealisationPaa(savedReal, rReq.getFinancements());
 
-                    for (FinancementRequest fr : rReq.getFinancements()) {
-                        if (fr.getMonnaieId() == null) {
-                            log.warn("Skipping financement with null monnaieId for new Realisation {}", savedReal.getId());
-                            continue;
-                        }
-
-                        Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
-
-                        Financement fin = new Financement();
-                        FinancementId fid = new FinancementId(
-                                savedReal.getId(),
-                                savedReal.getVersion(),
-                                nextFinId
-                        );
-                        fin.setId(fid);
-                        fin.setRealisation(savedReal);
-
-                        Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
-                                .orElseThrow(() -> new EntityNotFoundException("Monnaie with ID " + fr.getMonnaieId() + " not found"));
-                        fin.setMonnaie(monnaie);
-                        fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
-
-                        if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
-                            RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
-                                    .orElseThrow(() -> new EntityNotFoundException("Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
-                            fin.setSourceFinancement(src);
-                        } else {
-                            fin.setSourceFinancement(null);
-                        }
-
-                        fin.setBudgetEstimer(fr.getBudgetEstimer());
-                        fin.setIsDeleted(false);
-
-                        fins.add(fin);
-                    }
-
-                    savedReal.setFinancements(fins);
-                    financementRepository.saveAll(fins);
-
-                    BigDecimal rb = fins.stream()
-                            .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                            .map(f -> {
-                                BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
-                                Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                        ? f.getMonnaie().getTaux()
-                                        : 0.0;
-                                return budget.multiply(BigDecimal.valueOf(taux));
-                            })
-                            .reduce(BigDecimal.ZERO, BigDecimal::add);
-                    savedReal.setBudgetEstime(rb);
-                } else {
-                    savedReal.setFinancements(new ArrayList<>());
-                    savedReal.setBudgetEstime(BigDecimal.ZERO);
-                }
-                // =========================== END FINANCEMENTS (CREATE) ===========================
 
                 // Files
                 if (rReq.getRealisationFiles() != null) {
@@ -1110,6 +979,175 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     return copyForResponse;
 }
 
+    private void processFinancementsForRealisationPaa(Realisation realisation,
+                                                      List<FinancementRequest> financementRequests) {
+
+        List<Financement> existingFinancements =
+                financementRepository.findByRealisationIdAndVersion(realisation.getId(), realisation.getVersion());
+
+        if (existingFinancements == null) existingFinancements = new ArrayList<>();
+
+        Set<Integer> usedIds = existingFinancements.stream()
+                .map(Financement::getId)
+                .filter(Objects::nonNull)
+                .map(FinancementId::getFinancementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        // On va reconstruire l’état final
+        List<Financement> result = new ArrayList<>();
+
+        if (financementRequests != null && !financementRequests.isEmpty()) {
+
+            Set<Integer> requestedIds = financementRequests.stream()
+                    .map(FinancementRequest::getFinancementId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            for (FinancementRequest fr : financementRequests) {
+
+                if (fr.getMonnaieId() == null) {
+                    log.warn("Skipping financement with null monnaieId for Realisation {}", realisation.getId());
+                    continue;
+                }
+
+                Integer financementId = fr.getFinancementId();
+
+                // ==========================
+                // CASE 1: UPDATE EXISTING
+                // ==========================
+                if (financementId != null && financementId > 0) {
+
+                    Financement existing = existingFinancements.stream()
+                            .filter(f -> f.getId() != null
+                                    && Objects.equals(f.getId().getFinancementId(), financementId))
+                            .findFirst()
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Financement with ID " + financementId +
+                                            " not found for Realisation ID: " + realisation.getId()
+                            ));
+
+                    Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Monnaie with ID " + fr.getMonnaieId() + " not found"));
+
+                    existing.setMonnaie(monnaie);
+                    existing.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                    existing.setBudgetEstimer(fr.getBudgetEstimer());
+
+                    if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
+                        RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                        existing.setSourceFinancement(src);
+                    } else {
+                        existing.setSourceFinancement(null);
+                    }
+
+                    existing.setIsDeleted(false);
+
+                    existing = financementRepository.save(existing);
+                    result.add(existing);
+                    usedIds.add(financementId);
+
+                } else {
+
+                    // ==========================
+                    // CASE 2: CREATE NEW
+                    // ==========================
+                    Integer newId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                    if (newId == null) newId = 1;
+
+                    int guard = 0;
+                    while (usedIds.contains(newId)) {
+                        newId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
+                        if (newId == null) newId = 1;
+                        if (++guard > 1000) {
+                            throw new IllegalStateException("Unable to generate unique financementId for Realisation " + realisation.getId());
+                        }
+                    }
+                    usedIds.add(newId);
+
+                    Financement fin = new Financement();
+
+                    FinancementId fid = new FinancementId(
+                            realisation.getId(),
+                            realisation.getVersion(),
+                            newId
+                    );
+
+                    fin.setId(fid);
+                    fin.setRealisation(realisation);
+
+                    Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
+                            .orElseThrow(() -> new EntityNotFoundException(
+                                    "Monnaie with ID " + fr.getMonnaieId() + " not found"));
+
+                    fin.setMonnaie(monnaie);
+                    fin.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
+                    fin.setBudgetEstimer(fr.getBudgetEstimer());
+
+                    if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
+                        RefParam src = refParamRepository.findById(fr.getSourceFinancement().getId())
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                        "Source Financement with ID " + fr.getSourceFinancement().getId() + " not found"));
+                        fin.setSourceFinancement(src);
+                    } else {
+                        fin.setSourceFinancement(null);
+                    }
+
+                    fin.setIsDeleted(false);
+
+                    fin = financementRepository.save(fin);
+                    result.add(fin);
+                }
+            }
+
+            // ==========================
+            // SOFT DELETE MISSING
+            // ==========================
+            for (Financement ex : existingFinancements) {
+                Integer exId = (ex.getId() != null) ? ex.getId().getFinancementId() : null;
+
+                if (exId != null && !requestedIds.contains(exId) && !Boolean.TRUE.equals(ex.getIsDeleted())) {
+                    ex.setIsDeleted(true);
+                    result.add(ex);
+                }
+            }
+
+            financementRepository.saveAll(result);
+            realisation.setFinancements(result);
+
+            // Recompute budget
+            BigDecimal rb = result.stream()
+                    .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                    .map(f -> {
+                        BigDecimal budget = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
+                        Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                ? f.getMonnaie().getTaux()
+                                : 0.0;
+                        return budget.multiply(BigDecimal.valueOf(taux));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            realisation.setBudgetEstime(rb);
+
+        } else {
+            // Request vide => soft-delete tout
+            if (!existingFinancements.isEmpty()) {
+                for (Financement f : existingFinancements) {
+                    if (!Boolean.TRUE.equals(f.getIsDeleted())) {
+                        f.setIsDeleted(true);
+                    }
+                }
+                financementRepository.saveAll(existingFinancements);
+            }
+            realisation.setFinancements(existingFinancements);
+            realisation.setBudgetEstime(BigDecimal.ZERO);
+        }
+    }
+
+
     private boolean hasRealisationFiles(List<RealisationRequestForPaa> realisations) {
         if (realisations == null) {
             return false;
@@ -1142,8 +1180,8 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         if (existingPaa.getNbrActualisation() == null) existingPaa.setNbrActualisation(0);
 
         // Log the current state and request
-        System.out.println("Updating PAA ID: " + paaId + ", Current Version: " + paaVer);
-        System.out.println("Request data: " + request);
+        log.info("Updating PAA ID: {} , Current Version: {}" , paaId , paaVer);
+       log.info("Request data: {}" , request);
 
         List<BigDecimal> reqBudgetSums = new ArrayList<>();
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
@@ -1157,7 +1195,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
                 }
                 reqBudgetSums.add(sum);
-                System.out.println("[REQ] Realisation index " + i + " financement sum = " + sum);
+                log.info("[REQ] Realisation index {}  financement sum = {}" , i , sum);
             }
         }
 
@@ -1177,9 +1215,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             documentsChanged = !requestDocIds.equals(activeExistingDocIds);
 
             if (documentsChanged) {
-                System.out.println("Document changes detected:");
-                System.out.println("  - Active existing docs: " + activeExistingDocIds);
-                System.out.println("  - Requested docs: " + requestDocIds);
+                log.info("Document changes detected:");
+                log.info("  - Active existing docs: {}" , activeExistingDocIds);
+                log.info("  - Requested docs: {}" , requestDocIds);
             }
         }
 
@@ -1197,10 +1235,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         boolean hasFiles = request.getPaaFiles() != null && !request.getPaaFiles().isEmpty();
         if (hasFiles) {
-            System.out.println("Files detected in request - will create new version regardless of other changes");
+            log.info("Files detected in request - will create new version regardless of other changes");
         } else {
-            System.out.println("Current request hash: " + requestHash);
-            System.out.println("Previous request hash: " + previousRequestHash);
+            log.info("Current request hash: {}" , requestHash);
+            log.info("Previous request hash: {}" , previousRequestHash);
             boolean hasRealisationsWithoutIds = false;
             if (request.getRealisations() != null) {
                 hasRealisationsWithoutIds = request.getRealisations().stream().anyMatch(r -> r.getId() == null);
@@ -1213,7 +1251,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     && !hasNewLotsWithoutIds
                     && !hasRealisationFiles
                     && !hasRealisationsWithoutIds) {
-                System.out.println("Duplicate request detected and no document changes, returning existing PAA without changes");
+                log.info("Duplicate request detected and no document changes, returning existing PAA without changes");
 
                 Paa copyForResponse = new Paa();
                 BeanUtils.copyProperties(existingPaa, copyForResponse);
@@ -1274,18 +1312,18 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         Integer requestAcId = request.getAcId() != null ? request.getAcId() : existingPaa.getAc().getId();
 
         boolean hasDirectChanges = !arePaaFieldsIdentical(existingPaa, tempPaa);
-        System.out.println("Direct field changes detected: " + hasDirectChanges);
+        log.info("Direct field changes detected: {}" , hasDirectChanges);
 
         boolean realisationsChanged = false;
         List<Realisation> updatedRealisations = new ArrayList<>();
         List<Docs> updatedDocs = new ArrayList<>();
 
         if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
-            System.out.println("Processing " + request.getRealisations().size() + " realisations");
+            log.info("Processing {} realisations" , request.getRealisations().size() );
             for (RealisationRequestForPaa realisationDto : request.getRealisations()) {
                 try {
-                    System.out.println("Processing realisation DTO: " + realisationDto);
-                    System.out.println("Realisation ID: " + realisationDto.getId() + ", Lots: " +
+                    log.info("Processing realisation DTO: {}", realisationDto);
+                    log.info("Realisation ID: {} , Lots: {}" , realisationDto.getId() ,
                             (realisationDto.getLots() != null ? realisationDto.getLots().size() : "null"));
 
                     if (realisationDto.getId() != null) {
@@ -1294,7 +1332,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                             Integer maxVersion = realisationRepository.findMaxVersionById(realisationDto.getId());
                             if (maxVersion != null) {
                                 versionToUse = maxVersion;
-                                System.out.println("Found latest version for Realisation " + realisationDto.getId() + ": " + maxVersion);
+                                log.info("Found latest version for Realisation {} : {}" , realisationDto.getId()  , maxVersion);
                             } else {
                                 throw new RuntimeException("No versions found for Realisation with ID: " + realisationDto.getId());
                             }
@@ -1312,12 +1350,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                                 "Updated Realisation not found after flush: id=" + updatedRealisation.getId()
                                         + ", ver=" + latestVerForThisReal));
 
-                        System.out.println("[PAA:update] Refreshed Realisation id=" + refreshed.getId()
+                        log.info("[PAA:update] Refreshed Realisation id= {}" , refreshed.getId()
                                 + " ver=" + refreshed.getVersion());
 
                         updatedRealisations.add(refreshed);
                     } else {
-                        System.out.println("Creating new Realisation");
+                        log.info("Creating new Realisation");
                         RealisationRequest newRealisationRequest = new RealisationRequest();
                         newRealisationRequest.setRealisationEnvisagees(realisationDto.getRealisationEnvisagees());
                         newRealisationRequest.setTypeMarcher(realisationDto.getTypeMarcher());
@@ -1341,7 +1379,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                                     })
                                     .collect(Collectors.toList());
                             newRealisationRequest.setFinancementRequests(financementBaseRequests);
-                            System.out.println(" Assigned " + financementBaseRequests.size() + " financements to new realization");
+                            log.info(" Assigned {}  financements to new realization" ,financementBaseRequests.size());
                         }
 
                         Realisation newRealisation = realisationService.create(newRealisationRequest);
@@ -1365,8 +1403,8 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         .map(RealisationRequestForPaa::getId)
                         .collect(Collectors.toSet());
 
-                System.out.println("Existing realization IDs: " + existingActiveIds);
-                System.out.println("Requested realization IDs: " + requestedIds);
+                log.info("Existing realization IDs: {}" , existingActiveIds);
+                log.info("Requested realization IDs: {}" , requestedIds);
 
                 Set<String> beforeSet = existingPaa.getRealisations() == null ? Set.of() :
                         existingPaa.getRealisations().stream()
@@ -1380,12 +1418,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         .collect(Collectors.toSet());
 
                 if (!beforeSet.equals(afterSet)) {
-                    System.out.println("Realisation set (id:version) changed");
+                    log.info("Realisation set (id:version) changed");
                     realisationsChanged = true;
                 }
             }
         } else if (existingPaa.getRealisations() != null && !existingPaa.getRealisations().isEmpty()) {
-            System.out.println("Realisations removed from PAA");
+            log.info("Realisations removed from PAA");
             realisationsChanged = true;
         }
 
@@ -1399,12 +1437,12 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                             .collect(Collectors.toSet())
                             : new HashSet<>();
 
-            System.out.println("Comparing document IDs:");
-            System.out.println("  - Existing active docs: " + activeExistingDocIds);
-            System.out.println("  - Requested docs: " + requestDocIds);
+            log.info("Comparing document IDs:");
+            log.info("  - Existing active docs: {}" , activeExistingDocIds);
+            log.info("  - Requested docs: {}" , requestDocIds);
 
             if (!requestDocIds.equals(activeExistingDocIds)) {
-                System.out.println("Document ID sets are different - marking as changed");
+                log.info("Document ID sets are different - marking as changed");
                 documentsChanged = true;
             }
 
@@ -1413,7 +1451,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 for (Docs existingDoc : existingPaa.getDocs()) {
                     Docs docToProcess = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (docToProcess == null) {
-                        System.out.println("Warning: Document " + existingDoc.getId() + " no longer exists in database, skipping");
+                        log.info("Warning: Document {} no longer exists in database, skipping" , existingDoc.getId() );
                         continue;
                     }
 
@@ -1426,7 +1464,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         docToProcess.setIsDeleted(true);
                         docToProcess = docsRepository.save(docToProcess);
                         updatedDocs.add(docToProcess);
-                        System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted for new version");
+                        log.info("Marked document with ID {}  as deleted for new version" , docToProcess.getId() );
                     }
                 }
             }
@@ -1437,7 +1475,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 doc.setIsDeleted(false);
                 doc = docsRepository.save(doc);
                 updatedDocs.add(doc);
-                System.out.println("Added new document with ID " + doc.getId() + " for new version");
+                log.info("Added new document with ID {} for new version" , doc.getId());
             }
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
             updatedDocs = new ArrayList<>();
@@ -1448,7 +1486,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 docToProcess.setIsDeleted(true);
                 docToProcess = docsRepository.save(docToProcess);
                 updatedDocs.add(docToProcess);
-                System.out.println("Marked document with ID " + docToProcess.getId() + " as deleted (no docIds provided)");
+                log.info("Marked document with ID {}  as deleted (no docIds provided)" , docToProcess.getId() );
             }
             documentsChanged = true;
         } else {
@@ -1457,33 +1495,33 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         boolean shouldCreateNewVersion = hasDirectChanges || realisationsChanged || documentsChanged;
 
-        System.out.println("Should create new PAA version: " + shouldCreateNewVersion);
-        System.out.println("  - Direct field changes: " + hasDirectChanges);
-        System.out.println("  - Realisations changed: " + realisationsChanged);
-        System.out.println("  - Documents changed: " + documentsChanged);
-        System.out.println("  - Files uploaded: " + (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
+        log.info("Should create new PAA version: {} " , shouldCreateNewVersion);
+        log.info("  - Direct field changes: {}" , hasDirectChanges);
+        log.info("  - Realisations changed: {}" , realisationsChanged);
+        log.info("  - Documents changed: {}" , documentsChanged);
+        log.info("  - Files uploaded: {}" , (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()));
 
         if (request.getPaaFiles() != null && !request.getPaaFiles().isEmpty()) {
-            System.out.println("Files are present - forcing creation of new version");
+            log.info("Files are present - forcing creation of new version");
             shouldCreateNewVersion = true;
         }
 
         if (!shouldCreateNewVersion) {
-            System.out.println("No changes detected, returning existing PAA version: " + paaVer);
+            log.info("No changes detected, returning existing PAA version: {}" , paaVer);
 
             if (request.getPaaFiles() != null) {
                 try {
-                    System.out.println("Processing " + request.getPaaFiles().size() + " files for existing PAA version");
+                    log.info("Processing {} files for existing PAA version" , request.getPaaFiles().size());
                     documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), existingPaa, Constants.PATH_ENTREPOT_GED_PAA);
                     existingPaa = repository.save(existingPaa);
-                    System.out.println("Saved PAA after processing files: " + existingPaa.getId() + " version " + existingPaa.getVersion());
+                    log.info("Saved PAA after processing files: {} version: {}" , existingPaa.getId(), existingPaa.getVersion());
                     if (!request.getPaaFiles().isEmpty()) {
-                        System.out.println("Files were uploaded - forcing creation of new version");
+                        log.info("Files were uploaded - forcing creation of new version");
                         shouldCreateNewVersion = true;
                         storePreviousRequestHash(paaId, paaVer, requestHash);
                     }
                 } catch (IOException e) {
-                    System.err.println("Error processing PAA files for existing version: " + e.getMessage());
+                    log.error("Error processing PAA files for existing version: {}" , e.getMessage());
                     throw new RuntimeException("Error processing PAA files for existing version: " + e.getMessage(), e);
                 }
             }
@@ -1530,14 +1568,14 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 copyForResponse.setActualise(existingPaa.getActualise());
                 copyForResponse.setNbrActualisation(existingPaa.getNbrActualisation());
 
-                System.out.println("Updated existing PAA ID: " + copyForResponse.getId() +
-                        " version: " + copyForResponse.getVersion() +
-                        ", budgetEstime: " + totalBudget);
+                log.info("Updated existing PAA ID: {} version: {} ,budgetEstime {}" , copyForResponse.getId()
+                        , copyForResponse.getVersion()
+                        , totalBudget);
                 return copyForResponse;
             }
         }
 
-        System.out.println("Changes detected, creating new PAA version: " + (paaVer + 1));
+        log.info("Changes detected, creating new PAA version: {}" , (paaVer + 1));
         storePreviousRequestHash(paaId, paaVer, requestHash);
 
         Paa newPaa = new Paa();
@@ -1567,10 +1605,10 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         newPaa.setDocs(new ArrayList<>());
 
         newPaa = repository.save(newPaa);
-        System.out.println("Saved new PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+        log.info("Saved new PAA: {} version {}" , newPaa.getId() , newPaa.getVersion());
 
         if (!updatedRealisations.isEmpty()) {
-            System.out.println("Setting up relationships with " + updatedRealisations.size() + " realisations");
+            log.info("Setting up relationships with {} realisations" , updatedRealisations.size());
             List<Realisation> confirmedRealisations = new ArrayList<>();
             final Paa finalNewPaa = newPaa;
 
@@ -1629,41 +1667,40 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
                     BigDecimal reqSum = (reqBudgetSums != null && __reqIdx < reqBudgetSums.size()) ? reqBudgetSums.get(__reqIdx) : null;
                     if (reqSum != null) {
-                        System.out.println("[REQ] Using request financement sum " + reqSum +
-                                " as budgetEstime for Realisation " + confirmedRealisation.getId());
+                        log.info("[REQ] Using request financement sum {} as budgetEstime for Realisation {}" , reqSum ,confirmedRealisation.getId());
                         confirmedRealisation.setBudgetEstime(reqSum);
                     }
                     __reqIdx++;
 
                     confirmedRealisation = realisationRepository.save(confirmedRealisation);
-                    System.out.println("Successfully associated Realisation " + confirmedRealisation.getId() +
-                            " version " + confirmedRealisation.getVersion() + " with new PAA (budget="
-                            + confirmedRealisation.getBudgetEstime() + ", seuil=" + confirmedRealisation.getSeuilApplicable() + ")");
+                    log.info("Successfully associated Realisation {} version {}  with new PAA (budget= {} , seuil= {} )" , confirmedRealisation.getId()
+                           , confirmedRealisation.getVersion() ,
+                             confirmedRealisation.getBudgetEstime() , confirmedRealisation.getSeuilApplicable() );
                     confirmedRealisations.add(confirmedRealisation);
                 } catch (Exception e) {
-                    System.err.println("Error associating Realisation with PAA: " + e.getMessage());
+                    log.error("Error associating Realisation with PAA: {}" , e.getMessage());
                     e.printStackTrace();
                 }
             }
 
             newPaa.setRealisations(confirmedRealisations);
-            System.out.println("Set " + confirmedRealisations.size() + " realisations on the new PAA");
+            log.info("Set {} realisations on the new PAA" , confirmedRealisations.size());
 
             BigDecimal totalBudget = newPaa.getRealisations().stream()
                     .map(Realisation::getBudgetEstime)
                     .filter(Objects::nonNull)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             newPaa.setBudgetEstime(totalBudget);
-            System.out.println("Updated PAA ID: " + newPaa.getId() +
-                    " version: " + newPaa.getVersion() +
-                    ", budgetEstime: " + totalBudget);
+            log.info("Updated PAA ID: {}  version: {}  budgetEstime: {}", newPaa.getId() ,
+                     newPaa.getVersion() ,
+                     totalBudget);
 
             realisationRepository.flush();
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
         } else if (existingPaa.getRealisations() != null) {
-            System.out.println("Copying " + existingPaa.getRealisations().size() + " realisations from existing PAA");
+            log.info("Copying {} realisations from existing PAA" , existingPaa.getRealisations().size() );
             List<Realisation> confirmedRealisations = new ArrayList<>();
             final Paa finalNewPaa = newPaa;
 
@@ -1694,11 +1731,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                                         })
                                         .reduce(BigDecimal.ZERO, BigDecimal::add));
                         latestRealisation.setBudgetEstime(rbFx);
-                        System.out.println("[SEUIL FX] Copied Realisation " + latestRealisation.getId() +
-                                " converted budget (Σ amt×taux) for seuil: " + rbFx);
+                        log.info("[SEUIL FX] Copied Realisation {} converted budget (Σ amt×taux) for seuil: {}" ,
+                                latestRealisation.getId(), rbFx);
                     } catch (Exception e) {
-                        System.err.println("[SEUIL FX] Failed to compute converted budget for copied Realisation " +
-                                latestRealisation.getId() + ": " + e.getMessage());
+                        log.error("[SEUIL FX] Failed to compute converted budget for copied Realisation {} : {}" ,
+                                latestRealisation.getId() , e.getMessage());
                     }
                     setSeuilApplicableForRealisation(latestRealisation, requestAcId);
 
@@ -1710,10 +1747,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     }
 
                     if (alreadyAssociated) {
-                        System.out.println("Realisation " + latestRealisation.getId() +
-                                " version " + latestRealisation.getVersion() +
-                                " is already associated with PAA " + finalNewPaa.getId() +
-                                " version " + finalNewPaa.getVersion() + ". Skipping association.");
+                        log.info("Realisation {},version {} is already associated with PAA  {}  version {}. Skipping association." ,
+                                latestRealisation.getId() ,
+                                 latestRealisation.getVersion() ,
+                                finalNewPaa.getId()
+                               , finalNewPaa.getVersion() );
                         confirmedRealisations.add(latestRealisation);
                         continue;
                     }
@@ -1728,21 +1766,22 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                         paaList.add(finalNewPaa);
                     }
 
-                    System.out.println("Set existing Realisation ID: " + latestRealisation.getId() +
-                            " version: " + latestRealisation.getVersion() +
-                            ", budgetEstime: " + latestRealisation.getBudgetEstime());
+                    log.info("Set existing Realisation ID: {} version {} budgetEstime {}" ,
+                            latestRealisation.getId(),latestRealisation.getVersion() ,
+                            latestRealisation.getBudgetEstime());
                     latestRealisation = realisationRepository.save(latestRealisation);
-                    System.out.println("Successfully associated latest Realisation " + latestRealisation.getId() +
-                            " version " + latestRealisation.getVersion() + " with new PAA");
+                    log.info("Successfully associated latest Realisation {} version {} with new PAA" ,
+                            latestRealisation.getId()
+                            , latestRealisation.getVersion() );
                     confirmedRealisations.add(latestRealisation);
                 } catch (Exception e) {
-                    System.err.println("Error handling Realisation relationship: " + e.getMessage());
+                    log.error("Error handling Realisation relationship: {}" , e.getMessage());
                     e.printStackTrace();
                 }
             }
 
             newPaa.setRealisations(confirmedRealisations);
-            System.out.println("Updated new PAA with " + confirmedRealisations.size() + " confirmed realisations");
+            log.info("Updated new PAA with {}  confirmed realisations ", confirmedRealisations.size() );
             BigDecimal totalBudget = newPaa.getRealisations().stream()
                     .map(Realisation::getBudgetEstime)
                     .filter(Objects::nonNull)
@@ -1753,9 +1792,9 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             validateRealisations(newPaa);
 
             newPaa = repository.save(newPaa);
-            System.out.println("Updated PAA ID: " + newPaa.getId() +
-                    " version: " + newPaa.getVersion() +
-                    ", budgetEstime: " + totalBudget);
+            log.info("Updated PAA ID: {} version {} budgetEstime {}" , newPaa.getId() ,
+                     newPaa.getVersion()
+                    , totalBudget);
         }
 
         // Handle documents
@@ -1792,7 +1831,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             }
 
             newPaa.setDocs(confirmedDocs);
-            System.out.println("Copied " + confirmedDocs.size() + " documents to new PAA version with correct delete status");
+            log.info("Copied {}  documents to new PAA version with correct delete status" , confirmedDocs.size() );
         } else if (existingPaa.getDocs() != null && !existingPaa.getDocs().isEmpty()) {
             List<Docs> confirmedDocs = new ArrayList<>();
             final Paa finalNewPaaForExistingDocs = newPaa;
@@ -1801,7 +1840,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 try {
                     Docs confirmedDoc = docsRepository.findById(existingDoc.getId()).orElse(null);
                     if (confirmedDoc == null) {
-                        System.err.println("Warning: Document " + existingDoc.getId() + " not found in database. Skipping.");
+                        log.error("Warning: Document {} not found in database. Skipping." , existingDoc.getId() );
                         continue;
                     }
 
@@ -1821,25 +1860,25 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                     confirmedDoc = docsRepository.save(confirmedDoc);
                     confirmedDocs.add(confirmedDoc);
                 } catch (Exception e) {
-                    System.err.println("Error associating existing Document with PAA: " + e.getMessage());
+                    log.error("Error associating existing Document with PAA: {}" , e.getMessage());
                 }
             }
 
             newPaa.setDocs(confirmedDocs);
-            System.out.println("Copied " + confirmedDocs.size() + " existing documents to new PAA version");
+            log.info("Copied {}  existing documents to new PAA version" , confirmedDocs.size());
         }
 
         newPaa = repository.save(newPaa);
-        System.out.println("Final save of PAA: " + newPaa.getId() + " version " + newPaa.getVersion());
+        log.info("Final save of PAA: {} version {}" , newPaa.getId() , newPaa.getVersion());
 
         if (request.getPaaFiles() != null) {
             try {
-                System.out.println("Processing " + request.getPaaFiles().size() + " files for new PAA version");
+                log.info("Processing {} files for new PAA version" , request.getPaaFiles().size());
                 documentCommuneService.processAndSaveDocuments(request.getPaaFiles(), newPaa, Constants.PATH_ENTREPOT_GED_PAA);
                 newPaa = repository.save(newPaa);
-                System.out.println("Saved PAA after processing files: " + newPaa.getId() + " version " + newPaa.getVersion());
+                log.info("Saved PAA after processing files: {} version {}" , newPaa.getId() , newPaa.getVersion());
             } catch (IOException e) {
-                System.err.println("Error processing PAA files for new version: " + e.getMessage());
+                log.error("Error processing PAA files for new version: {} " , e.getMessage());
                 throw new RuntimeException("Error processing PAA files for new version: " + e.getMessage(), e);
             }
         }
@@ -1883,11 +1922,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         copyForReturn.setActualise(newPaa.getActualise());
         copyForReturn.setNbrActualisation(newPaa.getNbrActualisation());
 
-        System.out.println("Final response PAA ID: " + copyForReturn.getId() +
-                " version: " + copyForReturn.getVersion() +
-                ", budgetEstime: " + finalBudget +
-                ", actualise: " + copyForReturn.getActualise() +
-                ", nbrActualisation: " + copyForReturn.getNbrActualisation());
+        log.info("Final response PAA ID: {} version {}: budgetEstime: {} actualise: {} nbrActualisation: {}" ,
+                copyForReturn.getId()
+                , copyForReturn.getVersion(),
+                finalBudget, copyForReturn.getActualise() ,
+                 copyForReturn.getNbrActualisation());
 
         return copyForReturn;
     }
@@ -1913,7 +1952,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             throw new PaaNotFound("No versions found for PAA with ID: " + paaId, List.of(paaId), List.of(null));
         }
 
-        System.out.println("Found latest version for PAA ID " + paaId + ": " + latestVersion);
+        log.info("Found latest version for PAA ID {}  verion latest {}" , paaId , latestVersion);
 
         // Call the version-specific method with the latest version
         return updateWithVersioning(paaId, latestVersion, request);
@@ -2237,8 +2276,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
                 realisation.setPublishedAt(realisationRequest.getPublishedAt());
                 realisation.setSort(realisationRequest.getSort());
 
-                System.out.println("the realisations have files");
-                System.out.println(realisationRequest.getRealisationFiles());
+                log.info("the realisations have files {} ",realisationRequest.getRealisationFiles());
 
                 log.info("a ce niveau ca va  5");
                 if (realisation.getPaas() == null) {
@@ -2355,13 +2393,13 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         if (dto.getLots() != null) {
             // If there are no lots in the request but the realisation has lots, this is a major change
             if (dto.getLots().isEmpty() && existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
-                System.out.println("Major lot change: Removing all lots");
+                log.info("Major lot change: Removing all lots");
                 return true;
             }
 
             // If there are lots in the request but the realisation has none, this is a major change
             if (!dto.getLots().isEmpty() && (existingRealisation.getLots() == null || existingRealisation.getLots().isEmpty())) {
-                System.out.println("Major lot change: Adding first lots");
+                log.info("Major lot change: Adding first lots");
                 return true;
             }
 
@@ -2369,14 +2407,14 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
             if (!dto.getLots().isEmpty() && existingRealisation.getLots() != null && !existingRealisation.getLots().isEmpty()) {
                 // Different number of lots = major change
                 if (dto.getLots().size() != existingRealisation.getLots().size()) {
-                    System.out.println("Major lot change: Different number of lots");
+                    log.info("Major lot change: Different number of lots");
                     return true;
                 }
 
                 // Check for new lots (without IDs) = major change
                 boolean hasNewLots = dto.getLots().stream().anyMatch(lotResponse -> lotResponse.getId() == null);
                 if (hasNewLots) {
-                    System.out.println("Major lot change: New lots without IDs");
+                    log.info("Major lot change: New lots without IDs");
                     return true;
                 }
 
@@ -2387,7 +2425,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
                 // Different lot IDs (additions or removals) = major change
                 if (!requestLotIds.equals(existingLotIds)) {
-                    System.out.println("Major lot change: Different lot IDs");
+                    log.info("Major lot change: Different lot IDs");
                     return true;
                 }
             }
@@ -2436,6 +2474,11 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
         paa.setStatus(status);
         log.info("status name 2" + paa.getStatus());
         paa.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            paa.setPublishedAt(Calendar.getInstance());
+        }
+
         return repository.save(paa);
     }
 
@@ -3012,9 +3055,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
     @Override
     public Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) {
         Specification<Paa> finalSpec = Specification.where(spec)
-                .and(PaaSpecifications.isLatestVersion())
-                .and(PaaSpecifications.isPublished())
-                .and(PaaSpecifications.isNotDeleted());
+                .and(PaaSpecifications.isLatestPublishedVersion());
         return repository.findAll(finalSpec, pageable);
     }
 
@@ -3252,6 +3293,7 @@ public Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throw
 
         return createFilteredResponsePaa(saved);
     }
+
 
 
 

@@ -75,11 +75,11 @@ public class SocieteServiceImpl implements SocieteService {
     }
 
     @Override
-    public Page<Societe> findAllNotEncours(Specification<Societe> societe, Pageable pageable) {
-        Specification<Societe> notEnCoursSpec = societe.and((root, query, cb) ->
-                cb.notEqual(root.get("status"), SocieteStatus.EN_COURS)
-        );
-        return repository.findAll(notEnCoursSpec, pageable);    }
+    public Page<Societe> findAllNotEncours(Specification<Societe> spec, Pageable pageable) {
+        Specification<Societe> notEnCoursSpec = spec.and(SocieteSpecifications.status(SocieteStatus.EN_COURS))
+                .and(SocieteSpecifications.deleted(false));
+        return repository.findAll(notEnCoursSpec, pageable);
+    }
 
     @Override
     public Page<Societe> findAllDeleted(Specification<Societe> societe, Pageable pageable) {
@@ -428,5 +428,32 @@ public class SocieteServiceImpl implements SocieteService {
          }
          return userSocieteRequest;
      }
+    public boolean isCurrentlyBlackListed(Integer societeId) {
+        Specification<Societe> spec = Specification
+                .where(SocieteSpecifications.id(societeId))
+                .and(SocieteSpecifications.deleted(false)
+                .and(SocieteSpecifications.isCurrentlyBlackListed()));
+
+        return repository.exists(spec);
+    }
+
+    @Override
+    public List<Societe> findAllValidee(Specification<Societe> specification) {
+        Specification<Societe> validateSociete = specification.and(SocieteSpecifications.status(SocieteStatus.VALIDEE))
+                .and(SocieteSpecifications.deleted(false)).and(Specification.not(SocieteSpecifications.isCurrentlyBlackListed()));
+        return repository.findAll(validateSociete);
+
+    }
+
+    @Override
+    public List<Societe> findAllValideNotBlackListed(Specification<Societe> specification) {
+        Specification<Societe> validateSociete =
+                specification
+                        .and(SocieteSpecifications.status(SocieteStatus.VALIDEE))
+                        .and(SocieteSpecifications.deleted(false))
+                        .and(Specification.not(SocieteSpecifications.isCurrentlyBlackListed()));
+
+        return repository.findAll(validateSociete);
+    }
 
 }

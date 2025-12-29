@@ -1,15 +1,16 @@
 package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
+import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ProcessStatus;
-import com.sigmap.common.ppms.Ppm;
-import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.math.BigDecimal;
 
 import java.util.Calendar;
 import java.util.List;
@@ -32,26 +33,8 @@ public class Dac extends BaseEntity {
   private Integer dacVer;
 
   @ManyToOne
-  @JoinColumns({
-    @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
-    @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
-  })
-  private Ppm ppm;
-
-  @ManyToOne
-  @JoinColumns({
-          @JoinColumn(name = "realisation_id", referencedColumnName = "realisation_id"),
-          @JoinColumn(name = "realisation_ver", referencedColumnName = "realisation_ver")
-  })
-  private Realisation realisation;
-
-  @ManyToOne
-  @JoinColumn(name = "category_id", referencedColumnName = "ref_param_id")
-  private RefParam typeMarche;
-
-  @ManyToOne
-  @JoinColumn(name = "mode_passation_id")
-  private ModeDePassationSelection modePassation;
+  @JoinColumn(name = "appel_offre_id")
+  private AppelOffre appelOffre;
 
   @Enumerated(EnumType.STRING)
   private ProcessStatus status;
@@ -73,9 +56,6 @@ public class Dac extends BaseEntity {
   @Column(name = "short_listing")
   private boolean shortListing;
 
-  @Column(name = "parent_dac_id")
-  private Integer parentDacId;
-
   @ManyToOne
   @JoinColumn(name = "dyna_docs_model_id", referencedColumnName = "dyna_docs_model_id")
   private DynaDocsModel dynaDocsModel;
@@ -93,6 +73,18 @@ public class Dac extends BaseEntity {
 
   @Column(name = "etape_process", length = 255)
   private String etapeProcess;
+
+  @Column(name = "responsable_dac_id")
+  private String responsableDacId;
+
+  @Column(name = "conditions_participation", columnDefinition = "LONGTEXT")
+  private String conditionsParticipation;
+
+  @Column(name = "etape_dac", length = 50)
+  private String etapeDac;
+
+  @Column(name = "published_at")
+  private Calendar publishedAt;
 
 
 }

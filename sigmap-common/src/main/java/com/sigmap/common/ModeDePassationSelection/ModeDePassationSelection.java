@@ -1,5 +1,7 @@
 package com.sigmap.common.ModeDePassationSelection;
 
+import com.sigmap.common.config.ModePassationEtape;
+import com.sigmap.common.config.ModePassationType;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.*;
@@ -29,4 +31,11 @@ public class ModeDePassationSelection extends BaseEntity {
     private List<RefParam> typeMarchers;
     @Column(name = "is_restraint")
     private boolean isRestraint;
+    @Enumerated(EnumType.STRING)
+    private ModePassationType type;
+    @Enumerated(EnumType.STRING)
+    private ModePassationEtape etapes;
+
+
+
 }

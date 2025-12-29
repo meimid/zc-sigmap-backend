@@ -27,6 +27,7 @@ public class SocieteEnCourResponseDto {
     private Date dateNif;
     private String numCnss;
     private SocieteStatus status;
+    private boolean isBlackListed=false;
     private  AdresseResponseDto address  ;
     private List<ActiviteResponseDto> activites = new ArrayList<>();
     private List<UserSocieteResponseDto> usersSociete = new ArrayList<>();

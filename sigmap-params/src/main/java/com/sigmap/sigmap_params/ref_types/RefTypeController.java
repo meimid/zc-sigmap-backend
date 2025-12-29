@@ -11,6 +11,7 @@ import com.sigmap.common.ref_types.request.RefTypeQuery;
 import com.sigmap.common.ref_types.request.RefTypeRequest;
 import java.util.List;
 import com.sigmap.common.ref_types.response.RefTypeResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/ref-types")
+@Slf4j
 public class RefTypeController {
 
   private final RefTypeService refTypeService;
@@ -48,7 +50,7 @@ public class RefTypeController {
   @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<RefType> create(@RequestBody RefTypeRequest request) throws RefTypePositiveIdAndNotEmpty {
 
-    System.out.println("Ref Type Request " + request);
+    log.info("Ref Type Request  {}" , request);
     RefType refType = refTypeService.create(request);
     return ResponseEntity.status(HttpStatus.CREATED).body(refType);
   }
