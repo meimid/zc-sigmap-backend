@@ -51,9 +51,9 @@ import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
-import jakarta.persistence.criteria.Root;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.io.RandomAccessRead;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -1137,19 +1137,33 @@ public class DacServiceImpl implements DacService {
      * @throws IOException If an error occurs while merging PDFs.
      */
     public static ByteArrayOutputStream merge(List<InputStream> inputStreams) throws IOException {
-
-        ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+        if (inputStreams == null || inputStreams.isEmpty()) {
+            throw new IllegalArgumentException("Input streams list cannot be null or empty");
+        }
 
         PDFMergerUtility merger = new PDFMergerUtility();
-        merger.setDestinationStream(mergedOutputStream);
 
-        merger.addSources(inputStreams);
+        // Add each InputStream wrapped in a RandomAccessReadBuffer (required for PDFBox 3.x)
+        for (InputStream is : inputStreams) {
+            // Fully read the InputStream into a byte array
+            byte[] pdfBytes = is.readAllBytes();
 
-        merger.mergeDocuments(null);
+            // Create a random-access readable buffer from the bytes
+            RandomAccessRead buffer = new RandomAccessReadBuffer(pdfBytes);
 
-        return mergedOutputStream;
+            // Add the source
+            merger.addSource(buffer);
+        }
+
+        // Set the destination to a ByteArrayOutputStream
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        merger.setDestinationStream(result);
+
+        // Use memory-only caching (no temporary files on disk)
+        merger.mergeDocuments(IOUtils.createMemoryOnlyStreamCache());
+
+        return result;
     }
-
 
     @Override
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException {
