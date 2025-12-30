@@ -1408,11 +1408,6 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
 
-        if (comIdSnapshot != null) {
-            runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
-            log.info("[SYNC] Restored comId={} into process variables post-completion", comIdSnapshot);
-        }
-
         // If process ended, force PUBLIE
         boolean finished = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())
