@@ -7,6 +7,7 @@ import com.sigmap.common.dyna_docs.mappers.DynaDocsMapper;
 import com.sigmap.common.dyna_docs.request.DynaDocsQuery;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
 import com.sigmap.common.dyna_docs.response.DynaDocsResponse;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelRequiredExeption;
 import com.sigmap.common.dyna_fields.DynaFieldType;
 import com.sigmap.common.dyna_fields.DynaFields;
 import com.sigmap.common.dyna_fields.DynaFieldsRepository;
@@ -187,7 +188,7 @@ public class DynaDocsController {
   @PostMapping
   @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'SUPER_ADMIN')")
   public ResponseEntity<DynaDocsResponse> createDynaDocs(
-      @RequestBody DynaDocsRequest dynaDocsRequest) {
+      @RequestBody DynaDocsRequest dynaDocsRequest) throws ModeDePassationSelectionNotFound,DynaDocsModelRequiredExeption {
     boolean templateExists = templateService.exists(dynaDocsRequest.getTemplateFileName());
     if (!templateExists) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Template file not found");
@@ -208,7 +209,7 @@ public class DynaDocsController {
     } catch (RefParamNotFound e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category ID", e);
     } catch (ModeDePassationSelectionNotFound e) {
-        throw new RuntimeException(e);
+        throw new ModeDePassationSelectionNotFound("",dynaDocsRequest.getModePassationId());
     }
   }
 

@@ -9,6 +9,7 @@ import com.sigmap.common.dyna_docs_model.DynaDocsModel;
 import com.sigmap.common.dyna_docs_model.DynaDocsModelRepository;
 import com.sigmap.common.dyna_docs_model.DynaDocsModelService;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelRequiredExeption;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.ref_params.RefParam;
@@ -90,7 +91,7 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
   @Override
   @Transactional(rollbackFor = Throwable.class)
-  public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound {
+  public DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound, DynaDocsModelRequiredExeption {
     DynaDocs dynaDocs = DynaDocsMapper.INSTANCE.map(request);
 
     // AAO validation: ensure uniqueness of active AAO for same typeMarche and modePassation
@@ -105,7 +106,7 @@ public class DynaDocsServiceImpl implements DynaDocsService {
 
       dynaDocs.setDynaDocsModel(ddm);
     } else {
-      dynaDocs.setDynaDocsModel(null);
+      throw new DynaDocsModelRequiredExeption("");
     }
 
     dynaDocs.setId(sequenceGeneratorService.getNextId(Constants.DYNA_DOCS_SEQ));

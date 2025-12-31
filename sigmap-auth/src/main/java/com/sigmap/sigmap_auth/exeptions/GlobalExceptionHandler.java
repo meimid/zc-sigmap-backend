@@ -24,6 +24,7 @@ import com.sigmap.common.doc_soumission.exception.*;
 import com.sigmap.common.docs.exeptions.DocDeleted;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelRequiredExeption;
 import com.sigmap.common.dyna_form.exceptions.DynaFormNotFound;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Locale;
