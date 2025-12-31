@@ -1222,7 +1222,7 @@ public class DacServiceImpl implements DacService {
         Dac dac = new Dac();
         dac.setDacId(sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ));
         dac.setDacVer(1);
-        dac.setReference(generateDacRef(sequenceNumber, nom_ac));
+        dac.setReference(generateDacRef(sequenceNumber, nom_ac,dac.getAppelOffre().getPpm()));
         dac.setStatus(ProcessStatus.BROUILLON);
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
@@ -1278,8 +1278,8 @@ public class DacServiceImpl implements DacService {
 
         return savedCdac;
     }
-    public String generateDacRef(Integer sequenceNumber, String nom_ac) {
-        String year = String.valueOf(Year.now().getValue());
+    public String generateDacRef(Integer sequenceNumber, String nom_ac,Ppm ppm) {
+        String year = ppm.getAnnee();
         return String.format("%s/%d/%s", year, sequenceNumber, nom_ac);
     }
 
@@ -2019,7 +2019,7 @@ public class DacServiceImpl implements DacService {
             Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
             dac.setDacId(newDacId);
             dac.setDacVer(1);
-            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
+            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom(),ppm));
 
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);
