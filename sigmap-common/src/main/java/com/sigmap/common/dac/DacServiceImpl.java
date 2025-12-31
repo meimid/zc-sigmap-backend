@@ -15,6 +15,7 @@ import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacModelsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_prix.DacPrix;
@@ -38,6 +39,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -128,6 +130,7 @@ public class DacServiceImpl implements DacService {
     private final AppelOffreRepository appelOffreRepository;
     private final SocieteDacRepository societeDacRepository;
     private final DacDocsService dacDocsService;
+    private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -1475,6 +1478,23 @@ public class DacServiceImpl implements DacService {
                 .collect(Collectors.toList());
 
         dacResponse.setDynaDocs(dynaDocsResponses);
+
+        // Populate dacModels
+        List<ModelDac> models = modelDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+        DacModelsDTO modelsDTO = new DacModelsDTO();
+
+        for (ModelDac m : models) {
+             if (Boolean.TRUE.equals(m.getIsAao())) {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setAaoModel(m.getDoc().getAlfresco_id());
+                 }
+             } else {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setDacModel(m.getDoc().getAlfresco_id());
+                 }
+             }
+        }
+        dacResponse.setDacModels(Collections.singletonList(modelsDTO));
         return dacResponse;
     }
 
