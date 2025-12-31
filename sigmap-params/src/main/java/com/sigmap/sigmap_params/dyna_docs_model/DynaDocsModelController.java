@@ -39,6 +39,15 @@ public class DynaDocsModelController {
         Page<DynaDocsModelResponse> response = result.map(DynaDocsModelMapper.INSTANCE::map);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/by-appel-offre/{appelOffreId}")
+    public ResponseEntity<List<DynaDocsModelResponse>> getDynaDocsModelsByAppelOffre(@PathVariable Integer appelOffreId) {
+        log.debug("Récupération des modèles de documents pour l'appel d'offre {}", appelOffreId);
+        List<DynaDocsModel> result = dynaDocsModelService.findByAppelOffre(appelOffreId);
+        List<DynaDocsModelResponse> response = result.stream().map(DynaDocsModelMapper.INSTANCE::map).toList();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/list")
     public ResponseEntity<List<DynaDocsModelResponse>> getAllDynaDocsModels() {
         log.debug("Récupération de tous les modèles de documents dynamiques");
