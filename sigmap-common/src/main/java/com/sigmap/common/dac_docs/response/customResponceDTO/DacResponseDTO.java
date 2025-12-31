@@ -37,4 +37,5 @@ public class DacResponseDTO {
     private String etapeDac;
     private String conditionsParticipation;
     private String responsableDacId;
+    private List<DacModelsDTO> dacModels;
 }

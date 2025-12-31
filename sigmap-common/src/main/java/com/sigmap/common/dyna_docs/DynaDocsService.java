@@ -4,6 +4,7 @@ import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelec
 import com.sigmap.common.dyna_docs.exceptions.DynaDocNotFound;
 import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
 import com.sigmap.common.dyna_docs.request.DynaDocsRequest;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelRequiredExeption;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -69,7 +70,7 @@ public interface DynaDocsService {
    * @param request The Dyna doc DTO containing the data to create the DynaDoc entity
    * @return The created DynaDoc entity
    */
-  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound, ActiveAAOAlreadyExistsException;
+  DynaDocs create(DynaDocsRequest request) throws RefParamNotFound, ModeDePassationSelectionNotFound, ActiveAAOAlreadyExistsException, DynaDocsModelRequiredExeption;
 
   /**
    * Update dynadoc

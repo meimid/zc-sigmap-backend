@@ -140,4 +140,6 @@ public interface DynaDocsRepository
   @Query("SELECT COUNT(d) > 0 FROM DynaDocs d WHERE d.dynaDocsModel.dynaDocsModelId = :modelId")
   boolean existsByDynaDocsModelId(@Param("modelId") Integer modelId);
 
+  @Query("SELECT DISTINCT d.dynaDocsModel FROM DynaDocs d WHERE d.status = 'ACTIF' AND d.typeMarche.id = :typeMarcheId AND d.modePassation.id = :modePassationId AND d.dynaDocsModel IS NOT NULL")
+  List<DynaDocsModel> findModelsByTypeMarcheAndModePassation(@Param("typeMarcheId") Integer typeMarcheId, @Param("modePassationId") Integer modePassationId);
 }
