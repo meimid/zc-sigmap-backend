@@ -75,9 +75,7 @@ import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -109,11 +107,12 @@ public class ReunionServiceImpl implements ReunionService{
     private final DocumentCommuneService documentCommuneService;
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    private final ReunionSortResolver reunionSortResolver;
 
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -128,11 +127,12 @@ public class ReunionServiceImpl implements ReunionService{
         this.documentCommuneService = documentCommuneService;
         this.processVerbalReunionService = processVerbalReunionService;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
+        this.reunionSortResolver = reunionSortResolver;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
-
-              return repository.findAll(reunionSpecificationRoleAndComIds(spec), pageable);
+        var resolved = reunionSortResolver.resolve(spec, pageable);
+        return repository.findAll(reunionSpecificationRoleAndComIds(resolved.spec()), resolved.pageable());
     }
 
     @Override
