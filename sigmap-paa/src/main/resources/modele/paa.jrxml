@@ -25,6 +25,7 @@
 			<![CDATA[SELECT 
 	 COALESCE(r.realisation_envisagees, '') as realisation_envisagees,
 	 GROUP_CONCAT(DISTINCT COALESCE(ls.description, '') ORDER BY l.lots_id ASC, l.lots_ver ASC SEPARATOR ' - ') AS lots,
+	 GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
 	 r.beneficiaire,
 	 r.date_prev_lps,
 	 r.date_prev_ac,
@@ -39,6 +40,11 @@ FROM  realisation r INNER JOIN  paa_realisation p ON
 	  r.type_marcher_id =  f.ref_param_id
 	  LEFT JOIN  ref_param  rf ON
 	  r.imputation_budgetaire_id =  rf.ref_param_id
+	  LEFT JOIN finacement fin
+	ON r.realisation_id = fin.realisation_id
+	AND r.realisation_ver = fin.realisation_ver
+	LEFT JOIN ref_param rp
+	ON fin.source_de_financement_id = rp.ref_param_id
     LEFT JOIN lots_realisation l
         ON r.realisation_id = l.realisation_id
         AND r.realisation_ver = l.realisation_ver
@@ -63,6 +69,10 @@ GROUP BY
 		<field name="lots" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="lots"/>
 			<property name="com.jaspersoft.studio.field.label" value="lots"/>
+		</field>
+		<field name="sources_financement" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="sources_financement"/>
+			<property name="com.jaspersoft.studio.field.label" value="sources_financement"/>
 		</field>
 		<field name="beneficiaire" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="beneficiaire"/>
@@ -190,7 +200,7 @@ WHERE pr.paa_id =   $P{paa_id}
 	<columnHeader>
 		<band height="46">
 			<rectangle>
-				<reportElement x="119" y="13" width="681" height="33" backcolor="#BFE1FF" uuid="f33f090f-c307-42c2-8b28-eab35fa1eca1">
+				<reportElement x="0" y="13" width="800" height="33" backcolor="#BFE1FF" uuid="f33f090f-c307-42c2-8b28-eab35fa1eca1">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<graphicElement>
@@ -198,7 +208,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				</graphicElement>
 			</rectangle>
 			<staticText>
-				<reportElement style="ArialBold" x="120" y="13" width="289" height="33" uuid="e07ce823-4ef6-4955-a178-137e7ce427ad">
+				<reportElement style="ArialBold" x="0" y="13" width="409" height="33" uuid="e07ce823-4ef6-4955-a178-137e7ce427ad">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -211,7 +221,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Objet de la consultation]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="496" y="12" width="70" height="34" uuid="6328e89a-5d64-44f5-baec-fb3b23c5ac04"/>
+				<reportElement style="ArialBold" x="496" y="12" width="64" height="34" uuid="6328e89a-5d64-44f5-baec-fb3b23c5ac04"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -221,7 +231,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Type de contrat]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="567" y="13" width="71" height="33" uuid="3c5c9962-6428-4a2a-9816-8f3eef80f963"/>
+				<reportElement style="ArialBold" x="560" y="13" width="81" height="33" uuid="3c5c9962-6428-4a2a-9816-8f3eef80f963"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -231,7 +241,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Mode de sélection]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="639" y="13" width="79" height="33" uuid="72bfad50-d0f3-492b-8b11-c3cc63ac0341"/>
+				<reportElement style="ArialBold" x="641" y="13" width="79" height="33" uuid="72bfad50-d0f3-492b-8b11-c3cc63ac0341"/>
 				<box>
 					<rightPen lineWidth="0.5"/>
 				</box>
@@ -241,7 +251,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<text><![CDATA[Date prévisionnelle de lancement]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="ArialBold" x="719" y="13" width="81" height="33" uuid="16f5106b-96f8-4fa7-804f-eba4afc38cfc">
+				<reportElement style="ArialBold" x="721" y="13" width="79" height="33" uuid="16f5106b-96f8-4fa7-804f-eba4afc38cfc">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
@@ -260,7 +270,7 @@ WHERE pr.paa_id =   $P{paa_id}
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="9" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Imputation budgétaire]]></text>
+				<text><![CDATA[Source de financement]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
@@ -295,12 +305,12 @@ WHERE pr.paa_id =   $P{paa_id}
 								<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 							</box>
 							<textElement textAlignment="Left" verticalAlignment="Middle">
-								<font fontName="Arial"/>
+								<font fontName="Arial" size="9"/>
 							</textElement>
 							<textFieldExpression><![CDATA[$F{lots} != null && !$F{lots}.isEmpty() ? " "+ $F{realisation_envisagees} + " :\n " + $F{lots}.replaceAll(" - ", "\n ") : " "+  $F{realisation_envisagees}]]></textFieldExpression>
 						</textField>
 						<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-							<reportElement x="520" y="0" width="79" height="50" uuid="d390d660-fd0b-4da5-8f6d-45108b369262">
+							<reportElement x="522" y="0" width="79" height="50" uuid="d390d660-fd0b-4da5-8f6d-45108b369262">
 								<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							</reportElement>
 							<box>
@@ -308,12 +318,12 @@ WHERE pr.paa_id =   $P{paa_id}
 								<rightPen lineWidth="0.5"/>
 							</box>
 							<textElement textAlignment="Center" verticalAlignment="Middle">
-								<font fontName="Arial"/>
+								<font fontName="Arial" size="9"/>
 							</textElement>
 							<textFieldExpression><![CDATA[$F{date_prev_lps}]]></textFieldExpression>
 						</textField>
 						<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-							<reportElement stretchType="RelativeToTallestObject" x="600" y="0" width="81" height="50" uuid="2e04a8ef-9b7b-4d37-b93c-2ce947534051">
+							<reportElement stretchType="RelativeToTallestObject" x="602" y="0" width="79" height="50" uuid="2e04a8ef-9b7b-4d37-b93c-2ce947534051">
 								<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							</reportElement>
 							<box>
@@ -321,12 +331,12 @@ WHERE pr.paa_id =   $P{paa_id}
 								<rightPen lineWidth="0.5"/>
 							</box>
 							<textElement textAlignment="Center" verticalAlignment="Middle">
-								<font fontName="Arial"/>
+								<font fontName="Arial" size="9"/>
 							</textElement>
 							<textFieldExpression><![CDATA[$F{date_prev_ac}]]></textFieldExpression>
 						</textField>
 						<textField isBlankWhenNull="true">
-							<reportElement x="377" y="0" width="70" height="50" uuid="caaecbb4-4f7d-45a3-ae34-c8321bfd5335">
+							<reportElement x="377" y="0" width="64" height="50" uuid="caaecbb4-4f7d-45a3-ae34-c8321bfd5335">
 								<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							</reportElement>
 							<box>
@@ -334,22 +344,22 @@ WHERE pr.paa_id =   $P{paa_id}
 								<rightPen lineWidth="0.5"/>
 							</box>
 							<textElement textAlignment="Center" verticalAlignment="Middle">
-								<font fontName="Arial"/>
-							</textElement>
-							<textFieldExpression><![CDATA[$F{libelle}]]></textFieldExpression>
-						</textField>
-						<textField isBlankWhenNull="true">
-							<reportElement x="448" y="0" width="71" height="50" uuid="9eda4ec4-8ffc-4256-93b0-876b67b37b89">
-								<property name="com.jaspersoft.studio.unit.width" value="px"/>
-							</reportElement>
-							<box>
-								<bottomPen lineWidth="0.5"/>
-								<rightPen lineWidth="0.5"/>
-							</box>
-							<textElement textAlignment="Center" verticalAlignment="Middle">
-								<font fontName="Arial"/>
+								<font fontName="Arial" size="9"/>
 							</textElement>
 							<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+						</textField>
+						<textField isBlankWhenNull="true">
+							<reportElement x="441" y="0" width="81" height="50" uuid="9eda4ec4-8ffc-4256-93b0-876b67b37b89">
+								<property name="com.jaspersoft.studio.unit.width" value="px"/>
+							</reportElement>
+							<box>
+								<bottomPen lineWidth="0.5"/>
+								<rightPen lineWidth="0.5"/>
+							</box>
+							<textElement textAlignment="Center" verticalAlignment="Middle">
+								<font fontName="Arial" size="9"/>
+							</textElement>
+							<textFieldExpression><![CDATA[$F{libelle}]]></textFieldExpression>
 						</textField>
 						<textField isBlankWhenNull="true">
 							<reportElement x="290" y="0" width="86" height="50" uuid="a4304783-80c7-4e00-9c6f-8fca42a77d5a">
@@ -360,9 +370,9 @@ WHERE pr.paa_id =   $P{paa_id}
 								<rightPen lineWidth="0.5"/>
 							</box>
 							<textElement textAlignment="Center" verticalAlignment="Middle">
-								<font fontName="Arial"/>
+								<font fontName="Arial" size="9"/>
 							</textElement>
-							<textFieldExpression><![CDATA[$F{imputbudg}]]></textFieldExpression>
+							<textFieldExpression><![CDATA[$F{sources_financement}]]></textFieldExpression>
 						</textField>
 					</jr:listContents>
 				</jr:list>
