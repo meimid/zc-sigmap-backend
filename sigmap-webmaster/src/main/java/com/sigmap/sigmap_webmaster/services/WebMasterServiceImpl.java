@@ -125,14 +125,28 @@ public class WebMasterServiceImpl implements WebMasterService {
 
     @Override
     public PaaDetailsWebsite getPaaById(Integer paaId, Pageable pageable) throws PaaNotFound {
-        Specification<Paa> spec = PaaSpecifications.paaId(paaId).and(PaaSpecifications.isLatestPublishedVersion());
-        Paa paa = paaService.findOne(spec).orElseThrow(() -> new PaaIdNotFound("", paaId));
+
+        Specification<Paa> spec = PaaSpecifications.paaId(paaId)
+                .and(PaaSpecifications.isLatestPublishedVersion());
+
+        Paa paa = paaService.findOne(spec)
+                .orElseThrow(() -> new PaaIdNotFound("", paaId));
+
         Optional<ModelPaa> modelPaa = modelPaaService.getModel(paaId, paa.getVersion());
         PaaWebsiteResponse paaResponse = new PaaWebsiteResponse(paa);
-        List<RealisationPaaWebSite> allRealisationsDto = paa.getRealisations().stream()
-                .map(RealisationPaaWebSite::new).skip(pageable.getOffset())
-                .limit(pageable.getPageSize()).collect(Collectors.toList());
-        Page<RealisationPaaWebSite> realisationPage = new PageImpl<>(allRealisationsDto, pageable, allRealisationsDto.size());
+
+        List<RealisationPaaWebSite> allRealisations = paa.getRealisations().stream()
+                .map(RealisationPaaWebSite::new)
+                .collect(Collectors.toList());
+
+        List<RealisationPaaWebSite> pageContent = allRealisations.stream()
+                .skip(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .collect(Collectors.toList());
+
+        Page<RealisationPaaWebSite> realisationPage =
+                new PageImpl<>(pageContent, pageable, allRealisations.size());
+
         PaaDetailsWebsite paaDetailsWebsite = new PaaDetailsWebsite();
         paaDetailsWebsite.setPaa(paaResponse);
         paaDetailsWebsite.setRealisations(realisationPage);
@@ -146,7 +160,6 @@ public class WebMasterServiceImpl implements WebMasterService {
             }
         }
         return paaDetailsWebsite;
-
     }
 
 
