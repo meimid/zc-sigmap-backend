@@ -472,7 +472,8 @@ public class DacFlowableService {
                                 /* ALWAYS DISPLAY THESE OPTIONS — DO NOT FILTER */
                                 if (p.startsWith("valide")
                                         || p.startsWith("cpmp_valide")
-                                        || p.startsWith("cncmpDecision")) {
+                                        || p.startsWith("cncmpDecision")
+                                        || p.startsWith("reserve_valide")) {
 
                                     log.info("    SKIP decision variable check for '{}'", p);
                                     continue;
@@ -1407,11 +1408,6 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         String processInstanceId = task.getProcessInstanceId();
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
-
-        if (comIdSnapshot != null) {
-            runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
-            log.info("[SYNC] Restored comId={} into process variables post-completion", comIdSnapshot);
-        }
 
         // If process ended, force PUBLIE
         boolean finished = historyService.createHistoricProcessInstanceQuery()

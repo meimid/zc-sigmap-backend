@@ -13,4 +13,7 @@ public class UserComSoftResponse {
     private String id;
     private String lastName;
     private String firstName;
+    private String email;
+    private String tel;
+    private String adresse;
 }

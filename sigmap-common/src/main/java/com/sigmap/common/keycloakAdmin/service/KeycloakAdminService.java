@@ -115,9 +115,12 @@ public class KeycloakAdminService {
     }
 
     private List<UserDTO> fetchUsersFromKeycloak(String baseUrl, HttpEntity<Void> entity) {
-        String url = baseUrl + "/users";
-        ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
-
+        String groupId = getGroupIdByName(gpBackendUsers, entity.getHeaders());
+        if (groupId == null) {
+            return Collections.emptyList();
+        }
+        String urlMembers = baseUrl + "/groups/" + groupId + "/members";
+        ResponseEntity<List> response = restTemplate.exchange(urlMembers, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> rawUsers = response.getBody();
         if (rawUsers == null) return Collections.emptyList();
 

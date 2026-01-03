@@ -37,10 +37,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.time.Year;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.sigmap.common.config.ModePassationEtape.DEUX_ETAPES;
@@ -58,7 +56,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     private final AcService acService;
     private final DacRepository dacRepository;
     private final PpmService ppmService;
-    private static int lastYear = java.time.Year.now().getValue();
+    private static String lastYear = String.valueOf(Year.now().getValue());
     private static int counter = 0;
 
 
@@ -168,7 +166,7 @@ public class AppelOffreServiceImpl implements AppelOffreService {
 
         //fro the ref it take ppm.nom/annéé/number
         //String reference = "";  AO_AbreviationAC_Annee_Num inc
-        appelOffre.setReference("AO_".concat(ppm.getAc().getNom().concat(generateReference())));
+        appelOffre.setReference("AO_".concat(ppm.getAc().getNom().concat(generateReference(ppm.getAnnee()))));
 
         appelOffre.setNom(request.getNom());
         appelOffre.setDescription(request.getDescription());
@@ -241,10 +239,9 @@ public class AppelOffreServiceImpl implements AppelOffreService {
     }
 
 
-    public static String generateReference() {
-        int currentYear = java.time.Year.now().getValue();
+    public static String generateReference(String currentYear) {
 
-        if (currentYear != lastYear) {
+        if (!Objects.equals(currentYear, lastYear)) {
             lastYear = currentYear;
             counter = 1;
         } else {

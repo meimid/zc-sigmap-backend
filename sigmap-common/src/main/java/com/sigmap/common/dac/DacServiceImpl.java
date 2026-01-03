@@ -15,6 +15,7 @@ import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
 import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacModelsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_prix.DacPrix;
@@ -38,6 +39,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -128,6 +130,7 @@ public class DacServiceImpl implements DacService {
     private final AppelOffreRepository appelOffreRepository;
     private final SocieteDacRepository societeDacRepository;
     private final DacDocsService dacDocsService;
+    private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -1219,7 +1222,7 @@ public class DacServiceImpl implements DacService {
         Dac dac = new Dac();
         dac.setDacId(sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ));
         dac.setDacVer(1);
-        dac.setReference(generateDacRef(sequenceNumber, nom_ac));
+        dac.setReference(generateDacRef(sequenceNumber, nom_ac,dac.getAppelOffre().getPpm()));
         dac.setStatus(ProcessStatus.BROUILLON);
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
@@ -1275,8 +1278,8 @@ public class DacServiceImpl implements DacService {
 
         return savedCdac;
     }
-    public String generateDacRef(Integer sequenceNumber, String nom_ac) {
-        String year = String.valueOf(Year.now().getValue());
+    public String generateDacRef(Integer sequenceNumber, String nom_ac,Ppm ppm) {
+        String year = ppm.getAnnee();
         return String.format("%s/%d/%s", year, sequenceNumber, nom_ac);
     }
 
@@ -1475,6 +1478,23 @@ public class DacServiceImpl implements DacService {
                 .collect(Collectors.toList());
 
         dacResponse.setDynaDocs(dynaDocsResponses);
+
+        // Populate dacModels
+        List<ModelDac> models = modelDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+        DacModelsDTO modelsDTO = new DacModelsDTO();
+
+        for (ModelDac m : models) {
+             if (Boolean.TRUE.equals(m.getIsAao())) {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setAaoModel(m.getDoc().getAlfresco_id());
+                 }
+             } else {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setDacModel(m.getDoc().getAlfresco_id());
+                 }
+             }
+        }
+        dacResponse.setDacModels(Collections.singletonList(modelsDTO));
         return dacResponse;
     }
 
@@ -1999,7 +2019,7 @@ public class DacServiceImpl implements DacService {
             Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
             dac.setDacId(newDacId);
             dac.setDacVer(1);
-            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
+            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom(),ppm));
 
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);

@@ -110,4 +110,13 @@ public class DacDocsController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/update/{dacId}")
+    @PreAuthorize("hasAnyRole('REDACTEUR_AC')")
+    public ResponseEntity<List<DacDocsResponseFullEntities>>  updateDacWithDacDocs(@PathVariable Integer dacId, @RequestBody DacWithDacDocsRequest request) throws MonnaieNotFound {
+        List<DacDocs> dacDocsList = dacDocsService.updateDacWithDacDocsBatch(dacId,request,getLocal());
+        List<DacDocsResponseFullEntities> response = DacDocsMapper.INSTANCE.entityToResponse(dacDocsList);
+        return ResponseEntity.ok(response);
+    }
+
+
 } 

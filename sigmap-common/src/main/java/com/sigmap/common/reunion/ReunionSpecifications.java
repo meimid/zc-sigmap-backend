@@ -12,6 +12,7 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Calendar;
@@ -284,4 +285,15 @@ public class ReunionSpecifications {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("comType").get("refType").get("code"), "CPMP");
     }
 
+    public static Specification<Reunion> sortByComNom(Sort.Direction direction) {
+        return (root, query, cb) -> {
+            Join<Reunion, Com> comJoin = root.join("com", JoinType.LEFT);
+            if (direction.isAscending()) {
+                query.orderBy(cb.asc(comJoin.get("nom")));
+            } else {
+                query.orderBy(cb.desc(comJoin.get("nom")));
+            }
+            return null;
+        };
+    }
 }
