@@ -22,7 +22,9 @@ public interface FinancementMapper {
             @Mapping(target = "realisationId", source = "id.realisationId"),
             @Mapping(target = "realisationVer", source = "id.realisationVer"),
             @Mapping(target = "sourceFinancement", source = "sourceFinancement"),
-            @Mapping(target = "budgetEstimer", source = "budgetEstimer")
+            @Mapping(target = "budgetEstimer", source = "budgetEstimer"),
+            @Mapping(target = "examenPrealable", source = "examenPrealable")
+
     })
     FinancementResponse mapToDto(Financement source);
 
@@ -34,6 +36,7 @@ public interface FinancementMapper {
             @Mapping(target = "id", ignore = true), // Composite key set in service
             @Mapping(target = "sourceFinancement", source = "sourceFinancement"),
             @Mapping(target = "budgetEstimer", source = "budgetEstimer"),
+            @Mapping(target = "examenPrealable", source = "examenPrealable"),
             @Mapping(target = "createdAt", ignore = true),
             @Mapping(target = "createdBy", ignore = true),
             @Mapping(target = "updatedAt", ignore = true),
@@ -49,6 +52,7 @@ public interface FinancementMapper {
             @Mapping(target = "id", ignore = true), // Don't update composite key
             @Mapping(target = "sourceFinancement", source = "sourceFinancement"),
             @Mapping(target = "budgetEstimer", source = "budgetEstimer"),
+            @Mapping(target = "examenPrealable", source = "examenPrealable"),
             @Mapping(target = "createdAt", ignore = true),
             @Mapping(target = "createdBy", ignore = true),
             @Mapping(target = "updatedAt", ignore = true), // Service layer handles these
