@@ -40,6 +40,7 @@ public class FinancementResponse {
      */
     private BigDecimal budgetEstimer;
 
+    private Boolean examenPrealable;
 
 
 

@@ -42,4 +42,7 @@ public class Financement extends BaseEntity {
     @ManyToOne
     @JoinColumn(name = "source_de_financement_id")
     private RefParam sourceFinancement;
+
+    @Column(name = "examen_prealable", nullable = false)
+    private Boolean examenPrealable = false;
 }

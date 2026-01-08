@@ -23,4 +23,6 @@ public class FinancementBaseRequestDto {
      * The estimated budget amount.
      */
     private BigDecimal budgetEstimer;
+
+    private Boolean examenPrealable;
 }
