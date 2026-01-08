@@ -116,19 +116,29 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Override
     @Transactional
     public DacDocs uploadStaticDoc(Integer dacId, Integer dynaDocsId, MultipartFile file) {
-        // Resolve latest DynaDocs and verify static
-        Optional<DynaDocs> dynaDocsOpt = dynaDocsRepository.findLastDynaDocsVersionById(dynaDocsId);
-        if (dynaDocsOpt.isEmpty()) {
-            throw new RuntimeException("DynaDocs not found with id: " + dynaDocsId);
-        }
-        DynaDocs dynaDocs = dynaDocsOpt.get();
-        if (!Boolean.TRUE.equals(dynaDocs.getIsStatic())) {
-            throw new RuntimeException("DynaDocs is not static: " + dynaDocsId);
-        }
         // Resolve latest DAC
         Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
         if (dac == null) {
             throw new RuntimeException("Dac not found with id: " + dacId);
+        }
+
+        // Resolve which document version to use: priority to existing association in dac_docs
+        Integer ddocVer = dacDocsRepository.findExistingVersion(dac.getDacId(), dac.getDacVer(), dynaDocsId)
+                .orElse(null);
+
+        Optional<DynaDocs> dynaDocsOpt;
+        if (ddocVer != null) {
+            dynaDocsOpt = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(dynaDocsId, ddocVer);
+        } else {
+            dynaDocsOpt = dynaDocsRepository.findLastDynaDocsVersionById(dynaDocsId);
+        }
+
+        if (dynaDocsOpt.isEmpty()) {
+            throw new RuntimeException("DynaDocs not found with id: " + dynaDocsId + (ddocVer != null ? " version: " + ddocVer : ""));
+        }
+        DynaDocs dynaDocs = dynaDocsOpt.get();
+        if (!Boolean.TRUE.equals(dynaDocs.getIsStatic())) {
+            throw new RuntimeException("DynaDocs is not static: " + dynaDocsId);
         }
 
         // Determine target DynaField for this static document
@@ -215,29 +225,37 @@ public class DacDocsServiceImpl implements DacDocsService{
     @Transactional
     public DacDocs createDacDocs (DacDocsRequest request) {
 
-        // 1- get the DynaDocs with last version
-        Optional<DynaDocs> existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
-
-        // 2- test if the existingDynaDocs is empty
-        if (existingDynaDocs.isEmpty()) {
-            throw new RuntimeException("DynaDocs not found with id: " + request.getDynaDocsId());
-        }
-
-        // 3- get the DynaFields with last dynaDocs version for the given id
-        List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndVer(existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
-        if (existingDynaFields.isEmpty()) {
-            throw new RuntimeException("DynaField not found for id: " + request.getDynaFieldsId());
-        }
-        log.debug("existingDynaFields............. : {}", existingDynaFields);
-
-        // 4-get the last dac (id and version) with the given id
+        // 1-get the last dac (id and version) with the given id
         Dac existingDac = dacRepository.findDacWithLatestVersionByDacId(request.getDacId());
         log.debug("existingDac............. : {}", existingDac);
 
-        // 5- verifier l'existence du dac
+        // 2- verifier l'existence du dac
         if (existingDac == null) {
             throw new RuntimeException("Dac not found with id: " + request.getDacId());
         }
+
+        // 3- Resolve which document version to use: priority to existing association in dac_docs
+        Integer ddocVer = dacDocsRepository.findExistingVersion(existingDac.getDacId(), existingDac.getDacVer(), request.getDynaDocsId())
+                .orElse(null);
+
+        Optional<DynaDocs> existingDynaDocs;
+        if (ddocVer != null) {
+            existingDynaDocs = dynaDocsRepository.findByIdDynaDocsIdAndDynaDocsVer(request.getDynaDocsId(), ddocVer);
+        } else {
+            existingDynaDocs = dynaDocsRepository.findLastDynaDocsVersionById(request.getDynaDocsId());
+        }
+
+        // 4- test if the existingDynaDocs is empty
+        if (existingDynaDocs.isEmpty()) {
+            throw new RuntimeException("DynaDocs not found with id: " + request.getDynaDocsId() + (ddocVer != null ? " version: " + ddocVer : ""));
+        }
+
+        // 5- get the DynaFields for the resolved document version
+        List<DynaFields> existingDynaFields = dynaFieldsRepository.findByDynaDocsIdAndVer(existingDynaDocs.get().getId(), existingDynaDocs.get().getVersion());
+        if (existingDynaFields.isEmpty()) {
+            throw new RuntimeException("DynaField not found for docId: " + request.getDynaDocsId() + " ver: " + existingDynaDocs.get().getVersion());
+        }
+        log.debug("existingDynaFields............. : {}", existingDynaFields);
         //6- create DacDocs and save
         DacDocs entity = dacDocsMapper.toEntity(request);
         log.debug("entity............. : {}", entity);
