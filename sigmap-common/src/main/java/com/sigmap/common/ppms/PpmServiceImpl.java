@@ -386,7 +386,7 @@ public class PpmServiceImpl implements PpmService {
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
-                    .and(ReunionSpecifications.comId(comId))
+                  //  .and(ReunionSpecifications.comId(comId)) // ??
                     .and(ReunionSpecifications.hasPpmId(ppmId))
                     .and(ReunionSpecifications.hasPpmVer(ppmVersion));
 
