@@ -426,9 +426,12 @@ public class PpmServiceImpl implements PpmService {
                         break;
 
                     case "CNCMP-P":
-                        // Permanent CNCMP sees only permanent PVs
+                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
                         if ("CNCMP-P".equals(reunionComType)) {
                             dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
                         }
                         break;
 
