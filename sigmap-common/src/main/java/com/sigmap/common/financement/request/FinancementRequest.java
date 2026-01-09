@@ -2,7 +2,7 @@ package com.sigmap.common.financement.request;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.source_financement.SourceFinancement;
 import lombok.Data;
 import java.math.BigDecimal;
 
@@ -15,8 +15,8 @@ import java.math.BigDecimal;
 public class FinancementRequest {
 
     @JsonProperty("FinancementId")
-    @JsonAlias({"id", "financementId", "FinancementId"})
-    private Integer financementId ;
+    @JsonAlias({ "id", "financementId", "FinancementId" })
+    private Integer financementId;
 
     /**
      * The ID of the Realisation entity (part of composite key).
@@ -36,7 +36,7 @@ public class FinancementRequest {
     /**
      * The ID of the financing source.
      */
-    private RefParam sourceFinancement;
+    private SourceFinancement sourceFinancement;
 
     /**
      * The estimated budget amount.

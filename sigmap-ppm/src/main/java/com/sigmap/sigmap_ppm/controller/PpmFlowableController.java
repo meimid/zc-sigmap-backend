@@ -59,13 +59,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * REST Controller for managing Flowable process instances and tasks related to Ppm entities.
+ * REST Controller for managing Flowable process instances and tasks related to
+ * Ppm entities.
  */
 @RestController
 @RequestMapping("/api/ppms/flowable")
 @Slf4j
 public class PpmFlowableController {
-
 
     @Autowired
     private PpmFlowableService ppmFlowableService;
@@ -77,15 +77,11 @@ public class PpmFlowableController {
     private final RuntimeService runtimeService;
     private final ReunionService reunionService;
 
-
-
-
-
     public PpmFlowableController(ProcessVerbalService processVerbalService, ObjectMapper objectMapper,
-                                 DocumentCommuneService documentCommuneService,
-                                 ModelPpmService modelPpmService,
-                                 TaskService taskService,
-                                 RuntimeService runtimeService, ReunionService reunionService) {
+            DocumentCommuneService documentCommuneService,
+            ModelPpmService modelPpmService,
+            TaskService taskService,
+            RuntimeService runtimeService, ReunionService reunionService) {
         this.processVerbalService = processVerbalService;
         this.objectMapper = objectMapper;
         this.documentCommuneService = documentCommuneService;
@@ -104,7 +100,8 @@ public class PpmFlowableController {
      * @throws PpmNotFound if the Ppm entity is not found
      */
     @PostMapping("/start/{id}")
-    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id) throws PpmNotFound, AcNotFound {
+    public ResponseEntity<ProcessStartResponseDTO> startProcessInstance(@PathVariable Integer id)
+            throws PpmNotFound, AcNotFound {
         log.info("Starting process instance for Ppm ID: {}", id);
         ProcessStartResponseDTO response = ppmFlowableService.startProcessInstance(id);
         return ResponseEntity.ok(response);
@@ -139,22 +136,22 @@ public class PpmFlowableController {
     /**
      * Validates a task and updates the associated Ppm entity.
      *
-     * @param taskId  The ID of the task to validate
-     * @param request The validation request
+     * @param taskId               The ID of the task to validate
+     * @param request              The validation request
      * @param realisationsLotsJson JSON string containing lots for realisations
      * @return ResponseEntity with TaskDTO
      * @throws PpmNotFound if the Ppm entity is not found
      * @throws DocNotFound if a document is not found
-     * @throws AcNotFound if the associated Ac entity is not found
+     * @throws AcNotFound  if the associated Ac entity is not found
      * @throws IOException if an error occurs during file processing
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate")
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/{taskId}/validate")
     public ResponseEntity<TaskDTO> validateTask(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
-            @RequestParam(value = "realisationsLotsJson", required = false
-            ) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson) throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
+            throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
         log.info("Validating task ID: {} with request: {}", taskId, request);
 
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
@@ -179,7 +176,8 @@ public class PpmFlowableController {
         return ResponseEntity.ok(response);
     }
 
-    private void processRealisationFinancementsFromJson(PpmWithLotsRequestDto request, String realisationsFinancementsJson) {
+    private void processRealisationFinancementsFromJson(PpmWithLotsRequestDto request,
+            String realisationsFinancementsJson) {
         if (realisationsFinancementsJson == null || realisationsFinancementsJson.isEmpty()) {
             return;
         }
@@ -188,8 +186,8 @@ public class PpmFlowableController {
             log.info("Processing financements JSON: {}", realisationsFinancementsJson);
             Map<String, List<Map<String, Object>>> financementMap = objectMapper.readValue(
                     realisationsFinancementsJson,
-                    new TypeReference<Map<String, List<Map<String, Object>>>>() {}
-            );
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {
+                    });
 
             log.info("Parsed {} realisation indices from financements JSON", financementMap.size());
 
@@ -209,7 +207,8 @@ public class PpmFlowableController {
                 }
 
                 if (index >= realisations.size()) {
-                    log.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})", index, realisations.size());
+                    log.warn("Skipping financements for realisation index {} as it's out of bounds (size: {})", index,
+                            realisations.size());
                     continue;
                 }
 
@@ -232,7 +231,8 @@ public class PpmFlowableController {
                     if (financementData.containsKey("budgetEstimer")) {
                         Object budgetEstimer = financementData.get("budgetEstimer");
                         if (budgetEstimer instanceof Number) {
-                            financementRequest.setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
+                            financementRequest
+                                    .setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
                         }
                     }
                     if (financementData.containsKey("sourceFinancement")) {
@@ -242,9 +242,9 @@ public class PpmFlowableController {
                             if (sourceFinancementMap.containsKey("id")) {
                                 Object sourceId = sourceFinancementMap.get("id");
                                 if (sourceId instanceof Number) {
-                                    RefParam refParam = new RefParam();
-                                    refParam.setId(((Number) sourceId).intValue());
-                                    financementRequest.setSourceFinancement(refParam);
+                                    com.sigmap.common.source_financement.SourceFinancement sf = new com.sigmap.common.source_financement.SourceFinancement();
+                                    sf.setId(((Number) sourceId).intValue());
+                                    financementRequest.setSourceFinancement(sf);
                                 }
                             }
                         }
@@ -264,20 +264,20 @@ public class PpmFlowableController {
         }
     }
 
-
     /**
      * Validates a group of tasks and updates the associated Ppm entities.
      *
-     * @param requestsJson The list of validation requests containing task IDs
+     * @param requestsJson         The list of validation requests containing task
+     *                             IDs
      * @param realisationsLotsJson JSON string containing lots for realisations
      * @return ResponseEntity with List<TaskDTO>
      * @throws PpmNotFound if a Ppm entity is not found
      * @throws DocNotFound if a document is not found
-     * @throws AcNotFound if an associated Ac entity is not found
+     * @throws AcNotFound  if an associated Ac entity is not found
      * @throws IOException if an error occurs during file processing
      * @throws ComNotFound if a commission is not found
      */
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/validate-group/{idReu}")
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/validate-group/{idReu}")
     public ResponseEntity<List<TaskDTO>> validateTaskGroup(
             @RequestParam("requestsJson") String requestsJson,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
@@ -285,34 +285,34 @@ public class PpmFlowableController {
             throws PpmNotFound, DocNotFound, AcNotFound, IOException, ComNotFound {
         Boolean present = reunionService.checkParticipantPresenceWithReunionId(idReu);
         if (present) {
-        log.info("Validating group of tasks with requests JSON");
+            log.info("Validating group of tasks with requests JSON");
 
-        // Deserialize requestsJson into List<GroupValidationRequest>
-        List<GroupValidationRequest> requests;
-        try {
-            requests = objectMapper.readValue(requestsJson, new TypeReference<List<GroupValidationRequest>>() {});
-            log.info("Parsed {} requests from JSON", requests.size());
-        } catch (IOException e) {
-            log.error("Failed to parse requests JSON: {}", e.getMessage());
-            throw new IOException("Invalid requests JSON format", e);
-        }
+            // Deserialize requestsJson into List<GroupValidationRequest>
+            List<GroupValidationRequest> requests;
+            try {
+                requests = objectMapper.readValue(requestsJson, new TypeReference<List<GroupValidationRequest>>() {
+                });
+                log.info("Parsed {} requests from JSON", requests.size());
+            } catch (IOException e) {
+                log.error("Failed to parse requests JSON: {}", e.getMessage());
+                throw new IOException("Invalid requests JSON format", e);
+            }
 
-        for (GroupValidationRequest request : requests) {
-            if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
-                try {
-                    processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);
-                    log.info("Successfully processed lots from JSON string for task ID: {}", request.getTaskId());
-                } catch (Exception e) {
-                    log.error("Error processing lots JSON for task ID: {}: {}", request.getTaskId(), e.getMessage());
+            for (GroupValidationRequest request : requests) {
+                if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+                    try {
+                        processRealisationLotsFromJson(request.getPpm(), realisationsLotsJson);
+                        log.info("Successfully processed lots from JSON string for task ID: {}", request.getTaskId());
+                    } catch (Exception e) {
+                        log.error("Error processing lots JSON for task ID: {}: {}", request.getTaskId(),
+                                e.getMessage());
+                    }
                 }
             }
-        }
-        List<TaskDTO> response = ppmFlowableService.validateTaskGroup(requests);
-        return ResponseEntity.ok(response);
-        }
-        else
-        {
-        throw new ParticipantPresenceConflict("");
+            List<TaskDTO> response = ppmFlowableService.validateTaskGroup(requests);
+            return ResponseEntity.ok(response);
+        } else {
+            throw new ParticipantPresenceConflict("");
         }
     }
 
@@ -329,7 +329,8 @@ public class PpmFlowableController {
 
             // Parse JSON into a map of realisation indices to lists of lot data
             Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
-                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {
+                    });
             log.info("Parsed {} realisation indices from lots JSON", lotsMap.size());
 
             // Ensure realisations list exists
@@ -386,9 +387,11 @@ public class PpmFlowableController {
                         Object budgetObj = lotData.get("budget");
                         if (budgetObj instanceof Number) {
                             lot.setBudget(new java.math.BigDecimal(budgetObj.toString()));
-                            log.debug("Set budget to {} for lot with description: {}", lot.getBudget(), lot.getDescription());
+                            log.debug("Set budget to {} for lot with description: {}", lot.getBudget(),
+                                    lot.getDescription());
                         } else {
-                            log.warn("Invalid budget format for lot with description: {}, setting to null", lot.getDescription());
+                            log.warn("Invalid budget format for lot with description: {}, setting to null",
+                                    lot.getDescription());
                         }
                     } else {
                         log.debug("Lot data missing budget, setting to null");
@@ -420,60 +423,56 @@ public class PpmFlowableController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping(
-            consumes = {"multipart/form-data"},
-            value = "/pv")
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/pv")
     public ResponseEntity<ProcessVerbalResponse> createPv(
             @ModelAttribute("request")
-           // @RequestBody
-            ProcessVerbalRequest request
-    ) throws PpmNotFound, AcNotFound, IOException, ComNotFound, RefParamNotFound {
-        ProcessVerbal processVerbal= processVerbalService.create(request);
-        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+            // @RequestBody
+            ProcessVerbalRequest request) throws PpmNotFound, AcNotFound, IOException, ComNotFound, RefParamNotFound {
+        ProcessVerbal processVerbal = processVerbalService.create(request);
+        ProcessVerbalResponse response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
-@GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}")
-public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppmId,@PathVariable Integer ppmVer) throws PpmNotFound {
-    ProcessVerbal processVerbal=processVerbalService.findByIds(ppmId,ppmVer);
-    ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
-    return ResponseEntity.ok(response);
 
-}
-    @PutMapping(
-            consumes = {"multipart/form-data"},
-            value = "/pv")
+    @GetMapping("/pv/find-by-ids/{ppmId}/{ppmVer}")
+    public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppmId, @PathVariable Integer ppmVer)
+            throws PpmNotFound {
+        ProcessVerbal processVerbal = processVerbalService.findByIds(ppmId, ppmVer);
+        ProcessVerbalResponse response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+        return ResponseEntity.ok(response);
+
+    }
+
+    @PutMapping(consumes = { "multipart/form-data" }, value = "/pv")
     public ResponseEntity<ProcessVerbalResponse> updatePv(
             @ModelAttribute("request")
             // @RequestBody
-            ProcessVerbalRequest request
-    ) throws IOException, RefParamNotFound, DocNotFound{
-        ProcessVerbal processVerbal= processVerbalService.update(request);
-        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+            ProcessVerbalRequest request) throws IOException, RefParamNotFound, DocNotFound {
+        ProcessVerbal processVerbal = processVerbalService.update(request);
+        ProcessVerbalResponse response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/pv/find_by-ids_task_process/{ppmId}/{ppmVer}/{taskId}/{processInstanceId}")
     public ResponseEntity<ProcessVerbalResponse> findByIdsAndTaskIdAndProcessInstanceId(@PathVariable Integer ppmId,
-                                                           @PathVariable Integer ppmVer,
-                                                           @PathVariable String taskId,
-                                                           @PathVariable String processInstanceId)   {
-        ProcessVerbal processVerbal=processVerbalService.findByIdsAndTaskIdAndProcessInstanceId(ppmId,ppmVer,taskId,processInstanceId);
-        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+            @PathVariable Integer ppmVer,
+            @PathVariable String taskId,
+            @PathVariable String processInstanceId) {
+        ProcessVerbal processVerbal = processVerbalService.findByIdsAndTaskIdAndProcessInstanceId(ppmId, ppmVer, taskId,
+                processInstanceId);
+        ProcessVerbalResponse response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping(
-            consumes = {"multipart/form-data"},
-            value = "/pv/add_pv")
+    @PutMapping(consumes = { "multipart/form-data" }, value = "/pv/add_pv")
     public ResponseEntity<ProcessVerbalResponse> addNewPv(
             @ModelAttribute("request")
             // @RequestBody
-            PvRequest request
-    ) throws  IOException, RefParamNotFound, DocNotFound {
-        ProcessVerbal processVerbal= processVerbalService.addNewPv(request);
-        ProcessVerbalResponse  response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
+            PvRequest request) throws IOException, RefParamNotFound, DocNotFound {
+        ProcessVerbal processVerbal = processVerbalService.addNewPv(request);
+        ProcessVerbalResponse response = ProcessVerbalMapper.INSTANCE.map(processVerbal);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/task-history/{procInstId}")
     public List<HistoricTaskDto> loadHistoric(@PathVariable("procInstId") String procInstId) {
         return ppmFlowableService.loadHistoricTasks(procInstId);
@@ -485,9 +484,10 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
     }
 
     @PostMapping("/modele-ppm")
-    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele )  throws Exception {
+    public ResponseEntity<byte[]> generateModelePpm(@RequestBody ModeleRequest modele) throws Exception {
 
-        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(),modele.getPpmVer(),modele.getFonction()+" - "+ modele.getSignataire());
+        byte[] pdfBytes = ppmFlowableService.generateModelePpm(modele.getPpmId(), modele.getPpmVer(),
+                modele.getFonction() + " - " + modele.getSignataire());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -498,20 +498,18 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
                 .body(pdfBytes);
     }
 
-
-
     @PreAuthorize("hasRole('VALIDATEUR_AC')")
     @Transactional(rollbackFor = {
             Exception.class
     })
-    @PostMapping(consumes = {"multipart/form-data"}, value = "/tasks/{taskId}/validate_with_model")
+    @PostMapping(consumes = { "multipart/form-data" }, value = "/tasks/{taskId}/validate_with_model")
     public ResponseEntity<TaskDTO> validateTaskWithModel(
             @PathVariable String taskId,
             @ModelAttribute("request") ValidationRequest request,
             @RequestPart(value = "modelPpmFile", required = false) MultipartFile modelPpmFile,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-    ) throws IOException, PpmNotFound, AcNotFound, ComNotFound, DocNotFound {
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
+            throws IOException, PpmNotFound, AcNotFound, ComNotFound, DocNotFound {
 
         if (modelPpmFile == null || modelPpmFile.isEmpty()) {
             throw new PpmModelShouldExiste("Le fichier Model PPM est requis.");
@@ -530,11 +528,10 @@ public ResponseEntity<ProcessVerbalResponse> findByIds(@PathVariable Integer ppm
 
         String rootPath = Constants.PATH_ENTREPOT_GED_PPM;
         Integer docId = documentCommuneService.processAndSaveDocumentsForModelPpm(
-                modelPpmFile, ppmId,ppmVer, rootPath
-        );
+                modelPpmFile, ppmId, ppmVer, rootPath);
 
         modelPpmService.setModel(ppmId, ppmVer, docId);
-      //  modelPpmService.setModel(ppmId, ppmVer, docId);
+        // modelPpmService.setModel(ppmId, ppmVer, docId);
 
         if (realisationsLotsJson != null && !realisationsLotsJson.isBlank()) {
             try {

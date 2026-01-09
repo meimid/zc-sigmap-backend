@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.sigmap.common.source_financement.mappers.SourceFinancementMapper;
+import com.sigmap.common.source_financement.response.SourceFinancementResponseDto;
+
 /**
  * Mapper for converting between entity objects and specialized DTOs for PAA with Realisations.
  */
@@ -44,13 +47,13 @@ public interface PaaDetailedMapper {
     /**
      * Maps a Realisation entity to a RealisationResponseDtoForPaa
      */
-//    @Mapping(target = "metadata.createdAt", source = "createdAt")
-//    @Mapping(target = "metadata.createdBy", source = "createdBy")
-//    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
-//    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
-//    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
-//    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
-//    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+    // @Mapping(target = "metadata.createdAt", source = "createdAt")
+    // @Mapping(target = "metadata.createdBy", source = "createdBy")
+    // @Mapping(target = "metadata.updatedAt", source = "updatedAt")
+    // @Mapping(target = "metadata.updatedBy", source = "updatedBy")
+    // @Mapping(target = "metadata.isDeleted", source = "isDeleted")
+    // @Mapping(target = "metadata.deletedBy", source = "deletedBy")
+    // @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(target = "lots", expression = "java(mapLots(realisation.getLots()))")
     @Mapping(target = "docs", expression = "java(mapDocs(realisation.getDocs()))")
     @Mapping(target = "financements", expression = "java(mapFinancements(realisation.getFinancements()))")
@@ -60,9 +63,26 @@ public interface PaaDetailedMapper {
     @Mapping(target = "realisationId", source = "id.realisationId")
     @Mapping(target = "realisationVer", source = "id.realisationVer")
     @Mapping(target = "monnaieId", source = "monnaie.id")
-    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "sourceFinancement", ignore = true)
     @Mapping(target = "budgetEstimer", source = "budgetEstimer")
-    FinancementResponse mapFinancement(Financement financement);
+    FinancementResponse mapFinancementBase(Financement financement);
+
+    /**
+     * Maps a Financement entity to FinancementResponse with manual
+     * sourceFinancement mapping
+     */
+    default FinancementResponse mapFinancement(Financement financement) {
+        if (financement == null) {
+            return null;
+        }
+        FinancementResponse response = mapFinancementBase(financement);
+        if (financement.getSourceFinancement() != null) {
+            SourceFinancementResponseDto sfDto = SourceFinancementMapper.INSTANCE
+                    .mapToDto(financement.getSourceFinancement());
+            response.setSourceFinancement(sfDto);
+        }
+        return response;
+    }
 
     /**
      * Maps a Lot entity to a LotPaaResponse
@@ -89,11 +109,11 @@ public interface PaaDetailedMapper {
             return null;
         }
         return financements.stream()
-                .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted())) // Filter out deleted financements
+                .filter(financement -> !Boolean.TRUE.equals(financement.getIsDeleted())) // Filter out deleted
+                                                                                         // financements
                 .map(this::mapFinancement)
                 .collect(Collectors.toList());
     }
-
 
     /**
      * Helper method to map a set of Lot entities to LotPaaResponse DTOs
@@ -130,4 +150,4 @@ public interface PaaDetailedMapper {
                 })
                 .collect(Collectors.toList());
     }
-} 
+}
