@@ -1,4 +1,4 @@
-package com.sigmap.sigmap_params.ref_params;
+package com.sigmap.sigmap_params.source_financement;
 
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
