@@ -8,6 +8,7 @@ import com.sigmap.common.source_financement.mappers.SourceFinancementMapper;
 import com.sigmap.common.source_financement.request.SourceFinancementQuery;
 import com.sigmap.common.source_financement.request.SourceFinancementRequest;
 import com.sigmap.common.source_financement.response.SourceFinancementResponse;
+import com.sigmap.common.source_financement.response.SourceFinancementResponseDto;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,10 +35,10 @@ public class SourceFinancementController {
     private final SourceFinancementService sourceFinancementService;
 
     @GetMapping
-    public ResponseEntity<List<SourceFinancementResponse>> findAll() {
+    public ResponseEntity<List<SourceFinancementResponseDto>> findAll() {
 
-        List<SourceFinancementResponse> response = sourceFinancementService.findAll().stream()
-                .map(SourceFinancementMapper.INSTANCE::map)
+        List<SourceFinancementResponseDto> response = sourceFinancementService.findAll().stream()
+                .map(SourceFinancementMapper.INSTANCE::mapToDto)
                 .collect(Collectors.toList());
 
 

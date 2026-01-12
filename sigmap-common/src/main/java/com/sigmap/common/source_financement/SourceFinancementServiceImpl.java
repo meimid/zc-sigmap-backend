@@ -8,6 +8,7 @@ import com.sigmap.common.source_financement.request.SourceFinancementRequest;
 import java.util.List;
 import java.util.Optional;
 
+import com.sigmap.common.source_financement.response.SourceFinancementResponseDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,7 +35,8 @@ public class SourceFinancementServiceImpl implements SourceFinancementService {
     @Override
     public List<SourceFinancement> findAll() {
         Specification<SourceFinancement> spec = SourceFinancementSpecifications.deleted(false);
-        return repository.findAll(spec);
+       return  repository.findAll(spec);
+
     }
 
     @Override
