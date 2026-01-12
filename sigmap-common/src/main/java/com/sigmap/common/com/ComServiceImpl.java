@@ -691,7 +691,10 @@ public class ComServiceImpl implements ComService {
                     return new UserComSoftResponse(
                             userCom.getUserId(),
                             userDTO.getLastName(),
-                            userDTO.getFirstName()
+                            userDTO.getFirstName(),
+                            userDTO.getEmail(),
+                            userDTO.getMobile(),
+                            userDTO.getAddress()
                     );
                 })
                 .filter(Objects::nonNull)

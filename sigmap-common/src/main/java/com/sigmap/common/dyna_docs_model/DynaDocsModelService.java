@@ -50,4 +50,12 @@ public interface DynaDocsModelService {
      * @param id Identifiant du modèle à supprimer
      */
     void delete(Integer id);
+
+    /**
+     * Récupère la liste des modèles de documents dynamiques liés aux documents dynamiques
+     * ayant le même type de marché et mode de passation que la réalisation de l'appel d'offre.
+     * @param appelOffreId Identifiant de l'appel d'offre
+     * @return Liste des modèles de documents dynamiques correspondants
+     */
+    List<DynaDocsModel> findByAppelOffre(Integer appelOffreId);
 }

@@ -13,7 +13,9 @@ import com.sigmap.common.dac.request.DacQuery;
 import com.sigmap.common.dac_docs.DacDocs;
 import com.sigmap.common.dac_docs.DacDocsId;
 import com.sigmap.common.dac_docs.DacDocsRepository;
+import com.sigmap.common.dac_docs.DacDocsService;
 import com.sigmap.common.dac_docs.mappers.DacDocsMapper;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacModelsDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.dac_docs.response.customResponceDTO.DynaDocsResponseDTO;
 import com.sigmap.common.dac_prix.DacPrix;
@@ -37,6 +39,7 @@ import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.lots.Lot;
+import com.sigmap.common.model_dac.ModelDac;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
@@ -50,9 +53,9 @@ import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
 import com.sigmap.common.utils.SequenceGeneratorService;
-import jakarta.persistence.criteria.Root;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.io.RandomAccessRead;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +69,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import java.io.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.Year;
@@ -125,6 +129,8 @@ public class DacServiceImpl implements DacService {
     private final DynaDocsModelRepository dynaDocsModelRepository;
     private final AppelOffreRepository appelOffreRepository;
     private final SocieteDacRepository societeDacRepository;
+    private final DacDocsService dacDocsService;
+    private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -383,6 +389,33 @@ public class DacServiceImpl implements DacService {
                 .forEach(dacDoc -> {
                     String bookmarkName = dacDoc.getDynaField().getName();
                     String fieldValue = dacDoc.getFieldValue();
+
+                    // Resolve SYSTEM field values dynamically (e.g. for updated dates)
+                    if (dacDoc.getDynaField() != null && dacDoc.getDynaField().getType() == DynaFieldType.SYSTEM) {
+                         try {
+                              String computed = dacDocsService.resolveSystemFieldValue(dacDoc.getDynaField(), dacDoc.getDac());
+                              if (computed != null) {
+                                   fieldValue = computed;
+                              }
+                         } catch (Exception e) {
+                              log.error("Error resolving system field value for bookmark {}", bookmarkName, e);
+                         }
+                    }
+
+                    // Sanitize HTML values for specific fields
+                    if (dacDoc.getDynaField() != null) {
+                        String source = dacDoc.getDynaField().getSource();
+                        String sourceField = dacDoc.getDynaField().getSourceField();
+                        
+                        boolean needsSanitization = 
+                            ("dac".equalsIgnoreCase(source) && ("conditionsParticipation".equalsIgnoreCase(sourceField) || "conditionParticipation".equalsIgnoreCase(sourceField))) ||
+                            (("appelOffre".equalsIgnoreCase(source) || "appel_offre".equalsIgnoreCase(source) || "ao".equalsIgnoreCase(source)) && ("description".equalsIgnoreCase(sourceField) || "descriptionAO".equalsIgnoreCase(sourceField)));
+
+                        if (needsSanitization && fieldValue != null) {
+                            fieldValue = stripHtml(fieldValue);
+                        }
+                    }
+
                     if (bookmarkName != null && fieldValue != null) {
                         log.debug("Mapping bookmark: {} -> Value: {}", bookmarkName, fieldValue);
                         bookmarks.put(bookmarkName, fieldValue);
@@ -390,6 +423,37 @@ public class DacServiceImpl implements DacService {
                 });
 
         return bookmarks;
+    }
+
+    private String stripHtml(String html) {
+        if (html == null) return null;
+        
+        // 1. Pre-process block tags to ensure separation
+        // Replace closing tags of block elements or br tags with a newline
+        String text = html
+                .replaceAll("(?i)<br\\s*/?>", "\n")
+                .replaceAll("(?i)</p>", "\n")
+                .replaceAll("(?i)</div>", "\n")
+                .replaceAll("(?i)</li>", "\n")
+                .replaceAll("(?i)</ul>", "\n")
+                .replaceAll("(?i)</ol>", "\n")
+                .replaceAll("(?i)</tr>", "\n");
+
+        // 2. Unescape HTML entities
+        text = text
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("\u00A0", " "); // Unicode non-breaking space
+            
+        // 3. Remove remaining HTML tags
+        text = text.replaceAll("\\<[^>]*>", "");
+        
+        // 4. Trim and collapse multiple spaces (but keep newlines)
+        return text.replaceAll("[ \\t\\f]+", " ").replaceAll("[\\r\\n]+", "\n").trim();
     }
 
     private void replaceBookmarks(XWPFDocument document, Map<String, String> replacements) {
@@ -613,8 +677,7 @@ public class DacServiceImpl implements DacService {
                 if (pos != -1) {
                     document.removeBodyElement(pos);
                 }
-
-                break;
+                return;
             }
         }
    }
@@ -633,55 +696,152 @@ public class DacServiceImpl implements DacService {
      * @param paragraph    Le paragraphe à traiter
      * @param replacements La map des remplacements (Nom du marqueur -> Valeur)
      */
-    private void replacePatternsInParagraph(XWPFParagraph paragraph, Map<String, String> replacements) {
-        // 1. Consolider les runs pour éviter les marqueurs coupés
-        consolidateRuns(paragraph);
+    private void replacePatternsInParagraph(XWPFParagraph paragraph,
+                                            Map<String, String> replacements) {
 
-        // Obtenir la liste des runs (segments de texte) du paragraphe
+        // 1. Merge split tags to ensure **KEY** is in a single run.
+        // This also handles the "Partial Bold" issue by applying bold if any part was bold.
+        mergeTagRuns(paragraph);
+        
+        // 2. Iterate through runs and perform IN-PLACE replacement.
+        // This avoids the "Redistribution" logic that caused style bleeding and truncation.
         List<XWPFRun> runs = paragraph.getRuns();
+        if (runs == null || runs.isEmpty()) return;
 
-        // Si le paragraphe est vide, on arrête
-        if (runs == null || runs.isEmpty()) {
-            return;
-        }
-
-        // Parcourir chaque run pour chercher des marqueurs
         for (XWPFRun run : runs) {
-            String text = run.getText(0); // 0 pour la position actuelle dans le run
+            String text = run.getText(0);
+            if (text == null || !text.contains("**")) continue;
 
-            // Vérifier si le texte du run contient au moins un début de marqueur "**"
-            if (text != null && text.contains("**")) {
+            String newText = text;
+            boolean modified = false;
 
-                // Faire une copie pour les modifications
-                String newText = text;
-                boolean replaced = false;
+            for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                String key = entry.getKey();
+                if (key.contains(":")) continue; // Skip complex keys like list: or table:
 
-                // Tester chaque remplacement possible
-                for (Map.Entry<String, String> entry : replacements.entrySet()) {
-                    // Ignorer les clés complexes (table: ou list:) qui sont traitées ailleurs
-                    if (!entry.getKey().contains(":")) {
-                        // Construire le motif exact : **NOM_MARQUEUR**
-                        String pattern = "**" + entry.getKey() + "**";
-
-                        // Si le run contient ce marqueur spécifique
-                        if (newText.contains(pattern)) {
-                            String value = entry.getValue() != null ? entry.getValue() : "";
-                            // Remplacer le marqueur par sa valeur
-                            newText = newText.replace(pattern, value);
-                            replaced = true;
-                            log.debug("Remplacement effectué dans un run : {} -> {}", pattern, value);
-                        }
-                    }
+                String pattern = "**" + key + "**";
+                if (newText.contains(pattern)) {
+                    String value = entry.getValue() != null ? entry.getValue() : "";
+                    newText = newText.replace(pattern, value);
+                    modified = true;
                 }
+            }
+            
+            // Apply changes to this specific run only
+            if (modified) {
+                if (newText.contains("\n")) {
+                    String[] lines = newText.split("\n", -1); // Keep empty lines
+                    
+                    // Force alignment to LEFT to prevent justification stretching with soft breaks
+                    paragraph.setAlignment(ParagraphAlignment.LEFT);
 
-                // Si un remplacement a eu lieu, mettre à jour le texte du run
-                // Cela préserve le style car on modifie le contenu du run existant
-                if (replaced) {
+                    run.setText(lines[0], 0);
+                    for (int k = 1; k < lines.length; k++) {
+                        run.addBreak();
+                        run.setText(lines[k]);
+                    }
+                } else {
                     run.setText(newText, 0);
                 }
             }
         }
+        
+        // 3. Consolidated cleanup of any residual ** if needed, 
+        // though strictly speaking, we should only remove what we replaced.
+        // If there are leftover **, it means they didn't match any key.
+        // We can optionally leave them or remove them. 
+        // The previous logic removed all **, so we maintain that behavior for consistency.
+        for (XWPFRun run : runs) {
+            String text = run.getText(0);
+            if (text != null && text.contains("**")) {
+                 run.setText(text.replace("**", ""), 0);
+            }
+        }
     }
+
+    private void mergeTagRuns(XWPFParagraph paragraph) {
+         if (paragraph.getRuns().size() < 2) return;
+         
+         // Helper to get text from runs
+         StringBuilder sb = new StringBuilder();
+         List<XWPFRun> runs = paragraph.getRuns();
+         List<Integer> runOffsets = new ArrayList<>();
+         
+         for(XWPFRun r : runs) {
+             runOffsets.add(sb.length());
+             String t = r.getText(0);
+             sb.append(t != null ? t : "");
+         }
+         String text = sb.toString();
+         
+         int searchIndex = 0;
+         while(true) {
+             int startIdx = text.indexOf("**", searchIndex);
+             if (startIdx == -1) break;
+             int endIdx = text.indexOf("**", startIdx + 2);
+             if (endIdx == -1) break;
+             
+             // Found a tag: text.substring(startIdx, endIdx + 2)
+             int tagEnd = endIdx + 2;
+             
+             // Update search index
+             searchIndex = tagEnd;
+             
+             // Identify runs involved
+             int startRunIdx = -1;
+             int endRunIdx = -1;
+             
+             for(int i=0; i<runOffsets.size(); i++) {
+                 int rStart = runOffsets.get(i);
+                 // Heuristic: check if this run contains the start/end points
+                 String rText = runs.get(i).getText(0);
+                 int rLen = (rText != null) ? rText.length() : 0;
+                 int rEnd = rStart + rLen;
+                 
+                 if (startRunIdx == -1 && startIdx >= rStart && startIdx < rEnd) {
+                     startRunIdx = i;
+                 }
+                 if (endIdx >= rStart && endIdx < rEnd) { 
+                     endRunIdx = i;
+                 }
+             }
+             
+             // If valid span found and spans multiple runs
+             if (startRunIdx != -1 && endRunIdx != -1 && startRunIdx < endRunIdx) {
+                 // Check if any run in between (inclusive) is Bold
+                 boolean isBold = false;
+                 for(int i=startRunIdx; i<=endRunIdx; i++) {
+                     if (runs.get(i).isBold()) {
+                         isBold = true;
+                         break;
+                     }
+                 }
+                 
+                 // Merge into startRunIdx
+                 XWPFRun startRun = runs.get(startRunIdx);
+                 StringBuilder mergedText = new StringBuilder();
+                 
+                 for(int i=startRunIdx; i<=endRunIdx; i++) {
+                      String t = runs.get(i).getText(0);
+                      if (t!=null) mergedText.append(t);
+                 }
+                 
+                 startRun.setText(mergedText.toString(), 0);
+                 if (isBold) startRun.setBold(true);
+                 
+                 // Remove other runs. Iterate backwards to avoid index shift
+                 for(int i=endRunIdx; i>startRunIdx; i--) {
+                     paragraph.removeRun(i);
+                 }
+                 
+                 // Since we modified runs and indices, restart scan to be safe
+                 mergeTagRuns(paragraph); 
+                 return;
+             }
+         }
+    }
+
+
 
     /**
      * Tente de fusionner les runs adjacents qui ont des styles identiques.
@@ -980,19 +1140,33 @@ public class DacServiceImpl implements DacService {
      * @throws IOException If an error occurs while merging PDFs.
      */
     public static ByteArrayOutputStream merge(List<InputStream> inputStreams) throws IOException {
-
-        ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+        if (inputStreams == null || inputStreams.isEmpty()) {
+            throw new IllegalArgumentException("Input streams list cannot be null or empty");
+        }
 
         PDFMergerUtility merger = new PDFMergerUtility();
-        merger.setDestinationStream(mergedOutputStream);
 
-        merger.addSources(inputStreams);
+        // Add each InputStream wrapped in a RandomAccessReadBuffer (required for PDFBox 3.x)
+        for (InputStream is : inputStreams) {
+            // Fully read the InputStream into a byte array
+            byte[] pdfBytes = is.readAllBytes();
 
-        merger.mergeDocuments(null);
+            // Create a random-access readable buffer from the bytes
+            RandomAccessRead buffer = new RandomAccessReadBuffer(pdfBytes);
 
-        return mergedOutputStream;
+            // Add the source
+            merger.addSource(buffer);
+        }
+
+        // Set the destination to a ByteArrayOutputStream
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        merger.setDestinationStream(result);
+
+        // Use memory-only caching (no temporary files on disk)
+        merger.mergeDocuments(IOUtils.createMemoryOnlyStreamCache());
+
+        return result;
     }
-
 
     @Override
     public Dac create(CreateDacRequest request) throws RefParamNotFound, RealisationNotFoundException, ModeDePassationSelectionNotFound, NoActiveAAOException {
@@ -1062,7 +1236,7 @@ public class DacServiceImpl implements DacService {
         Dac dac = new Dac();
         dac.setDacId(sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ));
         dac.setDacVer(1);
-        dac.setReference(generateDacRef(sequenceNumber, nom_ac));
+        dac.setReference(generateDacRef(sequenceNumber, nom_ac,dac.getAppelOffre().getPpm()));
         dac.setStatus(ProcessStatus.BROUILLON);
         dac.setShortListing(request.isShortListing());
         dynaDocModel.ifPresent(dac::setDynaDocsModel);
@@ -1118,8 +1292,8 @@ public class DacServiceImpl implements DacService {
 
         return savedCdac;
     }
-    public String generateDacRef(Integer sequenceNumber, String nom_ac) {
-        String year = String.valueOf(Year.now().getValue());
+    public String generateDacRef(Integer sequenceNumber, String nom_ac,Ppm ppm) {
+        String year = ppm.getAnnee();
         return String.format("%s/%d/%s", year, sequenceNumber, nom_ac);
     }
 
@@ -1290,7 +1464,7 @@ public class DacServiceImpl implements DacService {
 
                                 if (!noSnapshot && field.getType() == DynaFieldType.SYSTEM) {
                                     // Resolve and upsert into dac_docs.field_value for this exact snapshot version only when snapshot exists
-                                    String resolved = resolveSystemFieldValue(field, dac);
+                                    String resolved = dacDocsService.resolveSystemFieldValue(field, dac);
                                     upsertSystemFieldValue(dac, dynaDocs, field, resolved);
                                 }
 
@@ -1318,6 +1492,23 @@ public class DacServiceImpl implements DacService {
                 .collect(Collectors.toList());
 
         dacResponse.setDynaDocs(dynaDocsResponses);
+
+        // Populate dacModels
+        List<ModelDac> models = modelDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+        DacModelsDTO modelsDTO = new DacModelsDTO();
+
+        for (ModelDac m : models) {
+             if (Boolean.TRUE.equals(m.getIsAao())) {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setAaoModel(m.getDoc().getAlfresco_id());
+                 }
+             } else {
+                 if (m.getDoc() != null) {
+                     modelsDTO.setDacModel(m.getDoc().getAlfresco_id());
+                 }
+             }
+        }
+        dacResponse.setDacModels(Collections.singletonList(modelsDTO));
         return dacResponse;
     }
 
@@ -1459,7 +1650,7 @@ public class DacServiceImpl implements DacService {
                         log.info("priooooor {}", value);
                         sourceId = prior.getSourceId() != null ? prior.getSourceId() : "";
                     } else if (f.getType() == DynaFieldType.SYSTEM) {
-                        value = resolveSystemFieldValue(f, newDac);
+                        value = dacDocsService.resolveSystemFieldValue(f, newDac);
                     }
                 }
 
@@ -1608,127 +1799,6 @@ public class DacServiceImpl implements DacService {
         }
     }
 
-    private String resolveSystemFieldValue(DynaFields field, Dac dac) {
-        String source = field.getSource();
-        String sourceField = field.getSourceField();
-        if (source == null || sourceField == null) {
-            return null;
-        }
-        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy");
-        DateTimeFormatter localDateFormatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
-        switch (source) {
-            case "ppm": {
-                if (dac.getAppelOffre().getPpm() == null) return null;
-                return switch (sourceField) {
-                    case "nom" -> dac.getAppelOffre().getPpm().getNom();
-                    case "created_at" -> {
-                        if (dac.getAppelOffre().getPpm().getUpdatedAt() != null) {
-                            yield sdf.format(new Date(dac.getAppelOffre().getPpm().getCreatedAt().getTimeInMillis()));
-                        }
-                        yield null;
-                    }
-                    default -> null;
-                };
-            }
-            case "ac": {
-                if (dac.getAppelOffre().getPpm() == null || dac.getAppelOffre().getPpm().getAc() == null) return null;
-                return switch (sourceField) {
-                    case "nom" -> dac.getAppelOffre().getPpm().getAc().getNom();
-                    case "email" ->dac.getAppelOffre().getPpm().getAc().getEmail();
-                    case "adresse" -> {
-                        if (dac.getAppelOffre().getPpm().getAc().getAdresse() != null) {
-                            yield dac.getAppelOffre().getPpm().getAc().getAdresse().getAdresse() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCompAdresse() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getCodePostal() + " " +
-                                    dac.getAppelOffre().getPpm().getAc().getAdresse().getVille();
-                            }
-                        yield null;
-                    }
-                    default -> null;
-                };
-            }
-            case "realisation": {
-                if (dac.getAppelOffre() == null || dac.getAppelOffre().getRealisation() == null) return null;
-                Realisation realisation = dac.getAppelOffre().getRealisation();
-                return switch (sourceField) {
-                    case "realisationEnvisagees", "realisation_envisagees" -> realisation.getRealisationEnvisagees();
-                    case "beneficiaire" -> realisation.getBeneficiaire();
-                    case "sourceFinancement", "source_financement" -> {
-                        if (realisation.getFinancements() == null || realisation.getFinancements().isEmpty()) yield null;
-                        StringBuilder sb = new StringBuilder();
-                        int i = 1;
-                        Set<String> seen = new LinkedHashSet<>();
-                        for (Financement fin : realisation.getFinancements()) {
-                            // Skip soft-deleted financements
-                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
-                            String label = getRefParamLabel(fin.getSourceFinancement());
-                            if (label == null) continue;
-                            String trimmed = label.trim();
-                            if (trimmed.isEmpty()) continue;
-                            if (!seen.add(trimmed)) continue; // skip duplicates
-                            if (sb.length() > 0) sb.append("\n");
-                            sb.append(i++).append("- ").append(trimmed);
-                        }
-                        yield sb.isEmpty() ? null : sb.toString();
-                    }
-
-                    case "typeMarcher", "type_marcher" -> realisation.getTypeMarcher() != null ? getRefParamLabel(realisation.getTypeMarcher()) : null;
-                    case "modeSelection", "mode_selection" -> realisation.getModeSelection() != null ? getRefParamLabel(realisation.getModeSelection()) : null;
-                    case "modePassation", "mode_passation" -> realisation.getModePassation() != null ? realisation.getModePassation().getLibelle() : null;
-                    case "nomLot", "nom_lot" -> {
-                        if (realisation.getLots() == null || realisation.getLots().isEmpty()) yield null;
-                        StringBuilder sb = new StringBuilder();
-                        int i = 1;
-                        Set<String> seen = new LinkedHashSet<>();
-                        for (Lot lot : realisation.getLots()) {
-                            if (Boolean.TRUE.equals(lot.getIsDeleted())) continue;
-                            String name = lot.getDescription();
-                            if (name == null) continue;
-                            String trimmed = name.trim();
-                            if (trimmed.isEmpty()) continue;
-                            if (!seen.add(trimmed)) continue;
-                            if (!sb.isEmpty()) sb.append("\n");
-                            sb.append(i++).append("- ").append(trimmed);
-                        }
-                        yield sb.isEmpty() ? null : sb.toString();
-                    }
-                    case "budgetEstime", "budget_estime" -> toString(realisation.getBudgetEstime());
-                   // case "date_prev_lps" -> toString(dac.getRealisation().getDatePrevLps(), dateFormatter);
-                    //case "date_prev_ac" -> toString(dac.getRealisation().getDatePrevAc(), dateFormatter);
-                    // case "date_prev_dp" -> toString(dac.getRealisation().getDatePrevDp(), dateFormatter);
-                    //case "date_prev_ap" -> toString(dac.getRealisation().getDatePrevAp(), dateFormatter);
-                    case "date_prev_lps" -> {
-                        if (realisation.getDatePrevLps() != null) {
-                            yield realisation.getDatePrevLps().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_ac" -> {
-                        if (realisation.getDatePrevAc() != null) {
-                            yield realisation.getDatePrevAc().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_dp" -> {
-                        if (realisation.getDatePrevDp() != null) {
-                            yield realisation.getDatePrevDp().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-                    case "date_prev_ap" -> {
-                        if (realisation.getDatePrevAp() != null) {
-                            yield realisation.getDatePrevAp().format(localDateFormatter);
-                        }
-                        yield null;
-                    }
-
-                    default -> null;
-                };
-            }
-            default:
-                return null;
-        }
-    }
 
     @Override
     @Transactional
@@ -1740,6 +1810,10 @@ public class DacServiceImpl implements DacService {
         dac.setStatus(status);
 
         dac.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            dac.setPublishedAt(Calendar.getInstance());
+        }
         return dacRepository.save(dac);
     }
     private String toString(LocalDate date, DateTimeFormatter fmt) { return date != null ? date.format(fmt) : null; }
@@ -1783,6 +1857,7 @@ public class DacServiceImpl implements DacService {
     }
 
     @Override
+    @Transactional
     public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath) {
         log.debug("Processing Dac ID: {}, Version: {}, Base Path: {}, Output Path: {}", dacId, dacVersion, basePath, customDirPath);
         validateParams(dacId, dacVersion, basePath, customDirPath);
@@ -1829,7 +1904,33 @@ public class DacServiceImpl implements DacService {
         try (
                 FileInputStream fis = new FileInputStream(templateFile);
                 XWPFDocument document = new XWPFDocument(fis)) {
-            Map<String, String> bookmarks = createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction);
+            Map<String, String> bookmarks = new HashMap<>();
+            
+            // Collect unique DynaDocs identifiers
+            Set<String> processedDocs = new HashSet<>();
+            for (DacDocs dd : dacDocs) {
+                if (dd.getDynaField() != null && dd.getDynaField().getDynaDocs() != null) {
+                    Integer docId = dd.getDynaField().getDynaDocs().getId();
+                    Integer docVer = dd.getDynaField().getDynaDocs().getVersion();
+                    String key = docId + ":" + docVer;
+                    if (processedDocs.add(key)) {
+                         Map<String, String> docBookmarks = createBookmarkMap(dacId, dacVersion, docId, docVer);
+                         for (Map.Entry<String, String> entry : docBookmarks.entrySet()) {
+                             String k = entry.getKey();
+                             String v = entry.getValue();
+                             // If the value is "real" (not a placeholder matching the key), overwrite
+                             // Or if we don't have this key yet, add it (even if it is a placeholder)
+                             if (!v.equals(k) || !bookmarks.containsKey(k)) {
+                                 bookmarks.put(k, v);
+                             }
+                         }
+                    }
+                }
+            }
+            
+            // Apply AAO specific parameters (overriding if necessary)
+            bookmarks.putAll(createBookmarkMapForAAO(dacId, dacVersion, signataire, fonction));
+            
             processTableAndListBookmarks(document, dacId, dacVersion, dynaDocsId, dynaDocsVer);
             replaceBookmarks(document, bookmarks);
             String outputFilePath = saveTempDocument(document, templateFileName, customDirPath, 1);
@@ -1932,7 +2033,7 @@ public class DacServiceImpl implements DacService {
             Integer newDacId = sequenceGeneratorService.getNextId(Constants.DAC_ID_SEQ);
             dac.setDacId(newDacId);
             dac.setDacVer(1);
-            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom()));
+            dac.setReference(generateDacRef(newDacId, ppm.getAc().getNom(),ppm));
 
             // Set reference to source Appel d'Offre (PPM and Realisation accessed through this)
             dac.setAppelOffre(appelOffre);

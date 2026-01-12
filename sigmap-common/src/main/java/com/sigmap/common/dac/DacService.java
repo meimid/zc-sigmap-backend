@@ -49,7 +49,7 @@ public interface DacService {
     Dac updateStatus(Integer dacId, Integer dacVer, ProcessStatus status) throws DacNotFound;
     Integer findLatestVersionById(Integer ppmId);
 
-    public String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
+    String generateDAODocumentWithBookmarks(Integer dacId, Integer dacVersion, String signataire, String fonction, String basePath, String customDirPath);
 
     /**
      * Find all published DACs for a given realisation ID and version

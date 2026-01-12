@@ -1,9 +1,12 @@
 package com.sigmap.common.dyna_docs_model;
 
+import com.sigmap.common.appel_offre.AppelOffre;
+import com.sigmap.common.appel_offre.AppelOffreRepository;
 import com.sigmap.common.dyna_docs.DynaDocsRepository;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelAlreadyUsedExeption;
 import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
 import com.sigmap.common.dyna_docs_model.request.DynaDocsModelRequest;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -22,6 +25,7 @@ public class DynaDocsModelServiceImpl implements DynaDocsModelService {
 
     private final DynaDocsModelRepository dynaDocsModelRepository;
     private final DynaDocsRepository dynaDocsRepository;
+    private final AppelOffreRepository appelOffreRepository;
 
     @Override
     public List<DynaDocsModel> findAll() {
@@ -97,5 +101,29 @@ public class DynaDocsModelServiceImpl implements DynaDocsModelService {
         // Si tout est bon, procéder à la suppression logique
         dynaDocsModelRepository.softDelete(id);
         log.debug("Modèle de document dynamique avec l'id {} a été marqué comme supprimé avec succès", id);
+    }
+
+    @Override
+    public List<DynaDocsModel> findByAppelOffre(Integer appelOffreId) {
+        log.debug("Récupération des modèles de documents pour l'appel d'offre id: {}", appelOffreId);
+        
+        AppelOffre appelOffre = appelOffreRepository.findById(appelOffreId)
+                .orElseThrow(() -> new EntityNotFoundException("Appel d'offre non trouvé avec l'id : " + appelOffreId));
+
+        if (appelOffre.getRealisation() == null) {
+            throw new IllegalArgumentException("L'appel d'offre n'a pas de réalisation associée");
+        }
+
+        Integer typeMarcheId = appelOffre.getRealisation().getTypeMarcher() != null ? 
+                appelOffre.getRealisation().getTypeMarcher().getId() : null;
+        Integer modePassationId = appelOffre.getRealisation().getModePassation() != null ? 
+                appelOffre.getRealisation().getModePassation().getId() : null;
+
+        if (typeMarcheId == null || modePassationId == null) {
+            log.warn("Le type de marché ou le mode de passation est manquant pour la réalisation de l'appel d'offre {}", appelOffreId);
+            return List.of();
+        }
+
+        return dynaDocsRepository.findModelsByTypeMarcheAndModePassation(typeMarcheId, modePassationId);
     }
 }

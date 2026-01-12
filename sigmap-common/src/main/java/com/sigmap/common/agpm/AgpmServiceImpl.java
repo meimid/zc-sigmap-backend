@@ -806,8 +806,12 @@ public class AgpmServiceImpl implements AgpmService {
 
 
         agpm.setStatus(status);
-
         agpm.setUpdatedAt(Calendar.getInstance());
+
+        if (status == ProcessStatus.PUBLIE ) {
+            agpm.setPublishedAt(Calendar.getInstance());
+        }
+
         return repository.save(agpm);
     }
 
@@ -841,6 +845,7 @@ public class AgpmServiceImpl implements AgpmService {
         responseAgpm.setActualise(source.getActualise());
         responseAgpm.setNbrActualisation(source.getNbrActualisation());
         responseAgpm.setEtapeProcess(source.getEtapeProcess());
+        responseAgpm.setPublishedAt(source.getPublishedAt());
         responseAgpm.setIsDeleted(source.getIsDeleted());
         responseAgpm.setCreatedAt(source.getCreatedAt());
         responseAgpm.setCreatedBy(source.getCreatedBy());

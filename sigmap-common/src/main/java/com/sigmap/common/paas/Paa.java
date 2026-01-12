@@ -113,4 +113,7 @@ public class Paa extends BaseEntity implements DocumentHolder {
     @Column(name = "etape_process", length = 255)
     private String etapeProcess;
 
+    @Column(name = "published_at")
+    private Calendar publishedAt;
+
 }

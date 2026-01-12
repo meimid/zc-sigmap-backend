@@ -13,6 +13,7 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
 import com.sigmap.common.com.ComSpecifications;
@@ -20,6 +21,7 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.response.DacResponseReunion;
@@ -73,9 +75,7 @@ import com.sigmap.common.user_societe.exception.UserIdRequiredException;
 import jakarta.mail.MessagingException;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -107,11 +107,12 @@ public class ReunionServiceImpl implements ReunionService{
     private final DocumentCommuneService documentCommuneService;
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
+    private final ReunionSortResolver reunionSortResolver;
 
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -126,11 +127,12 @@ public class ReunionServiceImpl implements ReunionService{
         this.documentCommuneService = documentCommuneService;
         this.processVerbalReunionService = processVerbalReunionService;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
+        this.reunionSortResolver = reunionSortResolver;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
-
-              return repository.findAll(reunionSpecificationRoleAndComIds(spec), pageable);
+        var resolved = reunionSortResolver.resolve(spec, pageable);
+        return repository.findAll(reunionSpecificationRoleAndComIds(resolved.spec()), resolved.pageable());
     }
 
     @Override
@@ -1385,7 +1387,23 @@ public class ReunionServiceImpl implements ReunionService{
                 .map(Ac::getId)
                 .collect(Collectors.toSet());
 
-        if (!acIdsFromPpmsWithDecision.contains(acId)) {
+        //  Build ACs that SHOULD have an extrait in this reunion (all Dacs with decision)
+        Set<Integer> acIdsFromDacsWithDecision = reunion.getReunionDacs().stream()
+                .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
+                .map(ReunionDac::getDac)
+                .filter(Objects::nonNull)
+                .map(Dac::getAppelOffre).map(AppelOffre::getPpm).map(Ppm::getAc)
+                .filter(Objects::nonNull)
+                .map(Ac::getId)
+                .collect(Collectors.toSet());
+
+        Set<Integer> eligibleAcIds = new HashSet<>();
+        eligibleAcIds.addAll(acIdsFromPpmsWithDecision);
+        eligibleAcIds.addAll(acIdsFromDacsWithDecision);
+
+
+
+        if (!eligibleAcIds.contains(acId)) {
             throw new ReunionAcNotEligibleForExtraitException("", reunionId, acId);
         }
 

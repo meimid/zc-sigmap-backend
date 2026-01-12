@@ -26,7 +26,7 @@ public class ModelDacServiceImpl implements ModelDacService {
 
     @Transactional
     @Override
-    public ModelDac setModel(Integer dacId, Integer dacVer, Integer docId)
+    public ModelDac setModel(Integer dacId, Integer dacVer, Integer docId,Boolean isAao)
             throws DacNotFound, DocNotFound {
 
         // 1) Validate DAC and new DOC exist
@@ -41,13 +41,13 @@ public class ModelDacServiceImpl implements ModelDacService {
 
         // 2) If a model already exists for this DAC version, soft-delete mapping
         //    and optionally soft-delete the old doc if it differs
-        Optional<ModelDac> existingOpt = modelDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+        Optional<ModelDac> existingOpt = modelDacRepository.findByDacIdAndDacVerAndIsAao(dacId, dacVer,isAao);
         if (existingOpt.isPresent()) {
             ModelDac existing = existingOpt.get();
             Integer oldDocId = existing.getDocId();
 
             // mark old mapping as deleted
-            modelDacRepository.deleteByDacIdAndDacVer(dacId, dacVer);
+            modelDacRepository.deleteByDacIdAndDacVer(dacId, dacVer,isAao);
 
             // if changing the model doc, soft delete the old one
             if (oldDocId != null && !oldDocId.equals(docId)) {
@@ -62,19 +62,20 @@ public class ModelDacServiceImpl implements ModelDacService {
         md.setDacVer(dacVer);
         md.setDoc(newDoc);
         md.setDac(dac);
+        md.setIsAao(isAao);
 
         return modelDacRepository.save(md);
     }
 
     @Override
-    public Optional<ModelDac> getModel(Integer dacId, Integer dacVer) {
-        return modelDacRepository.findByDacIdAndDacVer(dacId, dacVer);
+    public Optional<ModelDac> getModel(Integer dacId, Integer dacVer, Boolean isAao) {
+        return modelDacRepository.findByDacIdAndDacVerAndIsAao(dacId, dacVer,isAao);
     }
 
     @Transactional
     @Override
-    public void removeModel(Integer dacId, Integer dacVer) {
-        modelDacRepository.deleteByDacIdAndDacVer(dacId, dacVer);
+    public void removeModel(Integer dacId, Integer dacVer ,Boolean isAao) {
+        modelDacRepository.deleteByDacIdAndDacVer(dacId, dacVer, isAao);
     }
 
     @Override

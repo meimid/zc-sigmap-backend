@@ -3,6 +3,8 @@ package com.sigmap.sigmap_dac.exeptions;
 import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.dac.exeption.*;
 import com.sigmap.common.dyna_docs.exceptions.ActiveAAOAlreadyExistsException;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelNotFoundExeption;
+import com.sigmap.common.dyna_docs_model.exeptions.DynaDocsModelRequiredExeption;
 import com.sigmap.common.globalExceptions.BadRequest;
 import java.util.Collections;
 import java.util.Locale;
@@ -154,6 +156,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(ActiveAAOAlreadyExistsException.class)
   public ResponseEntity<ErrorResponse> handleActiveAAOAlreadyExistsException(ActiveAAOAlreadyExistsException ex) {
     String message = messageSource.getMessage("active.aao.already.exist", new Object[]{ex.getTypeMarcheId(),ex.getModePassationId()}, getLocal());
+    ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+    return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+  }
+
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ExceptionHandler(DynaDocsModelRequiredExeption.class)
+  public ResponseEntity<ErrorResponse> DynaDocsModelRequiredExeptionException(DynaDocsModelRequiredExeption ex) {
+    String message = messageSource.getMessage("dynaDocsModel.required",null, getLocal());
     ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
     return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
   }

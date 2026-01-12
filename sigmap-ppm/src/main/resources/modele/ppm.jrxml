@@ -68,6 +68,7 @@ SELECT p.ppm_id,
   r.date_prev_dp,
   r.date_prev_ap,
    GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
+   MAX(CASE WHEN fin.examen_prealable = 1 THEN 'A priori' ELSE 'A postériori' END) AS examen_prealable,
   m.libelle,
  f.description,
  FORMAT(r.budget_estime, 0) as budget_estime,
@@ -173,6 +174,10 @@ p.ppm_id =  $P{ppm_id}
 		<field name="sources_financement" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="sources_financement"/>
 			<property name="com.jaspersoft.studio.field.label" value="sources_financement"/>
+		</field>
+		<field name="examen_prealable" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="examen_prealable"/>
+			<property name="com.jaspersoft.studio.field.label" value="examen_prealable"/>
 		</field>
 		<field name="libelle" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="libelle"/>
@@ -376,12 +381,12 @@ FROM  ppm p
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="100" uuid="183b59e2-3a8a-4bc8-960d-69a3db1ab19c">
+					<jr:column width="95" uuid="183b59e2-3a8a-4bc8-960d-69a3db1ab19c">
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column4"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="100" height="50" uuid="8c96aa4f-447b-4522-a057-9bc33f3d2089"/>
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="95" height="50" uuid="8c96aa4f-447b-4522-a057-9bc33f3d2089"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9" isBold="true"/>
 								</textElement>
@@ -392,7 +397,7 @@ FROM  ppm p
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
-								<reportElement stretchType="ContainerHeight" x="0" y="0" width="100" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
+								<reportElement stretchType="ContainerHeight" x="0" y="0" width="95" height="75" uuid="de05cd1f-d3a6-4102-b54b-9b9954a472d1"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle" markup="none">
 									<font fontName="Arial" size="8"/>
 								</textElement>
@@ -445,12 +450,35 @@ FROM  ppm p
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="61d3193e-efa5-4c68-b493-b4cafdf27e13">
+					<jr:column width="40" uuid="6bbd6f7a-bcd0-45c4-97a3-541a942a2ffd">
 						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column7"/>
+						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
+							<staticText>
+								<reportElement style="ArialBold" x="0" y="0" width="40" height="50" uuid="c7e50cd8-9ad0-4eee-be3f-e007cf3e80c1"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="Arial" size="8" isBold="true"/>
+								</textElement>
+								<text><![CDATA[Examen Préalable]]></text>
+							</staticText>
+						</jr:columnHeader>
+						<jr:detailCell style="Table_TD" height="75">
+							<textField isBlankWhenNull="true">
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="40" height="75" uuid="46772b2e-0d18-4109-b433-762c9eae4624"/>
+								<textElement textAlignment="Center" verticalAlignment="Middle">
+									<font fontName="Arial" size="9"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{examen_prealable}]]></textFieldExpression>
+							</textField>
+						</jr:detailCell>
+					</jr:column>
+					<jr:column width="57" uuid="61d3193e-efa5-4c68-b493-b4cafdf27e13">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column8"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="ccc27487-68ee-4f0b-b6de-571d5ac95d81"/>
+								<reportElement style="ArialBold" x="0" y="0" width="57" height="50" uuid="ccc27487-68ee-4f0b-b6de-571d5ac95d81">
+									<property name="com.jaspersoft.studio.unit.width" value="pixel"/>
+								</reportElement>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
@@ -462,7 +490,7 @@ lancement
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="60" height="75" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
+								<reportElement x="0" y="0" width="57" height="75" uuid="7b4e8f3d-fd79-4083-93ce-a885ba542751"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -470,12 +498,12 @@ lancement
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="c54f3829-f870-464b-afe6-b1d603a6282c">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column8"/>
+					<jr:column width="57" uuid="c54f3829-f870-464b-afe6-b1d603a6282c">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column9"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="54ea2593-cae1-446c-a1b6-934db0b7daf1"/>
+								<reportElement style="ArialBold" x="0" y="0" width="57" height="50" uuid="54ea2593-cae1-446c-a1b6-934db0b7daf1"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
@@ -486,7 +514,7 @@ d’attribution]]></text>
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="60" height="75" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
+								<reportElement x="0" y="0" width="57" height="75" uuid="f4d79b0c-4989-4014-a0c8-bb8afded0351"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -494,12 +522,12 @@ d’attribution]]></text>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="60" uuid="eb20a5bc-ca8e-44c8-84f7-eb211b838745">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column9"/>
+					<jr:column width="55" uuid="eb20a5bc-ca8e-44c8-84f7-eb211b838745">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column10"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="60" height="50" uuid="0874f7cb-fefe-4b74-810b-6c8258b3e4a0"/>
+								<reportElement style="ArialBold" x="0" y="0" width="55" height="50" uuid="0874f7cb-fefe-4b74-810b-6c8258b3e4a0"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
@@ -510,7 +538,7 @@ démarrage]]></text>
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="60" height="75" uuid="d393a1ff-8188-44d5-8668-a01358b62cee"/>
+								<reportElement x="0" y="0" width="55" height="75" uuid="d393a1ff-8188-44d5-8668-a01358b62cee"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -518,12 +546,12 @@ démarrage]]></text>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="65" uuid="24ba38e5-4eb5-486b-9269-31ba2b183ac6">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column10"/>
+					<jr:column width="55" uuid="24ba38e5-4eb5-486b-9269-31ba2b183ac6">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column11"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="65" height="50" uuid="7d6ed298-2c4f-4c5e-9632-11ad2d6c308c"/>
+								<reportElement style="ArialBold" x="0" y="0" width="55" height="50" uuid="7d6ed298-2c4f-4c5e-9632-11ad2d6c308c"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
@@ -535,7 +563,7 @@ d’achèvement
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-								<reportElement x="0" y="0" width="65" height="75" uuid="d33c07d8-28d8-4106-ba69-baa70cf5b307"/>
+								<reportElement x="0" y="0" width="55" height="75" uuid="d33c07d8-28d8-4106-ba69-baa70cf5b307"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
@@ -543,23 +571,23 @@ d’achèvement
 							</textField>
 						</jr:detailCell>
 					</jr:column>
-					<jr:column width="70" uuid="e0caeba8-70b3-4fe2-86e0-f0161b169b10">
-						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column11"/>
+					<jr:column width="68" uuid="e0caeba8-70b3-4fe2-86e0-f0161b169b10">
+						<property name="com.jaspersoft.studio.components.table.model.column.name" value="Column12"/>
 						<jr:columnHeader style="Table_CH" height="50" rowSpan="1">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<staticText>
-								<reportElement style="ArialBold" x="0" y="0" width="70" height="50" uuid="1c4546b1-dcb0-452d-9f48-30c00e65905c"/>
+								<reportElement style="ArialBold" x="0" y="0" width="68" height="50" uuid="1c4546b1-dcb0-452d-9f48-30c00e65905c"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="8" isBold="true"/>
 								</textElement>
-								<text><![CDATA[Montants en MRU
+								<text><![CDATA[    Montants en MRU
 ]]></text>
 							</staticText>
 						</jr:columnHeader>
 						<jr:detailCell style="Table_TD" height="75">
 							<property name="com.jaspersoft.studio.unit.width" value="px"/>
 							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="75" uuid="4a0f533b-b9f7-4d06-a9fd-4e19834eca23"/>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="68" height="75" uuid="4a0f533b-b9f7-4d06-a9fd-4e19834eca23"/>
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>

@@ -472,7 +472,8 @@ public class DacFlowableService {
                                 /* ALWAYS DISPLAY THESE OPTIONS — DO NOT FILTER */
                                 if (p.startsWith("valide")
                                         || p.startsWith("cpmp_valide")
-                                        || p.startsWith("cncmpDecision")) {
+                                        || p.startsWith("cncmpDecision")
+                                        || p.startsWith("reserve_valide")) {
 
                                     log.info("    SKIP decision variable check for '{}'", p);
                                     continue;
@@ -908,9 +909,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
             dacDocsService.createDacWithDacDocsBatch(dacWithDocs,null);
 
             // refresh DAC to latest version
-            latestDac = dacService.findById(id, null).orElse(latestDac);
+            latestDac = dacRepository.findDacWithLatestVersionByDacId(id);
             log.info("[DAC] Refreshed DAC after docs batch → version={}", latestDac.getDacVer());
             runtimeService.setVariable(task.getProcessInstanceId(), "version", latestDac.getDacVer());
+
 
             // refresh gateway-driving vars from DAC
             runtimeService.setVariable(task.getProcessInstanceId(), "isRestraint",
@@ -1407,11 +1409,6 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         Integer dacId = (Integer) runtimeService.getVariable(processInstanceId, "id");
         Integer dacVer = (Integer) runtimeService.getVariable(processInstanceId, "version");
 
-        if (comIdSnapshot != null) {
-            runtimeService.setVariable(task.getProcessInstanceId(), "comId", comIdSnapshot);
-            log.info("[SYNC] Restored comId={} into process variables post-completion", comIdSnapshot);
-        }
-
         // If process ended, force PUBLIE
         boolean finished = historyService.createHistoricProcessInstanceQuery()
                 .processInstanceId(task.getProcessInstanceId())
@@ -1801,15 +1798,10 @@ log.info("[DAC] DacDocsRequest: {}", updates);
         String stepName = (nextTask != null ? nextTask.getName() : "Completed");
 
 
-        if (dacId != null && dacVer != null) {
-            DacId compositeId = new DacId(dacId, dacVer);
-
-            dacRepository.findById(compositeId).ifPresent(dac -> {
-                dac.setEtapeProcess(stepName);
+       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
+              dac.setEtapeProcess(stepName);
                 dacRepository.save(dac);
-            });
-        }
-    }
+            };
 
     @Transactional(readOnly = true)
     public TaskListResponseDTO getDacTasksByComId(Integer comId) {

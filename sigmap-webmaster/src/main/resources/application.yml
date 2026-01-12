@@ -88,15 +88,6 @@ alfresco:
   username: ${ALFRESCO_USERNAME:admin}
   password: ${ALFRESCO_PASSWORD:admin}
 
-templateDac:
-  dac:
-    inputDocPath: ${INPUT_DAC_PATH:C:\\word\\templates\\}
-    outputDocPath: ${OUTPUT_DAC_PATH:C:\\word\\temp\\}
-
-documents:
-  convertUrl: ${CONVERT_DOCUMENT_URL:http://localhost:3000}
-
-
 file:
   upload:
     parent-path: ${FILE_UPLOAD_PARENT:C:\\uploads}
