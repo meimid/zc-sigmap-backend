@@ -34,11 +34,11 @@ public class SourceFinancementController {
 
     @GetMapping
     public ResponseEntity<List<SourceFinancementResponse>> findAll(
-            SourceFinancementQuery query,
+            Specification<SourceFinancement> query,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         List<SourceFinancement> list =
-                sourceFinancementService.findAll((Specification<SourceFinancement>) query);
+                sourceFinancementService.findAll(query);
 
         List<SourceFinancementResponse> response = list.stream()
                 .map(SourceFinancementMapper.INSTANCE::map)
