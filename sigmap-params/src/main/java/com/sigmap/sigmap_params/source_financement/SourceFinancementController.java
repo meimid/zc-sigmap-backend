@@ -21,6 +21,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/source-financement")
@@ -31,12 +33,18 @@ public class SourceFinancementController {
     private final SourceFinancementService sourceFinancementService;
 
     @GetMapping
-    public ResponseEntity<Page<SourceFinancementResponse>> findAll(
+    public ResponseEntity<List<SourceFinancementResponse>> findAll(
             SourceFinancementQuery query,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<SourceFinancement> page = sourceFinancementService.findAll((Specification<SourceFinancement>) query,
-                pageable);
-        return ResponseEntity.ok(page.map(SourceFinancementMapper.INSTANCE::map));
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
+    ) {
+        List<SourceFinancement> list =
+                sourceFinancementService.findAll((Specification<SourceFinancement>) query);
+
+        List<SourceFinancementResponse> response = list.stream()
+                .map(SourceFinancementMapper.INSTANCE::map)
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

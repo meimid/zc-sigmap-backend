@@ -38,10 +38,17 @@ public class SourceFinancementServiceImpl implements SourceFinancementService {
     }
 
     @Override
-    public Page<SourceFinancement> findAll(Specification<SourceFinancement> spec, Pageable pageable) {
+    public Page<SourceFinancement> findAllPage(Specification<SourceFinancement> spec, Pageable pageable) {
         Specification<SourceFinancement> base = SourceFinancementSpecifications.deleted(false);
         Specification<SourceFinancement> combined = (spec != null) ? base.and(spec) : base;
         return repository.findAll(combined, pageable);
+    }
+
+    @Override
+    public List<SourceFinancement> findAll(Specification<SourceFinancement> spec) {
+        Specification<SourceFinancement> base = SourceFinancementSpecifications.deleted(false);
+        Specification<SourceFinancement> combined = (spec != null) ? base.and(spec) : base;
+        return repository.findAll(combined);
     }
 
     @Override

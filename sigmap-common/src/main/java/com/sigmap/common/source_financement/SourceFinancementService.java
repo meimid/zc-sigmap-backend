@@ -36,7 +36,16 @@ public interface SourceFinancementService {
      * @param pageable the pageable to use
      * @return a page of SourceFinancements
      */
-    Page<SourceFinancement> findAll(Specification<SourceFinancement> spec, Pageable pageable);
+    Page<SourceFinancement> findAllPage(Specification<SourceFinancement> spec, Pageable pageable);
+
+    /**
+     * Return a list of SourceFinancements based on the given specification and
+     * pageable.
+     *
+     * @param spec     the specification to use
+     * @return a page of SourceFinancements
+     */
+    List<SourceFinancement> findAll(Specification<SourceFinancement> spec);
 
     /**
      * Return a page of deleted SourceFinancements based on the given specification
