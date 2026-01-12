@@ -19,12 +19,7 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.FileSystemResource;
@@ -34,7 +29,11 @@ import org.springframework.web.client.RestTemplate;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import java.io.FileInputStream;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -163,55 +162,36 @@ public class DacController {
     }
   }
 
-  @PostMapping("/previsualiser-specific-pdf")
-  public ResponseEntity<Map<String, String>> generatePdfForVisualise(@RequestBody DacRequest request) {
+
+  @PostMapping("/generate-specific-docx")
+  public ResponseEntity<byte[]> downloadDocx(@RequestBody DacRequest request) {
     try {
       // 1. Generate DOCX file
-      String generatedFile = dacService.generateDocumentWithBookmarks(
-              request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
+      String generatedFile = dacService.generateDocumentWithBookmarks(request.getDacId(), request.getDacVer(), request.getDynaDocsId(), request.getDynaDocsVer(), basePath, customDirPath);
 
       log.info("Generated DOCX file: {}", generatedFile);
 
-      // 2. Prepare the file for upload
-      FileSystemResource docxResource = new FileSystemResource(new java.io.File(generatedFile));
+      if (Boolean.TRUE.equals(request.getGenerateDocx())) {
+        File file = new File(generatedFile); // only one docx
+        byte[] fileBytes = Files.readAllBytes(file.toPath());
 
-      // 3. Prepare the multipart request
-      MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-      body.add("files", docxResource);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        headers.setContentDisposition(ContentDisposition.attachment().filename(file.getName()).build() );
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        return new ResponseEntity<>(fileBytes, headers, HttpStatus.OK);
+      }
 
-      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-      // 4. Send request to Gotenberg API and get the PDF response
-      RestTemplate restTemplate = new RestTemplate();
-      ResponseEntity<byte[]> response = restTemplate.exchange(
-              convertUrl + "/forms/libreoffice/convert",
-              HttpMethod.POST,
-              requestEntity,
-              byte[].class
-      );
-
-      // 5. Convert PDF bytes to base64 for Angular visualization
-      String base64Pdf = Base64.getEncoder().encodeToString(response.getBody());
-
-      // get file name from data base
-      String fileName = dynaDocsRepository.getDynaDocName(request.getDynaDocsId(), request.getDynaDocsVer());
-
-      // 6. Prepare JSON response with base64 string
-      Map<String, String> responseBody = new HashMap<>();
-      responseBody.put("pdfBase64", base64Pdf);
-      responseBody.put("filename", fileName + ".pdf");
-      responseBody.put("extension", "PDF");
-
-      return new ResponseEntity<>(responseBody, HttpStatus.OK);
 
     } catch (Exception e) {
       log.error("Error generating PDF: {}", e.getMessage());
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
     }
+    return null;
   }
+
+
+
 
   @PostMapping("/generate-list-pdf")
   public ResponseEntity<byte[]> replaceBookmarksAndGenerateListDOCpdf(@RequestBody DacListRequest request) {
@@ -220,6 +200,31 @@ public class DacController {
       List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(request.getDacId(), request.getDacVer(), basePath, customDirPath);
 
       log.info("Generated files .........: {}", generatedFiles);
+
+      if (Boolean.TRUE.equals(request.getGenerateDocx())) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
+          for (String docxPath : generatedFiles) {
+            File file = new File(docxPath);
+            try (FileInputStream fis = new FileInputStream(file)) {
+              ZipEntry zipEntry = new ZipEntry(file.getName());
+              zos.putNextEntry(zipEntry);
+              byte[] bytes = new byte[1024];
+              int length;
+              while ((length = fis.read(bytes)) >= 0) {
+                zos.write(bytes, 0, length);
+              }
+              zos.closeEntry();
+            }
+          }
+        }
+
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.setContentType(MediaType.parseMediaType("application/zip"));
+        responseHeaders.setContentDispositionFormData("attachment", "documents.zip");
+
+        return new ResponseEntity<>(baos.toByteArray(), responseHeaders, HttpStatus.OK);
+      }
 
       // . Convert each DOCX to PDF using Gotenberg
       RestTemplate restTemplate = new RestTemplate();
