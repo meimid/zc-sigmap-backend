@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -33,16 +34,12 @@ public class SourceFinancementController {
     private final SourceFinancementService sourceFinancementService;
 
     @GetMapping
-    public ResponseEntity<List<SourceFinancementResponse>> findAll(
-            Specification<SourceFinancement> query,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) {
-        List<SourceFinancement> list =
-                sourceFinancementService.findAll(query);
+    public ResponseEntity<List<SourceFinancementResponse>> findAll() {
 
-        List<SourceFinancementResponse> response = list.stream()
+        List<SourceFinancementResponse> response = sourceFinancementService.findAll().stream()
                 .map(SourceFinancementMapper.INSTANCE::map)
-                .toList();
+                .collect(Collectors.toList());
+
 
         return ResponseEntity.ok(response);
     }

@@ -45,13 +45,6 @@ public class SourceFinancementServiceImpl implements SourceFinancementService {
     }
 
     @Override
-    public List<SourceFinancement> findAll(Specification<SourceFinancement> spec) {
-        Specification<SourceFinancement> base = SourceFinancementSpecifications.deleted(false);
-        Specification<SourceFinancement> combined = (spec != null) ? base.and(spec) : base;
-        return repository.findAll(combined);
-    }
-
-    @Override
     public Optional<SourceFinancement> findOne(Specification<SourceFinancement> specification) {
         return repository.findOne(specification);
     }
