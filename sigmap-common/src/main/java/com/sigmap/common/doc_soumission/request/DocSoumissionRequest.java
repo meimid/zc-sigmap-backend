@@ -6,5 +6,7 @@ import lombok.Data;
 public class DocSoumissionRequest {
     private String nom;
     private Integer typeDossierId;
+    private Boolean validationDateRequired;
+
 
 }

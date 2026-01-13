@@ -13,6 +13,9 @@ public interface DacDocsRepository extends JpaRepository<DacDocs, DacDocsId>, Jp
   @Query("SELECT d FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer")
   List<DacDocs> findByDacIdAndDacVer(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer);
 
+  @Query("SELECT DISTINCT d.id.dynaDocsVer FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer AND d.id.dynaDocsId = :dynaDocsId")
+  Optional<Integer> findExistingVersion(@Param("dacId") Integer dacId, @Param("dacVer") Integer dacVer, @Param("dynaDocsId") Integer dynaDocsId);
+
 
 
     @Query(" SELECT d FROM DacDocs d WHERE d.id.dacId = :dacId AND d.id.dacVer = :dacVer " +

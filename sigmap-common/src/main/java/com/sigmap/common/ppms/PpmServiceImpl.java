@@ -386,7 +386,7 @@ public class PpmServiceImpl implements PpmService {
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
-                    .and(ReunionSpecifications.comId(comId))
+                  //  .and(ReunionSpecifications.comId(comId)) // ??
                     .and(ReunionSpecifications.hasPpmId(ppmId))
                     .and(ReunionSpecifications.hasPpmVer(ppmVersion));
 
@@ -426,9 +426,12 @@ public class PpmServiceImpl implements PpmService {
                         break;
 
                     case "CNCMP-P":
-                        // Permanent CNCMP sees only permanent PVs
+                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
                         if ("CNCMP-P".equals(reunionComType)) {
                             dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
                         }
                         break;
 
@@ -1308,7 +1311,8 @@ public class PpmServiceImpl implements PpmService {
                 Function<FinancementRequest, String> reqSig = fr ->
                         (fr.getSourceFinancement() != null ? String.valueOf(fr.getSourceFinancement().getId()) : "null")
                                 + "|" + (fr.getMonnaieId() != null ? String.valueOf(fr.getMonnaieId()) : "null")
-                                + "|" + (fr.getBudgetEstimer() != null ? fr.getBudgetEstimer().toPlainString() : "0");
+                                + "|" + (fr.getBudgetEstimer() != null ? fr.getBudgetEstimer().toPlainString() : "0")
+                                + "|" + (Boolean.TRUE.equals(fr.getExamenPrealable()) ? "1" : "0");
 
                 Set<String> requestedSigs = finReqs.stream().map(reqSig).collect(Collectors.toSet());
 
@@ -1319,7 +1323,8 @@ public class PpmServiceImpl implements PpmService {
                     String fSig =
                             (f.getSourceFinancement() != null ? String.valueOf(f.getSourceFinancement().getId()) : "null")
                                     + "|" + (f.getMonnaie() != null ? String.valueOf(f.getMonnaie().getId()) : "null")
-                                    + "|" + (f.getBudgetEstimer() != null ? f.getBudgetEstimer().toPlainString() : "0");
+                                    + "|" + (f.getBudgetEstimer() != null ? f.getBudgetEstimer().toPlainString() : "0")
+                                    + "|" + (Boolean.TRUE.equals(f.getExamenPrealable()) ? "1" : "0");
 
                     boolean keep = (fid != null && requestedIds.contains(fid)) || requestedSigs.contains(fSig);
                     if (!keep && !Boolean.TRUE.equals(f.getIsDeleted())) {
@@ -1633,9 +1638,13 @@ public class PpmServiceImpl implements PpmService {
             Integer reqSrc  = (fr.getSourceFinancement() != null) ? fr.getSourceFinancement().getId() : null;
             Integer exSrc   = (ex.getSourceFinancement() != null) ? ex.getSourceFinancement().getId() : null;
 
+            Boolean reqExam = Boolean.TRUE.equals(fr.getExamenPrealable());
+            Boolean exExam  = Boolean.TRUE.equals(ex.getExamenPrealable());
+
             if (reqAmt.compareTo(exAmt) != 0
                     || !Objects.equals(reqMon, exMon)
-                    || !Objects.equals(reqSrc, exSrc)) {
+                    || !Objects.equals(reqSrc, exSrc)
+                    || !Objects.equals(reqExam, exExam)) {
                 return true; // value change
             }
         }
@@ -5086,7 +5095,8 @@ public class PpmServiceImpl implements PpmService {
                         log.info("             Incoming FinancementRequest: monnaieId={}, budgetEstimer={}, sourceFinId={}",
                                 financementRequest.getMonnaieId(),
                                 financementRequest.getBudgetEstimer(),
-                                financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null
+                                financementRequest.getSourceFinancement() != null ? financementRequest.getSourceFinancement().getId() : null,
+                                financementRequest.getExamenPrealable()
                         );
 
                         if (financementRequest.getMonnaieId() == null) {
@@ -5096,7 +5106,6 @@ public class PpmServiceImpl implements PpmService {
 
                         Financement financement = new Financement();
 
-                        // 🔐 FIX: generate financementId from sequence, no ++
                         Integer financementIdSeq = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
                         FinancementId financementId = new FinancementId();
                         financementId.setRealisationId(realisation.getId());
@@ -5108,6 +5117,8 @@ public class PpmServiceImpl implements PpmService {
 
                         // budget
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+
 
                         // monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
@@ -5224,8 +5235,10 @@ public class PpmServiceImpl implements PpmService {
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.info("No AC IDs found for the connected user");
+        // Get user's COM IDs
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+        if (userComIds.isEmpty() && userAcIds.isEmpty()) {
+            log.info("No  AC/COM IDs found for the connected user");
             return Page.empty(pageable);
         }
 
@@ -5235,6 +5248,15 @@ public class PpmServiceImpl implements PpmService {
                 acService.findById(acId);
             } catch (Exception e) {
                 log.warn("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
+            }
+        }
+        // Validate COMs exist
+        for (Integer comId : userComIds) {
+            try {
+                comService.findById(comId);
+            } catch (Exception e) {
+                log.warn("COM not found with ID: {}", comId);
                 return Page.empty(pageable);
             }
         }
@@ -5253,7 +5275,7 @@ public class PpmServiceImpl implements PpmService {
         // Build specification
         Specification<Ppm> spec = Specification
                 .where(PpmSpecifications.anneeIn(allowedYears))
-                .and(PpmSpecifications.ppmAc(userAcIds))
+                .and(PpmSpecifications.ppmAccessibleByUser(userAcIds, userComIds))
                 .and(PpmSpecifications.deleted(false))
                 .and(PpmSpecifications.isLatestVersion());
 
@@ -5503,6 +5525,8 @@ public class PpmServiceImpl implements PpmService {
                         financement = existingFinancementOpt.get();
 
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+
 
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException(
@@ -5564,6 +5588,8 @@ public class PpmServiceImpl implements PpmService {
 
                     financement.setMonnaie(monnaie);
                     financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
+                    financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+
 
                     financement.setTauxApplicable(
                             monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
@@ -6182,8 +6208,10 @@ public class PpmServiceImpl implements PpmService {
             Integer oldSourceId = (target.getSourceFinancement() != null)
                     ? target.getSourceFinancement().getId() : null;
             boolean oldDeleted = Boolean.TRUE.equals(target.getIsDeleted());
+            boolean oldExamenPrealable = Boolean.TRUE.equals(target.getExamenPrealable());
 
             target.setBudgetEstimer(fr.getBudgetEstimer());
+            target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
 
             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -6212,7 +6240,8 @@ public class PpmServiceImpl implements PpmService {
                             !Objects.equals(oldMonnaieId, monnaie.getId()) ||
                             !Objects.equals(oldSourceId,
                                     target.getSourceFinancement() != null ? target.getSourceFinancement().getId() : null) ||
-                            oldDeleted;
+                            oldDeleted ||
+                            oldExamenPrealable != Boolean.TRUE.equals(target.getExamenPrealable());
 
             if (changed) hasChanges = true;
 

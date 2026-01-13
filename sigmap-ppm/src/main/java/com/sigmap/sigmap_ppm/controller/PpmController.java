@@ -1411,6 +1411,25 @@ public class PpmController {
                         logger.debug("Financement data missing budgetEstimer, setting to null");
                     }
 
+                    if (financementData.containsKey("examenPrealable")) {
+                        Object examObj = financementData.get("examenPrealable");
+
+                        Boolean exam = null;
+
+                        if (examObj instanceof Boolean b) {
+                            exam = b;
+                        } else if (examObj instanceof Number n) {
+                            exam = n.intValue() == 1;
+                        } else if (examObj != null) {
+                            exam = Boolean.parseBoolean(examObj.toString());
+                        }
+
+                        financement.setExamenPrealable(exam);
+                        logger.debug("Set examenPrealable to {} for financement with monnaieId={}", exam, financement.getMonnaieId());
+                    } else {
+                        logger.debug("Financement data missing examenPrealable, defaulting to null");
+                    }
+
                     financements.add(financement);
                 }
 

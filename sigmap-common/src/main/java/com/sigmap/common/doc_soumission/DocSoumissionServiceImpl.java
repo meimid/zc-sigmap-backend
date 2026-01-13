@@ -5,6 +5,7 @@ import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumission;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumissionRepository;
 import com.sigmap.common.dac_doc_soumission.DacDocSoumissionSpecifications;
+import com.sigmap.common.dac_doc_soumission.exception.DateValidateRequired;
 import com.sigmap.common.doc_soumission.exception.DocSoumissionNotFound;
 import com.sigmap.common.doc_soumission.exception.HasDacDocSoumission;
 import com.sigmap.common.doc_soumission.exception.NomRequired;
@@ -13,6 +14,7 @@ import com.sigmap.common.doc_soumission.mapper.DocSoumissionMapper;
 import com.sigmap.common.doc_soumission.request.DocSoumissionRequest;
 import com.sigmap.common.type_dossier.TypeDossier;
 import com.sigmap.common.type_dossier.TypeDossierService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -22,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class DocSoumissionServiceImpl implements DocSoumissionService {
     private final DocSoumissionRepository repository;
     private final DacDocSoumissionRepository dacDocSoumissionRepository;
@@ -78,6 +81,10 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
             throw new TypeDossierRequired("");
         }
 
+        if(request.getValidationDateRequired()==null){
+            throw new DateValidateRequired("");
+        }
+
         DocSoumission docSoumission = DocSoumissionMapper.INSTANCE.mapFromRequest(request);
         TypeDossier typeDossier=typeDossierService.findById(request.getTypeDossierId());
         docSoumission.setTypeDossier(typeDossier);
@@ -95,7 +102,12 @@ public class DocSoumissionServiceImpl implements DocSoumissionService {
         if(request.getTypeDossierId()==null){
             throw new TypeDossierRequired("");
         }
+        if(request.getValidationDateRequired()==null){
+            throw new DateValidateRequired("");
+        }
         docSoumission.setNom(request.getNom());
+        docSoumission.setValidationDateRequired(request.getValidationDateRequired());
+
         TypeDossier typeDossier=typeDossierService.findById(request.getTypeDossierId());
         docSoumission.setTypeDossier(typeDossier);
         return save(docSoumission);

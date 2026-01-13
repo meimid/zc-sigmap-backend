@@ -2,6 +2,7 @@ package com.sigmap.common.ppms;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.agpm.Agpm;
+import com.sigmap.common.com.Com;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -9,6 +10,7 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ref_params.RefParam;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -33,6 +35,29 @@ public class PpmSpecifications {
                     criteriaBuilder.like(criteriaBuilder.lower(root.get("status")), "%" + search.toLowerCase() + "%")
                     // Assumes Ac has 'nom'
             );
+        };
+    }
+    public static Specification<Ppm> ppmAccessibleByUser(
+            List<Integer> acIds,
+            List<Integer> comIds
+    ) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            var predicates = cb.disjunction(); // OR
+
+            if (acIds != null && !acIds.isEmpty()) {
+                predicates = cb.or(predicates,
+                        root.get("ac").get("id").in(acIds));
+            }
+
+            if (comIds != null && !comIds.isEmpty()) {
+                Join<Ppm, Com> comJoin = root.join("coms", JoinType.LEFT);
+                predicates = cb.or(predicates,
+                        comJoin.get("id").in(comIds));
+            }
+
+            return predicates;
         };
     }
 

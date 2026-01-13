@@ -20,6 +20,7 @@ import com.sigmap.common.dac.exeption.DacIdRequired;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExist;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
+import com.sigmap.common.dac_doc_soumission.exception.DateValidateRequired;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.dac_dyna_form.exceptions.DacDynaFormNotFoundException;
 import com.sigmap.common.direction.exception.*;
@@ -1631,6 +1632,20 @@ public class GlobalExceptionHandler {
 
         String message = messageSource.getMessage(
                 "typeDossier.notFound",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DateValidateRequired.class)
+    public ResponseEntity<ErrorResponse> DateValidateRequiredException() {
+
+        String message = messageSource.getMessage(
+                "dacDocSoumission.dateValidateRequired",
                 null,
                 getLocal()
         );
