@@ -6,6 +6,7 @@ import com.sigmap.common.dac.exeption.DacIdRequired;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionAlreadyExist;
 import com.sigmap.common.dac_doc_soumission.exception.DacDocSoumissionNotFound;
+import com.sigmap.common.dac_doc_soumission.exception.DateValidateRequired;
 import com.sigmap.common.dac_doc_soumission.exception.DocSoumissionIdRequired;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionCreateRequest;
 import com.sigmap.common.dac_doc_soumission.request.DacDocSoumissionUpdateRequest;
@@ -99,6 +100,11 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
             throw new DocSoumissionIdRequired("Doc Soumission ID is required");
         }
         Integer dacLatestVersion;
+        DocSoumission docSoumission = docSoumissionService.findById(request.getDocSoumissionId());
+        if(docSoumission!=null&&docSoumission.isValidationDateRequired()&&request.getDateValidate()==null) {
+        throw new DateValidateRequired(" Date Validate is required");
+        }
+
         try {
             dacLatestVersion = dacService.findLatestVersionById(request.getDacId());
         } catch (Exception e) {
@@ -106,7 +112,6 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
         }
 
         Dac dac = dacService.findById(request.getDacId(),dacLatestVersion).orElseThrow(()->new DacNotFound("DAC not found with ID " + request.getDacId(), request.getDacId(), null));
-        DocSoumission docSoumission = docSoumissionService.findById(request.getDocSoumissionId());
         Specification<DacDocSoumission> specification = DacDocSoumissionSpecifications.byDacId(request.getDacId()).and(DacDocSoumissionSpecifications.byDacVer(dacLatestVersion)).and(DacDocSoumissionSpecifications.byDocSoumissionId(request.getDocSoumissionId()));
         DacDocSoumission checkExistingDacDocSoumission=  findOne(specification).orElse(null);
         if(checkExistingDacDocSoumission!=null) {
@@ -147,7 +152,9 @@ public class DacDocSoumissionServiceImpl implements DacDocSoumissionService {
             throw new DocSoumissionIdRequired("Doc Soumission ID is required");
         }
         DacDocSoumission dacDocSoumission = findByDacIdAndDocSoumissionId(dacId,docSoumissionId);
-
+        if(dacDocSoumission.getDocSoumission()!=null&&dacDocSoumission.getDocSoumission().isValidationDateRequired()&&request.getDateValidate()==null) {
+            throw new DateValidateRequired(" Date Validate is required");
+        }
         if(request.getDateValidate()!=null) {
             Calendar today = Calendar.getInstance();
             today.set(Calendar.HOUR_OF_DAY, 0);

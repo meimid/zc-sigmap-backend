@@ -17,4 +17,9 @@ public class DocSoumission {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "type_dossier_id", nullable = false)
     private TypeDossier typeDossier;
+
+    @Column(name = "date_validation_obligatoire")
+    private boolean validationDateRequired;
+
+
 }

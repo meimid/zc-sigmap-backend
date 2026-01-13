@@ -382,7 +382,7 @@ public class PpmServiceImpl implements PpmService {
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
-                    .and(ReunionSpecifications.comId(comId))
+                  //  .and(ReunionSpecifications.comId(comId)) // ??
                     .and(ReunionSpecifications.hasPpmId(ppmId))
                     .and(ReunionSpecifications.hasPpmVer(ppmVersion));
 
@@ -422,9 +422,12 @@ public class PpmServiceImpl implements PpmService {
                         break;
 
                     case "CNCMP-P":
-                        // Permanent CNCMP sees only permanent PVs
+                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
                         if ("CNCMP-P".equals(reunionComType)) {
                             dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
                         }
                         break;
 
@@ -5432,8 +5435,10 @@ public class PpmServiceImpl implements PpmService {
 
         // Get user's AC IDs
         List<Integer> userAcIds = currentUserService.getCurrentUserAcIds();
-        if (userAcIds.isEmpty()) {
-            log.info("No AC IDs found for the connected user");
+        // Get user's COM IDs
+        List<Integer> userComIds = currentUserService.getCurrentUserComIds();
+        if (userComIds.isEmpty() && userAcIds.isEmpty()) {
+            log.info("No  AC/COM IDs found for the connected user");
             return Page.empty(pageable);
         }
 
@@ -5443,6 +5448,15 @@ public class PpmServiceImpl implements PpmService {
                 acService.findById(acId);
             } catch (Exception e) {
                 log.warn("AC not found with ID: {}", acId);
+                return Page.empty(pageable);
+            }
+        }
+        // Validate COMs exist
+        for (Integer comId : userComIds) {
+            try {
+                comService.findById(comId);
+            } catch (Exception e) {
+                log.warn("COM not found with ID: {}", comId);
                 return Page.empty(pageable);
             }
         }
@@ -5460,7 +5474,7 @@ public class PpmServiceImpl implements PpmService {
         // Build specification
         Specification<Ppm> spec = Specification
                 .where(PpmSpecifications.anneeIn(allowedYears))
-                .and(PpmSpecifications.ppmAc(userAcIds))
+                .and(PpmSpecifications.ppmAccessibleByUser(userAcIds, userComIds))
                 .and(PpmSpecifications.deleted(false))
                 .and(PpmSpecifications.isLatestVersion());
 
