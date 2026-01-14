@@ -21,6 +21,8 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -54,7 +56,7 @@ public class EspaceSocieteController {
      * @return page of DAC responses
      */
     @GetMapping("/my-dacs")
-    public ResponseEntity<Page<DacWebsiteResponse>> getMyPublishedDacs(Pageable pageable, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Page<DacWebsiteResponse>> getMyPublishedDacs(@PageableDefault(sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable, @AuthenticationPrincipal Jwt jwt) {
         log.debug("REST request to get published DACs for authenticated user in Espace Societe");
 
         if (jwt == null) {

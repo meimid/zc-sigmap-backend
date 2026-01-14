@@ -8,4 +8,6 @@ public class DocSoumissionResponse {
     private Integer id;
     private String nom;
     private TypeDossierResponse typeDossier;
+    private boolean validationDateRequired;
+
 }
