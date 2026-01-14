@@ -119,7 +119,9 @@ public class KeycloakAdminService {
         if (groupId == null) {
             return Collections.emptyList();
         }
-        String urlMembers = baseUrl + "/groups/" + groupId + "/members";
+        int first = 0;
+        int max = 800;
+        String urlMembers = baseUrl + "/groups/" + groupId + "/members"+ "?first=" + first + "&max=" + max;
         ResponseEntity<List> response = restTemplate.exchange(urlMembers, HttpMethod.GET, entity, List.class);
         List<Map<String, Object>> rawUsers = response.getBody();
         if (rawUsers == null) return Collections.emptyList();
