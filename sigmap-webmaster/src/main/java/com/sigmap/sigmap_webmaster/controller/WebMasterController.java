@@ -93,12 +93,14 @@ public class WebMasterController {
     }
 
 
-        @GetMapping("/ppm")
-    public ResponseEntity<Page<PpmWebsiteResponse>> findPpmAllForWebsite(PpmQuery query, Pageable pageable)  {
+    @GetMapping("/ppm")
+    public ResponseEntity<Page<PpmWebsiteResponse>> findPpmAllForWebsite(
+            PpmQuery query,
+            @PageableDefault(sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable)  {
         Specification<Ppm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
         Page<PpmWebsiteResponse> responses = webMasterService.findAllPpmForWebsite(spec,pageable);
-            return ResponseEntity.ok(responses);
-        }
+        return ResponseEntity.ok(responses);
+    }
 
     @GetMapping("/ppm/{ppmId}")
     public ResponseEntity<PpmDetailsWebsite> findPpmForWebsiteByIdAndVersion(@PathVariable Integer ppmId
@@ -109,7 +111,9 @@ public class WebMasterController {
         return ResponseEntity.ok(response);
     }
     @GetMapping("/paa")
-    public ResponseEntity<Page<PaaWebsiteResponse>> findPaaAllForWebsite(PaaQuery query, Pageable pageable)  {
+    public ResponseEntity<Page<PaaWebsiteResponse>> findPaaAllForWebsite(
+            PaaQuery query,
+            @PageableDefault(sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable)  {
         Specification<Paa> spec = (query != null) ? query.toSpecification() : Specification.where(null);
         Page<PaaWebsiteResponse> responses = webMasterService.findPaaAllForWebsite(spec,pageable);
         return ResponseEntity.ok(responses);
@@ -122,7 +126,9 @@ public class WebMasterController {
     }
 
     @GetMapping("/agpm")
-    public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(AgpmQuery query, Pageable pageable)  {
+    public ResponseEntity<Page<AgpmWebsiteResponse>> findAllForWebsite(
+            AgpmQuery query,
+            @PageableDefault(sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable)  {
         Specification<Agpm> spec = (query != null) ? query.toSpecification() : Specification.where(null);
         Page<AgpmWebsiteResponse> responses = webMasterService.findAgpmAllForWebsite(spec,pageable);
         return ResponseEntity.ok(responses);
@@ -270,7 +276,7 @@ public class WebMasterController {
 
     @GetMapping("/dac")
     public ResponseEntity<Page<DacWebsiteResponse>> findPublishedDacsForWebsite(
-            @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable) {
         Page<DacWebsiteResponse> response = webMasterService.findPublishedDacsForWebsite(pageable);
         return ResponseEntity.ok(response);
     }
