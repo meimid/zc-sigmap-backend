@@ -124,7 +124,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
          "AND d.etapeDac = '1' " +
          "AND d.isDeleted = false " +
          "AND d.dacVer = (SELECT MAX(dd.dacVer) FROM Dac dd WHERE dd.dacId = d.dacId AND dd.isDeleted = false) " +
-         "ORDER BY d.updatedAt DESC")
+         "ORDER BY d.publishedAt DESC")
   Page<Dac> findPublishedDacsForWebsite(Pageable pageable);
 
   /**
@@ -149,7 +149,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
               WHERE us.userId = :userId AND us.isDeleted = false
           )
       )
-      ORDER BY d.updatedAt DESC
+      ORDER BY d.publishedAt DESC
       """)
   Page<Dac> findPublishedDacsForUser(@Param("userId") String userId, Pageable pageable);
 
@@ -202,7 +202,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
               WHERE us.userId = :userId AND us.isDeleted = false
           )
       )
-      ORDER BY d.updatedAt DESC
+      ORDER BY d.publishedAt DESC
       """)
   Optional<Dac> findPublishedDacForUser(@Param("dacId") Integer dacId, @Param("userId") String userId);
 
@@ -218,7 +218,7 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
           FROM Dac dac
           WHERE dac.dacId = :dacId
       )
-      ORDER BY d.updatedAt DESC
+      ORDER BY d.publishedAt DESC
       """)
   Optional<Dac> findPublishedDacForUserNotShortListed(@Param("dacId") Integer dacId, @Param("userId") String userId);
 
