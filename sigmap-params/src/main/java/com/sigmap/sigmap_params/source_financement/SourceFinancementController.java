@@ -34,7 +34,7 @@ public class SourceFinancementController {
 
     private final SourceFinancementService sourceFinancementService;
 
-    @GetMapping
+    @GetMapping("/list")
     public ResponseEntity<List<SourceFinancementResponseDto>> findAll() {
 
         List<SourceFinancementResponseDto> response = sourceFinancementService.findAll().stream()
@@ -45,7 +45,7 @@ public class SourceFinancementController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/page")
+    @GetMapping
     public ResponseEntity<Page<SourceFinancementResponse>> findAllPageable(
             SourceFinancementQuery query,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
