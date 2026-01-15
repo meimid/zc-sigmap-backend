@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 import com.sigmap.common.source_financement.mappers.SourceFinancementMapper;
 
-@Mapper(componentModel = "spring", uses = { SourceFinancementMapper.class })
+@Mapper(componentModel = "spring")
 public interface RealisationMapper {
     RealisationMapper INSTANCE = Mappers.getMapper(RealisationMapper.class);
 
