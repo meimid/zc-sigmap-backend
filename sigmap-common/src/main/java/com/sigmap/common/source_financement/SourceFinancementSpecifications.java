@@ -86,11 +86,12 @@ public class SourceFinancementSpecifications {
 
     /** bailleurDeFonds equals. */
     public static Specification<SourceFinancement> bailleurDeFonds(Boolean bailleurDeFonds) {
-        return (Root<SourceFinancement> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
+        return (root, query, cb) -> {
             if (bailleurDeFonds == null) {
-                return cb.conjunction(); // ✅ never return null
+                return cb.conjunction();
             }
             return cb.equal(root.get("bailleurDeFonds"), bailleurDeFonds);
         };
     }
+
 }
