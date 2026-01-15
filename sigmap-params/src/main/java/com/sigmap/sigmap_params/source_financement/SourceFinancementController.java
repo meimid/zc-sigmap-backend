@@ -5,7 +5,6 @@ import com.sigmap.common.source_financement.SourceFinancementService;
 import com.sigmap.common.source_financement.exceptions.SourceFinancementCodeAlreadyExist;
 import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import com.sigmap.common.source_financement.mappers.SourceFinancementMapper;
-import com.sigmap.common.source_financement.request.SourceFinancementQuery;
 import com.sigmap.common.source_financement.request.SourceFinancementRequest;
 import com.sigmap.common.source_financement.response.SourceFinancementResponse;
 import com.sigmap.common.source_financement.response.SourceFinancementResponseDto;
@@ -47,9 +46,9 @@ public class SourceFinancementController {
 
     @GetMapping
     public ResponseEntity<Page<SourceFinancementResponse>> findAllPageable(
-            SourceFinancementQuery query,
+            Specification<SourceFinancement> query,
             @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<SourceFinancement> page = sourceFinancementService.findAllPage((Specification<SourceFinancement>) query,
+        Page<SourceFinancement> page = sourceFinancementService.findAllPage( query,
                 pageable);
         return ResponseEntity.ok(page.map(SourceFinancementMapper.INSTANCE::map));
     }
