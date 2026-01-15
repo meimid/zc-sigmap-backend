@@ -45,6 +45,15 @@ public class SourceFinancementController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/page")
+    public ResponseEntity<Page<SourceFinancementResponse>> findAllPageable(
+            SourceFinancementQuery query,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        Page<SourceFinancement> page = sourceFinancementService.findAllPage((Specification<SourceFinancement>) query,
+                pageable);
+        return ResponseEntity.ok(page.map(SourceFinancementMapper.INSTANCE::map));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<SourceFinancementResponse> findById(@PathVariable Integer id)
             throws SourceFinancementNotFound {
