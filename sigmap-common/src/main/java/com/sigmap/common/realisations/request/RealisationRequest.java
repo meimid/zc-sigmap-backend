@@ -9,6 +9,7 @@ import com.sigmap.common.financement.response.FinancementResponse;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.source_financement.SourceFinancement;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -23,15 +24,15 @@ public class RealisationRequest {
     private Integer version;
     private String realisationEnvisagees;
     private String beneficiaire;
-//    private RefParam service;
-//    private RefParam direction;
-    private RefParam sourceFinancement;
+    // private RefParam service;
+    // private RefParam direction;
+    private SourceFinancement sourceFinancement;
     private List<FinancementBaseRequestDto> financementRequests;
     private RefParam imputationBudgetaire;
-    //    private RefParam monais;
+    // private RefParam monais;
     private Monnaie monnaie;
     private RefParam typeMarcher;
-//    private RefParam modeSelection;
+    // private RefParam modeSelection;
     private ModeDePassationSelection modePassation;
     private LocalDate datePrevLps;
     private LocalDate datePrevAc;

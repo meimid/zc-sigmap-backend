@@ -11,6 +11,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
 import com.sigmap.common.paas.request.PaaRequestGlobal;
+import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -138,7 +139,7 @@ public interface PaaService {
      */
     void delete(Integer paaId, Integer paaVer) throws PaaNotFound, PaaSoftDelete, PaaInvalidStatusException;
 
-    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException;
+    Paa update(Integer paaId, Integer paaVer, PaaRequestGlobal request) throws PaaNotFound, PaaInvalidStateException, SourceFinancementNotFound;
 
     /**
      * Updates a PAA by creating a new version with the updated data.
@@ -195,7 +196,7 @@ public interface PaaService {
     Page<Paa> findCurrentYearPaasByUser(Pageable pageable);
 
     List<AcAvailablePaaResponse> getAcsWithoutPaaForCurrentYear() throws AcNotFound;
-    Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException;
+    Paa createPaaPerAc(PaaRequestGlobal request) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, SourceFinancementNotFound;
     Page<Paa> findAllForWebsite(Specification<Paa> spec, Pageable pageable) ;
 
     /**

@@ -20,6 +20,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.sigmap.common.source_financement.mappers.SourceFinancementMapper;
+
 @Mapper(componentModel = "spring")
 public interface RealisationMapper {
     RealisationMapper INSTANCE = Mappers.getMapper(RealisationMapper.class);
@@ -28,11 +30,11 @@ public interface RealisationMapper {
     @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
     @Mapping(target = "beneficiaire", source = "beneficiaire")
-//    @Mapping(target = "service", source = "service")
-//    @Mapping(target = "direction", source = "direction")
-//    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
-    @Mapping(target = "imputationBudgetaire",source  = "imputationBudgetaire")
-//    @Mapping(target = "monnaie", source = "monnaie")
+    // @Mapping(target = "service", source = "service")
+    // @Mapping(target = "direction", source = "direction")
+    // @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "imputationBudgetaire", source = "imputationBudgetaire")
+    // @Mapping(target = "monnaie", source = "monnaie")
     @Mapping(target = "typeMarcher", source = "typeMarcher")
     @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "datePrevLps", source = "datePrevLps")
@@ -56,11 +58,11 @@ public interface RealisationMapper {
     @Mapping(target = "version", source = "version", defaultValue = "1")
     @Mapping(target = "realisationEnvisagees", source = "realisationEnvisagees")
     @Mapping(target = "beneficiaire", source = "beneficiaire")
-//    @Mapping(target = "service", source = "service")
-//    @Mapping(target = "direction", source = "direction")
-//    @Mapping(target = "sourceFinancement", source = "sourceFinancement")
-    @Mapping(target = "imputationBudgetaire",source  = "imputationBudgetaire")
-//    @Mapping(target = "monnaie", source = "monnaie")
+    // @Mapping(target = "service", source = "service")
+    // @Mapping(target = "direction", source = "direction")
+    // @Mapping(target = "sourceFinancement", source = "sourceFinancement")
+    @Mapping(target = "imputationBudgetaire", source = "imputationBudgetaire")
+    // @Mapping(target = "monnaie", source = "monnaie")
     @Mapping(target = "typeMarcher", source = "typeMarcher")
     @Mapping(target = "modePassation", source = "modePassation")
     @Mapping(target = "datePrevLps", source = "datePrevLps")
@@ -84,7 +86,8 @@ public interface RealisationMapper {
     @Mapping(target = "financements", expression = "java(mapFinancements(source.getFinancements()))")
     @Mapping(target = "lots", expression = "java(mapLots(source.getLots()))")
 
-    //  @Mapping(target = "lots", expression = "java(mapLots(realisation.getLots()))")
+    // @Mapping(target = "lots", expression =
+    // "java(mapLots(realisation.getLots()))")
     @Mapping(target = "beneficiaire", source = "beneficiaire")
     @Mapping(target = "typeMarcher", source = "typeMarcher")
     @Mapping(target = "modePassation", source = "modePassation")
@@ -105,8 +108,6 @@ public interface RealisationMapper {
     @Mapping(target = "statut", source = "statut")
     RealisationResponseDTO mapWithDTO(Realisation realisation);
 
-
-
     @Mapping(target = "financementId", source = "id.financementId")
     @Mapping(target = "realisationId", source = "id.realisationId")
     @Mapping(target = "realisationVer", source = "id.realisationVer")
@@ -115,16 +116,11 @@ public interface RealisationMapper {
     @Mapping(target = "budgetEstimer", source = "budgetEstimer")
     FinancementResponse mapFinancement(Financement financement);
 
-
-
     @Mapping(target = "id", source = "id")
     @Mapping(target = "version", source = "version")
     @Mapping(target = "description", source = "description")
     @Mapping(target = "budget", source = "budget")
     LotResponseDTO mapLot(Lot lot);
-
-
-
 
     /**
      * Helper method to map a list of Financement entities.

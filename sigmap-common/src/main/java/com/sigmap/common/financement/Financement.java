@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.realisations.Realisation;
-import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.source_financement.SourceFinancement;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -41,7 +41,7 @@ public class Financement extends BaseEntity {
 
     @ManyToOne
     @JoinColumn(name = "source_de_financement_id")
-    private RefParam sourceFinancement;
+    private SourceFinancement sourceFinancement;
 
     @Column(name = "examen_prealable", nullable = false)
     private Boolean examenPrealable = false;

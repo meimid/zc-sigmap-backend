@@ -30,6 +30,8 @@ import com.sigmap.common.realisations.response.RealisationResponse;
 import com.sigmap.common.lots.mappers.LotMapper;
 import com.sigmap.common.lots.response.LotResponse;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.source_financement.SourceFinancement;
+import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import com.sigmap.sigmap_paa.service.PaaFlowableService;
 import com.sigmap.sigmap_paa.service.dto.response.TaskDetailsDTO;
 import jakarta.persistence.EntityNotFoundException;
@@ -57,6 +59,7 @@ import java.util.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/paas")
@@ -108,7 +111,6 @@ public class PaaController {
 
         return ResponseEntity.ok(responses);
     }
-
 
     @GetMapping("/current_year")
     public ResponseEntity<PaaResponseWithRealisations> getPaaOfCurrentYear() {
@@ -164,7 +166,6 @@ public class PaaController {
         return ResponseEntity.ok(response);
     }
 
-
     @GetMapping("/{paaId}")
     public ResponseEntity<PaaResponseWithRealisations> getPaaById(@PathVariable Integer paaId) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findByIdPaa(paaId, null);
@@ -198,10 +199,11 @@ public class PaaController {
      * @return the created PAA with all established relationships and specialized DTOs
      * @throws PaaAlreadyExistsException if a PAA with the generated ID and version already exists
      */
-    @PostMapping(value="/with-relationships",consumes = {"multipart/form-data"})
+    @PostMapping(value = "/with-relationships", consumes = { "multipart/form-data" })
     public ResponseEntity<PaaResponseWithRealisations> createWithRelationships(
             @ModelAttribute("request") PaaRequestGlobal request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson) throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException {
         logger.info("Creating PAA with relationships using RealisationRequestForPaa");
 
         // Process lots from JSON string if provided
@@ -221,12 +223,14 @@ public class PaaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
+    @PostMapping(value = "/create_per_ac", consumes = { "multipart/form-data" })
     public ResponseEntity<PaaResponseWithRealisations> createPaaPerAc(
             @ModelAttribute("request") PaaRequestGlobal request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)  // ADD THIS PARAMETER
-            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException {
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson) // ADD
+                                                                                                                         // THIS
+                                                                                                                         // PARAMETER
+            throws PaaAlreadyExistsException, AcNotFound, PaaCreationLimitExceededException, IOException, SourceFinancementNotFound {
 
         logger.info("Creating PAA per AC with relationships using PaaRequestGlobal");
 
@@ -255,6 +259,7 @@ public class PaaController {
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
     private void processRealisationFinancementsFromJson(PaaRequestGlobal request, String realisationsFinancementsJson) {
         if (realisationsFinancementsJson == null || realisationsFinancementsJson.isEmpty()) {
             return;
@@ -308,7 +313,8 @@ public class PaaController {
                     if (financementData.containsKey("budgetEstimer")) {
                         Object budgetEstimer = financementData.get("budgetEstimer");
                         if (budgetEstimer instanceof Number) {
-                            financementRequest.setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
+                            financementRequest
+                                    .setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
                         }
                     }
                     if (financementData.containsKey("sourceFinancement")) {
@@ -318,9 +324,9 @@ public class PaaController {
                             if (sourceFinancementMap.containsKey("id")) {
                                 Object sourceId = sourceFinancementMap.get("id");
                                 if (sourceId instanceof Number) {
-                                    RefParam refParam = new RefParam();
-                                    refParam.setId(((Number) sourceId).intValue());
-                                    financementRequest.setSourceFinancement(refParam);
+                                    SourceFinancement sf = new SourceFinancement();
+                                    sf.setId(((Number) sourceId).intValue());
+                                    financementRequest.setSourceFinancement(sf);
                                 }
                             }
                         }
@@ -340,43 +346,43 @@ public class PaaController {
         }
     }
 
+    @PutMapping(value = "/{paaId}/{paaVer}", consumes = { "multipart/form-data" })
+    public ResponseEntity<PaaResponseWithRealisations> update(
+            @PathVariable Integer paaId,
+            @PathVariable Integer paaVer,
+            @ModelAttribute("request") PaaRequestGlobal request,
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
+            throws PaaNotFound, PaaInvalidStateException, SourceFinancementNotFound {
 
-@PutMapping(value="/{paaId}/{paaVer}",consumes = {"multipart/form-data"})
-public ResponseEntity<PaaResponseWithRealisations> update(
-        @PathVariable Integer paaId,
-        @PathVariable Integer paaVer,
-        @ModelAttribute("request") PaaRequestGlobal request,
-        @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-        @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-) throws PaaNotFound, PaaInvalidStateException {
-
-    logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
-    if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
-        try {
-            processRealisationLotsFromJson(request, realisationsLotsJson);
-            logger.info("Successfully processed lots from JSON string");
-        } catch (Exception e) {
-            logger.error("Error processing lots JSON: {}", e.getMessage());
+        logger.info("Updating PAA ID: {} version: {} without versionning", paaId, paaVer);
+        if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
+            try {
+                processRealisationLotsFromJson(request, realisationsLotsJson);
+                logger.info("Successfully processed lots from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing lots JSON: {}", e.getMessage());
+            }
         }
+
+        if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
+            try {
+                // log.info(realisationsFinancementsJson);
+                processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
+                logger.info("Successfully processed financements from JSON string");
+            } catch (Exception e) {
+                logger.error("Error processing financements JSON: {}", e.getMessage());
+            }
+        }
+
+        Paa updatedPaa = paaService.update(paaId, paaVer, request);
+
+        // Use the detailed mapper to create a response with specialised DTOs
+        PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
+
+        return ResponseEntity.ok(response);
     }
 
-    if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
-        try {
-//            log.info(realisationsFinancementsJson);
-            processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
-            logger.info("Successfully processed financements from JSON string");
-        } catch (Exception e) {
-            logger.error("Error processing financements JSON: {}", e.getMessage());
-        }
-    }
-
-    Paa updatedPaa = paaService.update(paaId, paaVer, request);
-
-    // Use the detailed mapper to create a response with specialised DTOs
-    PaaResponseWithRealisations response = PaaDetailedMapper.INSTANCE.mapDetailed(updatedPaa);
-
-    return ResponseEntity.ok(response);
-}
     private void processRealisationLotsFromJson(PaaRequestGlobal request, String lotsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -499,8 +505,8 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             @PathVariable Integer paaId,
             @ModelAttribute("request") PaaRequestGlobal request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-            ) throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
+            throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         logger.info("Updating PAA ID: {} with versioning (multipart)", paaId);
 
         // Process lots from JSON string if provided
@@ -513,7 +519,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             }
         }
 
-//        // ADDED THIS: Process financements from JSON string if provided
+       // ADDED THIS: Process financements from JSON string if provided
         if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
             try {
                 processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
@@ -521,7 +527,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             } catch (Exception e) {
                 logger.error("Error processing financements JSON: {}", e.getMessage());
             }
-       }
+        }
 
         Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
 
@@ -543,7 +549,8 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     @PutMapping("/{paaId}/versioning")
     public ResponseEntity<PaaResponseWithRealisations> updateWithVersioningLatest(
             @PathVariable Integer paaId,
-            @RequestBody PaaRequestGlobal request) throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
+            @RequestBody PaaRequestGlobal request)
+            throws PaaNotFound, RealisationNotFoundException, RealisationAlreadyExistsException {
         logger.info("Updating latest version of PAA ID: {} with versioning", paaId);
         Paa updatedPaa = paaService.updateWithVersioning(paaId, request);
 
@@ -637,7 +644,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             @PathVariable Integer paaId,
             @PathVariable Integer paaVer) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of()));
+                .orElseThrow(() -> new PaaNotFound("PAA not found", List.of(paaId), List.of()));
 
         // Collect all lots from all realisations
         List<LotResponse> lots = paa.getRealisations().stream()
@@ -661,7 +668,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
     public ResponseEntity<List<LotResponse>> getPaaLotsLatest(
             @PathVariable Integer paaId) throws PaaNotFound {
         Paa paa = paaService.findLatestById(paaId)
-                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of()));
+                .orElseThrow(() -> new PaaNotFound("PAA not found", List.of(paaId), List.of()));
 
         // Collect all lots from all realisations
         List<LotResponse> lots = paa.getRealisations().stream()
@@ -688,7 +695,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             @PathVariable Integer paaVer,
             @PathVariable Integer realisationId) throws PaaNotFound, AcNotFound {
         Paa paa = paaService.findById(paaId, paaVer)
-                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of()));
+                .orElseThrow(() -> new PaaNotFound("PAA not found", List.of(paaId), List.of()));
 
         // Find the specified realisation
         var realisation = paa.getRealisations().stream()
@@ -719,7 +726,7 @@ public ResponseEntity<PaaResponseWithRealisations> update(
             @PathVariable Integer paaId,
             @PathVariable Integer realisationId) throws PaaNotFound {
         Paa paa = paaService.findLatestById(paaId)
-                .orElseThrow(() -> new PaaNotFound("PAA not found",List.of(paaId), List.of()));
+                .orElseThrow(() -> new PaaNotFound("PAA not found", List.of(paaId), List.of()));
 
         // Find the specified realisation
         var realisation = paa.getRealisations().stream()
@@ -738,13 +745,14 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         return ResponseEntity.ok(lots);
     }
 
-
     /**
-     * find page of paas with Ac Id*/
+     * find page of paas with Ac Id
+     */
 
     @GetMapping("/ac/{acId}")
-    public ResponseEntity<Page<PaaResponseDto>> findPaasByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
-        Page<Paa> paas = paaService.findPaasByAcId(acId,pageable);
+    public ResponseEntity<Page<PaaResponseDto>> findPaasByAcId(@PathVariable Integer acId, Pageable pageable)
+            throws AcNotFound {
+        Page<Paa> paas = paaService.findPaasByAcId(acId, pageable);
         Page<PaaResponseDto> responses = paas.map(PaaMapper.INSTANCE::toDto);
         return ResponseEntity.ok(responses);
     }
@@ -758,28 +766,32 @@ public ResponseEntity<PaaResponseWithRealisations> update(
      * @throws PaaNotFound if no Paa entities are found for the ID
      */
     @GetMapping("/history/full/{paaId}")
-    public ResponseEntity<Page<PaaResponseWithRealisations>> getPaaHistoryFull(@PathVariable Integer paaId, Pageable pageable) throws  PaaIdNotFound {
+    public ResponseEntity<Page<PaaResponseWithRealisations>> getPaaHistoryFull(@PathVariable Integer paaId,
+            Pageable pageable) throws PaaIdNotFound {
         log.info("Received request to fetch full history for Paa ID {}, page {}, size {}, sort {}",
                 paaId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         Page<Paa> paas = paaService.findAllVersionsById(paaId, pageable);
-        Page<PaaResponseWithRealisations> paaResponseWithRealisations=paas.map(PaaMapper.INSTANCE::toDtoWithRelations);
+        Page<PaaResponseWithRealisations> paaResponseWithRealisations = paas
+                .map(PaaMapper.INSTANCE::toDtoWithRelations);
         return ResponseEntity.ok(paaResponseWithRealisations);
     }
 
     /**
-     * Retrieves all versions of an Paa entity by its ID with minimal details in PaaDto format.
+     * Retrieves all versions of an Paa entity by its ID with minimal details in
+     * PaaDto format.
      *
-     * @param paaId   ID of the Paa entity
+     * @param paaId    ID of the Paa entity
      * @param pageable Pagination and sorting parameters
      * @return ResponseEntity containing a page of PaaResponseDtoWithMetdata
      * @throws PaaIdNotFound if no Paa entities are found for the ID
      */
     @GetMapping("/history/minimal/{paaId}")
-    public ResponseEntity<Page<PaaResponseDtoWithMetdata>> getPaaHistoryMinimal(@PathVariable Integer paaId, Pageable pageable) throws PaaIdNotFound {
+    public ResponseEntity<Page<PaaResponseDtoWithMetdata>> getPaaHistoryMinimal(@PathVariable Integer paaId,
+            Pageable pageable) throws PaaIdNotFound {
         log.info("Received request to fetch full history for Paa ID {}, page {}, size {}, sort {}",
                 paaId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         Page<Paa> paas = paaService.findAllVersionsById(paaId, pageable);
-        Page<PaaResponseDtoWithMetdata> paaResponseDtoWithMetdata=paas.map(PaaMapper.INSTANCE::toDtoWithMetadata);
+        Page<PaaResponseDtoWithMetdata> paaResponseDtoWithMetdata = paas.map(PaaMapper.INSTANCE::toDtoWithMetadata);
         return ResponseEntity.ok(paaResponseDtoWithMetdata);
     }
 
@@ -815,7 +827,5 @@ public ResponseEntity<PaaResponseWithRealisations> update(
         PaaResponseWithRealisations response = PaaMapper.INSTANCE.toDtoWithRelations(newVersion);
         return ResponseEntity.ok(response);
     }
-
-
 
 }

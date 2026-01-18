@@ -41,6 +41,7 @@ import com.sigmap.common.monnaie.Monnaie;
 import com.sigmap.common.monnaie.MonnaieRepository;
 import com.sigmap.common.monnaie.exceptions.MonnaieNotFound;
 import com.sigmap.common.ref_params.RefParam;
+import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.security.Authentication;
 import com.sigmap.common.societe.Societe;
 import com.sigmap.common.societe.SocieteRepository;
@@ -1682,9 +1683,11 @@ public class DacDocsServiceImpl implements DacDocsService{
                         int i = 1;
                         Set<String> seen = new LinkedHashSet<>();
                         for (Financement fin : dac.getAppelOffre().getRealisation().getFinancements()) {
-                            if (Boolean.TRUE.equals(fin.getIsDeleted())) continue;
-                            String label = getRefParamLabel(fin.getSourceFinancement());
-                            if (label == null) continue;
+                            if (Boolean.TRUE.equals(fin.getIsDeleted()))
+                                continue;
+                            String label = getSourceFinancementLabel(fin.getSourceFinancement());
+                            if (label == null)
+                                continue;
                             String trimmed = label.trim();
                             if (trimmed.isEmpty()) continue;
                             if (!seen.add(trimmed)) continue;
@@ -1742,6 +1745,10 @@ public class DacDocsServiceImpl implements DacDocsService{
     }
     private String getRefParamLabel(RefParam ref) {
         return ref == null ? null : ref.getDescription();
+    }
+
+    private String getSourceFinancementLabel(SourceFinancement sourceFinancement) {
+        return sourceFinancement == null ? null : sourceFinancement.getDescription();
     }
 
     @Override

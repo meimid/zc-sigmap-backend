@@ -6,7 +6,7 @@ import com.sigmap.common.AlfrescoConf.RenamedMultipartFile;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
 import com.sigmap.common.ac.AcService;
-import com.sigmap.common.ac.exception.AcNotFound;
+import com.sigmap.common.ac.AcService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.RealisationStatus;
 import com.sigmap.common.dac.Dac;
@@ -28,7 +28,7 @@ import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmRepository;
-import com.sigmap.common.ppms.PpmService;
+import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
@@ -44,15 +44,17 @@ import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import com.sigmap.common.source_financement.SourceFinancement;
+import com.sigmap.common.source_financement.SourceFinancementRepository;
 import org.apache.tika.Tika;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.testcontainers.shaded.org.checkerframework.checker.units.qual.A;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -60,7 +62,6 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 
 @Service
 @Slf4j
@@ -79,10 +80,16 @@ public class RealisationServiceImpl implements RealisationService {
     private final DocsRepository docsRepository;
     private final FinancementRepository financementRepository;
     private final SequenceGeneratorService sequenceGeneratorService;
+    private final SourceFinancementRepository sourceFinancementRepository;
 
-
-
-    public RealisationServiceImpl(RealisationRepository repository, ModeDePassationSelectionRepository modeDePassationSelectionRepository, MonnaieRepository monnaieRepository, PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository, RefParamRepository refParamRepository, AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService, DocsRepository docsRepository, FinancementRepository financementRepository, SequenceGeneratorService sequenceGeneratorService) {
+    public RealisationServiceImpl(RealisationRepository repository,
+            ModeDePassationSelectionRepository modeDePassationSelectionRepository, MonnaieRepository monnaieRepository,
+            PaaRepository paaRepository, PpmRepository ppmRepository, LotRepository lotRepository,
+            RefParamRepository refParamRepository, AlfrescoService alfrescoService,
+            DocumentCommuneService documentCommuneService, DocsService docsService, AcService acService,
+            DocsRepository docsRepository, FinancementRepository financementRepository,
+            SequenceGeneratorService sequenceGeneratorService,
+            SourceFinancementRepository sourceFinancementRepository) {
         this.repository = repository;
         this.paaRepository = paaRepository;
         this.ppmRepository = ppmRepository;
@@ -95,14 +102,16 @@ public class RealisationServiceImpl implements RealisationService {
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.monnaieRepository = monnaieRepository;
         this.modeDePassationSelectionRepository = modeDePassationSelectionRepository;
+        this.sourceFinancementRepository = sourceFinancementRepository;
     }
 
     @Override
     public List<Realisation> findRealisationsNotAttachedToDac(Integer ppmId, Integer ppmVersion) throws PpmNotFound {
-        log.info("Recherche des réalisations non attachées à un DAC pour le PPM ID: {}, Version: {}", ppmId, ppmVersion);
+        log.info("Recherche des réalisations non attachées à un DAC pour le PPM ID: {}, Version: {}", ppmId,
+                ppmVersion);
 
         // Validate input
-        if (ppmId == null|| ppmVersion == null) {
+        if (ppmId == null || ppmVersion == null) {
             log.error("ID ou version du PPM non fourni");
             throw new IllegalArgumentException("PPM ID and version must not be null");
         }
@@ -110,13 +119,14 @@ public class RealisationServiceImpl implements RealisationService {
         // Verify PPM exists
         if (!ppmRepository.existsById(new CompositeId(ppmId, ppmVersion))) {
             log.error("PPM non trouvé avec ID: {}, Version: {}", ppmId, ppmVersion);
-            throw new PpmNotFound("PPM non trouvé avec ID: " , List.of(ppmId), List.of(ppmVersion));
+            throw new PpmNotFound("PPM non trouvé avec ID: ", List.of(ppmId), List.of(ppmVersion));
         }
 
         // Create specification to filter Realisations not attached to a Dac
         Specification<Realisation> realisationNotInDacSpec = (root, query, cb) -> {
             query.distinct(true);
-            // Join with ppm_realisation to ensure the Realisation is linked to the given PPM
+            // Join with ppm_realisation to ensure the Realisation is linked to the given
+            // PPM
             Join<Realisation, Ppm> ppmJoin = root.join("ppms", jakarta.persistence.criteria.JoinType.INNER);
             // Subquery to check if Realisation is linked to any Dac
             Subquery<Long> dacSubquery = query.subquery(Long.class);
@@ -124,21 +134,20 @@ public class RealisationServiceImpl implements RealisationService {
             dacSubquery.select(cb.count(dacRoot))
                     .where(
                             cb.equal(dacRoot.get("realisation").get("id"), root.get("id")),
-                            cb.equal(dacRoot.get("realisation").get("version"), root.get("version"))
-                    );
+                            cb.equal(dacRoot.get("realisation").get("version"), root.get("version")));
             // Filter Realisations linked to the specific PPM and not linked to any Dac
             return cb.and(
                     cb.equal(ppmJoin.get("id"), ppmId),
                     cb.equal(ppmJoin.get("version"), ppmVersion),
-                    cb.equal(dacSubquery, 0)
-            );
+                    cb.equal(dacSubquery, 0));
         };
 
         // Fetch Realisations using the specification
         List<Realisation> realisations = repository.findAll(realisationNotInDacSpec);
 
         if (realisations.isEmpty()) {
-            log.info("Aucune réalisation non attachée à un DAC trouvée pour le PPM ID: {}, Version: {}", ppmId, ppmVersion);
+            log.info("Aucune réalisation non attachée à un DAC trouvée pour le PPM ID: {}, Version: {}", ppmId,
+                    ppmVersion);
         } else {
             log.info("Récupération de {} réalisations non attachées à un DAC pour le PPM ID: {}, Version: {}",
                     realisations.size(), ppmId, ppmVersion);
@@ -205,7 +214,6 @@ public class RealisationServiceImpl implements RealisationService {
         Integer version = request.getVersion() != null ? request.getVersion() : 1;
         request.setVersion(version);
 
-
         if (id == null) {
             id = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
             log.info("Generated Realisation ID: {}", id);
@@ -238,8 +246,7 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getImputationBudgetaire() != null) {
             realisation.setImputationBudgetaire(
                     refParamRepository.findById(request.getImputationBudgetaire().getId())
-                            .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found"))
-            );
+                            .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
 
         // === Beneficiaire ===
@@ -357,12 +364,11 @@ public class RealisationServiceImpl implements RealisationService {
                 financement.setMonnaie(monnaie);
                 financement.setTauxApplicable(monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
-                // Source financement
                 if (financementRequest.getSourceFinancement() != null &&
                         financementRequest.getSourceFinancement().getId() != null) {
 
-                    RefParam src = refParamRepository.findById(
-                                    financementRequest.getSourceFinancement().getId())
+                    SourceFinancement src = sourceFinancementRepository.findById(
+                            financementRequest.getSourceFinancement().getId())
                             .orElseThrow(() -> new EntityNotFoundException("Source Financement not found"));
                     financement.setSourceFinancement(src);
                 }
@@ -380,7 +386,8 @@ public class RealisationServiceImpl implements RealisationService {
                         BigDecimal amt = f.getBudgetEstimer() != null ? f.getBudgetEstimer() : BigDecimal.ZERO;
                         Double taux = (f.getTauxApplicable() != null)
                                 ? f.getTauxApplicable()
-                                : (f.getMonnaie() != null && f.getMonnaie().getTaux() != null ? f.getMonnaie().getTaux() : 0.0);
+                                : (f.getMonnaie() != null && f.getMonnaie().getTaux() != null ? f.getMonnaie().getTaux()
+                                        : 0.0);
                         return amt.multiply(BigDecimal.valueOf(taux));
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -395,24 +402,28 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     @Override
-    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request) throws RealisationNotFoundException {
+    public Realisation update(Integer realisationId, Integer realisationVer, RealisationRequest request)
+            throws RealisationNotFoundException {
         CompositeId compositeId = new CompositeId(realisationId, realisationVer);
         Optional<Realisation> existingRealisationOpt = repository.findById(compositeId);
 
         if (existingRealisationOpt.isEmpty()) {
             throw new RealisationNotFoundException(
-                    "Realisation with ID " + realisationId + " and version " + realisationVer + " was not found in the database.",realisationId, realisationVer);
+                    "Realisation with ID " + realisationId + " and version " + realisationVer
+                            + " was not found in the database.",
+                    realisationId, realisationVer);
         }
         Realisation existingRealisation = existingRealisationOpt.get();
         if (Boolean.TRUE.equals(existingRealisation.getIsDeleted())) {
             throw new RealisationNotFoundException(
-                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,realisationId, realisationVer);
+                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + realisationVer,
+                    realisationId, realisationVer);
         }
 
-
         if (request.getImputationBudgetaire() != null) {
-            existingRealisation.setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
+            existingRealisation
+                    .setImputationBudgetaire(refParamRepository.findById(request.getImputationBudgetaire().getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Imputation Budgetaire not found")));
         }
 
         if (request.getBeneficiaire() != null) {
@@ -424,8 +435,9 @@ public class RealisationServiceImpl implements RealisationService {
         }
 
         if (request.getModePassation() != null) {
-            existingRealisation.setModePassation(modeDePassationSelectionRepository.findById(request.getModePassation().getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Mode Passation not found")));
+            existingRealisation
+                    .setModePassation(modeDePassationSelectionRepository.findById(request.getModePassation().getId())
+                            .orElseThrow(() -> new EntityNotFoundException("Mode Passation not found")));
         }
 
         // Handle document management by comparing existing docs with requested docIds
@@ -433,28 +445,29 @@ public class RealisationServiceImpl implements RealisationService {
             Set<Integer> requestedDocIds = new HashSet<>(request.getDocIds());
 
             // Get active document IDs
-            Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null ?
-                    existingRealisation.getDocs().stream()
+            Set<Integer> activeExistingDocIds = existingRealisation.getDocs() != null
+                    ? existingRealisation.getDocs().stream()
                             .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
                             .map(Docs::getId)
-                            .collect(Collectors.toSet()) : new HashSet<>();
+                            .collect(Collectors.toSet())
+                    : new HashSet<>();
 
             // Log document changes
             if (!requestedDocIds.equals(activeExistingDocIds)) {
-                log.info("Document changes detected for Realisation update ID: {}" , realisationId);
+                log.info("Document changes detected for Realisation update ID: {}", realisationId);
 
                 // Find new documents
                 Set<Integer> newDocIds = new HashSet<>(requestedDocIds);
                 newDocIds.removeAll(activeExistingDocIds);
                 if (!newDocIds.isEmpty()) {
-                    log.info("  - New documents added: {}" , newDocIds);
+                    log.info("  - New documents added: {}", newDocIds);
                 }
 
                 // Find removed documents
                 Set<Integer> removedDocIds = new HashSet<>(activeExistingDocIds);
                 removedDocIds.removeAll(requestedDocIds);
                 if (!removedDocIds.isEmpty()) {
-                    log.info("  - Documents marked as deleted: {}" , removedDocIds);
+                    log.info("  - Documents marked as deleted: {}", removedDocIds);
                 }
             }
 
@@ -477,7 +490,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingDoc.setIsDeleted(true);
                         docsRepository.save(existingDoc);
                         updatedDocs.add(existingDoc); // Keep it in the collection but as deleted
-                        log.info("Marked document with ID {} as deleted (not in request)" , existingDoc.getId() );
+                        log.info("Marked document with ID {} as deleted (not in request)", existingDoc.getId());
                     }
                 }
             }
@@ -500,7 +513,7 @@ public class RealisationServiceImpl implements RealisationService {
                 docsRepository.save(doc);
 
                 updatedDocs.add(doc);
-                log.info("Added new document with ID {}  to Realisation" , doc.getId());
+                log.info("Added new document with ID {}  to Realisation", doc.getId());
             }
 
             // Update the Realisation with the final docs list
@@ -512,18 +525,19 @@ public class RealisationServiceImpl implements RealisationService {
                 if (!Boolean.TRUE.equals(doc.getIsDeleted())) {
                     doc.setIsDeleted(true);
                     docsRepository.save(doc);
-                    log.info("Marked document with ID {} as deleted (no docIds provided)" , doc.getId() );
+                    log.info("Marked document with ID {} as deleted (no docIds provided)", doc.getId());
                 }
             }
-            // Keep the existing docs list to preserve relationships (just all marked as deleted)
+            // Keep the existing docs list to preserve relationships (just all marked as
+            // deleted)
         }
 
         // Handle Lot management - similar to document handling
         if (request.getLots() != null) {
             Set<Integer> requestedLotIds = request.getLots().stream()
-                .filter(lot -> lot.getId() != null)
-                .map(LotResponse::getId)
-                .collect(Collectors.toSet());
+                    .filter(lot -> lot.getId() != null)
+                    .map(LotResponse::getId)
+                    .collect(Collectors.toSet());
 
             List<Lot> updatedLots = new ArrayList<>();
 
@@ -542,7 +556,7 @@ public class RealisationServiceImpl implements RealisationService {
                         existingLot.setIsDeleted(true);
                         lotRepository.save(existingLot);
                         updatedLots.add(existingLot); // Keep it in the collection but as deleted
-                        log.info("Marked lot with ID {}  as deleted (not in request)" , existingLot.getId() );
+                        log.info("Marked lot with ID {}  as deleted (not in request)", existingLot.getId());
                     }
                 }
             }
@@ -556,14 +570,14 @@ public class RealisationServiceImpl implements RealisationService {
                     newLot.setVersion(1); // First version
 
                     // Generate new ID if not provided
-//                    Integer lotId = lotRepository.findMaxId() + 1;
+                    // Integer lotId = lotRepository.findMaxId() + 1;
                     Integer lotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ) + 1;
                     newLot.setId(lotId);
 
                     // Save the new lot
                     Lot savedLot = lotRepository.save(newLot);
                     updatedLots.add(savedLot);
-                    log.info("Created new Lot with ID: {}" , savedLot.getId());
+                    log.info("Created new Lot with ID: {}", savedLot.getId());
                 } else if (!updatedLots.stream().anyMatch(lot -> lot.getId().equals(lotResponse.getId()))) {
                     // Existing lot not yet in our collection
                     lotRepository.findById(new CompositeId(lotResponse.getId(), lotResponse.getVersion()))
@@ -584,7 +598,7 @@ public class RealisationServiceImpl implements RealisationService {
                 if (!Boolean.TRUE.equals(lot.getIsDeleted())) {
                     lot.setIsDeleted(true);
                     lotRepository.save(lot);
-                    log.info("Marked lot with ID {}  as deleted (no lots provided)" , lot.getId() );
+                    log.info("Marked lot with ID {}  as deleted (no lots provided)", lot.getId());
                 }
             }
         }
@@ -600,19 +614,17 @@ public class RealisationServiceImpl implements RealisationService {
         // Filter out deleted documents for the response
         if (savedRealisation.getDocs() != null) {
             copyForResponse.setDocs(
-                savedRealisation.getDocs().stream()
-                    .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
-                    .collect(Collectors.toList())
-            );
+                    savedRealisation.getDocs().stream()
+                            .filter(doc -> !Boolean.TRUE.equals(doc.getIsDeleted()))
+                            .collect(Collectors.toList()));
         }
 
         // Also filter lot documents if there are any
         if (copyForResponse.getLots() != null) {
             copyForResponse.setLots(
-                copyForResponse.getLots().stream()
-                    .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
-                    .collect(Collectors.toList())
-            );
+                    copyForResponse.getLots().stream()
+                            .filter(lot -> !Boolean.TRUE.equals(lot.getIsDeleted()))
+                            .collect(Collectors.toList()));
         }
 
         return copyForResponse;
@@ -620,11 +632,11 @@ public class RealisationServiceImpl implements RealisationService {
 
     @Transactional
     public Realisation updateWithVersioning(Integer realisationId,
-                                            Integer realisationVer,
-                                            RealisationBaseRequestDto request) throws RealisationNotFoundException {
+            Integer realisationVer,
+            RealisationBaseRequestDto request) throws RealisationNotFoundException {
 
         // --------------------------------------------------------------------
-        //  always anchor on the latest version in DB
+        // always anchor on the latest version in DB
         // --------------------------------------------------------------------
         Integer maxVersionInDb = repository.findMaxVersionById(realisationId);
         int effectiveCurrentVersion = (maxVersionInDb != null) ? maxVersionInDb : realisationVer;
@@ -632,12 +644,14 @@ public class RealisationServiceImpl implements RealisationService {
         CompositeId compositeId = new CompositeId(realisationId, effectiveCurrentVersion);
         Realisation existing = repository.findById(compositeId)
                 .orElseThrow(() -> new RealisationNotFoundException(
-                        "Realisation with ID " + realisationId + " and version " + effectiveCurrentVersion + " was not found in the database.",
+                        "Realisation with ID " + realisationId + " and version " + effectiveCurrentVersion
+                                + " was not found in the database.",
                         realisationId, effectiveCurrentVersion));
 
         if (Boolean.TRUE.equals(existing.getIsDeleted())) {
             throw new RealisationNotFoundException(
-                    "Cannot update a deleted Realisation with ID " + realisationId + " and version " + effectiveCurrentVersion,
+                    "Cannot update a deleted Realisation with ID " + realisationId + " and version "
+                            + effectiveCurrentVersion,
                     realisationId, effectiveCurrentVersion);
         }
 
@@ -646,11 +660,14 @@ public class RealisationServiceImpl implements RealisationService {
         log.info("Request data: {}", request);
 
         Realisation probe = new Realisation();
-        probe.setRealisationEnvisagees(request.getRealisationEnvisagees() != null ? request.getRealisationEnvisagees() : existing.getRealisationEnvisagees());
-        probe.setBeneficiaire(request.getBeneficiaire() != null ? request.getBeneficiaire() : existing.getBeneficiaire());
+        probe.setRealisationEnvisagees(request.getRealisationEnvisagees() != null ? request.getRealisationEnvisagees()
+                : existing.getRealisationEnvisagees());
+        probe.setBeneficiaire(
+                request.getBeneficiaire() != null ? request.getBeneficiaire() : existing.getBeneficiaire());
 
         RefParam imput = request.getImputationBudgetaire() != null
-                ? refParamRepository.findById(request.getImputationBudgetaire().getId()).orElse(existing.getImputationBudgetaire())
+                ? refParamRepository.findById(request.getImputationBudgetaire().getId())
+                        .orElse(existing.getImputationBudgetaire())
                 : existing.getImputationBudgetaire();
         probe.setImputationBudgetaire(imput);
 
@@ -660,7 +677,8 @@ public class RealisationServiceImpl implements RealisationService {
         probe.setTypeMarcher(typeMarcher);
 
         ModeDePassationSelection modePassation = request.getModePassation() != null
-                ? modeDePassationSelectionRepository.findById(request.getModePassation().getId()).orElse(existing.getModePassation())
+                ? modeDePassationSelectionRepository.findById(request.getModePassation().getId())
+                        .orElse(existing.getModePassation())
                 : existing.getModePassation();
         probe.setModePassation(modePassation);
 
@@ -669,7 +687,8 @@ public class RealisationServiceImpl implements RealisationService {
         probe.setDatePrevAc(lps != null ? lps.plusDays(30) : null);
         probe.setDatePrevDp(null);
         probe.setDatePrevAp(null);
-        probe.setBudgetEstime(request.getBudgetEstime() != null ? request.getBudgetEstime() : existing.getBudgetEstime());
+        probe.setBudgetEstime(
+                request.getBudgetEstime() != null ? request.getBudgetEstime() : existing.getBudgetEstime());
         probe.setIsPublished(request.getIsPublished() != null ? request.getIsPublished() : existing.getIsPublished());
         probe.setPublishedAt(request.getPublishedAt() != null ? request.getPublishedAt() : existing.getPublishedAt());
         probe.setSort(request.getSort() != null ? request.getSort() : existing.getSort());
@@ -701,7 +720,8 @@ public class RealisationServiceImpl implements RealisationService {
                             : new BigDecimal(lr.getBudget().toString());
                 }
                 BigDecimal oldBudget = old.getBudget();
-                boolean budgetChanged = (reqBudget != null) && (oldBudget == null || oldBudget.compareTo(reqBudget) != 0);
+                boolean budgetChanged = (reqBudget != null)
+                        && (oldBudget == null || oldBudget.compareTo(reqBudget) != 0);
 
                 if (descChanged || budgetChanged) {
                     lotChangesDetected = true;
@@ -722,7 +742,8 @@ public class RealisationServiceImpl implements RealisationService {
         }
 
         // FINANCEMENT changes
-        boolean financementChangesDetected = checkFinancementChanges(existing.getFinancements(), request.getFinancements());
+        boolean financementChangesDetected = checkFinancementChanges(existing.getFinancements(),
+                request.getFinancements());
         log.info("Financement changes detected: {}", financementChangesDetected);
 
         boolean fieldChanges = hasChanges(probe, existing, request.getDocIds());
@@ -736,16 +757,18 @@ public class RealisationServiceImpl implements RealisationService {
             Realisation resp = new Realisation();
             BeanUtils.copyProperties(existing, resp);
             if (existing.getDocs() != null) {
-                resp.setDocs(existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList()));
+                resp.setDocs(existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                        .collect(Collectors.toList()));
             }
             if (existing.getLots() != null) {
-                resp.setLots(existing.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted())).collect(Collectors.toList()));
+                resp.setLots(existing.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                        .collect(Collectors.toList()));
             }
             return resp;
         }
 
         // --------------------------------------------------------------------
-        //  new version must be based on effectiveCurrentVersion
+        // new version must be based on effectiveCurrentVersion
         // --------------------------------------------------------------------
         int newVersion = effectiveCurrentVersion + 1;
         log.info("Creating new Realisation version: {}", newVersion);
@@ -808,7 +831,8 @@ public class RealisationServiceImpl implements RealisationService {
                     nl.setVersion(1);
 
                     nl.setDescription(newDesc != null ? newDesc : "");
-                    if (reqBudget != null) nl.setBudget(reqBudget);
+                    if (reqBudget != null)
+                        nl.setBudget(reqBudget);
 
                     nl = lotRepository.save(nl);
                     newLots.add(nl);
@@ -830,7 +854,8 @@ public class RealisationServiceImpl implements RealisationService {
                     }
 
                     boolean descChanged = newDesc != null && !newDesc.equals(base.getDescription());
-                    boolean budgetChanged = (reqBudget != null) && (base.getBudget() == null || base.getBudget().compareTo(reqBudget) != 0);
+                    boolean budgetChanged = (reqBudget != null)
+                            && (base.getBudget() == null || base.getBudget().compareTo(reqBudget) != 0);
 
                     if (descChanged || budgetChanged) {
                         Lot nl = new Lot();
@@ -840,7 +865,8 @@ public class RealisationServiceImpl implements RealisationService {
                         nl.setBudget(budgetChanged ? reqBudget : base.getBudget());
                         nl = lotRepository.save(nl);
                         newLots.add(nl);
-                        log.info("Created new Lot version id={}, v={}, budget={}", nl.getId(), nl.getVersion(), nl.getBudget());
+                        log.info("Created new Lot version id={}, v={}, budget={}", nl.getId(), nl.getVersion(),
+                                nl.getBudget());
                     } else {
                         newLots.add(base);
                     }
@@ -882,7 +908,8 @@ public class RealisationServiceImpl implements RealisationService {
                 .map(f -> {
                     BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer() : BigDecimal.ZERO;
                     double taux = (f.getTauxApplicable() != null) ? f.getTauxApplicable()
-                            : ((f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux() : 0.0);
+                            : ((f.getMonnaie() != null && f.getMonnaie().getTaux() != null) ? f.getMonnaie().getTaux()
+                                    : 0.0);
                     return amt.multiply(BigDecimal.valueOf(taux));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -893,13 +920,16 @@ public class RealisationServiceImpl implements RealisationService {
         if (request.getDocIds() != null) {
             for (Integer id : request.getDocIds()) {
                 Docs d = docsRepository.findById(id).orElse(null);
-                if (d != null) docsToAttach.add(d);
+                if (d != null)
+                    docsToAttach.add(d);
             }
         } else if (existing.getDocs() != null && !existing.getDocs().isEmpty()) {
-            docsToAttach = existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList());
+            docsToAttach = existing.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                    .collect(Collectors.toList());
         }
         finalNew.setDocs(docsToAttach);
-        log.info("Attached {} documents to Realisation {},{}", docsToAttach.size(), finalNew.getId(), finalNew.getVersion());
+        log.info("Attached {} documents to Realisation {},{}", docsToAttach.size(), finalNew.getId(),
+                finalNew.getVersion());
 
         Realisation saved = repository.save(finalNew);
         log.info("Final save Realisation {},{} with {} lots and {} financements",
@@ -910,22 +940,23 @@ public class RealisationServiceImpl implements RealisationService {
         Realisation resp = new Realisation();
         BeanUtils.copyProperties(saved, resp);
         if (saved.getDocs() != null) {
-            resp.setDocs(saved.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted())).collect(Collectors.toList()));
+            resp.setDocs(saved.getDocs().stream().filter(d -> !Boolean.TRUE.equals(d.getIsDeleted()))
+                    .collect(Collectors.toList()));
         }
         if (saved.getLots() != null) {
-            resp.setLots(saved.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted())).collect(Collectors.toList()));
+            resp.setLots(saved.getLots().stream().filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                    .collect(Collectors.toList()));
         }
         return resp;
     }
-
 
     private boolean hasLotChangesForPaa(Realisation existingReal, List<LotResponse> incomingDtos) {
         // Current active lots
         List<Lot> existingActive = (existingReal.getLots() == null)
                 ? Collections.emptyList()
                 : existingReal.getLots().stream()
-                .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
-                .collect(Collectors.toList());
+                        .filter(l -> !Boolean.TRUE.equals(l.getIsDeleted()))
+                        .collect(Collectors.toList());
 
         // If request provides no lots, that means "clear them" -> change iff any exist
         if (incomingDtos == null || incomingDtos.isEmpty()) {
@@ -938,16 +969,19 @@ public class RealisationServiceImpl implements RealisationService {
                 .collect(Collectors.toList());
 
         // Quick add/delete signals
-        // 1) Any brand-new lot (no id)  -> add
-        if (incoming.stream().anyMatch(lr -> lr.getId() == null)) return true;
+        // 1) Any brand-new lot (no id) -> add
+        if (incoming.stream().anyMatch(lr -> lr.getId() == null))
+            return true;
 
         // 2) Count mismatch (after filtering deleted) -> add or delete
-        if (incoming.size() != existingActive.size()) return true;
+        if (incoming.size() != existingActive.size())
+            return true;
 
         // 3) Missing existing ids in the request -> delete
         Set<Integer> existingIds = existingActive.stream().map(Lot::getId).collect(Collectors.toSet());
         Set<Integer> incomingIds = incoming.stream().map(LotResponse::getId).collect(Collectors.toSet());
-        if (!incomingIds.containsAll(existingIds)) return true;
+        if (!incomingIds.containsAll(existingIds))
+            return true;
 
         // 4) Compare content (budget/description) for the same ids -> update
         Map<Integer, Lot> byId = existingActive.stream()
@@ -955,39 +989,53 @@ public class RealisationServiceImpl implements RealisationService {
 
         for (LotResponse lr : incoming) {
             Lot ex = byId.get(lr.getId());
-            if (ex == null) return true; // references an id not on this realisation
+            if (ex == null)
+                return true; // references an id not on this realisation
 
             BigDecimal reqBudget = defaultZero(lr.getBudget());
-            BigDecimal exBudget  = defaultZero(ex.getBudget());
-            if (reqBudget.compareTo(exBudget) != 0) return true;
+            BigDecimal exBudget = defaultZero(ex.getBudget());
+            if (reqBudget.compareTo(exBudget) != 0)
+                return true;
 
             String reqDesc = defaultEmpty(lr.getDescription());
-            String exDesc  = defaultEmpty(ex.getDescription());
-            if (!reqDesc.equals(exDesc)) return true;
+            String exDesc = defaultEmpty(ex.getDescription());
+            if (!reqDesc.equals(exDesc))
+                return true;
         }
 
         // No add/update/delete detected
         return false;
     }
 
-    private static BigDecimal defaultZero(BigDecimal x) { return x == null ? BigDecimal.ZERO : x; }
-    private static String defaultEmpty(String s) { return s == null ? "" : s; }
+    private static BigDecimal defaultZero(BigDecimal x) {
+        return x == null ? BigDecimal.ZERO : x;
+    }
 
-    private boolean hasChanges(Realisation tempRealisation, Realisation existingRealisation, List<Integer> requestDocIds) {
+    private static String defaultEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private boolean hasChanges(Realisation tempRealisation, Realisation existingRealisation,
+            List<Integer> requestDocIds) {
         // Check realisationEnvisagees
-        if (!Objects.equals(tempRealisation.getRealisationEnvisagees(), existingRealisation.getRealisationEnvisagees())) {
-            log.info("Change detected in realisationEnvisagees: {} -> {}" , existingRealisation.getRealisationEnvisagees() , tempRealisation.getRealisationEnvisagees());
+        if (!Objects.equals(tempRealisation.getRealisationEnvisagees(),
+                existingRealisation.getRealisationEnvisagees())) {
+            log.info("Change detected in realisationEnvisagees: {} -> {}",
+                    existingRealisation.getRealisationEnvisagees(), tempRealisation.getRealisationEnvisagees());
             return true;
         }
         if (!Objects.equals(tempRealisation.getBeneficiaire(), existingRealisation.getBeneficiaire())) {
-            log.info("Change detected in Beneficaire: {} -> {}" , existingRealisation.getBeneficiaire() , tempRealisation.getBeneficiaire());
+            log.info("Change detected in Beneficaire: {} -> {}", existingRealisation.getBeneficiaire(),
+                    tempRealisation.getBeneficiaire());
             return true;
         }
 
         // Check imputationBudgetaire
         if (tempRealisation.getImputationBudgetaire() != existingRealisation.getImputationBudgetaire() &&
-                (tempRealisation.getImputationBudgetaire() == null || existingRealisation.getImputationBudgetaire() == null ||
-                        !tempRealisation.getImputationBudgetaire().getId().equals(existingRealisation.getImputationBudgetaire().getId()))) {
+                (tempRealisation.getImputationBudgetaire() == null
+                        || existingRealisation.getImputationBudgetaire() == null ||
+                        !tempRealisation.getImputationBudgetaire().getId()
+                                .equals(existingRealisation.getImputationBudgetaire().getId()))) {
             log.info("Change detected in imputationBudgetaire");
             return true;
         }
@@ -1003,7 +1051,8 @@ public class RealisationServiceImpl implements RealisationService {
         // Check typeMarcher
         if (tempRealisation.getTypeMarcher() != existingRealisation.getTypeMarcher() &&
                 (tempRealisation.getTypeMarcher() == null || existingRealisation.getTypeMarcher() == null ||
-                        !tempRealisation.getTypeMarcher().getId().equals(existingRealisation.getTypeMarcher().getId()))) {
+                        !tempRealisation.getTypeMarcher().getId()
+                                .equals(existingRealisation.getTypeMarcher().getId()))) {
             log.info("Change detected in typeMarcher");
             return true;
         }
@@ -1011,7 +1060,8 @@ public class RealisationServiceImpl implements RealisationService {
         // Check modePassation
         if (tempRealisation.getModePassation() != existingRealisation.getModePassation() &&
                 (tempRealisation.getModePassation() == null || existingRealisation.getModePassation() == null ||
-                        !tempRealisation.getModePassation().getId().equals(existingRealisation.getModePassation().getId()))) {
+                        !tempRealisation.getModePassation().getId()
+                                .equals(existingRealisation.getModePassation().getId()))) {
             log.info("Change detected in modePassation");
             return true;
         }
@@ -1044,7 +1094,7 @@ public class RealisationServiceImpl implements RealisationService {
         BigDecimal newB = tempRealisation.getBudgetEstime();
 
         if (!equalByValue(newB, oldB)) {
-            log.info("Change detected in budgetEstime: {} -> {}" , oldB , newB);
+            log.info("Change detected in budgetEstime: {} -> {}", oldB, newB);
             return true;
         }
 
@@ -1060,15 +1110,16 @@ public class RealisationServiceImpl implements RealisationService {
             return true;
         }
 
-
-        log.info("No field changes detected for Realisation ID: {}" , existingRealisation.getId());
+        log.info("No field changes detected for Realisation ID: {}", existingRealisation.getId());
         return false;
     }
 
     private static boolean equalByValue(BigDecimal a, BigDecimal b) {
-        if (a == null && b == null) return true;
-        if (a == null || b == null) return false;
-        return a.compareTo(b) == 0;   // ignores scale
+        if (a == null && b == null)
+            return true;
+        if (a == null || b == null)
+            return false;
+        return a.compareTo(b) == 0; // ignores scale
     }
 
     private Integer getRefParamId(RefParam refParam) {
@@ -1078,14 +1129,14 @@ public class RealisationServiceImpl implements RealisationService {
     private void copyProperties(Realisation source, Realisation target) {
         target.setRealisationEnvisagees(source.getRealisationEnvisagees());
         target.setBeneficiaire(source.getBeneficiaire());
-//        target.setService(source.getService());
-//        target.setDirection(source.getDirection());
-//        target.setSourceFinancement(source.getSourceFinancement());
+        // target.setService(source.getService());
+        // target.setDirection(source.getDirection());
+        // target.setSourceFinancement(source.getSourceFinancement());
         target.setImputationBudgetaire(source.getImputationBudgetaire());
-//        target.setMonais(source.getMonais());
+        // target.setMonais(source.getMonais());
         target.setMonnaie(source.getMonnaie());
         target.setTypeMarcher(source.getTypeMarcher());
-//        target.setModeSelection(source.getModeSelection());
+        // target.setModeSelection(source.getModeSelection());
         target.setModePassation(source.getModePassation());
         target.setDatePrevLps(source.getDatePrevLps());
         target.setDatePrevAc(source.getDatePrevAc());
@@ -1103,10 +1154,11 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     /**
-     * Updates the lots relationship for a Realisation without incrementing the version.
+     * Updates the lots relationship for a Realisation without incrementing the
+     * version.
      *
      * @param realisation The existing realisation to update
-     * @param lots The lot responses to associate with the realisation
+     * @param lots        The lot responses to associate with the realisation
      */
     private void updateRealisationLots(Realisation realisation, Set<LotResponse> lots) {
         if (lots == null || lots.isEmpty()) {
@@ -1131,34 +1183,37 @@ public class RealisationServiceImpl implements RealisationService {
     }
 
     /**
-     * Updates a Realisation with versioning by automatically finding and using the latest version.
+     * Updates a Realisation with versioning by automatically finding and using the
+     * latest version.
      * <p>
-     * This method finds the latest version of the Realisation with the given ID and then
+     * This method finds the latest version of the Realisation with the given ID and
+     * then
      * calls the version-specific updateWithVersioning method.
      *
      * @param realisationId the ID of the Realisation to update
-     * @param request the request containing the updated data
+     * @param request       the request containing the updated data
      * @return the newly created version of the Realisation
-     * @throws RealisationNotFoundException if no versions of the Realisation exist or if all versions are deleted
+     * @throws RealisationNotFoundException if no versions of the Realisation exist
+     *                                      or if all versions are deleted
      */
     @Transactional
-    public Realisation updateWithVersioning(Integer realisationId, RealisationBaseRequestDto request) throws RealisationNotFoundException {
+    public Realisation updateWithVersioning(Integer realisationId, RealisationBaseRequestDto request)
+            throws RealisationNotFoundException {
         // Find the latest version of the Realisation
         Integer latestVersion = repository.findMaxVersionById(realisationId);
 
         if (latestVersion == null) {
             throw new RealisationNotFoundException(
-                    "No versions found for Realisation with ID: " + realisationId,realisationId, null);
+                    "No versions found for Realisation with ID: " + realisationId, realisationId, null);
         }
 
-        log.info("Found latest version for Realisation ID {} : {}" , realisationId , latestVersion);
+        log.info("Found latest version for Realisation ID {} : {}", realisationId, latestVersion);
 
         // Call the version-specific method with the latest version
         return updateWithVersioning(realisationId, latestVersion, request);
     }
 
-
-    //TODO: nejah
+    // TODO: nejah
     private void processAndSaveDocuments(List<MultipartFile> files, Realisation savedRealisation) throws IOException {
         UUID uuid = UUID.randomUUID();
         if (files != null && !files.isEmpty()) {
@@ -1177,7 +1232,7 @@ public class RealisationServiceImpl implements RealisationService {
                         long fileSize = file.getSize();
                         String formattedSize = documentCommuneService.formatSize(fileSize);
 
-                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PAA+ "/%d/%d",
+                        String folderPath = String.format(Constants.PATH_ENTREPOT_GED_PAA + "/%d/%d",
                                 savedRealisation.getId(), savedRealisation.getVersion());
 
                         String[] parts = originalFilename.split("\\.");
@@ -1215,7 +1270,6 @@ public class RealisationServiceImpl implements RealisationService {
         }
     }
 
-
     /**
      * Check if financement data has changed compared to existing financements
      */
@@ -1224,7 +1278,7 @@ public class RealisationServiceImpl implements RealisationService {
      * Compares by financementId when present, and also detects adds/removes.
      */
     private boolean checkFinancementChanges(List<Financement> existingFinancements,
-                                            List<FinancementRequest> updates) {
+            List<FinancementRequest> updates) {
         // both empty => no changes
         if ((existingFinancements == null || existingFinancements.isEmpty())
                 && (updates == null || updates.isEmpty())) {
@@ -1251,7 +1305,8 @@ public class RealisationServiceImpl implements RealisationService {
 
             BigDecimal reqAmt = BigDecimal.ZERO;
             if (upd.getBudgetEstimer() != null) {
-                // FinancementRequest.budgetEstimer is usually a Number (Double); normalize to BigDecimal
+                // FinancementRequest.budgetEstimer is usually a Number (Double); normalize to
+                // BigDecimal
                 reqAmt = BigDecimal.valueOf(upd.getBudgetEstimer().doubleValue());
             }
 
@@ -1269,34 +1324,38 @@ public class RealisationServiceImpl implements RealisationService {
 
             // monnaie change?
             Integer oldMonnaieId = (old.getMonnaie() != null) ? old.getMonnaie().getId() : null;
-            if (!Objects.equals(oldMonnaieId, updMonnaieId)) return true;
+            if (!Objects.equals(oldMonnaieId, updMonnaieId))
+                return true;
 
             // source change?
             Integer oldSourceId = (old.getSourceFinancement() != null) ? old.getSourceFinancement().getId() : null;
-            if (!Objects.equals(oldSourceId, updSourceId)) return true;
+            if (!Objects.equals(oldSourceId, updSourceId))
+                return true;
 
             // amount change?
             BigDecimal oldAmt = (old.getBudgetEstimer() != null) ? old.getBudgetEstimer() : BigDecimal.ZERO;
-            if (oldAmt.compareTo(reqAmt) != 0) return true;
+            if (oldAmt.compareTo(reqAmt) != 0)
+                return true;
         }
 
         // deletions? (existing active ids not all present in request)
         Set<Integer> existingActiveIds = existingById.keySet();
-        if (!existingActiveIds.equals(reqIds)) return true;
+        if (!existingActiveIds.equals(reqIds))
+            return true;
 
         return false;
     }
-
 
     /**
      * Create updated financements for new realisation version
      */
     private List<Financement> createUpdatedFinancements(List<Financement> existingFinancements,
-                                                        List<FinancementRequest> updates,
-                                                        Realisation newVersionRealisation) {
+            List<FinancementRequest> updates,
+            Realisation newVersionRealisation) {
 
         List<Financement> newFinancements = new ArrayList<>();
-        if (updates == null || updates.isEmpty()) return newFinancements;
+        if (updates == null || updates.isEmpty())
+            return newFinancements;
 
         for (FinancementRequest update : updates) {
 
@@ -1322,10 +1381,9 @@ public class RealisationServiceImpl implements RealisationService {
 
             f.setMonnaie(monnaie);
             f.setTauxApplicable(
-                    monnaie.getTaux() != null ? monnaie.getTaux() : 0.0
-            );
+                    monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
-            // === BudgetEstimer  ===
+            // === BudgetEstimer ===
             BigDecimal amt = update.getBudgetEstimer() != null
                     ? update.getBudgetEstimer()
                     : BigDecimal.ZERO;
@@ -1335,8 +1393,8 @@ public class RealisationServiceImpl implements RealisationService {
             if (update.getSourceFinancement() != null &&
                     update.getSourceFinancement().getId() != null) {
 
-                RefParam src = refParamRepository.findById(
-                                update.getSourceFinancement().getId())
+                SourceFinancement src = sourceFinancementRepository.findById(
+                        update.getSourceFinancement().getId())
                         .orElseThrow(() -> new EntityNotFoundException(
                                 "Source Financement not found with ID: "
                                         + update.getSourceFinancement().getId()));
@@ -1353,19 +1411,21 @@ public class RealisationServiceImpl implements RealisationService {
         return newFinancements;
     }
 
-
     /**
-     * Copy existing financements to new realisation version (when no financement changes)
+     * Copy existing financements to new realisation version (when no financement
+     * changes)
      */
     private List<Financement> copyFinancementsToNewVersion(List<Financement> existingFinancements,
-                                                           Realisation newVersionRealisation) {
+            Realisation newVersionRealisation) {
         List<Financement> copied = new ArrayList<>();
-        if (existingFinancements == null || existingFinancements.isEmpty()) return copied;
+        if (existingFinancements == null || existingFinancements.isEmpty())
+            return copied;
 
         for (Financement old : existingFinancements) {
-            if (Boolean.TRUE.equals(old.getIsDeleted())) continue;
+            if (Boolean.TRUE.equals(old.getIsDeleted()))
+                continue;
 
-            // === Generate financement ID  ===
+            // === Generate financement ID ===
             Integer nextFinId = sequenceGeneratorService.getNextId(Constants.FINANCEMENT_ID_SEQ);
 
             // === Create composite key for NEW realisation version ===
@@ -1390,9 +1450,8 @@ public class RealisationServiceImpl implements RealisationService {
                     old.getTauxApplicable() != null
                             ? old.getTauxApplicable()
                             : (old.getMonnaie() != null && old.getMonnaie().getTaux() != null
-                            ? old.getMonnaie().getTaux()
-                            : 0.0)
-            );
+                                    ? old.getMonnaie().getTaux()
+                                    : 0.0));
 
             // === Persist financing ===
             f = financementRepository.save(f);
@@ -1402,8 +1461,5 @@ public class RealisationServiceImpl implements RealisationService {
 
         return copied;
     }
-
-
-
 
 }

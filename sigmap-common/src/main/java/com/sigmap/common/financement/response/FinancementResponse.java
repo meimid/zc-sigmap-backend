@@ -1,14 +1,12 @@
 package com.sigmap.common.financement.response;
 
-import com.sigmap.common.ref_params.RefParam;
-import com.sigmap.common.ref_params.response.RefParamResponseDto;
+import com.sigmap.common.source_financement.response.SourceFinancementResponseDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
 
 @Data
 public class FinancementResponse {
-
 
     /**
      * The unique financement identifier (part of composite key).
@@ -28,7 +26,7 @@ public class FinancementResponse {
     /**
      * The ID of the financing source.
      */
-    private RefParamResponseDto sourceFinancement;
+    private SourceFinancementResponseDto sourceFinancement;
 
     /**
      * The ID of the financing source.
@@ -41,7 +39,5 @@ public class FinancementResponse {
     private BigDecimal budgetEstimer;
 
     private Boolean examenPrealable;
-
-
 
 }
