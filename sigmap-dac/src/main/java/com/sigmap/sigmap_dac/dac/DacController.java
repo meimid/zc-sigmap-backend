@@ -26,6 +26,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -33,7 +34,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import java.io.FileInputStream;
+
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -320,8 +321,8 @@ public class DacController {
     }
   }
 
-  @GetMapping("/get-dac-pdf/{dacId}")
-  public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId) {
+  @GetMapping("/get-dac-pdf/{dacId}/{type}")
+  public ResponseEntity<byte[]> generateLatestMergedPdf(@PathVariable Integer dacId, @PathVariable String type) {
     try {
       Dac dac = dacRepository.findDacWithLatestVersionByDacId(dacId);
       if (dac==null) {
@@ -330,70 +331,149 @@ public class DacController {
 
       List<String> generatedFiles = dacService.generateListDocumentsWithBookmarks(dac.getDacId(), dac.getDacVer(), basePath, customDirPath);
 
-      RestTemplate restTemplate = new RestTemplate();
-      List<InputStream> pdfStreams = new ArrayList<>();
-      for (String docxPath : generatedFiles) {
-        FileSystemResource docxResource = new FileSystemResource(new java.io.File(docxPath));
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("files", docxResource);
+      /* ======================================================
+           CASE 1: DOCX → ZIP DOWNLOAD
+           ====================================================== */
+
+      if ("docx".equalsIgnoreCase(type)) {
+
+        ByteArrayOutputStream zipOut = new ByteArrayOutputStream();
+
+        try (ZipOutputStream zos = new ZipOutputStream(zipOut)) {
+          for (String docxPath : generatedFiles) {
+            File file = new File(docxPath);
+
+            zos.putNextEntry(new ZipEntry(file.getName()));
+            Files.copy(file.toPath(), zos);
+            zos.closeEntry();
+          }
+        }
+
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-        ResponseEntity<byte[]> response = restTemplate.exchange(
-                convertUrl + "/forms/libreoffice/convert",
-                HttpMethod.POST,
-                requestEntity,
-                byte[].class
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+        String zipFileName = String.format(
+                "dac-%d-v%d-documents.zip",
+                dac.getDacId(),
+                dac.getDacVer()
         );
-        if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-          pdfStreams.add(new java.io.ByteArrayInputStream(response.getBody()));
-        } else {
-          throw new RuntimeException("Failed to convert DOCX to PDF for file: " + docxPath);
-        }
+
+        headers.setContentDispositionFormData("attachment", zipFileName);
+
+        return new ResponseEntity<>(zipOut.toByteArray(), headers, HttpStatus.OK);
       }
 
-      byte[] mergedPdf;
-      try {
-        ByteArrayOutputStream mergedOut = DacServiceImpl.merge(pdfStreams);
-        mergedPdf = mergedOut.toByteArray();
-      } finally {
-        for (java.io.InputStream is : pdfStreams) {
-          try { is.close(); } catch (Exception ignore) {}
+      /* ======================================================
+           CASE 2: PDF → CONVERT + MERGE (existing logic)
+           ====================================================== */
+
+      if ("pdf".equalsIgnoreCase(type)) {
+        RestTemplate restTemplate = new RestTemplate();
+        List<InputStream> pdfStreams = new ArrayList<>();
+
+        for (String docxPath : generatedFiles) {
+
+          FileSystemResource docxResource =
+                  new FileSystemResource(new File(docxPath));
+
+          MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+          body.add("files", docxResource);
+
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+          HttpEntity<MultiValueMap<String, Object>> requestEntity =
+                  new HttpEntity<>(body, headers);
+
+          ResponseEntity<byte[]> response = restTemplate.exchange(
+                  convertUrl + "/forms/libreoffice/convert",
+                  HttpMethod.POST,
+                  requestEntity,
+                  byte[].class
+          );
+
+          if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+            pdfStreams.add(new ByteArrayInputStream(response.getBody()));
+          } else {
+            throw new RuntimeException("Failed to convert DOCX to PDF: " + docxPath);
+          }
         }
+
+        byte[] mergedPdf;
+        try {
+          ByteArrayOutputStream mergedOut = DacServiceImpl.merge(pdfStreams);
+          mergedPdf = mergedOut.toByteArray();
+        } finally {
+          for (InputStream is : pdfStreams) {
+            try {
+              is.close();
+            } catch (Exception ignore) {
+            }
+          }
+        }
+
+        HttpHeaders responseHeaders = new HttpHeaders();
+        responseHeaders.setContentType(MediaType.APPLICATION_PDF);
+
+        String pdfFileName = String.format(
+                "dac-%d-v%d.pdf",
+                dac.getDacId(),
+                dac.getDacVer()
+        );
+
+        responseHeaders.setContentDispositionFormData("attachment", pdfFileName);
+
+        return new ResponseEntity<>(mergedPdf, responseHeaders, HttpStatus.OK);
       }
+    /* ======================================================
+           INVALID TYPE
+           ====================================================== */
+      return ResponseEntity
+              .status(HttpStatus.BAD_REQUEST)
+              .body(("Invalid type: " + type).getBytes());
 
-      HttpHeaders responseHeaders = new HttpHeaders();
-      responseHeaders.setContentType(MediaType.APPLICATION_PDF);
-      responseHeaders.setContentDispositionFormData("attachment", "dac-" + dac.getDacId() + "-v" + dac.getDacVer() + ".pdf");
-
-      return new ResponseEntity<>(mergedPdf, responseHeaders, HttpStatus.OK);
     } catch (Exception e) {
-      log.error("Failed to generate latest merged PDF for dacId={}: {}", dacId, e.getMessage());
+      log.error("Failed to generate document for dacId={}: {}", dacId, e.getMessage(), e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
     }
   }
 
   @PostMapping("/generate-aao-pdf")
-  public ResponseEntity<byte[]> generatePdfforAAO(@RequestBody ModeleAAORequest request) {
+  public ResponseEntity<byte[]> generateAAODocument(@RequestBody ModeleAAORequest request) {
     try {
-      // 1. Generate DOCX file as before
-      String generatedFile = dacService.generateDAODocumentWithBookmarks(
-              request.getDacId(), request.getDacVersion(), request.getSignataire(), request.getFonction(), basePath, customDirPath);
 
-      log.info("Generated file .........: {}", generatedFile);
-      // 2. Prepare the file for upload
-      FileSystemResource docxResource = new FileSystemResource(new File(generatedFile));
+      // 1. Generate DOCX
+      String generatedFilePath = dacService.generateDAODocumentWithBookmarks(request.getDacId(),request.getDacVersion(),request.getSignataire(),request.getFonction(),basePath,customDirPath);
 
-      // 3. Prepare the multipart request
+      File docxFile = new File(generatedFilePath);
+
+      // 2. If generateDocx = true → download DOCX
+      if (Boolean.TRUE.equals(request.getGenerateDocx())) {
+
+        byte[] docxBytes = Files.readAllBytes(docxFile.toPath());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(
+                MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+        );
+        headers.setContentDispositionFormData("attachment", docxFile.getName());
+        return new ResponseEntity<>(docxBytes, headers, HttpStatus.OK);
+      }
+
+      // 3. Else → convert DOCX to PDF using Gotenberg
+      FileSystemResource docxResource = new FileSystemResource(docxFile);
+
       MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
       body.add("files", docxResource);
 
       HttpHeaders headers = new HttpHeaders();
       headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-      HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+      HttpEntity<MultiValueMap<String, Object>> requestEntity =
+              new HttpEntity<>(body, headers);
 
-      // 4. Send request to Gotenberg Api and get the response
       RestTemplate restTemplate = new RestTemplate();
       ResponseEntity<byte[]> response = restTemplate.exchange(
               convertUrl + "/forms/libreoffice/convert",
@@ -402,7 +482,7 @@ public class DacController {
               byte[].class
       );
 
-      // 5. Return the PDF as a download
+      // 4. Return PDF
       HttpHeaders responseHeaders = new HttpHeaders();
       responseHeaders.setContentType(MediaType.APPLICATION_PDF);
       responseHeaders.setContentDispositionFormData("attachment", "AAO.pdf");
@@ -410,7 +490,8 @@ public class DacController {
       return new ResponseEntity<>(response.getBody(), responseHeaders, HttpStatus.OK);
 
     } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+      log.error("Error generating document", e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
 

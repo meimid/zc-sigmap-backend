@@ -8,4 +8,5 @@ public class ModeleAAORequest {
     private Integer dacVersion;
     private String signataire;
     private String fonction;
+    private Boolean generateDocx;
 }
