@@ -6,4 +6,5 @@ import lombok.Data;
 public class DacListRequest {
     private Integer dacId;
     private Integer dacVer;
+    private Boolean generateDocx;
 }

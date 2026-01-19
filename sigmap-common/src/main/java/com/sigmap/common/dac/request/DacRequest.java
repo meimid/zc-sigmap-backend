@@ -12,4 +12,5 @@ public class DacRequest {
 
     private Integer dynaDocsVer;
     private Integer dynaDocsId;
+    private Boolean generateDocx;
 }
