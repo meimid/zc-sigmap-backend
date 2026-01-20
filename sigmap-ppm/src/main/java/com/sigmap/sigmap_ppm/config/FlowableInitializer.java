@@ -83,7 +83,7 @@ public class FlowableInitializer {
      *
      * @return the initialized {@link ProcessEngine}
      */
-    @Bean(name = "processEngine")
+    @Bean(name = "processEngine", destroyMethod = "close")
     @Primary
     public ProcessEngine processEngine() {
 
