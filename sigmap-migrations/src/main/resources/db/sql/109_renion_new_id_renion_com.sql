@@ -23,3 +23,9 @@ UPDATE reunion r
 ALTER TABLE reunion
     MODIFY reunion_num_com INT NOT NULL;
 
+-- changeset sigmap:17496719590110-4
+
+ALTER TABLE reunion
+    ADD CONSTRAINT uq_reunion_com_num
+        UNIQUE (com_id, reunion_num_com);
+

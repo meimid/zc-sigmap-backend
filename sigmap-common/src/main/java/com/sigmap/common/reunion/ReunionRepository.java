@@ -2,10 +2,8 @@ package com.sigmap.common.reunion;
 
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.repository.SoftDeleteRepository;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -55,6 +53,9 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
     @Query("SELECT r FROM Reunion r WHERE r.processVerbal.id = :pvId")
     Optional<Reunion> findByProcessVerbalId(@Param("pvId") Integer pvId);
 
+    /*When this query runs, the database must lock the selected rows so that no other transaction can modify or lock them until this transaction finishes.”
+    This is real database locking, not Java-level locking.*/
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     select max(r.reunionNumCom)
     from Reunion r
