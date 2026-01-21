@@ -27,7 +27,7 @@ public class Reunion extends BaseEntity {
     private Integer id;
     @Column(name = "reunion_num_com")
     private Integer reunionNumCom;
-
+    private Integer year;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "com_id")
     private Com com;
@@ -35,7 +35,7 @@ public class Reunion extends BaseEntity {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "reunion_date")
     private Calendar reunionDate;
-    private Integer year;
+
     private String emplacement;
 
     @Lob

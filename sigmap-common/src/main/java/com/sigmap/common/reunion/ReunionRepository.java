@@ -55,12 +55,12 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
 
     /*When this query runs, the database must lock the selected rows so that no other transaction can modify or lock them until this transaction finishes.”
     This is real database locking, not Java-level locking.*/
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
     select max(r.reunionNumCom)
     from Reunion r
     where r.com.id = :comId
-      and function('year', r.createdAt) = :year
+      and r.reunionNumCom is not null
+      and function('year', r.reunionDate) = :year
 """)
     Integer findMaxForComAndYear(
             @Param("comId") Integer comId,
