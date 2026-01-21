@@ -8,6 +8,7 @@ import java.util.Calendar;
 @Data
 public class ReunionSearchResponseDto {
     private Integer id;
+    private Integer reunionNumCom;
     private String comName;
     private Calendar reunionDate;
     private String emplacement;

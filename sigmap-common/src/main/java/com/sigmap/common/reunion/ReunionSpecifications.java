@@ -74,6 +74,10 @@ public class ReunionSpecifications {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("id"), comId);
     }
 
+    public static Specification<Reunion> reunionNumCom(Integer reunionNumCom) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("reunionNumCom"), reunionNumCom);
+    }
+
     public static Specification<Reunion> comNom(String nom) {
         return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("com").get("nom"), nom);
     }

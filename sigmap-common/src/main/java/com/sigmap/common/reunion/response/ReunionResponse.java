@@ -23,6 +23,7 @@ import java.util.List;
 @NoArgsConstructor
 public class ReunionResponse {
     private Integer id;
+    private Integer reunionNumCom;
     private ComResponseDto com;
     private Calendar reunionDate;
     private String emplacement;

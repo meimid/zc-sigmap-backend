@@ -177,6 +177,7 @@ public class ReunionServiceImpl implements ReunionService{
         if(request.getNote() != null) {
             throw new NoteNotAllowedException("");
         }
+
         Com com = comService.findById(request.getComId());
         if(request.getReunionDate() != null) {
         Calendar nowCal = Calendar.getInstance();
@@ -194,8 +195,11 @@ public class ReunionServiceImpl implements ReunionService{
             throw new DateBefore("Reunion date cannot be before now");
         }
         }
-      //  Reunion reunion = ReunionMapper.INSTANCE.map(request);
         Reunion reunion = new Reunion();
+        Integer max = repository.findMaxIdForCom(request.getComId());
+        int next = (max == null ? 1 : max + 1);
+        reunion.setReunionNumCom(next);
+
         reunion.setCom(com);
         if(request.getReunionDate() != null) {
             reunion.setReunionDate(request.getReunionDate());
