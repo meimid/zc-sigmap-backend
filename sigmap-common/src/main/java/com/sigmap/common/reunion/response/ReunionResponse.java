@@ -26,6 +26,7 @@ public class ReunionResponse {
     private Integer reunionNumCom;
     private ComResponseDto com;
     private Calendar reunionDate;
+    private Integer year;
     private String emplacement;
     private String object;
     private ReunionStatus status;

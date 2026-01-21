@@ -11,5 +11,6 @@ public class ReunionDropListDto {
     private String emplacement;
     private String object;
     private Calendar reunionDate;
+    private Integer year;
 
 }

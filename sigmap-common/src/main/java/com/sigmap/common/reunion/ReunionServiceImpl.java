@@ -196,7 +196,10 @@ public class ReunionServiceImpl implements ReunionService{
         }
         }
         Reunion reunion = new Reunion();
-        Integer max = repository.findMaxIdForCom(request.getComId());
+        int year = Calendar.getInstance().get(Calendar.YEAR);
+        reunion.setYear(year);
+
+        Integer max = repository.findMaxForComAndYear(request.getComId(), year);
         int next = (max == null ? 1 : max + 1);
         reunion.setReunionNumCom(next);
 

@@ -13,6 +13,7 @@ public class ReunionResponseDto {
     private Integer reunionNumCom;
     private String comName;
     private Calendar reunionDate;
+    private Integer year;
     private String emplacement;
     private String object;
     private ReunionStatus status;

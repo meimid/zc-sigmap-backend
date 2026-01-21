@@ -35,7 +35,7 @@ public class Reunion extends BaseEntity {
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "reunion_date")
     private Calendar reunionDate;
-
+    private Integer year;
     private String emplacement;
 
     @Lob
