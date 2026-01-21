@@ -60,7 +60,8 @@ public interface ReunionRepository extends JpaRepository<Reunion, Integer>, JpaS
     from Reunion r
     where r.com.id = :comId
       and r.reunionNumCom is not null
-      and function('year', r.reunionDate) = :year
+      and r.year is not null
+      and  r.year= :year
 """)
     Integer findMaxForComAndYear(
             @Param("comId") Integer comId,
