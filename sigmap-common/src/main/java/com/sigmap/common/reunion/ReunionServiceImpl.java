@@ -1017,7 +1017,7 @@ public class ReunionServiceImpl implements ReunionService{
                 //  COM type must be CPMP
                 if (reunionToUpdate.getCom() != null
                         && reunionToUpdate.getCom().getComType() != null
-                        && "CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+                        && ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())||"CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())))  {
 
                     List<Ppm> eligiblePpms = new ArrayList<>();
 
@@ -1080,6 +1080,7 @@ public class ReunionServiceImpl implements ReunionService{
 
             int year = reunionToUpdate.getReunionDate().get(Calendar.YEAR);
             reunionToUpdate.setYear(year);
+
             Integer max = repository.findMaxForComAndYear(
                     reunionToUpdate.getCom().getId(),
                     year
@@ -1104,7 +1105,8 @@ public class ReunionServiceImpl implements ReunionService{
 
         if(reunionToUpdate.getStatus() == ReunionStatus.VALIDER &&file!=null) {
          ProcessVerbalReunion pv= processVerbalReunionService.injectPvForReunion(reunionToUpdate.getProcessVerbal().getId(),file);
-            if (!"CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
+            if (!"CPMP".equals(reunionToUpdate.getCom().getComType().getCode())
+                    &&!"CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())) {
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
 
             }
