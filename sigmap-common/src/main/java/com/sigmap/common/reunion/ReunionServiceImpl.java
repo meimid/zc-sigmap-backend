@@ -29,6 +29,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
@@ -1067,7 +1068,13 @@ public class ReunionServiceImpl implements ReunionService{
                         req.setPpmId(ppm.getId());
                         req.setPpmVer(ppm.getVersion());
                         req.setFile(null);
-
+                        if("CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode()))
+                        {
+                            req.setExtraitType(ExtraitType.PAR_DOSSIER);
+                        }
+                        else{
+                            req.setExtraitType(ExtraitType.PAR_AC);
+                        }
                         processVerbalReunionExtraitService.create(req);
                     }
                 }

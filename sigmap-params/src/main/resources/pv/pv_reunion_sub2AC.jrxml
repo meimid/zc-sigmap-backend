@@ -12,8 +12,6 @@
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="ppm_id" class="java.lang.Integer"/>
 		<parameter name="ppm_ver" class="java.lang.Integer"/>
-		<parameter name="dac_id" class="java.lang.Integer"/>
-		<parameter name="dac_ver" class="java.lang.Integer"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT distinct
     r.reunion_id,
@@ -43,57 +41,8 @@ INNER JOIN ac a
 INNER JOIN com m on a.com_id = m.com_id
 WHERE r.reunion_id =  $P{reunion} 
 and m.com_id =  $P{com}  and r.decision is not null
-AND (
-      -- Cas 1: Si PPM_ID et PPM_VER sont fournis
-      ($P{ppm_id} IS NOT NULL AND $P{ppm_ver} IS NOT NULL 
-       AND p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver})
-      OR
-      -- Cas 3: Tous les paramètres sont NULL
-      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
-       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
-  )
-union
-SELECT distinct
-    r.reunion_id,
-    r.dac_id,
-    r.dac_ver,
-    r.observation,
-   CASE UPPER(r.decision)
-        WHEN 'APPROVE' THEN 'Approuvé'
-        WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
-        WHEN 'CI' THEN 'Complément d''information' 
-        WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
-        else  'Avis' 
-        end as decision,
-    p.ref,
-    p.nom,
-    p.annee,
-    p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
-     m.com_id,
-    m.nom as comnom, 'DAC' as type
-FROM reunion_dac r
-INNER JOIN dac d
-       ON r.dac_id = d.dac_id
-      AND r.dac_ver = d.dac_ver
-    INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
-    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
-INNER JOIN ac a
-       ON p.ac_id = a.ac_id
-INNER JOIN com m on a.com_id = m.com_id
-WHERE r.reunion_id =  $P{reunion}  
-and m.com_id =  $P{com} and r.decision is not null
-AND (
-      -- Cas 2: Si DAC_ID et DAC_VER sont fournis
-      ($P{dac_id} IS NOT NULL AND $P{dac_ver} IS NOT NULL 
-       AND d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver})
-      OR
-      -- Cas 3: Tous les paramètres sont NULL
-      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
-       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
-  )
- ]]>
+AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}
+]]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
@@ -151,6 +100,47 @@ AND (
 		<group name="com_id">
 			<groupExpression><![CDATA[$F{com_id}]]></groupExpression>
 		</group>
+	</subDataset>
+	<subDataset name="Dataset2" uuid="3724119d-925f-4032-8869-404f7961f454">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+		<parameter name="reunion" class="java.lang.Integer"/>
+		<parameter name="com" class="java.lang.Integer"/>
+		<parameter name="dac_id" class="java.lang.Integer"/>
+		<parameter name="dac_ver" class="java.lang.Integer"/>
+		<queryString>
+			<![CDATA[SELECT distinct
+    r.reunion_id,
+    r.dac_id,
+    r.dac_ver,
+    r.observation,
+   CASE UPPER(r.decision)
+        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
+        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'TRUE' THEN 'Approuvé'
+         WHEN 'FALSE' THEN 'Rejeté' 
+        else  'Avis' 
+        end as decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
+     m.com_id,
+    m.nom as comnom, 'DAC' as type
+FROM reunion_dac r
+INNER JOIN dac d
+       ON r.dac_id = d.dac_id
+      AND r.dac_ver = d.dac_ver
+    INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+INNER JOIN com m on a.com_id = m.com_id
+WHERE r.reunion_id =  $P{reunion}  
+and m.com_id =  $P{com} and r.decision is not null
+AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
+		</queryString>
 	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
 	<parameter name="acId" class="java.lang.Integer"/>
@@ -287,18 +277,25 @@ AND (
 			</band>
 		</groupHeader>
 		<groupFooter>
-			<band height="82" splitType="Stretch">
+			<band height="164" splitType="Stretch">
 				<componentElement>
 					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="80" uuid="f91f723d-3dc1-4e91-be0f-7c687379da01">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset1" uuid="71429444-3e7b-4063-b5dc-197fec62a76f">
+						<datasetRun subDataset="Dataset1" uuid="c00f1371-0348-4fef-a211-31088482466c">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
 							<datasetParameter name="com">
 								<datasetParameterExpression><![CDATA[$F{com_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_id">
+								<datasetParameterExpression><![CDATA[$P{ppm_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_ver">
+								<datasetParameterExpression><![CDATA[$P{ppm_ver}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="80" width="556">
@@ -322,6 +319,57 @@ AND (
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement x="30" y="45" width="526" height="35" uuid="58165fd5-0956-42d4-b117-842044a4e5be">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+						</jr:listContents>
+					</jr:list>
+				</componentElement>
+				<componentElement>
+					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="81" width="556" height="80" uuid="ab4fab0c-d606-485a-93c6-3c85bac1ef47">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
+					</reportElement>
+					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
+						<datasetRun subDataset="Dataset2" uuid="80ea752f-0921-49f0-b107-13d2dcc0a9db">
+							<datasetParameter name="reunion">
+								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="com">
+								<datasetParameterExpression><![CDATA[$F{com_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_id">
+								<datasetParameterExpression><![CDATA[$P{ppm_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_ver">
+								<datasetParameterExpression><![CDATA[$P{ppm_ver}]]></datasetParameterExpression>
+							</datasetParameter>
+						</datasetRun>
+						<jr:listContents height="80" width="556">
+							<textField>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="556" height="30" uuid="d51ea662-d0ae-4f28-9de2-99bf2f174bf5">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement x="30" y="45" width="526" height="35" uuid="fdf6df6d-2c20-4e3b-9c6a-f1112c93f9fd">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
 								</reportElement>
 								<textElement verticalAlignment="Middle">

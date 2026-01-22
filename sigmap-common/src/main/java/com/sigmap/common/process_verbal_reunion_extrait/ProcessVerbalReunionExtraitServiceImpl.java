@@ -87,9 +87,7 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
             );
             extrait.setDoc(doc);
         }
-    if(request.getExtraitType()!=null){
-            extrait.setExtraitType(request.getExtraitType());
-    }
+
         return repository.save(extrait);
     }
     @Override
