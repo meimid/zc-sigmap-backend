@@ -397,18 +397,18 @@ AND (
 						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset2" uuid="80ea752f-0921-49f0-b107-13d2dcc0a9db">
+						<datasetRun subDataset="Dataset2" uuid="d1722351-4380-4d77-85b3-424cfd19c477">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
 							<datasetParameter name="com">
 								<datasetParameterExpression><![CDATA[$F{com_id}]]></datasetParameterExpression>
 							</datasetParameter>
-							<datasetParameter name="ppm_id">
-								<datasetParameterExpression><![CDATA[$P{ppm_id}]]></datasetParameterExpression>
+							<datasetParameter name="dac_id">
+								<datasetParameterExpression><![CDATA[$P{dac_id}]]></datasetParameterExpression>
 							</datasetParameter>
-							<datasetParameter name="ppm_ver">
-								<datasetParameterExpression><![CDATA[$P{ppm_ver}]]></datasetParameterExpression>
+							<datasetParameter name="dac_ver">
+								<datasetParameterExpression><![CDATA[$P{dac_ver}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="80" width="556">
