@@ -78,8 +78,13 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR4" class="java.io.InputStream"/>
 	<parameter name="acId" class="java.lang.Integer"/>
+	<parameter name="ppm_id" class="java.lang.Integer"/>
+	<parameter name="ppm_ver" class="java.lang.Integer"/>
+	<parameter name="dac_id" class="java.lang.Integer"/>
+	<parameter name="dac_ver" class="java.lang.Integer"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
+reunion.reunion_num_com,
 	 reunion.com_id,
 	 reunion.reunion_date,
 	 reunion.emplacement,
@@ -113,6 +118,11 @@ FROM com
 		<property name="com.jaspersoft.studio.field.label" value="pv_id"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
 	</field>
+	<field name="reunion_num_com" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_num_com"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_num_com"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
 	<field name="com_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
@@ -133,7 +143,7 @@ FROM com
 		<property name="com.jaspersoft.studio.field.label" value="object"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
 	</field>
-	<field name="COLUMN_7" class="java.lang.Integer">
+	<field name="COLUMN_8" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
@@ -308,7 +318,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["EXTRAIT DU PV\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "")  + "/CNCMP/"  +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
+				<textFieldExpression><![CDATA["EXTRAIT DU PV\nN° " + (($F{reunion_num_com} != null) ? $F{reunion_num_com} : "")  + "/"+ (($F{code} != null) ? $F{abrv} : "") +   "/"+(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="5" y="56" width="219" height="17" uuid="86c2b9ca-ec07-457c-8966-39c2cd50f9b8">
@@ -384,6 +394,18 @@ FROM com
 				</subreportParameter>
 				<subreportParameter name="acId">
 					<subreportParameterExpression><![CDATA[$P{acId}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dac_id">
+					<subreportParameterExpression><![CDATA[$P{dac_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="dac_ver">
+					<subreportParameterExpression><![CDATA[$P{dac_ver}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="ppm_id">
+					<subreportParameterExpression><![CDATA[$P{ppm_id}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="ppm_ver">
+					<subreportParameterExpression><![CDATA[$P{ppm_ver}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR4}]]></subreportExpression>

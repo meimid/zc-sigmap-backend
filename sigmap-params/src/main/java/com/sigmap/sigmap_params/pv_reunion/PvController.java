@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.pv_reunion;
 
 import com.sigmap.common.process_verbal_reunion.PvJasperReunionService;
+import com.sigmap.sigmap_params.pv_reunion.dto.ExtraitPvCNCMPDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -129,18 +130,18 @@ public class PvController {
                 .body(resource);
     }
 
-    @GetMapping("/extrait-pv-cncmp/{reunionId}/{acId}/download")
+    @GetMapping("/extrait-pv-cncmp/download")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
 
-    public ResponseEntity<Resource> downloadExtraitCNCMP(@PathVariable Integer reunionId ,@PathVariable Integer acId) throws Exception {
+    public ResponseEntity<Resource> downloadExtraitCNCMP(@RequestBody ExtraitPvCNCMPDto extrait) throws Exception {
 
-
-        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMP(reunionId,acId);
+        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMP(extrait.getReunionId(),extrait.getAcId(),
+                extrait.getPpmId(), extrait.getPpmVer(), extrait.getDacId(), extrait.getDacVer());
 
         ByteArrayResource resource = new ByteArrayResource(pdfBytes);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Extrait_PV_CNCMP_" + reunionId + ".pdf\"");
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Extrait_PV_CNCMP_" + extrait.getReunionId() + ".pdf\"");
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");
