@@ -351,6 +351,7 @@ public class ReunionController {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
+                    dto.setExtraitType(extrait.getExtraitType());
 
                     if (extrait.getAc() != null) {
                         dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
