@@ -210,7 +210,7 @@ public class PvJasperReunionService {
         }
     }
 
-    public byte[] generateExtraitProcesVerbalCNCMP(Integer reunionId, Integer acId) throws Exception {
+    public byte[] generateExtraitProcesVerbalCNCMP(Integer reunionId, Integer acId, Integer ppmId, Integer ppmVer, Integer dacId, Integer dacVer) throws Exception {
         // Validation initiale
         if (reunionId == null) {
             throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
@@ -247,6 +247,10 @@ public class PvJasperReunionService {
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
             parameters.put("acId", acId);
+            parameters.put("ppm_id", ppmId);
+            parameters.put("ppm_ver", ppmVer);
+            parameters.put("dac_id", dacId);
+            parameters.put("dac_ver", dacVer);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR4", sub4Stream);

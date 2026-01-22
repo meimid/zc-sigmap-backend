@@ -80,6 +80,7 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="acId" class="java.lang.Integer"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
+reunion.reunion_num_com,
 	 reunion.com_id,
 	 reunion.reunion_date,
 	 reunion.emplacement,
@@ -113,6 +114,11 @@ FROM com
 		<property name="com.jaspersoft.studio.field.label" value="pv_id"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
 	</field>
+	<field name="reunion_num_com" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="reunion_num_com"/>
+		<property name="com.jaspersoft.studio.field.label" value="reunion_num_com"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
+	</field>
 	<field name="com_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
@@ -133,7 +139,7 @@ FROM com
 		<property name="com.jaspersoft.studio.field.label" value="object"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="reunion"/>
 	</field>
-	<field name="COLUMN_7" class="java.lang.Integer">
+	<field name="COLUMN_8" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.label" value="com_id"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
@@ -346,7 +352,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["EXTRAIT DU PV\nN° " + (($F{reunion_id} != null) ? $F{reunion_id} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/" +  $F{abrv_ac} + "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
+				<textFieldExpression><![CDATA["EXTRAIT DU PV\nN° " + (($F{reunion_num_com} != null) ? $F{reunion_num_com} : "") + "/" + (($F{code} != null) ? $F{abrv} : "") + "/" +  $F{abrv_ac} + "/" +(($F{reunion_date} != null) ? new java.text.SimpleDateFormat("yyyy").format($F{reunion_date}) : "") + " DU " + (($F{reunion_date} != null) ? new java.text.SimpleDateFormat("dd/MM/yyyy").format($F{reunion_date}) : "")]]></textFieldExpression>
 			</textField>
 		</band>
 	</title>
