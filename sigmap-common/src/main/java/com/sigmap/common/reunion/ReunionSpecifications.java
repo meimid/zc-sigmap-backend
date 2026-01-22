@@ -45,13 +45,13 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(comJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("ref"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("status"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("status").as(String.class), "%" + search + "%"),
                     criteriaBuilder.like(root.get("note"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(formattedDate), "%" + search + "%"),
                     criteriaBuilder.like(reunionPpmJoin.get("decision"), "%" + search + "%"),
-                    criteriaBuilder.like(acFromPpmJoin.get("id"), "%" + search + "%"),
-                    criteriaBuilder.like(acFromDacJoin.get("id"), "%" + search + "%"),
+                    criteriaBuilder.like(acFromPpmJoin.get("id").as(String.class), "%" + search + "%"),
+                    criteriaBuilder.like(acFromDacJoin.get("id").as(String.class), "%" + search + "%"),
                     criteriaBuilder.like(acFromPpmJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(acFromDacJoin.get("nom"), "%" + search + "%")
 
