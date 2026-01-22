@@ -162,7 +162,7 @@ public class PvController {
                 .body(resource);
     }*/
 
-    @GetMapping("/extrait-pv-cncmp/download")
+    @PostMapping("/extrait-pv-cncmp/download")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
     public ResponseEntity<Resource> downloadExtraitCNCMP(
              @RequestBody ExtraitPvCNCMPDto extrait) throws Exception {
