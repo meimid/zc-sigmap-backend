@@ -339,12 +339,11 @@ AND (
 			</band>
 		</groupHeader>
 		<groupFooter>
-			<band height="164" splitType="Stretch">
+			<band height="80" splitType="Stretch">
 				<componentElement>
 					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="80" uuid="f91f723d-3dc1-4e91-be0f-7c687379da01">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
-						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null || 
-($P{ppm_id} == null && $P{ppm_ver} == null && $P{dac_id} == null && $P{dac_ver} == null)]]></printWhenExpression>
+						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null ]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
 						<datasetRun subDataset="Dataset1" uuid="c00f1371-0348-4fef-a211-31088482466c">
@@ -393,10 +392,9 @@ AND (
 					</jr:list>
 				</componentElement>
 				<componentElement>
-					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="81" width="556" height="80" uuid="ab4fab0c-d606-485a-93c6-3c85bac1ef47">
+					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="-1" y="0" width="556" height="80" uuid="ab4fab0c-d606-485a-93c6-3c85bac1ef47">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
-						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null || 
-($P{ppm_id} == null && $P{ppm_ver} == null && $P{dac_id} == null && $P{dac_ver} == null)]]></printWhenExpression>
+						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
 						<datasetRun subDataset="Dataset2" uuid="d1722351-4380-4d77-85b3-424cfd19c477">
