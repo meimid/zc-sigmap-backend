@@ -70,12 +70,12 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public ProcessVerbalReunionExtrait findByIds(ProcessVerbalReunionExtraitRequest request) {
-        return repository.findByIds( request.getPvId(), request.getAcId()).orElseThrow(()-> new ExtraitNotFound(""));
+        return repository.findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer()).orElseThrow(()-> new ExtraitNotFound(""));
     }
     @Override
     public ProcessVerbalReunionExtrait update(ProcessVerbalReunionExtraitRequest request) throws IOException {
         ProcessVerbalReunionExtrait extrait = repository
-                .findByIds( request.getPvId(), request.getAcId())
+                .findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer())
                 .orElseThrow(() -> new ExtraitNotFound("Extrait not found"));
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
@@ -87,8 +87,9 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
             );
             extrait.setDoc(doc);
         }
-
-
+    if(request.getExtraitType()!=null){
+            extrait.setExtraitType(request.getExtraitType());
+    }
         return repository.save(extrait);
     }
     @Override
