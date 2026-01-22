@@ -10,6 +10,10 @@
 		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
+		<parameter name="ppm_id" class="java.lang.Integer"/>
+		<parameter name="ppm_ver" class="java.lang.Integer"/>
+		<parameter name="dac_id" class="java.lang.Integer"/>
+		<parameter name="dac_ver" class="java.lang.Integer"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT distinct
     r.reunion_id,
@@ -39,6 +43,15 @@ INNER JOIN ac a
 INNER JOIN com m on a.com_id = m.com_id
 WHERE r.reunion_id =  $P{reunion} 
 and m.com_id =  $P{com}  and r.decision is not null
+AND (
+      -- Cas 1: Si PPM_ID et PPM_VER sont fournis
+      ($P{ppm_id} IS NOT NULL AND $P{ppm_ver} IS NOT NULL 
+       AND p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver})
+      OR
+      -- Cas 3: Tous les paramètres sont NULL
+      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
+       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
+  )
 union
 SELECT distinct
     r.reunion_id,
@@ -70,7 +83,17 @@ INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
 WHERE r.reunion_id =  $P{reunion}  
-and m.com_id =  $P{com} and r.decision is not null]]>
+and m.com_id =  $P{com} and r.decision is not null
+AND (
+      -- Cas 2: Si DAC_ID et DAC_VER sont fournis
+      ($P{dac_id} IS NOT NULL AND $P{dac_ver} IS NOT NULL 
+       AND d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver})
+      OR
+      -- Cas 3: Tous les paramètres sont NULL
+      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
+       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
+  )
+ ]]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
