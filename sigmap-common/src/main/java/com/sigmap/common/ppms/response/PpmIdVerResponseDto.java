@@ -6,4 +6,6 @@ import lombok.Data;
 public class PpmIdVerResponseDto {
     private Integer id;
     private Integer version;
+    private String ref;
+
 }
