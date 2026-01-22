@@ -25,7 +25,9 @@ public class Reunion extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "reunion_id")
     private Integer id;
-
+    @Column(name = "reunion_num_com")
+    private Integer reunionNumCom;
+    private Integer year;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "com_id")
     private Com com;
