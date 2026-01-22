@@ -4,6 +4,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
@@ -43,18 +44,19 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     }
 
     @Override
-    public ProcessVerbalReunionExtrait create(ProcessVerbalReunionExtraitRequest request) throws IOException {
+   public ProcessVerbalReunionExtrait create(Integer pvId,Integer acId, Integer ppmId,Integer ppmVer, ExtraitType extraitType) throws IOException{
 
         ProcessVerbalReunionExtrait extrait = new ProcessVerbalReunionExtrait();
 
         extrait.setExtraitId(sequenceGeneratorService
                 .getNextId("process_verbal_reunion_extrait_id_seq"));
 
-        extrait.setPvId(request.getPvId());
-        extrait.setAcId(request.getAcId());
+        extrait.setPvId(pvId);
+        extrait.setAcId(acId);
         extrait.setPpm(new Ppm());
-        extrait.getPpm().setId(request.getPpmId());
-        extrait.getPpm().setVersion(request.getPpmVer());
+        extrait.getPpm().setId(ppmId);
+        extrait.getPpm().setVersion(ppmVer);
+        extrait.setExtraitType(extraitType);
 
        /*     Docs doc = documentCommuneService.processAndSaveDocumentsForPvExtrait(
                     request.getFile(),

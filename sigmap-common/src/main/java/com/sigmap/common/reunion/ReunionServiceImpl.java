@@ -1068,14 +1068,16 @@ public class ReunionServiceImpl implements ReunionService{
                         req.setPpmId(ppm.getId());
                         req.setPpmVer(ppm.getVersion());
                         req.setFile(null);
+                        ExtraitType extraitType;
                         if("CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode()))
                         {
-                            req.setExtraitType(ExtraitType.PAR_DOSSIER);
+                             extraitType=ExtraitType.PAR_DOSSIER;
+
                         }
                         else{
-                            req.setExtraitType(ExtraitType.PAR_AC);
+                             extraitType=ExtraitType.PAR_AC;
                         }
-                        processVerbalReunionExtraitService.create(req);
+                        processVerbalReunionExtraitService.create(processVerbalReunion.getId(),acId,ppm.getId(),ppm.getVersion(),extraitType);
                     }
                 }
 
