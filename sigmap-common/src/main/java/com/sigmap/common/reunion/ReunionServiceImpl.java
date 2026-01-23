@@ -1211,6 +1211,7 @@ public class ReunionServiceImpl implements ReunionService{
         UserDTO updatedUser=keycloakAdminService.getUserById(reunion.getUpdatedBy());
         dto.setCreatedBy(createdUser.getFirstName()+" "+createdUser.getLastName());
         dto.setUpdatedBy(updatedUser.getFirstName()+" "+updatedUser.getLastName());
+        dto.setComType(reunion.getCom().getComType().getCode());
         return dto;
     }
 

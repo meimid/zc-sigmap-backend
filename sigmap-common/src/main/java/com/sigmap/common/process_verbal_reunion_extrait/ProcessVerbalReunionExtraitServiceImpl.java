@@ -10,13 +10,14 @@ import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-
+@Slf4j
 @Service
 public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReunionExtraitService {
 
@@ -38,6 +39,7 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId) {
+
         return repository.findAllByPvId(pvId).stream()
                 .distinct()
                 .collect(Collectors.toList());

@@ -352,6 +352,7 @@ public class ReunionController {
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
                     dto.setExtraitType(extrait.getExtraitType());
+                    dto.setComType(reunion.getCom().getComType().getCode());
                     log.info("Extra dto: {}", extrait.getExtraitType());
                     log.info("Extrait {}", dto.getExtraitType());
                     log.info("Extrait id {} , extait Pv Id {} , extarit type {}", dto.getExtraitId(), dto.getPvId(), dto.getExtraitType());
@@ -381,6 +382,8 @@ public class ReunionController {
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) {
         ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId);
         reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
+
+
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
    /* @GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")

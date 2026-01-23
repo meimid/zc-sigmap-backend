@@ -17,5 +17,6 @@ public class ProcessVerbalReunionExtraitRespons {
     private AcWebsiteResponse ac;
     private DocsResponseDTO doc;
     private ExtraitType extraitType;
+    private String comType;
 
 }
