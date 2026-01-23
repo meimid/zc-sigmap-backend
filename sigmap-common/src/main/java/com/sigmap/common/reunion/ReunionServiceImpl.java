@@ -1438,13 +1438,13 @@ public class ReunionServiceImpl implements ReunionService{
                 .map(ProcessVerbalReunionExtrait::getAcId)
                 .collect(Collectors.toSet());
 
-        if (acIdsWithCompletedExtrait.contains(extraitRequest.getAcId())) {
+       /* if (acIdsWithCompletedExtrait.contains(extraitRequest.getAcId())) {
             throw new ReunionExtraitAlreadyExistsException(
                     "A completed extrait already exists for this PV and AC",
                     pvId,
                     extraitRequest.getAcId()
             );
-        }
+        }*/
 
         //  Create the extrait
 
