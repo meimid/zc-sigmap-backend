@@ -9,8 +9,8 @@ ALTER TABLE process_verbal_reunion_extrait
 
 -- changeset sigmap:17496719590111-2
 UPDATE process_verbal_reunion_extrait
-SET extrait_type = 'PAR_DOSSIER'
-WHERE extrait_type IS NULL AND doc_id IS NOT NULL;
+SET extrait_type = 'PAR_AC'
+WHERE extrait_type IS NULL;
 
 
 
