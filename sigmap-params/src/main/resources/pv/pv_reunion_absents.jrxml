@@ -82,8 +82,8 @@ and fonction_reunion <> 'PRESIDENT']]>
 					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA["- " + 
-$F{prenom} + " " + 
-$F{nom} + 
+$F{nom} + " " + 
+$F{prenom} + 
 (
     $F{fonction} == null ? 
         "" 
