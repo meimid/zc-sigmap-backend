@@ -1454,8 +1454,26 @@ public class ReunionServiceImpl implements ReunionService{
         acIdsWithCompletedExtrait = new HashSet<>(acIdsWithCompletedExtrait);
         acIdsWithCompletedExtrait.add(extraitRequest.getAcId());
 
-        if (acIdsWithCompletedExtrait.containsAll(acIdsFromPpmsWithDecision)
+      /*  if (acIdsWithCompletedExtrait.containsAll(acIdsFromPpmsWithDecision)
                 && reunion.getProcessVerbal().getDocuments().stream().anyMatch(ProcessVerbalReunionDoc::isPv)) {
+            reunion.setStatus(ReunionStatus.CLOTURER);
+            save(reunion);
+        }*/
+
+        boolean isValidee = reunion.getStatus() == ReunionStatus.VALIDER;
+
+        boolean hasPv =
+                reunion.getProcessVerbal() != null
+                        && reunion.getProcessVerbal().getDocuments() != null
+                        && reunion.getProcessVerbal().getDocuments()
+                        .stream()
+                        .anyMatch(ProcessVerbalReunionDoc::isPv);
+
+        boolean allExtraitsHaveDoc =
+                extraits != null
+                        && extraits.stream().allMatch(ex -> ex.getDoc() != null);
+
+        if (isValidee && hasPv && allExtraitsHaveDoc) {
             reunion.setStatus(ReunionStatus.CLOTURER);
             save(reunion);
         }
