@@ -81,7 +81,20 @@ and fonction_reunion <> 'PRESIDENT']]>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial"/>
 				</textElement>
-				<textFieldExpression><![CDATA["- "+$F{prenom}+" "+$F{nom}+", "+$F{fonction}+" du "+$F{organisme}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["- " + 
+$F{nom} + " " + 
+$F{prenom} + 
+(
+    $F{fonction} == null ? 
+        "" 
+        : $F{fonction}.trim().toUpperCase().equals("MEMBRE") ? 
+            ", Membre" 
+            : ", " + $F{fonction}.trim() + 
+              ($F{organisme} == null || $F{organisme}.trim().isEmpty() ? 
+                  "" 
+                  : " du " + $F{organisme}.trim()
+              )
+)]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>

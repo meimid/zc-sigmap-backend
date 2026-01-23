@@ -1,5 +1,6 @@
 package com.sigmap.common.process_verbal_reunion;
 
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.reunion.Reunion;
@@ -210,7 +211,7 @@ public class PvJasperReunionService {
         }
     }
 
-    public byte[] generateExtraitProcesVerbalCNCMP(Integer reunionId, Integer acId) throws Exception {
+    public byte[] generateExtraitProcesVerbalCNCMP(Integer reunionId, Integer acId, Integer ppmId, Integer ppmVer, Integer dacId, Integer dacVer) throws Exception {
         // Validation initiale
         if (reunionId == null) {
             throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
@@ -241,6 +242,66 @@ public class PvJasperReunionService {
             validateResource(sub1Stream, "pv_reunion_presents.jasper");
             validateResource(sub2Stream, "pv_reunion_absents.jasper");
             validateResource(sub4Stream, "pv_reunion_sub2AC.jasper");
+
+            // Configuration des paramètres
+            parameters.put("reunion", reunionId);
+            parameters.put("president", fullNamePres);
+            parameters.put("pathImg", logoStream);
+            parameters.put("acId", acId);
+            parameters.put("ppm_id", ppmId);
+            parameters.put("ppm_ver", ppmVer);
+            parameters.put("dac_id", dacId);
+            parameters.put("dac_ver", dacVer);
+            parameters.put("SUBREPORT_DIR1", sub1Stream);
+            parameters.put("SUBREPORT_DIR2", sub2Stream);
+            parameters.put("SUBREPORT_DIR4", sub4Stream);
+            parameters.put("REPORT_CONNECTION", conn);
+
+
+            // Génération du rapport
+            JasperPrint jasperPrint = JasperFillManager.fillReport(mainReportStream, parameters, conn);
+            return JasperExportManager.exportReportToPdf(jasperPrint);
+
+        } catch (JRException e) {
+            throw new RuntimeException("Erreur lors de la génération du rapport Jasper: " + e.getMessage(), e);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur de connexion à la base de données: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur inattendue lors de la génération du PV: " + e.getMessage(), e);
+        }
+    }
+
+    public byte[] generateExtraitProcesVerbalCNCMPGlob(Integer reunionId, Integer acId) throws Exception {
+        // Validation initiale
+        if (reunionId == null) {
+            throw new IllegalArgumentException("L'ID de la réunion ne peut pas être null");
+        }
+        // Récupération de la réunion
+        Reunion reunion = reunionRepository.findById(reunionId)
+                .orElseThrow(() -> new IllegalArgumentException("Réunion introuvable : " + reunionId));
+
+        // Récupération du président
+        String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
+        String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
+                + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
+
+        // Map des paramètres
+        Map<String, Object> parameters = new HashMap<>();
+
+        // Gestion des ressources avec try-with-resources
+        try (Connection conn = dataSource.getConnection();
+             InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/extrait_pv_CNCMPGlob.jasper");
+             InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
+             InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
+             InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
+             InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2ACGlob.jasper")) {
+
+            // Vérification des ressources
+            validateResource(mainReportStream, "extrait_pv_CNCMPGlob.jasper");
+            validateResource(logoStream, "logo.png");
+            validateResource(sub1Stream, "pv_reunion_presents.jasper");
+            validateResource(sub2Stream, "pv_reunion_absents.jasper");
+            validateResource(sub4Stream, "pv_reunion_sub2ACGlob.jasper");
 
             // Configuration des paramètres
             parameters.put("reunion", reunionId);

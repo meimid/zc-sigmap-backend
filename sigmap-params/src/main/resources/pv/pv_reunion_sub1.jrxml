@@ -11,6 +11,7 @@
 		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="ac_id" class="java.lang.Integer"/>
+		<parameter name="code" class="java.lang.String"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT
     r.reunion_id,
@@ -141,6 +142,7 @@ WHERE r.reunion_id =  $P{reunion}
 		</group>
 	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
+	<parameter name="code" class="java.lang.String"/>
 	<queryString language="SQL">
 		<![CDATA[SELECT
     r.reunion_id,
@@ -263,12 +265,15 @@ WHERE r.reunion_id =  $P{reunion}]]>
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset1" uuid="284e34ae-b97d-4979-8dad-26917114de2f">
+						<datasetRun subDataset="Dataset1" uuid="18f05f5f-fb01-4674-8019-2a6e0c9c09b2">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
 							<datasetParameter name="ac_id">
 								<datasetParameterExpression><![CDATA[$F{ac_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="code">
+								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="82" width="550">
@@ -284,6 +289,7 @@ WHERE r.reunion_id =  $P{reunion}]]>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="32" width="520" height="15" uuid="441d3a29-f7d8-43a8-a615-c498756d54fe">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[!$P{code}.equals("CNCMP-S")]]></printWhenExpression>
 								</reportElement>
 								<textElement>
 									<font fontName="Arial" isBold="true"/>
@@ -298,6 +304,16 @@ WHERE r.reunion_id =  $P{reunion}]]>
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="32" width="520" height="15" uuid="30ebf845-2688-46f5-872b-b94e6ec31831">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[$P{code}.equals("CNCMP-S")]]></printWhenExpression>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{decision}]]></textFieldExpression>
 							</textField>
 						</jr:listContents>
 					</jr:list>

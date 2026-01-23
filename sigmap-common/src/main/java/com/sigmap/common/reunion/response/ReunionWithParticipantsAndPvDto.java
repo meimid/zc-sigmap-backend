@@ -19,7 +19,10 @@ import java.util.List;
 @NoArgsConstructor
 public class ReunionWithParticipantsAndPvDto {
     private Integer id;
+    private Integer reunionNumCom;
+    private String comType;
     private Calendar reunionDate;
+    private Integer year;
     private String emplacement;
     private String object;
     private String note;

@@ -1,4 +1,5 @@
 package com.sigmap.sigmap_ppm.controller;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
@@ -80,7 +81,6 @@ public class PpmController {
     @Value("${tenant.id}")
     private String TENANT_ID;
 
-
     @Autowired
     private RuntimeService runtimeService;
     @Autowired
@@ -102,15 +102,15 @@ public class PpmController {
     /**
      * Return a page of ppms based on the given specification and pageable.
      *
-     * @param query the query to use
+     * @param query    the query to use
      * @param pageable the pageable to use
      * @return a page of ppms
      */
     @GetMapping
     public ResponseEntity<Page<PpmResponseDto>> findAll(
             PpmQuery query,
-            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
-    ) throws PpmNotFound, AcNotFound {
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable)
+            throws PpmNotFound, AcNotFound {
 
         final Jwt user = (Jwt) SecurityContextHolder.getContext()
                 .getAuthentication()
@@ -129,17 +129,16 @@ public class PpmController {
     public ResponseEntity<Page<PpmResponseDto>> findAllPubliee(
             PpmQuery query, Pageable pageable) throws PpmNotFound, AcNotFound {
 
-        Page<Ppm> ppms = ppmService.findAllForDac (query.toSpecification(), pageable);
+        Page<Ppm> ppms = ppmService.findAllForDac(query.toSpecification(), pageable);
         logger.debug("Found for dac ------------------  {} ppms", ppms.getTotalElements());
         Page<PpmResponseDto> responses = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(responses);
     }
 
-
     /**
      * Return a page of deleted ppms based on the given specification and pageable.
      *
-     * @param query the query to use
+     * @param query    the query to use
      * @param pageable the pageable to use
      * @return a page of deleted ppms
      */
@@ -154,7 +153,7 @@ public class PpmController {
     /**
      * Return a ppm based on the given id and version.
      *
-     * @param ppmId the id of the ppm to return
+     * @param ppmId  the id of the ppm to return
      * @param ppmVer the version of the ppm to return
      * @return the ppm
      */
@@ -195,14 +194,15 @@ public class PpmController {
      * Create a new PPM with full support for relationships including documents.
      * This method allows uploading documents for both the PPM and its realisations.
      *
-     * @param request the global request containing PPM, realisations, lots, and document data
+     * @param request the global request containing PPM, realisations, lots, and
+     *                document data
      * @return the created PPM with all relationships established
      */
     @PostMapping("/with-relationships")
     public ResponseEntity<PpmResponseDto> createWithRelationships(
             @ModelAttribute("request") PpmWithLotsRequestDto request,
-            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson
-    ) throws AcNotFound {
+            @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson)
+            throws AcNotFound {
         logger.info("Creating PPM with relationships (documents, realisations, and lots)");
 
         // DIRECT CHECK FOR PARAMETER: Log the exact parameter value
@@ -252,9 +252,9 @@ public class PpmController {
 
         // Debug logs for request state before processing
         logger.info("Initial request state: realisations={}, realisationsWithLots={}, ppmFiles={}",
-            (request.getRealisations() != null ? request.getRealisations().size() : "null"),
-            (request.getRealisationsWithLots() != null ? request.getRealisationsWithLots().size() : "null"),
-            (request.getPpmFiles() != null ? request.getPpmFiles().size() : "null"));
+                (request.getRealisations() != null ? request.getRealisations().size() : "null"),
+                (request.getRealisationsWithLots() != null ? request.getRealisationsWithLots().size() : "null"),
+                (request.getPpmFiles() != null ? request.getPpmFiles().size() : "null"));
 
         // Process lots from JSON string if provided
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
@@ -267,12 +267,13 @@ public class PpmController {
                     for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                         RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(i);
                         logger.info("After processing: Realisation[{}] has {} lots",
-                            i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
+                                i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
 
                         // If lots exist, log details of each lot
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (LotResponse lot : realisation.getLots()) {
-                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(), lot.getDescription(),lot.getBudget());
+                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(),
+                                        lot.getDescription(), lot.getBudget());
                             }
                         }
                     }
@@ -311,7 +312,7 @@ public class PpmController {
     /**
      * Delete a ppm based on the given id and version.
      *
-     * @param ppmId the id of the ppm to delete
+     * @param ppmId  the id of the ppm to delete
      * @param ppmVer the version of the ppm to delete
      * @return the deleted ppm
      */
@@ -329,7 +330,7 @@ public class PpmController {
     /**
      * Get all realisations associated with a specific PPM.
      *
-     * @param ppmId the id of the PPM
+     * @param ppmId  the id of the PPM
      * @param ppmVer the version of the PPM
      * @return list of realisations associated with the PPM
      */
@@ -370,7 +371,7 @@ public class PpmController {
      * Get all lots associated with a specific PPM.
      * This collects all lots from all realisations in the PPM.
      *
-     * @param ppmId the id of the PPM
+     * @param ppmId  the id of the PPM
      * @param ppmVer the version of the PPM
      * @return list of lots associated with the PPM
      */
@@ -419,8 +420,8 @@ public class PpmController {
     /**
      * Get all lots associated with a specific realisation in a PPM.
      *
-     * @param ppmId the id of the PPM
-     * @param ppmVer the version of the PPM
+     * @param ppmId         the id of the PPM
+     * @param ppmVer        the version of the PPM
      * @param realisationId the id of the realisation
      * @return list of lots associated with the realisation
      */
@@ -440,21 +441,21 @@ public class PpmController {
                         "Realisation not found with ID: " + realisationId));
 
         // Get lots from the realisation
-        List<LotResponse> lots = realisation.getLots() != null ?
-                realisation.getLots().stream()
-                        .map(LotMapper.INSTANCE::map)
-                        .toList() :
-                List.of();
+        List<LotResponse> lots = realisation.getLots() != null ? realisation.getLots().stream()
+                .map(LotMapper.INSTANCE::map)
+                .toList() : List.of();
 
         return ResponseEntity.ok(lots);
     }
 
     /**
-     * Get all lots associated with a specific realisation in the latest version of a PPM.
+     * Get all lots associated with a specific realisation in the latest version of
+     * a PPM.
      *
-     * @param ppmId the id of the PPM
+     * @param ppmId         the id of the PPM
      * @param realisationId the id of the realisation
-     * @return list of lots associated with the realisation in the latest PPM version
+     * @return list of lots associated with the realisation in the latest PPM
+     *         version
      */
     @GetMapping("/{ppmId}/realisations/{realisationId}/lots")
     public ResponseEntity<List<LotResponse>> getPpmRealisationLotsLatest(
@@ -471,11 +472,9 @@ public class PpmController {
                         "Realisation not found with ID: " + realisationId));
 
         // Get lots from the realisation
-        List<LotResponse> lots = realisation.getLots() != null ?
-                realisation.getLots().stream()
-                        .map(LotMapper.INSTANCE::map)
-                        .toList() :
-                List.of();
+        List<LotResponse> lots = realisation.getLots() != null ? realisation.getLots().stream()
+                .map(LotMapper.INSTANCE::map)
+                .toList() : List.of();
 
         return ResponseEntity.ok(lots);
     }
@@ -485,14 +484,18 @@ public class PpmController {
      * <p>
      * This endpoint handles hierarchical versioning:
      * - If any PPM field changes, a new PPM version is created
-     * - If any Realisation is added, modified, or removed, a new PPM version is created
-     * - If a Lot within a Realisation changes, both Realisation and PPM versions increment
+     * - If any Realisation is added, modified, or removed, a new PPM version is
+     * created
+     * - If a Lot within a Realisation changes, both Realisation and PPM versions
+     * increment
      * - If any document is added/modified/removed, a new PPM version is created
      *
-     * @param ppmId the ID of the PPM to update
-     * @param ppmVer the current version of the PPM
-     * @param request the request containing fields to update (can be PpmWithLotsRequestDto or PpmBaseRequestDto)
-     * @return the newly created version of the PPM, or the existing version if no changes
+     * @param ppmId   the ID of the PPM to update
+     * @param ppmVer  the current version of the PPM
+     * @param request the request containing fields to update (can be
+     *                PpmWithLotsRequestDto or PpmBaseRequestDto)
+     * @return the newly created version of the PPM, or the existing version if no
+     *         changes
      */
     @PutMapping("/{ppmId}/{ppmVer}/version")
     public ResponseEntity<PpmResponseDto> updateWithVersioning(
@@ -510,23 +513,26 @@ public class PpmController {
     }
 
     /**
-     * Update a PPM by creating a new version with updated data, including document files.
-     * Uses the latest version of the PPM and supports multipart form data for file uploads.
+     * Update a PPM by creating a new version with updated data, including document
+     * files.
+     * Uses the latest version of the PPM and supports multipart form data for file
+     * uploads.
      *
-     * @param ppmId the ID of the PPM to update
-     * @param request the request containing fields to update with support for file uploads
-     * @param realisationsLotsJson optional JSON string for realisation lots if needed
+     * @param ppmId                the ID of the PPM to update
+     * @param request              the request containing fields to update with
+     *                             support for file uploads
+     * @param realisationsLotsJson optional JSON string for realisation lots if
+     *                             needed
      * @return the newly created version of the PPM
      */
 
-    //TODO:fix processRealisationLotsFromJson(request, realisationsLotsJson);
-    @PutMapping(value="/{ppmId}/versioning/multi", consumes = {"multipart/form-data"})
+    // TODO:fix processRealisationLotsFromJson(request, realisationsLotsJson);
+    @PutMapping(value = "/{ppmId}/versioning/multi", consumes = { "multipart/form-data" })
     public ResponseEntity<PpmResponseDto> updateWithVersioningMultipart(
             @PathVariable Integer ppmId,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-            ) {
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson) {
         logger.info("Updating PPM ID: {} with versioning (multipart)", ppmId);
 
         // Process lots from JSON string if provided
@@ -556,10 +562,11 @@ public class PpmController {
 
     /**
      * Process realisation lots from a JSON string.
-     * This method is used to handle complex lots data that might be difficult to send
+     * This method is used to handle complex lots data that might be difficult to
+     * send
      * directly in a multipart form.
      *
-     * @param request the request to update with the parsed lots
+     * @param request  the request to update with the parsed lots
      * @param lotsJson the JSON string containing lots data
      */
     private void processRealisationLotsFromJson(PpmWithLotsRequestDto request, String lotsJson) {
@@ -580,7 +587,9 @@ public class PpmController {
 
             ObjectMapper objectMapper = new ObjectMapper();
             try {
-                Map<String, Object> rawParsed = objectMapper.readValue(lotsJson, new TypeReference<Map<String, Object>>() {});
+                Map<String, Object> rawParsed = objectMapper.readValue(lotsJson,
+                        new TypeReference<Map<String, Object>>() {
+                        });
                 logger.info("Raw parsed JSON structure: {}", rawParsed);
 
                 if (rawParsed.isEmpty()) {
@@ -597,7 +606,8 @@ public class PpmController {
             }
 
             Map<String, List<Map<String, Object>>> lotsMap = objectMapper.readValue(lotsJson,
-                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {
+                    });
 
             logger.info("Parsed lotsMap size: {}", lotsMap.size());
 
@@ -619,13 +629,13 @@ public class PpmController {
                 copiedRealisation.setVersion(originalRealisation.getVersion());
                 copiedRealisation.setRealisationEnvisagees(originalRealisation.getRealisationEnvisagees());
                 copiedRealisation.setBeneficiaire(originalRealisation.getBeneficiaire());
-//                copiedRealisation.setService(originalRealisation.getService());
-//                copiedRealisation.setDirection(originalRealisation.getDirection());
-//                copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
-//                copiedRealisation.setMonais(originalRealisation.getMonais());
-//                copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
+                // copiedRealisation.setService(originalRealisation.getService());
+                // copiedRealisation.setDirection(originalRealisation.getDirection());
+                // copiedRealisation.setSourceFinancement(originalRealisation.getSourceFinancement());
+                // copiedRealisation.setMonais(originalRealisation.getMonais());
+                // copiedRealisation.setMonnaie(originalRealisation.getMonnaie());
                 copiedRealisation.setTypeMarcher(originalRealisation.getTypeMarcher());
-//                copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
+                // copiedRealisation.setModeSelection(originalRealisation.getModeSelection());
                 copiedRealisation.setModePassation(originalRealisation.getModePassation());
                 copiedRealisation.setDatePrevLps(originalRealisation.getDatePrevLps());
                 copiedRealisation.setDatePrevAc(originalRealisation.getDatePrevAc());
@@ -712,7 +722,8 @@ public class PpmController {
                                 } else if (budgetValue instanceof String) {
                                     lot.setBudget(new BigDecimal((String) budgetValue));
                                 } else {
-                                    logger.warn("Unexpected budget type: {}, setting budget to null", budgetValue.getClass().getName());
+                                    logger.warn("Unexpected budget type: {}, setting budget to null",
+                                            budgetValue.getClass().getName());
                                     lot.setBudget(null);
                                 }
                             } catch (NumberFormatException e) {
@@ -751,22 +762,25 @@ public class PpmController {
         }
     }
 
-
     /**
      * Update a PPM by creating a new version with updated data.
      * This endpoint explicitly supports Lot creation and versioning.
      * <p>
      * This endpoint handles hierarchical versioning:
      * - If any PPM field changes, a new PPM version is created
-     * - If any Realisation is added, modified, or removed, a new PPM version is created
-     * - If a Lot within a Realisation changes, both Realisation and PPM versions increment
+     * - If any Realisation is added, modified, or removed, a new PPM version is
+     * created
+     * - If a Lot within a Realisation changes, both Realisation and PPM versions
+     * increment
      * - New Lots without IDs are created and associated with their Realisations
      * - If any document is added/modified/removed, a new PPM version is created
      *
-     * @param ppmId the ID of the PPM to update
-     * @param ppmVer the current version of the PPM
-     * @param request the request containing fields to update with explicit Lot support
-     * @return the newly created version of the PPM, or the existing version if no changes
+     * @param ppmId   the ID of the PPM to update
+     * @param ppmVer  the current version of the PPM
+     * @param request the request containing fields to update with explicit Lot
+     *                support
+     * @return the newly created version of the PPM, or the existing version if no
+     *         changes
      */
     @PutMapping("/version-with-lots/{ppmId}/{ppmVer}")
     public ResponseEntity<PpmResponse> updateWithVersioningWithLots(
@@ -784,8 +798,9 @@ public class PpmController {
             for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                 logger.info("Realisation " + i + ": " + request.getRealisationsWithLots().get(i));
                 logger.info("Lots for realisation " + i + ": " +
-                        (request.getRealisationsWithLots().get(i).getLots() != null ?
-                                request.getRealisationsWithLots().get(i).getLots().size() : "null"));
+                        (request.getRealisationsWithLots().get(i).getLots() != null
+                                ? request.getRealisationsWithLots().get(i).getLots().size()
+                                : "null"));
             }
         } else {
             logger.info("No realisations with lots in request");
@@ -796,8 +811,9 @@ public class PpmController {
                 for (int i = 0; i < request.getRealisations().size(); i++) {
                     logger.info("Realisation " + i + ": " + request.getRealisations().get(i));
                     logger.info("Lots for realisation " + i + ": " +
-                            (request.getRealisations().get(i).getLots() != null ?
-                                    request.getRealisations().get(i).getLots().size() : "null"));
+                            (request.getRealisations().get(i).getLots() != null
+                                    ? request.getRealisations().get(i).getLots().size()
+                                    : "null"));
                 }
             } else {
                 logger.info("No regular realisations in request either");
@@ -816,14 +832,18 @@ public class PpmController {
      * <p>
      * This endpoint handles hierarchical versioning:
      * - If any PPM field changes, a new PPM version is created
-     * - If any Realisation is added, modified, or removed, a new PPM version is created
-     * - If a Lot within a Realisation changes, both Realisation and PPM versions increment
+     * - If any Realisation is added, modified, or removed, a new PPM version is
+     * created
+     * - If a Lot within a Realisation changes, both Realisation and PPM versions
+     * increment
      * - New Lots without IDs are created and associated with their Realisations
      * - If any document is added/modified/removed, a new PPM version is created
      *
-     * @param ppmId the ID of the PPM to update
-     * @param request the request containing fields to update with explicit Lot support
-     * @return the newly created version of the PPM, or the existing version if no changes
+     * @param ppmId   the ID of the PPM to update
+     * @param request the request containing fields to update with explicit Lot
+     *                support
+     * @return the newly created version of the PPM, or the existing version if no
+     *         changes
      */
     @PutMapping("/version-with-lots/{ppmId}")
     public ResponseEntity<PpmResponse> updateWithVersioningWithLotsLatest(
@@ -846,8 +866,9 @@ public class PpmController {
             for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                 logger.info("Realisation " + i + ": " + request.getRealisationsWithLots().get(i));
                 logger.info("Lots for realisation " + i + ": " +
-                        (request.getRealisationsWithLots().get(i).getLots() != null ?
-                                request.getRealisationsWithLots().get(i).getLots().size() : "null"));
+                        (request.getRealisationsWithLots().get(i).getLots() != null
+                                ? request.getRealisationsWithLots().get(i).getLots().size()
+                                : "null"));
 
                 // If we have lots in this realisation, flag for debug
                 if (request.getRealisationsWithLots().get(i).getLots() != null &&
@@ -864,8 +885,9 @@ public class PpmController {
                 for (int i = 0; i < request.getRealisations().size(); i++) {
                     logger.info("Realisation " + i + ": " + request.getRealisations().get(i));
                     logger.info("Lots for realisation " + i + ": " +
-                            (request.getRealisations().get(i).getLots() != null ?
-                                    request.getRealisations().get(i).getLots().size() : "null"));
+                            (request.getRealisations().get(i).getLots() != null
+                                    ? request.getRealisations().get(i).getLots().size()
+                                    : "null"));
 
                     // If we have lots in this realisation, flag for debug
                     if (request.getRealisations().get(i).getLots() != null &&
@@ -914,15 +936,17 @@ public class PpmController {
                     .get(ppmService);
 
             // Find the Realisation
-            Method findByIdMethod = realisationRepository.getClass().getMethod("findById", com.sigmap.common.entity.CompositeId.class);
-            Object realisationOpt = findByIdMethod.invoke(realisationRepository, new com.sigmap.common.entity.CompositeId(realisationId, realisationVer));
+            Method findByIdMethod = realisationRepository.getClass().getMethod("findById",
+                    com.sigmap.common.entity.CompositeId.class);
+            Object realisationOpt = findByIdMethod.invoke(realisationRepository,
+                    new com.sigmap.common.entity.CompositeId(realisationId, realisationVer));
 
-            if (((java.util.Optional<?>)realisationOpt).isEmpty()) {
+            if (((java.util.Optional<?>) realisationOpt).isEmpty()) {
                 return ResponseEntity.badRequest().body("Realisation not found");
             }
 
-            com.sigmap.common.realisations.Realisation realisation =
-                    (com.sigmap.common.realisations.Realisation)((java.util.Optional<?>)realisationOpt).get();
+            com.sigmap.common.realisations.Realisation realisation = (com.sigmap.common.realisations.Realisation) ((java.util.Optional<?>) realisationOpt)
+                    .get();
 
             // Create a new Lot
             com.sigmap.common.lots.Lot newLot = new com.sigmap.common.lots.Lot();
@@ -931,13 +955,13 @@ public class PpmController {
 
             // Generate new ID
             Method findMaxIdMethod = lotRepository.getClass().getMethod("findMaxId");
-            Integer maxId = (Integer)findMaxIdMethod.invoke(lotRepository);
+            Integer maxId = (Integer) findMaxIdMethod.invoke(lotRepository);
             Integer lotId = maxId + 1;
             newLot.setId(lotId);
 
             // Save the new lot
             Method saveMethod = lotRepository.getClass().getMethod("save", com.sigmap.common.lots.Lot.class);
-            com.sigmap.common.lots.Lot savedLot = (com.sigmap.common.lots.Lot)saveMethod.invoke(lotRepository, newLot);
+            com.sigmap.common.lots.Lot savedLot = (com.sigmap.common.lots.Lot) saveMethod.invoke(lotRepository, newLot);
 
             // Associate with existing realisation
             java.util.List<com.sigmap.common.lots.Lot> realisationLots = realisation.getLots();
@@ -948,9 +972,10 @@ public class PpmController {
             realisation.setLots(realisationLots);
 
             // Update the realisation
-            Method realisationSaveMethod = realisationRepository.getClass().getMethod("save", com.sigmap.common.realisations.Realisation.class);
-            com.sigmap.common.realisations.Realisation savedRealisation =
-                    (com.sigmap.common.realisations.Realisation)realisationSaveMethod.invoke(realisationRepository, realisation);
+            Method realisationSaveMethod = realisationRepository.getClass().getMethod("save",
+                    com.sigmap.common.realisations.Realisation.class);
+            com.sigmap.common.realisations.Realisation savedRealisation = (com.sigmap.common.realisations.Realisation) realisationSaveMethod
+                    .invoke(realisationRepository, realisation);
 
             return ResponseEntity.ok("Lot created with ID: " + savedLot.getId() + " and associated with Realisation");
 
@@ -961,14 +986,16 @@ public class PpmController {
     }
 
     /**
-     * Update a PPM and all its relationships (realizations, documents, lots) without versioning.
+     * Update a PPM and all its relationships (realizations, documents, lots)
+     * without versioning.
      * This method always updates version 1 of the PPM.
      *
-     * @param ppmId the ID of the PPM to update
-     * @param request the request containing updated PPM data with documents and relationships
+     * @param ppmId   the ID of the PPM to update
+     * @param request the request containing updated PPM data with documents and
+     *                relationships
      * @return the updated PPM
      */
-    @PutMapping(value="/{ppmId}/global", consumes = {"multipart/form-data"})
+    @PutMapping(value = "/{ppmId}/global", consumes = { "multipart/form-data" })
     public ResponseEntity<PpmResponse> updateGlobalWithoutVersionning(
             @PathVariable Integer ppmId,
             @ModelAttribute("request") PpmWithLotsRequestDto request) {
@@ -980,11 +1007,13 @@ public class PpmController {
     }
 
     /**
-     * Process the JSON string containing lot data for realisations specifically for update operations.
+     * Process the JSON string containing lot data for realisations specifically for
+     * update operations.
      * This method maps realisation indices to lots and adds them to the request.
      *
-     * @param request             the request object to update
-     * @param realisationsLotsJson the JSON string containing lot data keyed by realisation index
+     * @param request              the request object to update
+     * @param realisationsLotsJson the JSON string containing lot data keyed by
+     *                             realisation index
      */
     private void processRealisationLotsJsonForUpdate(PpmWithLotsRequestDto request, String realisationsLotsJson) {
         if (realisationsLotsJson == null || realisationsLotsJson.isEmpty()) {
@@ -994,8 +1023,9 @@ public class PpmController {
         try {
             ObjectMapper mapper = new ObjectMapper();
 
-            Map<String, List<Map<String, Object>>> lotsMap =
-                    mapper.readValue(realisationsLotsJson, new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+            Map<String, List<Map<String, Object>>> lotsMap = mapper.readValue(realisationsLotsJson,
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {
+                    });
 
             if (request.getRealisationsWithLots() == null) {
                 logger.info("No realisationsWithLots in request, creating empty list");
@@ -1008,7 +1038,8 @@ public class PpmController {
                     List<Map<String, Object>> lotsData = entry.getValue();
 
                     if (realisationIndex >= 0 && realisationIndex < request.getRealisationsWithLots().size()) {
-                        RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(realisationIndex);
+                        RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots()
+                                .get(realisationIndex);
 
                         if (realisation.getLots() == null) {
                             realisation.setLots(new ArrayList<>());
@@ -1020,7 +1051,8 @@ public class PpmController {
                             if (lotData.containsKey("id") && lotData.get("id") != null) {
                                 if (lotData.get("id") instanceof Integer) {
                                     lot.setId((Integer) lotData.get("id"));
-                                } else if (lotData.get("id") instanceof String && !((String) lotData.get("id")).isEmpty()) {
+                                } else if (lotData.get("id") instanceof String
+                                        && !((String) lotData.get("id")).isEmpty()) {
                                     try {
                                         lot.setId(Integer.parseInt((String) lotData.get("id")));
                                     } catch (NumberFormatException e) {
@@ -1032,7 +1064,8 @@ public class PpmController {
                             if (lotData.containsKey("version") && lotData.get("version") != null) {
                                 if (lotData.get("version") instanceof Integer) {
                                     lot.setVersion((Integer) lotData.get("version"));
-                                } else if (lotData.get("version") instanceof String && !((String) lotData.get("version")).isEmpty()) {
+                                } else if (lotData.get("version") instanceof String
+                                        && !((String) lotData.get("version")).isEmpty()) {
                                     try {
                                         lot.setVersion(Integer.parseInt((String) lotData.get("version")));
                                     } catch (NumberFormatException e) {
@@ -1042,7 +1075,9 @@ public class PpmController {
                             }
 
                             if (lotData.containsKey("description")) {
-                                lot.setDescription(lotData.get("description") != null ? lotData.get("description").toString() : null);
+                                lot.setDescription(
+                                        lotData.get("description") != null ? lotData.get("description").toString()
+                                                : null);
                             }
 
                             // Map the budget field
@@ -1054,11 +1089,13 @@ public class PpmController {
                                     } else if (budgetValue instanceof String) {
                                         lot.setBudget(new BigDecimal((String) budgetValue));
                                     } else {
-                                        logger.warn("Unexpected budget type: {}, setting budget to null", budgetValue.getClass().getName());
+                                        logger.warn("Unexpected budget type: {}, setting budget to null",
+                                                budgetValue.getClass().getName());
                                         lot.setBudget(null);
                                     }
                                 } catch (NumberFormatException e) {
-                                    logger.warn("Invalid budget format: {}, setting budget to null", lotData.get("budget"));
+                                    logger.warn("Invalid budget format: {}, setting budget to null",
+                                            lotData.get("budget"));
                                     lot.setBudget(null);
                                 }
                             } else {
@@ -1086,14 +1123,19 @@ public class PpmController {
             throw new RuntimeException("Failed to process lots JSON: " + e.getMessage(), e);
         }
     }
+
     /**
-     * Update an existing PPM with full support for relationships including documents.
-     * This method allows updating a PPM along with its realisations, lots, and document data.
+     * Update an existing PPM with full support for relationships including
+     * documents.
+     * This method allows updating a PPM along with its realisations, lots, and
+     * document data.
      *
-     * @param ppmId the ID of the PPM to update
-     * @param ppmVer the version of the PPM to update
-     * @param request the request containing updated PPM data, realisations, lots, and document files
-     * @param realisationsLotsJson optional JSON string containing lot data for realisations
+     * @param ppmId                the ID of the PPM to update
+     * @param ppmVer               the version of the PPM to update
+     * @param request              the request containing updated PPM data,
+     *                             realisations, lots, and document files
+     * @param realisationsLotsJson optional JSON string containing lot data for
+     *                             realisations
      * @return the updated PPM with all relationships established
      */
     @PutMapping("/{ppmId}/{ppmVer}/with-relationships")
@@ -1102,9 +1144,9 @@ public class PpmController {
             @PathVariable Integer ppmVer,
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-    ) {
-        logger.info("Updating PPM ID: {}, Version: {} with relationships (documents, realisations, and lots)", ppmId, ppmVer);
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson) {
+        logger.info("Updating PPM ID: {}, Version: {} with relationships (documents, realisations, and lots)", ppmId,
+                ppmVer);
 
         // DIRECT CHECK FOR PARAMETER: Log the exact parameter value
         logger.info("######## PARAMETER CHECK ########");
@@ -1153,9 +1195,9 @@ public class PpmController {
 
         // Debug logs for request state before processing
         logger.info("Initial request state: realisations={}, realisationsWithLots={}, ppmFiles={}",
-            (request.getRealisations() != null ? request.getRealisations().size() : "null"),
-            (request.getRealisationsWithLots() != null ? request.getRealisationsWithLots().size() : "null"),
-            (request.getPpmFiles() != null ? request.getPpmFiles().size() : "null"));
+                (request.getRealisations() != null ? request.getRealisations().size() : "null"),
+                (request.getRealisationsWithLots() != null ? request.getRealisationsWithLots().size() : "null"),
+                (request.getPpmFiles() != null ? request.getPpmFiles().size() : "null"));
 
         // Process lots from JSON string if provided
         if (realisationsLotsJson != null && !realisationsLotsJson.isEmpty()) {
@@ -1168,12 +1210,13 @@ public class PpmController {
                     for (int i = 0; i < request.getRealisationsWithLots().size(); i++) {
                         RealisationWithLotsRequestDto realisation = request.getRealisationsWithLots().get(i);
                         logger.info("After processing: Realisation[{}] has {} lots",
-                            i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
+                                i, (realisation.getLots() != null ? realisation.getLots().size() : "null"));
 
                         // If lots exist, log details of each lot
                         if (realisation.getLots() != null && !realisation.getLots().isEmpty()) {
                             for (LotResponse lot : realisation.getLots()) {
-                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(), lot.getDescription(),lot.getBudget());
+                                logger.info("  - Lot: id={}, description='{}', budget=' {}'", lot.getId(),
+                                        lot.getDescription(), lot.getBudget());
                             }
                         }
                     }
@@ -1185,7 +1228,7 @@ public class PpmController {
 
         if (realisationsFinancementsJson != null && !realisationsFinancementsJson.isEmpty()) {
             try {
-//            log.info(realisationsFinancementsJson);
+                // log.info(realisationsFinancementsJson);
                 processRealisationFinancementsFromJson(request, realisationsFinancementsJson);
                 logger.info("Successfully processed financements from JSON string");
             } catch (Exception e) {
@@ -1193,19 +1236,16 @@ public class PpmController {
             }
         }
 
-
         Ppm updatedPpm = ppmService.updateWithRelationships(ppmId, ppmVer, request);
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(updatedPpm);
         return ResponseEntity.ok(response);
     }
 
-
-    @PostMapping(value = "/create_per_ac", consumes = {"multipart/form-data"})
+    @PostMapping(value = "/create_per_ac", consumes = { "multipart/form-data" })
     public ResponseEntity<PpmResponseDto> createPpmPerAc(
             @ModelAttribute("request") PpmWithLotsRequestDto request,
             @RequestParam(value = "realisationsLotsJson", required = false) String realisationsLotsJson,
-            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson
-            )
+            @RequestParam(value = "realisationsFinancementsJson", required = false) String realisationsFinancementsJson)
             throws AcNotFound, IOException {
         logger.info("Creating PPM per AC with relationships using PpmWithLotsRequestDto");
 
@@ -1252,7 +1292,6 @@ public class PpmController {
         return ResponseEntity.ok(acsWithoutPaa);
     }
 
-
     /**
      * Get a detailed PPM by its ID, including all its realisations.
      * This endpoint returns the latest version of the PPM.
@@ -1266,44 +1305,52 @@ public class PpmController {
         logger.info("Getting detailed PPM with ID: {}", ppmId);
 
         Ppm ppm = ppmService.findByIdPpm(ppmId, null)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "PPM not found with ID: " + ppmId));
 
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(ppm);
         return ResponseEntity.ok(response);
     }
+
     /**
-    * find page of ppms with Ac Id*/
+     * find page of ppms with Ac Id
+     */
 
     @GetMapping("/ac/{acId}")
-    public ResponseEntity<Page<PpmResponseSoftDto>> findPpmsByAcId(@PathVariable Integer acId, Pageable pageable) throws AcNotFound {
-        Page<Ppm> ppms = ppmService.findPpmsByAcId(acId,pageable);
+    public ResponseEntity<Page<PpmResponseSoftDto>> findPpmsByAcId(@PathVariable Integer acId, Pageable pageable)
+            throws AcNotFound {
+        Page<Ppm> ppms = ppmService.findPpmsByAcId(acId, pageable);
         Page<PpmResponseSoftDto> responses = ppms.map(PpmMapper.INSTANCE::toDto);
         return ResponseEntity.ok(responses);
     }
 
     @GetMapping("/history/full/{ppmId}")
-    public ResponseEntity<Page<PpmResponseDto>> getPpmHistoryFull(@PathVariable Integer ppmId, Pageable pageable) throws PpmIdNotFound {
+    public ResponseEntity<Page<PpmResponseDto>> getPpmHistoryFull(@PathVariable Integer ppmId, Pageable pageable)
+            throws PpmIdNotFound {
         log.info("Received request to fetch full history for Ppm ID {}, page {}, size {}, sort {}",
                 ppmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         Page<Ppm> ppms = ppmService.findAllVersionsById(ppmId, pageable);
-        Page<PpmResponseDto> ppmResponseWithRealisations=ppms.map(PpmMapper.INSTANCE::mapToDto);
+        Page<PpmResponseDto> ppmResponseWithRealisations = ppms.map(PpmMapper.INSTANCE::mapToDto);
         return ResponseEntity.ok(ppmResponseWithRealisations);
     }
 
     /**
-     * Retrieves all versions of an Paa entity by its ID with minimal details in PpmResponseSoftDto format.
+     * Retrieves all versions of an Paa entity by its ID with minimal details in
+     * PpmResponseSoftDto format.
      *
-     * @param ppmId   ID of the Ppm entity
+     * @param ppmId    ID of the Ppm entity
      * @param pageable Pagination and sorting parameters
      * @return ResponseEntity containing a page of PpmResponseSoftDto
      * @throws PpmIdNotFound if no Ppm entities are found for the ID
      */
     @GetMapping("/history/minimal/{ppmId}")
-    public ResponseEntity<Page<PpmResponseSoftDtoWithMetaData>> getPaaHistoryMinimal(@PathVariable Integer ppmId, Pageable pageable) throws PpmIdNotFound {
+    public ResponseEntity<Page<PpmResponseSoftDtoWithMetaData>> getPaaHistoryMinimal(@PathVariable Integer ppmId,
+            Pageable pageable) throws PpmIdNotFound {
         log.info("Received request to fetch full history for Paa ID {}, page {}, size {}, sort {}",
                 ppmId, pageable.getPageNumber(), pageable.getPageSize(), pageable.getSort());
         Page<Ppm> ppms = ppmService.findAllVersionsById(ppmId, pageable);
-        Page<PpmResponseSoftDtoWithMetaData> ppmResponseDtoWithMetdata=ppms.map(PpmMapper.INSTANCE::mapToDtoWithMetaData);
+        Page<PpmResponseSoftDtoWithMetaData> ppmResponseDtoWithMetdata = ppms
+                .map(PpmMapper.INSTANCE::mapToDtoWithMetaData);
         return ResponseEntity.ok(ppmResponseDtoWithMetdata);
     }
 
@@ -1319,7 +1366,6 @@ public class PpmController {
         }
     }
 
-
     private void processRealisationFinancementsFromJson(PpmWithLotsRequestDto request, String financementsJson) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -1333,7 +1379,8 @@ public class PpmController {
 
             // Parse JSON into a map of realisation indices to lists of financement data
             Map<String, List<Map<String, Object>>> financementsMap = objectMapper.readValue(financementsJson,
-                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {
+                    });
             logger.info("Parsed {} realisation indices from financements JSON", financementsMap.size());
 
             // Ensure realisations list exists
@@ -1384,11 +1431,12 @@ public class PpmController {
                     }
 
                     if (financementData.containsKey("sourceFinancement")) {
-                        Map<String, Object> sourceFinancementObj = (Map<String, Object>) financementData.get("sourceFinancement");
+                        Map<String, Object> sourceFinancementObj = (Map<String, Object>) financementData
+                                .get("sourceFinancement");
                         Integer sourceId = ((Number) sourceFinancementObj.get("id")).intValue(); // Use .get("id")
 
-                        // Create RefParam object from ID
-                        RefParam sourceFinancement = new RefParam();
+                        // Create SourceFinancement object from ID
+                        com.sigmap.common.source_financement.SourceFinancement sourceFinancement = new com.sigmap.common.source_financement.SourceFinancement();
                         sourceFinancement.setId(sourceId);
 
                         financement.setSourceFinancement(sourceFinancement);
@@ -1404,7 +1452,8 @@ public class PpmController {
                             logger.debug("Set budgetEstimer to {} for financement with monnaieId: {}",
                                     financement.getBudgetEstimer(), financement.getMonnaieId());
                         } else {
-                            logger.warn("Invalid budgetEstimer format for financement with monnaieId: {}, setting to null",
+                            logger.warn(
+                                    "Invalid budgetEstimer format for financement with monnaieId: {}, setting to null",
                                     financement.getMonnaieId());
                         }
                     } else {
@@ -1425,7 +1474,8 @@ public class PpmController {
                         }
 
                         financement.setExamenPrealable(exam);
-                        logger.debug("Set examenPrealable to {} for financement with monnaieId={}", exam, financement.getMonnaieId());
+                        logger.debug("Set examenPrealable to {} for financement with monnaieId={}", exam,
+                                financement.getMonnaieId());
                     } else {
                         logger.debug("Financement data missing examenPrealable, defaulting to null");
                     }
@@ -1446,16 +1496,21 @@ public class PpmController {
 
     /**
      * Creates a new version from the latest PUBLIE PPM (actualisation).
-     * The new version has version = latest + 1, inherits core data and non-deleted docs,
-     * resets processInstanceId to null, sets status to BROUILLON, marks actualise = true,
+     * The new version has version = latest + 1, inherits core data and non-deleted
+     * docs,
+     * resets processInstanceId to null, sets status to BROUILLON, marks actualise =
+     * true,
      * and increments nbrActualisation by 1. Active Realisations are carried over.
      * The PPM budgetEstime is kept as-is (no recomputation).
      *
      * @param ppmId ID of the PPM to actualise
-     * @return ResponseEntity with the new PpmResponseWithRealisations and HTTP 200 (OK)
-     * @throws PpmNotFound if no PPM exists for the given ID
-     * @throws PpmInvalidStatusException if the latest PPM is not in PUBLIE status
-     * @throws PpmNotAssociatedWithUserAcException if the PPM’s AC is not one of the current user’s ACs
+     * @return ResponseEntity with the new PpmResponseWithRealisations and HTTP 200
+     *         (OK)
+     * @throws PpmNotFound                         if no PPM exists for the given ID
+     * @throws PpmInvalidStatusException           if the latest PPM is not in
+     *                                             PUBLIE status
+     * @throws PpmNotAssociatedWithUserAcException if the PPM’s AC is not one of the
+     *                                             current user’s ACs
      */
     @PostMapping("/actualise/{ppmId}")
     public ResponseEntity<PpmResponseDto> actualisePpm(@PathVariable Integer ppmId)
@@ -1465,11 +1520,13 @@ public class PpmController {
         PpmResponseDto response = PpmMapper.INSTANCE.mapToDto(newVersion);
         return ResponseEntity.ok(response);
     }
+
     @GetMapping("/drop-list")
-    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query)  {
+    public ResponseEntity<List<PpmDropListDto>> findAllForWebsite(PpmQuery query) {
         Specification specification = query.toSpecification();
-        List<Ppm> ppms=ppmService.findAllPpms(specification);
-         List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto).collect(Collectors.toList());
+        List<Ppm> ppms = ppmService.findAllPpms(specification);
+        List<PpmDropListDto> responses = ppms.stream().map(PpmMapper.INSTANCE::mapToDropListDto)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
 
