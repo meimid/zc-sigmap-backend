@@ -299,7 +299,7 @@ public class ReunionController {
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    @PutMapping("/{reunionId}/extrait")
+    @PutMapping("/{reunionId}/extraits")
     public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
             @PathVariable Integer reunionId,
             @ModelAttribute ProcessVerbalReunionExtraitRequest request
@@ -351,6 +351,10 @@ public class ReunionController {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
+                    dto.setExtraitType(extrait.getExtraitType());
+                    log.info("Extra dto: {}", extrait.getExtraitType());
+                    log.info("Extrait {}", dto.getExtraitType());
+                    log.info("Extrait id {} , extait Pv Id {} , extarit type {}", dto.getExtraitId(), dto.getPvId(), dto.getExtraitType());
 
                     if (extrait.getAc() != null) {
                         dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));

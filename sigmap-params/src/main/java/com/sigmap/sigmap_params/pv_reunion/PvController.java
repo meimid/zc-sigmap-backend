@@ -1,10 +1,13 @@
 package com.sigmap.sigmap_params.pv_reunion;
 
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.process_verbal_reunion.PvJasperReunionService;
 import com.sigmap.sigmap_params.pv_reunion.dto.ExtraitPvCNCMPDto;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -130,13 +133,19 @@ public class PvController {
                 .body(resource);
     }
 
-    @GetMapping("/extrait-pv-cncmp/download")
+  /*  @GetMapping("/extrait-pv-cncmp/download")
     @PreAuthorize("hasAnyRole( 'SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
 
     public ResponseEntity<Resource> downloadExtraitCNCMP(@RequestBody ExtraitPvCNCMPDto extrait) throws Exception {
+        byte[] pdfBytes;
+        if(ExtraitType.PAR_DOSSIER.equals(extrait.getExtraitType())){
+             pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMP(extrait.getReunionId(),extrait.getAcId(),
+                    extrait.getPpmId(), extrait.getPpmVer(), extrait.getDacId(), extrait.getDacVer());
+        }
+        else if(ExtraitType.PAR_AC.equals(extrait.getExtraitType())) {
+            pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMPGlob(extrait.getReunionId(),extrait.getAcId());
 
-        byte[] pdfBytes = pvJasperReunionService.generateExtraitProcesVerbalCNCMP(extrait.getReunionId(),extrait.getAcId(),
-                extrait.getPpmId(), extrait.getPpmVer(), extrait.getDacId(), extrait.getDacVer());
+        }
 
         ByteArrayResource resource = new ByteArrayResource(pdfBytes);
 
@@ -151,6 +160,55 @@ public class PvController {
                 .contentLength(pdfBytes.length)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(resource);
+    }*/
+
+    @PostMapping("/extrait-pv-cncmp/download")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CNCMP-PER-RAPPORTEUR','CNCMP-SPE-RAPPORTEUR')")
+    public ResponseEntity<Resource> downloadExtraitCNCMP(
+             @RequestBody ExtraitPvCNCMPDto extrait) throws Exception {
+
+        byte[] pdfBytes;
+
+        ExtraitType type = extrait.getExtraitType();
+        if (type == null) {
+            throw new IllegalArgumentException("extraitType is required");
+        }
+
+        switch (type) {
+            case PAR_DOSSIER:
+                pdfBytes = pvJasperReunionService
+                        .generateExtraitProcesVerbalCNCMP(
+                                extrait.getReunionId(),
+                                extrait.getAcId(),
+                                extrait.getPpmId(),
+                                extrait.getPpmVer(),
+                                extrait.getDacId(),
+                                extrait.getDacVer()
+                        );
+                break;
+
+            case PAR_AC:
+                pdfBytes = pvJasperReunionService
+                        .generateExtraitProcesVerbalCNCMPGlob(
+                                extrait.getReunionId(),
+                                extrait.getAcId()
+                        );
+                break;
+
+            default:
+                throw new IllegalArgumentException("Unsupported extraitType: " + type);
+        }
+
+        ByteArrayResource resource = new ByteArrayResource(pdfBytes);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"Extrait_PV_CNCMP_" + extrait.getReunionId() + ".pdf\"")
+                .cacheControl(CacheControl.noStore())
+                .contentLength(pdfBytes.length)
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
     }
+
 
 }
