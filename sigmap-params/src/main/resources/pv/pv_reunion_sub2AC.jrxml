@@ -12,6 +12,7 @@
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="ppm_id" class="java.lang.Integer"/>
 		<parameter name="ppm_ver" class="java.lang.Integer"/>
+		<parameter name="code" class="java.lang.String"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT distinct
     r.reunion_id,
@@ -107,6 +108,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="dac_id" class="java.lang.Integer"/>
 		<parameter name="dac_ver" class="java.lang.Integer"/>
+		<parameter name="code" class="java.lang.String"/>
 		<queryString>
 			<![CDATA[SELECT distinct
     r.reunion_id,
@@ -210,6 +212,7 @@ AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
 	<parameter name="ppm_ver" class="java.lang.Integer"/>
 	<parameter name="dac_id" class="java.lang.Integer"/>
 	<parameter name="dac_ver" class="java.lang.Integer"/>
+	<parameter name="code" class="java.lang.String"/>
 	<queryString language="SQL">
 		<![CDATA[SELECT
     r.reunion_id,
@@ -343,10 +346,10 @@ AND (
 				<componentElement>
 					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="80" uuid="f91f723d-3dc1-4e91-be0f-7c687379da01">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
-						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null ]]></printWhenExpression>
+						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset1" uuid="c00f1371-0348-4fef-a211-31088482466c">
+						<datasetRun subDataset="Dataset1" uuid="3792f9c0-8dd5-4d72-8474-76276556fde9">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
@@ -358,6 +361,9 @@ AND (
 							</datasetParameter>
 							<datasetParameter name="ppm_ver">
 								<datasetParameterExpression><![CDATA[$P{ppm_ver}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="code">
+								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="80" width="556">
@@ -397,7 +403,7 @@ AND (
 						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset2" uuid="d1722351-4380-4d77-85b3-424cfd19c477">
+						<datasetRun subDataset="Dataset2" uuid="bc1d9936-a428-47c3-af03-8964e4cc85eb">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
@@ -409,6 +415,9 @@ AND (
 							</datasetParameter>
 							<datasetParameter name="dac_ver">
 								<datasetParameterExpression><![CDATA[$P{dac_ver}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="code">
+								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="80" width="556">
@@ -424,6 +433,7 @@ AND (
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[!$P{code}.equals("CNCMP-S")]]></printWhenExpression>
 								</reportElement>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial" isBold="true"/>
@@ -438,6 +448,16 @@ AND (
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="a4e9b4dc-4c98-4c21-8a2b-1121bddd5610">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[$P{code}.equals("CNCMP-S")]]></printWhenExpression>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{decision}]]></textFieldExpression>
 							</textField>
 						</jr:listContents>
 					</jr:list>
