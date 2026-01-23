@@ -180,19 +180,20 @@ public class ReunionSpecifications {
                     cb.equal(reunionPpmJoin.get("ppmId"), ppmId);
 
             // Via ReunionDac -> Dac -> Ppm
-            Join<Reunion, ReunionDac> reunionDacJoin =
+           /* Join<Reunion, ReunionDac> reunionDacJoin =
                     root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin =
                     reunionDacJoin.join("dac", JoinType.LEFT);
             Join<Dac, AppelOffre> appelOffreJoin =
                     dacJoin.join("appelOffre", JoinType.LEFT);
             Join<AppelOffre, Ppm> ppmJoin =
-                    appelOffreJoin.join("ppm", JoinType.LEFT);
+                    appelOffreJoin.join("ppm", JoinType.LEFT);*/
 
-            Predicate viaReunionDacPpm =
-                    cb.equal(ppmJoin.get("id"), ppmId);
+            /*Predicate viaReunionDacPpm =
+                    cb.equal(ppmJoin.get("id"), ppmId);*/
 
-            return cb.or(viaReunionPpm, viaReunionDacPpm);
+          //  return cb.or(viaReunionPpm, viaReunionDacPpm);
+            return viaReunionPpm;
         };
     }
 
@@ -207,7 +208,7 @@ public class ReunionSpecifications {
                     cb.equal(reunionPpmJoin.get("ppmVer"), ppmVer);
 
             // Via ReunionDac -> Dac -> Ppm
-            Join<Reunion, ReunionDac> reunionDacJoin =
+            /*Join<Reunion, ReunionDac> reunionDacJoin =
                     root.join("reunionDacs", JoinType.LEFT);
             Join<ReunionDac, Dac> dacJoin =
                     reunionDacJoin.join("dac", JoinType.LEFT);
@@ -217,9 +218,10 @@ public class ReunionSpecifications {
                     appelOffreJoin.join("ppm", JoinType.LEFT);
 
             Predicate viaReunionDacPpm =
-                    cb.equal(ppmJoin.get("version"), ppmVer);
+                    cb.equal(ppmJoin.get("version"), ppmVer);*/
 
-            return cb.or(viaReunionPpm, viaReunionDacPpm);
+            //return cb.or(viaReunionPpm, viaReunionDacPpm);
+            return viaReunionPpm;
         };
     }
 
