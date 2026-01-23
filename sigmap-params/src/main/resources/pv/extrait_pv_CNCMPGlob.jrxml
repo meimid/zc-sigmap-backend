@@ -194,7 +194,7 @@ FROM com
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
-		<variableExpression><![CDATA[$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ."]]></variableExpression>
+		<variableExpression><![CDATA[$F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ." :  "La "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ." ]]></variableExpression>
 	</variable>
 	<title>
 		<band height="152" splitType="Stretch">
@@ -423,14 +423,14 @@ FROM com
 				<textFieldExpression><![CDATA[$P{president}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement style="ArialBold" x="4" y="75" width="194" height="17" uuid="7defe35b-4884-491c-9580-cf27f4276961"/>
+				<reportElement style="ArialBold" x="4" y="81" width="194" height="17" uuid="7defe35b-4884-491c-9580-cf27f4276961"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font fontName="Arial" isBold="true" isUnderline="true"/>
 				</textElement>
 				<text><![CDATA[Les signataires]]></text>
 			</staticText>
 			<componentElement>
-				<reportElement isPrintRepeatedValues="false" x="2" y="92" width="533" height="25" isRemoveLineWhenBlank="true" uuid="76699bfd-a552-45ef-afa9-9b2ac41d9789">
+				<reportElement isPrintRepeatedValues="false" x="2" y="98" width="533" height="35" isRemoveLineWhenBlank="true" uuid="76699bfd-a552-45ef-afa9-9b2ac41d9789">
 					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.HorizontalRowLayout"/>
 					<property name="com.jaspersoft.studio.unit.y" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -443,15 +443,15 @@ FROM com
 						</datasetParameter>
 						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 					</datasetRun>
-					<jr:listContents height="25" width="533">
+					<jr:listContents height="35" width="533">
 						<textField isBlankWhenNull="true">
-							<reportElement x="0" y="0" width="533" height="25" uuid="ce39acc5-f326-4274-ae15-a444f608dd32">
+							<reportElement x="0" y="0" width="533" height="35" uuid="ce39acc5-f326-4274-ae15-a444f608dd32">
 								<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
 							</reportElement>
 							<textElement>
 								<font fontName="Arial" size="9"/>
 							</textElement>
-							<textFieldExpression><![CDATA["- "+$F{prenom}+" "+$F{nom}]]></textFieldExpression>
+							<textFieldExpression><![CDATA["- "+$F{nom}+" "+$F{prenom}]]></textFieldExpression>
 						</textField>
 					</jr:listContents>
 				</jr:list>
