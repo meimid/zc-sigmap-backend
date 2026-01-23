@@ -24,6 +24,7 @@ import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunio
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait.mapper.ProcessVerbalReunionExtraitMapper;
+import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.Reunion;
@@ -44,6 +45,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -297,15 +299,14 @@ public class ReunionController {
     }
 
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
-    @PutMapping("/{reunionId}/ac/{acId}/extraits")
+    @PutMapping("/{reunionId}/extraits")
     public ResponseEntity<ProcessVerbalReunionExtraitRespons> injectExtrait(
             @PathVariable Integer reunionId,
-            @PathVariable("acId") Integer acId,
-            @RequestParam("file") MultipartFile file
-    ) throws IOException {
+            @ModelAttribute ProcessVerbalReunionExtraitRequest request
+    ) throws IOException{
 
-        ProcessVerbalReunionExtrait extrait =
-                reunionService.injectExtraitForAc(reunionId, acId, file);
+    ProcessVerbalReunionExtrait extrait =
+                reunionService.injectExtraitForDossier(reunionId, request);
 
         ProcessVerbalReunionExtraitRespons response =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
@@ -350,6 +351,11 @@ public class ReunionController {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
+                    dto.setExtraitType(extrait.getExtraitType());
+                    dto.setComType(reunion.getCom().getComType().getCode());
+                    log.info("Extra dto: {}", extrait.getExtraitType());
+                    log.info("Extrait {}", dto.getExtraitType());
+                    log.info("Extrait id {} , extait Pv Id {} , extarit type {}", dto.getExtraitId(), dto.getPvId(), dto.getExtraitType());
 
                     if (extrait.getAc() != null) {
                         dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
@@ -376,6 +382,8 @@ public class ReunionController {
     public ResponseEntity<ReunionWithParticipantsAndPvDto> particpantHistoryByReunionIdAndPPmId(@PathVariable Integer reunionId, @PathVariable Integer ppmId) {
         ReunionWithParticipantsAndPvDto reunionWithParticipantsAndPvDto=reunionService.particpantHistoryByReunionIdAndPPmId(reunionId, ppmId);
         reunionWithParticipantsAndPvDto.setExtraits(mapExtraits(reunionService.findById(reunionId)));
+
+
         return ResponseEntity.ok(reunionWithParticipantsAndPvDto);
     }
    /* @GetMapping("/pv-list-by-com/ppm/{ppmId}/{ppmVer}")

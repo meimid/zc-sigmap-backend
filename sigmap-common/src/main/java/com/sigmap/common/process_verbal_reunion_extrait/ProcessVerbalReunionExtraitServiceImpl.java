@@ -4,18 +4,20 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
-
+@Slf4j
 @Service
 public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReunionExtraitService {
 
@@ -37,24 +39,26 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId) {
+
         return repository.findAllByPvId(pvId).stream()
                 .distinct()
                 .collect(Collectors.toList());
     }
 
     @Override
-    public ProcessVerbalReunionExtrait create(ProcessVerbalReunionExtraitRequest request) throws IOException {
+   public ProcessVerbalReunionExtrait create(Integer pvId,Integer acId, Integer ppmId,Integer ppmVer, ExtraitType extraitType) throws IOException{
 
         ProcessVerbalReunionExtrait extrait = new ProcessVerbalReunionExtrait();
 
         extrait.setExtraitId(sequenceGeneratorService
                 .getNextId("process_verbal_reunion_extrait_id_seq"));
 
-        extrait.setPvId(request.getPvId());
-        extrait.setAcId(request.getAcId());
+        extrait.setPvId(pvId);
+        extrait.setAcId(acId);
         extrait.setPpm(new Ppm());
-        extrait.getPpm().setId(request.getPpmId());
-        extrait.getPpm().setVersion(request.getPpmVer());
+        extrait.getPpm().setId(ppmId);
+        extrait.getPpm().setVersion(ppmVer);
+        extrait.setExtraitType(extraitType);
 
        /*     Docs doc = documentCommuneService.processAndSaveDocumentsForPvExtrait(
                     request.getFile(),
@@ -70,12 +74,12 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public ProcessVerbalReunionExtrait findByIds(ProcessVerbalReunionExtraitRequest request) {
-        return repository.findByIds( request.getPvId(), request.getAcId()).orElseThrow(()-> new ExtraitNotFound(""));
+        return repository.findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer()).orElseThrow(()-> new ExtraitNotFound(""));
     }
     @Override
     public ProcessVerbalReunionExtrait update(ProcessVerbalReunionExtraitRequest request) throws IOException {
         ProcessVerbalReunionExtrait extrait = repository
-                .findByIds( request.getPvId(), request.getAcId())
+                .findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer())
                 .orElseThrow(() -> new ExtraitNotFound("Extrait not found"));
 
         if (request.getFile() != null && !request.getFile().isEmpty()) {
@@ -87,7 +91,6 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
             );
             extrait.setDoc(doc);
         }
-
 
         return repository.save(extrait);
     }

@@ -10,6 +10,9 @@
 		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
+		<parameter name="ppm_id" class="java.lang.Integer"/>
+		<parameter name="ppm_ver" class="java.lang.Integer"/>
+		<parameter name="code" class="java.lang.String"/>
 		<queryString language="SQL">
 			<![CDATA[SELECT distinct
     r.reunion_id,
@@ -39,38 +42,7 @@ INNER JOIN ac a
 INNER JOIN com m on a.com_id = m.com_id
 WHERE r.reunion_id =  $P{reunion} 
 and m.com_id =  $P{com}  and r.decision is not null
-union
-SELECT distinct
-    r.reunion_id,
-    r.dac_id,
-    r.dac_ver,
-    r.observation,
-   CASE UPPER(r.decision)
-        WHEN 'APPROVE' THEN 'Approuvé'
-        WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
-        WHEN 'CI' THEN 'Complément d''information' 
-        WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
-        else  'Avis' 
-        end as decision,
-    p.ref,
-    p.nom,
-    p.annee,
-    p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
-     m.com_id,
-    m.nom as comnom, 'DAC' as type
-FROM reunion_dac r
-INNER JOIN dac d
-       ON r.dac_id = d.dac_id
-      AND r.dac_ver = d.dac_ver
-    INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
-    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
-INNER JOIN ac a
-       ON p.ac_id = a.ac_id
-INNER JOIN com m on a.com_id = m.com_id
-WHERE r.reunion_id =  $P{reunion}  
-and m.com_id =  $P{com} and r.decision is not null]]>
+AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		</queryString>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
@@ -129,8 +101,118 @@ and m.com_id =  $P{com} and r.decision is not null]]>
 			<groupExpression><![CDATA[$F{com_id}]]></groupExpression>
 		</group>
 	</subDataset>
+	<subDataset name="Dataset2" uuid="3724119d-925f-4032-8869-404f7961f454">
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+		<parameter name="reunion" class="java.lang.Integer"/>
+		<parameter name="com" class="java.lang.Integer"/>
+		<parameter name="dac_id" class="java.lang.Integer"/>
+		<parameter name="dac_ver" class="java.lang.Integer"/>
+		<parameter name="code" class="java.lang.String"/>
+		<queryString>
+			<![CDATA[SELECT distinct
+    r.reunion_id,
+    r.dac_id,
+    r.dac_ver,
+    r.observation,
+   CASE UPPER(r.decision)
+        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'VALIDATE' THEN 'Approuvé'
+        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'CI' THEN 'Complément d''information' 
+        WHEN 'TRUE' THEN 'Approuvé'
+         WHEN 'FALSE' THEN 'Rejeté' 
+        else  'Avis' 
+        end as decision,
+    p.ref,
+    p.nom,
+    p.annee,
+    p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
+     m.com_id,
+    m.nom as comnom, 'DAC' as type
+FROM reunion_dac r
+INNER JOIN dac d
+       ON r.dac_id = d.dac_id
+      AND r.dac_ver = d.dac_ver
+    INNER JOIN  appel_offre ap on d.appel_offre_id=ap.appel_offre_id
+    INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver
+INNER JOIN ac a
+       ON p.ac_id = a.ac_id
+INNER JOIN com m on a.com_id = m.com_id
+WHERE r.reunion_id =  $P{reunion}  
+and m.com_id =  $P{com} and r.decision is not null
+AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
+		</queryString>
+		<field name="reunion_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_dac"/>
+		</field>
+		<field name="dac_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="dac_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="dac_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_dac"/>
+		</field>
+		<field name="dac_ver" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="dac_ver"/>
+			<property name="com.jaspersoft.studio.field.label" value="dac_ver"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_dac"/>
+		</field>
+		<field name="observation" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="observation"/>
+			<property name="com.jaspersoft.studio.field.label" value="observation"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_dac"/>
+		</field>
+		<field name="decision" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="decision"/>
+			<property name="com.jaspersoft.studio.field.label" value="decision"/>
+		</field>
+		<field name="ref" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="ref"/>
+			<property name="com.jaspersoft.studio.field.label" value="ref"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="nom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="nom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="annee" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="annee"/>
+			<property name="com.jaspersoft.studio.field.label" value="annee"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="budget_estime" class="java.math.BigDecimal">
+			<property name="com.jaspersoft.studio.field.name" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.label" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="createddate" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="createddate"/>
+			<property name="com.jaspersoft.studio.field.label" value="createddate"/>
+		</field>
+		<field name="com_id" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="com_id"/>
+			<property name="com.jaspersoft.studio.field.label" value="com_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+		</field>
+		<field name="comnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="comnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
+		</field>
+		<field name="type" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="type"/>
+			<property name="com.jaspersoft.studio.field.label" value="type"/>
+		</field>
+	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
 	<parameter name="acId" class="java.lang.Integer"/>
+	<parameter name="ppm_id" class="java.lang.Integer"/>
+	<parameter name="ppm_ver" class="java.lang.Integer"/>
+	<parameter name="dac_id" class="java.lang.Integer"/>
+	<parameter name="dac_ver" class="java.lang.Integer"/>
+	<parameter name="code" class="java.lang.String"/>
 	<queryString language="SQL">
 		<![CDATA[SELECT
     r.reunion_id,
@@ -152,6 +234,15 @@ INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
 WHERE r.reunion_id =  $P{reunion}  and p.ac_id= $P{acId} 
+AND (
+      -- Cas 1: Si PPM_ID et PPM_VER sont fournis
+      ($P{ppm_id} IS NOT NULL AND $P{ppm_ver} IS NOT NULL 
+       AND p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver})
+      OR
+      -- Cas 3: Tous les paramètres sont NULL
+      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
+       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
+  )
 union
 SELECT
     r.reunion_id,
@@ -174,7 +265,16 @@ INNER JOIN dac d
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
 INNER JOIN com m on a.com_id = m.com_id
-WHERE r.reunion_id =   $P{reunion} and p.ac_id= $P{acId}]]>
+WHERE r.reunion_id =   $P{reunion} and p.ac_id= $P{acId}
+AND (
+      -- Cas 2: Si DAC_ID et DAC_VER sont fournis
+      ($P{dac_id} IS NOT NULL AND $P{dac_ver} IS NOT NULL 
+       AND d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver})
+      OR
+      -- Cas 3: Tous les paramètres sont NULL
+      ($P{ppm_id} IS NULL AND $P{ppm_ver} IS NULL 
+       AND $P{dac_id} IS NULL AND $P{dac_ver} IS NULL)
+  )]]>
 	</queryString>
 	<field name="reunion_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
@@ -242,18 +342,28 @@ WHERE r.reunion_id =   $P{reunion} and p.ac_id= $P{acId}]]>
 			</band>
 		</groupHeader>
 		<groupFooter>
-			<band height="82" splitType="Stretch">
+			<band height="80" splitType="Stretch">
 				<componentElement>
 					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="80" uuid="f91f723d-3dc1-4e91-be0f-7c687379da01">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset1" uuid="71429444-3e7b-4063-b5dc-197fec62a76f">
+						<datasetRun subDataset="Dataset1" uuid="3792f9c0-8dd5-4d72-8474-76276556fde9">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
 							<datasetParameter name="com">
 								<datasetParameterExpression><![CDATA[$F{com_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_id">
+								<datasetParameterExpression><![CDATA[$P{ppm_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="ppm_ver">
+								<datasetParameterExpression><![CDATA[$P{ppm_ver}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="code">
+								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
 						<jr:listContents height="80" width="556">
@@ -283,6 +393,71 @@ WHERE r.reunion_id =   $P{reunion} and p.ac_id= $P{acId}]]>
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+						</jr:listContents>
+					</jr:list>
+				</componentElement>
+				<componentElement>
+					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="-1" y="0" width="556" height="80" uuid="ab4fab0c-d606-485a-93c6-3c85bac1ef47">
+						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
+						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
+					</reportElement>
+					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
+						<datasetRun subDataset="Dataset2" uuid="bc1d9936-a428-47c3-af03-8964e4cc85eb">
+							<datasetParameter name="reunion">
+								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="com">
+								<datasetParameterExpression><![CDATA[$F{com_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="dac_id">
+								<datasetParameterExpression><![CDATA[$P{dac_id}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="dac_ver">
+								<datasetParameterExpression><![CDATA[$P{dac_ver}]]></datasetParameterExpression>
+							</datasetParameter>
+							<datasetParameter name="code">
+								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
+							</datasetParameter>
+						</datasetRun>
+						<jr:listContents height="80" width="556">
+							<textField>
+								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="556" height="30" uuid="d51ea662-d0ae-4f28-9de2-99bf2f174bf5">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[!$P{code}.equals("CNCMP-S")]]></printWhenExpression>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement x="30" y="45" width="526" height="35" uuid="fdf6df6d-2c20-4e3b-9c6a-f1112c93f9fd">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
+							</textField>
+							<textField isBlankWhenNull="true">
+								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="a4e9b4dc-4c98-4c21-8a2b-1121bddd5610">
+									<property name="com.jaspersoft.studio.unit.height" value="px"/>
+									<printWhenExpression><![CDATA[$P{code}.equals("CNCMP-S")]]></printWhenExpression>
+								</reportElement>
+								<textElement verticalAlignment="Middle">
+									<font fontName="Arial" isBold="true"/>
+								</textElement>
+								<textFieldExpression><![CDATA[$F{decision}]]></textFieldExpression>
 							</textField>
 						</jr:listContents>
 					</jr:list>
