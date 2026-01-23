@@ -194,7 +194,7 @@ FROM com
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
-		<variableExpression><![CDATA[$F{code}.equals("CNCMP-P") ? "Le Comité Permanent de la "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ." :  "La "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ." ]]></variableExpression>
+		<variableExpression><![CDATA[ "Le Comité Permanent de la "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ."]]></variableExpression>
 	</variable>
 	<title>
 		<band height="152" splitType="Stretch">
