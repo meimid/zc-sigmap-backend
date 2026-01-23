@@ -94,14 +94,19 @@ public class ReunionSpecifications {
      * Filters for reunions that have a specific PPM associated with them.
      */
     public static Specification<Reunion> hasPpm(Integer ppmId, Integer ppmVer) {
-        return (root, query, criteriaBuilder) -> {
-            Join<Reunion, Ppm> ppmJoin = root.join("ppms");
-            return criteriaBuilder.and(
-                    criteriaBuilder.equal(ppmJoin.get("id").get("id"), ppmId),
-                    criteriaBuilder.equal(ppmJoin.get("id").get("version"), ppmVer)
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Reunion, ReunionPpm> rp =
+                    root.join("reunionPpms", JoinType.INNER);
+
+            return cb.and(
+                    cb.equal(rp.get("ppmId"), ppmId),
+                    cb.equal(rp.get("ppmVer"), ppmVer)
             );
         };
     }
+
 
     /**
      * Filters for reunions that have a specific DAC associated with them.
@@ -179,20 +184,6 @@ public class ReunionSpecifications {
             Predicate viaReunionPpm =
                     cb.equal(reunionPpmJoin.get("ppmId"), ppmId);
 
-            // Via ReunionDac -> Dac -> Ppm
-           /* Join<Reunion, ReunionDac> reunionDacJoin =
-                    root.join("reunionDacs", JoinType.LEFT);
-            Join<ReunionDac, Dac> dacJoin =
-                    reunionDacJoin.join("dac", JoinType.LEFT);
-            Join<Dac, AppelOffre> appelOffreJoin =
-                    dacJoin.join("appelOffre", JoinType.LEFT);
-            Join<AppelOffre, Ppm> ppmJoin =
-                    appelOffreJoin.join("ppm", JoinType.LEFT);*/
-
-            /*Predicate viaReunionDacPpm =
-                    cb.equal(ppmJoin.get("id"), ppmId);*/
-
-          //  return cb.or(viaReunionPpm, viaReunionDacPpm);
             return viaReunionPpm;
         };
     }
@@ -207,20 +198,6 @@ public class ReunionSpecifications {
             Predicate viaReunionPpm =
                     cb.equal(reunionPpmJoin.get("ppmVer"), ppmVer);
 
-            // Via ReunionDac -> Dac -> Ppm
-            /*Join<Reunion, ReunionDac> reunionDacJoin =
-                    root.join("reunionDacs", JoinType.LEFT);
-            Join<ReunionDac, Dac> dacJoin =
-                    reunionDacJoin.join("dac", JoinType.LEFT);
-            Join<Dac, AppelOffre> appelOffreJoin =
-                    dacJoin.join("appelOffre", JoinType.LEFT);
-            Join<AppelOffre, Ppm> ppmJoin =
-                    appelOffreJoin.join("ppm", JoinType.LEFT);
-
-            Predicate viaReunionDacPpm =
-                    cb.equal(ppmJoin.get("version"), ppmVer);*/
-
-            //return cb.or(viaReunionPpm, viaReunionDacPpm);
             return viaReunionPpm;
         };
     }
