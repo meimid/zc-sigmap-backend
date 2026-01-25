@@ -90,8 +90,8 @@ ON r.type_marcher_id = f.ref_param_id
 LEFT JOIN finacement fin
 ON r.realisation_id = fin.realisation_id
 AND r.realisation_ver = fin.realisation_ver
-LEFT JOIN ref_param rp
-ON fin.source_de_financement_id = rp.ref_param_id
+LEFT JOIN source_financement rp
+ON fin.source_de_financement_id = rp.source_financement_id
 LEFT JOIN lots_num ln
 ON ln.realisation_id = r.realisation_id
 AND ln.realisation_ver = r.realisation_ver
