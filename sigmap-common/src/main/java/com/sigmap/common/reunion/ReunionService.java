@@ -1,5 +1,6 @@
 package com.sigmap.common.reunion;
 
+import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.ReunionStatus;
@@ -60,8 +61,7 @@ public interface ReunionService {
     List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Specification<Reunion> specifications);
     ProcessVerbalReunionExtrait injectExtraitForDossier(Integer reunionId, ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
-
-
+    Optional<String> findEnterimParticipant(Integer reunionId);
 
 
 }

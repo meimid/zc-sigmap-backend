@@ -32,4 +32,5 @@ public interface ParticipantService {
     List<Participant> findByReunionId(Integer reunionId);
     List<Participant> synchronizeCommissionParticipants(Integer reunionId) throws ReunionNotFound, ComNotFound, MessagingException, IOException;
    List <Participant> createInvitedParticipant(Integer reunionId, ParticipantInvitedRequest request);
+
 }

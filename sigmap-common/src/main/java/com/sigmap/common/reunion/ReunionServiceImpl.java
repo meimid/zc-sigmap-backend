@@ -165,6 +165,7 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunion= findOne(specification)
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , id));
         reunion.setParticipants(  reunion.getParticipants().stream().filter(participant -> !participant.getIsDeleted()).collect(Collectors.toList()));
+        findEnterimParticipant(id);
        return reunion;
     }
 
@@ -565,6 +566,7 @@ public class ReunionServiceImpl implements ReunionService{
                 if (participantToUpdate != null) {
                     if(reunion.getStatus().equals(ReunionStatus.EN_COURS)){
                     participantToUpdate.setPresent(participantRequest.isPresent());
+                    participantToUpdate.setFonctionReunion(participantRequest.getFonctionReunion());
 
                     }else{
                         participantToUpdate.setPresent(false);
@@ -1515,6 +1517,26 @@ public class ReunionServiceImpl implements ReunionService{
         return new PageImpl<>(pageContent, pageable, extrais.size());
     }
 
+    @Override
+    public Optional<String> findEnterimParticipant(Integer reunionId) {
+       Reunion reunion=repository.findByIdWithParticipantsFetched(reunionId).orElseThrow(() -> new ReunionNotFound("", reunionId));;
+        Optional<String> result = reunion.getParticipants()
+                .stream()
+                .filter(p ->
+                        p.getType() != ParticipantType.RESPONSABLE &&
+                                p.getFonctionReunion() == ParticipantFonction.PRESIDENT
+                )
+                .map(p -> p.getNom() + " " + p.getPrenom())
+                .findFirst();
+
+        if (result.isPresent()) {
+            log.info("Interim president found for reunionId={} interim name {}", reunionId,result.get());
+        } else {
+            log.info("No interim president found for reunionId={}", reunionId);
+        }
+
+        return result;
+    }
 
 
 }

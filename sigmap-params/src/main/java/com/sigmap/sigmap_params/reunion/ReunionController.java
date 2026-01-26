@@ -314,7 +314,7 @@ public class ReunionController {
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-SPE-RAPPORTEUR','CPMP-RAPPORTEUR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','CPMP-PER-RAPPORTEUR','CPMP-RAPPORTEUR')")
     @GetMapping("/{reunionId}/extraits")
     public ResponseEntity<Page<ProcessVerbalReunionExtraitRespons>> getExtraitsByReunion(
             @PathVariable Integer reunionId,
