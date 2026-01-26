@@ -78,6 +78,7 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="SUBREPORT_DIR2" class="java.io.InputStream"/>
 	<parameter name="SUBREPORT_DIR3" class="java.io.InputStream"/>
 	<parameter name="acId" class="java.lang.Integer"/>
+	<parameter name="interim" class="java.lang.String"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
 reunion.reunion_num_com,
@@ -190,7 +191,8 @@ FROM com
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
-		<variableExpression><![CDATA["La " +$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ."]]></variableExpression>
+		<variableExpression><![CDATA["La " +$F{nom}+" s'est réuni sur convocation de son président "+ ($P{interim} != null ? ", par intérim, M. " + $P{interim} : ", M. " + $P{president}) + 
+" ."]]></variableExpression>
 	</variable>
 	<title>
 		<band height="153" splitType="Stretch">
