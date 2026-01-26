@@ -49,6 +49,8 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
+        // à modifier
+        String interim =null;
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -75,6 +77,7 @@ public class PvJasperReunionService {
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("interim", interim);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR3", sub3Stream);
@@ -108,6 +111,9 @@ public class PvJasperReunionService {
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 
+        // à modifier
+        String interim =null;
+
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
 
@@ -134,6 +140,7 @@ public class PvJasperReunionService {
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("interim", interim);
             parameters.put("pathImgDraft", logoStream2);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
@@ -168,6 +175,8 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
+        // à modifier
+        String interim =null;
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -191,6 +200,7 @@ public class PvJasperReunionService {
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("interim", interim);
             parameters.put("acId", acId);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
@@ -224,6 +234,8 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
+        // à modifier
+        String interim =null;
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -247,6 +259,7 @@ public class PvJasperReunionService {
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("interim", interim);
             parameters.put("acId", acId);
             parameters.put("ppm_id", ppmId);
             parameters.put("ppm_ver", ppmVer);
@@ -284,6 +297,8 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
+        // à modifier
+        String interim =null;
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -307,6 +322,7 @@ public class PvJasperReunionService {
             parameters.put("reunion", reunionId);
             parameters.put("president", fullNamePres);
             parameters.put("pathImg", logoStream);
+            parameters.put("interim", interim);
             parameters.put("acId", acId);
             parameters.put("SUBREPORT_DIR1", sub1Stream);
             parameters.put("SUBREPORT_DIR2", sub2Stream);
