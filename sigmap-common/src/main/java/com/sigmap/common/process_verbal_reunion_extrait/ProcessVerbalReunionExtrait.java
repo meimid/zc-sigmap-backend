@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
@@ -44,4 +45,8 @@ public class ProcessVerbalReunionExtrait {
     @OneToOne
     @JoinColumn(name = "doc_id")
     private Docs doc;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "extrait_type")
+    private ExtraitType extraitType;
+
 }

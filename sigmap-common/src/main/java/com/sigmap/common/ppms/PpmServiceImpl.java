@@ -350,9 +350,9 @@ public class PpmServiceImpl implements PpmService {
             log.warn("PV Permanente = {}", pvResponse.getPvCNCMPPermanente());
             log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
 
-            ppm.setPvCpmp(pvResponse.getPvCPMP());
-            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente());
-            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise());
+            ppm.setPvCpmp(pvResponse.getPvCPMP().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         }
     }
 
