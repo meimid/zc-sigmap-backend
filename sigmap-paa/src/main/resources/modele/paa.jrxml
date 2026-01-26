@@ -43,8 +43,8 @@ FROM  realisation r INNER JOIN  paa_realisation p ON
 	  LEFT JOIN finacement fin
 	ON r.realisation_id = fin.realisation_id
 	AND r.realisation_ver = fin.realisation_ver
-	LEFT JOIN ref_param rp
-	ON fin.source_de_financement_id = rp.ref_param_id
+	LEFT JOIN source_financement rp
+	ON fin.source_de_financement_id = rp.source_financement_id
     LEFT JOIN lots_realisation l
         ON r.realisation_id = l.realisation_id
         AND r.realisation_ver = l.realisation_ver
