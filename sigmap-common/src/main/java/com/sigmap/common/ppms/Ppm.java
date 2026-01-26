@@ -140,7 +140,10 @@ public class Ppm  extends BaseEntity implements DocumentHolder {
     private List<String> pvCncmpSpecialisee = new ArrayList<>();
 
     @Transient
-    private List<String> extraitPvs = new ArrayList<>();
+    private List<String> extraitCpmp = new ArrayList<>();
+
+    @Transient
+    private List<String> extraitCncmpPermanente = new ArrayList<>();
 
     @Column(name = "published_at")
     private Calendar publishedAt;

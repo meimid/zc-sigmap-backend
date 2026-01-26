@@ -14,5 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class ExtraitResponse {
     private List<String> extraitCPMP=new ArrayList<>();
+    private List<String> extraitCNCMPP=new ArrayList<>();
 
 }

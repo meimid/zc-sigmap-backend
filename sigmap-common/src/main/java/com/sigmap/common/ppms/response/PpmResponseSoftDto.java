@@ -6,6 +6,7 @@ import com.sigmap.common.ref_params.response.RefParamResponseDto;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -26,5 +27,6 @@ public class PpmResponseSoftDto {
     private List<String> pvCpmp;
     private List<String> pvCncmpPermanente;
     private List<String> pvCncmpSpecialisee;
-    private List<String> extraitPvs;
+    private List<String> extraitCncmpPermanente;
+    private List<String> extraitCpmp;
 }
