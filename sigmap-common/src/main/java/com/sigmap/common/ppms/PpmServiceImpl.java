@@ -22,6 +22,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.entity.CompositeId;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
 import com.sigmap.common.financement.FinancementId;
@@ -329,30 +330,31 @@ public class PpmServiceImpl implements PpmService {
 
         if (acIds != null && !acIds.isEmpty()) {
 
-            Integer acId = acIds.get(0);
+            Set<String> cpmp = new LinkedHashSet<>();
+            Set<String> cncmpp = new LinkedHashSet<>();
 
-            log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
+            for (Integer acId : acIds) {
+                if (acId == null) continue;
+
+                log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
 
             ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
 
-            log.warn("Extraits returned = {}", extrait.getExtraitCPMP());
+                if (extrait.getExtraitCPMP() != null) cpmp.addAll(extrait.getExtraitCPMP());
+                if (extrait.getExtraitCNCMPP() != null) cncmpp.addAll(extrait.getExtraitCNCMPP());
+            }
 
-            ppm.setExtraitPvs(extrait.getExtraitCPMP());
+            ppm.setExtraitCpmp(new ArrayList<>(cpmp));
+            ppm.setExtraitCncmpPermanente(new ArrayList<>(cncmpp));
+
         }
 
         if (comIds != null && !comIds.isEmpty()) {
-
-            log.warn("Fetching PVs for comIds {}, ppm {}, ver {}", comIds, ppm.getId(), ppm.getVersion());
-
             PvResponse pvResponse = listPvComByPpm(comIds, ppm.getId(), ppm.getVersion());
 
-            log.warn("PV CPMP = {}", pvResponse.getPvCPMP());
-            log.warn("PV Permanente = {}", pvResponse.getPvCNCMPPermanente());
-            log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
-
-            ppm.setPvCpmp(pvResponse.getPvCPMP().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCpmp(pvResponse.getPvCPMP().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
         }
     }
 
@@ -453,9 +455,12 @@ public class PpmServiceImpl implements PpmService {
         return dto;
     }
 
-    private ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
+    public ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
 
         ExtraitResponse dto = new ExtraitResponse();
+log.info("testtt entre");
+        Set<String> seenCpmp = new HashSet<>();
+        Set<String> seenPermanent = new HashSet<>();
 
         List<ProcessVerbalReunionExtrait> extraits = processVerbalReunionExtraitService
                 .findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
@@ -471,19 +476,25 @@ public class PpmServiceImpl implements PpmService {
 
             String typeCom = reunion.getCom().getComType().getCode();
 
-            if (!"CPMP".equals(typeCom))
-                continue;
+            if ("CPMP".equals(typeCom)){
 
-            String alfrescoId = ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
-
-            if (alfrescoId != null) {
-                dto.getExtraitCPMP().add(alfrescoId);
+                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+log.info("alfrescoIdEXTRAIT CPMP={}",alfrescoId );
+                if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
+                    dto.getExtraitCPMP().add(alfrescoId);
+                }
+            }
+            else if ("CNCMP-P".equals(typeCom)){
+                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                log.info("alfrescoIdEXTRAIT cncmp={}",alfrescoId );
+                if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
+                    dto.getExtraitCNCMPP().add(alfrescoId);
+                }
             }
         }
 
         return dto;
     }
-
     public Optional<Ppm> findLatestById(Integer ppmId)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -511,7 +522,8 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setModePassation(ppm.getModePassation());
         filteredPpm.setRemarque(ppm.getRemarque());
         filteredPpm.setModelAlfrescoId(ppm.getModelAlfrescoId());
-        filteredPpm.setExtraitPvs(ppm.getExtraitPvs());
+        filteredPpm.setExtraitCpmp(ppm.getExtraitCpmp());
+        filteredPpm.setExtraitCncmpPermanente(ppm.getExtraitCncmpPermanente());
         filteredPpm.setPvCncmpPermanente(ppm.getPvCncmpPermanente());
         filteredPpm.setPvCpmp(ppm.getPvCpmp());
         filteredPpm.setPvCncmpSpecialisee(ppm.getPvCncmpSpecialisee());
