@@ -352,9 +352,13 @@ public class PpmServiceImpl implements PpmService {
         if (comIds != null && !comIds.isEmpty()) {
             PvResponse pvResponse = listPvComByPpm(comIds, ppm.getId(), ppm.getVersion());
 
-            ppm.setPvCpmp(pvResponse.getPvCPMP().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()));
+            log.warn("PV CPMP = {}", pvResponse.getPvCPMP());
+            log.warn("PV Permanente = {}", pvResponse.getPvCNCMPPermanente());
+            log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
+
+            ppm.setPvCpmp(pvResponse.getPvCPMP().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         }
     }
 
@@ -458,7 +462,6 @@ public class PpmServiceImpl implements PpmService {
     public ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
 
         ExtraitResponse dto = new ExtraitResponse();
-log.info("testtt entre");
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
 
@@ -479,14 +482,12 @@ log.info("testtt entre");
             if ("CPMP".equals(typeCom)){
 
                 String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
-log.info("alfrescoIdEXTRAIT CPMP={}",alfrescoId );
                 if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
                     dto.getExtraitCPMP().add(alfrescoId);
                 }
             }
             else if ("CNCMP-P".equals(typeCom)){
                 String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
-                log.info("alfrescoIdEXTRAIT cncmp={}",alfrescoId );
                 if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
                     dto.getExtraitCNCMPP().add(alfrescoId);
                 }
