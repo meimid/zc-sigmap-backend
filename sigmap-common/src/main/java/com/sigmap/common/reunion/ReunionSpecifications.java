@@ -45,7 +45,7 @@ public class ReunionSpecifications {
                     criteriaBuilder.like(comJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(ppmJoin.get("ref"), "%" + search + "%"),
-                    criteriaBuilder.like(root.get("status"), "%" + search + "%"),
+                    criteriaBuilder.like(root.get("status").as(String.class), "%" + search + "%"),
                     criteriaBuilder.like(root.get("note"), "%" + search + "%"),
                     criteriaBuilder.like(root.get("com").get("nom"), "%" + search + "%"),
                     criteriaBuilder.like(criteriaBuilder.lower(formattedDate), "%" + search + "%"),
