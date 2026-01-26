@@ -68,6 +68,7 @@ SELECT p.ppm_id,
   r.date_prev_dp,
   r.date_prev_ap,
    GROUP_CONCAT(DISTINCT COALESCE(LTRIM(rp.description), '') SEPARATOR ' - ') AS sources_financement,
+    max(rp.bailleur_de_fonds) as bailleur_de_fonds,
    MAX(CASE WHEN fin.examen_prealable = 1 THEN 'A priori' ELSE 'A postériori' END) AS examen_prealable,
   m.libelle,
  f.description,
@@ -175,6 +176,10 @@ p.ppm_id =  $P{ppm_id}
 			<property name="com.jaspersoft.studio.field.name" value="sources_financement"/>
 			<property name="com.jaspersoft.studio.field.label" value="sources_financement"/>
 		</field>
+		<field name="bailleur_de_fonds" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="bailleur_de_fonds"/>
+			<property name="com.jaspersoft.studio.field.label" value="bailleur_de_fonds"/>
+		</field>
 		<field name="examen_prealable" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="examen_prealable"/>
 			<property name="com.jaspersoft.studio.field.label" value="examen_prealable"/>
@@ -212,6 +217,7 @@ p.ppm_id =  $P{ppm_id}
 	<queryString>
 		<![CDATA[SELECT d.adresse,
 	 a.nom,
+	 p.annee,
 	 p.ac_id,
 	 p.ppm_ver,
 	 p.ppm_id,
@@ -234,6 +240,11 @@ FROM  ppm p
 		<property name="com.jaspersoft.studio.field.name" value="nom"/>
 		<property name="com.jaspersoft.studio.field.label" value="nom"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
+	</field>
+	<field name="annee" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="annee"/>
+		<property name="com.jaspersoft.studio.field.label" value="annee"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 	</field>
 	<field name="ac_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="ac_id"/>
@@ -269,13 +280,13 @@ FROM  ppm p
 				</textElement>
 				<text><![CDATA[REPUBLIQUE ISLAMIQUE DE MAURITANIE]]></text>
 			</staticText>
-			<staticText>
-				<reportElement style="ArialBold" x="181" y="52" width="430" height="30" uuid="b2b32d6a-e15a-4a73-af31-f5944a17a06f"/>
+			<textField>
+				<reportElement style="ArialBold" x="181" y="52" width="430" height="30" uuid="06c1e624-c907-43f2-bd05-9d93ed031646"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="13" isBold="true"/>
 				</textElement>
-				<text><![CDATA[PLAN DE PASSATION DES MARCHES]]></text>
-			</staticText>
+				<textFieldExpression><![CDATA["PLAN DE PASSATION DES MARCHES "+$F{annee}]]></textFieldExpression>
+			</textField>
 			<textField>
 				<reportElement stretchType="RelativeToTallestObject" x="80" y="26" width="620" height="30" uuid="fb58505e-4a80-4fcd-ace8-ff634385e61b"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
@@ -467,7 +478,7 @@ FROM  ppm p
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$F{examen_prealable}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[($F{bailleur_de_fonds} == 1) ? $F{examen_prealable} : ""]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
