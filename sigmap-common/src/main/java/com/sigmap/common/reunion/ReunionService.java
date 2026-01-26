@@ -61,7 +61,7 @@ public interface ReunionService {
     List<Reunion> findAllByPpmIdAndOptionalComId(Integer ppmId, Integer comId, Specification<Reunion> specifications);
     ProcessVerbalReunionExtrait injectExtraitForDossier(Integer reunionId, ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
-    Optional<String> findEnterimParticipant(Integer reunionId);
+    Optional<String> findInterimParticipant(Integer reunionId);
 
 
 }

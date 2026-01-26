@@ -5,6 +5,8 @@ import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
+import com.sigmap.common.reunion.ReunionService;
+import com.sigmap.common.reunion.ReunionServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.*;
@@ -21,6 +23,7 @@ import java.sql.SQLException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
@@ -36,6 +39,8 @@ public class PvJasperReunionService {
     private ReunionRepository reunionRepository;
     @Autowired
     private KeycloakAdminService keycloakAdminService;
+    @Autowired
+    ReunionService reunionService;
     public byte[] generateProcesVerbalReunion(Integer reunionId) throws Exception {
         // Validation initiale
         if (reunionId == null) {
@@ -49,8 +54,11 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
-        // à modifier
-        String interim =null;
+        Optional<String> optionalInterim=reunionService.findInterimParticipant(reunionId);
+
+        String interim;
+
+        interim = optionalInterim.orElse(null);
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -111,8 +119,10 @@ public class PvJasperReunionService {
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
 
-        // à modifier
-        String interim =null;
+        String interim;
+        Optional<String> optionalInterim=reunionService.findInterimParticipant(reunionId);
+
+        interim = optionalInterim.orElse(null);
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -175,8 +185,11 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
-        // à modifier
-        String interim =null;
+        Optional<String> optionalInterim=reunionService.findInterimParticipant(reunionId);
+
+        String interim;
+
+        interim = optionalInterim.orElse(null);
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -234,8 +247,11 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
-        // à modifier
-        String interim =null;
+        Optional<String> optionalInterim=reunionService.findInterimParticipant(reunionId);
+
+        String interim;
+
+        interim = optionalInterim.orElse(null);
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();
@@ -297,8 +313,11 @@ public class PvJasperReunionService {
         String idPresedent = reunion.getParticipants().stream().filter(p -> p.getFonctionReunion().equals(ParticipantFonction.PRESIDENT)).findFirst().get().getUserId();
         String fullNamePres = keycloakAdminService.getUserById(idPresedent).getFirstName()
                 + " " + keycloakAdminService.getUserById(idPresedent).getLastName();
-        // à modifier
-        String interim =null;
+        Optional<String> optionalInterim=reunionService.findInterimParticipant(reunionId);
+
+        String interim;
+
+        interim = optionalInterim.orElse(null);
 
         // Map des paramètres
         Map<String, Object> parameters = new HashMap<>();

@@ -165,7 +165,6 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunion= findOne(specification)
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , id));
         reunion.setParticipants(  reunion.getParticipants().stream().filter(participant -> !participant.getIsDeleted()).collect(Collectors.toList()));
-        findEnterimParticipant(id);
        return reunion;
     }
 
@@ -1518,7 +1517,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
-    public Optional<String> findEnterimParticipant(Integer reunionId) {
+    public Optional<String> findInterimParticipant(Integer reunionId) {
        Reunion reunion=repository.findByIdWithParticipantsFetched(reunionId).orElseThrow(() -> new ReunionNotFound("", reunionId));;
         Optional<String> result = reunion.getParticipants()
                 .stream()
