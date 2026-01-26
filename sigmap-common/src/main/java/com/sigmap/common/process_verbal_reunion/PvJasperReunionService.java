@@ -1,20 +1,16 @@
 package com.sigmap.common.process_verbal_reunion;
 
-import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionRepository;
 import com.sigmap.common.reunion.ReunionService;
-import com.sigmap.common.reunion.ReunionServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jasperreports.engine.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.net.URL;
