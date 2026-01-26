@@ -19,6 +19,7 @@ public class ComQuery {
   private String contact;
   private String adresse;
   private String responsableId;
+  private String tutelNom;
   private boolean deleted;
 
   /**
@@ -77,6 +78,9 @@ public class ComQuery {
     }
     if (adresse != null && !adresse.isBlank()) {
       spec = spec.and(ComSpecifications.adresse(adresse));
+    }
+    if (tutelNom != null && !tutelNom.isBlank()) {
+      spec = spec.and(ComSpecifications.tutelNom(tutelNom));
     }
     return spec;
   }

@@ -82,6 +82,7 @@ and fonction_reunion ='MEMBRE']]>
 	<parameter name="ppm_ver" class="java.lang.Integer"/>
 	<parameter name="dac_id" class="java.lang.Integer"/>
 	<parameter name="dac_ver" class="java.lang.Integer"/>
+	<parameter name="interim" class="java.lang.String"/>
 	<queryString>
 		<![CDATA[SELECT reunion.reunion_id, reunion.pv_id,
 reunion.reunion_num_com,
@@ -194,7 +195,9 @@ FROM com
 		<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 	</field>
 	<variable name="intro" class="java.lang.String">
-		<variableExpression><![CDATA[ "Le Comité Permanent de la "+$F{nom}+" s'est réuni sur convocation de son président M. "+$P{president}+" ."]]></variableExpression>
+		<variableExpression><![CDATA["Le Comité Permanent de la " + $F{nom} + " s'est réuni sur convocation de son président" + 
+($P{interim} != null ? ", par intérim, M. " + $P{interim} : ", M. " + $P{president}) + 
+" ."]]></variableExpression>
 	</variable>
 	<title>
 		<band height="152" splitType="Stretch">

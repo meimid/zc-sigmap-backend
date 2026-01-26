@@ -13,9 +13,9 @@ public class ComSpecifications {
   /** search. */
   public static Specification<Com> search(String search) {
     return (root, query, criteriaBuilder) -> {
-      Join<Com, RefParam> joinParams = root.join("comType");
-      Join<Com, Adresse> joinAdresses = root.join("theAdresse");
-
+      Join<Com, RefParam> joinParams = root.join("comType", JoinType.LEFT);
+      Join<Com, Adresse> joinAdresses = root.join("theAdresse", JoinType.LEFT);
+      Join<Com, Ac> joinTutel = root.join("tutel", JoinType.LEFT);
 
       return criteriaBuilder.or(
           criteriaBuilder.like(root.get("nom"), "%" + search + "%"),
@@ -28,14 +28,14 @@ public class ComSpecifications {
           criteriaBuilder.like(root.get("adresse"), "%" + search + "%"),
           criteriaBuilder.like(joinParams.get("description"), "%" + search + "%"),
           criteriaBuilder.like(joinParams.get("codeColor"), "%" + search + "%"),
-          criteriaBuilder.like(joinParams.get("codeColor"), "%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("tel1"), "%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("tel2"),"%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("fax"),"%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("adresse"),"%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("compAdresse"),"%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("ville"),"%" + search + "%"),
-              criteriaBuilder.like(joinAdresses.get("codePostal"),"%" + search + "%"));
+          criteriaBuilder.like(joinTutel.get("nom"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("tel1"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("tel2"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("fax"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("adresse"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("compAdresse"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("ville"), "%" + search + "%"),
+          criteriaBuilder.like(joinAdresses.get("codePostal"), "%" + search + "%"));
     };
   }
 
@@ -59,6 +59,15 @@ public class ComSpecifications {
       return criteriaBuilder.like(root.get("nom"), "%" + nom + "%");
     };
   }
+
+  /** tutelNom. */
+  public static Specification<Com> tutelNom(String tutelNom) {
+    return (root, query, criteriaBuilder) -> {
+      Join<Ac, Com> joinTutel = root.join("tutel", JoinType.LEFT);
+      return criteriaBuilder.like(joinTutel.get("nom"), "%" + tutelNom + "%");
+    };
+  }
+
   /** nom.Ar */
   public static Specification<Com> nomAr(String nomAr) {
 
