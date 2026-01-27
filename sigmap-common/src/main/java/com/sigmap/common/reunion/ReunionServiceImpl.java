@@ -955,6 +955,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
     @Override
+    @Transactional
     public Reunion validateReunion(Integer id, ReunionRequest request) throws ReunionNotFound, PpmNotFound, AcNotFound, IOException, DocNotFound {
 
         boolean check=checkParticipantPresence(request.getParticipants());
@@ -975,139 +976,235 @@ public class ReunionServiceImpl implements ReunionService{
             }
             else {
                 ProcessVerbalReunionRequest processVerbalReunionRequest = new ProcessVerbalReunionRequest();
-                ProcessVerbalReunion processVerbalReunion =processVerbalReunionService.create(processVerbalReunionRequest);
+                ProcessVerbalReunion processVerbalReunion = processVerbalReunionService.create(processVerbalReunionRequest);
                 reunionToUpdate.setProcessVerbal(processVerbalReunion);
+                Integer pvId = reunionToUpdate.getProcessVerbal().getId();
 
-
-                // create extrait
-
-                //  COM type must be CPMP
-                /*if ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())) {
-                    List<Ppm> eligiblePpms=new ArrayList<>();
-                    List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
-                            .filter(rd -> rd.getDac() != null)
-                            .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
-                            .filter(rd -> rd.getDac().getPpm() != null)
-                            .filter(rd -> rd.getDac().getPpm().getAc() != null).map(rd->rd.getDac().getPpm()).distinct()
-                            .collect(Collectors.toList());
-                    List<Ppm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
-                            .filter(rp -> rp.getPpm() != null)
-                            .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
-                            .filter(rp -> rp.getPpm().getAc() != null).map(rp->rp.getPpm()).distinct()
-                            .collect(Collectors.toList());
-                    eligiblePpms.addAll(eligibleReunionPpms);
-                    eligiblePpms.addAll(eligibleReunionDacs);
-                    eligiblePpms.stream().distinct().collect(Collectors.toList());
-
-                    for (Ppm ppm : eligiblePpms) {
-                        if (ppm.getAc() == null) {
-                            throw new ReunionPpmNoAcException("", id, ppm.getId());
-                        }
-                        Integer acId = ppm.getAc().getId();
-                        ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
-                        req.setPvId(processVerbalReunion.getId());
-                        req.setAcId(acId);
-                        req.setPpmId(ppm.getId());
-                        req.setPpmVer(ppm.getVersion());
-                        req.setFile(null);
-                         processVerbalReunionExtraitService.create(req);
-                    }
-
-                }*/
-
-
-                //  COM type must be CPMP
-                if (reunionToUpdate.getCom() != null
+                //  COM type must be CPMP or CNCMP-P
+                /*if (reunionToUpdate.getCom() != null
                         && reunionToUpdate.getCom().getComType() != null
                         && ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())
                         ||"CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())))  {
 
-                    List<Ppm> eligiblePpms = new ArrayList<>();
+                    Set<Ppm> eligiblePpms = new HashSet<>();
+                    Set<Dac> eligibleDacs = new HashSet<>();
+                    Set <Ac> eligibleAcs = new HashSet<>();
 
-                    // 1) PPMs coming from ReunionDac -> Dac -> Ppm
-                    List<Ppm> eligibleReunionDacs = reunionToUpdate.getReunionDacs().stream()
-                            .filter(rd -> rd.getDac() != null)
-                            .filter(rd -> rd.getDecision() != null && !rd.getDecision().isBlank())
-                            .filter(rd -> rd.getDac().getAppelOffre().getPpm() != null)
-                            .filter(rd -> rd.getDac().getAppelOffre().getPpm().getAc() != null)
-                            .map(rd -> rd.getDac().getAppelOffre().getPpm())
-                            .toList();
+                    if("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())){
+                        if (reunionToUpdate.getReunionDacs() != null) {
+                            for (var rd : reunionToUpdate.getReunionDacs()) {
 
-                    // 2) PPMs coming from ReunionPpm
-                    List<Ppm> eligibleReunionPpms = reunionToUpdate.getReunionPpms().stream()
-                            .filter(rp -> rp.getPpm() != null)
-                            .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
-                            .filter(rp -> rp.getPpm().getAc() != null)
-                            .map(rp -> rp.getPpm())
-                            .toList();
+                                if (rd == null) continue;
+                                if (rd.getDecision() == null || rd.getDecision().isBlank()) continue;
 
-                    eligiblePpms.addAll(eligibleReunionPpms);
-                    eligiblePpms.addAll(eligibleReunionDacs);
+                                var dac = rd.getDac();
+                                if (dac == null) continue;
 
-                    eligiblePpms = eligiblePpms.stream()
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toMap(
-                                    Ppm::getId,
-                                    Function.identity(),
-                                    (existing, replacement) -> existing
-                            ))
-                            .values()
-                            .stream()
-                            .collect(Collectors.toList());
+                                var ao = dac.getAppelOffre();
+                                if (ao == null) continue;
 
+                                var ppm = ao.getPpm();
+                                if (ppm == null) continue;
 
-                    for (Ppm ppm : eligiblePpms) {
-                        if (ppm.getAc() == null) {
-                            throw new ReunionPpmNoAcException("", id, ppm.getId());
+                                var ac = ppm.getAc();
+                                if (ac == null) continue;
+
+                                eligibleAcs.add(ac);
+                            }
                         }
 
-                        Integer acId = ppm.getAc().getId();
+                        if (reunionToUpdate.getReunionPpms() != null) {
+                            for (var rp : reunionToUpdate.getReunionPpms()) {
 
-                        ProcessVerbalReunionExtraitRequest req = new ProcessVerbalReunionExtraitRequest();
-                        req.setPvId(processVerbalReunion.getId());
-                        req.setAcId(acId);
-                        req.setPpmId(ppm.getId());
-                        req.setPpmVer(ppm.getVersion());
-                        req.setFile(null);
-                        ExtraitType extraitType;
-                        if("CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode()))
-                        {
-                             extraitType=ExtraitType.PAR_DOSSIER;
+                                if (rp == null) continue;
+                                if (rp.getDecision() == null || rp.getDecision().isBlank()) continue;
 
+                                var ppm = rp.getPpm();
+                                if (ppm == null) continue;
+
+                                var ac = ppm.getAc();
+                                if (ac == null) continue;
+
+                                eligibleAcs.add(ac);
+                            }
                         }
-                        else{
-                             extraitType=ExtraitType.PAR_AC;
+                        for (Ac ac : eligibleAcs) {
+                            if (ac == null) continue;
+                            processVerbalReunionExtraitService.createParAc(pvId, ac.getId());
                         }
-                        processVerbalReunionExtraitService.create(processVerbalReunion.getId(),acId,ppm.getId(),ppm.getVersion(),extraitType);
+
                     }
+                    else if ("CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())) {
+
+                        if (reunionToUpdate.getReunionDacs() != null) {
+                            for (var rd : reunionToUpdate.getReunionDacs()) {
+
+                                if (rd == null) continue;
+                                if (rd.getDecision() == null || rd.getDecision().isBlank()) continue;
+
+                                var dac = rd.getDac();
+                                if (dac == null) continue;
+
+                                eligibleDacs.add(dac);
+                            }
+                            for(Dac dac : eligibleDacs){
+                                if(dac.getAppelOffre().getPpm().getAc()==null){
+                                    throw new ReunionPpmNoAcException("", id, dac.getAppelOffre().getPpm().getId());
+
+                                }
+                                Integer acId = dac.getAppelOffre().getPpm().getAc().getId();
+                                processVerbalReunionExtraitService.createParDossierWithDac(pvId,acId,dac.getDacId(),dac.getDacVer());
+                            }
+                        }
+
+                        if (reunionToUpdate.getReunionPpms() != null) {
+                            for (var rp : reunionToUpdate.getReunionPpms()) {
+
+                                if (rp == null) continue;
+                                if (rp.getDecision() == null || rp.getDecision().isBlank()) continue;
+
+                                var ppm = rp.getPpm();
+                                if (ppm == null) continue;
+
+                                eligiblePpms.add(ppm);
+                            }
+                            for (Ppm ppm : eligiblePpms) {
+                                if (ppm.getAc() == null) {
+                                    throw new ReunionPpmNoAcException("", id, ppm.getId());
+                                }
+                                Integer acId = ppm.getAc().getId();
+                                processVerbalReunionExtraitService.createParDossierWithPpm( pvId, acId,  ppm.getId(),  ppm.getVersion());
+                            }
+                        }
+
+                    }
+
+
+                }*/
+
+                if (reunionToUpdate.getCom() != null
+                        && reunionToUpdate.getCom().getComType() != null
+                        && ("CPMP".equals(reunionToUpdate.getCom().getComType().getCode())
+                        || "CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode()))) {
+
+                    var code = reunionToUpdate.getCom().getComType().getCode();
+                    // ================= CPMP =================
+                    if ("CPMP".equals(code)) {
+
+                        Set<Ac> eligibleAcs = new HashSet<>();
+
+                        if (reunionToUpdate.getReunionDacs() != null) {
+                            for (var rd : reunionToUpdate.getReunionDacs()) {
+
+                                if (rd == null) continue;
+                                if (rd.getDecision() == null || rd.getDecision().isBlank()) continue;
+
+                                var dac = rd.getDac();
+                                if (dac == null) continue;
+
+                                var ao = dac.getAppelOffre();
+                                if (ao == null) continue;
+
+                                var ppm = ao.getPpm();
+                                if (ppm == null) continue;
+
+                                var ac = ppm.getAc();
+                                if (ac != null) eligibleAcs.add(ac);
+                            }
+                        }
+
+                        if (reunionToUpdate.getReunionPpms() != null) {
+                            for (var rp : reunionToUpdate.getReunionPpms()) {
+
+                                if (rp == null) continue;
+                                if (rp.getDecision() == null || rp.getDecision().isBlank()) continue;
+
+                                var ppm = rp.getPpm();
+                                if (ppm == null) continue;
+
+                                var ac = ppm.getAc();
+                                if (ac != null) eligibleAcs.add(ac);
+                            }
+                        }
+
+                        for (Ac ac : eligibleAcs) {
+                            processVerbalReunionExtraitService.createParAc(pvId, ac.getId());
+                        }
+                    }
+
+
+                // ================= CNCMP-P =================
+                    if ("CNCMP-P".equals(code)) {
+
+                        if (reunionToUpdate.getReunionDacs() != null) {
+                            for (var rd : reunionToUpdate.getReunionDacs()) {
+
+                                if (rd == null) continue;
+                                if (rd.getDecision() == null || rd.getDecision().isBlank()) continue;
+
+                                var dac = rd.getDac();
+                                if (dac == null) continue;
+
+                                var ao = dac.getAppelOffre();
+                                if (ao == null || ao.getPpm() == null || ao.getPpm().getAc() == null) {
+                                    throw new ReunionPpmNoAcException("", id, null);
+                                }
+
+                                var acId = ao.getPpm().getAc().getId();
+
+                                processVerbalReunionExtraitService
+                                        .createParDossierWithDac(pvId, acId, dac.getDacId(), dac.getDacVer());
+                            }
+                        }
+
+                        if (reunionToUpdate.getReunionPpms() != null) {
+                            for (var rp : reunionToUpdate.getReunionPpms()) {
+
+                                if (rp == null) continue;
+                                if (rp.getDecision() == null || rp.getDecision().isBlank()) continue;
+
+                                var ppm = rp.getPpm();
+                                if (ppm == null || ppm.getAc() == null) {
+                                    throw new ReunionPpmNoAcException("", id, null);
+                                }
+
+                                processVerbalReunionExtraitService.createParDossierWithPpm(
+                                        pvId,
+                                        ppm.getAc().getId(),
+                                        ppm.getId(),
+                                        ppm.getVersion()
+                                );
+                            }
+                        }
+                    }
+
+
                 }
+                if (reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)) {
+                    updateParticipantsFonction(request, reunionToUpdate);
+                }
+                reunionToUpdate.setNote(request.getNote());
 
+                int year = reunionToUpdate.getReunionDate().get(Calendar.YEAR);
+                reunionToUpdate.setYear(year);
+
+                Integer max = repository.findMaxForComAndYear(
+                        reunionToUpdate.getCom().getId(),
+                        year
+                );
+
+                int next = (max == null ? 1 : max + 1);
+
+                reunionToUpdate.setReunionNumCom(next);
+
+                return save(reunionToUpdate);
 
             }
-            if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
-                updateParticipantsFonction(request, reunionToUpdate);
-            }
-            reunionToUpdate.setNote(request.getNote());
-
-            int year = reunionToUpdate.getReunionDate().get(Calendar.YEAR);
-            reunionToUpdate.setYear(year);
-
-            Integer max = repository.findMaxForComAndYear(
-                    reunionToUpdate.getCom().getId(),
-                    year
-            );
-
-            int next = (max == null ? 1 : max + 1);
-
-            reunionToUpdate.setReunionNumCom(next);
-
-            return save(reunionToUpdate);
-
-
         }
         else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());
         }
+        return save(reunionToUpdate);
     }
 
     @Override
@@ -1362,7 +1459,7 @@ public class ReunionServiceImpl implements ReunionService{
     }
 
 
-
+@Override
     public ProcessVerbalReunionExtrait injectExtraitForDossier(
             Integer reunionId,
             ProcessVerbalReunionExtraitRequest extraitRequest
@@ -1378,91 +1475,51 @@ public class ReunionServiceImpl implements ReunionService{
             throw new ExtraitFileRequiredException("", reunionId);
         }
 
-       //  COM type must be CPMP && CNCMP-P
-       if (reunion.getCom() == null || reunion.getCom().getComType() == null
-                || !"CPMP".equals(reunion.getCom().getComType().getCode())
-               &&!"CNCMP-P".equals(reunion.getCom().getComType().getCode())) {
-
-            String typeCode = (reunion.getCom() != null && reunion.getCom().getComType() != null)
-                    ? reunion.getCom().getComType().getCode()
-                    : null;
-
-            throw new ReunionComTypeInvalidException("", reunionId, typeCode);
+        if (reunion.getCom() == null || reunion.getCom().getComType() == null) {
+            throw new ReunionComTypeInvalidException("", reunionId, null);
         }
 
-        //  Reunion must have a PV with docs
-     /*   if (reunion.getProcessVerbal() == null
-                || reunion.getProcessVerbal().getDocuments() == null
-                || reunion.getProcessVerbal().getDocuments().isEmpty()) {
-            throw new ReunionPvMissingException("", reunionId);
-        }*/
+        String code = reunion.getCom().getComType().getCode();
+
+        if (!"CPMP".equals(code) && !"CNCMP-P".equals(code)) {
+            throw new ReunionComTypeInvalidException("", reunionId, code);
+        }
 
         Integer pvId = reunion.getProcessVerbal().getId();
 
-
-
-        //  Build ACs that SHOULD have an extrait in this reunion (all PPMs with decision)
-        Set<Integer> acIdsFromPpmsWithDecision = reunion.getReunionPpms().stream()
-                .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
-                .map(ReunionPpm::getPpm)
-                .filter(Objects::nonNull)
-                .map(Ppm::getAc)
-                .filter(Objects::nonNull)
-                .map(Ac::getId)
-                .collect(Collectors.toSet());
-
-        //  Build ACs that SHOULD have an extrait in this reunion (all Dacs with decision)
-        Set<Integer> acIdsFromDacsWithDecision = reunion.getReunionDacs().stream()
-                .filter(rp -> rp.getDecision() != null && !rp.getDecision().isBlank())
-                .map(ReunionDac::getDac)
-                .filter(Objects::nonNull)
-                .map(Dac::getAppelOffre).map(AppelOffre::getPpm).map(Ppm::getAc)
-                .filter(Objects::nonNull)
-                .map(Ac::getId)
-                .collect(Collectors.toSet());
-
-        Set<Integer> eligibleAcIds = new HashSet<>();
-        eligibleAcIds.addAll(acIdsFromPpmsWithDecision);
-        eligibleAcIds.addAll(acIdsFromDacsWithDecision);
-
-
-
-        if (!eligibleAcIds.contains(extraitRequest.getAcId())) {
-            throw new ReunionAcNotEligibleForExtraitException("", reunionId, extraitRequest.getAcId());
-        }
-
-        //  ACs that already have a COMPLETE extrait for this PV (doc != null)
         List<ProcessVerbalReunionExtrait> extraits =
                 processVerbalReunionExtraitService.findAllByPvId(pvId);
 
-        Set<Integer> acIdsWithCompletedExtrait = extraits.stream()
-                .filter(e -> e.getDoc() != null)
-                .map(ProcessVerbalReunionExtrait::getAcId)
-                .collect(Collectors.toSet());
+        // must exist and must be not have a doc
+        ProcessVerbalReunionExtrait target = extraits.stream()
+                .filter(e ->
+                        Objects.equals(e.getExtraitId(), extraitRequest.getExtraitId())
+                                && Objects.equals(e.getAcId(), extraitRequest.getAcId())
+                                && e.getDoc() == null
+                )
+                .findFirst()
+                .orElseThrow(() ->
+                        new ReunionAcNotEligibleForExtraitException(
+                                "",
+                                reunionId,
+                                extraitRequest.getAcId()
+                        )
+                );
 
-       /* if (acIdsWithCompletedExtrait.contains(extraitRequest.getAcId())) {
-            throw new ReunionExtraitAlreadyExistsException(
-                    "A completed extrait already exists for this PV and AC",
-                    pvId,
-                    extraitRequest.getAcId()
-            );
-        }*/
 
-        //  Create the extrait
 
-        ProcessVerbalReunionExtrait created = processVerbalReunionExtraitService.update(extraitRequest);
+        // 🔒 strict type protection
+        if ("CPMP".equals(code) && target.getExtraitType() != ExtraitType.PAR_AC) {
+            throw new IllegalStateException("Invalid extrait type for CPMP reunion");
+        }
 
-        //  Recompute completed ACs including this one
-        acIdsWithCompletedExtrait = new HashSet<>(acIdsWithCompletedExtrait);
-        acIdsWithCompletedExtrait.add(extraitRequest.getAcId());
+        if ("CNCMP-P".equals(code) && target.getExtraitType() != ExtraitType.PAR_DOSSIER) {
+            throw new IllegalStateException("Invalid extrait type for CNCMP-P reunion");
+        }
 
-      /*  if (acIdsWithCompletedExtrait.containsAll(acIdsFromPpmsWithDecision)
-                && reunion.getProcessVerbal().getDocuments().stream().anyMatch(ProcessVerbalReunionDoc::isPv)) {
-            reunion.setStatus(ReunionStatus.CLOTURER);
-            save(reunion);
-        }*/
-
-        boolean isValidee = reunion.getStatus() == ReunionStatus.VALIDER;
+        // attach doc
+        ProcessVerbalReunionExtrait updated =
+                processVerbalReunionExtraitService.update(extraitRequest);
 
         boolean hasPv =
                 reunion.getProcessVerbal() != null
@@ -1471,16 +1528,15 @@ public class ReunionServiceImpl implements ReunionService{
                         .stream()
                         .anyMatch(ProcessVerbalReunionDoc::isPv);
 
-        boolean allExtraitsHaveDoc =
-                extraits != null
-                        && extraits.stream().allMatch(ex -> ex.getDoc() != null);
+        boolean allCompleted  =processVerbalReunionExtraitService.findAllByPvId(pvId).stream()
+                .allMatch(ex -> ex.getDoc() != null);
 
-        if (isValidee && hasPv && allExtraitsHaveDoc) {
+        if (allCompleted  && hasPv) {
             reunion.setStatus(ReunionStatus.CLOTURER);
             save(reunion);
         }
 
-        return created;
+        return updated;
     }
 
 

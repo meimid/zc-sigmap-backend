@@ -8,16 +8,21 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ProcessVerbalReunionExtraitService {
     Page<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId, Pageable pageable);
     List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId);
-    public ProcessVerbalReunionExtrait create(Integer pvId,Integer acId, Integer ppmId,Integer ppmVer, ExtraitType extraitType) throws IOException;
-    ProcessVerbalReunionExtrait findByIds(ProcessVerbalReunionExtraitRequest request);
-    ProcessVerbalReunionExtrait update( ProcessVerbalReunionExtraitRequest request) throws IOException;
+    ProcessVerbalReunionExtrait createParAc(Integer pvId, Integer acId) ;
+    ProcessVerbalReunionExtrait createParDossierWithPpm(Integer pvId, Integer acId, Integer ppmId, Integer ppmVer);ProcessVerbalReunionExtrait createParDossierWithDac(Integer pvId, Integer acId, Integer dacId, Integer dacVer);
     List<Integer> findAcIdsWithExtraitByPvId(Integer pvId);
-    List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion);
+    ProcessVerbalReunionExtrait findByExtraitId(Integer extraitId);
+    ProcessVerbalReunionExtrait update( ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException;
 
-
+    List<ProcessVerbalReunionExtrait> findParDossierExtraitsByPpmAndAc(
+            Integer ppmId,
+            Integer ppmVer,
+            Integer acId
+    );
 
 }

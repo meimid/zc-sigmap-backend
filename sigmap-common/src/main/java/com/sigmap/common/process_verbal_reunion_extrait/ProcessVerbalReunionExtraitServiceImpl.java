@@ -3,19 +3,27 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 
 import com.sigmap.common.AlfrescoConf.DocumentCommuneService;
 import com.sigmap.common.config.Constants;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
-import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDac;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDacService;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 @Slf4j
 @Service
@@ -24,11 +32,15 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     private final ProcessVerbalReunionExtraitRepository repository;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final DocumentCommuneService documentCommuneService;
+    private final ProcessVerbalReunionExtraitPpmService extraitPpmService;      // service wrapper for ppm join operations
+    private final ProcessVerbalReunionExtraitDacService extraitDacService;
 
-    public ProcessVerbalReunionExtraitServiceImpl(ProcessVerbalReunionExtraitRepository repository, SequenceGeneratorService sequenceGeneratorService, DocumentCommuneService documentCommuneService) {
+    public ProcessVerbalReunionExtraitServiceImpl(ProcessVerbalReunionExtraitRepository repository, SequenceGeneratorService sequenceGeneratorService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionExtraitPpmService extraitPpmService, ProcessVerbalReunionExtraitDacService extraitDacService) {
         this.repository = repository;
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.documentCommuneService = documentCommuneService;
+        this.extraitPpmService = extraitPpmService;
+        this.extraitDacService = extraitDacService;
     }
 
     @Override
@@ -39,54 +51,117 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId) {
-
         return repository.findAllByPvId(pvId).stream()
                 .distinct()
                 .collect(Collectors.toList());
     }
 
     @Override
-   public ProcessVerbalReunionExtrait create(Integer pvId,Integer acId, Integer ppmId,Integer ppmVer, ExtraitType extraitType) throws IOException{
+    @Transactional
+    public ProcessVerbalReunionExtrait createParAc(Integer pvId, Integer acId) {
+        Optional<ProcessVerbalReunionExtrait> existing =
+                repository.findParAcByPvIdAndAcId(pvId, acId);
 
+        if (existing.isPresent()) {
+            throw new IllegalStateException(
+                    "PAR_AC extrait already exists for pv=" + pvId + " ac=" + acId
+            );
+        }
         ProcessVerbalReunionExtrait extrait = new ProcessVerbalReunionExtrait();
-
-        extrait.setExtraitId(sequenceGeneratorService
-                .getNextId("process_verbal_reunion_extrait_id_seq"));
-
+        extrait.setExtraitId(sequenceGeneratorService.getNextId("process_verbal_reunion_extrait_id_seq"));
         extrait.setPvId(pvId);
         extrait.setAcId(acId);
-        extrait.setPpm(new Ppm());
-        extrait.getPpm().setId(ppmId);
-        extrait.getPpm().setVersion(ppmVer);
-        extrait.setExtraitType(extraitType);
-
-       /*     Docs doc = documentCommuneService.processAndSaveDocumentsForPvExtrait(
-                    request.getFile(),
-                    request.getAcId(),
-                    null,
-                    Constants.PATH_ENTREPOT_GED_PV_EXTRAIT
-            );
-            extrait.setDoc(doc);*/
-
-
+        extrait.setExtraitType(ExtraitType.PAR_AC);
         return repository.save(extrait);
     }
+    @Override
+    @Transactional
+    public ProcessVerbalReunionExtrait createParDossierWithPpm(Integer pvId, Integer acId, Integer ppmId, Integer ppmVer) {
+        Optional<ProcessVerbalReunionExtraitPpm> optionalProcessVerbalReunionExtraitPpm=
+                extraitPpmService.findExisting(pvId, acId, ppmId, ppmVer);
+        if (optionalProcessVerbalReunionExtraitPpm.isPresent()) {
+            throw new IllegalStateException("Extrait already exists for this dossier");
+        }
+
+        // 1) create main extrait row
+        ProcessVerbalReunionExtrait extrait = new ProcessVerbalReunionExtrait();
+        extrait.setExtraitId(sequenceGeneratorService.getNextId("process_verbal_reunion_extrait_id_seq"));
+        extrait.setPvId(pvId);
+        extrait.setAcId(acId);
+        extrait.setExtraitType(ExtraitType.PAR_DOSSIER);
+        extrait = repository.save(extrait);
+
+        ProcessVerbalReunionExtraitPpm processVerbalReunionExtraitPpm = new ProcessVerbalReunionExtraitPpm();
+        processVerbalReunionExtraitPpm.setPpmId(ppmId);
+        processVerbalReunionExtraitPpm.setPvId(pvId);
+        processVerbalReunionExtraitPpm.setPpmVer(ppmVer);
+        processVerbalReunionExtraitPpm.setAcId(acId);
+        processVerbalReunionExtraitPpm.setExtraitId(extrait.getExtraitId());
+        processVerbalReunionExtraitPpm.setPpm(new Ppm());
+        processVerbalReunionExtraitPpm.getPpm().setId(ppmId);
+        processVerbalReunionExtraitPpm.getPpm().setVersion(ppmVer);
+        extraitPpmService.create(processVerbalReunionExtraitPpm);
+
+        return extrait;
+    }
 
     @Override
-    public ProcessVerbalReunionExtrait findByIds(ProcessVerbalReunionExtraitRequest request) {
-        return repository.findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer()).orElseThrow(()-> new ExtraitNotFound(""));
+    @Transactional
+    public ProcessVerbalReunionExtrait createParDossierWithDac(
+            Integer pvId,
+            Integer acId,
+            Integer dacId,
+            Integer dacVer
+    ) {
+        Optional<ProcessVerbalReunionExtraitDac> optionalProcessVerbalReunionExtraitDac=
+                extraitDacService.findExisting(pvId, acId, dacId, dacVer);
+        if (optionalProcessVerbalReunionExtraitDac.isPresent()) {
+            throw new IllegalStateException("Extrait already exists for this dossier");
+        }
+
+        // 1) create main extrait row
+        ProcessVerbalReunionExtrait extrait = new ProcessVerbalReunionExtrait();
+        extrait.setExtraitId(
+                sequenceGeneratorService.getNextId("process_verbal_reunion_extrait_id_seq")
+        );
+        extrait.setPvId(pvId);
+        extrait.setAcId(acId);
+        extrait.setExtraitType(ExtraitType.PAR_DOSSIER);
+
+        extrait = repository.save(extrait);
+
+        // 2) create join DAC row (same pattern as PPM)
+
+        ProcessVerbalReunionExtraitDac processVerbalReunionExtraitDac =
+                new ProcessVerbalReunionExtraitDac();
+
+        processVerbalReunionExtraitDac.setExtraitId(extrait.getExtraitId());
+        processVerbalReunionExtraitDac.setPvId(pvId);
+        processVerbalReunionExtraitDac.setAcId(acId);
+        processVerbalReunionExtraitDac.setDacId(dacId);
+        processVerbalReunionExtraitDac.setDacVer(dacVer);
+        processVerbalReunionExtraitDac.setDac(new Dac());
+        processVerbalReunionExtraitDac.getDac().setDacId(dacId);
+        processVerbalReunionExtraitDac.getDac().setDacVer(dacVer);
+
+        extraitDacService.create(processVerbalReunionExtraitDac);
+
+        return extrait;
     }
     @Override
-    public ProcessVerbalReunionExtrait update(ProcessVerbalReunionExtraitRequest request) throws IOException {
-        ProcessVerbalReunionExtrait extrait = repository
-                .findByIds( request.getPvId(), request.getAcId(),request.getPpmId(),request.getPpmVer())
-                .orElseThrow(() -> new ExtraitNotFound("Extrait not found"));
+    public ProcessVerbalReunionExtrait findByExtraitId(Integer extraitId) {
+        return repository.findByExtraitId(extraitId)
+                .orElseThrow(() -> new ExtraitNotFound("Extrait not found with id " + extraitId));
+    }
+    @Override
+    public ProcessVerbalReunionExtrait update( ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException {
 
-        if (request.getFile() != null && !request.getFile().isEmpty()) {
+        ProcessVerbalReunionExtrait extrait = findByExtraitId(extraitRequest.getExtraitId());
+        if (extraitRequest.getFile() != null && !extraitRequest.getFile().isEmpty()) {
             Docs doc = documentCommuneService.processAndSaveDocumentsForPvExtrait(
-                    request.getFile(),
-                    request.getAcId(),
-                    request.getPvId(),
+                    extraitRequest.getFile(),
+                    extrait.getAcId(),
+                    extrait.getPvId(),
                     Constants.PATH_ENTREPOT_GED_PV_EXTRAIT
             );
             extrait.setDoc(doc);
@@ -94,6 +169,7 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
         return repository.save(extrait);
     }
+
     @Override
     public List<Integer> findAcIdsWithExtraitByPvId(Integer pvId) {
         return repository.findAllByPvId(pvId).stream()
@@ -103,8 +179,22 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     }
 
     @Override
-    public List<ProcessVerbalReunionExtrait> findAllByAcIdAndPpmIdAndPpmVersion(Integer acId, Integer ppmId, Integer ppmVersion) {
-        return repository.findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+    @Transactional(readOnly = true)
+    public List<ProcessVerbalReunionExtrait> findParDossierExtraitsByPpmAndAc(
+            Integer ppmId,
+            Integer ppmVer,
+            Integer acId
+    ) {
+
+        if (ppmId == null || ppmVer == null || acId == null) {
+            throw new IllegalArgumentException("ppmId, ppmVer and acId must not be null");
+        }
+
+        return repository.findParDossierExtraitsByPpmAndAc(
+                ppmId,
+                ppmVer,
+                acId
+        );
     }
 
 }

@@ -6,10 +6,18 @@ import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDac;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
-@Data
+import java.util.ArrayList;
+import java.util.List;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "process_verbal_reunion_extrait")
 @IdClass(ExtraitId.class)
@@ -27,12 +35,7 @@ public class ProcessVerbalReunionExtrait {
     @Column(name = "ac_id")
     private Integer acId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumns({
-            @JoinColumn(name = "ppm_id", referencedColumnName = "ppm_id"),
-            @JoinColumn(name = "ppm_ver", referencedColumnName = "ppm_ver")
-    })
-    private Ppm ppm;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pv_id", insertable = false, updatable = false)
@@ -49,4 +52,9 @@ public class ProcessVerbalReunionExtrait {
     @Column(name = "extrait_type")
     private ExtraitType extraitType;
 
+    @OneToMany(mappedBy = "extrait", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<ProcessVerbalReunionExtraitPpm> extraitsPpm = new ArrayList<>();
+
+    @OneToMany(mappedBy = "extrait", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<ProcessVerbalReunionExtraitDac> extraitsDac = new ArrayList<>();
 }

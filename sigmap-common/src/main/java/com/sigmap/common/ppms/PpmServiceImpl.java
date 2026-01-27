@@ -46,6 +46,8 @@ import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
 import com.sigmap.common.realisations.Realisation;
@@ -126,6 +128,7 @@ public class PpmServiceImpl implements PpmService {
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final SeuilGeneralService seuilGeneralService;
     private final SourceFinancementService sourceFinancementService;
+    private final ProcessVerbalReunionExtraitPpmService processVerbalReunionExtraitPpmService;
 
     /**
      * Constructor.
@@ -140,17 +143,17 @@ public class PpmServiceImpl implements PpmService {
      * @param acService
      */
     public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService,
-            CurrentUserService currentUserService, AcRepository acRepository,
-            RealisationRepository realisationRepository, RefParamRepository refParamRepository,
-            DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
-            AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
-            AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
-            MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
-            ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
-            ComService comService, ReunionRepository reunionRepository,
-            ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
-            SeuilGeneralService seuilGeneralService,
-            SourceFinancementService sourceFinancementService) {
+                          CurrentUserService currentUserService, AcRepository acRepository,
+                          RealisationRepository realisationRepository, RefParamRepository refParamRepository,
+                          DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
+                          AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
+                          AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
+                          MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
+                          ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
+                          ComService comService, ReunionRepository reunionRepository,
+                          ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
+                          SeuilGeneralService seuilGeneralService,
+                          SourceFinancementService sourceFinancementService, ProcessVerbalReunionExtraitPpmService processVerbalReunionExtraitPpmService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -177,6 +180,7 @@ public class PpmServiceImpl implements PpmService {
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
 
+        this.processVerbalReunionExtraitPpmService = processVerbalReunionExtraitPpmService;
     }
 
     @Override
@@ -464,9 +468,8 @@ public class PpmServiceImpl implements PpmService {
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
-
         List<ProcessVerbalReunionExtrait> extraits = processVerbalReunionExtraitService
-                .findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+                .findParDossierExtraitsByPpmAndAc(acId, ppmId, ppmVersion);
 
         for (ProcessVerbalReunionExtrait ex : extraits) {
 
