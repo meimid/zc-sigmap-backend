@@ -4,7 +4,7 @@
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="324"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="671"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="47231b59-41d6-470f-b689-8e36900a955f">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
@@ -256,9 +256,9 @@ WHERE r.reunion_id =  $P{reunion}]]>
 	<group name="Group1">
 		<groupExpression><![CDATA[$F{ac_id}]]></groupExpression>
 		<groupHeader>
-			<band height="32">
+			<band height="20">
 				<textField>
-					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="30" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
+					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="20" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
 					<textElement verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true" isUnderline="true"/>
 					</textElement>
@@ -267,9 +267,9 @@ WHERE r.reunion_id =  $P{reunion}]]>
 			</band>
 		</groupHeader>
 		<groupFooter>
-			<band height="83">
+			<band height="90">
 				<componentElement>
-					<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="82" isRemoveLineWhenBlank="true" uuid="18765838-f9d0-4fc3-992b-f251b2a6347e">
+					<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="90" isRemoveLineWhenBlank="true" uuid="18765838-f9d0-4fc3-992b-f251b2a6347e">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
@@ -284,7 +284,7 @@ WHERE r.reunion_id =  $P{reunion}]]>
 								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
-						<jr:listContents height="82" width="550">
+						<jr:listContents height="90" width="550">
 							<textField>
 								<reportElement x="0" y="0" width="550" height="30" uuid="4bb3fffa-5587-45af-be8c-b3aad6dbd41e">
 									<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -304,11 +304,9 @@ WHERE r.reunion_id =  $P{reunion}]]>
 								</textElement>
 								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
 							</textField>
-							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="30" y="47" width="520" height="35" uuid="be077b31-b286-4396-a55e-0e7bb2e658a3">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
-								<textElement verticalAlignment="Middle">
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement positionType="Float" stretchType="RelativeToTallestObject" x="30" y="45" width="520" height="15" uuid="f7190b3a-f9ae-4f48-a38e-4d643b6d740f"/>
+								<textElement verticalAlignment="Top">
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>

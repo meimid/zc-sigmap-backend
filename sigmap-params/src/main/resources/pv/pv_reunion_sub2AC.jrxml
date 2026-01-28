@@ -2,7 +2,7 @@
 <!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="pv_reunion_sub2" pageWidth="595" pageHeight="842" whenNoDataType="NoPages" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" whenResourceMissingType="Empty" uuid="0db08183-006b-4511-b13c-9b071cb4da09">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 	<property name="net.sf.jasperreports.print.create.bookmarks" value="false"/>
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
@@ -33,7 +33,8 @@
     p.budget_estime, DATE_FORMAT(p.created_at, '%d/%m/%Y') as createddate,
     m.com_id,
     m.nom as comnom, 'PPM' as type,
-    p.actualise
+    p.actualise,
+    a.nom as acnom
 FROM reunion_ppm r
 INNER JOIN ppm p
        ON r.ppm_id = p.ppm_id
@@ -107,10 +108,15 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
 		</field>
-		<field name="actualise" class="java.lang.Boolean">
+		<field name="actualise" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="acnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 		</field>
 		<sortField name="com_id"/>
 		<group name="com_id">
@@ -370,14 +376,14 @@ AND (
 			</band>
 		</groupHeader>
 		<groupFooter>
-			<band height="80" splitType="Stretch">
+			<band height="90" splitType="Stretch">
 				<componentElement>
-					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="80" uuid="f91f723d-3dc1-4e91-be0f-7c687379da01">
+					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="90" uuid="31ff3f95-42f1-4c4c-845e-fb2798fece4d">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 						<printWhenExpression><![CDATA[$P{ppm_id} != null && $P{ppm_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset1" uuid="3792f9c0-8dd5-4d72-8474-76276556fde9">
+						<datasetRun subDataset="Dataset1" uuid="9ce82497-41ca-4417-b459-6f6f3da9ef1d">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
@@ -394,30 +400,24 @@ AND (
 								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
-						<jr:listContents height="80" width="556">
+						<jr:listContents height="90" width="556">
 							<textField>
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="556" height="30" uuid="4fd17981-23a5-4974-8887-357ce879beb1">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
+								<reportElement x="0" y="0" width="556" height="30" uuid="6f8cd8ff-ee63-4552-bd37-eff05dfa5d42"/>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise} == 1 ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="6a197a74-30a7-4621-993c-20c6237acac4">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
+								<reportElement x="30" y="30" width="526" height="15" uuid="d530134b-05d7-4bbb-a692-82310b06ce88"/>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial" isBold="true"/>
 								</textElement>
-								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
+								<textFieldExpression><![CDATA["Décision : " + $F{decision}]]></textFieldExpression>
 							</textField>
-							<textField isBlankWhenNull="true">
-								<reportElement x="30" y="45" width="526" height="35" uuid="58165fd5-0956-42d4-b117-842044a4e5be">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
-								<textElement verticalAlignment="Middle">
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement x="30" y="50" width="526" height="15" uuid="6672c251-3cfa-4eb6-9f02-5edc9b1923ad"/>
+								<textElement verticalAlignment="Top">
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
@@ -426,12 +426,12 @@ AND (
 					</jr:list>
 				</componentElement>
 				<componentElement>
-					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="-1" y="0" width="556" height="80" uuid="ab4fab0c-d606-485a-93c6-3c85bac1ef47">
+					<reportElement stretchType="RelativeToTallestObject" isPrintRepeatedValues="false" x="0" y="0" width="556" height="90" uuid="a7e8467d-8173-4709-b57d-c377611d3147">
 						<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.FreeLayout"/>
 						<printWhenExpression><![CDATA[$P{dac_id} != null && $P{dac_ver} != null]]></printWhenExpression>
 					</reportElement>
 					<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-						<datasetRun subDataset="Dataset2" uuid="bc1d9936-a428-47c3-af03-8964e4cc85eb">
+						<datasetRun subDataset="Dataset2" uuid="27208d55-fa4b-492b-b023-99508f806243">
 							<datasetParameter name="reunion">
 								<datasetParameterExpression><![CDATA[$F{reunion_id}]]></datasetParameterExpression>
 							</datasetParameter>
@@ -448,44 +448,27 @@ AND (
 								<datasetParameterExpression><![CDATA[$P{code}]]></datasetParameterExpression>
 							</datasetParameter>
 						</datasetRun>
-						<jr:listContents height="80" width="556">
+						<jr:listContents height="90" width="556">
 							<textField>
-								<reportElement stretchType="RelativeToTallestObject" x="0" y="0" width="556" height="30" uuid="d51ea662-d0ae-4f28-9de2-99bf2f174bf5">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
+								<reportElement x="0" y="0" width="556" height="30" uuid="83aa34e5-0a4b-4694-b2d5-07fe915a553c"/>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " +  $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise} == 1 ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-									<printWhenExpression><![CDATA[!$P{code}.equals("CNCMP-S")]]></printWhenExpression>
-								</reportElement>
+								<reportElement x="30" y="30" width="526" height="15" uuid="ce53fe84-50ac-40b6-8456-43f37cdeaf5e"/>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial" isBold="true"/>
 								</textElement>
-								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
+								<textFieldExpression><![CDATA["Décision : " + $F{decision}]]></textFieldExpression>
 							</textField>
-							<textField isBlankWhenNull="true">
-								<reportElement x="30" y="45" width="526" height="35" uuid="fdf6df6d-2c20-4e3b-9c6a-f1112c93f9fd">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
-								<textElement verticalAlignment="Middle">
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement x="30" y="50" width="526" height="15" uuid="1e740fc8-5fff-4084-9d61-87b6a90e3734"/>
+								<textElement verticalAlignment="Top">
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
-							</textField>
-							<textField isBlankWhenNull="true">
-								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="a4e9b4dc-4c98-4c21-8a2b-1121bddd5610">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-									<printWhenExpression><![CDATA[$P{code}.equals("CNCMP-S")]]></printWhenExpression>
-								</reportElement>
-								<textElement verticalAlignment="Middle">
-									<font fontName="Arial" isBold="true"/>
-								</textElement>
-								<textFieldExpression><![CDATA[$F{decision}]]></textFieldExpression>
 							</textField>
 						</jr:listContents>
 					</jr:list>
