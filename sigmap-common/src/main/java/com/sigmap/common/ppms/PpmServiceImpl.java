@@ -48,6 +48,7 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
+import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
@@ -1685,6 +1686,18 @@ public class PpmServiceImpl implements PpmService {
             Integer exSrc = (ex.getSourceFinancement() != null) ? ex.getSourceFinancement().getId() : null;
 
             Boolean reqExam = Boolean.TRUE.equals(fr.getExamenPrealable());
+
+            // Effective examenPrealable
+            if (reqSrc != null) {
+                try {
+                    SourceFinancement src = sourceFinancementService.findById(reqSrc);
+                    if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        reqExam = true;
+                    }
+                } catch (Exception e) {
+                }
+            }
+
             Boolean exExam = Boolean.TRUE.equals(ex.getExamenPrealable());
 
             if (reqAmt.compareTo(exAmt) != 0
@@ -6478,7 +6491,6 @@ public class PpmServiceImpl implements PpmService {
             boolean oldExamenPrealable = Boolean.TRUE.equals(target.getExamenPrealable());
 
             target.setBudgetEstimer(fr.getBudgetEstimer());
-            target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
 
             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -6491,12 +6503,21 @@ public class PpmServiceImpl implements PpmService {
                 try {
                     SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
                     target.setSourceFinancement(src);
-                } catch (com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound e) {
+
+                    // Business rule: if it's a donor, examenPrealable should be true
+                    if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        target.setExamenPrealable(true);
+                        fr.setExamenPrealable(true);
+                    } else {
+                        target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                    }
+                } catch (SourceFinancementNotFound e) {
                     throw new EntityNotFoundException("Source Financement not found with ID " +
                             fr.getSourceFinancement().getId());
                 }
             } else {
                 target.setSourceFinancement(null);
+                target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
             }
 
             target.setIsDeleted(false);
