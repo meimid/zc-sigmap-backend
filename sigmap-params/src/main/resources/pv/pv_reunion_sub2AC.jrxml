@@ -146,7 +146,8 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
      m.com_id,
     m.nom as comnom, 'DAC' as type,
-    p.actualise
+    p.actualise,
+    a.nom as acnom
 FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
@@ -226,6 +227,11 @@ AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
 			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="acnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 		</field>
 	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
@@ -450,7 +456,7 @@ AND (
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " +  $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">

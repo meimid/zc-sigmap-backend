@@ -292,7 +292,7 @@ WHERE r.reunion_id =  $P{reunion}]]>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" du " + $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref}+" du "+$F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " + $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref}+" du "+$F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="32" width="520" height="15" uuid="441d3a29-f7d8-43a8-a615-c498756d54fe">
