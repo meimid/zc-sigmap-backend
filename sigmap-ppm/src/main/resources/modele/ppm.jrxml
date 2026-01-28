@@ -478,7 +478,7 @@ FROM  ppm p
 								<textElement textAlignment="Center" verticalAlignment="Middle">
 									<font fontName="Arial" size="9"/>
 								</textElement>
-								<textFieldExpression><![CDATA[($F{bailleur_de_fonds} == 1) ? $F{examen_prealable} : ""]]></textFieldExpression>
+								<textFieldExpression><![CDATA[($F{bailleur_de_fonds} == 1) ? $F{examen_prealable} : "Sans objet"]]></textFieldExpression>
 							</textField>
 						</jr:detailCell>
 					</jr:column>
