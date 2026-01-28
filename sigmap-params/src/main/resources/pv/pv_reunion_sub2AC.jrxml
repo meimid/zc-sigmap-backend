@@ -7,7 +7,7 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="ppm_id" class="java.lang.Integer"/>
@@ -21,10 +21,10 @@
     r.observation,CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
@@ -32,7 +32,8 @@
     p.annee,
     p.budget_estime, DATE_FORMAT(p.created_at, '%d/%m/%Y') as createddate,
     m.com_id,
-    m.nom as comnom, 'PPM' as type
+    m.nom as comnom, 'PPM' as type,
+    p.actualise
 FROM reunion_ppm r
 INNER JOIN ppm p
        ON r.ppm_id = p.ppm_id
@@ -47,18 +48,22 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		<field name="reunion_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
 			<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
 		</field>
 		<field name="ppm_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="ppm_id"/>
 			<property name="com.jaspersoft.studio.field.label" value="ppm_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
 		</field>
 		<field name="ppm_ver" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="ppm_ver"/>
 			<property name="com.jaspersoft.studio.field.label" value="ppm_ver"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
 		</field>
 		<field name="observation" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="observation"/>
 			<property name="com.jaspersoft.studio.field.label" value="observation"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="reunion_ppm"/>
 		</field>
 		<field name="decision" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="decision"/>
@@ -67,18 +72,22 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		<field name="ref" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="ref"/>
 			<property name="com.jaspersoft.studio.field.label" value="ref"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 		</field>
 		<field name="nom" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="nom"/>
 			<property name="com.jaspersoft.studio.field.label" value="nom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 		</field>
 		<field name="annee" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="annee"/>
 			<property name="com.jaspersoft.studio.field.label" value="annee"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 		</field>
 		<field name="budget_estime" class="java.math.BigDecimal">
 			<property name="com.jaspersoft.studio.field.name" value="budget_estime"/>
 			<property name="com.jaspersoft.studio.field.label" value="budget_estime"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 		</field>
 		<field name="createddate" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="createddate"/>
@@ -87,14 +96,21 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		<field name="com_id" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="com_id"/>
 			<property name="com.jaspersoft.studio.field.label" value="com_id"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
 		</field>
 		<field name="comnom" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="comnom"/>
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
 			<property name="com.jaspersoft.studio.field.label" value="comnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="com"/>
 		</field>
 		<field name="type" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
+		</field>
+		<field name="actualise" class="java.lang.Boolean">
+			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
 		</field>
 		<sortField name="com_id"/>
 		<group name="com_id">
@@ -102,7 +118,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		</group>
 	</subDataset>
 	<subDataset name="Dataset2" uuid="3724119d-925f-4032-8869-404f7961f454">
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
@@ -118,10 +134,10 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
    CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
@@ -129,7 +145,9 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
      m.com_id,
-    m.nom as comnom, 'DAC' as type
+    m.nom as comnom, 'DAC' as type,
+    p.actualise,
+    a.nom as acnom
 FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
@@ -204,6 +222,16 @@ AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
 		<field name="type" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
+		</field>
+		<field name="actualise" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+		</field>
+		<field name="acnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="nom"/>
+			<property name="com.jaspersoft.studio.field.label" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="ac"/>
 		</field>
 	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
@@ -428,7 +456,7 @@ AND (
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " +  $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="f7b76f12-aeeb-4c13-99f6-2470a123d475">

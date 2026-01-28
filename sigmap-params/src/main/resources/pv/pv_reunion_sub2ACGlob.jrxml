@@ -7,7 +7,7 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="code" class="java.lang.String"/>
@@ -19,10 +19,10 @@
     r.observation,CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
@@ -30,7 +30,9 @@
     p.annee,
     p.budget_estime, DATE_FORMAT(p.created_at, '%d/%m/%Y') as createddate,
     m.com_id,
-    m.nom as comnom, 'PPM' as type
+    m.nom as comnom, 'PPM' as type,
+    p.actualise,
+    a.nom as acnom
 FROM reunion_ppm r
 INNER JOIN ppm p
        ON r.ppm_id = p.ppm_id
@@ -49,10 +51,10 @@ SELECT distinct
    CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
@@ -60,7 +62,9 @@ SELECT distinct
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
      m.com_id,
-    m.nom as comnom, 'DAC' as type
+    m.nom as comnom, 'DAC' as type,
+    p.actualise,
+    a.nom as acnom
 FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
@@ -124,6 +128,14 @@ and m.com_id =  $P{com} and r.decision is not null]]>
 		<field name="type" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
+		</field>
+		<field name="actualise" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
+		</field>
+		<field name="acnom" class="java.lang.String">
+			<property name="com.jaspersoft.studio.field.name" value="acnom"/>
+			<property name="com.jaspersoft.studio.field.label" value="acnom"/>
 		</field>
 		<sortField name="com_id"/>
 		<group name="com_id">
@@ -269,7 +281,7 @@ WHERE r.reunion_id =   $P{reunion} and p.ac_id= $P{acId}]]>
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " +  $F{comnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " +  $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref} +" du "+ $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="30" width="526" height="15" uuid="6a197a74-30a7-4621-993c-20c6237acac4">
