@@ -29,13 +29,16 @@ ALTER TABLE process_verbal_reunion_extrait_ppm
 -- changeset sigmap:17496719590112-5
 INSERT INTO process_verbal_reunion_extrait_ppm
 (extrait_id, pv_id, ac_id, ppm_id, ppm_ver)
-SELECT e.extrait_id, e.pv_id, e.ac_id, e.ppm_id, e.ppm_ver
+SELECT
+    e.extrait_id,
+    e.pv_id,
+    e.ac_id,
+    e.ppm_id,
+    e.ppm_ver
 FROM process_verbal_reunion_extrait e
-         JOIN ppm p
-              ON p.ppm_id = e.ppm_id
-                  AND p.ppm_ver = e.ppm_ver
-WHERE e.extrait_type = 'PAR_DOSSIER';
-
+WHERE e.extrait_type = 'PAR_DOSSIER'
+  AND e.ppm_id IS NOT NULL
+  AND e.ppm_ver IS NOT NULL;
 
 -- changeset sigmap:17496719590112-6
 DELETE e
@@ -50,9 +53,6 @@ JOIN (
  AND e.ac_id = k.ac_id
 WHERE e.extrait_type = 'PAR_AC'
   AND e.extrait_id <> k.keep_id;
-
-
-
 
 
 -- changeset sigmap:17496719590112-7

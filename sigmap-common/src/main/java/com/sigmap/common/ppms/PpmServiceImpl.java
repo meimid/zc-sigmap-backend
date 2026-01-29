@@ -337,16 +337,11 @@ public class PpmServiceImpl implements PpmService {
             Set<String> cpmp = new LinkedHashSet<>();
             Set<String> cncmpp = new LinkedHashSet<>();
 
-            for (Integer acId : acIds) {
-                if (acId == null) continue;
-
-                log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
-
-            ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
+            ExtraitResponse extrait = findAllExtraits(acIds, ppm.getId(), ppm.getVersion());
 
                 if (extrait.getExtraitCPMP() != null) cpmp.addAll(extrait.getExtraitCPMP());
                 if (extrait.getExtraitCNCMPP() != null) cncmpp.addAll(extrait.getExtraitCNCMPP());
-            }
+
 
             ppm.setExtraitCpmp(new ArrayList<>(cpmp));
             ppm.setExtraitCncmpPermanente(new ArrayList<>(cncmpp));
@@ -462,14 +457,14 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
-
-    public ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
+@Override
+    public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) {
 
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
         List<ProcessVerbalReunionExtrait> extraits = processVerbalReunionExtraitService
-                .findParDossierExtraitsByPpmAndAc(acId, ppmId, ppmVersion);
+                .findExtraitsByPpmAndAcs(acIds, ppmId, ppmVersion);
 
         for (ProcessVerbalReunionExtrait ex : extraits) {
 
@@ -481,6 +476,13 @@ public class PpmServiceImpl implements PpmService {
             Reunion reunion = reunionOpt.get();
 
             String typeCom = reunion.getCom().getComType().getCode();
+            log.info("EX: id={} type={} doc={} alfresco={} acId {}",
+                    ex.getExtraitId(),
+                    ex.getExtraitType(),
+                    ex.getDoc()!=null,
+                    ex.getDoc()!=null ? ex.getDoc().getAlfresco_id() : null,
+                    ex.getAcId()
+            );
 
             if ("CPMP".equals(typeCom)){
 
@@ -496,6 +498,7 @@ public class PpmServiceImpl implements PpmService {
                 }
             }
         }
+
 
         return dto;
     }

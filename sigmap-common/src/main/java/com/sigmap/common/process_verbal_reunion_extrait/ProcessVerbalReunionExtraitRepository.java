@@ -26,9 +26,8 @@ public interface ProcessVerbalReunionExtraitRepository
    WHERE e.extraitId = :extraitId
      AND e.pvId = :pvId
      AND e.acId = :acId
-     AND e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
 """)
-    Optional<ProcessVerbalReunionExtrait> findByExtraitTypeAcByExtraitIdPvIdAcId(
+    Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(
             @Param("extraitId") Integer extraitId,
             @Param("pvId") Integer pvId,
             @Param("acId") Integer acId
@@ -46,20 +45,78 @@ public interface ProcessVerbalReunionExtraitRepository
     );
 
 
-    @Query("""
-    SELECT DISTINCT e
-    FROM ProcessVerbalReunionExtrait e
-    JOIN Reunion r ON r.processVerbal = e.processVerbal
-    JOIN r.reunionPpms rp
-    WHERE rp.ppmId = :ppmId
-      AND rp.ppmVer = :ppmVer
-      AND e.acId = :acId
-      
+/*    @Query("""
+SELECT DISTINCT e
+FROM ProcessVerbalReunionExtrait e
+JOIN Ppm p ON p.id = :ppmId AND p.version = :ppmVer
+LEFT JOIN e.extraitsPpm ep
+LEFT JOIN Reunion r ON r.processVerbal = e.processVerbal
+LEFT JOIN r.reunionPpms rp
+WHERE e.doc IS NOT NULL
+AND e.ac.id IN :acIds
+AND e.ac.id = p.ac.id
+AND (
+      (e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_DOSSIER
+       AND ep.ppmId = :ppmId
+       AND ep.ppmVer = :ppmVer)
+   OR (e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
+       AND rp.ppmId = :ppmId
+       AND rp.ppmVer = :ppmVer)
+)
+ORDER BY e.extraitId
 """)
-    List<ProcessVerbalReunionExtrait> findParDossierExtraitsByPpmAndAc(
-            Integer ppmId,
-            Integer ppmVer,
-            Integer acId
+    List<ProcessVerbalReunionExtrait> findExtraitsByPpmAndAcs(
+            @Param("acIds") List<Integer> acIds,
+            @Param("ppmId") Integer ppmId,
+            @Param("ppmVer") Integer ppmVer
+    );*/
+
+
+
+
+    @Query("""
+SELECT e
+FROM ProcessVerbalReunionExtrait e
+WHERE e.doc IS NOT NULL
+  AND e.ac.id IN :acIds
+
+  AND EXISTS (
+        SELECT 1
+        FROM Ppm p
+        WHERE p.id = :ppmId
+          AND p.version = :ppmVer
+          AND p.ac.id = e.ac.id
+  )
+
+  AND (
+        (
+          e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_DOSSIER
+          AND EXISTS (
+                SELECT 1
+                FROM e.extraitsPpm ep
+                WHERE ep.ppmId = :ppmId
+                  AND ep.ppmVer = :ppmVer
+          )
+        )
+        OR
+        (
+          e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
+          AND EXISTS (
+                SELECT 1
+                FROM Reunion r
+                JOIN r.reunionPpms rp
+                WHERE r.processVerbal = e.processVerbal
+                  AND rp.ppmId = :ppmId
+                  AND rp.ppmVer = :ppmVer
+          )
+        )
+  )
+ORDER BY e.extraitId
+""")
+    List<ProcessVerbalReunionExtrait> findExtraitsByPpmAndAcs(
+            @Param("acIds") List<Integer> acIds,
+            @Param("ppmId") Integer ppmId,
+            @Param("ppmVer") Integer ppmVer
     );
 
 

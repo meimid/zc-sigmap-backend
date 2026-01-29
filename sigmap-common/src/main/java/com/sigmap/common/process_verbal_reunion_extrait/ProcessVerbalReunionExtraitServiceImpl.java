@@ -180,21 +180,27 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     @Transactional(readOnly = true)
-    public List<ProcessVerbalReunionExtrait> findParDossierExtraitsByPpmAndAc(
+    public List<ProcessVerbalReunionExtrait> findExtraitsByPpmAndAcs(
+
+            List<Integer> acIds,
             Integer ppmId,
-            Integer ppmVer,
-            Integer acId
+            Integer ppmVer
     ) {
 
-        if (ppmId == null || ppmVer == null || acId == null) {
+        if (ppmId == null || ppmVer == null || acIds == null) {
             throw new IllegalArgumentException("ppmId, ppmVer and acId must not be null");
         }
 
-        return repository.findParDossierExtraitsByPpmAndAc(
-                ppmId,
-                ppmVer,
-                acId
-        );
+
+        List<ProcessVerbalReunionExtrait> extraits = repository.findExtraitsByPpmAndAcs(acIds, ppmId, ppmVer);
+        log.info("extraits size = {}", extraits.size());
+        extraits.forEach(e -> log.info("extraitId={} type={} doc?={}", e.getExtraitId(), e.getExtraitType(), e.getDoc()!=null));
+        return extraits;
+    }
+
+    @Override
+    public Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(Integer extraitId, Integer pvId, Integer acId) {
+        return repository.findByExtraitIdPvIdAcId(extraitId, pvId, acId);
     }
 
 }

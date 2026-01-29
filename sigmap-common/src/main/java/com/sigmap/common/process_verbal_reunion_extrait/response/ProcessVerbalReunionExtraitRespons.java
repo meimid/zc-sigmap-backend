@@ -22,6 +22,7 @@ public class ProcessVerbalReunionExtraitRespons {
     private ExtraitType extraitType;
     private PpmIdVerResponseDto ppm;
     private DacIdVerRefResponseDto dac;
+    private String type;
 
 
 }

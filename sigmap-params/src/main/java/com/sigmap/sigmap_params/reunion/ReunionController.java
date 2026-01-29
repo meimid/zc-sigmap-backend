@@ -315,6 +315,8 @@ public class ReunionController {
         ProcessVerbalReunionExtraitRespons response =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
 
+
+
         return ResponseEntity.ok(response);
     }
 
@@ -324,9 +326,27 @@ public class ReunionController {
             @PathVariable Integer reunionId,
              Pageable pageable) {
 
-        Page<ProcessVerbalReunionExtrait> page =
-                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable);
-        return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
+        Page<ProcessVerbalReunionExtraitRespons> result =
+                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
+                        .map(extrait -> {
+
+                            ProcessVerbalReunionExtraitRespons dto =
+                                    ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
+
+                            if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
+                                    && extrait.getExtraitsPpm() != null) {
+                                dto.setType("Dossier PPM");
+                            } else if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
+                                    && extrait.getExtraitsDac() != null) {
+                                dto.setType("Dossier DAC");
+                            } else if (extrait.getExtraitType() == ExtraitType.PAR_AC) {
+                                dto.setType("Dossier AC");
+                            }
+
+                            return dto;
+                        });
+
+        return ResponseEntity.ok(result);
     }
 
 
@@ -367,6 +387,7 @@ public class ReunionController {
                         dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
 
                     }
+
                     log.info("Extrait {}", extrait);
                     if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
                             && extrait.getExtraitsPpm() != null
@@ -378,6 +399,7 @@ public class ReunionController {
                         dto.setPpm(
                                 PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm())
                         );
+                        dto.setType("Dossier PPM");
                     }
                     if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
                             && extrait.getExtraitsDac() != null
@@ -389,8 +411,17 @@ public class ReunionController {
                         dto.setDac(
                                 DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac())
                         );
+                        dto.setType("Dossier DAC");
+
+
                     }
 
+
+                    if(extrait.getExtraitType() == ExtraitType.PAR_AC
+                            && extrait.getExtraitsPpm().isEmpty()
+                            &&extrait.getExtraitsDac().isEmpty()) {
+                        dto.setType("Dossier Ac");
+                    }
                     return dto;
                 })
                 .collect(Collectors.toList());

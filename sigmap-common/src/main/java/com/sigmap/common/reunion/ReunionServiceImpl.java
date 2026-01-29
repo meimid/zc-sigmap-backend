@@ -1491,13 +1491,7 @@ public class ReunionServiceImpl implements ReunionService{
                 processVerbalReunionExtraitService.findAllByPvId(pvId);
 
         // must exist and must be not have a doc
-        ProcessVerbalReunionExtrait target = extraits.stream()
-                .filter(e ->
-                        Objects.equals(e.getExtraitId(), extraitRequest.getExtraitId())
-                                && Objects.equals(e.getAcId(), extraitRequest.getAcId())
-                                && e.getDoc() == null
-                )
-                .findFirst()
+        ProcessVerbalReunionExtrait target = processVerbalReunionExtraitService.findByExtraitIdPvIdAcId(extraitRequest.getExtraitId(),pvId,extraitRequest.getAcId())
                 .orElseThrow(() ->
                         new ReunionAcNotEligibleForExtraitException(
                                 "",
@@ -1505,7 +1499,9 @@ public class ReunionServiceImpl implements ReunionService{
                                 extraitRequest.getAcId()
                         )
                 );
-
+        if(target.getDoc()!=null){
+            throw new ReunionExtraitAlreadyExistsException("", reunionId, target.getAcId());
+        }
 
 
         // 🔒 strict type protection
