@@ -48,6 +48,7 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
+import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
@@ -1685,12 +1686,31 @@ public class PpmServiceImpl implements PpmService {
             Integer exSrc = (ex.getSourceFinancement() != null) ? ex.getSourceFinancement().getId() : null;
 
             Boolean reqExam = Boolean.TRUE.equals(fr.getExamenPrealable());
+
+            // Effective examenPrealable
+            if (reqSrc != null) {
+                try {
+                    SourceFinancement src = sourceFinancementService.findById(reqSrc);
+                    if (!Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        reqExam = false;
+                    }
+                } catch (Exception e) {
+                }
+            } else {
+                reqExam = false;
+            }
+
             Boolean exExam = Boolean.TRUE.equals(ex.getExamenPrealable());
+
+            log.info(
+                    "Financement compare: reqAmt={}, exAmt={}, reqMon={}, exMon={}, reqSrc={}, exSrc={}, reqExam={}, exExam={}",
+                    reqAmt, exAmt, reqMon, exMon, reqSrc, exSrc, reqExam, exExam);
 
             if (reqAmt.compareTo(exAmt) != 0
                     || !Objects.equals(reqMon, exMon)
                     || !Objects.equals(reqSrc, exSrc)
                     || !Objects.equals(reqExam, exExam)) {
+                log.info("Change detected in financement!");
                 return true; // value change
             }
         }
@@ -1884,6 +1904,9 @@ public class PpmServiceImpl implements PpmService {
                 baseRealisation.setPublishedAt(realisationWithLots.getPublishedAt());
                 baseRealisation.setSort(realisationWithLots.getSort());
                 baseRealisation.setDocIds(realisationWithLots.getDocIds());
+                baseRealisation.setFinancements(realisationWithLots.getFinancements());
+                baseRealisation.setStatut(realisationWithLots.getStatut());
+                baseRealisation.setImputationBudgetaire(realisationWithLots.getImputationBudgetaire());
 
                 // Most importantly - set the lots to make sure they're included
                 baseRealisation.setLots(realisationWithLots.getLots());
@@ -2126,7 +2149,8 @@ public class PpmServiceImpl implements PpmService {
                             " chBudget= {}" +
                             "  (req= {} ," +
                             " ex= {} )", chRealisationEnvisagees, chBeneficiaire, chTypeMarcher, chModePassation,
-                            chDatePrevLps, chDatePrevAc, chDatePrevDp, chDatePrevAp, chBudget, reqBudget, exBudget);
+                            chDatePrevLps, chDatePrevAc, chDatePrevDp, chDatePrevAp, chBudget,
+                            reqBudget, exBudget);
 
                     // --------- LOTS CHANGE DETECTION ---------
                     List<Lot> existingLotsActive = (existingReal.getLots() == null)
@@ -3390,6 +3414,7 @@ public class PpmServiceImpl implements PpmService {
                                 financement.getSourceFinancement().getId() != null
                                         ? financement.getSourceFinancement().getId()
                                         : "null");
+                        sb.append("examen:").append(Boolean.TRUE.equals(financement.getExamenPrealable()) ? "1" : "0");
                         sb.append("},");
                     }
                     sb.append("];");
@@ -5328,7 +5353,28 @@ public class PpmServiceImpl implements PpmService {
 
                         // budget
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+
+                        // EXAMEN PREALABLE LOGIC: take from request only if donor
+                        boolean isDonor = false;
+                        if (financementRequest.getSourceFinancement() != null &&
+                                financementRequest.getSourceFinancement().getId() != null) {
+                            try {
+                                SourceFinancement src = sourceFinancementService.findById(
+                                        financementRequest.getSourceFinancement().getId());
+                                if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                                    isDonor = true;
+                                }
+                            } catch (Exception e) {
+                            }
+                        }
+
+                        if (isDonor) {
+                            financement
+                                    .setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                        } else {
+                            financement.setExamenPrealable(false);
+                            financementRequest.setExamenPrealable(false);
+                        }
 
                         // monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
@@ -5745,30 +5791,39 @@ public class PpmServiceImpl implements PpmService {
                         financement = existingFinancementOpt.get();
 
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
-
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException(
                                         "Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
                         financement.setMonnaie(monnaie);
-
                         financement.setTauxApplicable(
                                 (monnaie.getTaux() != null) ? monnaie.getTaux() : 0.0);
-
+                        // EXAMEN PREALABLE LOGIC: take from request only if donor
+                        boolean isDonor = false;
                         if (financementRequest.getSourceFinancement() != null &&
                                 financementRequest.getSourceFinancement().getId() != null) {
-
                             try {
                                 SourceFinancement src = sourceFinancementService.findById(
                                         financementRequest.getSourceFinancement().getId());
-
-                                financement.setSourceFinancement(src);
-                            } catch (com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound e) {
+                                if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                                    isDonor = true;
+                                    financement.setSourceFinancement(src);
+                                } else {
+                                    financement.setSourceFinancement(src);
+                                }
+                            } catch (SourceFinancementNotFound e) {
                                 throw new EntityNotFoundException("Source Financement not found with ID " +
                                         financementRequest.getSourceFinancement().getId());
                             }
                         } else {
                             financement.setSourceFinancement(null);
+                        }
+
+                        if (isDonor) {
+                            financement
+                                    .setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                        } else {
+                            financement.setExamenPrealable(false);
+                            financementRequest.setExamenPrealable(false);
                         }
 
                         financement.setIsDeleted(false);
@@ -5808,14 +5863,15 @@ public class PpmServiceImpl implements PpmService {
 
                     financement.setMonnaie(monnaie);
                     financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                    financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
 
                     financement.setTauxApplicable(
                             monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
+                    // EXAMEN PREALABLE LOGIC: take from request only if donor
+                    boolean isDonorNew = false;
+
                     if (financementRequest.getSourceFinancement() != null &&
                             financementRequest.getSourceFinancement().getId() != null) {
-
                         try {
                             SourceFinancement src = sourceFinancementService.findById(
                                     financementRequest.getSourceFinancement().getId());
@@ -5826,6 +5882,13 @@ public class PpmServiceImpl implements PpmService {
                         }
                     } else {
                         financement.setSourceFinancement(null);
+                    }
+
+                    if (isDonorNew) {
+                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                    } else {
+                        financement.setExamenPrealable(false);
+                        financementRequest.setExamenPrealable(false); // Sync request
                     }
 
                     financement.setIsDeleted(false);
@@ -6478,7 +6541,6 @@ public class PpmServiceImpl implements PpmService {
             boolean oldExamenPrealable = Boolean.TRUE.equals(target.getExamenPrealable());
 
             target.setBudgetEstimer(fr.getBudgetEstimer());
-            target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
 
             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -6491,12 +6553,28 @@ public class PpmServiceImpl implements PpmService {
                 try {
                     SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
                     target.setSourceFinancement(src);
-                } catch (com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound e) {
+                    log.info("Found SourceFinancement id={}, isDonor={}", src.getId(), src.getBailleurDeFonds());
+
+                    if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        // For donors, take from request (user choice)
+                        target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        log.info("Donor source: set examenPrealable from request to {}", target.getExamenPrealable());
+                    } else {
+                        // For non-donors, force false
+                        target.setExamenPrealable(false);
+                        fr.setExamenPrealable(false);
+                        log.info("Non-donor source: forced examenPrealable to false");
+                    }
+                } catch (SourceFinancementNotFound e) {
+                    log.error("SourceFinancement id={} NOT FOUND", fr.getSourceFinancement().getId());
                     throw new EntityNotFoundException("Source Financement not found with ID " +
                             fr.getSourceFinancement().getId());
                 }
             } else {
+                log.info("No SourceFinancement in request, forcing examenPrealable to false");
                 target.setSourceFinancement(null);
+                target.setExamenPrealable(false);
+                fr.setExamenPrealable(false);
             }
 
             target.setIsDeleted(false);

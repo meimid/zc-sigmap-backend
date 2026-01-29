@@ -235,6 +235,14 @@ public class PpmFlowableController {
                                     .setBudgetEstimer(BigDecimal.valueOf(((Number) budgetEstimer).doubleValue()));
                         }
                     }
+                    if (financementData.containsKey("examenPrealable")) {
+                        Object examenPrealable = financementData.get("examenPrealable");
+                        if (examenPrealable instanceof Boolean) {
+                            financementRequest.setExamenPrealable((Boolean) examenPrealable);
+                        } else if (examenPrealable != null) {
+                            financementRequest.setExamenPrealable(Boolean.valueOf(examenPrealable.toString()));
+                        }
+                    }
                     if (financementData.containsKey("sourceFinancement")) {
                         Object sourceFinancement = financementData.get("sourceFinancement");
                         if (sourceFinancement instanceof Map) {
