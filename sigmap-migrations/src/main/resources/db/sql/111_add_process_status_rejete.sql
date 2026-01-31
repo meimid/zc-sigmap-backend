@@ -1,0 +1,4 @@
+-- liquibase formatted sql
+
+-- changeset sigmap:17496719590112-1
+ALTER TABLE ppm MODIFY COLUMN status ENUM('BROUILLON', 'EN_TRAITEMENT', 'PUBLIE', 'VALIDE', 'REJETE') DEFAULT 'BROUILLON' NOT NULL;

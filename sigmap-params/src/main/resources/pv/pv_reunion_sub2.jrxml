@@ -7,7 +7,7 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="code" class="java.lang.String"/>
@@ -17,12 +17,15 @@
     r.ppm_id,
     r.ppm_ver,
     r.observation,CASE UPPER(r.decision)
-        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'APPROVE' THEN 'Avis de non-objection'
         WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Reporté'
-        WHEN 'CI' THEN 'Complément d''information'
+        WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Reporté'
+         WHEN 'FALSE' THEN 'Reporté' 
+         WHEN 'COND_APPROVE' THEN 'Avis avec réserves'
+         WHEN 'REPORT' THEN 'Reporté'
+         WHEN 'REJECT_END' THEN 'Non approuvé'
         else  'Avis'
         end as decision,
     p.ref,

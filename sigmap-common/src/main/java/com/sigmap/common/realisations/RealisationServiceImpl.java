@@ -371,6 +371,15 @@ public class RealisationServiceImpl implements RealisationService {
                             financementRequest.getSourceFinancement().getId())
                             .orElseThrow(() -> new EntityNotFoundException("Source Financement not found"));
                     financement.setSourceFinancement(src);
+
+                    // Examen préalable logic
+                    if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                    } else {
+                        financement.setExamenPrealable(false);
+                    }
+                } else {
+                    financement.setExamenPrealable(false);
                 }
 
                 Financement savedFin = financementRepository.save(financement);
@@ -1332,6 +1341,23 @@ public class RealisationServiceImpl implements RealisationService {
             if (!Objects.equals(oldSourceId, updSourceId))
                 return true;
 
+            // examen prealable change?
+            Boolean reqExam = Boolean.TRUE.equals(upd.getExamenPrealable());
+            if (updSourceId != null) {
+                try {
+                    SourceFinancement src = sourceFinancementRepository.findById(updSourceId).orElse(null);
+                    if (src != null && !Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        reqExam = false;
+                    }
+                } catch (Exception e) {
+                }
+            } else {
+                reqExam = false;
+            }
+            Boolean oldExam = Boolean.TRUE.equals(old.getExamenPrealable());
+            if (!Objects.equals(oldExam, reqExam))
+                return true;
+
             // amount change?
             BigDecimal oldAmt = (old.getBudgetEstimer() != null) ? old.getBudgetEstimer() : BigDecimal.ZERO;
             if (oldAmt.compareTo(reqAmt) != 0)
@@ -1400,6 +1426,15 @@ public class RealisationServiceImpl implements RealisationService {
                                         + update.getSourceFinancement().getId()));
 
                 f.setSourceFinancement(src);
+
+                // Examen préalable logic
+                if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                    f.setExamenPrealable(Boolean.TRUE.equals(update.getExamenPrealable()));
+                } else {
+                    f.setExamenPrealable(false);
+                }
+            } else {
+                f.setExamenPrealable(false);
             }
 
             // === Persist ===
@@ -1444,6 +1479,7 @@ public class RealisationServiceImpl implements RealisationService {
             f.setMonnaie(old.getMonnaie());
             f.setBudgetEstimer(old.getBudgetEstimer());
             f.setSourceFinancement(old.getSourceFinancement());
+            f.setExamenPrealable(old.getExamenPrealable());
 
             // Copy tauxApplicable if exists, else derive from monnaie.taux
             f.setTauxApplicable(

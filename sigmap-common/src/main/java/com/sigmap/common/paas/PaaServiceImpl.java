@@ -1073,8 +1073,16 @@ public class PaaServiceImpl implements PaaService {
                     if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
                         SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
                         existing.setSourceFinancement(src);
+
+                        // Rule: donor sources imply prior review
+                        if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                            existing.setExamenPrealable(true);
+                        } else {
+                            existing.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        }
                     } else {
                         existing.setSourceFinancement(null);
+                        existing.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
                     }
 
                     existing.setIsDeleted(false);
@@ -1124,10 +1132,17 @@ public class PaaServiceImpl implements PaaService {
 
                     if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
                         SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
-                        ;
                         fin.setSourceFinancement(src);
+
+                        // Rule: donor sources imply prior review
+                        if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                            fin.setExamenPrealable(true);
+                        } else {
+                            fin.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        }
                     } else {
                         fin.setSourceFinancement(null);
+                        fin.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
                     }
 
                     fin.setIsDeleted(false);
