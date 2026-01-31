@@ -292,5 +292,25 @@ public class PpmSpecifications {
     public static Specification<Ppm> hasRealisations() {
         return (root, query, cb) -> cb.isNotEmpty(root.get("realisations"));
     }
+    public static Specification<Ppm> isLatestVersionNotRejected() {
+        return (root, query, cb) -> {
+
+            // subquery: max(version) for same ppm id (not deleted)
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(
+                            cb.equal(subRoot.get("id"), root.get("id")),
+                            cb.equal(subRoot.get("isDeleted"), false)
+                    );
+
+            return cb.and(
+                    cb.equal(root.get("version"), subquery),           // latest version
+                    cb.equal(root.get("isDeleted"), false),
+                    cb.notEqual(root.get("status"), ProcessStatus.REJETE)
+            );
+        };
+    }
 
 }

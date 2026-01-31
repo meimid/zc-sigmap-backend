@@ -5169,7 +5169,7 @@ public class PpmServiceImpl implements PpmService {
         Specification<Ppm> spec = PpmSpecifications.annee(String.valueOf(requestedYear))
                 .and(PpmSpecifications.ppmAc(requestAcId))
                 .and(PpmSpecifications.deleted(false))
-                .and(Specification.not(PpmSpecifications.status(ProcessStatus.REJETE)));
+                .and(PpmSpecifications.isLatestVersionNotRejected());
 
         List<Ppm> existingPpms = repository.findAll(spec);
 
@@ -5589,7 +5589,14 @@ public class PpmServiceImpl implements PpmService {
             Predicate notRejected = cb.or(
                     cb.notEqual(root.get("status"), ProcessStatus.REJETE)
             );
-            return cb.and(yearPredicate, notDeleted,notRejected);
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(cb.equal(subRoot.get("id"), root.get("id")));
+
+            Predicate isLatestVersion = cb.equal(root.get("version"), subquery);
+            return cb.and(yearPredicate, notDeleted,notRejected, isLatestVersion);
         });
 
         // Group by AC
