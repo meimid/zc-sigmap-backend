@@ -1229,7 +1229,7 @@ public class PpmFlowableService {
                 CncmpDecision dec = request.getCncmpDecision();
                 if (dec == CncmpDecision.REJECT_END) {
                     targetStatus = ProcessStatus.REJETE;
-                } else if (dec == CncmpDecision.REPORT || dec == CncmpDecision.COND_APPROVE) {
+                } else if (dec == CncmpDecision.REPORT || dec == CncmpDecision.COND_APPROVE || dec == CncmpDecision.CI ) {
                     targetStatus = ProcessStatus.EN_TRAITEMENT;
                 }
             }
