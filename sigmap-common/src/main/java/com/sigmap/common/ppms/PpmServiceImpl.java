@@ -335,14 +335,17 @@ public class PpmServiceImpl implements PpmService {
             Set<String> cncmpp = new LinkedHashSet<>();
 
             for (Integer acId : acIds) {
-                if (acId == null) continue;
+                if (acId == null)
+                    continue;
 
                 log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
 
-            ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
+                ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
 
-                if (extrait.getExtraitCPMP() != null) cpmp.addAll(extrait.getExtraitCPMP());
-                if (extrait.getExtraitCNCMPP() != null) cncmpp.addAll(extrait.getExtraitCNCMPP());
+                if (extrait.getExtraitCPMP() != null)
+                    cpmp.addAll(extrait.getExtraitCPMP());
+                if (extrait.getExtraitCNCMPP() != null)
+                    cncmpp.addAll(extrait.getExtraitCNCMPP());
             }
 
             ppm.setExtraitCpmp(new ArrayList<>(cpmp));
@@ -358,8 +361,10 @@ public class PpmServiceImpl implements PpmService {
             log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
 
             ppm.setPvCpmp(pvResponse.getPvCPMP().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpPermanente(
+                    pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpSpecialisee(
+                    pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         }
     }
 
@@ -389,7 +394,7 @@ public class PpmServiceImpl implements PpmService {
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
-                  //  .and(ReunionSpecifications.comId(comId)) // ??
+                    // .and(ReunionSpecifications.comId(comId)) // ??
                     .and(ReunionSpecifications.hasPpmId(ppmId))
                     .and(ReunionSpecifications.hasPpmVer(ppmVersion));
 
@@ -480,16 +485,19 @@ public class PpmServiceImpl implements PpmService {
 
             String typeCom = reunion.getCom().getComType().getCode();
 
-            if ("CPMP".equals(typeCom)){
+            if ("CPMP".equals(typeCom)) {
 
-                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
-                if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
+                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType()) && ex.getDoc() != null
+                        ? ex.getDoc().getAlfresco_id()
+                        : null;
+                if (alfrescoId != null && seenCpmp.add(alfrescoId)) {
                     dto.getExtraitCPMP().add(alfrescoId);
                 }
-            }
-            else if ("CNCMP-P".equals(typeCom)){
-                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
-                if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
+            } else if ("CNCMP-P".equals(typeCom)) {
+                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType()) && ex.getDoc() != null
+                        ? ex.getDoc().getAlfresco_id()
+                        : null;
+                if (alfrescoId != null && seenPermanent.add(alfrescoId)) {
                     dto.getExtraitCNCMPP().add(alfrescoId);
                 }
             }
@@ -497,6 +505,7 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
+
     public Optional<Ppm> findLatestById(Integer ppmId)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -5159,7 +5168,8 @@ public class PpmServiceImpl implements PpmService {
 
         Specification<Ppm> spec = PpmSpecifications.annee(String.valueOf(requestedYear))
                 .and(PpmSpecifications.ppmAc(requestAcId))
-                .and(PpmSpecifications.deleted(false));
+                .and(PpmSpecifications.deleted(false))
+                .and(Specification.not(PpmSpecifications.status(ProcessStatus.REJETE)));
 
         List<Ppm> existingPpms = repository.findAll(spec);
 
@@ -5576,7 +5586,10 @@ public class PpmServiceImpl implements PpmService {
                     String.valueOf(currentYear),
                     String.valueOf(nextYear));
             Predicate notDeleted = cb.isFalse(root.get("isDeleted"));
-            return cb.and(yearPredicate, notDeleted);
+            Predicate notRejected = cb.or(
+                    cb.notEqual(root.get("status"), ProcessStatus.REJETE)
+            );
+            return cb.and(yearPredicate, notDeleted,notRejected);
         });
 
         // Group by AC
@@ -6752,6 +6765,14 @@ public class PpmServiceImpl implements PpmService {
             throw new PpmNotAssociatedWithUserAcException(
                     "PPM not associated with one of the user's ACs",
                     List.of(Long.valueOf(ppmId)), List.of(latestVersion));
+        }
+
+        if (ProcessStatus.REJETE.equals(latest.getStatus())) {
+            throw new PpmInvalidStatusException(
+                    "Un PPM rejeté ne peut pas être actualisé",
+                    List.of(latest.getId()),
+                    List.of(latest.getVersion()),
+                    latest.getStatus());
         }
 
         if (!ProcessStatus.PUBLIE.equals(latest.getStatus())) {
