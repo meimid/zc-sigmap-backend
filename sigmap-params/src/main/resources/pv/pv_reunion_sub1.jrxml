@@ -29,7 +29,7 @@
          WHEN 'FALSE' THEN 'Reporté' 
          WHEN 'COND_APPROVE' THEN 'Avis avec réserves'
          WHEN 'REPORT' THEN 'Reporté'
-         WHEN REJECT_END THEN 'Non approuvé'
+         WHEN 'REJECT_END' THEN 'Non approuvé'
         else  'Avis' 
         end as decision,
     p.ref,
