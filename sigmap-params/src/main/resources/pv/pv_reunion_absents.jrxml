@@ -76,9 +76,9 @@ and fonction_reunion <> 'PRESIDENT']]>
 		</band>
 	</columnHeader>
 	<detail>
-		<band height="21" splitType="Stretch">
+		<band height="21">
 			<textField>
-				<reportElement stretchType="RelativeToTallestObject" x="3" y="0" width="547" height="20" uuid="99bdc27f-2245-41b6-b910-adf4f373ee76"/>
+				<reportElement positionType="Float" stretchType="RelativeToTallestObject" x="3" y="0" width="547" height="20" uuid="99bdc27f-2245-41b6-b910-adf4f373ee76"/>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial"/>
 				</textElement>

@@ -256,15 +256,11 @@ public class PvJasperReunionService {
         try (Connection conn = dataSource.getConnection();
              InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/extrait_pv_CNCMP.jasper");
              InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
-             InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
-             InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
              InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2AC.jasper")) {
 
             // Vérification des ressources
             validateResource(mainReportStream, "extrait_pv_CNCMP.jasper");
             validateResource(logoStream, "logo.png");
-            validateResource(sub1Stream, "pv_reunion_presents.jasper");
-            validateResource(sub2Stream, "pv_reunion_absents.jasper");
             validateResource(sub4Stream, "pv_reunion_sub2AC.jasper");
 
             // Configuration des paramètres
@@ -277,8 +273,6 @@ public class PvJasperReunionService {
             parameters.put("ppm_ver", ppmVer);
             parameters.put("dac_id", dacId);
             parameters.put("dac_ver", dacVer);
-            parameters.put("SUBREPORT_DIR1", sub1Stream);
-            parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR4", sub4Stream);
             parameters.put("REPORT_CONNECTION", conn);
 
@@ -322,15 +316,11 @@ public class PvJasperReunionService {
         try (Connection conn = dataSource.getConnection();
              InputStream mainReportStream = getClass().getClassLoader().getResourceAsStream("pv/extrait_pv_CNCMPGlob.jasper");
              InputStream logoStream = getClass().getClassLoader().getResourceAsStream("pv/logo.png");
-             InputStream sub1Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_presents.jasper");
-             InputStream sub2Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_absents.jasper");
              InputStream sub4Stream = getClass().getClassLoader().getResourceAsStream("pv/pv_reunion_sub2ACGlob.jasper")) {
 
             // Vérification des ressources
             validateResource(mainReportStream, "extrait_pv_CNCMPGlob.jasper");
             validateResource(logoStream, "logo.png");
-            validateResource(sub1Stream, "pv_reunion_presents.jasper");
-            validateResource(sub2Stream, "pv_reunion_absents.jasper");
             validateResource(sub4Stream, "pv_reunion_sub2ACGlob.jasper");
 
             // Configuration des paramètres
@@ -339,8 +329,6 @@ public class PvJasperReunionService {
             parameters.put("pathImg", logoStream);
             parameters.put("interim", interim);
             parameters.put("acId", acId);
-            parameters.put("SUBREPORT_DIR1", sub1Stream);
-            parameters.put("SUBREPORT_DIR2", sub2Stream);
             parameters.put("SUBREPORT_DIR4", sub4Stream);
             parameters.put("REPORT_CONNECTION", conn);
 
