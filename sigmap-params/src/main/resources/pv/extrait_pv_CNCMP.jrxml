@@ -8,69 +8,6 @@
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="379"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="616"/>
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
-	<subDataset name="Dataset1" uuid="1e9c3bac-0dd9-4479-90a4-2802570853c9">
-		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
-		<parameter name="reunion" class="java.lang.Integer"/>
-		<queryString language="SQL">
-			<![CDATA[SELECT reunion_id,
-	participant_id,
-	type,
-	nom,
-	prenom,
-	organisme,
-	fonction,
-	present
-FROM  participant
-where present=1
-and reunion_id= $P{reunion}
-and fonction_reunion ='MEMBRE']]>
-		</queryString>
-		<field name="reunion_id" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
-			<property name="com.jaspersoft.studio.field.label" value="reunion_id"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="participant_id" class="java.lang.Integer">
-			<property name="com.jaspersoft.studio.field.name" value="participant_id"/>
-			<property name="com.jaspersoft.studio.field.label" value="participant_id"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="type" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="type"/>
-			<property name="com.jaspersoft.studio.field.label" value="type"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="nom" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="nom"/>
-			<property name="com.jaspersoft.studio.field.label" value="nom"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="prenom" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="prenom"/>
-			<property name="com.jaspersoft.studio.field.label" value="prenom"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="organisme" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="organisme"/>
-			<property name="com.jaspersoft.studio.field.label" value="organisme"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="fonction" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="fonction"/>
-			<property name="com.jaspersoft.studio.field.label" value="fonction"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<field name="present" class="java.lang.Boolean">
-			<property name="com.jaspersoft.studio.field.name" value="present"/>
-			<property name="com.jaspersoft.studio.field.label" value="present"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="participant"/>
-		</field>
-		<sortField name="type" order="Descending"/>
-		<group name="reunion_id">
-			<groupExpression><![CDATA[$F{reunion_id}]]></groupExpression>
-		</group>
-	</subDataset>
 	<parameter name="reunion" class="java.lang.Integer"/>
 	<parameter name="pathImg" class="java.io.InputStream"/>
 	<parameter name="president" class="java.lang.String"/>
@@ -395,7 +332,7 @@ FROM com
 		<band height="34" splitType="Stretch"/>
 	</pageFooter>
 	<summary>
-		<band height="137" splitType="Stretch">
+		<band height="73" splitType="Stretch">
 			<staticText>
 				<reportElement style="ArialBold" x="206" y="6" width="194" height="17" uuid="478c225d-c310-4131-b3ac-02e418c191db"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
@@ -410,40 +347,6 @@ FROM com
 				</textElement>
 				<textFieldExpression><![CDATA[$P{president}]]></textFieldExpression>
 			</textField>
-			<staticText>
-				<reportElement style="ArialBold" x="4" y="81" width="194" height="17" uuid="7defe35b-4884-491c-9580-cf27f4276961"/>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="Arial" isBold="true" isUnderline="true"/>
-				</textElement>
-				<text><![CDATA[Les signataires]]></text>
-			</staticText>
-			<componentElement>
-				<reportElement isPrintRepeatedValues="false" x="2" y="98" width="533" height="35" isRemoveLineWhenBlank="true" uuid="76699bfd-a552-45ef-afa9-9b2ac41d9789">
-					<property name="com.jaspersoft.studio.layout" value="com.jaspersoft.studio.editor.layout.HorizontalRowLayout"/>
-					<property name="com.jaspersoft.studio.unit.y" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.element.name" value="presents"/>
-				</reportElement>
-				<jr:list xmlns:jr="http://jasperreports.sourceforge.net/jasperreports/components" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports/components http://jasperreports.sourceforge.net/xsd/components.xsd" printOrder="Vertical">
-					<datasetRun subDataset="Dataset1" uuid="86f6afa0-44ee-4da8-b9a6-20476eafeb63">
-						<datasetParameter name="reunion">
-							<datasetParameterExpression><![CDATA[$P{reunion}]]></datasetParameterExpression>
-						</datasetParameter>
-						<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-					</datasetRun>
-					<jr:listContents height="35" width="533">
-						<textField isBlankWhenNull="true">
-							<reportElement x="0" y="0" width="533" height="35" uuid="ce39acc5-f326-4274-ae15-a444f608dd32">
-								<property name="com.jaspersoft.studio.unit.x" value="pixel"/>
-							</reportElement>
-							<textElement>
-								<font fontName="Arial" size="9"/>
-							</textElement>
-							<textFieldExpression><![CDATA["- "+$F{prenom}+" "+$F{nom}]]></textFieldExpression>
-						</textField>
-					</jr:listContents>
-				</jr:list>
-			</componentElement>
 		</band>
 	</summary>
 </jasperReport>
