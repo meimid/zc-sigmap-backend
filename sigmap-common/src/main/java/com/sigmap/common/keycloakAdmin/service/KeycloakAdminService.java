@@ -2,6 +2,7 @@ package com.sigmap.common.keycloakAdmin.service;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
@@ -26,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -78,6 +80,10 @@ public class KeycloakAdminService {
 
     @Autowired
     private RefParamRepository refParamRepository;
+
+    @Autowired
+    @Lazy
+    private UserAcHistoriqueService userAcHistoriqueService;
 
     private final UserCommissionHistoriqueService userCommissionHistoriqueService;
 
@@ -470,7 +476,7 @@ public class KeycloakAdminService {
         return userDto;
 
     }
-    public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus {
+    public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus, AcNotFound {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
 
@@ -555,7 +561,7 @@ public class KeycloakAdminService {
         }
     }
 
-    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus {
+    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus, AcNotFound {
         if (newIds == null) return;
 
         Set<Integer> newIdSet = new HashSet<>(newIds);
@@ -564,6 +570,11 @@ public class KeycloakAdminService {
             List<UserAc> existing = userAcRepository.findByUserIdAndIsDeletedFalse(userId);
             for (UserAc e : existing) {
                 if (!newIdSet.contains(e.getAcId())) {
+                    logger.debug("User {} is no longer linked to AC {}", userId, e.getAcId());
+
+                    // Create the History entry : for remove
+                    userAcHistoriqueService.createEndHistory(userId, e.getAcId());
+                    // soft delete of the User-AC association
                     userAcRepository.softDelete(e.getAcId(), userId);
                 }
             }
@@ -579,12 +590,18 @@ public class KeycloakAdminService {
                     }
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
+
+                    // create the history entry for the new AC
+                    userAcHistoriqueService.createStartHistory(userId, id);
                 }else {
                     if (id  == acPiloteId){
                         userAcRepository.removeAcPilote(id, userId);
                         UserAc existingUserAc = userAcRepository.findFirstByAcIdAndUserIdAndIsDeletedFalse(id, userId);
                         existingUserAc.setAcPilote(true);
                         userAcRepository.save(existingUserAc);
+
+                        // create the history entry for the new AC
+                        userAcHistoriqueService.createStartHistory(userId, id);
                     }
                 }
             }
