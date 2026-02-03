@@ -32,6 +32,7 @@ import com.sigmap.common.ref_params.RefParamSpecifications;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -494,7 +495,7 @@ public class ComServiceImpl implements ComService {
       uscom.get().setIsDeleted(true);
       uscom.get().setDeletedAt(Calendar.getInstance());
       uscom.get().setDeletedBy(ConnectedUserID);
-      userCommissionHistoriqueService.removeUserFromCommissionHistorique(userId, comId);
+      userCommissionHistoriqueService.removeUserCommissionHistorique(userId, comId);
       userComRepository.save(uscom.get());
 
     }
