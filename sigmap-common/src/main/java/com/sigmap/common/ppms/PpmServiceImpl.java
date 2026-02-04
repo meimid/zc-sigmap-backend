@@ -1132,7 +1132,10 @@ public class PpmServiceImpl implements PpmService {
 
         // --- Realisations (scalars + lots) handled ONLY here ---
         List<Realisation> updatedRealisations = new ArrayList<>();
-        boolean realisationsPhaseChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
+
+        Set<Integer> newRealisationIds = new HashSet<>();
+
+        boolean realisationsPhaseChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations, newRealisationIds);
 
         // Build request list for later matching (used by docs/files + financements)
         List<RealisationBaseRequestDto> reqReals = null;
@@ -1296,7 +1299,10 @@ public class PpmServiceImpl implements PpmService {
             boolean willChange = willFinancementsChange(beforeCurrent, finReqs);
             Realisation targetReal = real;
 
-            if (willChange) {
+            // ✅ NEW: do NOT version-bump financements for newly created realisations
+            boolean isNewRealisation = newRealisationIds.contains(real.getId());
+
+            if (willChange && !isNewRealisation) {
                 Realisation newVer = new Realisation();
                 newVer.setId(real.getId());
                 newVer.setVersion(real.getVersion() + 1);
@@ -2052,7 +2058,9 @@ public class PpmServiceImpl implements PpmService {
      */
     @Transactional
     public boolean processRealisationsWithLotLogic(Ppm existingPpm, PpmBaseRequestDto request,
-            List<Realisation> updatedRealisations) {
+                                                   List<Realisation> updatedRealisations,
+                                                   Set<Integer> newRealisationIds) {
+
         log.info("============== REALISATION PROCESSING LOG START ==============");
         log.info("Processing realisations for PPM ID {} , version  {}", existingPpm.getId(), existingPpm.getVersion());
 
@@ -2277,7 +2285,8 @@ public class PpmServiceImpl implements PpmService {
                     log.info("   NEW realisation (no id provided)");
 
                     Integer newRealId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-                    newRealId = (newRealId != null) ? newRealId + 1 : 1;
+                    log.info("sequenceGeneratorService.getNextId returned {}", newRealId);
+                    if (newRealId == null) newRealId = 1;
 
                     Realisation realisation = new Realisation();
                     realisation.setId(newRealId);
@@ -2302,6 +2311,8 @@ public class PpmServiceImpl implements PpmService {
                     log.info("   Saved NEW realisation ID {} version {} with {} lots", realisation.getId(),
                             realisation.getVersion(),
                             (realisation.getLots() != null ? realisation.getLots().size() : 0));
+
+                    newRealisationIds.add(realisation.getId());
 
                     updatedRealisations.add(realisation);
                     processedRealisationIds.add(realisation.getId());
@@ -2398,8 +2409,8 @@ public class PpmServiceImpl implements PpmService {
             newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
             newLot.setIsDeleted(false);
             Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
-            newLot.setId(lotId);
+            if (maxLotId == null) maxLotId = 1;
+            newLot.setId(maxLotId);
             Lot savedLot = lotRepository.save(newLot);
             newLotsMap.put(lotHash, savedLot);
             log.info("Created new Lot with ID: {}, Budget: {}", savedLot.getId(), savedLot.getBudget());
@@ -4484,7 +4495,7 @@ public class PpmServiceImpl implements PpmService {
 
                     Integer realisationVersion = realisationRequest.getVersion() != null
                             ? realisationRequest.getVersion()
-                            : 1;
+                            : realisationRepository.findMaxVersionById(realisationRequest.getId());
 
                     CompositeId realisationId = new CompositeId(realisationRequest.getId(), realisationVersion);
                     Optional<Realisation> existingRealisationOpt = realisationRepository.findById(realisationId);
@@ -5587,8 +5598,7 @@ public class PpmServiceImpl implements PpmService {
                     String.valueOf(nextYear));
             Predicate notDeleted = cb.isFalse(root.get("isDeleted"));
             Predicate notRejected = cb.or(
-                    cb.notEqual(root.get("status"), ProcessStatus.REJETE)
-            );
+                    cb.notEqual(root.get("status"), ProcessStatus.REJETE));
             Subquery<Integer> subquery = query.subquery(Integer.class);
             Root<Ppm> subRoot = subquery.from(Ppm.class);
 
@@ -5596,7 +5606,7 @@ public class PpmServiceImpl implements PpmService {
                     .where(cb.equal(subRoot.get("id"), root.get("id")));
 
             Predicate isLatestVersion = cb.equal(root.get("version"), subquery);
-            return cb.and(yearPredicate, notDeleted,notRejected, isLatestVersion);
+            return cb.and(yearPredicate, notDeleted, notRejected, isLatestVersion);
         });
 
         // Group by AC
