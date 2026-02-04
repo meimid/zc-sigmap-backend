@@ -2405,14 +2405,14 @@ public class PaaServiceImpl implements PaaService {
                     List<Lot> lots = new ArrayList<>();
                     // Integer currentMaxLotId = lotRepository.findMaxId();
                     Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
+                    if (currentMaxLotId == null) currentMaxLotId = 1;
 
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
                         Lot lot = new Lot();
                         // If lot ID is provided in request, use it. Otherwise, generate a new one.
                         Integer lotId = lotRequest.getId();
                         if (lotId == null) {
-                            lotId = nextLotId++; // Assign and then increment for lots
+                            lotId = currentMaxLotId++; // Assign and then increment for lots
                         }
                         lot.setId(lotId);
                         lot.setVersion(1);
