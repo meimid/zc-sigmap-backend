@@ -1073,8 +1073,16 @@ public class PaaServiceImpl implements PaaService {
                     if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
                         SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
                         existing.setSourceFinancement(src);
+
+                        // Rule: donor sources imply prior review
+                        if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                            existing.setExamenPrealable(true);
+                        } else {
+                            existing.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        }
                     } else {
                         existing.setSourceFinancement(null);
+                        existing.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
                     }
 
                     existing.setIsDeleted(false);
@@ -1124,10 +1132,17 @@ public class PaaServiceImpl implements PaaService {
 
                     if (fr.getSourceFinancement() != null && fr.getSourceFinancement().getId() != null) {
                         SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
-                        ;
                         fin.setSourceFinancement(src);
+
+                        // Rule: donor sources imply prior review
+                        if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                            fin.setExamenPrealable(true);
+                        } else {
+                            fin.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        }
                     } else {
                         fin.setSourceFinancement(null);
+                        fin.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
                     }
 
                     fin.setIsDeleted(false);
@@ -2390,14 +2405,14 @@ public class PaaServiceImpl implements PaaService {
                     List<Lot> lots = new ArrayList<>();
                     // Integer currentMaxLotId = lotRepository.findMaxId();
                     Integer currentMaxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-                    Integer nextLotId = (currentMaxLotId != null) ? currentMaxLotId + 1 : 1;
+                    if (currentMaxLotId == null) currentMaxLotId = 1;
 
                     for (LotResponse lotRequest : realisationRequest.getLots()) {
                         Lot lot = new Lot();
                         // If lot ID is provided in request, use it. Otherwise, generate a new one.
                         Integer lotId = lotRequest.getId();
                         if (lotId == null) {
-                            lotId = nextLotId++; // Assign and then increment for lots
+                            lotId = currentMaxLotId++; // Assign and then increment for lots
                         }
                         lot.setId(lotId);
                         lot.setVersion(1);

@@ -4,5 +4,6 @@ public enum ProcessStatus {
   BROUILLON,
   EN_TRAITEMENT,
   PUBLIE,
-  VALIDE
+  VALIDE,
+  REJETE
 }

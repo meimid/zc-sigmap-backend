@@ -48,8 +48,10 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
+import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
 import com.sigmap.common.realisations.RealisationService;
@@ -128,7 +130,6 @@ public class PpmServiceImpl implements PpmService {
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final SeuilGeneralService seuilGeneralService;
     private final SourceFinancementService sourceFinancementService;
-    private final ProcessVerbalReunionExtraitPpmService processVerbalReunionExtraitPpmService;
 
     /**
      * Constructor.
@@ -143,17 +144,17 @@ public class PpmServiceImpl implements PpmService {
      * @param acService
      */
     public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService,
-                          CurrentUserService currentUserService, AcRepository acRepository,
-                          RealisationRepository realisationRepository, RefParamRepository refParamRepository,
-                          DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
-                          AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
-                          AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
-                          MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
-                          ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
-                          ComService comService, ReunionRepository reunionRepository,
-                          ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
-                          SeuilGeneralService seuilGeneralService,
-                          SourceFinancementService sourceFinancementService, ProcessVerbalReunionExtraitPpmService processVerbalReunionExtraitPpmService) {
+            CurrentUserService currentUserService, AcRepository acRepository,
+            RealisationRepository realisationRepository, RefParamRepository refParamRepository,
+            DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
+            AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
+            AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
+            MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
+            ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
+            ComService comService, ReunionRepository reunionRepository,
+            ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
+            SeuilGeneralService seuilGeneralService,
+            SourceFinancementService sourceFinancementService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -180,7 +181,6 @@ public class PpmServiceImpl implements PpmService {
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
 
-        this.processVerbalReunionExtraitPpmService = processVerbalReunionExtraitPpmService;
     }
 
     @Override
@@ -322,6 +322,7 @@ public class PpmServiceImpl implements PpmService {
 
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
+        populateReunionArgumentsDoc(ppm, userComIds);
 
         Ppm responsePpm = createFilteredResponsePpm(ppm);
 
@@ -359,7 +360,29 @@ public class PpmServiceImpl implements PpmService {
             ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
             ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         }
+
+
     }
+    private void populateReunionArgumentsDoc(Ppm ppm,  List<Integer> comIds) {
+
+
+
+        if (comIds != null && !comIds.isEmpty()) {
+
+            ReunionArgumentDocuments reunionArgumentDocuments=listDocPpm(comIds, ppm.getId(), ppm.getVersion());
+
+            log.warn("Ppm doc CPMP ={}" ,reunionArgumentDocuments.getDocumentCPMP());
+            log.warn("Ppm docs Permanente ={}",reunionArgumentDocuments.getDocumentCNCMPPermanente());
+            log.warn("Ppm doc Specialise = {}",reunionArgumentDocuments.getDocumentCNCMPSpecialise());
+
+            ppm.setDocumentCPMP(reunionArgumentDocuments.getDocumentCPMP());
+            ppm.setDocumentCNCMPPermanente(reunionArgumentDocuments.getDocumentCNCMPPermanente());
+            ppm.setDocumentCNCMPSpecialisee(reunionArgumentDocuments.getDocumentCNCMPSpecialise());
+        }
+
+
+    }
+
 
     private PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
 
@@ -387,7 +410,7 @@ public class PpmServiceImpl implements PpmService {
             Specification<Reunion> spec = Specification
                     .where(ReunionSpecifications.deleted(false))
                     .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
-                  //  .and(ReunionSpecifications.comId(comId)) // ??
+                    // .and(ReunionSpecifications.comId(comId)) // ??
                     .and(ReunionSpecifications.hasPpmId(ppmId))
                     .and(ReunionSpecifications.hasPpmVer(ppmVersion));
 
@@ -457,7 +480,129 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
-@Override
+
+    private ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+
+
+        log.info("listDocPpm START | comIdsSize={} ppmId={} ppmVersion={}",
+                (comIds == null ? 0 : comIds.size()), ppmId, ppmVersion);
+
+        // Fail closed
+        if (comIds == null || comIds.isEmpty()) {
+            log.warn("listDocPpm aborted: comIds is empty");
+            return dto;
+        }
+        if (ppmId == null || ppmVersion == null) {
+            log.error("listDocPpm aborted: ppmId/ppmVersion is null (ppmId={}, ppmVersion={})", ppmId, ppmVersion);
+            throw new PpmIdNotFound("",null);
+        }
+
+        // 1) Load user COM types once
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+        if (userComTypes.isEmpty()) {
+            log.warn("listDocPpm aborted: no user COM types found for comIdsSize={}", comIds.size());
+            return dto;
+        }
+
+        log.debug("listDocPpm userComTypes={}", userComTypes);
+
+        // 2) Load reunions once
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                .and(ReunionSpecifications.hasPpmId(ppmId))
+                .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+        List<Reunion> reunions = reunionRepository.findAll(spec);
+        log.info("listDocPpm reunions fetched: {}", reunions.size());
+
+        // 3) Process reunions
+        for (Reunion r : reunions) {
+
+            String reunionComType =
+                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
+                            ? r.getCom().getComType().getCode()
+                            : null;
+
+
+            if (reunionComType == null || reunionComType.isEmpty()) {
+                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
+                continue;
+            }
+
+            // Collect PV doc IDs (null-safe)
+            Set<String> pvAlfrescoIds = r.getReunionPpms().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(rp -> rp.getReunionPpmDocs().stream())
+                    .filter(Objects::nonNull)
+                    .map(ppmDoc -> ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (pvAlfrescoIds.isEmpty()) {
+                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
+                continue;
+            }
+
+            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, pvAlfrescoIds.size());
+
+            for (String userComType : userComTypes) {
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getDocumentCPMP().addAll(pvAlfrescoIds);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getDocumentCPMP().addAll(pvAlfrescoIds);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        // Specialized CNCMP sees specialized PVs + permanent PVs
+                        if ("CNCMP-S".equals(reunionComType)) {
+                            dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown user COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.info("listDocPpm END | cpmp={} perm={} spec={}",
+                dto.getDocumentCPMP().size(),
+                dto.getDocumentCNCMPPermanente().size(),
+                dto.getDocumentCNCMPSpecialise().size());
+
+        return dto;
+    }
+
+
+    @Override
     public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) {
 
         ExtraitResponse dto = new ExtraitResponse();
@@ -498,7 +643,6 @@ public class PpmServiceImpl implements PpmService {
                 }
             }
         }
-
 
         return dto;
     }
@@ -1128,7 +1272,10 @@ public class PpmServiceImpl implements PpmService {
 
         // --- Realisations (scalars + lots) handled ONLY here ---
         List<Realisation> updatedRealisations = new ArrayList<>();
-        boolean realisationsPhaseChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations);
+
+        Set<Integer> newRealisationIds = new HashSet<>();
+
+        boolean realisationsPhaseChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations, newRealisationIds);
 
         // Build request list for later matching (used by docs/files + financements)
         List<RealisationBaseRequestDto> reqReals = null;
@@ -1292,7 +1439,10 @@ public class PpmServiceImpl implements PpmService {
             boolean willChange = willFinancementsChange(beforeCurrent, finReqs);
             Realisation targetReal = real;
 
-            if (willChange) {
+            // ✅ NEW: do NOT version-bump financements for newly created realisations
+            boolean isNewRealisation = newRealisationIds.contains(real.getId());
+
+            if (willChange && !isNewRealisation) {
                 Realisation newVer = new Realisation();
                 newVer.setId(real.getId());
                 newVer.setVersion(real.getVersion() + 1);
@@ -1691,12 +1841,31 @@ public class PpmServiceImpl implements PpmService {
             Integer exSrc = (ex.getSourceFinancement() != null) ? ex.getSourceFinancement().getId() : null;
 
             Boolean reqExam = Boolean.TRUE.equals(fr.getExamenPrealable());
+
+            // Effective examenPrealable
+            if (reqSrc != null) {
+                try {
+                    SourceFinancement src = sourceFinancementService.findById(reqSrc);
+                    if (!Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        reqExam = false;
+                    }
+                } catch (Exception e) {
+                }
+            } else {
+                reqExam = false;
+            }
+
             Boolean exExam = Boolean.TRUE.equals(ex.getExamenPrealable());
+
+            log.info(
+                    "Financement compare: reqAmt={}, exAmt={}, reqMon={}, exMon={}, reqSrc={}, exSrc={}, reqExam={}, exExam={}",
+                    reqAmt, exAmt, reqMon, exMon, reqSrc, exSrc, reqExam, exExam);
 
             if (reqAmt.compareTo(exAmt) != 0
                     || !Objects.equals(reqMon, exMon)
                     || !Objects.equals(reqSrc, exSrc)
                     || !Objects.equals(reqExam, exExam)) {
+                log.info("Change detected in financement!");
                 return true; // value change
             }
         }
@@ -1890,6 +2059,9 @@ public class PpmServiceImpl implements PpmService {
                 baseRealisation.setPublishedAt(realisationWithLots.getPublishedAt());
                 baseRealisation.setSort(realisationWithLots.getSort());
                 baseRealisation.setDocIds(realisationWithLots.getDocIds());
+                baseRealisation.setFinancements(realisationWithLots.getFinancements());
+                baseRealisation.setStatut(realisationWithLots.getStatut());
+                baseRealisation.setImputationBudgetaire(realisationWithLots.getImputationBudgetaire());
 
                 // Most importantly - set the lots to make sure they're included
                 baseRealisation.setLots(realisationWithLots.getLots());
@@ -2026,7 +2198,9 @@ public class PpmServiceImpl implements PpmService {
      */
     @Transactional
     public boolean processRealisationsWithLotLogic(Ppm existingPpm, PpmBaseRequestDto request,
-            List<Realisation> updatedRealisations) {
+                                                   List<Realisation> updatedRealisations,
+                                                   Set<Integer> newRealisationIds) {
+
         log.info("============== REALISATION PROCESSING LOG START ==============");
         log.info("Processing realisations for PPM ID {} , version  {}", existingPpm.getId(), existingPpm.getVersion());
 
@@ -2132,7 +2306,8 @@ public class PpmServiceImpl implements PpmService {
                             " chBudget= {}" +
                             "  (req= {} ," +
                             " ex= {} )", chRealisationEnvisagees, chBeneficiaire, chTypeMarcher, chModePassation,
-                            chDatePrevLps, chDatePrevAc, chDatePrevDp, chDatePrevAp, chBudget, reqBudget, exBudget);
+                            chDatePrevLps, chDatePrevAc, chDatePrevDp, chDatePrevAp, chBudget,
+                            reqBudget, exBudget);
 
                     // --------- LOTS CHANGE DETECTION ---------
                     List<Lot> existingLotsActive = (existingReal.getLots() == null)
@@ -2250,7 +2425,8 @@ public class PpmServiceImpl implements PpmService {
                     log.info("   NEW realisation (no id provided)");
 
                     Integer newRealId = sequenceGeneratorService.getNextId(Constants.REALISATION_ID_SEQ);
-                    newRealId = (newRealId != null) ? newRealId + 1 : 1;
+                    log.info("sequenceGeneratorService.getNextId returned {}", newRealId);
+                    if (newRealId == null) newRealId = 1;
 
                     Realisation realisation = new Realisation();
                     realisation.setId(newRealId);
@@ -2275,6 +2451,8 @@ public class PpmServiceImpl implements PpmService {
                     log.info("   Saved NEW realisation ID {} version {} with {} lots", realisation.getId(),
                             realisation.getVersion(),
                             (realisation.getLots() != null ? realisation.getLots().size() : 0));
+
+                    newRealisationIds.add(realisation.getId());
 
                     updatedRealisations.add(realisation);
                     processedRealisationIds.add(realisation.getId());
@@ -2371,8 +2549,8 @@ public class PpmServiceImpl implements PpmService {
             newLot.setBudget(lotDto.getBudget() != null ? lotDto.getBudget() : BigDecimal.ZERO);
             newLot.setIsDeleted(false);
             Integer maxLotId = sequenceGeneratorService.getNextId(Constants.LOT_ID_SEQ);
-            Integer lotId = (maxLotId != null ? maxLotId : 0) + 1;
-            newLot.setId(lotId);
+            if (maxLotId == null) maxLotId = 1;
+            newLot.setId(maxLotId);
             Lot savedLot = lotRepository.save(newLot);
             newLotsMap.put(lotHash, savedLot);
             log.info("Created new Lot with ID: {}, Budget: {}", savedLot.getId(), savedLot.getBudget());
@@ -3396,6 +3574,7 @@ public class PpmServiceImpl implements PpmService {
                                 financement.getSourceFinancement().getId() != null
                                         ? financement.getSourceFinancement().getId()
                                         : "null");
+                        sb.append("examen:").append(Boolean.TRUE.equals(financement.getExamenPrealable()) ? "1" : "0");
                         sb.append("},");
                     }
                     sb.append("];");
@@ -4456,7 +4635,7 @@ public class PpmServiceImpl implements PpmService {
 
                     Integer realisationVersion = realisationRequest.getVersion() != null
                             ? realisationRequest.getVersion()
-                            : 1;
+                            : realisationRepository.findMaxVersionById(realisationRequest.getId());
 
                     CompositeId realisationId = new CompositeId(realisationRequest.getId(), realisationVersion);
                     Optional<Realisation> existingRealisationOpt = realisationRepository.findById(realisationId);
@@ -5140,7 +5319,8 @@ public class PpmServiceImpl implements PpmService {
 
         Specification<Ppm> spec = PpmSpecifications.annee(String.valueOf(requestedYear))
                 .and(PpmSpecifications.ppmAc(requestAcId))
-                .and(PpmSpecifications.deleted(false));
+                .and(PpmSpecifications.deleted(false))
+                .and(PpmSpecifications.isLatestVersionNotRejected());
 
         List<Ppm> existingPpms = repository.findAll(spec);
 
@@ -5334,7 +5514,28 @@ public class PpmServiceImpl implements PpmService {
 
                         // budget
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+
+                        // EXAMEN PREALABLE LOGIC: take from request only if donor
+                        boolean isDonor = false;
+                        if (financementRequest.getSourceFinancement() != null &&
+                                financementRequest.getSourceFinancement().getId() != null) {
+                            try {
+                                SourceFinancement src = sourceFinancementService.findById(
+                                        financementRequest.getSourceFinancement().getId());
+                                if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                                    isDonor = true;
+                                }
+                            } catch (Exception e) {
+                            }
+                        }
+
+                        if (isDonor) {
+                            financement
+                                    .setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                        } else {
+                            financement.setExamenPrealable(false);
+                            financementRequest.setExamenPrealable(false);
+                        }
 
                         // monnaie
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
@@ -5536,7 +5737,16 @@ public class PpmServiceImpl implements PpmService {
                     String.valueOf(currentYear),
                     String.valueOf(nextYear));
             Predicate notDeleted = cb.isFalse(root.get("isDeleted"));
-            return cb.and(yearPredicate, notDeleted);
+            Predicate notRejected = cb.or(
+                    cb.notEqual(root.get("status"), ProcessStatus.REJETE));
+            Subquery<Integer> subquery = query.subquery(Integer.class);
+            Root<Ppm> subRoot = subquery.from(Ppm.class);
+
+            subquery.select(cb.max(subRoot.get("version")))
+                    .where(cb.equal(subRoot.get("id"), root.get("id")));
+
+            Predicate isLatestVersion = cb.equal(root.get("version"), subquery);
+            return cb.and(yearPredicate, notDeleted, notRejected, isLatestVersion);
         });
 
         // Group by AC
@@ -5751,30 +5961,39 @@ public class PpmServiceImpl implements PpmService {
                         financement = existingFinancementOpt.get();
 
                         financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
-
                         Monnaie monnaie = monnaieRepository.findById(financementRequest.getMonnaieId())
                                 .orElseThrow(() -> new EntityNotFoundException(
                                         "Monnaie with ID " + financementRequest.getMonnaieId() + " not found"));
                         financement.setMonnaie(monnaie);
-
                         financement.setTauxApplicable(
                                 (monnaie.getTaux() != null) ? monnaie.getTaux() : 0.0);
-
+                        // EXAMEN PREALABLE LOGIC: take from request only if donor
+                        boolean isDonor = false;
                         if (financementRequest.getSourceFinancement() != null &&
                                 financementRequest.getSourceFinancement().getId() != null) {
-
                             try {
                                 SourceFinancement src = sourceFinancementService.findById(
                                         financementRequest.getSourceFinancement().getId());
-
-                                financement.setSourceFinancement(src);
-                            } catch (com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound e) {
+                                if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                                    isDonor = true;
+                                    financement.setSourceFinancement(src);
+                                } else {
+                                    financement.setSourceFinancement(src);
+                                }
+                            } catch (SourceFinancementNotFound e) {
                                 throw new EntityNotFoundException("Source Financement not found with ID " +
                                         financementRequest.getSourceFinancement().getId());
                             }
                         } else {
                             financement.setSourceFinancement(null);
+                        }
+
+                        if (isDonor) {
+                            financement
+                                    .setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                        } else {
+                            financement.setExamenPrealable(false);
+                            financementRequest.setExamenPrealable(false);
                         }
 
                         financement.setIsDeleted(false);
@@ -5814,14 +6033,15 @@ public class PpmServiceImpl implements PpmService {
 
                     financement.setMonnaie(monnaie);
                     financement.setBudgetEstimer(financementRequest.getBudgetEstimer());
-                    financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
 
                     financement.setTauxApplicable(
                             monnaie.getTaux() != null ? monnaie.getTaux() : 0.0);
 
+                    // EXAMEN PREALABLE LOGIC: take from request only if donor
+                    boolean isDonorNew = false;
+
                     if (financementRequest.getSourceFinancement() != null &&
                             financementRequest.getSourceFinancement().getId() != null) {
-
                         try {
                             SourceFinancement src = sourceFinancementService.findById(
                                     financementRequest.getSourceFinancement().getId());
@@ -5832,6 +6052,13 @@ public class PpmServiceImpl implements PpmService {
                         }
                     } else {
                         financement.setSourceFinancement(null);
+                    }
+
+                    if (isDonorNew) {
+                        financement.setExamenPrealable(Boolean.TRUE.equals(financementRequest.getExamenPrealable()));
+                    } else {
+                        financement.setExamenPrealable(false);
+                        financementRequest.setExamenPrealable(false); // Sync request
                     }
 
                     financement.setIsDeleted(false);
@@ -6484,7 +6711,6 @@ public class PpmServiceImpl implements PpmService {
             boolean oldExamenPrealable = Boolean.TRUE.equals(target.getExamenPrealable());
 
             target.setBudgetEstimer(fr.getBudgetEstimer());
-            target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
 
             Monnaie monnaie = monnaieRepository.findById(fr.getMonnaieId())
                     .orElseThrow(() -> new EntityNotFoundException(
@@ -6497,12 +6723,28 @@ public class PpmServiceImpl implements PpmService {
                 try {
                     SourceFinancement src = sourceFinancementService.findById(fr.getSourceFinancement().getId());
                     target.setSourceFinancement(src);
-                } catch (com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound e) {
+                    log.info("Found SourceFinancement id={}, isDonor={}", src.getId(), src.getBailleurDeFonds());
+
+                    if (Boolean.TRUE.equals(src.getBailleurDeFonds())) {
+                        // For donors, take from request (user choice)
+                        target.setExamenPrealable(Boolean.TRUE.equals(fr.getExamenPrealable()));
+                        log.info("Donor source: set examenPrealable from request to {}", target.getExamenPrealable());
+                    } else {
+                        // For non-donors, force false
+                        target.setExamenPrealable(false);
+                        fr.setExamenPrealable(false);
+                        log.info("Non-donor source: forced examenPrealable to false");
+                    }
+                } catch (SourceFinancementNotFound e) {
+                    log.error("SourceFinancement id={} NOT FOUND", fr.getSourceFinancement().getId());
                     throw new EntityNotFoundException("Source Financement not found with ID " +
                             fr.getSourceFinancement().getId());
                 }
             } else {
+                log.info("No SourceFinancement in request, forcing examenPrealable to false");
                 target.setSourceFinancement(null);
+                target.setExamenPrealable(false);
+                fr.setExamenPrealable(false);
             }
 
             target.setIsDeleted(false);
@@ -6680,6 +6922,14 @@ public class PpmServiceImpl implements PpmService {
             throw new PpmNotAssociatedWithUserAcException(
                     "PPM not associated with one of the user's ACs",
                     List.of(Long.valueOf(ppmId)), List.of(latestVersion));
+        }
+
+        if (ProcessStatus.REJETE.equals(latest.getStatus())) {
+            throw new PpmInvalidStatusException(
+                    "Un PPM rejeté ne peut pas être actualisé",
+                    List.of(latest.getId()),
+                    List.of(latest.getVersion()),
+                    latest.getStatus());
         }
 
         if (!ProcessStatus.PUBLIE.equals(latest.getStatus())) {

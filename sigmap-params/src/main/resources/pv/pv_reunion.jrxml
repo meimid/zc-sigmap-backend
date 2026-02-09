@@ -192,12 +192,18 @@ FROM com
 	</field>
 	<variable name="intro" class="java.lang.String">
 		<variableExpression><![CDATA[$F{code}.equals("CPMP") ?
-"La " + $F{nom} + " s'est réunie sur convocation de son président, " + ($P{interim} != null ? "par intérim, M. " + $P{interim} : "M. " + $P{president}) + " ."
-:
-($F{code}.equals("CNCMP-P") ?
-"Le Comité Permanent de la " + $F{nom} + " s'est réuni sur convocation de son président, " + ($P{interim} != null ? "par intérim, M. " + $P{interim} : "M. " + $P{president}) + " ."
-:
-"La " + $F{nom} + " s'est réunie sur convocation de son président, " + ($P{interim} != null ? "par intérim, M. " + $P{interim} : "M. " + $P{president}) + " .")]]></variableExpression>
+    "La " + $F{nom} + " s'est réunie sous la présidence" +
+    ($P{interim} != null ? ", par intérim, de " + $P{interim} : " de " + $P{president}) +
+    "." :
+
+$F{code}.equals("CNCMP-P") ?
+    "Le Comité Permanent de la " + $F{nom} + " s'est réuni sous la présidence" +
+    ($P{interim} != null ? ", par intérim, de " + $P{interim} : " de " + $P{president}) +
+    "." :
+
+    "La " + $F{nom} + " s'est réunie sous la présidence" +
+    ($P{interim} != null ? ", par intérim, de " + $P{interim} : " de " + $P{president}) +
+    "."]]></variableExpression>
 	</variable>
 	<title>
 		<band height="156" splitType="Stretch">
@@ -487,7 +493,7 @@ FROM com
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" isBold="true" isUnderline="true"/>
 				</textElement>
-				<text><![CDATA[LE PRESIDENT]]></text>
+				<text><![CDATA[PRESIDENT]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
 				<reportElement style="ArialBold" x="213" y="21" width="184" height="23" uuid="3c187fe6-a60c-44a0-8c02-552e3bcfe353"/>

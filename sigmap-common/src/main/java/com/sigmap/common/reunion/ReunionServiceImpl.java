@@ -87,6 +87,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -446,8 +447,29 @@ public class ReunionServiceImpl implements ReunionService{
             throw new RuntimeException("id must be not null");
         }
 
-        Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+       // Reunion reunionToUpdate = repository.findByIdWithParticipantsFetched(id).orElseThrow(()-> new ReunionNotFound("Reunion not found with id: " , id));
+        Reunion reunion = repository.findByIdWithPpms(id)
+                .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , id));
 
+        ReunionStatus status = reunion.getStatus();
+
+/*
+        if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
+            long  ppmDesionsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getDecision()!=null).count();
+            long  ppmObservationsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getObservation()!=null).count();
+
+            long  dacDesionsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getDecision()!=null).count();
+            long  dacObservationsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getObservation()!=null).count();
+
+            if(ppmDesionsNumber>0||ppmObservationsNumber>0||dacObservationsNumber>0||dacDesionsNumber>0){
+                throw new ReunionStatusException("",reunionToUpdate.getStatus());
+            }
+            else {
+                reunionToUpdate.setStatus(ReunionStatus.ANNULER);
+
+            }
+
+        }
         if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
                 reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
                 reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER &&
@@ -458,7 +480,37 @@ public class ReunionServiceImpl implements ReunionService{
            sendReunionAnnulerInvitations(id);
        }
         reunionToUpdate.setStatus(ReunionStatus.ANNULER);
-        return save(reunionToUpdate);
+        return save(reunionToUpdate);*/
+
+        boolean cancelAllowed =
+                status == ReunionStatus.BROUILLON ||
+                        status == ReunionStatus.NON_PLANIFIER ||
+                        status == ReunionStatus.PLANIFIER ||
+                        status == ReunionStatus.EN_RETARD ||
+                        status == ReunionStatus.EN_COURS;
+
+        if (!cancelAllowed) {
+            throw new ReunionStatusException("Cancellation not allowed for status", status);
+        }
+
+        if (status == ReunionStatus.EN_COURS) {
+            boolean hasAnyDecisionOrObservation =
+                    reunion.getReunionPpms().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null) ||
+                            reunion.getReunionDacs().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null);
+
+            if (hasAnyDecisionOrObservation) {
+                throw new ReunionStatusException("Cannot cancel: decisions/observations exist", status);
+            }
+        }
+
+        reunion.setStatus(ReunionStatus.ANNULER);
+        Reunion saved = save(reunion);
+
+        if (status == ReunionStatus.PLANIFIER) {
+            sendReunionAnnulerInvitations(id);
+        }
+
+        return saved;
     }
 
     @Override
@@ -1197,9 +1249,17 @@ public class ReunionServiceImpl implements ReunionService{
 
                 reunionToUpdate.setReunionNumCom(next);
 
+                reunionToUpdate.setValidatedAt(LocalDateTime.now());
+                Optional <String> currentUserId = Authentication.getCurrentUserId();
+                currentUserId.ifPresent(reunionToUpdate::setValidatedByUserId);
+                UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
+                String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
+                reunionToUpdate.setValidatedByUserFullName(fullName);
                 return save(reunionToUpdate);
 
             }
+
+
         }
         else {
             throw new ReunionStatusException("", reunionToUpdate.getStatus());
@@ -1216,12 +1276,25 @@ public class ReunionServiceImpl implements ReunionService{
             if (!"CPMP".equals(reunionToUpdate.getCom().getComType().getCode())
                     &&!"CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())) {
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
+                reunionToUpdate.setClosedAt(LocalDateTime.now());
+                Optional <String> currentUserId = Authentication.getCurrentUserId();
+                currentUserId.ifPresent(reunionToUpdate::setClosedByUserId);
+                UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
+                String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
+                reunionToUpdate.setClosedByUserFullName(fullName);
 
             }
             else{
             List<ProcessVerbalReunionExtrait> extrais = processVerbalReunionExtraitService.findAllByPvId(reunionToUpdate.getProcessVerbal().getId()).stream().filter(p->p.getDoc()==null).collect(Collectors.toList());
             if(extrais.isEmpty()){
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
+                reunionToUpdate.setClosedAt(LocalDateTime.now());
+                Optional <String> currentUserId = Authentication.getCurrentUserId();
+                currentUserId.ifPresent(reunionToUpdate::setClosedByUserId);
+                UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
+                String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
+                reunionToUpdate.setClosedByUserFullName(fullName);
+
             }
             }
 
@@ -1504,7 +1577,7 @@ public class ReunionServiceImpl implements ReunionService{
         }
 
 
-        // 🔒 strict type protection
+        //  strict type protection
         if ("CPMP".equals(code) && target.getExtraitType() != ExtraitType.PAR_AC) {
             throw new IllegalStateException("Invalid extrait type for CPMP reunion");
         }
@@ -1529,6 +1602,12 @@ public class ReunionServiceImpl implements ReunionService{
 
         if (allCompleted  && hasPv) {
             reunion.setStatus(ReunionStatus.CLOTURER);
+            reunion.setClosedAt(LocalDateTime.now());
+            Optional <String> currentUserId = Authentication.getCurrentUserId();
+            currentUserId.ifPresent(reunion::setClosedByUserId);
+            UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
+            String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
+            reunion.setClosedByUserFullName(fullName);
             save(reunion);
         }
 

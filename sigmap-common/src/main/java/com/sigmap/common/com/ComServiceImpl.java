@@ -99,7 +99,13 @@ public class ComServiceImpl implements ComService {
     return repository.findAll(spec);
   }
 
-  @Override
+    @Override
+    public List<Com> findAll(Specification<Com> specification) {
+        Specification<Com> spec = ComSpecifications.deleted(false).and(specification);
+        return repository.findAll(spec);
+    }
+
+    @Override
   public Page<Com> findAll(Specification<Com> com, Pageable pageable) {
     return repository.findAll(com, pageable);
   }

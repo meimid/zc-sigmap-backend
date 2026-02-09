@@ -4,11 +4,11 @@
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="324"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="671"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="47231b59-41d6-470f-b689-8e36900a955f">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="ac_id" class="java.lang.Integer"/>
 		<queryString language="SQL">
@@ -18,12 +18,15 @@
     r.ppm_ver,
     r.observation,
     CASE UPPER(r.decision)
-        WHEN 'APPROVE' THEN 'Approuvé'
+        WHEN 'APPROVE' THEN 'Avis de non-objection'
         WHEN 'VALIDATE' THEN 'Approuvé'
         WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
          WHEN 'FALSE' THEN 'Reporté' 
+         WHEN 'COND_APPROVE' THEN 'Avis avec réserves'
+         WHEN 'REPORT' THEN 'Reporté'
+         WHEN 'REJECT_END' THEN 'Non approuvé'
         else  'Avis' 
         end as decision,
     p.ref,
@@ -31,7 +34,8 @@
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
     a.ac_id,
-    a.nom as acnom, 'PPM' as type
+    a.nom as acnom, 'PPM' as type,
+    p.actualise
 FROM reunion_ppm r
 INNER JOIN ppm p
        ON r.ppm_id = p.ppm_id
@@ -49,10 +53,10 @@ SELECT
     CASE UPPER(r.decision)
         WHEN 'APPROVE' THEN 'Approuvé'
         WHEN 'VALIDATE' THEN 'Approuvé'
-        WHEN 'REJECT' THEN 'Rejeté'
+        WHEN 'REJECT' THEN 'Reporté'
         WHEN 'CI' THEN 'Complément d''information' 
         WHEN 'TRUE' THEN 'Approuvé'
-         WHEN 'FALSE' THEN 'Rejeté' 
+         WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
     p.ref,
@@ -60,7 +64,8 @@ SELECT
     p.annee,
     p.budget_estime, DATE_FORMAT(d.created_at, '%d/%m/%Y')  as createddate,
     a.ac_id,
-    a.nom as acnom, 'DAC' as type
+    a.nom as acnom, 'DAC' as type,
+    p.actualise
 FROM reunion_dac r
 INNER JOIN dac d
        ON r.dac_id = d.dac_id
@@ -135,6 +140,10 @@ WHERE r.reunion_id =  $P{reunion}
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
 		</field>
+		<field name="actualise" class="java.lang.Integer">
+			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
+			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
+		</field>
 		<sortField name="ac_id"/>
 		<group name="ac_id">
 			<groupExpression><![CDATA[$F{ac_id}]]></groupExpression>
@@ -183,8 +192,7 @@ INNER JOIN dac d
     INNER JOIN ppm p on ap.ppm_id=p.ppm_id and ap.ppm_ver=p.ppm_ver 
 INNER JOIN ac a
        ON p.ac_id = a.ac_id
-WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}
-]]>
+WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}]]>
 	</queryString>
 	<field name="reunion_id" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="reunion_id"/>
@@ -250,7 +258,7 @@ WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}
 		<groupHeader>
 			<band height="32">
 				<textField>
-					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="30" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
+					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="20" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
 					<textElement verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true" isUnderline="true"/>
 					</textElement>
@@ -281,7 +289,7 @@ WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+" actualisé du " + $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref}+" du "+$F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT}+"/- Examen du "+ $F{type}+ ($F{actualise} == 1 ? " actualisé" : "")+" de " + $F{acnom}+" au titre de l'année "+$F{annee}+", Réf : "+$F{ref}+" du "+$F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="30" y="32" width="520" height="15" uuid="441d3a29-f7d8-43a8-a615-c498756d54fe">
@@ -292,11 +300,9 @@ WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}
 								</textElement>
 								<textFieldExpression><![CDATA["Décision : "+$F{decision}]]></textFieldExpression>
 							</textField>
-							<textField isBlankWhenNull="true">
-								<reportElement stretchType="RelativeToTallestObject" x="30" y="47" width="520" height="35" uuid="be077b31-b286-4396-a55e-0e7bb2e658a3">
-									<property name="com.jaspersoft.studio.unit.height" value="px"/>
-								</reportElement>
-								<textElement verticalAlignment="Middle">
+							<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+								<reportElement positionType="Float" stretchType="RelativeToTallestObject" x="30" y="45" width="520" height="15" uuid="f7190b3a-f9ae-4f48-a38e-4d643b6d740f"/>
+								<textElement verticalAlignment="Top">
 									<font fontName="Arial"/>
 								</textElement>
 								<textFieldExpression><![CDATA[$F{observation}]]></textFieldExpression>
