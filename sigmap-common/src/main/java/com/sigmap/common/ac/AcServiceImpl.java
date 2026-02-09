@@ -14,7 +14,6 @@ import com.sigmap.common.com.ComRepository;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.FileStorageProperties;
 import com.sigmap.common.entity.ActiveStatus;
-import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.ref_params.RefParam;
 import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.RefParamService;
@@ -57,7 +56,6 @@ public class AcServiceImpl implements AcService{
     private final AcRepository repository;
     private final ComRepository comRepository;
 
-    private final KeycloakAdminService keycloakAdminService;
 
     private final UserAcRepository userAcRepository;
 
@@ -73,12 +71,11 @@ public class AcServiceImpl implements AcService{
     private FileStorageProperties fileStorageProperties;
 
 
-    public AcServiceImpl(AcRepository repository, ComRepository comRepository, KeycloakAdminService keycloakAdminService,
-                         UserAcRepository userAcRepository, RefParamRepository refParamRepository, AdressService adressService,
+    public AcServiceImpl(AcRepository repository, ComRepository comRepository, UserAcRepository userAcRepository,
+                         RefParamRepository refParamRepository, AdressService adressService,
                          ComService comService, RefParamService refParamService, UserAcHistoriqueService userAcHistoriqueService) {
         this.repository = repository;
         this.comRepository = comRepository;
-        this.keycloakAdminService = keycloakAdminService;
         this.userAcRepository = userAcRepository;
         this.refParamRepository = refParamRepository;
         this.adressService = adressService;
@@ -228,7 +225,7 @@ public class AcServiceImpl implements AcService{
                     userAc.setIsDeleted(false);
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
-                    userAcHistoriqueService.createStartHistory(userId, savedAc);
+                    userAcHistoriqueService.createStartHistory(userId, savedAc.getId());
                 } catch (Exception e) {
                     logger.warn("Impossible d'associer l'utilisateur {} à l'AC {} : {}", userId, savedAc.getId(), e.getMessage());
                 }
@@ -368,7 +365,7 @@ public class AcServiceImpl implements AcService{
                     userAcRepository.save(userAc);
 
                     //create start for new users
-                    userAcHistoriqueService.createStartHistory(userId, ac);
+                    userAcHistoriqueService.createStartHistory(userId, ac.getId());
                 }
             }
         }

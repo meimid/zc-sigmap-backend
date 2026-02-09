@@ -1,5 +1,6 @@
 package com.sigmap.sigmap_auth.keycloak;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.keycloakAdmin.dto.PasswordRequestDTO;
@@ -147,7 +148,7 @@ public class KeycloakAdminController {
     @PutMapping("/users/{id}")
     @PreAuthorize("hasAnyRole('ADMIN_CENTRAL', 'ADMIN_AC', 'SUPER_ADMIN')")
     public ResponseEntity<UserDTO> updateUser(@PathVariable String id,
-                                              @RequestBody UserResquestDTO userDTO) throws AgpmDefaultStatus {
+                                              @RequestBody UserResquestDTO userDTO) throws AgpmDefaultStatus, AcNotFound {
         UserDTO updatedUser = keycloakAdminService.updateUser(id, userDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(updatedUser);
     }

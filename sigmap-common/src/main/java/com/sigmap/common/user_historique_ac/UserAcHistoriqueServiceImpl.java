@@ -2,6 +2,8 @@ package com.sigmap.common.user_historique_ac;
 
 
 import com.sigmap.common.ac.Ac;
+import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.entity.ActiveStatus;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
@@ -27,6 +29,7 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
 
     private final UserAcHistoriqueRepository userAcHistoriqueRepository;
     private final KeycloakAdminService keycloakAdminService;
+    private final AcRepository acRepository;
 
 
     @Override
@@ -81,16 +84,20 @@ public class UserAcHistoriqueServiceImpl implements UserAcHistoriqueService{
     }
 
     @Override
-    public void createStartHistory(String userId, Ac ac) {
+    public void createStartHistory(String userId, Integer acId) throws AcNotFound {
 
-        if (userId == null || ac == null || ac.getId() == null) {
+        if (userId == null || acId == null) {
             throw new IllegalArgumentException("User ID and AC ID must not be null");
         }
+
+        Ac acOptional = acRepository.findById(acId).orElseThrow(
+                () -> new AcNotFound("AC not found with id: " , List.of(acId))
+        );
 
         UserAcHistorique newEntry = new UserAcHistorique();
         newEntry.setUserId(userId);
         newEntry.setDateDebut(LocalDateTime.now());
-        newEntry.setAc(ac);
+        newEntry.setAc(acOptional);
         userAcHistoriqueRepository.save(newEntry);
 
     }
