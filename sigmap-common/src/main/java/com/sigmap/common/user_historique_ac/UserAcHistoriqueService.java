@@ -19,7 +19,7 @@ public interface UserAcHistoriqueService {
 
     public void createEndHistory(String userIds, Integer acId);
 
-    public void createStartHistory(String userIds, Ac ac);
+    public void createStartHistory(String userId, Integer acId) throws AcNotFound;
 
     public UserAcHistoriqueResponse entityToResponse (UserAcHistorique entity);
 }
