@@ -166,6 +166,7 @@ public class ReunionServiceImpl implements ReunionService{
         Reunion reunion= findOne(specification)
                 .orElseThrow(() -> new ReunionNotFound("Reunion not found with id: " , id));
         reunion.setParticipants(  reunion.getParticipants().stream().filter(participant -> !participant.getIsDeleted()).collect(Collectors.toList()));
+
        return reunion;
     }
 
@@ -1276,25 +1277,20 @@ public class ReunionServiceImpl implements ReunionService{
             if (!"CPMP".equals(reunionToUpdate.getCom().getComType().getCode())
                     &&!"CNCMP-P".equals(reunionToUpdate.getCom().getComType().getCode())) {
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
-                reunionToUpdate.setClosedAt(LocalDateTime.now());
-                Optional <String> currentUserId = Authentication.getCurrentUserId();
-                currentUserId.ifPresent(reunionToUpdate::setClosedByUserId);
-                UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
-                String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
-                reunionToUpdate.setClosedByUserFullName(fullName);
+
 
             }
             else{
             List<ProcessVerbalReunionExtrait> extrais = processVerbalReunionExtraitService.findAllByPvId(reunionToUpdate.getProcessVerbal().getId()).stream().filter(p->p.getDoc()==null).collect(Collectors.toList());
             if(extrais.isEmpty()){
                 reunionToUpdate.setStatus(ReunionStatus.CLOTURER);
+
                 reunionToUpdate.setClosedAt(LocalDateTime.now());
                 Optional <String> currentUserId = Authentication.getCurrentUserId();
                 currentUserId.ifPresent(reunionToUpdate::setClosedByUserId);
                 UserDTO userDTO = keycloakAdminService.getUserById(currentUserId.get());
                 String fullName = userDTO.getFirstName() + " " + userDTO.getLastName();
                 reunionToUpdate.setClosedByUserFullName(fullName);
-
             }
             }
 

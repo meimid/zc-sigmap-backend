@@ -114,7 +114,12 @@ public class ReunionController {
                           : null
           );
       }
-
+        boolean hasAnyDecisionOrObservation =
+                reunion.getReunionPpms().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null) ||
+                        reunion.getReunionDacs().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null);
+        if(!hasAnyDecisionOrObservation){
+            response.setCanBeCancelled(true);
+        }
        response.setExtraits(mapExtraits(reunion));
         response.setHaveExtraits(haveExtraitCheck(reunion));
 

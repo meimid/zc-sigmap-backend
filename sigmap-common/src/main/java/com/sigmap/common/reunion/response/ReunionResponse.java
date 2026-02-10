@@ -38,5 +38,6 @@ public class ReunionResponse {
     List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
     boolean haveExtraits = false;
     private BaseEntityResponse metadata;
+    private boolean canBeCancelled=false;
 
 }
