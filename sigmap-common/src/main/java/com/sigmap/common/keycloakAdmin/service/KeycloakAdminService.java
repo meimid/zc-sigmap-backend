@@ -2,6 +2,7 @@ package com.sigmap.common.keycloakAdmin.service;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.AcRepository;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.AgpmDefaultStatus;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComRepository;
@@ -19,11 +20,14 @@ import com.sigmap.common.user_com.UserComRepository;
 import com.sigmap.common.user_commission_historique.UserCommissionHistorique;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueService;
 import com.sigmap.common.user_commission_historique.UserCommissionHistoriqueSpecifications;
+import com.sigmap.common.user_commission_historique.exception.CreateUserComHitoriqueException;
 import com.sigmap.common.user_commission_historique.response.UserCommissionHistoriqueResponse;
+import com.sigmap.common.user_historique_ac.UserAcHistoriqueService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -76,6 +80,10 @@ public class KeycloakAdminService {
 
     @Autowired
     private RefParamRepository refParamRepository;
+
+    @Autowired
+    @Lazy
+    private UserAcHistoriqueService userAcHistoriqueService;
 
     private final UserCommissionHistoriqueService userCommissionHistoriqueService;
 
@@ -468,7 +476,7 @@ public class KeycloakAdminService {
         return userDto;
 
     }
-    public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus {
+    public UserDTO updateUser(String userId, UserResquestDTO userDTO) throws AgpmDefaultStatus, AcNotFound {
         String token = tokenService.getAccessToken();
         String url = String.format("%s/admin/realms/%s/users/%s", keycloakBaseUrl, realm, userId);
 
@@ -553,14 +561,20 @@ public class KeycloakAdminService {
         }
     }
 
-    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus {
+    private void updateLinkedEntities(String userId, List<Integer> newIds,Integer acPiloteId, boolean isAc) throws AgpmDefaultStatus, AcNotFound {
         if (newIds == null) return;
 
         Set<Integer> newIdSet = new HashSet<>(newIds);
         if (isAc) {
+            // pour les AC
             List<UserAc> existing = userAcRepository.findByUserIdAndIsDeletedFalse(userId);
             for (UserAc e : existing) {
                 if (!newIdSet.contains(e.getAcId())) {
+                    logger.debug("User {} is no longer linked to AC {}", userId, e.getAcId());
+
+                    // Create the History entry : for remove
+                    userAcHistoriqueService.createEndHistory(userId, e.getAcId());
+                    // soft delete of the User-AC association
                     userAcRepository.softDelete(e.getAcId(), userId);
                 }
             }
@@ -576,30 +590,57 @@ public class KeycloakAdminService {
                     }
                     userAc.setStatus(ActiveStatus.ACTIF);
                     userAcRepository.save(userAc);
+
+                    // create the history entry for the new AC
+                    userAcHistoriqueService.createStartHistory(userId, id);
                 }else {
                     if (id  == acPiloteId){
                         userAcRepository.removeAcPilote(id, userId);
                         UserAc existingUserAc = userAcRepository.findFirstByAcIdAndUserIdAndIsDeletedFalse(id, userId);
                         existingUserAc.setAcPilote(true);
                         userAcRepository.save(existingUserAc);
+
+                        // create the history entry for the new AC
+                        userAcHistoriqueService.createStartHistory(userId, id);
                     }
                 }
             }
         } else {
+            // pour les commissions
             List<UserCom> existing = userComRepository.findByUserIdAndIsDeletedFalse(userId);
+            // pour la suppression des anciennes commissions
             for (UserCom e : existing) {
                 if (!newIdSet.contains(e.getComId())) {
+                    logger.info("Suppression de l'association utilisateur {} avec commission {}", userId, e.getComId());
+
+                    // Create the History entry : for remove
+                    userCommissionHistoriqueService.removeUserCommissionHistorique(userId, e.getComId());
+
+                    // soft delete of the User-Commission association
                     userComRepository.softDelete(e.getComId(), userId);
                 }
             }
+            // pour l'ajout des nouvelles commissions
             for (Integer id : newIdSet) {
                 if (existing.stream().noneMatch(e -> e.getComId().equals(id))) {
-                    UserCom userCom = new UserCom();
-                    userCom.setUserId(userId);
-                    userCom.setComId(id);
-                    userCom.setIsDeleted(false);
-                    userCom.setStatus(ActiveStatus.ACTIF);
-                    userComRepository.save(userCom);
+                    try {
+                        // 1. Save the User-Commission association
+                        UserCom userCom = new UserCom();
+                        userCom.setUserId(userId);
+                        userCom.setComId(id);
+                        userCom.setIsDeleted(false);
+                        userCom.setStatus(ActiveStatus.ACTIF);
+                        userComRepository.save(userCom);
+
+                        // 2. Create the History entry : for save
+                        UserCommissionHistorique userCommissionHistorique = new UserCommissionHistorique();
+                        userCommissionHistorique.setUserId(userId);
+                        userCommissionHistorique.setComId(id);
+                        userCommissionHistoriqueService.create(userCommissionHistorique);
+                    } catch (RuntimeException e) {
+                        logger.warn("create history  user  {} for com {} : {}", userId, id, e.getMessage());
+                        throw new CreateUserComHitoriqueException("");
+                    }
                 }
             }
         }

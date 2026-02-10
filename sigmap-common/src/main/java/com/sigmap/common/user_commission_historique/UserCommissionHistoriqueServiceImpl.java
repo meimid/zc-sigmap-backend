@@ -110,15 +110,17 @@ public class UserCommissionHistoriqueServiceImpl implements UserCommissionHistor
     }
 
     @Override
-    public Optional <UserCommissionHistorique> removeUserFromCommissionHistorique(String userId, Integer comId) {
-       Optional <UserCommissionHistorique> historique=findByUserIdAndComId(userId,comId);
-       if (historique.isPresent()) {
-           historique.get().setDateFin(LocalDateTime.now());
-           save(historique.get());
-       }else {
-           throw new UserCommissionHistoriqueNotFound("Historique not found with id " , comId);
-       }
-       return historique;
+    public void removeUserCommissionHistorique(String userId, Integer comId) {
+
+        // 1. Chercher une entrée active (ACTIF + dateFin null)
+        Optional <UserCommissionHistorique> historique=repository.findByUserIdAndComIdAndDateFinNull(userId,comId);
+
+        // 2. Si existe → la fermer
+        historique.ifPresent(oldEntry -> {
+            oldEntry.setDateFin(LocalDateTime.now());
+            repository.save(oldEntry);
+        });
+
     }
 
 }

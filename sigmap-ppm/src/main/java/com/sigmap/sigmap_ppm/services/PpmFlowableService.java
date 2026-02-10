@@ -1016,7 +1016,7 @@ public class PpmFlowableService {
 
         // --- Association checks with CURRENT step's comId (SCS after Affectation) ---
         Integer currComId = (Integer) runtimeService.getVariable(task.getProcessInstanceId(), "comId");
-        if ((!skipComAssociationCheck && currComId != null) && isPublishable == false) {
+        if ((!skipComAssociationCheck && currComId != null) && isPublishable == false && commissionRequired == true) {
             List<Integer> userComIds = currentUserService.getCurrentUserComIds();
             if (userComIds == null || !userComIds.contains(currComId)) {
                 throw new UserNotAssociatedWithComException(
