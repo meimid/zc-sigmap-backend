@@ -120,7 +120,7 @@ public class ReunionController {
         if(!hasAnyDecisionOrObservation){
             response.setCanBeCancelled(true);
         }
-       response.setExtraits(mapExtraits(reunion));
+      // response.setExtraits(mapExtraits(reunion));
         response.setHaveExtraits(haveExtraitCheck(reunion));
 
         return ResponseEntity.ok(response);
@@ -331,7 +331,7 @@ public class ReunionController {
             @PathVariable Integer reunionId,
              Pageable pageable) {
 
-        Page<ProcessVerbalReunionExtraitRespons> result =
+      /*  Page<ProcessVerbalReunionExtraitRespons> result =
                 reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
                         .map(extrait -> {
 
@@ -351,7 +351,59 @@ public class ReunionController {
                             return dto;
                         });
 
+        return ResponseEntity.ok(result);*/
+
+        Page<ProcessVerbalReunionExtraitRespons> result =
+                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
+                        .map(this::enrich);
+
         return ResponseEntity.ok(result);
+    }
+    private ProcessVerbalReunionExtraitRespons enrich(ProcessVerbalReunionExtrait extrait) {
+        ProcessVerbalReunionExtraitRespons dto =
+                ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
+
+        var type = extrait.getExtraitType();
+
+        if (type == ExtraitType.PAR_DOSSIER) {
+            boolean hasPpm = extrait.getExtraitsPpm() != null && !extrait.getExtraitsPpm().isEmpty();
+            boolean hasDac = extrait.getExtraitsDac() != null && !extrait.getExtraitsDac().isEmpty();
+
+            if (hasPpm) {
+                ProcessVerbalReunionExtraitPpm join = extrait.getExtraitsPpm().get(0);
+                if (join != null && join.getPpm() != null) {
+                    dto.setPpm(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm()));
+                }
+                dto.setType("Dossier PPM");
+            } else if (hasDac) {
+                ProcessVerbalReunionExtraitDac join = extrait.getExtraitsDac().get(0);
+                if (join != null && join.getDac() != null) {
+                    dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
+                }
+                dto.setType("Dossier DAC");
+            } else {
+                // PAR_DOSSIER but no joins -> decide what your business rule wants
+                dto.setType("Dossier");
+            }
+        } else if (type == ExtraitType.PAR_AC) {
+            boolean hasPpm = extrait.getExtraitsPpm() != null && !extrait.getExtraitsPpm().isEmpty();
+            boolean hasDac = extrait.getExtraitsDac() != null && !extrait.getExtraitsDac().isEmpty();
+            if (!hasPpm && !hasDac) {
+                dto.setType("Dossier AC"); // match your old logic wording if you want
+            } else {
+                dto.setType("Dossier AC"); // or something else—up to you
+            }
+        }
+
+        // Optional: ensure nested mapping if mapper doesn't do it
+        if (extrait.getAc() != null) {
+            dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
+        }
+        if (extrait.getDoc() != null) {
+            dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
+        }
+
+        return dto;
     }
 
 
