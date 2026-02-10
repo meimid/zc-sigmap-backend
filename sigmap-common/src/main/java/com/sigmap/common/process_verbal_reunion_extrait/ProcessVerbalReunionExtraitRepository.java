@@ -87,20 +87,6 @@ WHERE e.doc IS NOT NULL
           AND p.version = :ppmVer
           AND p.ac.id = e.ac.id
   )
-
-  AND (
-        (
-          e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_DOSSIER
-          AND EXISTS (
-                SELECT 1
-                FROM e.extraitsPpm ep
-                WHERE ep.ppmId = :ppmId
-                  AND ep.ppmVer = :ppmVer
-          )
-        )
-        OR
-        (
-          e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
           AND EXISTS (
                 SELECT 1
                 FROM Reunion r
@@ -108,8 +94,8 @@ WHERE e.doc IS NOT NULL
                 WHERE r.processVerbal = e.processVerbal
                   AND rp.ppmId = :ppmId
                   AND rp.ppmVer = :ppmVer
-          )
-        )
+          
+        
   )
 ORDER BY e.extraitId
 """)

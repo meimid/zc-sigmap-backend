@@ -1,6 +1,6 @@
 -- liquibase formatted sql
 
--- changeset sigmap:17496719590113-1
+-- changeset sigmap:17496719590114-1
 CREATE TABLE process_verbal_reunion_extrait_ppm (
     extrait_id INT NOT NULL,
     pv_id INT NOT NULL,
@@ -9,24 +9,24 @@ CREATE TABLE process_verbal_reunion_extrait_ppm (
     ppm_ver INT NOT NULL
 );
 
--- changeset sigmap:17496719590113-2
+-- changeset sigmap:17496719590114-2
 ALTER TABLE process_verbal_reunion_extrait_ppm
     ADD CONSTRAINT PK_PV_REUNION_EXTRAIT_PPM
         PRIMARY KEY (extrait_id, pv_id, ac_id, ppm_id, ppm_ver);
 
--- changeset sigmap:17496719590113-3
+-- changeset sigmap:17496719590114-3
 ALTER TABLE process_verbal_reunion_extrait_ppm
     ADD CONSTRAINT FK_PVRE_EXTRAIT_PPM_EXTRAIT
         FOREIGN KEY (extrait_id, pv_id, ac_id)
             REFERENCES process_verbal_reunion_extrait (extrait_id, pv_id, ac_id);
 
--- changeset sigmap:17496719590113-4
+-- changeset sigmap:17496719590114-4
 ALTER TABLE process_verbal_reunion_extrait_ppm
     ADD CONSTRAINT FK_PVRE_EXTRAIT_PPM_PPM
         FOREIGN KEY (ppm_id, ppm_ver)
             REFERENCES ppm (ppm_id, ppm_ver);
 
--- changeset sigmap:17496719590113-5
+-- changeset sigmap:17496719590114-5
 INSERT INTO process_verbal_reunion_extrait_ppm
 (extrait_id, pv_id, ac_id, ppm_id, ppm_ver)
 SELECT
@@ -40,7 +40,7 @@ WHERE e.extrait_type = 'PAR_DOSSIER'
   AND e.ppm_id IS NOT NULL
   AND e.ppm_ver IS NOT NULL;
 
--- changeset sigmap:17496719590113-6
+-- changeset sigmap:17496719590114-6
 DELETE e
 FROM process_verbal_reunion_extrait e
 JOIN (
@@ -55,24 +55,24 @@ WHERE e.extrait_type = 'PAR_AC'
   AND e.extrait_id <> k.keep_id;
 
 
--- changeset sigmap:17496719590113-7
+-- changeset sigmap:17496719590114-7
 ALTER TABLE process_verbal_reunion_extrait
 DROP FOREIGN KEY FK_EXTRAIT_PPM;
 
--- changeset sigmap:17496719590113-8
+-- changeset sigmap:17496719590114-8
 DROP INDEX FK_EXTRAIT_PPM
     ON process_verbal_reunion_extrait;
 
 
 
 
--- changeset sigmap:17496719590113-9
+-- changeset sigmap:17496719590114-9
 ALTER TABLE process_verbal_reunion_extrait
 DROP COLUMN ppm_id,
 DROP COLUMN ppm_ver;
 
 
--- changeset sigmap:17496719590113-10
+-- changeset sigmap:17496719590114-10
 CREATE TABLE process_verbal_reunion_extrait_dac (
     extrait_id INT NOT NULL,
     pv_id INT NOT NULL,
@@ -81,45 +81,45 @@ CREATE TABLE process_verbal_reunion_extrait_dac (
     dac_ver INT NOT NULL
 );
 
--- changeset sigmap:17496719590113-11
+-- changeset sigmap:17496719590114-11
 ALTER TABLE process_verbal_reunion_extrait_dac
     ADD CONSTRAINT PK_PV_REUNION_EXTRAIT_DAC
         PRIMARY KEY (extrait_id, pv_id, ac_id, dac_id, dac_ver);
 
--- changeset sigmap:17496719590113-12
+-- changeset sigmap:17496719590114-12
 ALTER TABLE process_verbal_reunion_extrait_dac
     ADD CONSTRAINT FK_PVRE_EXTRAIT_DAC_EXTRAIT
         FOREIGN KEY (extrait_id, pv_id, ac_id)
             REFERENCES process_verbal_reunion_extrait (extrait_id, pv_id, ac_id);
 
--- changeset sigmap:17496719590113-13
+-- changeset sigmap:17496719590114-13
 ALTER TABLE process_verbal_reunion_extrait_dac
     ADD CONSTRAINT FK_PVRE_EXTRAIT_DAC_DAC
         FOREIGN KEY (dac_id, dac_ver)
             REFERENCES dac (dac_id, dac_ver);
 
 
--- changeset sigmap:17496719590113-14
+-- changeset sigmap:17496719590114-14
 ALTER TABLE reunion
     ADD COLUMN validated_by_user_id VARCHAR(255) NULL;
 
--- changeset sigmap:17496719590113-15
+-- changeset sigmap:17496719590114-15
 ALTER TABLE reunion
     ADD COLUMN validated_by_user_full_name VARCHAR(255) NULL;
 
--- changeset sigmap:17496719590113-16
+-- changeset sigmap:17496719590114-16
 ALTER TABLE reunion
     ADD COLUMN validated_at DATETIME NULL;
 
--- changeset sigmap:17496719590113-17
+-- changeset sigmap:17496719590114-17
 ALTER TABLE reunion
     ADD COLUMN closed_by_user_id VARCHAR(255) NULL;
 
--- changeset sigmap:17496719590113-18
+-- changeset sigmap:17496719590114-18
 ALTER TABLE reunion
     ADD COLUMN closed_by_user_full_name VARCHAR(255) NULL;
 
--- changeset sigmap:17496719590113-19
+-- changeset sigmap:17496719590114-19
 ALTER TABLE reunion
     ADD COLUMN closed_at DATETIME NULL;
 
