@@ -12,6 +12,7 @@ import com.sigmap.common.reunion.response.*;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionDac.mapper.ReunionDacMapper;
 import com.sigmap.common.reunionDac.response.ReunionDacResponse;
+import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.mapper.ReunionPpmMapper;
 import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
@@ -63,6 +64,10 @@ public interface ReunionMapper {
     @Mapping(target = "metadata.deletedBy", source = "deletedBy")
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(source = "com.nom", target = "comName")
+    @Mapping(
+            target = "canBeCancelled",
+            expression = "java( !hasAnyDecisionOrObservation(reunion) )"
+    )
     ReunionResponseDto mapToDto(Reunion reunion);
     @Mapping(target = "metadata.createdAt", source = "createdAt")
     @Mapping(target = "metadata.createdBy", source = "createdBy")
@@ -85,5 +90,31 @@ public interface ReunionMapper {
     @Mapping(target = "metadata.deletedAt", source = "deletedAt")
     @Mapping(source = "com.nom", target = "comName")
     ReunionSearchResponseDto mapToReunionSearchResponseDto(Reunion reunion);
+
+    default boolean hasAnyDecisionOrObservation(Reunion reunion) {
+        if (reunion == null) return false;
+
+        boolean ppmHas = reunion.getReunionPpms() != null
+                && reunion.getReunionPpms().stream().anyMatch(this::hasDecisionOrObservation);
+
+        boolean dacHas = reunion.getReunionDacs() != null
+                && reunion.getReunionDacs().stream().anyMatch(this::hasDecisionOrObservation);
+
+        return ppmHas || dacHas;
+    }
+
+    default boolean hasDecisionOrObservation(ReunionPpm d) {
+        if (d == null) return false;
+        return notBlank(d.getDecision()) || notBlank(d.getObservation());
+    }
+
+    default boolean hasDecisionOrObservation(ReunionDac d) {
+        if (d == null) return false;
+        return notBlank(d.getDecision()) || notBlank(d.getObservation());
+    }
+
+    default boolean notBlank(String s) {
+        return s != null && !s.trim().isEmpty();
+    }
 
 }

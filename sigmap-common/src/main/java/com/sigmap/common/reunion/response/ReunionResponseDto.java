@@ -19,6 +19,7 @@ public class ReunionResponseDto {
     private ReunionStatus status;
     private String note;
     //boolean haveExtraits = false;
+    private boolean canBeCancelled=false;
     private BaseEntityResponse metadata;
 
 }
