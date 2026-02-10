@@ -46,6 +46,8 @@ import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.realisations.exceptions.RealisationUnlinkForbiddenByDacException;
+import com.sigmap.common.realisations.exceptions.RealisationUpdateForbiddenByDacException;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
 import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
@@ -316,6 +318,8 @@ public class PpmServiceImpl implements PpmService {
                 }
             });
         }
+
+        populateUsedInDacFlag(ppm.getRealisations());
 
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
@@ -1148,6 +1152,54 @@ public class PpmServiceImpl implements PpmService {
             }
         } else if (request.getRealisations() != null) {
             reqReals = new ArrayList<>(request.getRealisations());
+        }
+
+        // BLOCK REMOVE/UNLINK used in DAC
+        if (existingPpm.getRealisations() != null) {
+            Set<Integer> updatedIds = updatedRealisations.stream()
+                    .filter(Objects::nonNull)
+                    .map(Realisation::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            for (Realisation oldReal : existingPpm.getRealisations()) {
+                if (oldReal == null || oldReal.getId() == null) continue;
+
+                if (!updatedIds.contains(oldReal.getId())) {
+                    boolean locked = dacRepository.existsNonRejectedDacForRealisation(
+                            oldReal.getId(),
+                            oldReal.getVersion()
+                    );
+                    if (locked) {
+                        throw new RealisationUnlinkForbiddenByDacException(oldReal.getId(), oldReal.getVersion());
+                    }
+                }
+            }
+        }
+
+        //  BLOCK UPDATE used in DAC
+        if (reqReals != null && !reqReals.isEmpty()) {
+            for (RealisationBaseRequestDto rr : reqReals) {
+                if (rr == null || rr.getId() == null) continue;
+
+                if (newRealisationIds.contains(rr.getId())) continue;
+
+                Integer ver = null;
+                for (Realisation r : updatedRealisations) {
+                    if (r != null && r.getId() != null && r.getId().equals(rr.getId())) {
+                        ver = r.getVersion();
+                        break;
+                    }
+                }
+                if (ver == null) {
+                    ver = rr.getVersion() != null ? rr.getVersion() : realisationRepository.findMaxVersionById(rr.getId());
+                }
+
+                boolean locked = dacRepository.existsNonRejectedDacForRealisation(rr.getId(), ver);
+                if (locked) {
+                    throw new RealisationUpdateForbiddenByDacException(rr.getId(), ver);
+                }
+            }
         }
 
         // --- Docs & files sync ONLY (NO LOT TOUCHING) ---
@@ -4507,6 +4559,15 @@ public class PpmServiceImpl implements PpmService {
 
                     realisation = existingRealisationOpt.get();
 
+                    boolean locked = dacRepository.existsNonRejectedDacForRealisation(
+                            realisation.getId(),
+                            realisation.getVersion()
+                    );
+
+                    if (locked) {
+                        throw new RealisationUpdateForbiddenByDacException(realisation.getId(), realisation.getVersion());
+                    }
+
                     realisation.setRealisationEnvisagees(realisationRequest.getRealisationEnvisagees() != null
                             ? realisationRequest.getRealisationEnvisagees()
                             : realisation.getRealisationEnvisagees());
@@ -4868,6 +4929,16 @@ public class PpmServiceImpl implements PpmService {
         if (existingPpm.getRealisations() != null) {
             for (Realisation existingRealisation : existingPpm.getRealisations()) {
                 if (!processedRealisationIds.contains(existingRealisation.getId())) {
+
+                    boolean locked = dacRepository.existsNonRejectedDacForRealisation(
+                            existingRealisation.getId(),
+                            existingRealisation.getVersion()
+                    );
+
+                    if (locked) {
+                        throw new RealisationUnlinkForbiddenByDacException(existingRealisation.getId(), existingRealisation.getVersion());
+                    }
+
                     if (existingRealisation.getPpms() != null) {
                         existingRealisation.getPpms().remove(existingPpm);
                         realisationRepository.save(existingRealisation);
@@ -6890,5 +6961,34 @@ public class PpmServiceImpl implements PpmService {
         }
         return ppms;
     }
+
+    private void populateUsedInDacFlag(List<Realisation> realisations) {
+        if (realisations == null || realisations.isEmpty()) return;
+
+        List<Integer> realIds = realisations.stream()
+                .map(Realisation::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (realIds.isEmpty()) {
+            realisations.forEach(r -> r.setUsedInDac(false));
+            return;
+        }
+
+        List<Object[]> usedKeysRaw = dacRepository.findUsedRealisationKeysNonRejectedByIds(realIds);
+
+        // build a Set of (id#ver)
+        Set<String> usedKeySet = usedKeysRaw.stream()
+                .filter(arr -> arr != null && arr.length >= 2 && arr[0] != null && arr[1] != null)
+                .map(arr -> arr[0].toString() + "#" + arr[1].toString())
+                .collect(Collectors.toSet());
+
+        realisations.forEach(r -> {
+            String key = r.getId() + "#" + r.getVersion();
+            r.setUsedInDac(usedKeySet.contains(key));
+        });
+    }
+
 
 }

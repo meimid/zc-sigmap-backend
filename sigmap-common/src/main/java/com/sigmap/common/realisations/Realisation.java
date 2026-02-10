@@ -172,6 +172,8 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @JsonManagedReference("realisation-financements")
     private List<Financement> financements = new ArrayList<>();
 
+    @Transient private Boolean usedInDac;
+
     @Override
     public Integer getId() {
         return this.id;

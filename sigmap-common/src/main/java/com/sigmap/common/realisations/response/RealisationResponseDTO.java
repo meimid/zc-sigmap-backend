@@ -44,6 +44,7 @@ private ModeDePassationSelectionResponseDto modePassation;
     private Integer sort;
     private List<DocsResponseDTO> docs;
     private List<LotResponseDTO> lots;
+    private Boolean usedInDac;
 
 
 } 
