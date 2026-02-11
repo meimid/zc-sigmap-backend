@@ -61,7 +61,7 @@ SELECT
          WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
-     d.ref_dac as ref,
+    d.ref_dac as ref,
     '' as nom,
     p.annee,
     p.budget_estime, DATE_FORMAT(d.created_at, '%d/%m/%Y')  as createddate,
@@ -180,8 +180,8 @@ SELECT
     r.dac_ver,
     r.observation,
     r.decision,
-    p.ref,
-    p.nom,
+    d.ref_dac as ref,
+    '' as nom,
     p.annee,
     p.budget_estime,
     a.ac_id,
@@ -260,7 +260,9 @@ WHERE r.reunion_id =  $P{reunion} and p.ac_id= $P{acId}]]>
 		<groupHeader>
 			<band height="32">
 				<textField>
-					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="20" uuid="622cd9e8-d075-446f-892b-db4a18505ea4"/>
+					<reportElement style="ArialBold" stretchType="RelativeToTallestObject" x="0" y="0" width="550" height="30" uuid="622cd9e8-d075-446f-892b-db4a18505ea4">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
 					<textElement verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true" isUnderline="true"/>
 					</textElement>

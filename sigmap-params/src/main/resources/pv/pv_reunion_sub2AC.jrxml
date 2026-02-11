@@ -111,7 +111,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
 		</field>
-		<field name="actualise" class="java.lang.Boolean">
+		<field name="actualise" class="java.lang.Integer">
 			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
@@ -149,7 +149,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
          WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
-   d.ref_dac as ref,
+  d.ref_dac as ref,
     '' as nom,
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
@@ -287,8 +287,8 @@ SELECT
     r.dac_ver,
     r.observation,
     r.decision,
-    p.ref,
-    p.nom,
+    d.ref_dac as ref,
+    '' as nom,
     p.annee,
     p.budget_estime,
      m.com_id,
@@ -409,7 +409,7 @@ AND (
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise}  ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise}==1  ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement x="30" y="30" width="526" height="15" uuid="d530134b-05d7-4bbb-a692-82310b06ce88"/>
