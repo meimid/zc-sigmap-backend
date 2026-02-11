@@ -998,15 +998,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (lang == null) {
             lang = Locale.forLanguageTag("fr");
         }
-        if (request.getDateLimiteSoumission() == null) {
-            errorsFR.append("La date limite de soumission est obligatoire, ");
-            errorsENG.append("Submission deadline is required, ");
-        }
-
-        if (request.getDateLimiteRecptionDemande() == null) {
-            errorsFR.append("La date limite de réception des demandes est obligatoire, ");
-            errorsENG.append("Deadline for receipt of requests is required, ");
-        }
 
         if (request.getPayant() == null) {
             errorsFR.append("le champ payant est obligatoire, ");
@@ -1016,17 +1007,6 @@ public class DacDocsServiceImpl implements DacDocsService{
         if (request.getResponsableDacId() == null || request.getResponsableDacId().isEmpty()) {
             errorsFR.append("Le responsable du DAC est obligatoire, ");
             errorsENG.append("DAC responsible is required, ");
-        }
-
-        Calendar now = Calendar.getInstance();
-        if (request.getDateLimiteSoumission() != null && !request.getDateLimiteSoumission().after(now)) {
-            errorsFR.append("La date limite de soumission doit être dans le futur, ");
-            errorsENG.append("Submission deadline must be in the future, ");;
-        }
-
-        if (request.getDateLimiteRecptionDemande() != null && !request.getDateLimiteRecptionDemande().after(now)) {
-            errorsFR.append("La date limite de réception des demandes doit être dans le futur, ");
-            errorsENG.append("Deadline for receipt of requests must be in the future, ");
         }
 
         if (Boolean.TRUE.equals(request.getPayant())) {

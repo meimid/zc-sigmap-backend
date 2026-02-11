@@ -721,9 +721,13 @@ public class DacServiceImpl implements DacService {
 
                 String pattern = "**" + key + "**";
                 if (newText.contains(pattern)) {
-                    String value = entry.getValue() != null ? entry.getValue() : "";
-                    newText = newText.replace(pattern, value);
-                    modified = true;
+                    String value = entry.getValue();
+
+                    // Si la valeur est vide ou null, on garde le marqueur **key**
+                    if (value != null && !value.trim().isEmpty()) {
+                        newText = newText.replace(pattern, value);
+                        modified = true;
+                    }
                 }
             }
             
@@ -751,12 +755,12 @@ public class DacServiceImpl implements DacService {
         // If there are leftover **, it means they didn't match any key.
         // We can optionally leave them or remove them. 
         // The previous logic removed all **, so we maintain that behavior for consistency.
-        for (XWPFRun run : runs) {
+        /*for (XWPFRun run : runs) {
             String text = run.getText(0);
             if (text != null && text.contains("**")) {
                  run.setText(text.replace("**", ""), 0);
             }
-        }
+        }*/
     }
 
     private void mergeTagRuns(XWPFParagraph paragraph) {
