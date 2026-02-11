@@ -27,6 +27,7 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait.mapper.ProcessVerbalReunionExtraitMapper;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
+import com.sigmap.common.process_verbal_reunion_extrait.response.DossierDto;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
 import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDac;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
@@ -362,7 +363,7 @@ public class ReunionController {
     private ProcessVerbalReunionExtraitRespons enrich(ProcessVerbalReunionExtrait extrait) {
         ProcessVerbalReunionExtraitRespons dto =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
-
+        DossierDto dossierDto =new DossierDto();
         var type = extrait.getExtraitType();
 
         if (type == ExtraitType.PAR_DOSSIER) {
@@ -372,13 +373,21 @@ public class ReunionController {
             if (hasPpm) {
                 ProcessVerbalReunionExtraitPpm join = extrait.getExtraitsPpm().get(0);
                 if (join != null && join.getPpm() != null) {
-                    dto.setPpm(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm()));
+                    dossierDto.setId(join.getPpm().getId());
+                    dossierDto.setVersion(join.getPpm().getVersion());
+                    dossierDto.setRef(join.getPpm().getRef());
+                    dto.setDossier(dossierDto);
+                   // dto.getDossier(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm()));
                 }
                 dto.setType("PPM");
             } else if (hasDac) {
                 ProcessVerbalReunionExtraitDac join = extrait.getExtraitsDac().get(0);
                 if (join != null && join.getDac() != null) {
-                    dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
+                    dossierDto.setId(join.getDacId());
+                    dossierDto.setVersion(join.getDacId());
+                    dossierDto.setRef(join.getDac().getReference());
+                    dto.setDossier(dossierDto);
+                    //dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
                 }
                 dto.setType("DAC");
             } else {
@@ -428,6 +437,8 @@ public class ReunionController {
         return extraits.stream()
                 .map(extrait -> {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
+                    DossierDto dossierDto=new DossierDto();
+
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
                     dto.setExtraitType(extrait.getExtraitType());
@@ -451,9 +462,10 @@ public class ReunionController {
                         ProcessVerbalReunionExtraitPpm join =
                                 extrait.getExtraitsPpm().get(0);
 
-                        dto.setPpm(
-                                PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm())
-                        );
+                        dossierDto.setId(join.getPpm().getId());
+                        dossierDto.setVersion(join.getPpm().getVersion());
+                        dossierDto.setRef(join.getPpm().getRef());
+                        dto.setDossier(dossierDto);
                         dto.setType("PPM");
                     }
                     if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
@@ -463,9 +475,10 @@ public class ReunionController {
                         ProcessVerbalReunionExtraitDac join =
                                 extrait.getExtraitsDac().get(0);
 
-                        dto.setDac(
-                                DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac())
-                        );
+                        dossierDto.setId(join.getDacId());
+                        dossierDto.setVersion(join.getDacId());
+                        dossierDto.setRef(join.getDac().getReference());
+                        dto.setDossier(dossierDto);
                         dto.setType("DAC");
 
 

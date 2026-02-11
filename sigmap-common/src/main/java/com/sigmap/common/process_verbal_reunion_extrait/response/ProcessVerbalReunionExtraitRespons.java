@@ -20,8 +20,9 @@ public class ProcessVerbalReunionExtraitRespons {
     private AcWebsiteResponse ac;
     private DocsResponseDTO doc;
     private ExtraitType extraitType;
-    private PpmIdVerResponseDto ppm;
-    private DacIdVerRefResponseDto dac;
+    /*private PpmIdVerResponseDto ppm;
+    private DacIdVerRefResponseDto dac;*/
+    private DossierDto dossier;
     private String type;
 
 
