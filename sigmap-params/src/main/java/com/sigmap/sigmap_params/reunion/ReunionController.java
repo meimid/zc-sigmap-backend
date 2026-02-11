@@ -374,28 +374,26 @@ public class ReunionController {
                 if (join != null && join.getPpm() != null) {
                     dto.setPpm(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm()));
                 }
-                dto.setType("Dossier PPM");
+                dto.setType("PPM");
             } else if (hasDac) {
                 ProcessVerbalReunionExtraitDac join = extrait.getExtraitsDac().get(0);
                 if (join != null && join.getDac() != null) {
                     dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
                 }
-                dto.setType("Dossier DAC");
+                dto.setType("DAC");
             } else {
-                // PAR_DOSSIER but no joins -> decide what your business rule wants
-                dto.setType("Dossier");
+                dto.setType("AC");
             }
         } else if (type == ExtraitType.PAR_AC) {
             boolean hasPpm = extrait.getExtraitsPpm() != null && !extrait.getExtraitsPpm().isEmpty();
             boolean hasDac = extrait.getExtraitsDac() != null && !extrait.getExtraitsDac().isEmpty();
             if (!hasPpm && !hasDac) {
-                dto.setType("Dossier AC"); // match your old logic wording if you want
-            } else {
-                dto.setType("Dossier AC"); // or something else—up to you
+                dto.setType("AC");
             }
+                dto.setType("AC");
+
         }
 
-        // Optional: ensure nested mapping if mapper doesn't do it
         if (extrait.getAc() != null) {
             dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
         }
@@ -456,7 +454,7 @@ public class ReunionController {
                         dto.setPpm(
                                 PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm())
                         );
-                        dto.setType("Dossier PPM");
+                        dto.setType("PPM");
                     }
                     if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
                             && extrait.getExtraitsDac() != null
@@ -468,7 +466,7 @@ public class ReunionController {
                         dto.setDac(
                                 DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac())
                         );
-                        dto.setType("Dossier DAC");
+                        dto.setType("DAC");
 
 
                     }
@@ -477,7 +475,7 @@ public class ReunionController {
                     if(extrait.getExtraitType() == ExtraitType.PAR_AC
                             && extrait.getExtraitsPpm().isEmpty()
                             &&extrait.getExtraitsDac().isEmpty()) {
-                        dto.setType("Dossier Ac");
+                        dto.setType("Ac");
                     }
                     return dto;
                 })
