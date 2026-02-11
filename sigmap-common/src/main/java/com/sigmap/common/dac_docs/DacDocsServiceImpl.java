@@ -529,8 +529,6 @@ public class DacDocsServiceImpl implements DacDocsService{
              targetDac = newDac;
         }
 
-        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
-        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
@@ -768,8 +766,7 @@ public class DacDocsServiceImpl implements DacDocsService{
             throw new RuntimeException("Dac not found for ID: " + dacId);
         }
 
-        if (request.getDateLimiteSoumission() != null) targetDac.setDateLimiteSoumission(request.getDateLimiteSoumission());
-        if (request.getDateLimiteRecptionDemande() != null) targetDac.setDateLimiteRecptionDemande(request.getDateLimiteRecptionDemande());
+
         if (request.getPayant() != null) targetDac.setPayant(request.getPayant());
         if (request.getResponsableDacId() != null) targetDac.setResponsableDacId(request.getResponsableDacId());
         if (request.getConditionsParticipation() != null) targetDac.setConditionsParticipation(request.getConditionsParticipation());
@@ -2250,8 +2247,6 @@ public class DacDocsServiceImpl implements DacDocsService{
 
     boolean isDacModified(Dac dac, DacWithDacDocsRequest request) {
        // 1. Check basic attributes
-       if (request.getDateLimiteSoumission() != null && isDateDifferent(dac.getDateLimiteSoumission(), request.getDateLimiteSoumission())) return true;
-       if (request.getDateLimiteRecptionDemande() != null && isDateDifferent(dac.getDateLimiteRecptionDemande(), request.getDateLimiteRecptionDemande())) return true;
        
        if (request.getPayant() != null && !Objects.equals(dac.isPayant(), request.getPayant())) return true;
        
