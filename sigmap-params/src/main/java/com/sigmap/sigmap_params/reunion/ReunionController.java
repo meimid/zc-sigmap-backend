@@ -384,7 +384,7 @@ public class ReunionController {
                 ProcessVerbalReunionExtraitDac join = extrait.getExtraitsDac().get(0);
                 if (join != null && join.getDac() != null) {
                     dossierDto.setId(join.getDacId());
-                    dossierDto.setVersion(join.getDacId());
+                    dossierDto.setVersion(join.getDacVer());
                     dossierDto.setRef(join.getDac().getReference());
                     dto.setDossier(dossierDto);
                     //dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
@@ -476,7 +476,7 @@ public class ReunionController {
                                 extrait.getExtraitsDac().get(0);
 
                         dossierDto.setId(join.getDacId());
-                        dossierDto.setVersion(join.getDacId());
+                        dossierDto.setVersion(join.getDacVer());
                         dossierDto.setRef(join.getDac().getReference());
                         dto.setDossier(dossierDto);
                         dto.setType("DAC");
