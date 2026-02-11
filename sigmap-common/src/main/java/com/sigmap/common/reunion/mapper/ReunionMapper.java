@@ -5,6 +5,7 @@ import com.sigmap.common.Participant.Participant;
 import com.sigmap.common.Participant.mapper.ParticipantMapper;
 import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.mapper.AcMapper;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.request.ReunionRequest;
 import com.sigmap.common.reunion.response.*;
@@ -93,7 +94,12 @@ public interface ReunionMapper {
 
     default boolean hasAnyDecisionOrObservation(Reunion reunion) {
         if (reunion == null) return false;
-
+        if (reunion.getStatus() == ReunionStatus.BROUILLON
+                || reunion.getStatus() == ReunionStatus.ANNULER
+                || reunion.getStatus() == ReunionStatus.CLOTURER
+                || reunion.getStatus() == ReunionStatus.REPORTER) {
+            return true;
+        }
         boolean ppmHas = reunion.getReunionPpms() != null
                 && reunion.getReunionPpms().stream().anyMatch(this::hasDecisionOrObservation);
 

@@ -7,7 +7,7 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="2101a4cb-b120-4dac-9add-f4828119eb04">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
 		<parameter name="ppm_id" class="java.lang.Integer"/>
@@ -111,7 +111,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 			<property name="com.jaspersoft.studio.field.name" value="type"/>
 			<property name="com.jaspersoft.studio.field.label" value="type"/>
 		</field>
-		<field name="actualise" class="java.lang.Integer">
+		<field name="actualise" class="java.lang.Boolean">
 			<property name="com.jaspersoft.studio.field.name" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.label" value="actualise"/>
 			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
@@ -127,7 +127,7 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
 		</group>
 	</subDataset>
 	<subDataset name="Dataset2" uuid="3724119d-925f-4032-8869-404f7961f454">
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="com" class="java.lang.Integer"/>
@@ -149,8 +149,8 @@ AND   p.ppm_id = $P{ppm_id} AND p.ppm_ver = $P{ppm_ver}]]>
          WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
-    p.ref,
-    p.nom,
+   d.ref_dac as ref,
+    '' as nom,
     p.annee,
     p.budget_estime,  DATE_FORMAT(p.created_at, '%d/%m/%Y')  as createddate,
      m.com_id,
@@ -195,9 +195,9 @@ AND  d.dac_id = $P{dac_id} AND d.dac_ver = $P{dac_ver}]]>
 			<property name="com.jaspersoft.studio.field.label" value="decision"/>
 		</field>
 		<field name="ref" class="java.lang.String">
-			<property name="com.jaspersoft.studio.field.name" value="ref"/>
+			<property name="com.jaspersoft.studio.field.name" value="ref_dac"/>
 			<property name="com.jaspersoft.studio.field.label" value="ref"/>
-			<property name="com.jaspersoft.studio.field.tree.path" value="ppm"/>
+			<property name="com.jaspersoft.studio.field.tree.path" value="dac"/>
 		</field>
 		<field name="nom" class="java.lang.String">
 			<property name="com.jaspersoft.studio.field.name" value="nom"/>
@@ -409,7 +409,7 @@ AND (
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise} == 1 ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise}  ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement x="30" y="30" width="526" height="15" uuid="d530134b-05d7-4bbb-a692-82310b06ce88"/>
@@ -457,7 +457,7 @@ AND (
 								<textElement verticalAlignment="Middle">
 									<font fontName="Arial"/>
 								</textElement>
-								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise} == 1 ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
+								<textFieldExpression><![CDATA[$V{REPORT_COUNT} + "/- Examen du " + $F{type} + ($F{actualise}==1 ? " actualisé" : "") + " de " + $F{acnom} + " au titre de l'année " + $F{annee} + ", Réf : " + $F{ref} + " du " + $F{createddate}]]></textFieldExpression>
 							</textField>
 							<textField isBlankWhenNull="true">
 								<reportElement x="30" y="30" width="526" height="15" uuid="ce53fe84-50ac-40b6-8456-43f37cdeaf5e"/>

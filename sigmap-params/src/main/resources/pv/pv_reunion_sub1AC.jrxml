@@ -8,7 +8,9 @@
 	<style name="ArialBold" fontName="Arial" pdfFontName="fonts/arialbd.ttf" pdfEncoding="Identity-H" isPdfEmbedded="true"/>
 	<subDataset name="Dataset1" uuid="47231b59-41d6-470f-b689-8e36900a955f">
 		<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter-SIGMAP-DEV.jrdax"/>
+		<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w1" value="472"/>
+		<property name="com.jaspersoft.studio.property.dataset.dialog.DatasetDialog.sash.w2" value="517"/>
+		<property name="com.jaspersoft.studio.data.defaultdataadapter" value="DataAdapter.jrdax"/>
 		<parameter name="reunion" class="java.lang.Integer"/>
 		<parameter name="ac_id" class="java.lang.Integer"/>
 		<queryString language="SQL">
@@ -59,8 +61,8 @@ SELECT
          WHEN 'FALSE' THEN 'Reporté' 
         else  'Avis' 
         end as decision,
-    p.ref,
-    p.nom,
+     d.ref_dac as ref,
+    '' as nom,
     p.annee,
     p.budget_estime, DATE_FORMAT(d.created_at, '%d/%m/%Y')  as createddate,
     a.ac_id,
