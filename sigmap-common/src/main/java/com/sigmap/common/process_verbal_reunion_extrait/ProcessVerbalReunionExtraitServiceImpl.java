@@ -45,13 +45,13 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public Page<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId, Pageable pageable) {
-        return repository.findAllByPvId(pvId, pageable);
+        return repository.findAllByPvIdAndIsDeletedFalse(pvId, pageable);
 
     }
 
     @Override
     public List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId) {
-        return repository.findAllByPvId(pvId).stream()
+        return repository.findAllByPvIdAndIsDeletedFalse(pvId).stream()
                 .distinct()
                 .collect(Collectors.toList());
     }
@@ -150,8 +150,12 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     }
     @Override
     public ProcessVerbalReunionExtrait findByExtraitId(Integer extraitId) {
-        return repository.findByExtraitId(extraitId)
-                .orElseThrow(() -> new ExtraitNotFound("Extrait not found with id " + extraitId));
+        return repository.findByExtraitIdAndIsDeletedFalse(extraitId)
+                .filter(e -> !Boolean.TRUE.equals(e.getIsDeleted()))
+                .orElseThrow(() ->
+                        new ExtraitNotFound("Extrait not found with id " + extraitId)
+                );
+
     }
     @Override
     public ProcessVerbalReunionExtrait update( ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException {
@@ -172,7 +176,7 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
 
     @Override
     public List<Integer> findAcIdsWithExtraitByPvId(Integer pvId) {
-        return repository.findAllByPvId(pvId).stream()
+        return repository.findAllByPvIdAndIsDeletedFalse(pvId).stream()
                 .map(ProcessVerbalReunionExtrait::getAcId)
                 .distinct()
                 .toList();

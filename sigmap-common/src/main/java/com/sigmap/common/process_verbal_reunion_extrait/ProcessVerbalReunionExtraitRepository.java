@@ -17,15 +17,17 @@ public interface ProcessVerbalReunionExtraitRepository
 
 
 
-    Page<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId, Pageable pageable);
-    List<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId);
-    Optional<ProcessVerbalReunionExtrait> findByExtraitId(Integer extraitId);
+    Page<ProcessVerbalReunionExtrait> findAllByPvIdAndIsDeletedFalse(Integer pvId, Pageable pageable);
+    List<ProcessVerbalReunionExtrait> findAllByPvIdAndIsDeletedFalse(Integer pvId);
+    Optional<ProcessVerbalReunionExtrait> findByExtraitIdAndIsDeletedFalse(Integer extraitId);
     @Query("""
    SELECT e
    FROM ProcessVerbalReunionExtrait e
    WHERE e.extraitId = :extraitId
      AND e.pvId = :pvId
      AND e.acId = :acId
+     AND e.isDeleted = false
+
 """)
     Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(
             @Param("extraitId") Integer extraitId,
@@ -38,39 +40,13 @@ public interface ProcessVerbalReunionExtraitRepository
  WHERE e.pvId = :pvId
    AND e.acId = :acId
    AND e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
+   AND e.isDeleted = false
+
 """)
     Optional<ProcessVerbalReunionExtrait> findParAcByPvIdAndAcId(
             Integer pvId,
             Integer acId
     );
-
-
-/*    @Query("""
-SELECT DISTINCT e
-FROM ProcessVerbalReunionExtrait e
-JOIN Ppm p ON p.id = :ppmId AND p.version = :ppmVer
-LEFT JOIN e.extraitsPpm ep
-LEFT JOIN Reunion r ON r.processVerbal = e.processVerbal
-LEFT JOIN r.reunionPpms rp
-WHERE e.doc IS NOT NULL
-AND e.ac.id IN :acIds
-AND e.ac.id = p.ac.id
-AND (
-      (e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_DOSSIER
-       AND ep.ppmId = :ppmId
-       AND ep.ppmVer = :ppmVer)
-   OR (e.extraitType = com.sigmap.common.entity.ExtraitType.PAR_AC
-       AND rp.ppmId = :ppmId
-       AND rp.ppmVer = :ppmVer)
-)
-ORDER BY e.extraitId
-""")
-    List<ProcessVerbalReunionExtrait> findExtraitsByPpmAndAcs(
-            @Param("acIds") List<Integer> acIds,
-            @Param("ppmId") Integer ppmId,
-            @Param("ppmVer") Integer ppmVer
-    );*/
-
 
 
 
@@ -87,6 +63,7 @@ WHERE e.doc IS NOT NULL
         WHERE p.id = :ppmId
           AND p.version = :ppmVer
           AND p.ac.id = e.ac.id
+          AND p.isDeleted = false
   )
           AND EXISTS (
                 SELECT 1

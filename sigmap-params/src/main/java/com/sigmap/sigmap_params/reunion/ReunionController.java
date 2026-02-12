@@ -332,27 +332,6 @@ public class ReunionController {
             @PathVariable Integer reunionId,
              Pageable pageable) {
 
-      /*  Page<ProcessVerbalReunionExtraitRespons> result =
-                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
-                        .map(extrait -> {
-
-                            ProcessVerbalReunionExtraitRespons dto =
-                                    ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
-
-                            if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
-                                    && extrait.getExtraitsPpm() != null) {
-                                dto.setType("Dossier PPM");
-                            } else if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
-                                    && extrait.getExtraitsDac() != null) {
-                                dto.setType("Dossier DAC");
-                            } else if (extrait.getExtraitType() == ExtraitType.PAR_AC) {
-                                dto.setType("Dossier AC");
-                            }
-
-                            return dto;
-                        });
-
-        return ResponseEntity.ok(result);*/
 
         Page<ProcessVerbalReunionExtraitRespons> result =
                 reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
@@ -432,7 +411,7 @@ public class ReunionController {
 
         // Fetch all extraits for this PV
         List<ProcessVerbalReunionExtrait> extraits =
-                processVerbalReunionExtraitService.findAllByPvId(pvId);
+                processVerbalReunionExtraitService.findAllByPvId(pvId).stream().filter(e->!e.getIsDeleted()).collect(Collectors.toList());
 
         return extraits.stream()
                 .map(extrait -> {
