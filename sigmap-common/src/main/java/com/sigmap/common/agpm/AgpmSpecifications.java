@@ -268,7 +268,12 @@ public class AgpmSpecifications {
             query.distinct(true);
 
             Join<Agpm, Docs> docsJoin = root.join("docs");
-            return cb.equal(docsJoin.get("id"), docId);
+
+            return cb.and(
+                    cb.equal(docsJoin.get("id"), docId),
+                    cb.isFalse(root.get("isDeleted"))
+            );
         };
     }
+
 }

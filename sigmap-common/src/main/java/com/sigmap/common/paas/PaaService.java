@@ -7,6 +7,7 @@ import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.exceptions.AgpmInvalidStatusException;
 import com.sigmap.common.agpm.exceptions.AgpmNotAssociatedWithUserAcException;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.exceptions.*;
 import com.sigmap.common.paas.request.PaaRequest;
@@ -214,5 +215,6 @@ public interface PaaService {
     Paa actualise(Integer paaId)
             throws PaaNotFound, PaaInvalidStatusException, PaaNotAssociatedWithUserAcException;
 
+    byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound;
 
 }

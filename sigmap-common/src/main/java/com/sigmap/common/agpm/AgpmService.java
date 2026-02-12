@@ -12,6 +12,7 @@ import com.sigmap.common.agpm.request.AgpmRequest;
 import com.sigmap.common.agpm.response.AgpmMinimalResponseDto;
 import com.sigmap.common.agpm.response.AgpmResponseDto;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.ref_params.exceptions.ReferenceNotFound;
 import org.springframework.data.domain.Page;
@@ -181,5 +182,6 @@ public interface AgpmService {
     Agpm actualise(Integer agpmId)
             throws AgpmNotFound, AgpmInvalidStatusException, AgpmNotAssociatedWithUserAcException;
 
+    byte[] downloadModelAgpm(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound;
 
 }

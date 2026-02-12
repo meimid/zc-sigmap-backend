@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.doc;
 
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
@@ -9,6 +10,8 @@ import com.sigmap.common.docs.Request.AlfrescoIdRequest;
 import com.sigmap.common.docs.Response.DocsResponse;
 
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
+import com.sigmap.common.paas.PaaService;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +27,12 @@ import java.io.IOException;
 @RequestMapping("/api/docs")
 public class DocController {
     private final DocsService docsService;
-    public DocController(DocsService docsService) {
+    private final AgpmService agpmService;
+    private final PaaService paaService;
+    public DocController(DocsService docsService, AgpmService agpmService, PaaService paaService) {
         this.docsService = docsService;
+        this.agpmService = agpmService;
+        this.paaService = paaService;
     }
 
    /* @PostMapping("/alfresco/data")
@@ -64,11 +71,11 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/download")
+    @PostMapping("/download/model/agpm")
     public ResponseEntity<Resource> downloadAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[] fileContent = docsService.downloadModelAgpm(alfrescoId.getId());
+        byte[]  fileContent = agpmService.downloadModelAgpm(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -80,5 +87,24 @@ public class DocController {
                 .contentType(MediaType.parseMediaType(docInfo.getContentType()))
                 .body(resource);
     }
+
+    @PostMapping("/download/model/paa")
+    public ResponseEntity<Resource> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound, PaaNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = paaService.downloadModelPaa(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+
 
 }

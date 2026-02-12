@@ -15,6 +15,8 @@ import com.sigmap.common.agpm.exceptions.AgpmNotAssociatedWithUserAcException;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.docs.DocsService;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.financement.Financement;
@@ -48,6 +50,7 @@ import com.sigmap.common.ac.AcRepository;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
 import com.sigmap.common.lots.response.LotResponse;
+import com.sigmap.common.security.Authentication;
 import com.sigmap.common.seuil_general.SeuilGeneral;
 import com.sigmap.common.seuil_general.SeuilGeneralService;
 import com.sigmap.common.seuil_general.SeuilGeneralSpecifications;
@@ -72,6 +75,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -100,19 +104,20 @@ public class PaaServiceImpl implements PaaService {
 
     private final SeuilGeneralService seuilGeneralService;
     private final SourceFinancementService sourceFinancementService;
+    private final DocsService docsService;
 
     @Value("${alfresco.url}")
     private String alfrescoUrl;
 
     public PaaServiceImpl(PaaRepository repository, CurrentUserService currentUserService,
-            RealisationRepository realisationRepository, RefParamRepository refParamRepository,
-            DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository,
-            RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService,
-            AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
-            AcSeuilService acSeuilService, MonnaieRepository monnaieRepository,
-            FinancementRepository financementRepository, RefParamRepository refParamRepository1,
-            ModelPaaRepository modelPaaRepository, SeuilGeneralService seuilGeneralService,
-            SourceFinancementService sourceFinancementService) {
+                          RealisationRepository realisationRepository, RefParamRepository refParamRepository,
+                          DocsRepository docsRepository, AcRepository acRepository, LotRepository lotRepository,
+                          RealisationService realisationService, DocumentCommuneService documentCommuneService, AcService acService,
+                          AlfrescoService alfrescoService, SequenceGeneratorService sequenceGeneratorService,
+                          AcSeuilService acSeuilService, MonnaieRepository monnaieRepository,
+                          FinancementRepository financementRepository, RefParamRepository refParamRepository1,
+                          ModelPaaRepository modelPaaRepository, SeuilGeneralService seuilGeneralService,
+                          SourceFinancementService sourceFinancementService, DocsService docsService) {
         this.repository = repository;
         this.realisationRepository = realisationRepository;
         this.docsRepository = docsRepository;
@@ -131,6 +136,7 @@ public class PaaServiceImpl implements PaaService {
         this.modelPaaRepository = modelPaaRepository;
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
+        this.docsService = docsService;
     }
 
     public Paa getPaaOfCurrentYear() {
@@ -3424,5 +3430,14 @@ public class PaaServiceImpl implements PaaService {
 
         return createFilteredResponsePaa(saved);
     }
-
+    @Override
+    public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+        Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
+        Paa paa=findOne(PaaSpecifications.docId(doc.getId()).and(PaaSpecifications.isNotDeleted())).orElseThrow(()->new PaaNotFound("",null,null));
+        if(acIds.contains(paa.getId())|| Authentication.hasRole("")){
+            return   docsService.downloadDocument(alfrescoId);
+        }
+        throw new AccessDeniedException("Access denied");
+    }
 }

@@ -2,18 +2,14 @@ package com.sigmap.common.docs;
 
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
-import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
-import com.sigmap.common.agpm.AgpmSpecifications;
-import com.sigmap.common.agpm.exceptions.AgpmNotFound;
-import com.sigmap.common.contact.exception.ContactNotFound;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.paas.PaaService;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,14 +17,11 @@ import java.util.Optional;
 public class DocsServiceImpl implements DocsService {
     private final DocsRepository repository;
     private final AlfrescoService alfrescoService;
-    private final CurrentUserService currentUserService;
-    private final AgpmService agpmService;
 
-    public DocsServiceImpl(DocsRepository repository, AlfrescoService alfrescoService, CurrentUserService currentUserService, AgpmService agpmService) {
+    public DocsServiceImpl(DocsRepository repository, AlfrescoService alfrescoService) {
         this.repository = repository;
         this.alfrescoService = alfrescoService;
-        this.currentUserService = currentUserService;
-        this.agpmService = agpmService;
+
     }
 
     @Override
@@ -95,19 +88,7 @@ public class DocsServiceImpl implements DocsService {
 
     }
 
-    @Override
-    public byte[] downloadModelAgpm(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound {
-        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
-        Docs doc=findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
-        Agpm agpm=agpmService.findOne(AgpmSpecifications.docId(doc.getId()).and(AgpmSpecifications.isNotDeleted())).orElseThrow(()->new AgpmNotFound("",null,null));
-        if(acIds.contains(agpm.getId())){
-          return   downloadDocument(alfrescoId);
-        }
-        throw new AccessDeniedException("Access denied");
-    }
 
-    @Override
-    public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound {
-        return new byte[0];
-    }
+
+
 }
