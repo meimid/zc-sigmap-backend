@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.entity.BaseEntity;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.process_verbal.ProcessVerbal;
@@ -19,9 +20,10 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@EqualsAndHashCode(callSuper = true)
 @Table(name = "process_verbal_reunion_extrait")
 @IdClass(ExtraitId.class)
-public class ProcessVerbalReunionExtrait {
+public class ProcessVerbalReunionExtrait extends BaseEntity {
 
     @Id
     @Column(name = "extrait_id")

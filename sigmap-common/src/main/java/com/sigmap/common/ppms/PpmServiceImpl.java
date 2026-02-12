@@ -541,7 +541,9 @@ public class PpmServiceImpl implements PpmService {
                     .filter(Objects::nonNull)
                     .flatMap(rp -> rp.getReunionPpmDocs().stream())
                     .filter(Objects::nonNull)
-                    .map(ppmDoc -> ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
+                    .map(ppmDoc ->ppmDoc.getPpmId().equals(ppmId)
+                            &&ppmDoc.getPpmVer().equals(ppmVersion) &&
+                            ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 

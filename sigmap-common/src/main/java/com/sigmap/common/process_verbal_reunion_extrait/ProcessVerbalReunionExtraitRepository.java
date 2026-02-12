@@ -79,6 +79,7 @@ SELECT e
 FROM ProcessVerbalReunionExtrait e
 WHERE e.doc IS NOT NULL
   AND e.ac.id IN :acIds
+  AND e.isDeleted = false
 
   AND EXISTS (
         SELECT 1
