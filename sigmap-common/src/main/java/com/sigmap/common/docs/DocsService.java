@@ -2,6 +2,7 @@ package com.sigmap.common.docs;
 
 
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import org.springframework.data.jpa.domain.Specification;
@@ -80,5 +81,9 @@ public interface DocsService {
     Optional<Docs> findOne(Specification<Docs> specification);
     Optional <DocumentResponseDTO> getDocumentInformation(String alfrescoId);
     byte[] downloadDocument(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadModelAgpm(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound;
+    byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound;
+
+
 
 }

@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.doc;
 
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Mapper.DocMapper;
@@ -27,10 +28,10 @@ public class DocController {
         this.docsService = docsService;
     }
 
-    @PostMapping("/alfresco/data")
+   /* @PostMapping("/alfresco/data")
     public DocumentResponseDTO getDocumentData(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException {
         return docsService.getDocumentInformation(alfrescoId.getId()).orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-    }
+    }*/
     @GetMapping("/{id}")
     public ResponseEntity<DocsResponse> findById(@PathVariable Integer id)  {
         Docs doc = docsService.findById(id);
@@ -64,10 +65,10 @@ public class DocController {
     }
 
     @PostMapping("/download")
-    public ResponseEntity<Resource> downloadDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    public ResponseEntity<Resource> downloadAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[] fileContent = docsService.downloadDocument(alfrescoId.getId());
+        byte[] fileContent = docsService.downloadModelAgpm(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
