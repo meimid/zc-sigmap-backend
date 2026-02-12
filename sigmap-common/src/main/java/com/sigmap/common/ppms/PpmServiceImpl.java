@@ -1174,13 +1174,24 @@ public class PpmServiceImpl implements PpmService {
                 }
 
                 String oldVal = r.getComment();
-                String newVal = allowComment ? (rr != null ? rr.getComment() : null) : null;
+                String newVal = oldVal;
+
+                if (allowComment) {
+                    // only update if request contains comment (non-null)
+                    if (rr != null && rr.getComment() != null) {
+                        newVal = rr.getComment();
+                    }
+                } else {
+                    // if not allowed, force null
+                    newVal = null;
+                }
 
                 if (!Objects.equals(oldVal, newVal)) {
                     r.setComment(newVal);
                     commentChanged = true;
                     updatedRealisations.set(i, r);
                 }
+
             }
         }
 
