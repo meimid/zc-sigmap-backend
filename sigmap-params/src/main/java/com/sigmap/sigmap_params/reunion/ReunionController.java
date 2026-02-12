@@ -11,11 +11,13 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.com.mapper.ComMapper;
 import com.sigmap.common.com.response.ComSelectResponseDto;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.mapper.DacMapper;
 import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.email_trace.exeptions.EmailTraceNotFound;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
@@ -25,7 +27,10 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait.mapper.ProcessVerbalReunionExtraitMapper;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
+import com.sigmap.common.process_verbal_reunion_extrait.response.DossierDto;
 import com.sigmap.common.process_verbal_reunion_extrait.response.ProcessVerbalReunionExtraitRespons;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDac;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.Reunion;
 import com.sigmap.common.reunion.ReunionService;
@@ -110,8 +115,13 @@ public class ReunionController {
                           : null
           );
       }
-
-       response.setExtraits(mapExtraits(reunion));
+        boolean hasAnyDecisionOrObservation =
+                reunion.getReunionPpms().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null) ||
+                        reunion.getReunionDacs().stream().anyMatch(d -> d.getDecision() != null || d.getObservation() != null);
+        if(!hasAnyDecisionOrObservation){
+            response.setCanBeCancelled(true);
+        }
+      // response.setExtraits(mapExtraits(reunion));
         response.setHaveExtraits(haveExtraitCheck(reunion));
 
         return ResponseEntity.ok(response);
@@ -311,6 +321,8 @@ public class ReunionController {
         ProcessVerbalReunionExtraitRespons response =
                 ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
 
+
+
         return ResponseEntity.ok(response);
     }
 
@@ -320,9 +332,64 @@ public class ReunionController {
             @PathVariable Integer reunionId,
              Pageable pageable) {
 
-        Page<ProcessVerbalReunionExtrait> page =
-                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable);
-        return ResponseEntity.ok(page.map(ProcessVerbalReunionExtraitMapper.INSTANCE::toDto));
+
+        Page<ProcessVerbalReunionExtraitRespons> result =
+                reunionService.findAllProcessVerbalReunionExtraitByReunionId(reunionId, pageable)
+                        .map(this::enrich);
+
+        return ResponseEntity.ok(result);
+    }
+    private ProcessVerbalReunionExtraitRespons enrich(ProcessVerbalReunionExtrait extrait) {
+        ProcessVerbalReunionExtraitRespons dto =
+                ProcessVerbalReunionExtraitMapper.INSTANCE.toDto(extrait);
+        DossierDto dossierDto =new DossierDto();
+        var type = extrait.getExtraitType();
+
+        if (type == ExtraitType.PAR_DOSSIER) {
+            boolean hasPpm = extrait.getExtraitsPpm() != null && !extrait.getExtraitsPpm().isEmpty();
+            boolean hasDac = extrait.getExtraitsDac() != null && !extrait.getExtraitsDac().isEmpty();
+
+            if (hasPpm) {
+                ProcessVerbalReunionExtraitPpm join = extrait.getExtraitsPpm().get(0);
+                if (join != null && join.getPpm() != null) {
+                    dossierDto.setId(join.getPpm().getId());
+                    dossierDto.setVersion(join.getPpm().getVersion());
+                    dossierDto.setRef(join.getPpm().getRef());
+                    dto.setDossier(dossierDto);
+                   // dto.getDossier(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(join.getPpm()));
+                }
+                dto.setType("PPM");
+            } else if (hasDac) {
+                ProcessVerbalReunionExtraitDac join = extrait.getExtraitsDac().get(0);
+                if (join != null && join.getDac() != null) {
+                    dossierDto.setId(join.getDacId());
+                    dossierDto.setVersion(join.getDacVer());
+                    dossierDto.setRef(join.getDac().getReference());
+                    dto.setDossier(dossierDto);
+                    //dto.setDac(DacMapper.INSTANCE.mapToDacIdVerRefResponseDto(join.getDac()));
+                }
+                dto.setType("DAC");
+            } else {
+                dto.setType("AC");
+            }
+        } else if (type == ExtraitType.PAR_AC) {
+            boolean hasPpm = extrait.getExtraitsPpm() != null && !extrait.getExtraitsPpm().isEmpty();
+            boolean hasDac = extrait.getExtraitsDac() != null && !extrait.getExtraitsDac().isEmpty();
+            if (!hasPpm && !hasDac) {
+                dto.setType("AC");
+            }
+                dto.setType("AC");
+
+        }
+
+        if (extrait.getAc() != null) {
+            dto.setAc(AcMapper.INSTANCE.mapToWebsiteResponse(extrait.getAc()));
+        }
+        if (extrait.getDoc() != null) {
+            dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
+        }
+
+        return dto;
     }
 
 
@@ -344,15 +411,16 @@ public class ReunionController {
 
         // Fetch all extraits for this PV
         List<ProcessVerbalReunionExtrait> extraits =
-                processVerbalReunionExtraitService.findAllByPvId(pvId);
+                processVerbalReunionExtraitService.findAllByPvId(pvId).stream().filter(e->!e.getIsDeleted()).collect(Collectors.toList());
 
         return extraits.stream()
                 .map(extrait -> {
                     ProcessVerbalReunionExtraitRespons dto = new ProcessVerbalReunionExtraitRespons();
+                    DossierDto dossierDto=new DossierDto();
+
                     dto.setExtraitId(extrait.getExtraitId());
                     dto.setPvId(extrait.getPvId());
                     dto.setExtraitType(extrait.getExtraitType());
-                    dto.setComType(reunion.getCom().getComType().getCode());
                     log.info("Extra dto: {}", extrait.getExtraitType());
                     log.info("Extrait {}", dto.getExtraitType());
                     log.info("Extrait id {} , extait Pv Id {} , extarit type {}", dto.getExtraitId(), dto.getPvId(), dto.getExtraitType());
@@ -364,13 +432,46 @@ public class ReunionController {
                         dto.setDoc(DocMapper.INSTANCE.mapToDto(extrait.getDoc()));
 
                     }
-                    if(extrait.getPpm() != null) {
-                     dto.setPpm(PpmMapper.INSTANCE.mapToPpmIdVerResponseDto(extrait.getPpm()));
+
+                    log.info("Extrait {}", extrait);
+                    if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
+                            && extrait.getExtraitsPpm() != null
+                            && !extrait.getExtraitsPpm().isEmpty()) {
+
+                        ProcessVerbalReunionExtraitPpm join =
+                                extrait.getExtraitsPpm().get(0);
+
+                        dossierDto.setId(join.getPpm().getId());
+                        dossierDto.setVersion(join.getPpm().getVersion());
+                        dossierDto.setRef(join.getPpm().getRef());
+                        dto.setDossier(dossierDto);
+                        dto.setType("PPM");
+                    }
+                    if (extrait.getExtraitType() == ExtraitType.PAR_DOSSIER
+                            && extrait.getExtraitsDac() != null
+                            && !extrait.getExtraitsDac().isEmpty()) {
+
+                        ProcessVerbalReunionExtraitDac join =
+                                extrait.getExtraitsDac().get(0);
+
+                        dossierDto.setId(join.getDacId());
+                        dossierDto.setVersion(join.getDacVer());
+                        dossierDto.setRef(join.getDac().getReference());
+                        dto.setDossier(dossierDto);
+                        dto.setType("DAC");
+
+
                     }
 
+
+                    if(extrait.getExtraitType() == ExtraitType.PAR_AC
+                            && extrait.getExtraitsPpm().isEmpty()
+                            &&extrait.getExtraitsDac().isEmpty()) {
+                        dto.setType("Ac");
+                    }
                     return dto;
                 })
-                .toList();
+                .collect(Collectors.toList());
     }
     private boolean haveExtraitCheck(Reunion reunion) {
         return reunion.getProcessVerbal()!=null?!processVerbalReunionExtraitService.findAllByPvId(reunion.getProcessVerbal().getId()).isEmpty():false;

@@ -35,8 +35,9 @@ public class ReunionResponse {
     private List<ReunionDacResponse> reunionDacs;
     private List<ParticipantResponseDto> participants;
      private ProcessVerbalReunionResponse processVerbal;
-    List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
+   // List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
     boolean haveExtraits = false;
     private BaseEntityResponse metadata;
+    private boolean canBeCancelled=false;
 
 }

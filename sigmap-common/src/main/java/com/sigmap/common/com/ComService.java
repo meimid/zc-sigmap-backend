@@ -20,6 +20,7 @@ import java.util.Optional;
 
 public interface ComService {
     List<Com> findAll();
+    List<Com> findAll(Specification<Com> specification);
 
     /**
      * Return a page of Com based on the given specification and pageable.
