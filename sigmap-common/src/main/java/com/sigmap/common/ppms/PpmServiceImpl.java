@@ -29,7 +29,6 @@ import com.sigmap.common.financement.FinancementId;
 import com.sigmap.common.financement.FinancementRepository;
 import com.sigmap.common.financement.request.FinancementRequest;
 
-import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -7041,10 +7040,6 @@ public class PpmServiceImpl implements PpmService {
         });
     }
 
-    private String resolveRealisationCommentForPpm(Ppm ppm, RealisationBaseRequestDto dto) {
-        int nbr = (ppm.getNbrActualisation() == null) ? 0 : ppm.getNbrActualisation();
-        return (nbr > 0) ? dto.getComment() : null;
-    }
 
 
 

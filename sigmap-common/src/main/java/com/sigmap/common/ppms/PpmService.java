@@ -278,7 +278,7 @@ public interface PpmService {
      * @return the updated PPM with all relationships established
      * @throws RuntimeException if the PPM is not found or is deleted
      */
-    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request) throws BadRequest;
+    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request);
 
     /**
      * Find a PPM by its ID and optionally its version.
