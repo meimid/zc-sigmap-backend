@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.response.AcAvailablePpmResponse;
 import com.sigmap.common.entity.ProcessStatus;
+import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
@@ -277,7 +278,7 @@ public interface PpmService {
      * @return the updated PPM with all relationships established
      * @throws RuntimeException if the PPM is not found or is deleted
      */
-    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request);
+    Ppm updateWithRelationships(Integer ppmId, Integer ppmVer, PpmWithLotsRequestDto request) throws BadRequest;
 
     /**
      * Find a PPM by its ID and optionally its version.

@@ -109,6 +109,9 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "statut")
     private RealisationStatus statut = RealisationStatus.NON_PUBLIE;
 
+    @Column(name = "comment", length = 2000)
+    private String comment;
+
     @ManyToMany
     @JoinTable(
             name = "ppm_realisation",

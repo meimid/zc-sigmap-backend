@@ -29,6 +29,7 @@ import com.sigmap.common.financement.FinancementId;
 import com.sigmap.common.financement.FinancementRepository;
 import com.sigmap.common.financement.request.FinancementRequest;
 
+import com.sigmap.common.globalExceptions.BadRequest;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.lots.Lot;
 import com.sigmap.common.lots.LotRepository;
@@ -1129,6 +1130,8 @@ public class PpmServiceImpl implements PpmService {
                 ? request.getAcId()
                 : (existingPpm.getAc() != null ? existingPpm.getAc().getId() : null);
 
+        final boolean allowComment = existingPpm.getNbrActualisation() != null && existingPpm.getNbrActualisation() > 0;
+
         Ppm tempPpm = buildTempPpm(existingPpm, request);
 
         boolean directFieldsChanged = !arePpmFieldsIdentical(existingPpm, tempPpm);
@@ -1140,6 +1143,47 @@ public class PpmServiceImpl implements PpmService {
         Set<Integer> newRealisationIds = new HashSet<>();
 
         boolean realisationsPhaseChanged = processRealisationsWithLotLogic(existingPpm, request, updatedRealisations, newRealisationIds);
+
+        List<RealisationBaseRequestDto> allReqRealsForComment = new ArrayList<>();
+
+        if (request instanceof PpmWithLotsRequestDto) {
+            PpmWithLotsRequestDto lotsReq = (PpmWithLotsRequestDto) request;
+            if (lotsReq.getRealisationsWithLots() != null && !lotsReq.getRealisationsWithLots().isEmpty()) {
+                allReqRealsForComment.addAll(lotsReq.getRealisationsWithLots());
+            }
+        }
+        if (request.getRealisations() != null && !request.getRealisations().isEmpty()) {
+            allReqRealsForComment.addAll(request.getRealisations());
+        }
+
+        boolean commentChanged = false;
+        if (!updatedRealisations.isEmpty()) {
+            for (int i = 0; i < updatedRealisations.size(); i++) {
+                Realisation r = updatedRealisations.get(i);
+                if (r == null || r.getId() == null) continue;
+
+                // find matching request dto by ID first, else fallback to index
+                RealisationBaseRequestDto rr = null;
+                for (RealisationBaseRequestDto x : allReqRealsForComment) {
+                    if (x != null && x.getId() != null && x.getId().equals(r.getId())) {
+                        rr = x;
+                        break;
+                    }
+                }
+                if (rr == null && i < allReqRealsForComment.size()) {
+                    rr = allReqRealsForComment.get(i);
+                }
+
+                String oldVal = r.getComment();
+                String newVal = allowComment ? (rr != null ? rr.getComment() : null) : null;
+
+                if (!Objects.equals(oldVal, newVal)) {
+                    r.setComment(newVal);
+                    commentChanged = true;
+                    updatedRealisations.set(i, r);
+                }
+            }
+        }
 
         // Build request list for later matching (used by docs/files + financements)
         List<RealisationBaseRequestDto> reqReals = null;
@@ -1351,7 +1395,7 @@ public class PpmServiceImpl implements PpmService {
             boolean willChange = willFinancementsChange(beforeCurrent, finReqs);
             Realisation targetReal = real;
 
-            // ✅ NEW: do NOT version-bump financements for newly created realisations
+            //  do NOT version-bump financements for newly created realisations
             boolean isNewRealisation = newRealisationIds.contains(real.getId());
 
             if (willChange && !isNewRealisation) {
@@ -1372,6 +1416,7 @@ public class PpmServiceImpl implements PpmService {
                 newVer.setIsDeleted(false);
                 newVer.setPpms(new ArrayList<>());
                 newVer.setLots(real.getLots());
+                newVer.setComment(real.getComment());
 
                 newVer = realisationRepository.save(newVer);
                 updatedRealisations.set(i, newVer);
@@ -1462,7 +1507,7 @@ public class PpmServiceImpl implements PpmService {
             setSeuilApplicableForRealisationInPpm(targetReal, requestAcId);
         }
 
-        boolean realisationsChanged = realisationsPhaseChanged || financementsChanged;
+        boolean realisationsChanged = realisationsPhaseChanged || financementsChanged || commentChanged;
 
         // --- PPM documents (root) ---
         List<Docs> updatedDocs = new ArrayList<>();
@@ -4526,6 +4571,8 @@ public class PpmServiceImpl implements PpmService {
             }
         }
 
+        final boolean allowComment = (existingPpm.getNbrActualisation() != null && existingPpm.getNbrActualisation() > 0);
+
         List<Realisation> updatedRealisations = new ArrayList<>();
         Set<Integer> processedRealisationIds = new HashSet<>();
 
@@ -4605,6 +4652,8 @@ public class PpmServiceImpl implements PpmService {
                                     : realisation.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort() != null ? realisationRequest.getSort()
                             : realisation.getSort());
+
+                    realisation.setComment(allowComment ? realisationRequest.getComment() : null);
 
                     if (realisation.getPpms() == null) {
                         realisation.setPpms(new ArrayList<>());
@@ -4696,6 +4745,8 @@ public class PpmServiceImpl implements PpmService {
                     realisation.setIsPublished(realisationRequest.getIsPublished());
                     realisation.setPublishedAt(realisationRequest.getPublishedAt());
                     realisation.setSort(realisationRequest.getSort());
+
+                    realisation.setComment(allowComment ? realisationRequest.getComment() : null);
 
                     List<Ppm> ppmList = new ArrayList<>();
                     ppmList.add(existingPpm);
@@ -4907,17 +4958,17 @@ public class PpmServiceImpl implements PpmService {
                 BigDecimal recalculatedBudget = (realisation.getFinancements() == null)
                         ? BigDecimal.ZERO
                         : realisation.getFinancements().stream()
-                                .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
-                                .map(f -> {
-                                    BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer()
-                                            : BigDecimal.ZERO;
-                                    Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
-                                            ? f.getMonnaie().getTaux()
-                                            : 0.0;
+                        .filter(f -> !Boolean.TRUE.equals(f.getIsDeleted()))
+                        .map(f -> {
+                            BigDecimal amt = (f.getBudgetEstimer() != null) ? f.getBudgetEstimer()
+                                    : BigDecimal.ZERO;
+                            Double taux = (f.getMonnaie() != null && f.getMonnaie().getTaux() != null)
+                                    ? f.getMonnaie().getTaux()
+                                    : 0.0;
 
-                                    return amt.multiply(BigDecimal.valueOf(taux));
-                                })
-                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                            return amt.multiply(BigDecimal.valueOf(taux));
+                        })
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
                 realisation.setBudgetEstime(recalculatedBudget);
 
                 setSeuilApplicableForRealisationInPpm(realisation, requestAcId);
@@ -6989,6 +7040,12 @@ public class PpmServiceImpl implements PpmService {
             r.setUsedInDac(usedKeySet.contains(key));
         });
     }
+
+    private String resolveRealisationCommentForPpm(Ppm ppm, RealisationBaseRequestDto dto) {
+        int nbr = (ppm.getNbrActualisation() == null) ? 0 : ppm.getNbrActualisation();
+        return (nbr > 0) ? dto.getComment() : null;
+    }
+
 
 
 }
