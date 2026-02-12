@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface ModifiedDynaDocsService {
 
-    public void uploadModifiedFiles(ModifiedDynaDocsRequest request, MultipartFile AAOfile, List<MultipartFile> files);
+    public ModifiedDynaDocsRequest buildModifiedDynaDocsRequest(Integer dacId, Integer dacVer, MultipartFile aaoFile, List<MultipartFile> files, List<Integer> orders);
+    public void uploadModifiedFiles(ModifiedDynaDocsRequest request);
 }

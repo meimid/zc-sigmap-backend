@@ -10,7 +10,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/api/modified-dyna-docs-for-dac")
@@ -24,19 +27,17 @@ public class ModifiedDynaDocsController {
         this.modifiedDynaDocsService = modifiedDynaDocsService;
     }
 
-    @PostMapping( value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE )
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Void> uploadModifiedFiles(
-            @RequestParam("dacId") Integer dacId,
-            @RequestParam("dacVer") Integer dacVer,
+            @RequestParam Integer dacId,
+            @RequestParam Integer dacVer,
             @RequestPart("aaoFile") MultipartFile aaoFile,
-            @RequestPart("files") List<MultipartFile> files
+            @RequestPart("files") List<MultipartFile> files,
+            @RequestParam("orders") List<Integer> orders
     ) {
-        ModifiedDynaDocsRequest request = new ModifiedDynaDocsRequest();
-        request.setDacId(dacId);
-        request.setDacVer(dacVer);
 
-        modifiedDynaDocsService.uploadModifiedFiles(request, aaoFile, files);
-
+        ModifiedDynaDocsRequest request = modifiedDynaDocsService.buildModifiedDynaDocsRequest(dacId, dacVer, aaoFile, files, orders);
+        modifiedDynaDocsService.uploadModifiedFiles(request);
         return ResponseEntity.ok().build();
     }
 }

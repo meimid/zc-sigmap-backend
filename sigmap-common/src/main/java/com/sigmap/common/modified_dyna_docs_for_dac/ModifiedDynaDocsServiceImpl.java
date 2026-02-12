@@ -16,12 +16,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Service
@@ -39,90 +40,85 @@ public class ModifiedDynaDocsServiceImpl implements ModifiedDynaDocsService {
     private String basePath;
 
     @Override
+    public ModifiedDynaDocsRequest buildModifiedDynaDocsRequest( Integer dacId, Integer dacVer, MultipartFile aaoFile, List<MultipartFile> files, List<Integer> orders) {
+
+        if (files.size() != orders.size()) {
+            throw new IllegalArgumentException("Files and orders size must be equal");
+        }
+
+        List<ModifiedDynaDocsRequest.RestFiles> restFiles =
+                IntStream.range(0, files.size())
+                        .mapToObj(i -> new ModifiedDynaDocsRequest.RestFiles( files.get(i), orders.get(i) ))
+                        .toList();
+
+        return ModifiedDynaDocsRequest.builder()
+                .dacId(dacId)
+                .dacVer(dacVer)
+                .AAOfile(aaoFile)
+                .files(restFiles)
+                .build();
+    }
+
+    @Override
     @Transactional
-    public void uploadModifiedFiles(ModifiedDynaDocsRequest request, MultipartFile AAOfile, List<MultipartFile> files) {
+    public void uploadModifiedFiles(ModifiedDynaDocsRequest request) {
 
-        List<ModifiedDynaDocs> modifiedDynaDocsList = modifiedDynaDocsRepository
-                .findByDacIdAndVersion(request.getDacId(), request.getDacVer());
+        List<ModifiedDynaDocs> actifs =  modifiedDynaDocsRepository.findByDacIdAndVersion(request.getDacId(), request.getDacVer());
 
-        int maxVersion = modifiedDynaDocsList.stream()
+        int nextVersion = actifs.stream()
                 .map(ModifiedDynaDocs::getVersion)
                 .filter(Objects::nonNull)
                 .max(Integer::compareTo)
-                .orElse(0);
+                .orElse(0) + 1;
 
-        int nextVersion = maxVersion + 1;
+        Dac dac = dacService.findById(request.getDacId(), request.getDacVer())
+                .orElseThrow(() -> new RuntimeException("DAC not found"));
+
+        // AAO (ordre = 1)
+        saveFile(request.getAAOfile(), nextVersion, dac, true, 1);
+
+        // autres documents
+        request.getFiles().forEach(rf -> saveFile(rf.getFile(), nextVersion, dac, false, rf.getOrder()) );
+
+        // désactiver anciennes versions
+        deactivateOldVersions(actifs);
+    }
+
+
+
+    private void saveFile(MultipartFile file, int version, Dac dac, boolean isAAO, int ordre) {
 
         try {
-            Optional<Dac> dac = dacService.findById(request.getDacId(), request.getDacVer());
-            if (dac.isEmpty()) {
-                throw new RuntimeException("Dac not found");
-            }
-            uploadAAO(AAOfile, nextVersion, dac.get());
-            uploadFiles(files, nextVersion, dac.get());
-            saveModifiedDynaDocs(modifiedDynaDocsList);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            String fileName = version + "_" + file.getOriginalFilename();
+            Path path = Paths.get(basePath, fileName);
+            OutputStream outputStream = Files.newOutputStream(path, StandardOpenOption.CREATE);
+            IOUtils.copy(file.getInputStream(), outputStream);
+
+            ModifiedDynaDocs entity = new ModifiedDynaDocs();
+            entity.setIsAAO(isAAO);
+            entity.setVersion(version);
+            entity.setOrdre(ordre);
+            entity.setName(FilenameUtils.getBaseName(file.getOriginalFilename()));
+            entity.setTemplateFileName(file.getOriginalFilename());
+            entity.setStatus(ActiveStatus.ACTIF);
+            entity.setDac(dac);
+
+            modifiedDynaDocsRepository.save(entity);
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error uploading file " + file.getOriginalFilename(), e);
         }
     }
 
-    @Transactional
-    public void uploadAAO(MultipartFile AAOfile, int nextVersion, Dac dac) {
-
-        try {
-            log.info("Uploading AAO file: {}", AAOfile.getOriginalFilename());
-            Path templatePath = Paths.get(basePath, nextVersion +"_"+AAOfile.getOriginalFilename());
-            OutputStream outputStream = Files.newOutputStream(templatePath, StandardOpenOption.CREATE);
-            IOUtils.copy(AAOfile.getInputStream(), outputStream);
-
-            ModifiedDynaDocs modifiedDynaDocs = createModifiedDynaDocs(AAOfile, nextVersion, dac, true);
-
-            modifiedDynaDocsRepository.save(modifiedDynaDocs);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Transactional
-    public void uploadFiles(List<MultipartFile> files, int nextVersion, Dac dac) {
-
-        try {
-            for (MultipartFile file : files) {
-                log.info("Uploading file: {}", file.getOriginalFilename());
-                Path templatePath = Paths.get(basePath, nextVersion +"_"+file.getOriginalFilename());
-                OutputStream outputStream = Files.newOutputStream(templatePath, StandardOpenOption.CREATE);
-                IOUtils.copy(file.getInputStream(), outputStream);
-
-                ModifiedDynaDocs modifiedDynaDocs = createModifiedDynaDocs(file, nextVersion, dac, false);
-                modifiedDynaDocsRepository.save(modifiedDynaDocs);
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    private ModifiedDynaDocs createModifiedDynaDocs(MultipartFile file, int version, Dac dac, boolean isAAO) {
-
-        String fileName = FilenameUtils.getBaseName(file.getOriginalFilename());
-
-        ModifiedDynaDocs modifiedDynaDocs = new ModifiedDynaDocs();
-        modifiedDynaDocs.setIsAAO(isAAO);
-        modifiedDynaDocs.setVersion(version);
-        modifiedDynaDocs.setName(fileName);
-        modifiedDynaDocs.setTemplateFileName(file.getOriginalFilename());
-        modifiedDynaDocs.setStatus(ActiveStatus.ACTIF);
-        modifiedDynaDocs.setDac(dac);
-        return modifiedDynaDocs;
-    }
-
-    void saveModifiedDynaDocs(List<ModifiedDynaDocs> modifiedDynaDocsList) {
-        modifiedDynaDocsList.forEach(modifiedDynaDocs -> {
-            modifiedDynaDocs.setStatus(ActiveStatus.NON_ACTIF);
-            modifiedDynaDocs.setUpdatedAt(Calendar.getInstance());
-            modifiedDynaDocs.setUpdatedBy(Authentication.getCurrentUserId().orElse("System"));
+    private void deactivateOldVersions(List<ModifiedDynaDocs> list) {
+        list.forEach(md -> {
+            md.setStatus(ActiveStatus.NON_ACTIF);
+            md.setUpdatedAt(Calendar.getInstance());
+            md.setUpdatedBy(Authentication.getCurrentUserId().orElse("System"));
         });
-        modifiedDynaDocsRepository.saveAll(modifiedDynaDocsList);
+        modifiedDynaDocsRepository.saveAll(list);
     }
+
+
 
 }
