@@ -537,7 +537,6 @@ public class PpmServiceImpl implements PpmService {
                 continue;
             }
 
-            // Collect PV doc IDs (null-safe)
             Set<String> pvAlfrescoIds = r.getReunionPpms().stream()
                     .filter(Objects::nonNull)
                     .flatMap(rp -> rp.getReunionPpmDocs().stream())
@@ -553,44 +552,16 @@ public class PpmServiceImpl implements PpmService {
 
             log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, pvAlfrescoIds.size());
 
-            for (String userComType : userComTypes) {
-
-                switch (userComType) {
-
-                    case "CPMP":
-                        // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
                         if ("CPMP".equals(reunionComType)) {
                             dto.getDocumentCPMP().addAll(pvAlfrescoIds);
                         }
-                        if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
-                        }
-                        break;
-
-                    case "CNCMP-P":
-                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
-                        if ("CNCMP-P".equals(reunionComType)) {
-                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
-                        }
-                        if ("CPMP".equals(reunionComType)) {
-                            dto.getDocumentCPMP().addAll(pvAlfrescoIds);
-                        }
-                        break;
-
-                    case "CNCMP-S":
-                        // Specialized CNCMP sees specialized PVs + permanent PVs
                         if ("CNCMP-S".equals(reunionComType)) {
                             dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
                         }
                         if ("CNCMP-P".equals(reunionComType)) {
                             dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
                         }
-                        break;
 
-                    default:
-                        log.warn("Unknown user COM type: {}", userComType);
-                }
-            }
         }
 
         log.info("listDocPpm END | cpmp={} perm={} spec={}",
@@ -688,6 +659,9 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setDeletedAt(ppm.getDeletedAt());
         filteredPpm.setProcessInstanceId(ppm.getProcessInstanceId());
         filteredPpm.setRealisations(ppm.getRealisations());
+        filteredPpm.setDocumentCPMP(ppm.getDocumentCPMP());
+        filteredPpm.setDocumentCNCMPPermanente(ppm.getDocumentCNCMPPermanente());
+        filteredPpm.setDocumentCNCMPSpecialisee(ppm.getDocumentCNCMPSpecialisee());
 
         if (ppm.getDocs() != null) {
             List<Docs> nonDeletedDocs = ppm.getDocs().stream()
