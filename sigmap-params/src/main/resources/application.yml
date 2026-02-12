@@ -104,4 +104,10 @@ file:
     user-profile-path: ${FILE_UPLOAD_USER_PROFILE:${file.upload.parent-path}\\users}
     ac-logo-path: ${FILE_UPLOAD_AC_LOGO:${file.upload.parent-path}\\acs}
 
+templateDac:
+  dac:
+    inputDocPath: ${INPUT_DAC_PATH:C:\\word\\templates\\}
+    outputDocPath: ${OUTPUT_DAC_PATH:C:\\word\\temp\\}
+    inputModifiedDocPath: ${INPUT_MODIFIED_DAC_PATH:C:\\word\\modified\\}
+
 
