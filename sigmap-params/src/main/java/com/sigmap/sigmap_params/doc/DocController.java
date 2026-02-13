@@ -75,7 +75,7 @@ public class DocController {
     }
 
     @PostMapping("/download/model-agpm")
-    public ResponseEntity<DocumentResponseDTO> downloadAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
+    public ResponseEntity<DocumentResponseDTO> downloadModelAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         byte[]  fileContent = downloadDocsService.downloadModelAgpm(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
@@ -88,7 +88,7 @@ public class DocController {
     }
 
     @PostMapping("/download/model-paa")
-    public ResponseEntity<DocumentResponseDTO> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound {
+    public ResponseEntity<DocumentResponseDTO> downloadModelPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound {
 
         byte[]  fileContent = downloadDocsService.downloadModelPaa(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
@@ -102,7 +102,7 @@ public class DocController {
     }
 
     @PostMapping("/download/model-ppm")
-    public ResponseEntity<DocumentResponseDTO> downloadPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
+    public ResponseEntity<DocumentResponseDTO> downloadModelPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
         byte[]  fileContent = downloadDocsService.downloadModelPpm(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
@@ -116,9 +116,8 @@ public class DocController {
     }
 
     @PostMapping("/download/model-dac")
-    public ResponseEntity<DocumentResponseDTO> downloadDacModel(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+    public ResponseEntity<DocumentResponseDTO> downloadModelDac(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
+
         byte[]  fileContent = downloadDocsService.downloadDacModel(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
@@ -145,8 +144,7 @@ public class DocController {
 
     @PostMapping("/download/extrait")
     public ResponseEntity<DocumentResponseDTO> downloadExtrait(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+
         byte[]  fileContent = downloadDocsService.downloadExtrait(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
@@ -160,8 +158,7 @@ public class DocController {
 
     @PostMapping("/download/meeting-ppm")
     public ResponseEntity<DocumentResponseDTO> downloadPpmArgumentDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
-        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
-                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+
         byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocument(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
