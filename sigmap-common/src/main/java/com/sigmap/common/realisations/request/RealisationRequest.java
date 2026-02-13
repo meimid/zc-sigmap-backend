@@ -43,6 +43,7 @@ public class RealisationRequest {
     private Boolean isPublished;
     private Boolean publishedAt;
     private Integer sort;
+    private String comment;
 
     // IDs for many-to-many relationships
     private List<CompositeId> ppmIds;

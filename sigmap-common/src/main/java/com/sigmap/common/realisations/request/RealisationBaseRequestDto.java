@@ -43,6 +43,7 @@ public class RealisationBaseRequestDto {
     private Integer sort;
     private RealisationStatus statut;
     private List<Integer> docIds;
+    private String comment;
 
     // Remove JsonIgnore to allow lots to be deserialized directly
     private List<LotResponse> lots;

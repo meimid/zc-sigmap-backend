@@ -40,5 +40,6 @@ public class RealisationResponse {
     private Boolean publishedAt;
     private Integer sort;
     private List<Paa> paas;
+    private String comment;
     private BaseEntityResponse metadata;
 }
