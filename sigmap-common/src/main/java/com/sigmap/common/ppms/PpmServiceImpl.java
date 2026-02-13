@@ -48,6 +48,9 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.realisations.exceptions.RealisationUnlinkForbiddenByDacException;
 import com.sigmap.common.realisations.exceptions.RealisationUpdateForbiddenByDacException;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
+import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
 import com.sigmap.common.source_financement.exceptions.SourceFinancementNotFound;
@@ -323,6 +326,7 @@ public class PpmServiceImpl implements PpmService {
 
         // Step 10: PV + Extrait rules (INSERTED HERE)
         populateVisiblePvs(ppm, userAcIds, userComIds);
+        populateReunionArgumentsDoc(ppm, userComIds);
 
         Ppm responsePpm = createFilteredResponsePpm(ppm);
 
@@ -338,19 +342,11 @@ public class PpmServiceImpl implements PpmService {
             Set<String> cpmp = new LinkedHashSet<>();
             Set<String> cncmpp = new LinkedHashSet<>();
 
-            for (Integer acId : acIds) {
-                if (acId == null)
-                    continue;
+            ExtraitResponse extrait = findAllExtraits(acIds, ppm.getId(), ppm.getVersion());
 
-                log.warn("Fetching extraits for AC {}, ppm {}, ver {}", acId, ppm.getId(), ppm.getVersion());
+                if (extrait.getExtraitCPMP() != null) cpmp.addAll(extrait.getExtraitCPMP());
+                if (extrait.getExtraitCNCMPP() != null) cncmpp.addAll(extrait.getExtraitCNCMPP());
 
-                ExtraitResponse extrait = findAllExtraits(acId, ppm.getId(), ppm.getVersion());
-
-                if (extrait.getExtraitCPMP() != null)
-                    cpmp.addAll(extrait.getExtraitCPMP());
-                if (extrait.getExtraitCNCMPP() != null)
-                    cncmpp.addAll(extrait.getExtraitCNCMPP());
-            }
 
             ppm.setExtraitCpmp(new ArrayList<>(cpmp));
             ppm.setExtraitCncmpPermanente(new ArrayList<>(cncmpp));
@@ -365,12 +361,32 @@ public class PpmServiceImpl implements PpmService {
             log.warn("PV Specialise = {}", pvResponse.getPvCNCMPSpecialise());
 
             ppm.setPvCpmp(pvResponse.getPvCPMP().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpPermanente(
-                    pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
-            ppm.setPvCncmpSpecialisee(
-                    pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpPermanente(pvResponse.getPvCNCMPPermanente().stream().distinct().collect(Collectors.toList()));
+            ppm.setPvCncmpSpecialisee(pvResponse.getPvCNCMPSpecialise().stream().distinct().collect(Collectors.toList()));
         }
+
+
     }
+    private void populateReunionArgumentsDoc(Ppm ppm,  List<Integer> comIds) {
+
+
+
+        if (comIds != null && !comIds.isEmpty()) {
+
+            ReunionArgumentDocuments reunionArgumentDocuments=listDocPpm(comIds, ppm.getId(), ppm.getVersion());
+
+            log.warn("Ppm doc CPMP ={}" ,reunionArgumentDocuments.getDocumentCPMP());
+            log.warn("Ppm docs Permanente ={}",reunionArgumentDocuments.getDocumentCNCMPPermanente());
+            log.warn("Ppm doc Specialise = {}",reunionArgumentDocuments.getDocumentCNCMPSpecialise());
+
+            ppm.setDocumentCPMP(reunionArgumentDocuments.getDocumentCPMP());
+            ppm.setDocumentCNCMPPermanente(reunionArgumentDocuments.getDocumentCNCMPPermanente());
+            ppm.setDocumentCNCMPSpecialisee(reunionArgumentDocuments.getDocumentCNCMPSpecialise());
+        }
+
+
+    }
+
 
     private PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
 
@@ -469,14 +485,108 @@ public class PpmServiceImpl implements PpmService {
         return dto;
     }
 
-    public ExtraitResponse findAllExtraits(Integer acId, Integer ppmId, Integer ppmVersion) {
+    private ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+        ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
+
+
+        log.info("listDocPpm START | comIdsSize={} ppmId={} ppmVersion={}",
+                (comIds == null ? 0 : comIds.size()), ppmId, ppmVersion);
+
+        // Fail closed
+        if (comIds == null || comIds.isEmpty()) {
+            log.warn("listDocPpm aborted: comIds is empty");
+            return dto;
+        }
+        if (ppmId == null || ppmVersion == null) {
+            log.error("listDocPpm aborted: ppmId/ppmVersion is null (ppmId={}, ppmVersion={})", ppmId, ppmVersion);
+            throw new PpmIdNotFound("",null);
+        }
+
+        // 1) Load user COM types once
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+        if (userComTypes.isEmpty()) {
+            log.warn("listDocPpm aborted: no user COM types found for comIdsSize={}", comIds.size());
+            return dto;
+        }
+
+        log.debug("listDocPpm userComTypes={}", userComTypes);
+
+        // 2) Load reunions once
+        Specification<Reunion> spec = Specification
+                .where(ReunionSpecifications.deleted(false))
+                .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                .and(ReunionSpecifications.hasPpmId(ppmId))
+                .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+        List<Reunion> reunions = reunionRepository.findAll(spec);
+        log.info("listDocPpm reunions fetched: {}", reunions.size());
+
+        // 3) Process reunions
+        for (Reunion r : reunions) {
+
+            String reunionComType =
+                    r.getCom() != null && r.getCom().getComType() != null && r.getCom().getComType().getCode() != null
+                            ? r.getCom().getComType().getCode()
+                            : null;
+
+
+            if (reunionComType == null || reunionComType.isEmpty()) {
+                log.warn("Skipping reunion {}: reunionComType is null/empty", r.getId());
+                continue;
+            }
+
+            Set<String> pvAlfrescoIds = r.getReunionPpms().stream()
+                    .filter(Objects::nonNull)
+                    .flatMap(rp -> rp.getReunionPpmDocs().stream())
+                    .filter(Objects::nonNull)
+                    .map(ppmDoc ->ppmDoc.getPpmId().equals(ppmId)
+                            &&ppmDoc.getPpmVer().equals(ppmVersion) &&
+                            ppmDoc.getDocs() != null ? ppmDoc.getDocs().getAlfresco_id() : null)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (pvAlfrescoIds.isEmpty()) {
+                log.debug("Reunion {} type={} skipped: no docs", r.getId(), reunionComType);
+                continue;
+            }
+
+            log.debug("Reunion {} type={} docsCount={}", r.getId(), reunionComType, pvAlfrescoIds.size());
+
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getDocumentCPMP().addAll(pvAlfrescoIds);
+                        }
+                        if ("CNCMP-S".equals(reunionComType)) {
+                            dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getDocumentCNCMPPermanente().addAll(pvAlfrescoIds);
+                        }
+
+        }
+
+        log.info("listDocPpm END | cpmp={} perm={} spec={}",
+                dto.getDocumentCPMP().size(),
+                dto.getDocumentCNCMPPermanente().size(),
+                dto.getDocumentCNCMPSpecialise().size());
+
+        return dto;
+    }
+
+
+    @Override
+    public ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) {
 
         ExtraitResponse dto = new ExtraitResponse();
         Set<String> seenCpmp = new HashSet<>();
         Set<String> seenPermanent = new HashSet<>();
-
         List<ProcessVerbalReunionExtrait> extraits = processVerbalReunionExtraitService
-                .findAllByAcIdAndPpmIdAndPpmVersion(acId, ppmId, ppmVersion);
+                .findExtraitsByPpmAndAcs(acIds, ppmId, ppmVersion);
 
         for (ProcessVerbalReunionExtrait ex : extraits) {
 
@@ -488,20 +598,24 @@ public class PpmServiceImpl implements PpmService {
             Reunion reunion = reunionOpt.get();
 
             String typeCom = reunion.getCom().getComType().getCode();
+            log.info("EX: id={} type={} doc={} alfresco={} acId {}",
+                    ex.getExtraitId(),
+                    ex.getExtraitType(),
+                    ex.getDoc()!=null,
+                    ex.getDoc()!=null ? ex.getDoc().getAlfresco_id() : null,
+                    ex.getAcId()
+            );
 
-            if ("CPMP".equals(typeCom)) {
+            if ("CPMP".equals(typeCom)){
 
-                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType()) && ex.getDoc() != null
-                        ? ex.getDoc().getAlfresco_id()
-                        : null;
-                if (alfrescoId != null && seenCpmp.add(alfrescoId)) {
+                String alfrescoId = ExtraitType.PAR_AC.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                if (alfrescoId != null&&seenCpmp.add(alfrescoId)) {
                     dto.getExtraitCPMP().add(alfrescoId);
                 }
-            } else if ("CNCMP-P".equals(typeCom)) {
-                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType()) && ex.getDoc() != null
-                        ? ex.getDoc().getAlfresco_id()
-                        : null;
-                if (alfrescoId != null && seenPermanent.add(alfrescoId)) {
+            }
+            else if ("CNCMP-P".equals(typeCom)){
+                String alfrescoId = ExtraitType.PAR_DOSSIER.equals(ex.getExtraitType())&&ex.getDoc() != null ? ex.getDoc().getAlfresco_id() : null;
+                if (alfrescoId != null&&seenPermanent.add(alfrescoId)) {
                     dto.getExtraitCNCMPP().add(alfrescoId);
                 }
             }
@@ -509,7 +623,6 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
-
     public Optional<Ppm> findLatestById(Integer ppmId)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);
@@ -552,6 +665,9 @@ public class PpmServiceImpl implements PpmService {
         filteredPpm.setDeletedAt(ppm.getDeletedAt());
         filteredPpm.setProcessInstanceId(ppm.getProcessInstanceId());
         filteredPpm.setRealisations(ppm.getRealisations());
+        filteredPpm.setDocumentCPMP(ppm.getDocumentCPMP());
+        filteredPpm.setDocumentCNCMPPermanente(ppm.getDocumentCNCMPPermanente());
+        filteredPpm.setDocumentCNCMPSpecialisee(ppm.getDocumentCNCMPSpecialisee());
 
         if (ppm.getDocs() != null) {
             List<Docs> nonDeletedDocs = ppm.getDocs().stream()
@@ -5010,6 +5126,7 @@ public class PpmServiceImpl implements PpmService {
 
         return existingPpm;
     }
+
     /**
      * Creates and saves a new PPM version with all relationships established.
      *

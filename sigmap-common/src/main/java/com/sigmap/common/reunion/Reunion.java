@@ -10,6 +10,7 @@ import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 
@@ -47,6 +48,26 @@ public class Reunion extends BaseEntity {
     @Lob
     @Column(columnDefinition = "TEXT")
     private String note;
+
+    @Column(name = "validated_by_user_id")
+    private String validatedByUserId;
+
+    @Column(name = "validated_by_user_full_name")
+    private String validatedByUserFullName;
+
+    @Column(name = "validated_at")
+    private LocalDateTime validatedAt;
+
+
+    @Column(name = "closed_by_user_id")
+    private String closedByUserId;
+
+    @Column(name = "closed_by_user_full_name")
+    private String closedByUserFullName;
+
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
     @OneToMany(
             mappedBy = "reunion"
     )

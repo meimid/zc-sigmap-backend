@@ -19,13 +19,7 @@ import org.mapstruct.factory.Mappers;
 
 public interface ProcessVerbalReunionMapper {
     ProcessVerbalReunionMapper INSTANCE = Mappers.getMapper(ProcessVerbalReunionMapper.class);
-    @Mapping(target = "metadata.createdAt", source = "createdAt")
-    @Mapping(target = "metadata.createdBy", source = "createdBy")
-    @Mapping(target = "metadata.updatedAt", source = "updatedAt")
-    @Mapping(target = "metadata.updatedBy", source = "updatedBy")
-    @Mapping(target = "metadata.isDeleted", source = "isDeleted")
-    @Mapping(target = "metadata.deletedBy", source = "deletedBy")
-    @Mapping(target = "metadata.deletedAt", source = "deletedAt")
+
     ProcessVerbalReunionResponse map(ProcessVerbalReunion source);
     ProcessVerbalReunion map(ProcessVerbalReunionRequest source);
     @Mapping(target = "id", ignore = true)
