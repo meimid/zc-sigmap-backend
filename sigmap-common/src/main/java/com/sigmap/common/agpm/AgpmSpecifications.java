@@ -7,6 +7,7 @@ import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.ppms.Ppm;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -267,13 +268,17 @@ public class AgpmSpecifications {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            Join<Agpm, Docs> docsJoin = root.join("docs");
+            Join<Agpm, Docs> docsJoin = root.join("docs", JoinType.INNER);
 
             return cb.and(
                     cb.equal(docsJoin.get("id"), docId),
-                    cb.isFalse(root.get("isDeleted"))
+                    // AGPM not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted"))),
+                    // Doc not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(docsJoin.get("isDeleted")), cb.isFalse(docsJoin.get("isDeleted")))
             );
         };
     }
+
 
 }

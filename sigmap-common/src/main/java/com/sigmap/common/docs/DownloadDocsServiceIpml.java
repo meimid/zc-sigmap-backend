@@ -1,5 +1,6 @@
 package com.sigmap.common.docs;
 
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
@@ -55,6 +56,8 @@ import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDocService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -321,6 +324,74 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         // 4) Authorize by user's ACs
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
         if (acIds.contains(ppmAcId)) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
+    @Override
+    public byte[] downloadAgpmDoc(String alfrescoId)
+            throws IOException, DocsNotFoundException, AgpmNotFound, AcNotFound {
+
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        Agpm agpm = agpmService.findAll(AgpmSpecifications.docId(doc.getId()),
+                PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
+        ).stream().findFirst()
+        .orElseThrow(() -> new AgpmNotFound("AGPM not found for doc " + doc.getId(), null, null));
+
+        Integer agpmAcId = (agpm.getAc() != null ? agpm.getAc().getId() : null);
+        if (agpmAcId != null && acIds.contains(agpmAcId)) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
+    @Override
+    public byte[] downloadPpmDoc(String alfrescoId)
+            throws IOException, DocsNotFoundException, PpmNotFound, AcNotFound {
+
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        Ppm ppm = ppmService.findAll(
+                        PpmSpecifications.docId(doc.getId()),
+                        PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
+                ).stream().findFirst()
+                .orElseThrow(() -> new PpmNotFound("PPM not found for doc " + doc.getId(), null, null));
+
+        Integer ppmAcId = (ppm.getAc() != null ? ppm.getAc().getId() : null);
+        if (ppmAcId != null && acIds.contains(ppmAcId)) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
+    @Override
+    public byte[] downloadPaaDoc(String alfrescoId)
+            throws IOException, DocsNotFoundException, PaaNotFound, AcNotFound {
+
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        Paa paa = paaService.findAll(
+                        PaaSpecifications.docId(doc.getId()),
+                        PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
+                ).stream()
+                .findFirst()
+                .orElseThrow(() ->
+                        new PaaNotFound("PAA not found for doc " + doc.getId(), null, null)
+                );
+
+        Integer paaAcId = (paa.getAc() != null ? paa.getAc().getId() : null);
+        if (paaAcId != null && acIds.contains(paaAcId)) {
             return docsService.downloadDocument(alfrescoId);
         }
 

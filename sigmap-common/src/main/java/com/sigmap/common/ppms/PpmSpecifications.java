@@ -280,14 +280,7 @@ public class PpmSpecifications {
         };
     }
 
-    public static Specification<Ppm> docId(Integer docId) {
-        return (root, query, cb) -> {
-            query.distinct(true);
 
-            Join<Ppm, Docs> docsJoin = root.join("docs");
-            return cb.equal(docsJoin.get("id"), docId);
-        };
-    }
 
     public static Specification<Ppm> hasRealisations() {
         return (root, query, cb) -> cb.isNotEmpty(root.get("realisations"));
@@ -309,6 +302,24 @@ public class PpmSpecifications {
                     cb.equal(root.get("version"), subquery),           // latest version
                     cb.equal(root.get("isDeleted"), false),
                     cb.notEqual(root.get("status"), ProcessStatus.REJETE)
+            );
+        };
+    }
+
+    public static Specification<Ppm> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Ppm, Docs> docsJoin = root.join("docs", JoinType.INNER);
+
+            return cb.and(
+                    cb.equal(docsJoin.get("id"), docId),
+
+                    // PPM not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted"))),
+
+                    // Doc not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(docsJoin.get("isDeleted")), cb.isFalse(docsJoin.get("isDeleted")))
             );
         };
     }

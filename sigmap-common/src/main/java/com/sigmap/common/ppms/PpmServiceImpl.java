@@ -202,6 +202,11 @@ public class PpmServiceImpl implements PpmService {
         return repository.findAll(spec);
     }
 
+    @Override
+    public List<Ppm> findAll(Specification<Ppm> spec) {
+        return repository.findAll(spec);
+    }
+
     // @Override
     // public Page<Ppm> findAll(Specification<Ppm> spec, Pageable pageable) {
     // return repository.findAll(spec, pageable);

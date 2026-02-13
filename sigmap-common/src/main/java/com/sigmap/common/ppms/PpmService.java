@@ -45,7 +45,7 @@ import java.util.Optional;
  */
 public interface PpmService {
     List<Ppm> findAll();
-
+    List<Ppm> findAll(Specification<Ppm> spec);
     Integer findLatestVersionById(Integer ppmId);
     /**
      * Return a page of Ppms based on the given specification and pageable.

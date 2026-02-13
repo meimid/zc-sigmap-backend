@@ -1,6 +1,7 @@
 package com.sigmap.sigmap_params.doc;
 
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
+import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.Docs;
@@ -77,6 +78,48 @@ public class DocController {
     @PostMapping("/download/model-agpm")
     public ResponseEntity<DocumentResponseDTO> downloadModelAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         byte[]  fileContent = downloadDocsService.downloadModelAgpm(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/agpm")
+    public ResponseEntity<DocumentResponseDTO> downloadAgpmDoc(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadAgpmDoc(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/paa")
+    public ResponseEntity<DocumentResponseDTO> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadPaaDoc(alfrescoId.getId());
+        DocumentResponseDTO response = new DocumentResponseDTO(
+                fileContent,
+                false,
+                null,
+                alfrescoId.getId()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/download/ppm")
+    public ResponseEntity<DocumentResponseDTO> downloadPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound, AcNotFound {
+
+        byte[]  fileContent = downloadDocsService.downloadPpmDoc(alfrescoId.getId());
         DocumentResponseDTO response = new DocumentResponseDTO(
                 fileContent,
                 false,
