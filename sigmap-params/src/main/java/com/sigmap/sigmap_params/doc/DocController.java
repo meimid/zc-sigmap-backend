@@ -74,7 +74,7 @@ public class DocController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/download/model/agpm")
+    @PostMapping("/download/model-agpm")
     public ResponseEntity<Resource> downloadAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
@@ -91,7 +91,7 @@ public class DocController {
                 .body(resource);
     }
 
-    @PostMapping("/download/model/paa")
+    @PostMapping("/download/model-paa")
     public ResponseEntity<Resource> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
@@ -108,7 +108,7 @@ public class DocController {
                 .body(resource);
     }
 
-    @PostMapping("/download/reunion/pv")
+    @PostMapping("/download/reunion-pv")
     public ResponseEntity<Resource> downloadPvForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
@@ -125,7 +125,7 @@ public class DocController {
                 .body(resource);
     }
 
-    @PostMapping("/download/reunion/extrait")
+    @PostMapping("/download/reunion-extrait")
     public ResponseEntity<Resource> downloadExtraitForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
