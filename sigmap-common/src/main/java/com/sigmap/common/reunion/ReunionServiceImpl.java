@@ -1664,57 +1664,6 @@ public class ReunionServiceImpl implements ReunionService{
 
         return result;
     }
-    @Override
-    public byte[] downloadPvForReunion(String alfrescoId) throws IOException, DocsNotFoundException {
-        List<Integer> comIds = currentUserService.getCurrentUserComIds();
-        Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
-        ProcessVerbalReunion pv = processVerbalReunionService.findOne(
-                ProcessVerbalReunionSpecifications.docId(doc.getId())
-                        .and(ProcessVerbalReunionSpecifications.deleted(false))
-        ).orElseThrow(() -> new DocsNotFoundException("PV not found for doc " + doc.getId()));
 
-        Reunion reunion = findOne(ReunionSpecifications.pvId(pv.getId()))
-                .orElseThrow(() -> new ReunionNotFound("", pv.getId()));
-
-        if(comIds.contains(reunion.getCom().getId())){
-            return   docsService.downloadDocument(alfrescoId);
-        }
-        throw new AccessDeniedException("Access denied");
-    }
-
-    @Override
-    public byte[] downloadExtraitForReunion(String alfrescoId)
-            throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound {
-
-        List<Integer> comIds = currentUserService.getCurrentUserComIds();
-
-        Docs doc = docsService.findByAlfescoId(alfrescoId)
-                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
-
-        // 1) Find extrait by docId, not deleted
-        ProcessVerbalReunionExtrait extrait = processVerbalReunionExtraitService.findOne(
-                ProcessVerbalReunionExtraitSpecifications.docId(doc.getId())
-        ).orElseThrow(() -> new ExtraitNotFound("Extrait not found for doc " + doc.getId()));
-
-        // 2) Ensure PV exists and is not deleted (defensive)
-        ProcessVerbalReunion pv = processVerbalReunionService.findOne(
-                ProcessVerbalReunionSpecifications.id(extrait.getPvId())
-                        .and(ProcessVerbalReunionSpecifications.deleted(false))
-        ).orElseThrow(() -> new DocsNotFoundException("PV not found for extrait pvId " + extrait.getPvId()));
-
-        // 3) Find reunion by pvId (your spec already includes not-deleted checks if you added them; otherwise add deleted(false))
-        Reunion reunion = findOne(
-                ReunionSpecifications.pvId(pv.getId())
-                        .and(ReunionSpecifications.deleted(false))
-        ).orElseThrow(() -> new ReunionNotFound("Reunion not found for pvId " + pv.getId(), pv.getId()));
-
-        // 4) Authorization by COM membership
-        Integer reunionComId = reunion.getCom().getId();
-        if (reunionComId != null && comIds.contains(reunionComId)) {
-            return docsService.downloadDocument(alfrescoId);
-        }
-
-        throw new AccessDeniedException("Access denied");
-    }
 
 }

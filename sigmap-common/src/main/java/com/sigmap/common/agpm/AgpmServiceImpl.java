@@ -18,9 +18,7 @@ import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.agpm.exceptions.*;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
-import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.exeptions.DocNotFound;
-import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.agpm.mappers.AgpmMapper;
 import com.sigmap.common.agpm.request.AgpmRequest;
@@ -47,7 +45,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.nio.file.AccessDeniedException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -70,7 +67,6 @@ public class AgpmServiceImpl implements AgpmService {
     private final SequenceGeneratorService sequenceGeneratorService;
     private final ModelAgpmService modelAgpmService;
     private final ModelAgpmRepository modelAgpmRepository;
-    private final DocsService docsService;
 
 
     /**
@@ -93,7 +89,7 @@ public class AgpmServiceImpl implements AgpmService {
                            AlfrescoService alfrescoService,
                            DocumentCommuneService documentCommuneService,
                            AcService acService,
-                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService, ModelAgpmService modelAgpmService, ModelAgpmRepository modelAgpmRepository, DocsService docsService) {
+                           CurrentUserService currentUserService, SequenceGeneratorService sequenceGeneratorService, ModelAgpmService modelAgpmService, ModelAgpmRepository modelAgpmRepository) {
         this.repository = repository;
         this.docsRepository = docsRepository;
         this.agpmMapper = agpmMapper;
@@ -106,7 +102,6 @@ public class AgpmServiceImpl implements AgpmService {
         this.sequenceGeneratorService = sequenceGeneratorService;
         this.modelAgpmService = modelAgpmService;
         this.modelAgpmRepository = modelAgpmRepository;
-        this.docsService = docsService;
     }
 
     /**
@@ -1080,15 +1075,6 @@ public class AgpmServiceImpl implements AgpmService {
 
         return createFilteredResponseAgpm(saved);
     }
-    @Override
-    public byte[] downloadModelAgpm(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound {
-        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
-        Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
-        Agpm agpm=findOne(AgpmSpecifications.docId(doc.getId()).and(AgpmSpecifications.isNotDeleted())).orElseThrow(()->new AgpmNotFound("",null,null));
-        if(acIds.contains(agpm.getId())){
-            return   docsService.downloadDocument(alfrescoId);
-        }
-        throw new AccessDeniedException("Access denied");
-    }
+
 
 }

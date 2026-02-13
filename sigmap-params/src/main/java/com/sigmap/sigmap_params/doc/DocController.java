@@ -5,6 +5,7 @@ import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
+import com.sigmap.common.docs.DownloadDocsService;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Request.AlfrescoIdRequest;
 import com.sigmap.common.docs.Response.DocsResponse;
@@ -12,6 +13,7 @@ import com.sigmap.common.docs.Response.DocsResponse;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.reunion.ReunionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -28,17 +30,15 @@ import java.io.IOException;
 @RequestMapping("/api/docs")
 public class DocController {
     private final DocsService docsService;
-    private final AgpmService agpmService;
-    private final PaaService paaService;
-    private final ReunionService reunionService;
-    public DocController(DocsService docsService, AgpmService agpmService, PaaService paaService, ReunionService reunionService) {
+    private final DownloadDocsService downloadDocsService;
+
+    public DocController(DocsService docsService, DownloadDocsService downloadDocsService) {
         this.docsService = docsService;
-        this.agpmService = agpmService;
-        this.paaService = paaService;
-        this.reunionService = reunionService;
+
+        this.downloadDocsService = downloadDocsService;
     }
 
-   /* @PostMapping("/alfresco/data")
+    /*@PostMapping("/alfresco/data")
     public DocumentResponseDTO getDocumentData(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException {
         return docsService.getDocumentInformation(alfrescoId.getId()).orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
     }*/
@@ -78,7 +78,7 @@ public class DocController {
     public ResponseEntity<Resource> downloadAgpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[]  fileContent = agpmService.downloadModelAgpm(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadModelAgpm(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -95,7 +95,7 @@ public class DocController {
     public ResponseEntity<Resource> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[]  fileContent = paaService.downloadModelPaa(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadModelPaa(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -108,11 +108,11 @@ public class DocController {
                 .body(resource);
     }
 
-    @PostMapping("/download/reunion-pv")
-    public ResponseEntity<Resource> downloadPvForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    @PostMapping("/download/model-ppm")
+    public ResponseEntity<Resource> downloadPpm(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[]  fileContent = reunionService.downloadPvForReunion(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadModelPpm(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -125,11 +125,11 @@ public class DocController {
                 .body(resource);
     }
 
-    @PostMapping("/download/reunion-extrait")
-    public ResponseEntity<Resource> downloadExtraitForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+    @PostMapping("/download/pv")
+    public ResponseEntity<Resource> downloadPv(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-        byte[]  fileContent = reunionService.downloadExtraitForReunion(alfrescoId.getId());
+        byte[]  fileContent = downloadDocsService.downloadPv(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
@@ -142,6 +142,39 @@ public class DocController {
                 .body(resource);
     }
 
+    @PostMapping("/download/extrait")
+    public ResponseEntity<Resource> downloadExtrait(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = downloadDocsService.downloadExtrait(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/meeting-ppm")
+    public ResponseEntity<Resource> downloadPpmArgumentDocument(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = downloadDocsService.downloadPpmArgumentDocument(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
 
 
 }

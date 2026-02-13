@@ -16,6 +16,8 @@ import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.response.ExtraitResponse;
+import com.sigmap.common.reunion.response.PvResponse;
+import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -341,9 +343,7 @@ public interface PpmService {
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
      ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) ;
-    byte[] downloadPvForPpm(String alfrescoId) throws IOException, DocsNotFoundException;
-    byte[] downloadExtraitForPpm(String alfrescoId)
-            throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound;
-
+    PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
+    ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion);
 }
 

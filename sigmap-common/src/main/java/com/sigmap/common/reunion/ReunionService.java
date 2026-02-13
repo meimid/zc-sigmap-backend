@@ -64,9 +64,7 @@ public interface ReunionService {
     ProcessVerbalReunionExtrait injectExtraitForDossier(Integer reunionId, ProcessVerbalReunionExtraitRequest extraitRequest) throws IOException;
     Page<ProcessVerbalReunionExtrait> findAllProcessVerbalReunionExtraitByReunionId(Integer reunionId,Pageable pageable);
     Optional<String> findInterimParticipant(Integer reunionId);
-    byte[] downloadPvForReunion(String alfrescoId) throws IOException, DocsNotFoundException;
-    byte[] downloadExtraitForReunion(String alfrescoId)
-            throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound;
+
 
 
 }
