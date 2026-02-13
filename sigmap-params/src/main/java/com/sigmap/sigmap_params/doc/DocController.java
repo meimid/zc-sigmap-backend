@@ -41,7 +41,7 @@ public class DocController {
     /*@PostMapping("/alfresco/data")
     public DocumentResponseDTO getDocumentData(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException {
         return docsService.getDocumentInformation(alfrescoId.getId()).orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
-    }*/
+    }
     @GetMapping("/{id}")
     public ResponseEntity<DocsResponse> findById(@PathVariable Integer id)  {
         Docs doc = docsService.findById(id);
@@ -113,6 +113,23 @@ public class DocController {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
         byte[]  fileContent = downloadDocsService.downloadModelPpm(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/model-dac")
+    public ResponseEntity<Resource> downloadDacModel(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PpmNotFound {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = downloadDocsService.downloadDacModel(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");

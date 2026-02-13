@@ -5,8 +5,23 @@ import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.DacService;
+import com.sigmap.common.dac.DacSpecifications;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.model_agpm.ModelAgpm;
+import com.sigmap.common.model_agpm.ModelAgpmService;
+import com.sigmap.common.model_agpm.ModelAgpmSpecifications;
+import com.sigmap.common.model_dac.ModelDac;
+import com.sigmap.common.model_dac.ModelDacService;
+import com.sigmap.common.model_dac.ModelDacSpecifications;
+import com.sigmap.common.model_paa.ModelPaa;
+import com.sigmap.common.model_paa.ModelPaaService;
+import com.sigmap.common.model_paa.ModelPaaSpecifications;
+import com.sigmap.common.model_ppm.ModelPpm;
+import com.sigmap.common.model_ppm.ModelPpmService;
+import com.sigmap.common.model_ppm.ModelPpmSpecifications;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.PaaSpecifications;
@@ -32,6 +47,9 @@ import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.reunionPpm.ReunionPpmDocSpecifications;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDocService;
+import com.sigmap.common.reunion_dac_doc.ReunionDacDocSpecifications;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDocService;
 import lombok.RequiredArgsConstructor;
@@ -57,13 +75,20 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
         private final ProcessVerbalReunionExtraitPpmService processVerbalReunionExtraitPpmService;
         private final ReunionPpmDocService reunionPpmDocService;
-
+        private final DacService dacService;
+        private final ReunionDacDocService reunionDacDocService;
+        private final ModelDacService modelDacService;
+        private final ModelPpmService modelPpmService;
+        private final ModelPaaService modelPaaService;
+        private final ModelAgpmService modelAgpmService;
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
         Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
-        Paa paa=paaService.findOne(PaaSpecifications.docId(doc.getId()).and(PaaSpecifications.isNotDeleted())).orElseThrow(()->new PaaNotFound("",null,null));
-        if(acIds.contains(paa.getId())){
+        ModelPaa model = modelPaaService.findOne(
+                ModelPaaSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new PaaNotFound("Model Paa not found for doc " + doc.getId(), null, null));
+        if(acIds.contains(model.getPaa().getAc().getId())) {
             return   docsService.downloadDocument(alfrescoId);
         }
         throw new AccessDeniedException("Access denied");
@@ -73,8 +98,10 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
     public byte[] downloadModelAgpm(String alfrescoId) throws IOException, DocsNotFoundException, AgpmNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
         Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
-        Agpm agpm=agpmService.findOne(AgpmSpecifications.docId(doc.getId()).and(AgpmSpecifications.isNotDeleted())).orElseThrow(()->new AgpmNotFound("",null,null));
-        if(acIds.contains(agpm.getId())){
+        ModelAgpm model = modelAgpmService.findOne(
+                ModelAgpmSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new AgpmNotFound("Model Agpm not found for doc " + doc.getId(), null, null));
+        if(acIds.contains(model.getAgpm().getAc().getId())) {
             return   docsService.downloadDocument(alfrescoId);
         }
         throw new AccessDeniedException("Access denied");
@@ -193,11 +220,90 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
-        Ppm ppm = ppmService.findOne(
-                PpmSpecifications.docId(doc.getId()).and(PpmSpecifications.isNotDeleted())
-        ).orElseThrow(() -> new PpmNotFound("PPM not found for doc " + doc.getId(), null, null));
+        ModelPpm model = modelPpmService.findOne(
+                ModelPpmSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new PpmNotFound("Model PPM not found for doc " + doc.getId(), null, null));
 
-        if (ppm.getAc() != null && ppm.getAc().getId() != null && acIds.contains(ppm.getAc().getId())) {
+        if (model.getPpm().getAc() != null && model.getPpm().getAc().getId() != null && acIds.contains(model.getPpm().getAc().getId())) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
+
+    @Override
+    public byte[] downloadDacArgumentDocument(String alfrescoId)
+            throws IOException, DocsNotFoundException {
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        ReunionDacDoc link = reunionDacDocService.findOne(
+                ReunionDacDocSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new DocsNotFoundException("No DAC link found for docId " + doc.getId()));
+
+        if (link.getDacId() == null || link.getDacVer() == null) {
+            throw new DocsNotFoundException("DAC id/version missing for docId " + doc.getId());
+        }
+
+        Integer dacId = link.getDacId();
+        Integer dacVersion = link.getDacVer();
+
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+
+ /*       ReunionArgumentDocuments dto = dacService.listDocDac(comIds, dacId, dacVersion);
+
+        boolean allowed =
+                dto.getDocumentCPMP().contains(alfrescoId)
+                        || dto.getDocumentCNCMPPermanente().contains(alfrescoId)
+                        || dto.getDocumentCNCMPSpecialise().contains(alfrescoId);
+
+        if (allowed) {
+            return docsService.downloadDocument(alfrescoId);
+        }*/
+
+        throw new AccessDeniedException("Access denied");
+    }
+
+    @Override
+    public byte[] downloadDacModel(String alfrescoId) throws IOException, DocsNotFoundException {
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        // 1) Find model_dac link by docId (not deleted doc/model)
+        ModelDac model = modelDacService.findOne(
+                ModelDacSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new DocsNotFoundException("Model DAC not found for docId " + doc.getId()));
+
+        if (model.getDacId() == null || model.getDacVer() == null) {
+            throw new DocsNotFoundException("DAC id/version missing for model_dac docId " + doc.getId());
+        }
+
+        Integer dacId = model.getDacId();
+        Integer dacVer = model.getDacVer();
+
+        // 2) Load DAC (not deleted)
+        Dac dac = dacService.findOne(
+                Specification.where(DacSpecifications.id(dacId, dacVer))
+                        .and(DacSpecifications.searchByDeleted(false))
+        ).orElseThrow(() -> new DocsNotFoundException("DAC not found for id=" + dacId + " ver=" + dacVer));
+
+        // 3) Go DAC -> AppelOffre -> PPM -> AC
+        if (dac.getAppelOffre() == null || dac.getAppelOffre().getPpm() == null) {
+            throw new DocsNotFoundException("PPM not found through DAC -> AppelOffre for dacId=" + dacId + " ver=" + dacVer);
+        }
+
+        Ppm ppm = dac.getAppelOffre().getPpm();
+
+        if (ppm.getAc() == null || ppm.getAc().getId() == null) {
+            throw new DocsNotFoundException("AC not found for PPM id=" + ppm.getId() + " ver=" + ppm.getVersion());
+        }
+
+        Integer ppmAcId = ppm.getAc().getId();
+
+        // 4) Authorize by user's ACs
+        List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+        if (acIds.contains(ppmAcId)) {
             return docsService.downloadDocument(alfrescoId);
         }
 

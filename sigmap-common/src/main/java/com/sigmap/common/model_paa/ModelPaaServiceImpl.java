@@ -9,6 +9,7 @@ import com.sigmap.common.paas.PaaRepository;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -70,5 +71,10 @@ public class ModelPaaServiceImpl implements ModelPaaService {
     @Override
     public void removeModel(Integer paaId, Integer paaVer) {
         modelPaaRepository.deleteByPaaIdAndPaaVer(paaId, paaVer);
+    }
+
+    @Override
+    public Optional<ModelPaa> findOne(Specification<ModelPaa> spec) {
+        return modelPaaRepository.findOne(spec);
     }
 }

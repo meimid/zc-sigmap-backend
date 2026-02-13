@@ -85,6 +85,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -1652,6 +1653,20 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied() {
+
+        String message = messageSource.getMessage(
+                "security.accessDenied",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
+
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }
 

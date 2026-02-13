@@ -9,6 +9,7 @@ import com.sigmap.common.ppms.PpmRepository;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -70,5 +71,10 @@ public class ModelPpmServiceImpl implements ModelPpmService {
     @Override
     public void removeModel(Integer ppmId, Integer ppmVer) {
         modelPpmRepository.deleteByPpmIdAndPpmVer(ppmId, ppmVer);
+    }
+
+    @Override
+    public Optional<ModelPpm> findOne(Specification<ModelPpm> spec) {
+        return modelPpmRepository.findOne(spec);
     }
 }
