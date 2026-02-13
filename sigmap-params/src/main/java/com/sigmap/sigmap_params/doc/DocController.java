@@ -12,6 +12,7 @@ import com.sigmap.common.docs.Response.DocsResponse;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.paas.PaaService;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.reunion.ReunionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ResponseEntity;
@@ -29,10 +30,12 @@ public class DocController {
     private final DocsService docsService;
     private final AgpmService agpmService;
     private final PaaService paaService;
-    public DocController(DocsService docsService, AgpmService agpmService, PaaService paaService) {
+    private final ReunionService reunionService;
+    public DocController(DocsService docsService, AgpmService agpmService, PaaService paaService, ReunionService reunionService) {
         this.docsService = docsService;
         this.agpmService = agpmService;
         this.paaService = paaService;
+        this.reunionService = reunionService;
     }
 
    /* @PostMapping("/alfresco/data")
@@ -89,10 +92,44 @@ public class DocController {
     }
 
     @PostMapping("/download/model/paa")
-    public ResponseEntity<Resource> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, AgpmNotFound, PaaNotFound {
+    public ResponseEntity<Resource> downloadPaa(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException, PaaNotFound {
         Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
                 .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
         byte[]  fileContent = paaService.downloadModelPaa(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/reunion/pv")
+    public ResponseEntity<Resource> downloadPvForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = reunionService.downloadPvForReunion(alfrescoId.getId());
+        ByteArrayResource resource = new ByteArrayResource(fileContent);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");
+        headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+        headers.add("Pragma", "no-cache");
+        headers.add("Expires", "0");
+        return ResponseEntity.ok().headers(headers)
+                .contentLength(fileContent.length)
+                .contentType(MediaType.parseMediaType(docInfo.getContentType()))
+                .body(resource);
+    }
+
+    @PostMapping("/download/reunion/extrait")
+    public ResponseEntity<Resource> downloadExtraitForReunion(@RequestBody AlfrescoIdRequest alfrescoId) throws DocsNotFoundException, IOException {
+        Docs docInfo = docsService.findByAlfescoId(alfrescoId.getId())
+                .orElseThrow(() -> new DocsNotFoundException(alfrescoId.getId()));
+        byte[]  fileContent = reunionService.downloadExtraitForReunion(alfrescoId.getId());
         ByteArrayResource resource = new ByteArrayResource(fileContent);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + docInfo.getName() + "\"");

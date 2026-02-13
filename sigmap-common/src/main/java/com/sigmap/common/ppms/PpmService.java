@@ -3,6 +3,7 @@ package com.sigmap.common.ppms;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.response.AcAvailablePpmResponse;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ProcessStatus;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.exceptions.PaaIdNotFound;
@@ -11,7 +12,9 @@ import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.realisations.Realisation;
+import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.response.ExtraitResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -338,7 +341,9 @@ public interface PpmService {
     List<Ppm> findAllForComUser(Specification<Ppm> spec, String userId);
      public List<Ppm> findAllPpms(Specification<Ppm> spec);
      ExtraitResponse findAllExtraits(List<Integer> acIds, Integer ppmId, Integer ppmVersion) ;
-
+    byte[] downloadPvForPpm(String alfrescoId) throws IOException, DocsNotFoundException;
+    byte[] downloadExtraitForPpm(String alfrescoId)
+            throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound;
 
 }
 

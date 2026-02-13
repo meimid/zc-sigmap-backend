@@ -13,48 +13,50 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
-import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
-import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
-import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
-import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.PaaSpecifications;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionSpecifications;
 import com.sigmap.common.process_verbal_reunion.exception.*;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitSpecifications;
+import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.ExtraitResponse;
-import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
@@ -78,15 +80,12 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -110,11 +109,12 @@ public class ReunionServiceImpl implements ReunionService{
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final ReunionSortResolver reunionSortResolver;
+    private final DocsService docsService;
 
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver, DocsService docsService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -130,6 +130,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.processVerbalReunionService = processVerbalReunionService;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
         this.reunionSortResolver = reunionSortResolver;
+        this.docsService = docsService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -1663,6 +1664,57 @@ public class ReunionServiceImpl implements ReunionService{
 
         return result;
     }
+    @Override
+    public byte[] downloadPvForReunion(String alfrescoId) throws IOException, DocsNotFoundException {
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+        Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
+        ProcessVerbalReunion pv = processVerbalReunionService.findOne(
+                ProcessVerbalReunionSpecifications.docId(doc.getId())
+                        .and(ProcessVerbalReunionSpecifications.deleted(false))
+        ).orElseThrow(() -> new DocsNotFoundException("PV not found for doc " + doc.getId()));
 
+        Reunion reunion = findOne(ReunionSpecifications.pvId(pv.getId()))
+                .orElseThrow(() -> new ReunionNotFound("", pv.getId()));
+
+        if(comIds.contains(reunion.getCom().getId())){
+            return   docsService.downloadDocument(alfrescoId);
+        }
+        throw new AccessDeniedException("Access denied");
+    }
+
+    @Override
+    public byte[] downloadExtraitForReunion(String alfrescoId)
+            throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound {
+
+        List<Integer> comIds = currentUserService.getCurrentUserComIds();
+
+        Docs doc = docsService.findByAlfescoId(alfrescoId)
+                .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
+
+        // 1) Find extrait by docId, not deleted
+        ProcessVerbalReunionExtrait extrait = processVerbalReunionExtraitService.findOne(
+                ProcessVerbalReunionExtraitSpecifications.docId(doc.getId())
+        ).orElseThrow(() -> new ExtraitNotFound("Extrait not found for doc " + doc.getId()));
+
+        // 2) Ensure PV exists and is not deleted (defensive)
+        ProcessVerbalReunion pv = processVerbalReunionService.findOne(
+                ProcessVerbalReunionSpecifications.id(extrait.getPvId())
+                        .and(ProcessVerbalReunionSpecifications.deleted(false))
+        ).orElseThrow(() -> new DocsNotFoundException("PV not found for extrait pvId " + extrait.getPvId()));
+
+        // 3) Find reunion by pvId (your spec already includes not-deleted checks if you added them; otherwise add deleted(false))
+        Reunion reunion = findOne(
+                ReunionSpecifications.pvId(pv.getId())
+                        .and(ReunionSpecifications.deleted(false))
+        ).orElseThrow(() -> new ReunionNotFound("Reunion not found for pvId " + pv.getId(), pv.getId()));
+
+        // 4) Authorization by COM membership
+        Integer reunionComId = reunion.getCom().getId();
+        if (reunionComId != null && comIds.contains(reunionComId)) {
+            return docsService.downloadDocument(alfrescoId);
+        }
+
+        throw new AccessDeniedException("Access denied");
+    }
 
 }

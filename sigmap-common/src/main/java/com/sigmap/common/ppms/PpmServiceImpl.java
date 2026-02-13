@@ -21,6 +21,7 @@ import com.sigmap.common.dac.DacRepository;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsRepository;
 import com.sigmap.common.docs.DocsService;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ProcessStatus;
@@ -46,8 +47,10 @@ import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
+import com.sigmap.common.reunion.exception.ReunionNotFound;
 import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.source_financement.SourceFinancement;
 import com.sigmap.common.source_financement.SourceFinancementService;
@@ -619,6 +622,17 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
+
+    @Override
+    public byte[] downloadPvForPpm(String alfrescoId) throws IOException, DocsNotFoundException {
+        return new byte[0];
+    }
+
+    @Override
+    public byte[] downloadExtraitForPpm(String alfrescoId) throws IOException, DocsNotFoundException, ReunionNotFound, ExtraitNotFound {
+        return new byte[0];
+    }
+
     public Optional<Ppm> findLatestById(Integer ppmId)
             throws PpmNotFound, AcNotFound, PpmNotAssociatedWithUserAcException {
         log.info("Recherche de la dernière version du PPM avec ID: {}", ppmId);

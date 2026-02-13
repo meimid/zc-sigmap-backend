@@ -3435,7 +3435,7 @@ public class PaaServiceImpl implements PaaService {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
         Docs doc=docsService.findByAlfescoId( alfrescoId).orElseThrow(()->new DocsNotFoundException(""));
         Paa paa=findOne(PaaSpecifications.docId(doc.getId()).and(PaaSpecifications.isNotDeleted())).orElseThrow(()->new PaaNotFound("",null,null));
-        if(acIds.contains(paa.getId())|| Authentication.hasRole("")){
+        if(acIds.contains(paa.getId())){
             return   docsService.downloadDocument(alfrescoId);
         }
         throw new AccessDeniedException("Access denied");
