@@ -9,6 +9,7 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.DacSpecifications;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
+import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.model_agpm.ModelAgpm;
 import com.sigmap.common.model_agpm.ModelAgpmService;
@@ -53,6 +54,7 @@ import com.sigmap.common.reunion_dac_doc.ReunionDacDocSpecifications;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDocService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -63,6 +65,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         private final DocsService docsService;
@@ -145,10 +148,24 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
+        log.info("doc id: " + doc.getId());
+        //  CASE 1: PAR_AC => no PPM link expected
+
         ProcessVerbalReunionExtrait extrait = processVerbalReunionExtraitService.findOne(
                 ProcessVerbalReunionExtraitSpecifications.docId(doc.getId())
         ).orElseThrow(() -> new ExtraitNotFound("Extrait not found for doc " + doc.getId()));
 
+        if (ExtraitType.PAR_AC.equals(extrait.getExtraitType())) {
+            List<Integer> acIds = currentUserService.getCurrentUserAcIds();
+
+            if (extrait.getAcId() != null && acIds.contains(extrait.getAcId())) {
+                return docsService.downloadDocument(alfrescoId);
+            }
+
+            throw new AccessDeniedException("Access denied");
+        }
+
+        //  CASE 2: needs PPM link
         ProcessVerbalReunionExtraitPpm link = processVerbalReunionExtraitPpmService.findOne(
                 ProcessVerbalReunionExtraitPpmSpecifications
                         .byExtraitKey(extrait.getExtraitId(), extrait.getPvId(), extrait.getAcId())
