@@ -4,6 +4,7 @@ import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.mapper.AcMapper;
 import com.sigmap.common.ac.response.AcWebsiteResponse;
 import com.sigmap.common.dac.Dac;
+import com.sigmap.common.dac.response.DacIdVerRefResponseDto;
 import com.sigmap.common.dac.response.DacResponce;
 import com.sigmap.common.dac.response.DacResponseReunion;
 import com.sigmap.common.dac.response.DacWebsiteResponse;
@@ -47,6 +48,9 @@ public interface DacMapper {
     @Mapping(target = "ppmId", source = "appelOffre.ppm.id")
 
     DacResponseReunion mapToDacResponseReunion(Dac source);
+
+
+    DacIdVerRefResponseDto mapToDacIdVerRefResponseDto(Dac source);
 
 }
 

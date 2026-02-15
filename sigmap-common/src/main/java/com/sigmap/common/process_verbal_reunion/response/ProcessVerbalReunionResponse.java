@@ -17,6 +17,5 @@ public class ProcessVerbalReunionResponse {
     private String observation;
     private ProcessVerbalReunionDocResponse document;
    // private List<ProcessVerbalReunionExtraitRespons> extraits = new ArrayList<>();
-    private BaseEntityResponse metadata;
 
 }

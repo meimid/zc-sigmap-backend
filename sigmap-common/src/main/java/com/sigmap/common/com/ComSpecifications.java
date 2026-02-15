@@ -8,6 +8,9 @@ import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.Collection;
+import java.util.List;
+
 /** Specification for managing {@link Com}. */
 public class ComSpecifications {
   /** search. */
@@ -45,6 +48,17 @@ public class ComSpecifications {
       return criteriaBuilder.equal(root.get("id"), id);
     };
   }
+
+  public static Specification<Com> idIn(List<Integer> ids) {
+    return (root, query, cb) -> {
+      if (ids == null || ids.isEmpty()) {
+        // No ids → no results (safer than "all")
+        return cb.disjunction();
+      }
+      return root.get("id").in(ids);
+    };
+  }
+
 
   /** decretCreation. */
   public static Specification<Com> decretCreation(String decretCreation) {

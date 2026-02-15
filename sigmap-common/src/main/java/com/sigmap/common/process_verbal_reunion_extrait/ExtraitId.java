@@ -1,16 +1,16 @@
 package com.sigmap.common.process_verbal_reunion_extrait;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.io.Serializable;
 import java.util.Objects;
 
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
+
 public class ExtraitId implements Serializable {
 
     private Integer extraitId;
