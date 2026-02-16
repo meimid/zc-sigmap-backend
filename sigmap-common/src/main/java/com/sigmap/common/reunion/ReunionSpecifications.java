@@ -203,6 +203,34 @@ public class ReunionSpecifications {
         };
     }
 
+    public static Specification<Reunion> hasDacId(Integer dacId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Predicate viaReunionDacs =
+                    cb.equal(reunionDacJoin.get("dacId"), dacId);
+
+            return viaReunionDacs;
+        };
+    }
+
+    public static Specification<Reunion> hasDacVer(Integer dacVer) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Predicate viaReunionDacs =
+                    cb.equal(reunionDacJoin.get("dacVer"), dacVer);
+
+            return viaReunionDacs;
+        };
+    }
+
     public static Specification<Reunion> hasAcId(Integer acId) {
         return (root, query, cb) -> {
             query.distinct(true);
