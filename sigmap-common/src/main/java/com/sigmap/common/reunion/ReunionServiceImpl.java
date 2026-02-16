@@ -19,9 +19,11 @@ import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
 import com.sigmap.common.config.ReunionStatus;
+import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.response.DacResponseReunion;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Mapper.DocMapper;
@@ -37,6 +39,7 @@ import com.sigmap.common.mail.MailService;
 import com.sigmap.common.paas.Paa;
 import com.sigmap.common.paas.PaaSpecifications;
 import com.sigmap.common.paas.exceptions.PaaNotFound;
+import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
@@ -67,6 +70,7 @@ import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
+import com.sigmap.common.reunionPpm.exceptions.DossierAlreadyReservedForOtherMeetingInProgressStatus;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -455,34 +459,6 @@ public class ReunionServiceImpl implements ReunionService{
 
         ReunionStatus status = reunion.getStatus();
 
-/*
-        if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
-            long  ppmDesionsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getDecision()!=null).count();
-            long  ppmObservationsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getObservation()!=null).count();
-
-            long  dacDesionsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getDecision()!=null).count();
-            long  dacObservationsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getObservation()!=null).count();
-
-            if(ppmDesionsNumber>0||ppmObservationsNumber>0||dacObservationsNumber>0||dacDesionsNumber>0){
-                throw new ReunionStatusException("",reunionToUpdate.getStatus());
-            }
-            else {
-                reunionToUpdate.setStatus(ReunionStatus.ANNULER);
-
-            }
-
-        }
-        if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
-                reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
-                reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER &&
-                reunionToUpdate.getStatus()!=ReunionStatus.EN_RETARD){
-            throw new ReunionStatusException("",reunionToUpdate.getStatus());
-        }
-       if(reunionToUpdate.getStatus() == ReunionStatus.PLANIFIER){
-           sendReunionAnnulerInvitations(id);
-       }
-        reunionToUpdate.setStatus(ReunionStatus.ANNULER);
-        return save(reunionToUpdate);*/
 
         boolean cancelAllowed =
                 status == ReunionStatus.BROUILLON ||
@@ -707,6 +683,14 @@ public class ReunionServiceImpl implements ReunionService{
                 if (ppmReq.getId() == null || ppmReq.getVersion() == null) {
                     throw new PpmIdNotFound("",null);
                 }
+                Ppm ppm=ppmService.findById(ppmReq.getId(),ppmReq.getVersion()).orElseThrow(()->new PpmIdNotFound("",ppmReq.getId()));
+                List<Reunion> reunions=findAll(ReunionSpecifications.hasPpmId(ppmReq.getId())
+                        .and(ReunionSpecifications.hasPpmVer(ppmReq.getVersion()))
+                        .and(ReunionSpecifications.status(ReunionStatus.EN_COURS).or(ReunionSpecifications.status(ReunionStatus.VALIDER)).or(ReunionSpecifications.status(ReunionStatus.PLANIFIER)))
+                        .and(Specification.not(ReunionSpecifications.id(reunion.getId()))));
+                if(!reunions.isEmpty()) {
+                    throw new DossierAlreadyReservedForOtherMeetingInProgressStatus("",ppm.getRef());
+                }
                 ReunionPpmId id = new ReunionPpmId(reunion.getId(), ppmReq.getId(), ppmReq.getVersion());
                 if (requestPpmMap.containsKey(id)) {
                     throw new DuplicationData("Duplicate PPM in request: reunionId=" + reunion.getId() +
@@ -831,6 +815,14 @@ public class ReunionServiceImpl implements ReunionService{
                 if (dacReq.getDacId() == null || dacReq.getDacVer() == null) {
                     throw new DacNotFound("DAC ID or version is null in request:" , null ,
                              null);
+                }
+                List<Reunion> reunions=findAll(ReunionSpecifications.hasDacId(dacReq.getDacId())
+                        .and(ReunionSpecifications.hasDacVer(dacReq.getDacVer()))
+                        .and(ReunionSpecifications.status(ReunionStatus.EN_COURS).or(ReunionSpecifications.status(ReunionStatus.VALIDER)).or(ReunionSpecifications.status(ReunionStatus.PLANIFIER)))
+                        .and(Specification.not(ReunionSpecifications.id(reunion.getId()))));
+                DacResponseDTO dac=dacService.findByDacIdAndVer(dacReq.getDacId(),dacReq.getDacVer());
+                if(!reunions.isEmpty()) {
+                    throw new DossierAlreadyReservedForOtherMeetingInProgressStatus("",dac.getReference());
                 }
                 ReunionDacId id = new ReunionDacId(reunion.getId(), dacReq.getDacId(), dacReq.getDacVer());
                 if (requestDacMap.containsKey(id)) {
