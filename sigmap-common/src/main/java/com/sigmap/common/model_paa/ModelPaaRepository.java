@@ -1,6 +1,7 @@
 package com.sigmap.common.model_paa;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-public interface ModelPaaRepository extends JpaRepository<ModelPaa, ModelPaaId> {
+public interface ModelPaaRepository extends JpaRepository<ModelPaa, ModelPaaId>, JpaSpecificationExecutor<ModelPaa> {
     Optional<ModelPaa> findByPaaIdAndPaaVer(Integer paaId, Integer paaVer);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

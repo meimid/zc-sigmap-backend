@@ -183,6 +183,12 @@ public class AgpmServiceImpl implements AgpmService {
 
         return agpmsResponse;
     }
+
+    @Override
+    public List<Agpm> findAll(Specification<Agpm> spec) throws AcNotFound, AgpmNotFound {
+        return repository.findAll(spec);
+    }
+
     /**
      * Retrieves the latest version of an Agpm entity by its ID. Only non-deleted Docs are included in the response,
      * and the Agpm must be associated with one of the ACs of the current user.

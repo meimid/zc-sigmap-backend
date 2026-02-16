@@ -3,6 +3,7 @@ package com.sigmap.common.process_verbal_reunion_extrait_ppm;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,5 +67,14 @@ public class ProcessVerbalReunionExtraitPpmServiceImpl
                 ppmId,
                 ppmVer
         );
+    }
+    @Override
+    public Optional<ProcessVerbalReunionExtraitPpm> findOne(Specification<ProcessVerbalReunionExtraitPpm> spec) {
+        return repository.findOne(spec);
+    }
+
+    @Override
+    public List<ProcessVerbalReunionExtraitPpm> findAll(Specification<ProcessVerbalReunionExtraitPpm> spec) {
+        return repository.findAll(spec);
     }
 }

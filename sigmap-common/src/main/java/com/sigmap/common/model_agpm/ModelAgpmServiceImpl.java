@@ -9,6 +9,7 @@ import com.sigmap.common.docs.exeptions.DocNotFound;
 import com.sigmap.common.entity.CompositeId;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ModelAgpmServiceImpl implements ModelAgpmService {
 
-    private final ModelAgpmRepository modelPaaRepository;
+    private final ModelAgpmRepository modelAgpmRepository;
     private final DocsRepository docsRepository;
     private final AgpmRepository agpmRepository;
 
@@ -37,14 +38,14 @@ public class ModelAgpmServiceImpl implements ModelAgpmService {
                 .orElseThrow(() -> new DocNotFound(
                         "Aucun DOC trouvé pour l'ID", List.of(docId)));
 
-        Optional<ModelAgpm> existingOpt = modelPaaRepository
+        Optional<ModelAgpm> existingOpt = modelAgpmRepository
                 .findByAgpmIdAndAgpmVer(agpmId, agpmVer);
 
         if (existingOpt.isPresent()) {
             ModelAgpm existing = existingOpt.get();
 
             Integer oldDocId = existing.getDocId();
-            modelPaaRepository.deleteByAgpmIdAndAgpmVer(agpmId, agpmVer);
+            modelAgpmRepository.deleteByAgpmIdAndAgpmVer(agpmId, agpmVer);
 
             if (oldDocId != null && !oldDocId.equals(docId)) {
                 docsRepository.softDelete(oldDocId);
@@ -58,16 +59,21 @@ public class ModelAgpmServiceImpl implements ModelAgpmService {
         mp.setDoc(newDoc);
         mp.setAgpm(agpm);
 
-        return modelPaaRepository.save(mp);
+        return modelAgpmRepository.save(mp);
     }
     @Override
     public Optional<ModelAgpm> getModel(Integer agpmId, Integer agpmVer) {
-        return modelPaaRepository.findByAgpmIdAndAgpmVer(agpmId, agpmVer);
+        return modelAgpmRepository.findByAgpmIdAndAgpmVer(agpmId, agpmVer);
     }
 
     @Transactional
     @Override
     public void removeModel(Integer agpmId, Integer agpmVer) {
-        modelPaaRepository.deleteByAgpmIdAndAgpmVer(agpmId, agpmVer);
+        modelAgpmRepository.deleteByAgpmIdAndAgpmVer(agpmId, agpmVer);
+    }
+
+    @Override
+    public Optional<ModelAgpm> findOne(Specification<ModelAgpm> spec) {
+        return modelAgpmRepository.findOne(spec);
     }
 }

@@ -2,6 +2,9 @@ package com.sigmap.common.process_verbal_reunion;
 
 
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 public class ProcessVerbalReunionSpecifications {
@@ -39,6 +42,34 @@ public class ProcessVerbalReunionSpecifications {
                 );
             }
             return criteriaBuilder.isTrue(root.get("isDeleted"));
+        };
+    }
+
+    public static Specification<ProcessVerbalReunion> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // join PV -> documents (ProcessVerbalReunionDoc)
+            Join<ProcessVerbalReunion, ProcessVerbalReunionDoc> pvrDocJoin =
+                    root.join("documents", JoinType.INNER);
+
+            // join ProcessVerbalReunionDoc -> doc (Docs)
+            Join<ProcessVerbalReunionDoc, Docs> docJoin =
+                    pvrDocJoin.join("doc", JoinType.INNER);
+
+            return cb.and(
+                    // match the requested doc
+                    cb.equal(docJoin.get("id"), docId),
+
+                    // the association row must be PV=true
+                    cb.isTrue(pvrDocJoin.get("pv")),
+
+                    // PV itself is not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted"))),
+
+                    // Doc is not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(docJoin.get("isDeleted")), cb.isFalse(docJoin.get("isDeleted")))
+            );
         };
     }
 }

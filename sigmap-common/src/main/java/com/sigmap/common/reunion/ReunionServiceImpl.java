@@ -13,10 +13,8 @@ import com.sigmap.common.Participant.response.ParticipantResponseDto;
 import com.sigmap.common.ac.Ac;
 import com.sigmap.common.ac.exception.AcNotFound;
 import com.sigmap.common.ac.mapper.AcMapper;
-import com.sigmap.common.appel_offre.AppelOffre;
 import com.sigmap.common.com.Com;
 import com.sigmap.common.com.ComService;
-import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.Constants;
 import com.sigmap.common.config.ParticipantType;
@@ -25,36 +23,43 @@ import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.dac.response.DacResponseReunion;
+import com.sigmap.common.dac_docs.response.customResponceDTO.DacResponseDTO;
 import com.sigmap.common.docs.Docs;
+import com.sigmap.common.docs.DocsService;
 import com.sigmap.common.docs.Mapper.DocMapper;
 import com.sigmap.common.docs.Response.DocsResponseDTO;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import com.sigmap.common.docs.exeptions.DocsNotFoundException;
 import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.entity.ParticipantFonction;
 import com.sigmap.common.keycloakAdmin.dto.UserDTO;
 import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
 import com.sigmap.common.keycloakAdmin.service.KeycloakAdminService;
 import com.sigmap.common.mail.MailService;
+import com.sigmap.common.paas.Paa;
+import com.sigmap.common.paas.PaaSpecifications;
+import com.sigmap.common.paas.exceptions.PaaNotFound;
 import com.sigmap.common.ppms.Ppm;
 import com.sigmap.common.ppms.PpmService;
 import com.sigmap.common.ppms.exception.PpmIdNotFound;
 import com.sigmap.common.ppms.exception.PpmNotFound;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionSpecifications;
 import com.sigmap.common.process_verbal_reunion.exception.*;
 import com.sigmap.common.process_verbal_reunion.request.ProcessVerbalReunionRequest;
 import com.sigmap.common.process_verbal_reunion_doc.ProcessVerbalReunionDoc;
 import com.sigmap.common.process_verbal_reunion_doc.response.ProcessVerbalReunionDocResponse;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
+import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitSpecifications;
+import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 import com.sigmap.common.ref_params.mappers.RefParamMapper;
 import com.sigmap.common.reunion.exception.*;
 import com.sigmap.common.reunion.exception.DateBefore;
 import com.sigmap.common.reunion.mapper.ReunionMapper;
 import com.sigmap.common.reunion.request.ReunionRequest;
-import com.sigmap.common.reunion.response.ExtraitResponse;
-import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.reunion.response.ReunionResponse;
 import com.sigmap.common.reunion.response.ReunionWithParticipantsAndPvDto;
 import com.sigmap.common.reunionDac.ReunionDac;
@@ -65,6 +70,7 @@ import com.sigmap.common.reunionDac.response.ReunionDacResponse;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import com.sigmap.common.reunionPpm.ReunionPpmId;
 import com.sigmap.common.reunionPpm.ReunionPpmRepository;
+import com.sigmap.common.reunionPpm.exceptions.DossierAlreadyReservedForOtherMeetingInProgressStatus;
 import com.sigmap.common.reunionPpm.request.ReunionPpmRequest;
 import com.sigmap.common.reunionPpm.response.ReunionPpmResponse;
 import com.sigmap.common.reunion_dac_doc.ReunionDacDoc;
@@ -78,15 +84,12 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -110,11 +113,12 @@ public class ReunionServiceImpl implements ReunionService{
     private final ProcessVerbalReunionService processVerbalReunionService;
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final ReunionSortResolver reunionSortResolver;
+    private final DocsService docsService;
 
     public ReunionServiceImpl(ReunionRepository repository, ComService comService, UserComRepository userComRepository,
                               ParticipantService participantService, KeycloakAdminService keycloakAdminService,
                               PpmService ppmService, DacService dacService, ReunionPpmRepository reunionPpmRepository,
-                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver) {
+                              ReunionDacRepository reunionDacRepository, MailService mailService, CurrentUserService currentUserService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitService processVerbalReunionExtraitService, ReunionSortResolver reunionSortResolver, DocsService docsService) {
         this.repository = repository;
         this.comService = comService;
         this.userComRepository = userComRepository;
@@ -130,6 +134,7 @@ public class ReunionServiceImpl implements ReunionService{
         this.processVerbalReunionService = processVerbalReunionService;
         this.processVerbalReunionExtraitService = processVerbalReunionExtraitService;
         this.reunionSortResolver = reunionSortResolver;
+        this.docsService = docsService;
     }
     @Override
     public Page<Reunion> findAll(Specification<Reunion> spec, Pageable pageable) {
@@ -454,34 +459,6 @@ public class ReunionServiceImpl implements ReunionService{
 
         ReunionStatus status = reunion.getStatus();
 
-/*
-        if(reunionToUpdate.getStatus().equals(ReunionStatus.EN_COURS)){
-            long  ppmDesionsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getDecision()!=null).count();
-            long  ppmObservationsNumber=reunionToUpdate.getReunionPpms().stream().filter(dossier->dossier.getObservation()!=null).count();
-
-            long  dacDesionsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getDecision()!=null).count();
-            long  dacObservationsNumber=reunionToUpdate.getReunionDacs().stream().filter(dossier->dossier.getObservation()!=null).count();
-
-            if(ppmDesionsNumber>0||ppmObservationsNumber>0||dacObservationsNumber>0||dacDesionsNumber>0){
-                throw new ReunionStatusException("",reunionToUpdate.getStatus());
-            }
-            else {
-                reunionToUpdate.setStatus(ReunionStatus.ANNULER);
-
-            }
-
-        }
-        if(reunionToUpdate.getStatus() != ReunionStatus.BROUILLON &&
-                reunionToUpdate.getStatus() != ReunionStatus.NON_PLANIFIER &&
-                reunionToUpdate.getStatus() != ReunionStatus.PLANIFIER &&
-                reunionToUpdate.getStatus()!=ReunionStatus.EN_RETARD){
-            throw new ReunionStatusException("",reunionToUpdate.getStatus());
-        }
-       if(reunionToUpdate.getStatus() == ReunionStatus.PLANIFIER){
-           sendReunionAnnulerInvitations(id);
-       }
-        reunionToUpdate.setStatus(ReunionStatus.ANNULER);
-        return save(reunionToUpdate);*/
 
         boolean cancelAllowed =
                 status == ReunionStatus.BROUILLON ||
@@ -706,6 +683,14 @@ public class ReunionServiceImpl implements ReunionService{
                 if (ppmReq.getId() == null || ppmReq.getVersion() == null) {
                     throw new PpmIdNotFound("",null);
                 }
+                Ppm ppm=ppmService.findById(ppmReq.getId(),ppmReq.getVersion()).orElseThrow(()->new PpmIdNotFound("",ppmReq.getId()));
+                List<Reunion> reunions=findAll(ReunionSpecifications.hasPpmId(ppmReq.getId())
+                        .and(ReunionSpecifications.hasPpmVer(ppmReq.getVersion()))
+                        .and(ReunionSpecifications.status(ReunionStatus.EN_COURS).or(ReunionSpecifications.status(ReunionStatus.VALIDER)).or(ReunionSpecifications.status(ReunionStatus.PLANIFIER)))
+                        .and(Specification.not(ReunionSpecifications.id(reunion.getId()))));
+                if(!reunions.isEmpty()) {
+                    throw new DossierAlreadyReservedForOtherMeetingInProgressStatus("",ppm.getRef());
+                }
                 ReunionPpmId id = new ReunionPpmId(reunion.getId(), ppmReq.getId(), ppmReq.getVersion());
                 if (requestPpmMap.containsKey(id)) {
                     throw new DuplicationData("Duplicate PPM in request: reunionId=" + reunion.getId() +
@@ -830,6 +815,14 @@ public class ReunionServiceImpl implements ReunionService{
                 if (dacReq.getDacId() == null || dacReq.getDacVer() == null) {
                     throw new DacNotFound("DAC ID or version is null in request:" , null ,
                              null);
+                }
+                List<Reunion> reunions=findAll(ReunionSpecifications.hasDacId(dacReq.getDacId())
+                        .and(ReunionSpecifications.hasDacVer(dacReq.getDacVer()))
+                        .and(ReunionSpecifications.status(ReunionStatus.EN_COURS).or(ReunionSpecifications.status(ReunionStatus.VALIDER)).or(ReunionSpecifications.status(ReunionStatus.PLANIFIER)))
+                        .and(Specification.not(ReunionSpecifications.id(reunion.getId()))));
+                DacResponseDTO dac=dacService.findByDacIdAndVer(dacReq.getDacId(),dacReq.getDacVer());
+                if(!reunions.isEmpty()) {
+                    throw new DossierAlreadyReservedForOtherMeetingInProgressStatus("",dac.getReference());
                 }
                 ReunionDacId id = new ReunionDacId(reunion.getId(), dacReq.getDacId(), dacReq.getDacVer());
                 if (requestDacMap.containsKey(id)) {

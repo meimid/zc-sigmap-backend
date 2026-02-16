@@ -6,6 +6,7 @@ import com.sigmap.common.com.Com;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.ppms.Ppm;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunion;
 import com.sigmap.common.reunionDac.ReunionDac;
 import com.sigmap.common.reunionPpm.ReunionPpm;
 import jakarta.persistence.criteria.Expression;
@@ -202,6 +203,34 @@ public class ReunionSpecifications {
         };
     }
 
+    public static Specification<Reunion> hasDacId(Integer dacId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Predicate viaReunionDacs =
+                    cb.equal(reunionDacJoin.get("dacId"), dacId);
+
+            return viaReunionDacs;
+        };
+    }
+
+    public static Specification<Reunion> hasDacVer(Integer dacVer) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            // Via ReunionPpm
+            Join<Reunion, ReunionDac> reunionDacJoin =
+                    root.join("reunionDacs", JoinType.LEFT);
+            Predicate viaReunionDacs =
+                    cb.equal(reunionDacJoin.get("dacVer"), dacVer);
+
+            return viaReunionDacs;
+        };
+    }
+
     public static Specification<Reunion> hasAcId(Integer acId) {
         return (root, query, cb) -> {
             query.distinct(true);
@@ -279,4 +308,24 @@ public class ReunionSpecifications {
             return null;
         };
     }
+
+
+    public static Specification<Reunion> pvId(Integer pvId) {
+        return (root, query, cb) -> {
+            // join is optional; property navigation also works.
+            Join<Reunion, ProcessVerbalReunion> pvJoin = root.join("processVerbal", JoinType.INNER);
+
+            return cb.and(
+                    cb.equal(pvJoin.get("id"), pvId),
+
+                    // reunion not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted"))),
+
+                    // pv not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(pvJoin.get("isDeleted")), cb.isFalse(pvJoin.get("isDeleted")))
+            );
+        };
+    }
+
+
 }

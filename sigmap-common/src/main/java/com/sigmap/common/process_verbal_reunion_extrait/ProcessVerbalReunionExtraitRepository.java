@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 
 import com.sigmap.common.entity.ExtraitType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,9 @@ import java.util.Optional;
 
 @Repository
 public interface ProcessVerbalReunionExtraitRepository
-        extends JpaRepository<ProcessVerbalReunionExtrait, ExtraitId> {
+        extends JpaRepository<ProcessVerbalReunionExtrait, ExtraitId>,
+        JpaSpecificationExecutor<ProcessVerbalReunionExtrait> {
+
 
 
 
@@ -81,6 +84,34 @@ ORDER BY e.extraitId
             @Param("acIds") List<Integer> acIds,
             @Param("ppmId") Integer ppmId,
             @Param("ppmVer") Integer ppmVer
+    );
+
+
+    @Query("""
+SELECT DISTINCT e
+FROM ProcessVerbalReunionExtrait e
+JOIN e.extraitsDac ed
+WHERE e.doc IS NOT NULL
+  AND e.ac.id IN :acIds
+  AND e.isDeleted = false
+  AND ed.dacId = :dacId
+  AND ed.dacVer = :dacVer
+  AND (ed.dac.isDeleted = false OR ed.dac.isDeleted IS NULL)
+
+  AND EXISTS (
+        SELECT 1
+        FROM Reunion r
+        JOIN r.reunionDacs rd
+        WHERE r.processVerbal = e.processVerbal
+          AND rd.dacId = :dacId
+          AND rd.dacVer = :dacVer
+  )
+ORDER BY e.extraitId
+""")
+    List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            @Param("acIds") List<Integer> acIds,
+            @Param("dacId") Integer dacId,
+            @Param("dacVer") Integer dacVer
     );
 
 

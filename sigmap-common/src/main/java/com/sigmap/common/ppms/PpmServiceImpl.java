@@ -44,11 +44,11 @@ import com.sigmap.common.ppms.exception.*;
 import com.sigmap.common.ppms.request.PpmRequest;
 import com.sigmap.common.ppms.request.PpmBaseRequestDto;
 import com.sigmap.common.ppms.request.PpmWithLotsRequestDto;
+import com.sigmap.common.process_verbal_reunion.ProcessVerbalReunionService;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtrait;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.realisations.exceptions.RealisationUnlinkForbiddenByDacException;
 import com.sigmap.common.realisations.exceptions.RealisationUpdateForbiddenByDacException;
-import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.reunion.response.ReunionArgumentDocuments;
 import com.sigmap.common.source_financement.SourceFinancement;
@@ -132,6 +132,8 @@ public class PpmServiceImpl implements PpmService {
     private final ProcessVerbalReunionExtraitService processVerbalReunionExtraitService;
     private final SeuilGeneralService seuilGeneralService;
     private final SourceFinancementService sourceFinancementService;
+    private final ProcessVerbalReunionService processVerbalReunionService;
+    private final ProcessVerbalReunionExtraitPpmService extraitPpmService;
 
     /**
      * Constructor.
@@ -146,17 +148,17 @@ public class PpmServiceImpl implements PpmService {
      * @param acService
      */
     public PpmServiceImpl(PpmRepository repository, AcSeuilService acSeuilService,
-            CurrentUserService currentUserService, AcRepository acRepository,
-            RealisationRepository realisationRepository, RefParamRepository refParamRepository,
-            DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
-            AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
-            AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
-            MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
-            ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
-            ComService comService, ReunionRepository reunionRepository,
-            ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
-            SeuilGeneralService seuilGeneralService,
-            SourceFinancementService sourceFinancementService) {
+                          CurrentUserService currentUserService, AcRepository acRepository,
+                          RealisationRepository realisationRepository, RefParamRepository refParamRepository,
+                          DocsRepository docsRepository, RealisationService realisationService, LotRepository lotRepository,
+                          AlfrescoService alfrescoService, DocumentCommuneService documentCommuneService, DocsService docsService,
+                          AcService acService, SequenceGeneratorService sequenceGeneratorService, DacRepository dacRepository,
+                          MonnaieRepository monnaieRepository, FinancementRepository financementRepository,
+                          ModelPpmRepository modelPpmRepository, PpmRepository ppmRepository, UserComRepository userComRepository,
+                          ComService comService, ReunionRepository reunionRepository,
+                          ProcessVerbalReunionExtraitService processVerbalReunionExtraitService,
+                          SeuilGeneralService seuilGeneralService,
+                          SourceFinancementService sourceFinancementService, ProcessVerbalReunionService processVerbalReunionService, ProcessVerbalReunionExtraitPpmService extraitPpmService) {
         this.repository = repository;
         this.acRepository = acRepository;
         this.realisationRepository = realisationRepository;
@@ -183,11 +185,18 @@ public class PpmServiceImpl implements PpmService {
         this.seuilGeneralService = seuilGeneralService;
         this.sourceFinancementService = sourceFinancementService;
 
+        this.processVerbalReunionService = processVerbalReunionService;
+        this.extraitPpmService = extraitPpmService;
     }
 
     @Override
     public List<Ppm> findAll() {
         Specification<Ppm> spec = PpmSpecifications.deleted(false);
+        return repository.findAll(spec);
+    }
+
+    @Override
+    public List<Ppm> findAll(Specification<Ppm> spec) {
         return repository.findAll(spec);
     }
 
@@ -388,10 +397,16 @@ public class PpmServiceImpl implements PpmService {
     }
 
 
-    private PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+    @Override
+    public PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
 
         PvResponse dto = new PvResponse();
-
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
         log.warn("START listPvComByPpm: comIds={}, ppmId={}, ver={}", comIds, ppmId, ppmVersion);
 
         for (Integer comId : comIds) {
@@ -465,7 +480,8 @@ public class PpmServiceImpl implements PpmService {
 
                     case "CNCMP-S":
                         // Specialized CNCMP sees specialized PVs + permanent PVs
-                        if ("CNCMP-S".equals(reunionComType)) {
+                        if ("CNCMP-S".equals(reunionComType)&&
+                                (userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
                             dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
                         }
                         if ("CNCMP-P".equals(reunionComType)) {
@@ -484,8 +500,8 @@ public class PpmServiceImpl implements PpmService {
 
         return dto;
     }
-
-    private ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+    @Override
+    public ReunionArgumentDocuments listDocPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
         ReunionArgumentDocuments dto = new ReunionArgumentDocuments();
 
 
@@ -561,7 +577,7 @@ public class PpmServiceImpl implements PpmService {
                         if ("CPMP".equals(reunionComType)) {
                             dto.getDocumentCPMP().addAll(pvAlfrescoIds);
                         }
-                        if ("CNCMP-S".equals(reunionComType)) {
+                        if ("CNCMP-S".equals(reunionComType)&&(userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
                             dto.getDocumentCNCMPSpecialise().addAll(pvAlfrescoIds);
                         }
                         if ("CNCMP-P".equals(reunionComType)) {

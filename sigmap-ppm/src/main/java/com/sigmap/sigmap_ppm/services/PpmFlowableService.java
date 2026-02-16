@@ -8,6 +8,7 @@ import com.sigmap.common.com.exception.CNCMPPNotFound;
 import com.sigmap.common.com.exception.ComNotFound;
 import com.sigmap.common.config.CncmpDecision;
 import com.sigmap.common.config.RealisationStatus;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
@@ -22,6 +23,8 @@ import com.sigmap.common.ppms.mappers.PpmMapper;
 import com.sigmap.common.ppms.response.PpmResponseDto;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationService;
+import com.sigmap.common.reunionPpm.ReunionPpmRepository;
+import com.sigmap.common.reunionPpm.ReunionPpmSpecifications;
 import com.sigmap.sigmap_ppm.services.dto.request.GroupValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.request.ValidationRequest;
 import com.sigmap.sigmap_ppm.services.dto.response.*;
@@ -99,6 +102,8 @@ public class PpmFlowableService {
     private DataSource dataSource;
     @Autowired
     private PpmRepository ppmRepository;
+    @Autowired
+    private ReunionPpmRepository reunionPpmRepository;
 
     /* ======================= small helpers ======================= */
 
@@ -1979,6 +1984,7 @@ public class PpmFlowableService {
                     try {
                         Optional<Ppm> ppmOpt = ppmService.findById(id, version);
 
+
                         ppmOpt.ifPresent(ppm -> {
 
                             taskInfo.setId(id);
@@ -1993,6 +1999,7 @@ public class PpmFlowableService {
                                 taskInfo.setNomAc(null);
                             }
                         });
+
 
                     } catch (Exception e) {
                         log.warn("Failed loading PPM for id {}, version {} in task {}: {}",
@@ -2015,9 +2022,19 @@ public class PpmFlowableService {
                 taskInfo.setCommissionRequired(props.get("commissionRequired"));
 
                 Boolean meetingRequired = props.get("meetingRequired");
-                if (meetingRequired != null && meetingRequired) {
-                    taskInfo.setMeetingRequired(true);
-                    taskList.add(taskInfo);
+                boolean exists = reunionPpmRepository.exists(
+                        ReunionPpmSpecifications.hasPpmId(taskInfo.getId())
+                                .and(ReunionPpmSpecifications.hasPpmVer(taskInfo.getVersion()))
+                                .and(
+                                        ReunionPpmSpecifications.reunionStatus(ReunionStatus.EN_COURS)
+                                                .or(ReunionPpmSpecifications.reunionStatus(ReunionStatus.VALIDER))
+                                                .or(ReunionPpmSpecifications.reunionStatus(ReunionStatus.PLANIFIER))
+                                )
+                );
+                if (meetingRequired != null && meetingRequired && !exists) {
+                        taskList.add(taskInfo);
+                        taskInfo.setMeetingRequired(true);
+
                 }
 
             }

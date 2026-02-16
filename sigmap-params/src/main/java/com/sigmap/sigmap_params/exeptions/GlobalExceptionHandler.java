@@ -57,6 +57,7 @@ import com.sigmap.common.realisations.exceptions.UpdateDeletedRealisation;
 import com.sigmap.common.ref_params.exceptions.*;
 import com.sigmap.common.ref_types.exceptions.*;
 import com.sigmap.common.reunion.exception.*;
+import com.sigmap.common.reunionPpm.exceptions.DossierAlreadyReservedForOtherMeetingInProgressStatus;
 import com.sigmap.common.seuil_general.exception.SeuilGeneralNotFound;
 import com.sigmap.common.seuil_general.exception.SeuilWithTypeMarcheExiste;
 import com.sigmap.common.societe.exception.*;
@@ -85,6 +86,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import java.nio.file.AccessDeniedException;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
@@ -1478,6 +1480,19 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(DossierAlreadyReservedForOtherMeetingInProgressStatus.class)
+    public ResponseEntity<ErrorResponse> handleDossierAlreadyReservedForOtherMeetingInProgress(
+            DossierAlreadyReservedForOtherMeetingInProgressStatus ex
+    ) {
+        String message = messageSource.getMessage(
+                "ppm.dossier.alreadyReserved.otherMeeting.inProgress",
+                new Object[]{ex.getRef()},
+                getLocal()
+        );
+        ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ReunionPvMissingException.class)
@@ -1652,6 +1667,20 @@ public class GlobalExceptionHandler {
 
         ErrorResponse error = new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message);
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied() {
+
+        String message = messageSource.getMessage(
+                "security.accessDenied",
+                null,
+                getLocal()
+        );
+
+        ErrorResponse error = new ErrorResponse(HttpStatus.FORBIDDEN.value(), message);
+
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }
 

@@ -1,6 +1,5 @@
 package com.sigmap.common.process_verbal_reunion_extrait;
 
-import com.sigmap.common.entity.ExtraitType;
 import com.sigmap.common.process_verbal_reunion_extrait.request.ProcessVerbalReunionExtraitRequest;
 
 import java.io.IOException;
@@ -9,8 +8,7 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.query.Param;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.jpa.domain.Specification;
 
 public interface ProcessVerbalReunionExtraitService {
     Page<ProcessVerbalReunionExtrait> findAllByPvId(Integer pvId, Pageable pageable);
@@ -27,5 +25,11 @@ public interface ProcessVerbalReunionExtraitService {
             Integer ppmId,
             Integer ppmVer
     );
+    List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            List<Integer> acIds,
+            Integer dacId,
+            Integer dacVer
+    );
     Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(Integer extraitId, Integer pvId, Integer acId);
+    Optional<ProcessVerbalReunionExtrait> findOne(Specification<ProcessVerbalReunionExtrait> spec);
 }

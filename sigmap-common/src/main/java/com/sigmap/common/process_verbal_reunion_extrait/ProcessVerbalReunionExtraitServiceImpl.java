@@ -14,6 +14,7 @@ import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunion
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.utils.SequenceGeneratorService;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     private final ProcessVerbalReunionExtraitRepository repository;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final DocumentCommuneService documentCommuneService;
-    private final ProcessVerbalReunionExtraitPpmService extraitPpmService;      // service wrapper for ppm join operations
+    private final ProcessVerbalReunionExtraitPpmService extraitPpmService;
     private final ProcessVerbalReunionExtraitDacService extraitDacService;
 
     public ProcessVerbalReunionExtraitServiceImpl(ProcessVerbalReunionExtraitRepository repository, SequenceGeneratorService sequenceGeneratorService, DocumentCommuneService documentCommuneService, ProcessVerbalReunionExtraitPpmService extraitPpmService, ProcessVerbalReunionExtraitDacService extraitDacService) {
@@ -203,8 +204,30 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     }
 
     @Override
+    public List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            List<Integer> acIds,
+            Integer dacId,
+            Integer dacVer
+    ) {
+        if (dacId == null || dacVer == null || acIds == null) {
+            throw new IllegalArgumentException("dacId, dacVer and acIds must not be null");
+        }
+
+        List<ProcessVerbalReunionExtrait> extraits = repository.findExtraitsByDacAndAcs(acIds, dacId, dacVer);
+        log.info("extraits size = {}", extraits.size());
+        extraits.forEach(e -> log.info("extraitId={} type={} doc?={}", e.getExtraitId(), e.getExtraitType(), e.getDoc()!=null));
+        return extraits;
+    }
+
+
+    @Override
     public Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(Integer extraitId, Integer pvId, Integer acId) {
         return repository.findByExtraitIdPvIdAcId(extraitId, pvId, acId);
+    }
+
+    @Override
+    public Optional<ProcessVerbalReunionExtrait> findOne(Specification<ProcessVerbalReunionExtrait> spec) {
+        return repository.findOne(spec);
     }
 
 }
