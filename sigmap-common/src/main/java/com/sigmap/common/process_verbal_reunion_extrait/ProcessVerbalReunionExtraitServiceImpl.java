@@ -204,6 +204,23 @@ public class ProcessVerbalReunionExtraitServiceImpl implements ProcessVerbalReun
     }
 
     @Override
+    public List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            List<Integer> acIds,
+            Integer dacId,
+            Integer dacVer
+    ) {
+        if (dacId == null || dacVer == null || acIds == null) {
+            throw new IllegalArgumentException("dacId, dacVer and acIds must not be null");
+        }
+
+        List<ProcessVerbalReunionExtrait> extraits = repository.findExtraitsByDacAndAcs(acIds, dacId, dacVer);
+        log.info("extraits size = {}", extraits.size());
+        extraits.forEach(e -> log.info("extraitId={} type={} doc?={}", e.getExtraitId(), e.getExtraitType(), e.getDoc()!=null));
+        return extraits;
+    }
+
+
+    @Override
     public Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(Integer extraitId, Integer pvId, Integer acId) {
         return repository.findByExtraitIdPvIdAcId(extraitId, pvId, acId);
     }

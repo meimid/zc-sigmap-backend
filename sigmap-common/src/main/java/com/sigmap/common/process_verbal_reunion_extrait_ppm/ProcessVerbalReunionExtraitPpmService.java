@@ -32,4 +32,6 @@ public interface ProcessVerbalReunionExtraitPpmService {
     );
 
     Optional<ProcessVerbalReunionExtraitPpm> findOne(Specification<ProcessVerbalReunionExtraitPpm> spec);
+
+    List<ProcessVerbalReunionExtraitPpm> findAll(Specification<ProcessVerbalReunionExtraitPpm> spec);
 }
