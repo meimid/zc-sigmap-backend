@@ -39,6 +39,9 @@ import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtr
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitService;
 import com.sigmap.common.process_verbal_reunion_extrait.ProcessVerbalReunionExtraitSpecifications;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDac;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDacService;
+import com.sigmap.common.process_verbal_reunion_extrait_dac.ProcessVerbalReunionExtraitDacSpecifications;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpm;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmSpecifications;
@@ -63,7 +66,9 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,6 +92,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ModelPpmService modelPpmService;
         private final ModelPaaService modelPaaService;
         private final ModelAgpmService modelAgpmService;
+        private final ProcessVerbalReunionExtraitDacService processVerbalReunionExtraitDacService;
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
@@ -124,23 +130,43 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         Reunion reunion = reunionService.findOne(
                 Specification.where(ReunionSpecifications.deleted(false))
-                        .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                        .and(ReunionSpecifications.status(ReunionStatus.CLOTURER).or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
                         .and(ReunionSpecifications.pvId(pv.getId()))
         ).orElseThrow(() -> new DocsNotFoundException("Reunion not found/closed for pvId " + pv.getId()));
 
         List<Integer> comIds = currentUserService.getCurrentUserComIds();
 
-        boolean allowed = reunion.getReunionPpms() != null
+        boolean allowedPpm = reunion.getReunionPpms() != null
                 && reunion.getReunionPpms().stream()
                 .filter(rp -> rp.getPpmId() != null && rp.getPpmVer() != null)
                 .anyMatch(rp -> {
                     PvResponse dto = ppmService.listPvComByPpm(comIds, rp.getPpmId(), rp.getPpmVer());
+
+                    return dto.getPvCPMP().contains(alfrescoId)
+                            || dto.getPvCNCMPPermanente().contains(alfrescoId)
+                            || dto.getPvCNCMPSpecialise().contains(alfrescoId);
+                });
+        boolean allowedDac = reunion.getReunionDacs() != null
+                && reunion.getReunionDacs().stream()
+                .filter(rd -> rd.getDacId() != null && rd.getDacVer() != null)
+                .anyMatch(rd -> {
+
+                    PvResponse dto = dacService.listPvComByDac(comIds, rd.getDacId(), rd.getDacVer());
+                    log.info("DAC id={}, ver={}, alfrescoId={}",
+                            rd.getDacId(), rd.getDacVer(), alfrescoId);
+
+                    log.info("CPMP={}, PERM={}, SPEC={}",
+                            dto.getPvCPMP(),
+                            dto.getPvCNCMPPermanente(),
+                            dto.getPvCNCMPSpecialise());
                     return dto.getPvCPMP().contains(alfrescoId)
                             || dto.getPvCNCMPPermanente().contains(alfrescoId)
                             || dto.getPvCNCMPSpecialise().contains(alfrescoId);
                 });
 
-        if (allowed) {
+
+
+        if (allowedPpm||allowedDac) {
             return docsService.downloadDocument(alfrescoId);
         }
         throw new AccessDeniedException("Access denied");
@@ -169,29 +195,47 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         }
 
         //  CASE 2: needs PPM link
-        ProcessVerbalReunionExtraitPpm link = processVerbalReunionExtraitPpmService.findOne(
+       Optional<ProcessVerbalReunionExtraitPpm> linkPpm = processVerbalReunionExtraitPpmService.findAll(
                 ProcessVerbalReunionExtraitPpmSpecifications
                         .byExtraitKey(extrait.getExtraitId(), extrait.getPvId(), extrait.getAcId())
-                        .and(ProcessVerbalReunionExtraitPpmSpecifications.ppmNotDeleted())
-        ).orElseThrow(() -> new ExtraitNotFound(
-                "No PPM linked to extrait " + extrait.getExtraitId()
-                        + " pvId=" + extrait.getPvId()
-                        + " acId=" + extrait.getAcId()
-        ));
+                        .and(ProcessVerbalReunionExtraitPpmSpecifications.ppmNotDeleted())).stream().findFirst();
+       Optional <ProcessVerbalReunionExtraitDac> linkDac = processVerbalReunionExtraitDacService.findAll(
+                ProcessVerbalReunionExtraitDacSpecifications
+                        .byExtraitKey(extrait.getExtraitId(), extrait.getPvId(), extrait.getAcId())
+                        .and(ProcessVerbalReunionExtraitDacSpecifications.dacNotDeleted())).stream().findFirst();
 
-        Integer ppmId = link.getPpmId();
-        Integer ppmVersion = link.getPpmVer();
         List<Integer> acIds=currentUserService.getCurrentUserAcIds();
-        List<String> extraits = processVerbalReunionExtraitService
-                .findExtraitsByPpmAndAcs(acIds, ppmId, ppmVersion)
-                .stream()
-                .filter(e ->
-                        e.getDoc() != null
-                                && !Boolean.TRUE.equals(e.getIsDeleted())
-                                && !Boolean.TRUE.equals(e.getDoc().getIsDeleted())
-                )
-                .map(e -> e.getDoc().getAlfresco_id())
-                .collect(Collectors.toList());
+        List<String> extraits=new ArrayList<>();
+        if (linkPpm.isPresent()) {
+            Integer ppmId = linkPpm.get().getPpmId();
+            Integer ppmVersion = linkPpm.get().getPpmVer();
+            extraits = processVerbalReunionExtraitService
+                    .findExtraitsByPpmAndAcs(acIds, ppmId, ppmVersion)
+                    .stream()
+                    .filter(e ->
+                            e.getDoc() != null
+                                    && !Boolean.TRUE.equals(e.getIsDeleted())
+                                    && !Boolean.TRUE.equals(e.getDoc().getIsDeleted())
+                    )
+                    .map(e -> e.getDoc().getAlfresco_id())
+                    .collect(Collectors.toList());
+
+        }
+        else if (linkDac.isPresent()) {
+            Integer dacId = linkDac.get().getDacId();
+            Integer dacVer = linkDac.get().getDacVer();
+            extraits = processVerbalReunionExtraitService
+                    .findExtraitsByDacAndAcs(acIds, dacId, dacVer)
+                    .stream()
+                    .filter(e ->
+                            e.getDoc() != null
+                                    && !Boolean.TRUE.equals(e.getIsDeleted())
+                                    && !Boolean.TRUE.equals(e.getDoc().getIsDeleted())
+                    )
+                    .map(e -> e.getDoc().getAlfresco_id())
+                    .collect(Collectors.toList());
+        }
+
 
         if(extraits.contains(alfrescoId)){
             return docsService.downloadDocument(alfrescoId);

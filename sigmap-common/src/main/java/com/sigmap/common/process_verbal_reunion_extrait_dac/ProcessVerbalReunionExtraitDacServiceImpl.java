@@ -3,6 +3,7 @@ package com.sigmap.common.process_verbal_reunion_extrait_dac;
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.process_verbal_reunion_extrait.excepton.ExtraitNotFound;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,6 +46,16 @@ public class ProcessVerbalReunionExtraitDacServiceImpl implements ProcessVerbalR
             Integer dacVer
     ) {
         return repository.findExistingDacLink(pvId, acId, dacId, dacVer);
+    }
+
+    @Override
+    public List<ProcessVerbalReunionExtraitDac> findAll(Specification<ProcessVerbalReunionExtraitDac> spec) {
+        return repository.findAll(spec);
+    }
+
+    @Override
+    public Optional<ProcessVerbalReunionExtraitDac> findOne(Specification<ProcessVerbalReunionExtraitDac> spec) {
+        return repository.findOne(spec);
     }
 
 }

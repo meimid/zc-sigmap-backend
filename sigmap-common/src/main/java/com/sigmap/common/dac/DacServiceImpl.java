@@ -2,7 +2,11 @@ package com.sigmap.common.dac;
 
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelection;
 import com.sigmap.common.ModeDePassationSelection.ModeDePassationSelectionRepository;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ModePassationType;
+import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.exeption.NoActiveAAOException;
 import com.sigmap.common.ModeDePassationSelection.exception.ModeDePassationSelectionNotFound;
 import com.sigmap.common.config.Constants;
@@ -49,6 +53,10 @@ import com.sigmap.common.ref_params.RefParamRepository;
 import com.sigmap.common.ref_params.exceptions.RefParamNotFound;
 import com.sigmap.common.realisations.Realisation;
 import com.sigmap.common.realisations.RealisationRepository;
+import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.ReunionRepository;
+import com.sigmap.common.reunion.ReunionSpecifications;
+import com.sigmap.common.reunion.response.PvResponse;
 import com.sigmap.common.societe_dac.SocieteDac;
 import com.sigmap.common.societe_dac.SocieteDacID;
 import com.sigmap.common.societe_dac.SocieteDacRepository;
@@ -131,6 +139,8 @@ public class DacServiceImpl implements DacService {
     private final SocieteDacRepository societeDacRepository;
     private final DacDocsService dacDocsService;
     private final com.sigmap.common.model_dac.ModelDacRepository modelDacRepository;
+    private final ComService comService;
+    private final ReunionRepository reunionRepository;
 
     @Override
     public List<String> generateListDocumentsWithBookmarks(Integer dacId, Integer dacVersion, String basePath, String customDirPath) {
@@ -2265,6 +2275,106 @@ public class DacServiceImpl implements DacService {
         }
         
         return response;
+    }
+    @Override
+    public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
+
+        PvResponse dto = new PvResponse();
+
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+        log.warn("START listPvComByDac: comIds={}, dacId={}, ver={}", comIds, dacId, dacVersion);
+
+        for (Integer comId : comIds) {
+
+            log.warn("Processing comId {}", comId);
+
+            Optional<Com> comOpt = comService.findOne(
+                    Specification.where(
+                            ComSpecifications.deleted(false)
+                                    .and(ComSpecifications.id(comId))));
+
+            if (comOpt.isEmpty()) {
+                log.error("COM {} not found or deleted!", comId);
+                continue;
+            }
+
+            String userComType = comOpt.get().getComType().getCode().trim();
+            log.warn("COM {} type = {}", comId, userComType);
+
+            Specification<Reunion> spec = Specification
+                    .where(ReunionSpecifications.deleted(false))
+                    .and(ReunionSpecifications.status(ReunionStatus.CLOTURER))
+                    .and(ReunionSpecifications.hasDacId(dacId))
+                    .and(ReunionSpecifications.hasDacVer(dacVersion));
+
+            List<Reunion> reunions = reunionRepository.findAll(spec);
+
+            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
+
+            for (Reunion r : reunions) {
+
+                String pvAlfrescoId = r.getProcessVerbal()
+                        .getDocuments()
+                        .stream()
+                        .filter(doc -> doc.isPv())
+                        .findFirst()
+                        .map(doc -> doc.getDoc().getAlfresco_id())
+                        .orElse(null);
+
+                log.warn("Reunion {} PV={}", r.getId(), pvAlfrescoId);
+
+                if (pvAlfrescoId == null) continue;
+
+                String reunionComType = r.getCom().getComType().getCode().trim();
+
+                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        if ("CNCMP-S".equals(reunionComType) &&
+                                (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
     }
 
 }

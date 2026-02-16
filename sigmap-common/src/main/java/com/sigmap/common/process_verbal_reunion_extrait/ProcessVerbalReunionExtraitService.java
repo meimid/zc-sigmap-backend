@@ -25,6 +25,11 @@ public interface ProcessVerbalReunionExtraitService {
             Integer ppmId,
             Integer ppmVer
     );
+    List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            List<Integer> acIds,
+            Integer dacId,
+            Integer dacVer
+    );
     Optional<ProcessVerbalReunionExtrait> findByExtraitIdPvIdAcId(Integer extraitId, Integer pvId, Integer acId);
     Optional<ProcessVerbalReunionExtrait> findOne(Specification<ProcessVerbalReunionExtrait> spec);
 }

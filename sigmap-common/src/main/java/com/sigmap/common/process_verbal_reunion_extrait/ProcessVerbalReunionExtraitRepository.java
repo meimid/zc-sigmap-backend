@@ -87,4 +87,32 @@ ORDER BY e.extraitId
     );
 
 
+    @Query("""
+SELECT DISTINCT e
+FROM ProcessVerbalReunionExtrait e
+JOIN e.extraitsDac ed
+WHERE e.doc IS NOT NULL
+  AND e.ac.id IN :acIds
+  AND e.isDeleted = false
+  AND ed.dacId = :dacId
+  AND ed.dacVer = :dacVer
+  AND (ed.dac.isDeleted = false OR ed.dac.isDeleted IS NULL)
+
+  AND EXISTS (
+        SELECT 1
+        FROM Reunion r
+        JOIN r.reunionDacs rd
+        WHERE r.processVerbal = e.processVerbal
+          AND rd.dacId = :dacId
+          AND rd.dacVer = :dacVer
+  )
+ORDER BY e.extraitId
+""")
+    List<ProcessVerbalReunionExtrait> findExtraitsByDacAndAcs(
+            @Param("acIds") List<Integer> acIds,
+            @Param("dacId") Integer dacId,
+            @Param("dacVer") Integer dacVer
+    );
+
+
 }
