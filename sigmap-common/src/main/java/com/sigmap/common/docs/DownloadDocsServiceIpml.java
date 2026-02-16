@@ -338,9 +338,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         Docs doc = docsService.findByAlfescoId(alfrescoId)
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
-        Agpm agpm = agpmService.findAll(AgpmSpecifications.docId(doc.getId()),
-                PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
-        ).stream().findFirst()
+        Agpm agpm = agpmService.findAll(AgpmSpecifications.docId(doc.getId()).and(AgpmSpecifications.isNotDeleted())
+                ).stream().findFirst()
         .orElseThrow(() -> new AgpmNotFound("AGPM not found for doc " + doc.getId(), null, null));
 
         Integer agpmAcId = (agpm.getAc() != null ? agpm.getAc().getId() : null);
@@ -360,9 +359,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
         Ppm ppm = ppmService.findAll(
-                        PpmSpecifications.docId(doc.getId()),
-                        PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
-                ).stream().findFirst()
+                        PpmSpecifications.docId(doc.getId()).and(PpmSpecifications.isNotDeleted())).stream().findFirst()
                 .orElseThrow(() -> new PpmNotFound("PPM not found for doc " + doc.getId(), null, null));
 
         Integer ppmAcId = (ppm.getAc() != null ? ppm.getAc().getId() : null);
@@ -382,9 +379,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 .orElseThrow(() -> new DocsNotFoundException("Doc not found for alfrescoId " + alfrescoId));
 
         Paa paa = paaService.findAll(
-                        PaaSpecifications.docId(doc.getId()),
-                        PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "version"))
-                ).stream()
+                        PaaSpecifications.docId(doc.getId()).and(PaaSpecifications.isNotDeleted()))
+                .stream()
                 .findFirst()
                 .orElseThrow(() ->
                         new PaaNotFound("PAA not found for doc " + doc.getId(), null, null)
