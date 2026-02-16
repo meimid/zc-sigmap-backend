@@ -109,6 +109,9 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @Column(name = "statut")
     private RealisationStatus statut = RealisationStatus.NON_PUBLIE;
 
+    @Column(name = "comment", length = 2000)
+    private String comment;
+
     @ManyToMany
     @JoinTable(
             name = "ppm_realisation",
@@ -171,6 +174,8 @@ public class Realisation extends BaseEntity implements DocumentHolder {
     @OneToMany(mappedBy = "realisation", cascade = CascadeType.ALL)
     @JsonManagedReference("realisation-financements")
     private List<Financement> financements = new ArrayList<>();
+
+    @Transient private Boolean usedInDac;
 
     @Override
     public Integer getId() {

@@ -305,6 +305,27 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RealisationUnlinkForbiddenByDacException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationUnlinkForbiddenByDac(RealisationUnlinkForbiddenByDacException ex) {
+        String message = messageSource.getMessage(
+                "realisation.unlink.forbidden.by.dac",
+                new Object[]{ex.getId(), ex.getVersion()},
+                getLocal()
+        );
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.CONFLICT.value(), message), HttpStatus.CONFLICT);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(RealisationUpdateForbiddenByDacException.class)
+    public ResponseEntity<ErrorResponse> handleRealisationUpdateForbiddenByDac(RealisationUpdateForbiddenByDacException ex) {
+        String message = messageSource.getMessage(
+                "realisation.update.forbidden.by.dac",
+                new Object[]{ex.getId(), ex.getVersion()},
+                getLocal()
+        );
+        return new ResponseEntity<>(new ErrorResponse(HttpStatus.CONFLICT.value(), message), HttpStatus.CONFLICT);
+    }
 
 
 

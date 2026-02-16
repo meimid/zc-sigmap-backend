@@ -222,4 +222,27 @@ public interface DacRepository extends JpaRepository<Dac, DacId> ,
       """)
   Optional<Dac> findPublishedDacForUserNotShortListed(@Param("dacId") Integer dacId, @Param("userId") String userId);
 
+  @Query("""
+    SELECT DISTINCT d.appelOffre.realisation.id, d.appelOffre.realisation.version
+    FROM Dac d
+    WHERE d.appelOffre.realisation IS NOT NULL
+      AND d.isDeleted = false
+      AND d.status <> 'REJETE'
+      AND d.appelOffre.realisation.id IN :realIds
+""")
+  List<Object[]> findUsedRealisationKeysNonRejectedByIds(@Param("realIds") List<Integer> realIds);
+
+  @Query("""
+    SELECT (COUNT(d) > 0)
+    FROM Dac d
+    WHERE d.appelOffre.realisation.id = :realId
+      AND d.appelOffre.realisation.version = :realVer
+      AND d.isDeleted = false
+      AND d.status <> 'REJETE'
+""")
+  boolean existsNonRejectedDacForRealisation(
+          @Param("realId") Integer realId,
+          @Param("realVer") Integer realVer
+  );
+
 }

@@ -100,6 +100,7 @@ public class PpmWithLotsRequestDto extends PpmBaseRequestDto {
                     withLotsDto.setLots(baseDto.getLots());
                     withLotsDto.setFinancements(baseDto.getFinancements());
                     withLotsDto.setRealisationFiles(baseDto.getRealisationFiles());
+                    withLotsDto.setComment(baseDto.getComment());
                     result.add(withLotsDto);
                 }
             }
