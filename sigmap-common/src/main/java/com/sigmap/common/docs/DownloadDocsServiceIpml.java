@@ -5,6 +5,9 @@ import com.sigmap.common.agpm.Agpm;
 import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.agpm.AgpmSpecifications;
 import com.sigmap.common.agpm.exceptions.AgpmNotFound;
+import com.sigmap.common.com.Com;
+import com.sigmap.common.com.ComService;
+import com.sigmap.common.com.ComSpecifications;
 import com.sigmap.common.config.ReunionStatus;
 import com.sigmap.common.dac.Dac;
 import com.sigmap.common.dac.DacService;
@@ -46,6 +49,7 @@ import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunion
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmService;
 import com.sigmap.common.process_verbal_reunion_extrait_ppm.ProcessVerbalReunionExtraitPpmSpecifications;
 import com.sigmap.common.reunion.Reunion;
+import com.sigmap.common.reunion.ReunionRepository;
 import com.sigmap.common.reunion.ReunionService;
 import com.sigmap.common.reunion.ReunionSpecifications;
 import com.sigmap.common.reunion.exception.ReunionNotFound;
@@ -59,8 +63,7 @@ import com.sigmap.common.reunion_ppm_doc.ReunionPpmDoc;
 import com.sigmap.common.reunion_ppm_doc.ReunionPpmDocService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -69,6 +72,7 @@ import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -93,6 +97,8 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
         private final ModelPaaService modelPaaService;
         private final ModelAgpmService modelAgpmService;
         private final ProcessVerbalReunionExtraitDacService processVerbalReunionExtraitDacService;
+        private final ComService comService;
+        private final ReunionRepository reunionRepository;
     @Override
     public byte[] downloadModelPaa(String alfrescoId) throws IOException, DocsNotFoundException, PaaNotFound {
         List<Integer> acIds = currentUserService.getCurrentUserAcIds();
@@ -140,7 +146,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 && reunion.getReunionPpms().stream()
                 .filter(rp -> rp.getPpmId() != null && rp.getPpmVer() != null)
                 .anyMatch(rp -> {
-                    PvResponse dto = ppmService.listPvComByPpm(comIds, rp.getPpmId(), rp.getPpmVer());
+                    PvResponse dto = listPvComByPpm(comIds, rp.getPpmId(), rp.getPpmVer());
 
                     return dto.getPvCPMP().contains(alfrescoId)
                             || dto.getPvCNCMPPermanente().contains(alfrescoId)
@@ -151,7 +157,7 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
                 .filter(rd -> rd.getDacId() != null && rd.getDacVer() != null)
                 .anyMatch(rd -> {
 
-                    PvResponse dto = dacService.listPvComByDac(comIds, rd.getDacId(), rd.getDacVer());
+                    PvResponse dto = listPvComByDac(comIds, rd.getDacId(), rd.getDacVer());
                     log.info("DAC id={}, ver={}, alfrescoId={}",
                             rd.getDacId(), rd.getDacVer(), alfrescoId);
 
@@ -437,6 +443,206 @@ public class DownloadDocsServiceIpml implements DownloadDocsService {
 
         throw new AccessDeniedException("Access denied");
     }
+    public PvResponse listPvComByDac(List<Integer> comIds, Integer dacId, Integer dacVersion) {
 
+        PvResponse dto = new PvResponse();
 
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+
+        log.warn("START listPvComByDac: comIds={}, dacId={}, ver={}", comIds, dacId, dacVersion);
+
+        for (Integer comId : comIds) {
+
+            log.warn("Processing comId {}", comId);
+
+            Optional<Com> comOpt = comService.findOne(
+                    Specification.where(
+                            ComSpecifications.deleted(false)
+                                    .and(ComSpecifications.id(comId))));
+
+            if (comOpt.isEmpty()) {
+                log.error("COM {} not found or deleted!", comId);
+                continue;
+            }
+
+            String userComType = comOpt.get().getComType().getCode().trim();
+            log.warn("COM {} type = {}", comId, userComType);
+
+            Specification<Reunion> spec = Specification
+                    .where(ReunionSpecifications.deleted(false))
+                    .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                            .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                    .and(ReunionSpecifications.hasDacId(dacId))
+                    .and(ReunionSpecifications.hasDacVer(dacVersion));
+
+            List<Reunion> reunions = reunionRepository.findAll(spec);
+
+            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
+
+            for (Reunion r : reunions) {
+
+                String pvAlfrescoId = r.getProcessVerbal()
+                        .getDocuments()
+                        .stream()
+                        .filter(doc -> doc.isPv())
+                        .findFirst()
+                        .map(doc -> doc.getDoc().getAlfresco_id())
+                        .orElse(null);
+
+                log.warn("Reunion {} PV={}", r.getId(), pvAlfrescoId);
+
+                if (pvAlfrescoId == null) continue;
+
+                String reunionComType = r.getCom().getComType().getCode().trim();
+
+                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        if ("CNCMP-S".equals(reunionComType) &&
+                                (userComTypes.contains("CNCMP-S") || userComTypes.contains("CNCMP-P"))) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
+    public PvResponse listPvComByPpm(List<Integer> comIds, Integer ppmId, Integer ppmVersion) {
+
+        PvResponse dto = new PvResponse();
+        Set<String> userComTypes = comService.findAll(
+                        Specification.where(ComSpecifications.deleted(false))
+                                .and(ComSpecifications.idIn(comIds))
+                ).stream()
+                .map(c -> c.getComType() != null ? c.getComType().getCode() : null)
+                .collect(Collectors.toSet());
+        log.warn("START listPvComByPpm: comIds={}, ppmId={}, ver={}", comIds, ppmId, ppmVersion);
+
+        for (Integer comId : comIds) {
+
+            log.warn("Processing comId {}", comId);
+
+            Optional<Com> comOpt = comService.findOne(
+                    Specification.where(
+                            ComSpecifications.deleted(false)
+                                    .and(ComSpecifications.id(comId))));
+
+            if (comOpt.isEmpty()) {
+                log.error("COM {} not found or deleted!", comId);
+                continue;
+            }
+
+            String userComType = comOpt.get().getComType().getCode().trim();
+            log.warn("COM {} type = {}", comId, userComType);
+
+            Specification<Reunion> spec = Specification
+                    .where(ReunionSpecifications.deleted(false))
+                    .and(ReunionSpecifications.status(ReunionStatus.CLOTURER)
+                            .or(ReunionSpecifications.status(ReunionStatus.VALIDER)))
+                    .and(ReunionSpecifications.hasPpmId(ppmId))
+                    .and(ReunionSpecifications.hasPpmVer(ppmVersion));
+
+            List<Reunion> reunions = reunionRepository.findAll(spec);
+
+            log.warn("Reunions found for COM {} = {}", comId, reunions.size());
+
+            for (Reunion r : reunions) {
+
+                String pvAlfrescoId = r.getProcessVerbal()
+                        .getDocuments()
+                        .stream()
+                        .filter(doc -> doc.isPv())
+                        .findFirst()
+                        .map(doc -> doc.getDoc().getAlfresco_id())
+                        .orElse(null);
+
+                log.warn("Reunion {} PV={}", r.getId(), pvAlfrescoId);
+
+                if (pvAlfrescoId == null)
+                    continue;
+
+                String reunionComType = r.getCom().getComType().getCode().trim();
+
+                log.warn("Adding PV based on userComType={} and reunionComType={}", userComType, reunionComType);
+
+                switch (userComType) {
+
+                    case "CPMP":
+                        // CPMP user sees: CPMP PVs + CNCMP-P Permanent PVs
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-P":
+                        // Permanent CNCMP sees : permanent PVs + CPMP PVs
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        if ("CPMP".equals(reunionComType)) {
+                            dto.getPvCPMP().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    case "CNCMP-S":
+                        // Specialized CNCMP sees specialized PVs + permanent PVs
+                        if ("CNCMP-S".equals(reunionComType)&&
+                                (userComTypes.contains("CNCMP-S")||userComTypes.contains("CNCMP-P"))) {
+                            dto.getPvCNCMPSpecialise().add(pvAlfrescoId);
+                        }
+                        if ("CNCMP-P".equals(reunionComType)) {
+                            dto.getPvCNCMPPermanente().add(pvAlfrescoId);
+                        }
+                        break;
+
+                    default:
+                        log.warn("Unknown COM type: {}", userComType);
+                }
+            }
+        }
+
+        log.warn("FINAL PV RESPONSE: cpmp={}, perm={}, spec={}",
+                dto.getPvCPMP(), dto.getPvCNCMPPermanente(), dto.getPvCNCMPSpecialise());
+
+        return dto;
+    }
 }
