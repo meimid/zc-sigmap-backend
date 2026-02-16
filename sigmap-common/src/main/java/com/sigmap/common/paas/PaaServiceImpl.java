@@ -145,6 +145,11 @@ public class PaaServiceImpl implements PaaService {
     }
 
     @Override
+    public List<Paa> findAll(Specification<Paa> spec) {
+        return repository.findAll(spec);
+    }
+
+    @Override
     public Page<Paa> findAll(Specification<Paa> spec, Pageable pageable) {
         log.info("Recherche de tous les PAAs avec spécification: {}", spec);
 

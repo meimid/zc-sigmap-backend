@@ -2,6 +2,7 @@ package com.sigmap.common.model_dac;
 
 import com.sigmap.common.dac.exeption.DacNotFound;
 import com.sigmap.common.docs.exeptions.DocNotFound;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.Optional;
 
@@ -15,4 +16,7 @@ public interface ModelDacService {
 
     boolean isDocumentRelatedToDac(String alfrescoId);
     boolean isDocumentRelatedToDacShortlistForUser(String alfrescoId, String userId);
+
+    Optional<ModelDac> findOne(Specification<ModelDac> specification);
+
 }

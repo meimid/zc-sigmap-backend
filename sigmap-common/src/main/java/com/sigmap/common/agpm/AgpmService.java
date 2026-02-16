@@ -20,6 +20,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.repository.query.Param;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,6 +37,7 @@ public interface AgpmService {
      * @return A Page of Agpm entities matching the specification
      */
     Page<Agpm> findAll(Specification<Agpm> spec, Pageable pageable) throws AcNotFound, AgpmNotFound;
+    List<Agpm> findAll(Specification<Agpm> spec) throws AcNotFound, AgpmNotFound;
 
     /**
      * Retrieves a paginated list of deleted Agpm entities.

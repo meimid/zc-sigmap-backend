@@ -1,5 +1,7 @@
 package com.sigmap.common.process_verbal_reunion_extrait_ppm;
 
+import org.springframework.data.jpa.domain.Specification;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -28,4 +30,6 @@ public interface ProcessVerbalReunionExtraitPpmService {
             Integer ppmId,
             Integer ppmVer
     );
+
+    Optional<ProcessVerbalReunionExtraitPpm> findOne(Specification<ProcessVerbalReunionExtraitPpm> spec);
 }

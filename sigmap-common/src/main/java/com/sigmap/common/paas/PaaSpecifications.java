@@ -5,6 +5,7 @@ import com.sigmap.common.docs.Docs;
 import com.sigmap.common.entity.CompositeId;
 import com.sigmap.common.entity.ProcessStatus;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
@@ -241,6 +242,24 @@ public class PaaSpecifications {
                 return cb.conjunction();
             }
             return cb.equal(root.get("id"), id);
+        };
+    }
+
+    public static Specification<Paa> docId(Integer docId) {
+        return (root, query, cb) -> {
+            query.distinct(true);
+
+            Join<Paa, Docs> docsJoin = root.join("docs", JoinType.INNER);
+
+            return cb.and(
+                    cb.equal(docsJoin.get("id"), docId),
+
+                    // PAA not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(root.get("isDeleted")), cb.isFalse(root.get("isDeleted"))),
+
+                    // Doc not deleted (null treated as not deleted)
+                    cb.or(cb.isNull(docsJoin.get("isDeleted")), cb.isFalse(docsJoin.get("isDeleted")))
+            );
         };
     }
 

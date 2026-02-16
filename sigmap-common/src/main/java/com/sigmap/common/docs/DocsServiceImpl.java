@@ -2,8 +2,10 @@ package com.sigmap.common.docs;
 
 import com.sigmap.common.AlfrescoConf.AlfrescoService;
 import com.sigmap.common.AlfrescoConf.DocumentResponseDTO;
-import com.sigmap.common.contact.exception.ContactNotFound;
+import com.sigmap.common.agpm.AgpmService;
 import com.sigmap.common.docs.exeptions.DocsNotFoundException;
+import com.sigmap.common.keycloakAdmin.service.CurrentUserService;
+import com.sigmap.common.paas.PaaService;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ public class DocsServiceImpl implements DocsService {
     public DocsServiceImpl(DocsRepository repository, AlfrescoService alfrescoService) {
         this.repository = repository;
         this.alfrescoService = alfrescoService;
+
     }
 
     @Override
@@ -84,4 +87,8 @@ public class DocsServiceImpl implements DocsService {
         }
 
     }
+
+
+
+
 }

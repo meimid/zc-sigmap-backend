@@ -2,6 +2,7 @@ package com.sigmap.common.process_verbal_reunion_extrait;
 
 import com.sigmap.common.entity.ExtraitType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,9 @@ import java.util.Optional;
 
 @Repository
 public interface ProcessVerbalReunionExtraitRepository
-        extends JpaRepository<ProcessVerbalReunionExtrait, ExtraitId> {
+        extends JpaRepository<ProcessVerbalReunionExtrait, ExtraitId>,
+        JpaSpecificationExecutor<ProcessVerbalReunionExtrait> {
+
 
 
 

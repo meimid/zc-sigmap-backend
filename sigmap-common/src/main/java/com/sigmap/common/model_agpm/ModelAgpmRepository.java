@@ -1,6 +1,7 @@
 package com.sigmap.common.model_agpm;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -8,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-public interface ModelAgpmRepository extends JpaRepository<ModelAgpm, ModelAgpmId> {
+public interface ModelAgpmRepository extends JpaRepository<ModelAgpm, ModelAgpmId>, JpaSpecificationExecutor<ModelAgpm> {
     Optional<ModelAgpm> findByAgpmIdAndAgpmVer(Integer agpmId, Integer agpmVer);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
