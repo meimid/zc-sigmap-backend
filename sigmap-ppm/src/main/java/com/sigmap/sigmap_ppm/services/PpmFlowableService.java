@@ -808,10 +808,6 @@ public class PpmFlowableService {
             } catch (Exception ignore) {
             }
 
-            if (rectifDraftVersionForValidate != null && rectifDraftVersionForValidate.equals(version)) {
-                rectifDraftVersionForValidate = null;
-            }
-
             if (rectifDraftVersionForValidate != null) {
                 if (!(request.getPpm() instanceof PpmWithLotsRequestDto)) {
                     TaskDTO errorResponse = new TaskDTO();
